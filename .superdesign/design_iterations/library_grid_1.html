@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyReader — 书库</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: 'var(--background)',
+            fg: 'var(--foreground)',
+            card: 'var(--card)',
+            'card-fg': 'var(--card-foreground)',
+            primary: 'var(--primary)',
+            'primary-fg': 'var(--primary-foreground)',
+            secondary: 'var(--secondary)',
+            'secondary-fg': 'var(--secondary-foreground)',
+            muted: 'var(--muted)',
+            'muted-fg': 'var(--muted-foreground)',
+            accent: 'var(--accent)',
+            'accent-fg': 'var(--accent-foreground)',
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+            sidebar: 'var(--sidebar)',
+            'sidebar-fg': 'var(--sidebar-foreground)',
+            'sidebar-border': 'var(--sidebar-border)',
+            'sidebar-primary': 'var(--sidebar-primary)',
+            progress: 'var(--progress)',
+            'progress-track': 'var(--progress-track)',
+          },
+          fontFamily: {
+            sans: ["'DM Sans'", "'Noto Sans SC'", 'system-ui', 'sans-serif'],
+            serif: ["'Lora'", "'Noto Serif SC'", 'serif'],
+            mono: ["'JetBrains Mono'", 'monospace'],
+          },
+          borderRadius: {
+            DEFAULT: 'var(--radius)',
+            sm: 'var(--radius-sm)',
+            md: 'var(--radius-md)',
+            lg: 'var(--radius)',
+            xl: 'var(--radius-xl)',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --background: #f5efe6;
+      --foreground: #3b2f2f;
+      --card: #f0e8db;
+      --card-foreground: #3b2f2f;
+      --popover: #f7f1e8;
+      --popover-foreground: #3b2f2f;
+      --primary: #b5651d;
+      --primary-foreground: #faf5ef;
+      --secondary: #e8dcc8;
+      --secondary-foreground: #4a3c2e;
+      --muted: #ebe3d5;
+      --muted-foreground: #7a6b5d;
+      --accent: #7a2e3b;
+      --accent-foreground: #f5efe6;
+      --destructive: #b44a3a;
+      --destructive-foreground: #f5efe6;
+      --border: #ddd2c0;
+      --input: #e3d8c8;
+      --ring: #b5651d;
+      --sidebar: #ebe3d3;
+      --sidebar-foreground: #3e3228;
+      --sidebar-primary: #b5651d;
+      --sidebar-primary-foreground: #faf5ef;
+      --sidebar-accent: #7a2e3b;
+      --sidebar-accent-foreground: #f5efe6;
+      --sidebar-border: #d9cebb;
+      --sidebar-ring: #b5651d;
+      --progress: #b5651d;
+      --progress-track: #e3d8c8;
+      --radius: 0.75rem;
+      --radius-sm: 0.5rem;
+      --radius-md: 0.625rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif !important;
+      background: var(--background) !important;
+      color: var(--foreground) !important;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      color: var(--foreground) !important;
+    }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+    /* ─── Layout ─── */
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-logo {
+      padding: 20px 20px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: 'Lora', 'Noto Serif SC', serif;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-text {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--foreground);
+      letter-spacing: 0.01em;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--sidebar-border);
+      margin: 4px 16px;
+    }
+
+    .sidebar-section {
+      padding: 8px 12px;
+    }
+
+    .sidebar-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted-foreground);
+      padding: 8px 8px 4px;
+      opacity: 0.7;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 450;
+      color: var(--sidebar-foreground);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .sidebar-item:hover {
+      background: rgba(0,0,0,0.04);
+    }
+
+    .sidebar-item.active {
+      background: rgba(181, 101, 29, 0.10);
+      color: var(--primary);
+      font-weight: 550;
+    }
+
+    .sidebar-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .sidebar-item i {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+
+    .sidebar-item.active i { opacity: 1; }
+
+    .sidebar-item .count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      font-weight: 400;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--sidebar-border);
+    }
+
+    /* ─── Library Selector ─── */
+    .library-selector {
+      margin: 0 12px 4px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: rgba(0,0,0,0.03);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted-foreground);
+      transition: background 0.2s;
+    }
+
+    .library-selector:hover { background: rgba(0,0,0,0.06); }
+
+    .library-selector .lib-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6dae54;
+      flex-shrink: 0;
+    }
+
+    /* ─── Main Content ─── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ─── Toolbar ─── */
+    .toolbar {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--background);
+      flex-shrink: 0;
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 420px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 9px 14px 9px 38px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--foreground);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+
+    .search-box input::placeholder { color: var(--muted-foreground); opacity: 0.6; }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(181, 101, 29, 0.12);
+    }
+
+    .search-box .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      opacity: 0.5;
+    }
+
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-left: auto;
+    }
+
+    .toolbar-btn {
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--secondary);
+      color: var(--foreground);
+    }
+
+    .toolbar-btn.active {
+      background: var(--secondary);
+      color: var(--primary);
+    }
+
+    .sort-btn {
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      margin-left: 8px;
+    }
+
+    .sort-btn:hover {
+      border-color: var(--primary);
+    }
+
+    /* ─── Book Grid ─── */
+    .book-grid-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 24px;
+    }
+
+    /* ─── Book Card ─── */
+    .book-card {
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: cardFadeIn 0.45s ease forwards;
+    }
+
+    .book-card:nth-child(1)  { animation-delay: 0.03s; }
+    .book-card:nth-child(2)  { animation-delay: 0.06s; }
+    .book-card:nth-child(3)  { animation-delay: 0.09s; }
+    .book-card:nth-child(4)  { animation-delay: 0.12s; }
+    .book-card:nth-child(5)  { animation-delay: 0.15s; }
+    .book-card:nth-child(6)  { animation-delay: 0.18s; }
+    .book-card:nth-child(7)  { animation-delay: 0.21s; }
+    .book-card:nth-child(8)  { animation-delay: 0.24s; }
+    .book-card:nth-child(9)  { animation-delay: 0.27s; }
+    .book-card:nth-child(10) { animation-delay: 0.30s; }
+    .book-card:nth-child(11) { animation-delay: 0.33s; }
+    .book-card:nth-child(12) { animation-delay: 0.36s; }
+
+    @keyframes cardFadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .book-cover-wrap {
+      position: relative;
+      aspect-ratio: 2/3;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(59,47,47,0.10), 0 1px 3px rgba(59,47,47,0.06);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .book-card:hover .book-cover-wrap {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 28px rgba(59,47,47,0.15), 0 4px 10px rgba(59,47,47,0.08);
+    }
+
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 12px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .book-cover::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.15));
+      pointer-events: none;
+    }
+
+    .book-cover-title {
+      font-family: 'Lora', 'Noto Serif SC', serif;
+      font-weight: 600;
+      font-size: 16px;
+      color: white;
+      line-height: 1.4;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 1;
+    }
+
+    .book-cover-author-inner {
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 6px;
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    /* Cover hover overlay */
+    .book-cover-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 2;
+    }
+
+    .book-card:hover .book-cover-overlay { opacity: 1; }
+
+    .cover-action {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--foreground);
+      transition: all 0.2s ease;
+      transform: scale(0.8);
+    }
+
+    .book-card:hover .cover-action { transform: scale(1); }
+    .cover-action:hover { background: white; transform: scale(1.1) !important; }
+
+    /* Book info below cover */
+    .book-info {
+      padding: 10px 2px 0;
+    }
+
+    .book-title {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--foreground);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color 0.2s;
+    }
+
+    .book-card:hover .book-title { color: var(--primary); }
+
+    .book-author {
+      font-size: 12.5px;
+      color: var(--muted-foreground);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .book-progress {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 3px;
+      background: var(--progress-track);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--progress);
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-text {
+      font-size: 11px;
+      color: var(--muted-foreground);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ─── Status Bar ─── */
+    .status-bar {
+      padding: 8px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--muted-foreground);
+      background: var(--background);
+      flex-shrink: 0;
+    }
+
+    .status-bar .sync-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #6dae54;
+    }
+
+    /* ─── Favorite badge ─── */
+    .fav-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 3;
+      color: #e8a44a;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    }
+
+    /* ─── Format badge ─── */
+    .format-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      z-index: 3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.4);
+      color: rgba(255,255,255,0.85);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ─── Sidebar collapse toggle ─── */
+    .sidebar-toggle {
+      position: absolute;
+      top: 20px;
+      right: -12px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+      color: var(--muted-foreground);
+    }
+
+    .sidebar:hover .sidebar-toggle { opacity: 1; }
+    .sidebar-toggle:hover { background: var(--secondary); }
+
+    /* ─── Section title in grid ─── */
+    .grid-section-title {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--foreground);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .grid-section-title .section-count {
+      font-family: 'DM Sans', 'Noto Sans SC', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted-foreground);
+    }
+
+    /* ─── Continue reading banner ─── */
+    .continue-banner {
+      background: linear-gradient(135deg, var(--card) 0%, var(--secondary) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 20px 24px;
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      animation: cardFadeIn 0.4s ease forwards;
+    }
+
+    .continue-cover {
+      width: 52px;
+      height: 72px;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(59,47,47,0.12);
+    }
+
+    .continue-cover-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Lora', 'Noto Serif SC', serif;
+      font-weight: 600;
+      font-size: 13px;
+      color: white;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .continue-info {
+      flex: 1;
+    }
+
+    .continue-label {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-bottom: 2px;
+    }
+
+    .continue-title {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--foreground);
+    }
+
+    .continue-meta {
+      font-size: 12.5px;
+      color: var(--muted-foreground);
+      margin-top: 2px;
+    }
+
+    .continue-btn {
+      padding: 8px 20px;
+      border-radius: var(--radius);
+      background: var(--primary);
+      color: var(--primary-fg, white);
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .continue-btn:hover {
+      filter: brightness(1.08);
+      box-shadow: 0 4px 12px rgba(181,101,29,0.25);
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- ════════════ SIDEBAR ════════════ -->
+    <aside class="sidebar" style="position:relative;">
+
+      <!-- Logo -->
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">M</div>
+        <span class="sidebar-logo-text">MyReader</span>
+      </div>
+
+      <!-- Library Selector -->
+      <div class="library-selector">
+        <span class="lib-dot"></span>
+        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">我的书库</span>
+        <i data-lucide="chevrons-up-down" style="width:14px; height:14px; opacity:0.5;"></i>
+      </div>
+
+      <div class="sidebar-divider" style="margin-top:8px;"></div>
+
+      <!-- Main Nav -->
+      <div class="sidebar-section">
+        <div class="sidebar-item active">
+          <i data-lucide="library" style="width:18px; height:18px;"></i>
+          全部
+          <span class="count">1,234</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="clock" style="width:18px; height:18px;"></i>
+          最近阅读
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="star" style="width:18px; height:18px;"></i>
+          收藏
+          <span class="count">86</span>
+        </div>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Category Nav -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">分类浏览</div>
+        <div class="sidebar-item">
+          <i data-lucide="tags" style="width:18px; height:18px;"></i>
+          标签
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="book-copy" style="width:18px; height:18px;"></i>
+          丛书
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="user" style="width:18px; height:18px;"></i>
+          作者
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+      </div>
+
+      <!-- Bottom -->
+      <div class="sidebar-bottom">
+        <div class="sidebar-item">
+          <i data-lucide="settings" style="width:18px; height:18px;"></i>
+          设置
+        </div>
+      </div>
+    </aside>
+
+    <!-- ════════════ MAIN ════════════ -->
+    <div class="main-content">
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-box">
+          <i data-lucide="search" class="search-icon" style="width:16px; height:16px;"></i>
+          <input type="text" placeholder="搜索书名、作者、标签…">
+        </div>
+
+        <div class="toolbar-group">
+          <button class="toolbar-btn active" title="网格视图">
+            <i data-lucide="layout-grid" style="width:18px; height:18px;"></i>
+          </button>
+          <button class="toolbar-btn" title="列表视图">
+            <i data-lucide="list" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+
+        <button class="sort-btn">
+          <i data-lucide="arrow-up-down" style="width:14px; height:14px;"></i>
+          最近添加
+          <i data-lucide="chevron-down" style="width:14px; height:14px; opacity:0.5;"></i>
+        </button>
+
+        <button class="toolbar-btn" title="筛选">
+          <i data-lucide="sliders-horizontal" style="width:18px; height:18px;"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable Content -->
+      <div class="book-grid-wrapper">
+
+        <!-- Continue Reading Banner -->
+        <div class="continue-banner">
+          <div class="continue-cover">
+            <div class="continue-cover-inner" style="background: linear-gradient(135deg, #5b4a3f, #8b6f5e);">三体</div>
+          </div>
+          <div class="continue-info">
+            <div class="continue-label">继续阅读</div>
+            <div class="continue-title">三体 · 地球往事</div>
+            <div class="continue-meta">刘慈欣 · 阅读至 72%</div>
+          </div>
+          <button class="continue-btn">继续</button>
+        </div>
+
+        <!-- Section: All Books -->
+        <div class="grid-section-title">
+          全部书籍
+          <span class="section-count">1,234 本</span>
+        </div>
+
+        <div class="book-grid">
+
+          <!-- Book 1 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #5b4a3f 0%, #3d2e26 50%, #2a1f1a 100%);">
+                <span class="book-cover-title">三体</span>
+                <span class="book-cover-author-inner">刘慈欣</span>
+              </div>
+              <div class="fav-badge"><i data-lucide="star" style="width:14px; height:14px; fill: #e8a44a;"></i></div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">三体</div>
+              <div class="book-author">刘慈欣</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:72%"></div></div>
+                <span class="progress-text">72%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 2 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #7a5c4f 0%, #a07860 50%, #6b4a3a 100%);">
+                <span class="book-cover-title">百年孤独</span>
+                <span class="book-cover-author-inner">马尔克斯</span>
+              </div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">百年孤独</div>
+              <div class="book-author">加西亚·马尔克斯</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:35%"></div></div>
+                <span class="progress-text">35%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 3 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #8b6f47 0%, #c4a265 50%, #8b6f47 100%);">
+                <span class="book-cover-title">活着</span>
+                <span class="book-cover-author-inner">余华</span>
+              </div>
+              <div class="fav-badge"><i data-lucide="star" style="width:14px; height:14px; fill: #e8a44a;"></i></div>
+              <div class="format-badge">PDF</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">活着</div>
+              <div class="book-author">余华</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+                <span class="progress-text">已读</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 4 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #4a5e4a 0%, #2d3d2d 50%, #1a281a 100%);">
+                <span class="book-cover-title">围城</span>
+                <span class="book-cover-author-inner">钱钟书</span>
+              </div>
+              <div class="format-badge">MOBI</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">围城</div>
+              <div class="book-author">钱钟书</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:18%"></div></div>
+                <span class="progress-text">18%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 5 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #8b3a3a 0%, #6b2a2a 50%, #4d1a1a 100%);">
+                <span class="book-cover-title">红楼梦</span>
+                <span class="book-cover-author-inner">曹雪芹</span>
+              </div>
+              <div class="fav-badge"><i data-lucide="star" style="width:14px; height:14px; fill: #e8a44a;"></i></div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">红楼梦</div>
+              <div class="book-author">曹雪芹</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:56%"></div></div>
+                <span class="progress-text">56%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 6 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #3a4a5e 0%, #2a3a4e 50%, #1a2a3e 100%);">
+                <span class="book-cover-title">1984</span>
+                <span class="book-cover-author-inner">乔治·奥威尔</span>
+              </div>
+              <div class="format-badge">TXT</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">1984</div>
+              <div class="book-author">乔治·奥威尔</div>
+            </div>
+          </div>
+
+          <!-- Book 7 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #d4a96a 0%, #c49355 50%, #a07840 100%);">
+                <span class="book-cover-title">小王子</span>
+                <span class="book-cover-author-inner">圣埃克苏佩里</span>
+              </div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">小王子</div>
+              <div class="book-author">安托万·圣埃克苏佩里</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+                <span class="progress-text">已读</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 8 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #5a6b5a 0%, #3e4f3e 50%, #2a3b2a 100%);">
+                <span class="book-cover-title">挪威的森林</span>
+                <span class="book-cover-author-inner">村上春树</span>
+              </div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">挪威的森林</div>
+              <div class="book-author">村上春树</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:43%"></div></div>
+                <span class="progress-text">43%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 9 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #9b7b5b 0%, #7d6348 50%, #5f4b38 100%);">
+                <span class="book-cover-title">月亮与<br>六便士</span>
+                <span class="book-cover-author-inner">毛姆</span>
+              </div>
+              <div class="format-badge">PDF</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">月亮与六便士</div>
+              <div class="book-author">威廉·萨默塞特·毛姆</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:88%"></div></div>
+                <span class="progress-text">88%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 10 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #6b5a7a 0%, #4a3d5e 50%, #332a46 100%);">
+                <span class="book-cover-title">人类简史</span>
+                <span class="book-cover-author-inner">尤瓦尔·赫拉利</span>
+              </div>
+              <div class="format-badge">EPUB</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">人类简史</div>
+              <div class="book-author">尤瓦尔·诺亚·赫拉利</div>
+            </div>
+          </div>
+
+          <!-- Book 11 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #a88b6a 0%, #8b7055 50%, #6d5540 100%);">
+                <span class="book-cover-title">追风筝<br>的人</span>
+                <span class="book-cover-author-inner">胡赛尼</span>
+              </div>
+              <div class="format-badge">DOCX</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">追风筝的人</div>
+              <div class="book-author">卡勒德·胡赛尼</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:22%"></div></div>
+                <span class="progress-text">22%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Book 12 -->
+          <div class="book-card">
+            <div class="book-cover-wrap">
+              <div class="book-cover" style="background: linear-gradient(160deg, #2e2e3a 0%, #1e1e28 50%, #12121a 100%);">
+                <span class="book-cover-title">白夜行</span>
+                <span class="book-cover-author-inner">东野圭吾</span>
+              </div>
+              <div class="format-badge">MOBI</div>
+              <div class="book-cover-overlay">
+                <button class="cover-action" title="阅读"><i data-lucide="book-open" style="width:16px; height:16px;"></i></button>
+                <button class="cover-action" title="更多"><i data-lucide="ellipsis" style="width:16px; height:16px;"></i></button>
+              </div>
+            </div>
+            <div class="book-info">
+              <div class="book-title">白夜行</div>
+              <div class="book-author">东野圭吾</div>
+              <div class="book-progress">
+                <div class="progress-bar"><div class="progress-fill" style="width:65%"></div></div>
+                <span class="progress-text">65%</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /book-grid -->
+
+      </div><!-- /book-grid-wrapper -->
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <span>📚 我的书库 · 1,234 本</span>
+        <div class="sync-status">
+          <span class="sync-dot"></span>
+          已同步
+        </div>
+      </div>
+
+    </div><!-- /main-content -->
+
+  </div><!-- /app-layout -->
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

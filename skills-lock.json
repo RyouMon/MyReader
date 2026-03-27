@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "tauri-v2": {
+      "source": "nodnarbnitram/claude-code-extensions",
+      "sourceType": "github",
+      "computedHash": "a333d119fa97f6a4c72d7f5a0e7c44c1c614254b8d67383f83ff23ac1af2afb0"
+    },
+    "tdd": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "computedHash": "e4453d2f51a009f6b49876cc4d46ce452194c54ea931d4a552a0eb0e9dd24c27"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "9fb08ab39585f6f770d0c1c735f83e619aba2089d7ad50ba2a305eff715e08b9"
+    }
+  }
+}
