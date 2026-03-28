@@ -1,0 +1,87 @@
+/* MyReader Book Detail + Sidebar — theme (step 2)
+ * Aligns with library_grid_theme_1: warm paper, amber primary, burgundy accent.
+ * Extra tokens: cover frame, synopsis, tag pills, main column width.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --background: oklch(0.97 0.012 80) !important;
+  --foreground: oklch(0.22 0.035 50) !important;
+
+  --card: oklch(0.96 0.015 78) !important;
+  --card-foreground: oklch(0.22 0.035 50) !important;
+
+  --popover: oklch(0.975 0.01 82) !important;
+  --popover-foreground: oklch(0.22 0.035 50) !important;
+
+  --primary: oklch(0.62 0.14 48) !important;
+  --primary-foreground: oklch(0.975 0.008 80) !important;
+
+  --secondary: oklch(0.92 0.025 72) !important;
+  --secondary-foreground: oklch(0.3 0.04 50) !important;
+
+  --muted: oklch(0.93 0.015 70) !important;
+  --muted-foreground: oklch(0.5 0.03 55) !important;
+
+  --accent: oklch(0.45 0.12 18) !important;
+  --accent-foreground: oklch(0.97 0.01 80) !important;
+
+  --destructive: oklch(0.55 0.2 28) !important;
+  --destructive-foreground: oklch(0.97 0.01 80) !important;
+
+  --border: oklch(0.89 0.02 72) !important;
+  --input: oklch(0.91 0.018 74) !important;
+  --ring: oklch(0.62 0.14 48) !important;
+
+  --chart-1: oklch(0.62 0.14 48) !important;
+  --chart-2: oklch(0.55 0.11 35) !important;
+  --chart-3: oklch(0.45 0.12 18) !important;
+  --chart-4: oklch(0.68 0.12 65) !important;
+  --chart-5: oklch(0.58 0.08 45) !important;
+
+  --sidebar: oklch(0.94 0.018 76) !important;
+  --sidebar-foreground: oklch(0.25 0.035 50) !important;
+  --sidebar-primary: oklch(0.62 0.14 48) !important;
+  --sidebar-primary-foreground: oklch(0.975 0.008 80) !important;
+  --sidebar-accent: oklch(0.88 0.02 70) !important;
+  --sidebar-accent-foreground: oklch(0.25 0.035 50) !important;
+  --sidebar-border: oklch(0.88 0.022 70) !important;
+  --sidebar-ring: oklch(0.62 0.14 48) !important;
+
+  --progress: oklch(0.62 0.14 48) !important;
+  --progress-track: oklch(0.91 0.018 74) !important;
+
+  --font-sans: "DM Sans", "Noto Sans SC", system-ui, sans-serif !important;
+  --font-serif: "Lora", "Noto Serif SC", serif !important;
+  --font-mono: "JetBrains Mono", monospace !important;
+
+  --spacing: 0.25rem !important;
+
+  --radius: 0.75rem !important;
+  --radius-sm: calc(var(--radius) - 4px) !important;
+  --radius-md: calc(var(--radius) - 2px) !important;
+  --radius-lg: var(--radius) !important;
+  --radius-xl: calc(var(--radius) + 4px) !important;
+
+  --shadow-2xs: 0 1px 2px 0 oklch(0.35 0.04 55 / 0.04) !important;
+  --shadow-xs: 0 1px 3px 0 oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow-sm: 0 1px 3px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 2px -1px oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow: 0 2px 6px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 3px -1px oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow-md: 0 4px 8px -1px oklch(0.35 0.04 55 / 0.1), 0 2px 4px -2px oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow-lg: 0 8px 16px -2px oklch(0.35 0.04 55 / 0.12), 0 4px 6px -3px oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow-xl: 0 16px 32px -4px oklch(0.35 0.04 55 / 0.14), 0 8px 12px -4px oklch(0.35 0.04 55 / 0.06) !important;
+  --shadow-2xl: 0 24px 48px -8px oklch(0.35 0.04 55 / 0.2) !important;
+
+  --tracking-normal: 0em !important;
+  --tracking-wide: 0.02em !important;
+
+  /* Book detail–specific */
+  --detail-main-max-width: 56rem !important;
+  --detail-cover-frame: oklch(0.91 0.02 75) !important;
+  --detail-cover-shadow: var(--shadow-lg) !important;
+  --detail-tag-bg: oklch(0.93 0.02 72) !important;
+  --detail-tag-border: oklch(0.86 0.022 70) !important;
+  --detail-synopsis-line: oklch(0.88 0.02 72) !important;
+  --detail-toolbar-blur: 12px !important;
+}

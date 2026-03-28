@@ -55,6 +55,30 @@ pub struct BookEntry {
     pub uuid: Option<String>,
 }
 
+/// Extended book detail with format sizes and identifiers pre-loaded.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookDetail {
+    #[serde(flatten)]
+    pub book: BookEntry,
+    pub format_sizes: Vec<FormatSize>,
+    pub identifiers: Vec<BookIdentifier>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormatSize {
+    pub format: String,
+    pub size_bytes: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookIdentifier {
+    pub id_type: String,
+    pub value: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryInfo {

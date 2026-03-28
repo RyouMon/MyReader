@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyReader — 书籍详情</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: 'var(--background)',
+            fg: 'var(--foreground)',
+            card: 'var(--card)',
+            'card-fg': 'var(--card-foreground)',
+            primary: 'var(--primary)',
+            'primary-fg': 'var(--primary-foreground)',
+            secondary: 'var(--secondary)',
+            'secondary-fg': 'var(--secondary-foreground)',
+            muted: 'var(--muted)',
+            'muted-fg': 'var(--muted-foreground)',
+            accent: 'var(--accent)',
+            'accent-fg': 'var(--accent-foreground)',
+            border: 'var(--border)',
+            input: 'var(--input)',
+            ring: 'var(--ring)',
+            sidebar: 'var(--sidebar)',
+            'sidebar-fg': 'var(--sidebar-foreground)',
+            'sidebar-border': 'var(--sidebar-border)',
+            'sidebar-primary': 'var(--sidebar-primary)',
+            progress: 'var(--progress)',
+            'progress-track': 'var(--progress-track)',
+          },
+          fontFamily: {
+            sans: ["'DM Sans'", "'Noto Sans SC'", 'system-ui', 'sans-serif'],
+            serif: ["'Lora'", "'Noto Serif SC'", 'serif'],
+            mono: ["'JetBrains Mono'", 'monospace'],
+          },
+          borderRadius: {
+            DEFAULT: 'var(--radius)',
+            sm: 'var(--radius-sm)',
+            md: 'var(--radius-md)',
+            lg: 'var(--radius)',
+            xl: 'var(--radius-xl)',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --background: #f5efe6;
+      --foreground: #3b2f2f;
+      --card: #f0e8db;
+      --card-foreground: #3b2f2f;
+      --popover: #f7f1e8;
+      --popover-foreground: #3b2f2f;
+      --primary: #b5651d;
+      --primary-foreground: #faf5ef;
+      --secondary: #e8dcc8;
+      --secondary-foreground: #4a3c2e;
+      --muted: #ebe3d5;
+      --muted-foreground: #7a6b5d;
+      --accent: #7a2e3b;
+      --accent-foreground: #f5efe6;
+      --destructive: #b44a3a;
+      --destructive-foreground: #f5efe6;
+      --border: #ddd2c0;
+      --input: #e3d8c8;
+      --ring: #b5651d;
+      --sidebar: #ebe3d3;
+      --sidebar-foreground: #3e3228;
+      --sidebar-primary: #b5651d;
+      --sidebar-primary-foreground: #faf5ef;
+      --sidebar-accent: #e2d8c8;
+      --sidebar-accent-foreground: #3e3228;
+      --sidebar-border: #d9cebb;
+      --sidebar-ring: #b5651d;
+      --progress: #b5651d;
+      --progress-track: #e3d8c8;
+      --radius: 0.75rem;
+      --radius-sm: 0.5rem;
+      --radius-md: 0.625rem;
+      --radius-lg: 0.75rem;
+      --radius-xl: 1rem;
+
+      --detail-tag-bg: #ece4d6;
+      --detail-tag-border: #d9cfbc;
+      --detail-synopsis-line: #e0d6c6;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif !important;
+      background: var(--background) !important;
+      color: var(--foreground) !important;
+      height: 100%;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      color: var(--foreground) !important;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+    /* ─── Layout ─── */
+    .app-layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: 240px; min-width: 240px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo { padding: 20px 20px 16px; display: flex; align-items: center; gap: 12px; }
+    .sidebar-logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: white; font-family: 'Lora', 'Noto Serif SC', serif; font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-family: 'Lora', 'Noto Serif SC', serif !important; font-size: 18px; font-weight: 700; color: var(--foreground); }
+    .sidebar-divider { height: 1px; background: var(--sidebar-border); margin: 4px 16px; }
+    .sidebar-section { padding: 8px 12px; }
+    .sidebar-section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); padding: 8px 8px 4px; opacity: 0.7; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+      border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 450;
+      color: var(--sidebar-foreground); transition: all 0.2s ease-out; position: relative;
+    }
+    .sidebar-item:hover { background: rgba(0,0,0,0.04); }
+    .sidebar-item.active { background: rgba(181, 101, 29, 0.10); color: var(--primary); font-weight: 550; }
+    .sidebar-item.active::before {
+      content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 18px; background: var(--primary); border-radius: 0 3px 3px 0;
+    }
+    .sidebar-item i { width: 18px; height: 18px; opacity: 0.7; }
+    .sidebar-item.active i { opacity: 1; }
+    .sidebar-item .count { margin-left: auto; font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+    .sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid var(--sidebar-border); }
+    .library-selector {
+      margin: 0 12px 4px; padding: 8px 10px; border-radius: var(--radius-sm);
+      background: rgba(0,0,0,0.03); display: flex; align-items: center; gap: 8px;
+      cursor: pointer; font-size: 13px; color: var(--muted-foreground); transition: background 0.2s;
+    }
+    .library-selector:hover { background: rgba(0,0,0,0.06); }
+    .library-selector .lib-dot { width: 8px; height: 8px; border-radius: 50%; background: #6dae54; flex-shrink: 0; }
+
+    /* ─── Main Content ─── */
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* ─── Detail Toolbar ─── */
+    .detail-toolbar {
+      padding: 12px 28px; display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid transparent; background: var(--background);
+      flex-shrink: 0; transition: border-color 0.15s, box-shadow 0.15s; z-index: 5;
+    }
+    .detail-toolbar.scrolled { border-bottom-color: var(--border); box-shadow: 0 1px 4px rgba(59,47,47,0.05); }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px; padding: 7px 14px 7px 10px;
+      border-radius: var(--radius-sm); border: none; background: transparent;
+      color: var(--muted-foreground); cursor: pointer; font-size: 13.5px; font-family: inherit; transition: all 0.18s ease;
+    }
+    .back-btn:hover { background: var(--secondary); color: var(--foreground); }
+    .back-btn:hover .back-arrow { transform: translateX(-2px); }
+    .back-arrow { transition: transform 0.18s; display: flex; }
+
+    .detail-toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+    .toolbar-btn {
+      padding: 8px; border-radius: var(--radius-sm); border: none; background: transparent;
+      color: var(--muted-foreground); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .toolbar-btn:hover { background: var(--secondary); color: var(--foreground); }
+    .toolbar-btn.fav-active { color: #e8a44a; }
+
+    /* ─── Detail Body ─── */
+    .detail-body { flex: 1; overflow-y: auto; padding: 28px 36px 48px; }
+    .detail-inner { max-width: 56rem; margin: 0 auto; }
+
+    /* ─── Hero ─── */
+    .detail-hero { display: flex; gap: 36px; margin-bottom: 32px; }
+
+    .detail-cover-wrap {
+      flex-shrink: 0; width: 220px;
+      opacity: 0; transform: scale(0.98); animation: coverIn 0.5s ease-out 0.1s forwards;
+    }
+    @keyframes coverIn { to { opacity: 1; transform: scale(1); } }
+
+    .detail-cover-frame {
+      width: 220px; aspect-ratio: 2/3; border-radius: var(--radius-xl); overflow: hidden;
+      box-shadow: 0 8px 24px rgba(59,47,47,0.12), 0 4px 8px rgba(59,47,47,0.06);
+      transition: transform 0.25s ease-out, box-shadow 0.25s ease-out; position: relative;
+    }
+    .detail-cover-frame:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(59,47,47,0.16), 0 6px 12px rgba(59,47,47,0.08);
+    }
+    .detail-cover-inner {
+      width: 100%; height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px 16px; text-align: center; position: relative;
+    }
+    .detail-cover-inner::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.18)); pointer-events: none;
+    }
+    .detail-cover-title {
+      font-family: 'Lora', 'Noto Serif SC', serif; font-weight: 700; font-size: 24px;
+      color: white; line-height: 1.35; text-shadow: 0 2px 6px rgba(0,0,0,0.3); position: relative; z-index: 1;
+    }
+    .detail-cover-author {
+      font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 8px;
+      position: relative; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    /* Format badges stacked at cover bottom */
+    .cover-format-badges {
+      position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 2;
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .cover-fmt-badge {
+      padding: 3px 8px; border-radius: 5px;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+      color: rgba(255,255,255,0.88); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    /* ─── Meta ─── */
+    .detail-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-top: 4px; }
+
+    .detail-title {
+      font-family: 'Lora', 'Noto Serif SC', serif !important; font-size: 28px; font-weight: 700; line-height: 1.3;
+      opacity: 0; transform: translateY(6px); animation: metaIn 0.35s ease-out 0.15s forwards;
+    }
+    .detail-subtitle {
+      font-size: 15px; color: var(--muted-foreground); margin-top: 4px;
+      opacity: 0; transform: translateY(6px); animation: metaIn 0.35s ease-out 0.21s forwards;
+    }
+    .detail-authors {
+      display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px;
+      opacity: 0; transform: translateY(6px); animation: metaIn 0.35s ease-out 0.27s forwards;
+    }
+    .detail-author-link {
+      font-size: 15px; font-weight: 500; color: var(--primary); cursor: pointer;
+      text-decoration: none; transition: color 0.2s;
+    }
+    .detail-author-link:hover { color: var(--accent); }
+
+    @keyframes metaIn { to { opacity: 1; transform: translateY(0); } }
+
+    .meta-divider {
+      width: 100%; height: 1px; background: var(--border); margin: 14px 0;
+      opacity: 0; animation: metaIn 0.3s ease-out 0.33s forwards;
+    }
+
+    .meta-row {
+      display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--muted-foreground);
+      opacity: 0; transform: translateY(6px); animation: metaIn 0.35s ease-out 0.36s forwards;
+    }
+    .meta-item { display: flex; align-items: center; gap: 5px; }
+    .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-foreground); opacity: 0.5; }
+
+    /* ─── Rating ─── */
+    .rating-stars { display: flex; gap: 2px; align-items: center; }
+    .rating-stars .star { color: var(--border); }
+    .rating-stars .star.filled { color: #e8a44a; }
+
+    /* ─── Tags ─── */
+    .detail-tags {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+      opacity: 0; animation: metaIn 0.3s ease-out 0.4s forwards;
+    }
+    .detail-tag {
+      padding: 4px 12px; border-radius: 20px;
+      background: var(--detail-tag-bg); border: 1px solid var(--detail-tag-border);
+      font-size: 12.5px; font-weight: 450; color: var(--secondary-foreground);
+      cursor: default; transition: background 0.2s, border-color 0.2s;
+      opacity: 0; transform: scale(0.96); animation: tagIn 0.2s ease-out forwards;
+    }
+    .detail-tag:hover { background: var(--secondary); border-color: var(--primary); color: var(--primary); }
+    .detail-tag:nth-child(1) { animation-delay: 0.42s; }
+    .detail-tag:nth-child(2) { animation-delay: 0.46s; }
+    .detail-tag:nth-child(3) { animation-delay: 0.50s; }
+    .detail-tag:nth-child(4) { animation-delay: 0.54s; }
+    .detail-tag:nth-child(5) { animation-delay: 0.58s; }
+    @keyframes tagIn { to { opacity: 1; transform: scale(1); } }
+
+    /* ─── Reading Progress ─── */
+    .detail-progress {
+      margin-top: 18px; display: flex; align-items: center; gap: 10px;
+      opacity: 0; animation: metaIn 0.3s ease-out 0.44s forwards;
+    }
+    .detail-progress-bar { flex: 1; max-width: 200px; height: 5px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
+    .detail-progress-fill { height: 100%; background: var(--progress); border-radius: 3px; transition: width 0.6s; }
+    .detail-progress-text { font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+    /* ─── Actions: Split Read Button + Format Selector ─── */
+    .detail-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; align-items: stretch;
+      opacity: 0; animation: metaIn 0.3s ease-out 0.48s forwards;
+    }
+
+    .read-split-btn { display: flex; border-radius: var(--radius); overflow: hidden; }
+    .read-main {
+      display: flex; align-items: center; gap: 8px; padding: 10px 22px;
+      background: var(--primary); color: var(--primary-foreground, white);
+      font-size: 15px; font-weight: 600; font-family: inherit; border: none; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .read-main:hover { filter: brightness(1.08); box-shadow: 0 4px 16px rgba(181,101,29,0.28); transform: translateY(-1px); }
+    .read-main:active { transform: scale(0.98); }
+
+    .read-format-toggle {
+      display: flex; align-items: center; padding: 0 12px;
+      background: var(--primary); color: var(--primary-foreground, white);
+      border: none; border-left: 1px solid rgba(255,255,255,0.2); cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .read-format-toggle:hover { background: rgba(181, 101, 29, 0.9); }
+
+    .format-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px); right: 0; min-width: 200px;
+      background: var(--popover); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(59,47,47,0.12); z-index: 50; overflow: hidden;
+      animation: dropIn 0.15s ease-out;
+    }
+    .format-dropdown.open { display: block; }
+    @keyframes dropIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .format-dropdown-header {
+      padding: 8px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted-foreground); border-bottom: 1px solid var(--border);
+    }
+    .format-option {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      cursor: pointer; transition: background 0.12s; font-size: 13.5px; color: var(--foreground);
+    }
+    .format-option:hover { background: rgba(0,0,0,0.04); }
+    .format-option.selected { background: rgba(181, 101, 29, 0.08); color: var(--primary); font-weight: 550; }
+
+    .format-opt-icon {
+      width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: white; flex-shrink: 0;
+    }
+    .format-opt-icon.epub { background: linear-gradient(135deg, #5b8a3c, #3d6b28); }
+    .format-opt-icon.pdf { background: linear-gradient(135deg, #c44b4b, #9a3030); }
+    .format-opt-icon.mobi { background: linear-gradient(135deg, #5a6abf, #3a4a9f); }
+    .format-opt-icon.azw3 { background: linear-gradient(135deg, #e8a44a, #c4862e); }
+    .format-opt-icon.txt { background: linear-gradient(135deg, #7a7a7a, #5a5a5a); }
+    .format-opt-icon.cbz { background: linear-gradient(135deg, #9b59b6, #7d3c98); }
+    .format-opt-icon.djvu { background: linear-gradient(135deg, #2c3e50, #1a252f); }
+
+    .format-opt-info { flex: 1; min-width: 0; }
+    .format-opt-name { font-weight: 600; }
+    .format-opt-size { font-size: 12px; color: var(--muted-foreground); margin-top: 1px; }
+    .format-opt-check { width: 16px; flex-shrink: 0; color: var(--primary); }
+
+    .btn-shelf {
+      display: flex; align-items: center; gap: 7px; padding: 10px 20px;
+      border-radius: var(--radius); background: var(--secondary); color: var(--foreground);
+      font-size: 14px; font-weight: 500; font-family: inherit; border: 1px solid var(--border);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-shelf:hover { background: var(--muted); border-color: var(--primary); color: var(--primary); }
+    .btn-shelf.added { background: rgba(181,101,29,0.08); border-color: var(--primary); color: var(--primary); font-weight: 550; }
+
+    .btn-more-actions {
+      display: flex; align-items: center; gap: 5px; padding: 10px 14px;
+      border-radius: var(--radius); background: transparent; color: var(--muted-foreground);
+      font-size: 14px; font-family: inherit; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+    }
+    .btn-more-actions:hover { background: var(--secondary); color: var(--foreground); }
+
+    /* ─── Section ─── */
+    .detail-section { margin-top: 36px; }
+    .detail-section-title {
+      font-family: 'Lora', 'Noto Serif SC', serif !important; font-size: 18px; font-weight: 600;
+      margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--detail-synopsis-line);
+    }
+
+    /* ─── Synopsis ─── */
+    .synopsis-wrap { position: relative; overflow: hidden; transition: max-height 0.28s ease-in-out; }
+    .synopsis-wrap.collapsed { max-height: 7.5em; }
+    .synopsis-wrap.collapsed::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3em;
+      background: linear-gradient(to bottom, transparent, var(--background)); pointer-events: none;
+    }
+    .synopsis-text { font-size: 14.5px; line-height: 1.85; white-space: pre-line; }
+    .synopsis-toggle {
+      display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+      font-size: 13px; font-weight: 500; color: var(--primary); cursor: pointer;
+      border: none; background: none; font-family: inherit; padding: 0; transition: color 0.2s;
+    }
+    .synopsis-toggle:hover { color: var(--accent); }
+    .synopsis-toggle .toggle-icon { transition: transform 0.28s ease-in-out; display: flex; }
+    .synopsis-toggle.expanded .toggle-icon { transform: rotate(180deg); }
+
+    /* ─── Formats Table ─── */
+    .formats-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .formats-table th {
+      text-align: left; padding: 8px 14px; font-size: 11.5px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground);
+      border-bottom: 1px solid var(--border); background: var(--muted);
+    }
+    .formats-table th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+    .formats-table th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
+    .formats-table td {
+      padding: 12px 14px; font-size: 13.5px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .formats-table tr:last-child td { border-bottom: none; }
+    .formats-table tbody tr { transition: background 0.12s; }
+    .formats-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+
+    .fmt-name-cell { display: flex; align-items: center; gap: 10px; }
+    .fmt-icon {
+      width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .fmt-icon.epub { background: linear-gradient(135deg, #5b8a3c, #3d6b28); }
+    .fmt-icon.pdf { background: linear-gradient(135deg, #c44b4b, #9a3030); }
+    .fmt-icon.mobi { background: linear-gradient(135deg, #5a6abf, #3a4a9f); }
+    .fmt-icon.azw3 { background: linear-gradient(135deg, #e8a44a, #c4862e); }
+    .fmt-icon.txt { background: linear-gradient(135deg, #7a7a7a, #5a5a5a); }
+
+    .fmt-actions { display: flex; gap: 4px; }
+    .fmt-act-btn {
+      padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: transparent; color: var(--muted-foreground); font-size: 12px; font-family: inherit;
+      cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+    }
+    .fmt-act-btn:hover { background: var(--secondary); color: var(--foreground); border-color: var(--primary); }
+    .fmt-act-btn.primary-action {
+      background: rgba(181,101,29,0.08); border-color: var(--primary); color: var(--primary); font-weight: 500;
+    }
+    .fmt-act-btn.primary-action:hover { background: rgba(181,101,29,0.15); }
+
+    /* ─── Identifiers ─── */
+    .id-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .id-item {
+      display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+      border-radius: var(--radius-sm); background: var(--card); border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .id-type { font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; font-size: 11px; }
+    .id-value { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--foreground); }
+    .id-value a { color: var(--primary); text-decoration: none; }
+    .id-value a:hover { text-decoration: underline; }
+
+    /* ─── File Info Grid ─── */
+    .file-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .file-info-card { padding: 14px 16px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--border); }
+    .file-info-label { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground); margin-bottom: 4px; }
+    .file-info-value { font-size: 14px; font-weight: 500; }
+    .file-info-value.mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+
+    /* ─── Related Books ─── */
+    .related-scroll { display: flex; gap: 18px; overflow-x: auto; padding-bottom: 8px; }
+    .related-card {
+      flex-shrink: 0; width: 120px; cursor: pointer;
+      opacity: 0; transform: translateX(12px); animation: relatedIn 0.4s ease-out forwards;
+    }
+    .related-card:nth-child(1) { animation-delay: 0.05s; }
+    .related-card:nth-child(2) { animation-delay: 0.13s; }
+    .related-card:nth-child(3) { animation-delay: 0.21s; }
+    .related-card:nth-child(4) { animation-delay: 0.29s; }
+    .related-card:nth-child(5) { animation-delay: 0.37s; }
+    @keyframes relatedIn { to { opacity: 1; transform: translateX(0); } }
+
+    .related-cover-wrap {
+      width: 120px; aspect-ratio: 2/3; border-radius: var(--radius); overflow: hidden;
+      box-shadow: 0 2px 8px rgba(59,47,47,0.10), 0 1px 3px rgba(59,47,47,0.06);
+      transition: transform 0.22s ease-out, box-shadow 0.22s ease-out;
+    }
+    .related-card:hover .related-cover-wrap {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(59,47,47,0.14), 0 3px 8px rgba(59,47,47,0.07);
+    }
+    .related-cover-inner {
+      width: 100%; height: 100%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 12px 8px; text-align: center;
+    }
+    .related-cover-title { font-family: 'Lora','Noto Serif SC',serif; font-weight: 600; font-size: 13px; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .related-book-title {
+      font-family: 'Lora','Noto Serif SC',serif !important; font-size: 12.5px; font-weight: 600;
+      margin-top: 8px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden; transition: color 0.2s;
+    }
+    .related-card:hover .related-book-title { color: var(--primary); }
+    .related-book-author { font-size: 11.5px; color: var(--muted-foreground); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ─── Status Bar ─── */
+    .status-bar {
+      padding: 8px 28px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12.5px; color: var(--muted-foreground); background: var(--background); flex-shrink: 0;
+    }
+    .sync-status { display: flex; align-items: center; gap: 6px; }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #6dae54; }
+
+    /* ─── Reduced Motion ─── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.05ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- ════════ SIDEBAR ════════ -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">M</div>
+        <span class="sidebar-logo-text">MyReader</span>
+      </div>
+      <div class="library-selector">
+        <span class="lib-dot"></span>
+        <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">我的书库</span>
+        <i data-lucide="chevrons-up-down" style="width:14px; height:14px; opacity:0.5;"></i>
+      </div>
+      <div class="sidebar-divider" style="margin-top:8px;"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-item active">
+          <i data-lucide="library" style="width:18px; height:18px;"></i>
+          全部
+          <span class="count">1,234</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="clock" style="width:18px; height:18px;"></i>
+          最近阅读
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="star" style="width:18px; height:18px;"></i>
+          收藏
+          <span class="count">86</span>
+        </div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">分类浏览</div>
+        <div class="sidebar-item">
+          <i data-lucide="tags" style="width:18px; height:18px;"></i>
+          标签
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="book-copy" style="width:18px; height:18px;"></i>
+          丛书
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="user" style="width:18px; height:18px;"></i>
+          作者
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.4;"></i>
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-item">
+          <i data-lucide="settings" style="width:18px; height:18px;"></i>
+          设置
+        </div>
+      </div>
+    </aside>
+
+    <!-- ════════ MAIN ════════ -->
+    <div class="main-content">
+
+      <!-- Toolbar -->
+      <div class="detail-toolbar" id="detail-toolbar">
+        <button class="back-btn">
+          <span class="back-arrow"><i data-lucide="arrow-left" style="width:16px; height:16px;"></i></span>
+          返回书库
+        </button>
+        <div class="detail-toolbar-right">
+          <button class="toolbar-btn fav-active" title="已收藏">
+            <i data-lucide="star" style="width:18px; height:18px; fill:#e8a44a;"></i>
+          </button>
+          <button class="toolbar-btn" title="打开文件位置">
+            <i data-lucide="folder-open" style="width:18px; height:18px;"></i>
+          </button>
+          <button class="toolbar-btn" title="更多">
+            <i data-lucide="ellipsis-vertical" style="width:18px; height:18px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Body -->
+      <div class="detail-body" id="detail-body">
+        <div class="detail-inner">
+
+          <!-- ── Hero ── -->
+          <div class="detail-hero">
+
+            <!-- Cover -->
+            <div class="detail-cover-wrap">
+              <div class="detail-cover-frame">
+                <div class="detail-cover-inner" style="background: linear-gradient(160deg, #5b4a3f 0%, #3d2e26 50%, #2a1f1a 100%);">
+                  <span class="detail-cover-title">三体</span>
+                  <span class="detail-cover-author">刘慈欣</span>
+                </div>
+                <div class="cover-format-badges">
+                  <span class="cover-fmt-badge">EPUB</span>
+                  <span class="cover-fmt-badge">PDF</span>
+                  <span class="cover-fmt-badge">MOBI</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Meta -->
+            <div class="detail-meta">
+              <h1 class="detail-title">三体</h1>
+              <div class="detail-subtitle">地球往事三部曲 · 第 1 部</div>
+
+              <div class="detail-authors">
+                <a class="detail-author-link">刘慈欣</a>
+              </div>
+
+              <div class="meta-divider"></div>
+
+              <div class="meta-row">
+                <span class="meta-item">2008</span>
+                <span class="meta-dot"></span>
+                <span class="meta-item">重庆出版社</span>
+                <span class="meta-dot"></span>
+                <span class="meta-item">302 页</span>
+                <span class="meta-dot"></span>
+                <span class="meta-item">中文</span>
+                <span class="meta-dot"></span>
+                <span class="meta-item" style="display:flex; gap:6px; align-items:center;">
+                  <div class="rating-stars">
+                    <i data-lucide="star" class="star filled" style="width:13px;height:13px;fill:#e8a44a;"></i>
+                    <i data-lucide="star" class="star filled" style="width:13px;height:13px;fill:#e8a44a;"></i>
+                    <i data-lucide="star" class="star filled" style="width:13px;height:13px;fill:#e8a44a;"></i>
+                    <i data-lucide="star" class="star filled" style="width:13px;height:13px;fill:#e8a44a;"></i>
+                    <i data-lucide="star" class="star" style="width:13px;height:13px;"></i>
+                  </div>
+                  4.0
+                </span>
+              </div>
+
+              <!-- Tags -->
+              <div class="detail-tags">
+                <span class="detail-tag">科幻</span>
+                <span class="detail-tag">硬科幻</span>
+                <span class="detail-tag">宇宙</span>
+                <span class="detail-tag">中国文学</span>
+                <span class="detail-tag">雨果奖</span>
+              </div>
+
+              <!-- Progress -->
+              <div class="detail-progress">
+                <i data-lucide="book-open" style="width:15px; height:15px; color:var(--primary); opacity:0.8;"></i>
+                <div class="detail-progress-bar">
+                  <div class="detail-progress-fill" style="width:72%"></div>
+                </div>
+                <span class="detail-progress-text">已读 72%</span>
+              </div>
+
+              <!-- ── Action: Split Button with Format Selector ── -->
+              <div class="detail-actions">
+
+                <div class="read-split-btn">
+                  <button class="read-main" id="read-main-btn">
+                    <i data-lucide="book-open" style="width:18px; height:18px;"></i>
+                    <span>继续阅读</span>
+                    <span style="font-weight:400; opacity:0.8; font-size:13px; margin-left:2px;">(EPUB)</span>
+                  </button>
+                  <button class="read-format-toggle" id="format-toggle" onclick="toggleFormatDropdown(event)">
+                    <i data-lucide="chevron-down" style="width:14px; height:14px;"></i>
+
+                    <!-- Format Dropdown -->
+                    <div class="format-dropdown" id="format-dropdown">
+                      <div class="format-dropdown-header">选择阅读格式</div>
+                      <div class="format-option selected" onclick="selectFormat(event, 'EPUB')">
+                        <div class="format-opt-icon epub">EPUB</div>
+                        <div class="format-opt-info">
+                          <div class="format-opt-name">EPUB</div>
+                          <div class="format-opt-size">2.4 MB · 可重排版</div>
+                        </div>
+                        <i data-lucide="check" class="format-opt-check" style="width:16px;height:16px;"></i>
+                      </div>
+                      <div class="format-option" onclick="selectFormat(event, 'PDF')">
+                        <div class="format-opt-icon pdf">PDF</div>
+                        <div class="format-opt-info">
+                          <div class="format-opt-name">PDF</div>
+                          <div class="format-opt-size">8.1 MB · 固定版式</div>
+                        </div>
+                        <div class="format-opt-check"></div>
+                      </div>
+                      <div class="format-option" onclick="selectFormat(event, 'MOBI')">
+                        <div class="format-opt-icon mobi">MOBI</div>
+                        <div class="format-opt-info">
+                          <div class="format-opt-name">MOBI</div>
+                          <div class="format-opt-size">2.6 MB · Kindle 格式</div>
+                        </div>
+                        <div class="format-opt-check"></div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                <button class="btn-shelf added" id="shelf-btn" onclick="toggleShelf()">
+                  <i data-lucide="check" style="width:16px; height:16px;" id="shelf-icon"></i>
+                  <span id="shelf-text">已加入书架</span>
+                </button>
+
+                <button class="btn-more-actions">
+                  <i data-lucide="download" style="width:15px; height:15px;"></i>
+                  下载
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Synopsis ── -->
+          <div class="detail-section">
+            <div class="detail-section-title">简介</div>
+            <div class="synopsis-wrap collapsed" id="synopsis-wrap">
+              <div class="synopsis-text">文化大革命如火如荼进行的同时，军方探寻外星文明的绝秘计划"红岸工程"取得了突破性进展。但在按下发射键的那一刻，历经劫难的叶文洁没有意识到，她彻底改变了人类的命运。
+
+地球文明向宇宙发出的第一声啼鸣，以太阳为中心，以光速向宇宙深处飞驰……
+
+四光年外，"三体文明"正苦苦挣扎——三颗无规则运行的太阳主导下的百余次毁灭与重生逼迫他们逃离母星。而恰在此时，他们接收到了地球发来的信息。
+
+在运用超技术锁死地球人的基础科学之后，三体人庞大的宇宙舰队开始向地球进发……人类的末日悄然来临。
+
+《三体》三部曲被誉为迄今为止中国当代最杰出的科幻小说，是中国科幻文学的里程碑之作，将中国科幻推上了世界的高度。</div>
+            </div>
+            <button class="synopsis-toggle" id="synopsis-toggle" onclick="toggleSynopsis()">
+              <span id="toggle-text">展开全文</span>
+              <span class="toggle-icon"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+            </button>
+          </div>
+
+          <!-- ── Formats & Downloads ── -->
+          <div class="detail-section">
+            <div class="detail-section-title">文件格式</div>
+            <table class="formats-table">
+              <thead>
+                <tr>
+                  <th>格式</th>
+                  <th>文件名</th>
+                  <th>大小</th>
+                  <th style="text-align:right;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="fmt-name-cell">
+                      <div class="fmt-icon epub">EPUB</div>
+                      <span style="font-weight:500;">EPUB</span>
+                    </div>
+                  </td>
+                  <td style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--muted-foreground);">三体 - 刘慈欣.epub</td>
+                  <td>2.4 MB</td>
+                  <td style="text-align:right;">
+                    <div class="fmt-actions" style="justify-content:flex-end;">
+                      <button class="fmt-act-btn primary-action">
+                        <i data-lucide="book-open" style="width:12px;height:12px;"></i>
+                        阅读
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="download" style="width:12px;height:12px;"></i>
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="fmt-name-cell">
+                      <div class="fmt-icon pdf">PDF</div>
+                      <span style="font-weight:500;">PDF</span>
+                    </div>
+                  </td>
+                  <td style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--muted-foreground);">三体 - 刘慈欣.pdf</td>
+                  <td>8.1 MB</td>
+                  <td style="text-align:right;">
+                    <div class="fmt-actions" style="justify-content:flex-end;">
+                      <button class="fmt-act-btn primary-action">
+                        <i data-lucide="book-open" style="width:12px;height:12px;"></i>
+                        阅读
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="download" style="width:12px;height:12px;"></i>
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="fmt-name-cell">
+                      <div class="fmt-icon mobi">MOBI</div>
+                      <span style="font-weight:500;">MOBI</span>
+                    </div>
+                  </td>
+                  <td style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--muted-foreground);">三体 - 刘慈欣.mobi</td>
+                  <td>2.6 MB</td>
+                  <td style="text-align:right;">
+                    <div class="fmt-actions" style="justify-content:flex-end;">
+                      <button class="fmt-act-btn primary-action">
+                        <i data-lucide="book-open" style="width:12px;height:12px;"></i>
+                        阅读
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="download" style="width:12px;height:12px;"></i>
+                      </button>
+                      <button class="fmt-act-btn">
+                        <i data-lucide="send" style="width:12px;height:12px;"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── Identifiers ── -->
+          <div class="detail-section">
+            <div class="detail-section-title">标识符</div>
+            <div class="id-list">
+              <div class="id-item">
+                <span class="id-type">ISBN</span>
+                <span class="id-value">978-7-5366-9293-0</span>
+              </div>
+              <div class="id-item">
+                <span class="id-type">Goodreads</span>
+                <span class="id-value"><a href="#">20518872</a></span>
+              </div>
+              <div class="id-item">
+                <span class="id-type">豆瓣</span>
+                <span class="id-value"><a href="#">2567698</a></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── File Details ── -->
+          <div class="detail-section">
+            <div class="detail-section-title">书库信息</div>
+            <div class="file-info-grid">
+              <div class="file-info-card">
+                <div class="file-info-label">添加日期</div>
+                <div class="file-info-value">2024-12-15</div>
+              </div>
+              <div class="file-info-card">
+                <div class="file-info-label">出版日期</div>
+                <div class="file-info-value">2008-01-01</div>
+              </div>
+              <div class="file-info-card">
+                <div class="file-info-label">最后修改</div>
+                <div class="file-info-value">2025-01-08</div>
+              </div>
+              <div class="file-info-card">
+                <div class="file-info-label">UUID</div>
+                <div class="file-info-value mono">a3f7c6d1-...d4e1</div>
+              </div>
+              <div class="file-info-card">
+                <div class="file-info-label">库中路径</div>
+                <div class="file-info-value mono" style="word-break:break-all;">Liu Cixin/三体 (1)</div>
+              </div>
+              <div class="file-info-card">
+                <div class="file-info-label">排序标题</div>
+                <div class="file-info-value">三体</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Related Books ── -->
+          <div class="detail-section" style="margin-bottom:16px;">
+            <div class="detail-section-title">同系列 · 地球往事三部曲</div>
+            <div class="related-scroll">
+              <div class="related-card">
+                <div class="related-cover-wrap">
+                  <div class="related-cover-inner" style="background: linear-gradient(160deg, #4a3e5e 0%, #2d2645 50%, #1a1630 100%);">
+                    <span class="related-cover-title">黑暗森林</span>
+                  </div>
+                </div>
+                <div class="related-book-title">三体II · 黑暗森林</div>
+                <div class="related-book-author">刘慈欣</div>
+              </div>
+              <div class="related-card">
+                <div class="related-cover-wrap">
+                  <div class="related-cover-inner" style="background: linear-gradient(160deg, #3a4a5e 0%, #1e2e42 50%, #0f1a28 100%);">
+                    <span class="related-cover-title">死神永生</span>
+                  </div>
+                </div>
+                <div class="related-book-title">三体III · 死神永生</div>
+                <div class="related-book-author">刘慈欣</div>
+              </div>
+              <div class="related-card">
+                <div class="related-cover-wrap">
+                  <div class="related-cover-inner" style="background: linear-gradient(160deg, #5a4a3a 0%, #3e3028 50%, #261e16 100%);">
+                    <span class="related-cover-title">球状闪电</span>
+                  </div>
+                </div>
+                <div class="related-book-title">球状闪电</div>
+                <div class="related-book-author">刘慈欣</div>
+              </div>
+              <div class="related-card">
+                <div class="related-cover-wrap">
+                  <div class="related-cover-inner" style="background: linear-gradient(160deg, #4a5a4a 0%, #2e3e2e 50%, #1a281a 100%);">
+                    <span class="related-cover-title">超新星纪元</span>
+                  </div>
+                </div>
+                <div class="related-book-title">超新星纪元</div>
+                <div class="related-book-author">刘慈欣</div>
+              </div>
+              <div class="related-card">
+                <div class="related-cover-wrap">
+                  <div class="related-cover-inner" style="background: linear-gradient(160deg, #6a5040 0%, #4e3828 50%, #362418 100%);">
+                    <span class="related-cover-title">流浪地球</span>
+                  </div>
+                </div>
+                <div class="related-book-title">流浪地球</div>
+                <div class="related-book-author">刘慈欣</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <span>三体 · 3 种格式 · Liu Cixin/三体 (1)</span>
+        <div class="sync-status">
+          <span class="sync-dot"></span>
+          已同步
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const detailBody = document.getElementById('detail-body');
+    const detailToolbar = document.getElementById('detail-toolbar');
+    detailBody.addEventListener('scroll', () => {
+      detailToolbar.classList.toggle('scrolled', detailBody.scrollTop > 8);
+    });
+
+    /* ── Synopsis ── */
+    function toggleSynopsis() {
+      const wrap = document.getElementById('synopsis-wrap');
+      const toggle = document.getElementById('synopsis-toggle');
+      const text = document.getElementById('toggle-text');
+      if (wrap.classList.contains('collapsed')) {
+        wrap.style.maxHeight = wrap.scrollHeight + 'px';
+        wrap.classList.remove('collapsed');
+        toggle.classList.add('expanded');
+        text.textContent = '收起';
+      } else {
+        wrap.classList.add('collapsed');
+        wrap.style.maxHeight = '';
+        toggle.classList.remove('expanded');
+        text.textContent = '展开全文';
+      }
+    }
+
+    /* ── Format Dropdown ── */
+    let dropdownOpen = false;
+
+    function toggleFormatDropdown(e) {
+      e.stopPropagation();
+      const dd = document.getElementById('format-dropdown');
+      dropdownOpen = !dropdownOpen;
+      dd.classList.toggle('open', dropdownOpen);
+    }
+
+    function selectFormat(e, fmt) {
+      e.stopPropagation();
+      document.querySelectorAll('.format-option').forEach(opt => {
+        opt.classList.remove('selected');
+        opt.querySelector('.format-opt-check').innerHTML = '';
+      });
+
+      const option = e.currentTarget;
+      option.classList.add('selected');
+
+      const checkEl = option.querySelector('.format-opt-check');
+      checkEl.innerHTML = '';
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', 'check');
+      icon.style.width = '16px';
+      icon.style.height = '16px';
+      checkEl.appendChild(icon);
+
+      const mainBtn = document.getElementById('read-main-btn');
+      const spans = mainBtn.querySelectorAll('span');
+      spans[spans.length - 1].textContent = '(' + fmt + ')';
+
+      dropdownOpen = false;
+      document.getElementById('format-dropdown').classList.remove('open');
+      lucide.createIcons();
+    }
+
+    document.addEventListener('click', () => {
+      if (dropdownOpen) {
+        dropdownOpen = false;
+        document.getElementById('format-dropdown').classList.remove('open');
+      }
+    });
+
+    /* ── Shelf Toggle ── */
+    let onShelf = true;
+    function toggleShelf() {
+      const btn = document.getElementById('shelf-btn');
+      const icon = document.getElementById('shelf-icon');
+      const text = document.getElementById('shelf-text');
+      onShelf = !onShelf;
+      if (onShelf) {
+        btn.classList.add('added');
+        icon.setAttribute('data-lucide', 'check');
+        text.textContent = '已加入书架';
+      } else {
+        btn.classList.remove('added');
+        icon.setAttribute('data-lucide', 'plus');
+        text.textContent = '加入书架';
+      }
+      lucide.createIcons();
+      btn.style.transform = 'scale(1.04)';
+      setTimeout(() => { btn.style.transform = ''; }, 180);
+    }
+  </script>
+</body>
+</html>

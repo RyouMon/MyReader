@@ -179,6 +179,72 @@
   animation: settings-card-in 250ms ease-out both;
 }
 
+/* Book detail page — cover entrance */
+@keyframes detail-cover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.detail-cover-wrap {
+  animation: detail-cover-in 0.5s ease-out 0.1s both;
+}
+
+/* Book detail page — staggered meta entrance */
+@keyframes detail-meta-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.detail-anim-1 { animation: detail-meta-in 0.35s ease-out 0.15s both; }
+.detail-anim-2 { animation: detail-meta-in 0.35s ease-out 0.21s both; }
+.detail-anim-3 { animation: detail-meta-in 0.35s ease-out 0.27s both; }
+.detail-anim-4 { animation: detail-meta-in 0.3s ease-out 0.33s both; }
+.detail-anim-5 { animation: detail-meta-in 0.35s ease-out 0.36s both; }
+.detail-anim-6 { animation: detail-meta-in 0.3s ease-out 0.4s both; }
+.detail-anim-7 { animation: detail-meta-in 0.3s ease-out 0.44s both; }
+.detail-anim-8 { animation: detail-meta-in 0.3s ease-out 0.48s both; }
+
+/* Book detail tags staggered entrance */
+@keyframes detail-tag-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.detail-tag {
+  opacity: 0;
+  animation: detail-tag-in 0.2s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-cover-wrap,
+  .detail-anim-1,
+  .detail-anim-2,
+  .detail-anim-3,
+  .detail-anim-4,
+  .detail-anim-5,
+  .detail-anim-6,
+  .detail-anim-7,
+  .detail-anim-8,
+  .detail-tag {
+    animation-duration: 0.01ms !important;
+  }
+}
+
 /* Active sidebar item — left border indicator */
 [data-sidebar="menu-button"][data-active="true"] {
   background-color: color-mix(

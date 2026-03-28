@@ -141,6 +141,80 @@ pub fn get_books_page(
     Ok((books, total))
 }
 
+pub fn get_book_by_id(conn: &Connection, book_id: i64) -> SqlResult<Option<BookEntry>> {
+    let sql = format!(
+        "SELECT {BOOK_SELECT_COLUMNS} FROM books b WHERE b.id = ?1"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows = stmt.query_map([book_id], |row| map_book_row(row))?;
+    match rows.next() {
+        Some(Ok(book)) => Ok(Some(book)),
+        Some(Err(e)) => Err(e),
+        None => Ok(None),
+    }
+}
+
+pub fn get_books_by_series(
+    conn: &Connection,
+    series_name: &str,
+    exclude_book_id: Option<i64>,
+) -> SqlResult<Vec<BookEntry>> {
+    let sql = format!(
+        "SELECT {BOOK_SELECT_COLUMNS} FROM books b \
+         WHERE EXISTS ( \
+           SELECT 1 FROM series s \
+           JOIN books_series_link bsl ON s.id = bsl.series \
+           WHERE bsl.book = b.id AND s.name = ?1 \
+         ) \
+         {} \
+         ORDER BY b.series_index",
+        if exclude_book_id.is_some() {
+            "AND b.id != ?2"
+        } else {
+            ""
+        }
+    );
+    let mut stmt = conn.prepare(&sql)?;
+
+    let books = if let Some(eid) = exclude_book_id {
+        stmt.query_map(rusqlite::params![series_name, eid], |row| map_book_row(row))?
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        stmt.query_map([series_name], |row| map_book_row(row))?
+            .collect::<Result<Vec<_>, _>>()?
+    };
+
+    Ok(books)
+}
+
+/// Get file sizes for all formats of a book.
+pub fn get_book_format_sizes(
+    conn: &Connection,
+    book_id: i64,
+) -> SqlResult<Vec<(String, i64)>> {
+    let mut stmt = conn.prepare(
+        "SELECT format, uncompressed_size FROM data WHERE book = ?1 ORDER BY format",
+    )?;
+    let rows = stmt
+        .query_map([book_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Get identifiers (ISBN, goodreads, douban, etc.) for a book.
+pub fn get_book_identifiers(
+    conn: &Connection,
+    book_id: i64,
+) -> SqlResult<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT type, val FROM identifiers WHERE book = ?1 ORDER BY type",
+    )?;
+    let rows = stmt
+        .query_map([book_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
 fn split_concat(s: Option<String>) -> Vec<String> {
     s.map(|s| s.split("||").map(String::from).collect())
         .unwrap_or_default()

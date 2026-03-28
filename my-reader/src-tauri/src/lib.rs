@@ -82,6 +82,8 @@ pub fn run() {
             commands::get_active_library_id,
             commands::get_books,
             commands::get_books_page,
+            commands::get_book_detail,
+            commands::get_series_books,
             commands::get_book_cover,
         ])
         .run(tauri::generate_context!())

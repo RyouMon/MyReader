@@ -7,7 +7,10 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::calibre;
 use crate::error::AppError;
-use crate::models::{AppConfig, BookEntry, LibraryConfig, LibraryInfo, PaginatedBooks};
+use crate::models::{
+    AppConfig, BookDetail, BookEntry, BookIdentifier, FormatSize, LibraryConfig, LibraryInfo,
+    PaginatedBooks,
+};
 
 pub type AppState = Mutex<AppConfig>;
 
@@ -193,6 +196,76 @@ pub fn get_books_page(
         .map_err(|e| AppError::Database(e.to_string()))?;
 
     Ok(PaginatedBooks { items, total })
+}
+
+#[tauri::command]
+pub fn get_book_detail(
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+) -> Result<BookDetail, AppError> {
+    let config = state.lock().unwrap();
+
+    let lib_id = library_id
+        .or_else(|| config.active_library_id.clone())
+        .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+
+    let lib = config
+        .libraries
+        .iter()
+        .find(|lib| lib.id == lib_id)
+        .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+
+    let conn =
+        calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
+
+    let book = calibre::get_book_by_id(&conn, book_id)
+        .map_err(|e| AppError::Database(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound(format!("书籍 {} 不存在", book_id)))?;
+
+    let format_sizes = calibre::get_book_format_sizes(&conn, book_id)
+        .map_err(|e| AppError::Database(e.to_string()))?
+        .into_iter()
+        .map(|(format, size_bytes)| FormatSize { format, size_bytes })
+        .collect();
+
+    let identifiers = calibre::get_book_identifiers(&conn, book_id)
+        .map_err(|e| AppError::Database(e.to_string()))?
+        .into_iter()
+        .map(|(id_type, value)| BookIdentifier { id_type, value })
+        .collect();
+
+    Ok(BookDetail {
+        book,
+        format_sizes,
+        identifiers,
+    })
+}
+
+#[tauri::command]
+pub fn get_series_books(
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    series_name: String,
+    exclude_book_id: Option<i64>,
+) -> Result<Vec<BookEntry>, AppError> {
+    let config = state.lock().unwrap();
+
+    let lib_id = library_id
+        .or_else(|| config.active_library_id.clone())
+        .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+
+    let lib = config
+        .libraries
+        .iter()
+        .find(|lib| lib.id == lib_id)
+        .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+
+    let conn =
+        calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
+
+    calibre::get_books_by_series(&conn, &series_name, exclude_book_id)
+        .map_err(|e| AppError::Database(e.to_string()))
 }
 
 #[tauri::command]

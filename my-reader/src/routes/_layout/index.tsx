@@ -42,7 +42,10 @@ function LibraryPage() {
         : "最近阅读"
 
   function handleRead(book: CalibreBook) {
-    console.log("open book", book.id, book.title)
+    navigate({
+      to: "/book/$bookId",
+      params: { bookId: String(book.id) },
+    })
   }
 
   const hasNoLibrary = libraries.length === 0

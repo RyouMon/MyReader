@@ -47,10 +47,12 @@ const BookCard = memo(function BookCard({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: 鼠标悬浮时会有交互
+    // biome-ignore lint/a11y/useKeyWithClickEvents: 点击时会有交互
     <div
       className={cn("cursor-pointer group/card min-w-0")}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => onRead?.(book)}
     >
       {/* Cover — 2:3 比例随列宽伸缩，图片 cover 铺满 */}
       <div
