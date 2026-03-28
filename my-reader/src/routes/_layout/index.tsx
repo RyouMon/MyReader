@@ -1,0 +1,143 @@
+import { useState } from "react"
+import { BookX, Loader2 } from "lucide-react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+
+import { useLibrary } from "@/contexts/LibraryContext"
+import { usePaginatedBooks } from "@/hooks/usePaginatedBooks"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import type { CalibreBook } from "@/types/book"
+import BookGrid from "@/components/library/BookGrid"
+import Toolbar, { type SortOption } from "@/components/library/Toolbar"
+
+export const Route = createFileRoute("/_layout/")({
+  component: LibraryPage,
+})
+
+function LibraryPage() {
+  const {
+    activeLibrary,
+    activeLibraryId,
+    loading: libLoading,
+    libraries,
+  } = useLibrary()
+  const navigate = useNavigate()
+
+  const activeView = "all" as const
+  const [searchQuery, setSearchQuery] = useState("")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [sortBy, setSortBy] = useState<SortOption>("recent")
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 300)
+
+  const { books, total, initialLoading, error, ensureRange } =
+    usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
+
+  const loading = libLoading || initialLoading
+
+  const sectionLabel =
+    activeView === "all"
+      ? "全部书籍"
+      : activeView === "favorites"
+        ? "收藏书籍"
+        : "最近阅读"
+
+  function handleRead(book: CalibreBook) {
+    console.log("open book", book.id, book.title)
+  }
+
+  const hasNoLibrary = libraries.length === 0
+
+  const gridHeader = (
+    <div className="flex items-baseline gap-2.5 mb-4 pt-5">
+      <h2
+        className="text-xl font-semibold"
+        style={{ fontFamily: "'Lora', 'Noto Serif SC', serif" }}
+      >
+        {sectionLabel}
+      </h2>
+      <span className="text-sm text-muted-foreground font-normal">
+        {total} 本
+      </span>
+    </div>
+  )
+
+  return (
+    <>
+      <Toolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+      />
+
+      {loading && (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin" />
+          <p className="text-sm">正在加载书库…</p>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
+          <p className="text-base font-medium">加载失败</p>
+          <p className="text-sm opacity-80 max-w-md">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && hasNoLibrary && (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+          <BookX className="size-12 opacity-40" />
+          <p className="text-base font-medium">尚未添加书库</p>
+          <p className="text-sm opacity-60">
+            请前往设置 → 书库管理添加 Calibre 书库目录
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/settings" })}
+            className="mt-2 text-sm text-primary hover:underline"
+          >
+            前往设置
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && !hasNoLibrary && total > 0 && (
+        <BookGrid
+          books={books}
+          total={total}
+          libraryId={activeLibraryId}
+          onRead={handleRead}
+          ensureRange={ensureRange}
+          header={gridHeader}
+        />
+      )}
+
+      {!loading && !error && !hasNoLibrary && total === 0 && (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center text-muted-foreground">
+          <p className="text-base">没有找到匹配的书籍</p>
+          <p className="text-sm mt-1 opacity-60">
+            {searchQuery ? "试试其他关键词" : "书库中暂无书籍"}
+          </p>
+        </div>
+      )}
+
+      <footer className="flex items-center justify-between px-6 py-2 text-xs text-muted-foreground shrink-0 border-t border-border bg-background">
+        <span>
+          📚 {activeLibrary?.name ?? "未选择书库"} ·{" "}
+          {(activeLibrary?.bookCount ?? 0).toLocaleString()} 本
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="size-1.5 rounded-full inline-block"
+            style={{
+              background: activeLibrary ? "#6dae54" : "#aaa",
+            }}
+          />
+          {activeLibrary ? "已连接" : "未连接"}
+        </div>
+      </footer>
+    </>
+  )
+}

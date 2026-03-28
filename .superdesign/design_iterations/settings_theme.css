@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* === Colors === */
+  --background:        #f5efe6;
+  --foreground:        #3b2f2f;
+  --card:              #f0e8db;
+  --card-foreground:   #3b2f2f;
+  --popover:           #f7f1e8;
+  --popover-foreground:#3b2f2f;
+  --primary:           #b5651d;
+  --primary-foreground:#faf5ef;
+  --secondary:         #e8dcc8;
+  --secondary-foreground:#4a3c2e;
+  --muted:             #ebe3d5;
+  --muted-foreground:  #7a6b5d;
+  --accent:            #ede5d8;
+  --accent-foreground: #3b2f2f;
+  --destructive:       #b44a3a;
+  --destructive-fg:    #faf5ef;
+  --border:            #ddd2c0;
+  --input:             #e3d8c8;
+  --ring:              #b5651d;
+
+  /* Sidebar (app nav column) */
+  --sidebar-bg:        #ebe3d3;
+  --sidebar-fg:        #3e3228;
+  --sidebar-active-bg: color-mix(in srgb, #b5651d 12%, transparent);
+  --sidebar-active-fg: #b5651d;
+  --sidebar-hover-bg:  #e2d8c8;
+  --sidebar-border:    #d9cebb;
+
+  /* Settings nav column */
+  --settings-nav-bg:   #ede7dc;
+  --settings-nav-border: #ddd2c0;
+
+  /* === Typography === */
+  --font-sans:  'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Lora', 'Noto Serif SC', serif;
+  --font-mono:  'JetBrains Mono', monospace;
+
+  /* === Spacing & Shape === */
+  --radius:    0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+
+  /* === Shadows === */
+  --shadow-card: 0 1px 3px rgba(59,47,47,0.08), 0 1px 2px rgba(59,47,47,0.04);
+  --shadow-hover: 0 4px 12px rgba(59,47,47,0.12), 0 2px 4px rgba(59,47,47,0.06);
+}

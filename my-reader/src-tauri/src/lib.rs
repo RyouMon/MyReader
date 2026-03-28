@@ -1,14 +1,89 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod calibre;
+mod commands;
+mod error;
+mod models;
+
+use std::sync::Mutex;
+
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use tauri::Manager;
+
+use commands::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .plugin(tauri_plugin_dialog::init())
+        .manage(Mutex::new(models::AppConfig::default()))
+        .setup(|app| {
+            let config_dir = app.path().app_data_dir()?;
+            let config_path = config_dir.join("libraries.json");
+            if config_path.exists() {
+                if let Ok(json) = std::fs::read_to_string(&config_path) {
+                    if let Ok(config) = serde_json::from_str::<models::AppConfig>(&json) {
+                        let state = app.state::<AppState>();
+                        *state.lock().unwrap() = config;
+                    }
+                }
+            }
+            Ok(())
+        })
+        .register_uri_scheme_protocol("bookcover", |ctx, request| {
+            let not_found = || -> tauri::http::Response<Vec<u8>> {
+                tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap()
+            };
+
+            let raw_path = request.uri().path();
+            let path = raw_path.trim_start_matches('/');
+
+            let Some((lib_id, encoded)) = path.split_once('/') else {
+                return not_found();
+            };
+
+            let Ok(bytes) = URL_SAFE_NO_PAD.decode(encoded) else {
+                return not_found();
+            };
+            let Ok(book_path) = String::from_utf8(bytes) else {
+                return not_found();
+            };
+
+            let app = ctx.app_handle();
+            let state = app.state::<AppState>();
+            let config = state.lock().unwrap();
+
+            let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
+                return not_found();
+            };
+
+            let cover_file = std::path::Path::new(&lib.path)
+                .join(&book_path)
+                .join("cover.jpg");
+
+            match std::fs::read(&cover_file) {
+                Ok(data) => tauri::http::Response::builder()
+                    .status(200)
+                    .header("content-type", "image/jpeg")
+                    .header("access-control-allow-origin", "*")
+                    .header("cache-control", "max-age=604800, immutable")
+                    .body(data)
+                    .unwrap(),
+                Err(_) => not_found(),
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::list_libraries,
+            commands::add_library,
+            commands::remove_library,
+            commands::switch_library,
+            commands::get_active_library_id,
+            commands::get_books,
+            commands::get_books_page,
+            commands::get_book_cover,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
