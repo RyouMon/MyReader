@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as ReadBookIdRouteImport } from './routes/read.$bookId'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutBookBookIdRouteImport } from './routes/_layout/book.$bookId'
 
@@ -22,6 +23,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LayoutRoute,
+} as any)
+const ReadBookIdRoute = ReadBookIdRouteImport.update({
+  id: '/read/$bookId',
+  path: '/read/$bookId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
@@ -37,10 +43,12 @@ const LayoutBookBookIdRoute = LayoutBookBookIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/settings': typeof LayoutSettingsRoute
+  '/read/$bookId': typeof ReadBookIdRoute
   '/book/$bookId': typeof LayoutBookBookIdRoute
 }
 export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
+  '/read/$bookId': typeof ReadBookIdRoute
   '/': typeof LayoutIndexRoute
   '/book/$bookId': typeof LayoutBookBookIdRoute
 }
@@ -48,24 +56,27 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteWithChildren
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/read/$bookId': typeof ReadBookIdRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/book/$bookId': typeof LayoutBookBookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/book/$bookId'
+  fullPaths: '/' | '/settings' | '/read/$bookId' | '/book/$bookId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/settings' | '/' | '/book/$bookId'
+  to: '/settings' | '/read/$bookId' | '/' | '/book/$bookId'
   id:
     | '__root__'
     | '/_layout'
     | '/_layout/settings'
+    | '/read/$bookId'
     | '/_layout/'
     | '/_layout/book/$bookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
+  ReadBookIdRoute: typeof ReadBookIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -83,6 +94,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof LayoutIndexRouteImport
       parentRoute: typeof LayoutRoute
+    }
+    '/read/$bookId': {
+      id: '/read/$bookId'
+      path: '/read/$bookId'
+      fullPath: '/read/$bookId'
+      preLoaderRoute: typeof ReadBookIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/settings': {
       id: '/_layout/settings'
@@ -118,6 +136,7 @@ const LayoutRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
+  ReadBookIdRoute: ReadBookIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

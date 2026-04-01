@@ -16,6 +16,10 @@ import {
 
 import { useLibrary } from "@/contexts/LibraryContext"
 import { buildCoverUrl } from "@/lib/cover"
+import {
+  isReadableInAppFormat,
+  pickReadableFormat,
+} from "@/lib/rendition/utils"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -51,6 +55,8 @@ const FORMAT_COLORS: Record<string, string> = {
   DJVU: "linear-gradient(135deg, #2c3e50, #1a252f)",
   FB2: "linear-gradient(135deg, #27ae60, #1e8449)",
 }
+
+const DEFAULT_FORMAT_COLOR = "linear-gradient(135deg, #6b6b6b, #4a4a4a)"
 
 const FORMAT_LABELS: Record<string, string> = {
   EPUB: "可重排版",
@@ -147,7 +153,7 @@ function BookDetailPage() {
           bookId: Number(bookId),
         })
         setBook(detail)
-        setSelectedFormat(detail.formats[0] ?? null)
+        setSelectedFormat(pickReadableFormat(detail.formats))
         setCoverFailed(brokenCovers.has(detail.path))
 
         if (detail.series) {
@@ -193,6 +199,17 @@ function BookDetailPage() {
     }
   }, [book])
 
+  const navigateToRead = useCallback(
+    (id: number, fmt: string) => {
+      navigate({
+        to: "/read/$bookId",
+        params: { bookId: String(id) },
+        search: { format: fmt.toUpperCase() },
+      })
+    },
+    [navigate],
+  )
+
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -230,6 +247,8 @@ function BookDetailPage() {
   const formatSizeMap = new Map(
     book.formatSizes.map((fs) => [fs.format, fs.sizeBytes]),
   )
+  const readableFormats = book.formats.filter(isReadableInAppFormat)
+  const canReadInApp = readableFormats.length > 0
 
   const seriesLabel =
     book.series && book.seriesIndex
@@ -452,7 +471,19 @@ function BookDetailPage() {
                 <div className="flex overflow-hidden rounded-lg">
                   <button
                     type="button"
-                    className="flex items-center gap-2 bg-primary px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98]"
+                    disabled={!canReadInApp}
+                    className="flex items-center gap-2 bg-primary px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+                    onClick={() => {
+                      if (!canReadInApp) return
+                      const fmt =
+                        selectedFormat ?? pickReadableFormat(book.formats)
+                      if (fmt) navigateToRead(book.id, fmt)
+                      else
+                        navigate({
+                          to: "/read/$bookId",
+                          params: { bookId: String(book.id) },
+                        })
+                    }}
                   >
                     <BookOpen className="size-[18px]" />
                     <span>开始阅读</span>
@@ -465,7 +496,8 @@ function BookDetailPage() {
                   <div ref={dropdownRef} className="relative">
                     <button
                       type="button"
-                      className="flex h-full items-center border-l border-white/20 bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90"
+                      disabled={!canReadInApp}
+                      className="flex h-full items-center border-l border-white/20 bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-45"
                       onClick={(e) => {
                         e.stopPropagation()
                         setFormatDropdownOpen(!formatDropdownOpen)
@@ -478,7 +510,7 @@ function BookDetailPage() {
                         <div className="border-b border-border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           选择阅读格式
                         </div>
-                        {book.formats.map((fmt) => (
+                        {readableFormats.map((fmt) => (
                           <button
                             key={fmt}
                             type="button"
@@ -491,13 +523,14 @@ function BookDetailPage() {
                               e.stopPropagation()
                               setSelectedFormat(fmt)
                               setFormatDropdownOpen(false)
+                              navigateToRead(book.id, fmt)
                             }}
                           >
                             <div
                               className="flex size-8 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-white"
                               style={{
                                 background:
-                                  FORMAT_COLORS[fmt] ?? FORMAT_COLORS.TXT,
+                                  FORMAT_COLORS[fmt] ?? DEFAULT_FORMAT_COLOR,
                               }}
                             >
                               {fmt}
@@ -614,7 +647,7 @@ function BookDetailPage() {
                               className="flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
                               style={{
                                 background:
-                                  FORMAT_COLORS[fmt] ?? FORMAT_COLORS.TXT,
+                                  FORMAT_COLORS[fmt] ?? DEFAULT_FORMAT_COLOR,
                               }}
                             >
                               {fmt}
@@ -629,14 +662,21 @@ function BookDetailPage() {
                         </td>
                         <td className="px-3.5 py-3 text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 gap-1 border-primary bg-primary/8 px-2.5 text-[12px] font-medium text-primary hover:bg-primary/15"
-                            >
-                              <BookOpen className="size-3" />
-                              阅读
-                            </Button>
+                            {isReadableInAppFormat(fmt) ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 border-primary bg-primary/8 px-2.5 text-[12px] font-medium text-primary hover:bg-primary/15"
+                                onClick={() => navigateToRead(book.id, fmt)}
+                              >
+                                <BookOpen className="size-3" />
+                                阅读
+                              </Button>
+                            ) : (
+                              <span className="pr-2 text-[12px] text-muted-foreground">
+                                不支持
+                              </span>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"

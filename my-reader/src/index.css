@@ -2,6 +2,7 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./reader.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -205,14 +206,30 @@
     transform: translateY(0);
   }
 }
-.detail-anim-1 { animation: detail-meta-in 0.35s ease-out 0.15s both; }
-.detail-anim-2 { animation: detail-meta-in 0.35s ease-out 0.21s both; }
-.detail-anim-3 { animation: detail-meta-in 0.35s ease-out 0.27s both; }
-.detail-anim-4 { animation: detail-meta-in 0.3s ease-out 0.33s both; }
-.detail-anim-5 { animation: detail-meta-in 0.35s ease-out 0.36s both; }
-.detail-anim-6 { animation: detail-meta-in 0.3s ease-out 0.4s both; }
-.detail-anim-7 { animation: detail-meta-in 0.3s ease-out 0.44s both; }
-.detail-anim-8 { animation: detail-meta-in 0.3s ease-out 0.48s both; }
+.detail-anim-1 {
+  animation: detail-meta-in 0.35s ease-out 0.15s both;
+}
+.detail-anim-2 {
+  animation: detail-meta-in 0.35s ease-out 0.21s both;
+}
+.detail-anim-3 {
+  animation: detail-meta-in 0.35s ease-out 0.27s both;
+}
+.detail-anim-4 {
+  animation: detail-meta-in 0.3s ease-out 0.33s both;
+}
+.detail-anim-5 {
+  animation: detail-meta-in 0.35s ease-out 0.36s both;
+}
+.detail-anim-6 {
+  animation: detail-meta-in 0.3s ease-out 0.4s both;
+}
+.detail-anim-7 {
+  animation: detail-meta-in 0.3s ease-out 0.44s both;
+}
+.detail-anim-8 {
+  animation: detail-meta-in 0.3s ease-out 0.48s both;
+}
 
 /* Book detail tags staggered entrance */
 @keyframes detail-tag-in {

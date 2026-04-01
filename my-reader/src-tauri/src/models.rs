@@ -87,3 +87,4 @@ pub struct LibraryInfo {
     pub path: String,
     pub book_count: usize,
 }
+

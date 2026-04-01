@@ -1,0 +1,341 @@
+/* ═══════════════════════════════════════════════════════════
+   MyReader · Text Reader Theme & Styles
+   Reader-specific CSS: theme variables, content typography,
+   TTS highlighting, chrome transitions, panel animations.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Base reader theme (paper default) ── */
+[data-reader-theme] {
+  --reader-bg: #f5efe6;
+  --reader-fg: #3b2f2f;
+  --reader-chrome-bg: oklch(0.97 0.012 80);
+  --reader-chrome-fg: oklch(0.22 0.035 50);
+  --reader-chrome-muted: oklch(0.5 0.03 55);
+  --reader-chrome-border: oklch(0.89 0.02 72);
+  --reader-chrome-hover: oklch(0.92 0.025 72);
+  --reader-chrome-active: oklch(0.62 0.14 48);
+  --reader-panel-bg: oklch(0.96 0.015 78);
+  --reader-tts-hl-bg: oklch(0.88 0.1 70 / 0.35);
+  --reader-tts-hl-border: oklch(0.62 0.14 48 / 0.5);
+}
+
+/* ── Light ── */
+[data-reader-theme="light"] {
+  --reader-bg: #ffffff;
+  --reader-fg: #1a1a1a;
+  --reader-tts-hl-bg: oklch(0.92 0.08 85 / 0.4);
+  --reader-tts-hl-border: oklch(0.62 0.14 48 / 0.45);
+}
+
+/* ── Paper (default — no overrides needed) ── */
+
+/* ── Eye-care ── */
+[data-reader-theme="green"] {
+  --reader-bg: #e8f0e4;
+  --reader-fg: #2a3328;
+  --reader-tts-hl-bg: oklch(0.85 0.08 140 / 0.3);
+  --reader-tts-hl-border: oklch(0.55 0.1 145 / 0.45);
+}
+
+/* ── Dark ── */
+[data-reader-theme="dark"] {
+  --reader-bg: #1e1e1e;
+  --reader-fg: #d4d0c8;
+  --reader-chrome-bg: oklch(0.16 0.008 60);
+  --reader-chrome-fg: oklch(0.85 0.01 70);
+  --reader-chrome-muted: oklch(0.55 0.01 60);
+  --reader-chrome-border: oklch(0.25 0.01 60);
+  --reader-chrome-hover: oklch(0.22 0.012 60);
+  --reader-chrome-active: oklch(0.65 0.13 48);
+  --reader-panel-bg: oklch(0.18 0.008 60);
+  --reader-tts-hl-bg: oklch(0.35 0.08 48 / 0.4);
+  --reader-tts-hl-border: oklch(0.55 0.12 48 / 0.5);
+}
+
+/* ═══ Content Typography ═══ */
+
+.reader-paragraph {
+  text-indent: 2em;
+  margin-bottom: 0.8em;
+  transition: color 350ms ease;
+}
+
+.reader-paginated-container {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  padding: clamp(1.25rem, 2vw, 2.25rem) var(--reader-padding-x, 1.25rem)
+    clamp(2rem, 4vw, 3.25rem);
+  box-sizing: border-box;
+  column-width: auto;
+  column-gap: 0;
+  column-fill: auto;
+}
+
+/* 测量分页用：高度随内容，避免继承 h-full 导致 scrollHeight 失真 */
+.reader-measure-paginate {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* Range 分页模式：单屏一列，不再使用多列横向滑动 */
+.reader-paginated-container.reader-paginated-range-page {
+  column-width: auto;
+  column-count: auto;
+}
+
+/* EPUB 内联 CSS 中 html/body 选择器经 scope 后落在此容器上，勿删类名 */
+.reader-epub-scope {
+  min-height: 0;
+}
+
+.reader-paginated-container .reader-paragraph,
+.reader-paginated-container p,
+.reader-paginated-container li,
+.reader-paginated-container blockquote {
+  break-inside: avoid;
+}
+
+/* ═══ TTS Sentence Highlighting ═══ */
+
+.tts-sentence {
+  border-radius: 4px;
+  padding: 1px 2px;
+  margin: -1px -2px;
+  transition:
+    background 200ms ease-out,
+    box-shadow 200ms ease-out;
+  cursor: pointer;
+}
+.tts-sentence:hover {
+  background: var(--reader-chrome-hover);
+}
+.tts-sentence.speaking {
+  background: var(--reader-tts-hl-bg);
+  box-shadow: 0 0 0 2px var(--reader-tts-hl-border);
+}
+.tts-sentence.spoken {
+  background: transparent;
+  transition:
+    background 400ms ease-out,
+    box-shadow 400ms ease-out;
+}
+
+/* ═══ Chapter Heading Entrance ═══ */
+
+@keyframes reader-chapter-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reader-chapter-heading {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: reader-chapter-in 0.4s ease-out 0.1s forwards;
+}
+
+/* ═══ Range Sliders ═══ */
+
+.reader-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--reader-chrome-border);
+  outline: none;
+  cursor: pointer;
+}
+.reader-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--reader-chrome-active);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.tts-speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--reader-chrome-border);
+  outline: none;
+  cursor: pointer;
+}
+.tts-speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--reader-chrome-active);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+/* ═══ Progress Bar ═══ */
+
+.reader-progress-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--reader-chrome-border);
+  position: relative;
+  transition: height 0.15s;
+}
+.reader-progress-wrap:hover .reader-progress-track {
+  height: 8px;
+}
+.reader-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--reader-chrome-active);
+  transition: width 0.3s;
+}
+.reader-progress-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--reader-chrome-active);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.12s;
+}
+.reader-progress-wrap:hover .reader-progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ═══ Config Dropdown Animation ═══ */
+
+@keyframes reader-drop-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reader-dropdown-enter {
+  animation: reader-drop-up 0.18s ease-out;
+}
+
+/* ═══ TOC Active Item Indicator ═══ */
+
+.toc-item-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--reader-chrome-active);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMIC / PDF VIEWER
+   ═══════════════════════════════════════════════════════════ */
+
+[data-reader-mode="comic"] {
+  --viewer-bg: oklch(0.18 0.005 60);
+  --viewer-page-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --viewer-page-gap: 16px;
+  --viewer-page-radius: 2px;
+  --viewer-thumb-bg: oklch(0.22 0.01 60);
+  --viewer-thumb-border: oklch(0.3 0.015 60);
+  --viewer-thumb-active: oklch(0.62 0.14 48);
+
+  --reader-chrome-bg: oklch(0.12 0.005 60);
+  --reader-chrome-fg: oklch(0.9 0.008 70);
+  --reader-chrome-muted: oklch(0.55 0.01 60);
+  --reader-chrome-border: rgba(255, 255, 255, 0.08);
+  --reader-chrome-hover: rgba(255, 255, 255, 0.08);
+  --reader-chrome-active: oklch(0.62 0.14 48);
+  --reader-panel-bg: oklch(0.15 0.005 60);
+}
+
+/* Page turn animations */
+@keyframes comic-turn-forward {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  41% {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes comic-turn-backward {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  40% {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  41% {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.comic-turning-forward {
+  animation: comic-turn-forward 300ms ease-out;
+}
+.comic-turning-backward {
+  animation: comic-turn-backward 300ms ease-out;
+}
+
+/* Comic page image styling */
+.comic-page-img {
+  max-height: calc(100vh - 48px);
+  max-width: 100%;
+  border-radius: var(--viewer-page-radius, 2px);
+  box-shadow: var(--viewer-page-shadow);
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ═══ Reduced Motion ═══ */
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-chapter-heading,
+  .tts-sentence,
+  .reader-progress-track,
+  .reader-progress-fill,
+  .reader-progress-thumb,
+  .comic-turning-forward,
+  .comic-turning-backward {
+    animation-duration: 0.01ms;
+    transition-duration: 0.05ms;
+  }
+}

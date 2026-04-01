@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-reader-theme="paper">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyReader — 文本阅读</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="reader_theme_1.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      font-family: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif !important;
+      height: 100%; overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--reader-chrome-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--reader-chrome-muted); }
+
+    /* ═══════════════════════════════════════
+       READER CONTAINER
+       ═══════════════════════════════════════ */
+    .reader-container {
+      width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+      background: var(--reader-content-bg);
+      color: var(--reader-content-fg);
+      transition: background 350ms ease, color 350ms ease;
+    }
+
+    /* ═══════════════════════════════════════
+       TOP BAR
+       ═══════════════════════════════════════ */
+    .reader-topbar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+      height: 52px;
+      display: flex; align-items: center; padding: 0 20px; gap: 12px;
+      background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--reader-chrome-border);
+      transform: translateY(-100%); opacity: 0;
+      transition: transform 300ms ease-out, opacity 300ms ease-out,
+                  background 350ms ease, border-color 350ms ease;
+    }
+    .reader-topbar.visible { transform: translateY(0); opacity: 1; }
+
+    .topbar-back {
+      display: flex; align-items: center; gap: 6px; padding: 7px 14px 7px 10px;
+      border-radius: 8px; border: none; background: transparent;
+      color: var(--reader-chrome-muted); cursor: pointer;
+      font-size: 13.5px; font-family: inherit; transition: all 0.18s;
+    }
+    .topbar-back:hover { background: var(--reader-chrome-hover); color: var(--reader-chrome-fg); }
+    .topbar-back:hover .back-arrow-icon { transform: translateX(-2px); }
+    .back-arrow-icon { display: flex; transition: transform 0.18s; }
+
+    .topbar-title {
+      flex: 1; text-align: center;
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 14px; font-weight: 500; color: var(--reader-chrome-fg);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: color 350ms ease;
+    }
+    .topbar-title .chapter-sep { color: var(--reader-chrome-muted); margin: 0 6px; }
+
+    .topbar-actions { display: flex; align-items: center; gap: 2px; }
+    .topbar-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: none;
+      background: transparent; color: var(--reader-chrome-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .topbar-btn:hover { background: var(--reader-chrome-hover); color: var(--reader-chrome-fg); }
+    .topbar-btn:active { transform: scale(0.95); }
+    .topbar-btn.active { color: var(--reader-chrome-active); }
+
+    /* ═══════════════════════════════════════
+       CONTENT VIEWPORT
+       ═══════════════════════════════════════ */
+    .reader-content {
+      flex: 1; min-width: 0;
+      width: 100%;
+      overflow-y: auto; overflow-x: hidden;
+      background: var(--reader-content-bg);
+      transition: background 350ms ease;
+    }
+
+    .reader-content-inner {
+      width: 100%;
+      max-width: min(100%, var(--reader-content-max-w, 100%));
+      margin: 0 auto;
+      padding: var(--reader-content-padding-y, 3rem) var(--reader-content-padding-x, 2.5rem);
+      padding-top: 4rem;
+      padding-bottom: 6rem;
+      padding-left: max(var(--reader-content-padding-x, 2.5rem), env(safe-area-inset-left, 0px));
+      padding-right: max(var(--reader-content-padding-x, 2.5rem), env(safe-area-inset-right, 0px));
+    }
+
+    .chapter-heading {
+      font-family: var(--reader-chapter-font, 'Lora', 'Noto Serif SC', serif) !important;
+      font-size: var(--reader-chapter-size, 1.75em) !important;
+      font-weight: var(--reader-chapter-weight, 700) !important;
+      color: var(--reader-content-fg) !important;
+      margin-bottom: var(--reader-chapter-margin-b, 2em) !important;
+      text-align: center;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      opacity: 0; transform: translateY(12px);
+      animation: chapterIn 0.4s ease-out 0.1s forwards;
+    }
+    @keyframes chapterIn { to { opacity: 1; transform: translateY(0); } }
+
+    .chapter-number {
+      display: block; font-size: 0.5em; font-weight: 500;
+      color: var(--reader-chrome-muted);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 0.5em;
+    }
+
+    .reader-paragraph {
+      font-family: var(--reader-content-font, 'Lora', 'Noto Serif SC', serif) !important;
+      font-size: var(--reader-content-size, 18px) !important;
+      line-height: var(--reader-content-line-h, 1.85) !important;
+      letter-spacing: var(--reader-content-letter-sp, 0.01em) !important;
+      color: var(--reader-content-fg) !important;
+      text-indent: var(--reader-para-indent, 2em);
+      margin-bottom: var(--reader-para-margin, 0.8em);
+      transition: color 350ms ease;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      max-width: 100%;
+    }
+
+    /* TTS sentence highlighting */
+    .tts-sentence {
+      border-radius: var(--tts-highlight-radius, 4px);
+      padding: 1px 2px; margin: -1px -2px;
+      transition: background 200ms ease-out, box-shadow 200ms ease-out;
+      cursor: pointer;
+    }
+    .tts-sentence:hover { background: var(--reader-chrome-hover); }
+    .tts-sentence.speaking {
+      background: var(--tts-highlight-bg) !important;
+      box-shadow: 0 0 0 2px var(--tts-highlight-border);
+      transition: background 200ms ease-out, box-shadow 200ms ease-out;
+    }
+    .tts-sentence.spoken {
+      background: transparent;
+      transition: background 400ms ease-out, box-shadow 400ms ease-out;
+    }
+
+    /* Click zones */
+    .click-zone { position: absolute; top: 52px; bottom: 64px; z-index: 5; }
+    .click-zone-left { left: 0; width: 33.33%; cursor: w-resize; }
+    .click-zone-center { left: 33.33%; width: 33.34%; cursor: pointer; }
+    .click-zone-right { right: 0; width: 33.33%; cursor: e-resize; }
+    .chrome-visible .click-zone { pointer-events: none; }
+
+    /* ═══════════════════════════════════════
+       TTS PANEL (above bottom bar)
+       ═══════════════════════════════════════ */
+    .tts-panel {
+      position: absolute; left: 0; right: 0; z-index: 40;
+      bottom: 64px;
+      background: var(--tts-panel-bg);
+      border-top: 1px solid var(--tts-panel-border);
+      box-shadow: var(--tts-panel-shadow);
+      padding: 16px 24px 14px;
+      display: flex; flex-direction: column; gap: 12px;
+      transform: translateY(100%); opacity: 0;
+      transition: transform 280ms ease-out, opacity 280ms ease-out,
+                  background 350ms ease, border-color 350ms ease;
+      pointer-events: none;
+    }
+    .tts-panel.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+    .tts-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+
+    .tts-nav-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 8px 16px; border-radius: 8px; border: none;
+      background: transparent; color: var(--reader-chrome-muted);
+      font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s;
+    }
+    .tts-nav-btn:hover { background: var(--reader-chrome-hover); color: var(--reader-chrome-fg); }
+    .tts-nav-btn:active { transform: scale(0.95); }
+
+    .tts-play-btn {
+      width: 48px; height: 48px; border-radius: 50%; border: none;
+      background: var(--tts-play-btn-bg); color: var(--tts-play-btn-fg);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px oklch(0.35 0.04 55 / 0.15);
+      transition: all 0.15s;
+    }
+    .tts-play-btn:hover { filter: brightness(1.08); transform: scale(1.05); }
+    .tts-play-btn:active { transform: scale(0.92); }
+
+    .tts-row-bottom {
+      display: flex; align-items: center; gap: 16px;
+      justify-content: center; flex-wrap: wrap;
+    }
+
+    .tts-speed-group {
+      display: flex; align-items: center; gap: 8px; font-size: 12.5px;
+      color: var(--reader-chrome-muted);
+    }
+    .tts-speed-label { font-weight: 500; white-space: nowrap; }
+    .tts-speed-slider {
+      width: 120px; height: 4px; -webkit-appearance: none; appearance: none;
+      background: var(--tts-slider-track); border-radius: 2px; outline: none;
+      cursor: pointer;
+    }
+    .tts-speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--tts-slider-thumb); border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15); cursor: pointer;
+    }
+    .tts-speed-value {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      min-width: 32px; text-align: center; font-weight: 500;
+      color: var(--reader-chrome-fg);
+    }
+
+    .tts-config-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 8px;
+      border: 1px solid var(--reader-chrome-border);
+      background: transparent; color: var(--reader-chrome-fg);
+      font-size: 13px; font-family: inherit; cursor: pointer;
+      transition: all 0.15s; position: relative;
+    }
+    .tts-config-btn:hover { background: var(--reader-chrome-hover); border-color: var(--reader-chrome-active); }
+    .tts-config-icon { display: flex; opacity: 0.6; }
+
+    /* Config dropdown */
+    .tts-config-dropdown {
+      display: none; position: absolute; bottom: calc(100% + 8px); right: 0;
+      min-width: 220px; background: var(--popover);
+      border: 1px solid var(--reader-chrome-border);
+      border-radius: 10px; box-shadow: 0 8px 24px oklch(0.35 0.04 55 / 0.12);
+      overflow: hidden; z-index: 60;
+      animation: dropUp 0.18s ease-out;
+    }
+    .tts-config-dropdown.open { display: block; }
+    @keyframes dropUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .config-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; transition: background 0.12s;
+      font-size: 13.5px; color: var(--reader-chrome-fg);
+    }
+    .config-option:hover { background: var(--reader-chrome-hover); }
+    .config-option.selected { color: var(--reader-chrome-active); font-weight: 550; }
+    .config-option .config-check { width: 16px; flex-shrink: 0; }
+    .config-option .config-detail { flex: 1; }
+    .config-option .config-name { font-weight: 500; }
+    .config-option .config-desc { font-size: 11.5px; color: var(--reader-chrome-muted); margin-top: 1px; }
+    .config-divider { height: 1px; background: var(--reader-chrome-border); }
+    .config-option.add-config { color: var(--reader-chrome-active); font-weight: 500; }
+
+    /* ═══════════════════════════════════════
+       BOTTOM BAR
+       ═══════════════════════════════════════ */
+    .reader-bottombar {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 45;
+      height: 64px;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 24px;
+      background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--reader-chrome-border);
+      transform: translateY(100%); opacity: 0;
+      transition: transform 300ms ease-out, opacity 300ms ease-out,
+                  background 350ms ease, border-color 350ms ease;
+    }
+    .reader-bottombar.visible { transform: translateY(0); opacity: 1; }
+
+    .bottombar-nav {
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .page-nav-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 6px; border: none;
+      background: transparent; color: var(--reader-chrome-muted);
+      font-size: 13px; font-family: inherit; cursor: pointer;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .page-nav-btn:hover { background: var(--reader-chrome-hover); color: var(--reader-chrome-fg); }
+    .page-nav-btn:active { transform: scale(0.95); }
+
+    .progress-group {
+      flex: 1; display: flex; flex-direction: column; gap: 3px; align-items: center;
+      position: relative;
+    }
+
+    .progress-slider-wrap {
+      width: 100%; height: 20px; display: flex; align-items: center;
+      cursor: pointer; position: relative;
+    }
+    .progress-track {
+      width: 100%; height: 4px; border-radius: 2px;
+      background: var(--progress-track); position: relative;
+      transition: height 0.15s;
+    }
+    .progress-slider-wrap:hover .progress-track { height: 8px; }
+    .progress-fill {
+      height: 100%; border-radius: 2px;
+      background: var(--progress); transition: width 0.3s;
+    }
+    .progress-thumb {
+      position: absolute; top: 50%; transform: translate(-50%, -50%) scale(0);
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--progress); border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      transition: transform 0.12s;
+    }
+    .progress-slider-wrap:hover .progress-thumb { transform: translate(-50%, -50%) scale(1); }
+
+    .progress-info {
+      font-size: 11.5px; color: var(--reader-chrome-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tts-toggle-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 8px; border: none;
+      background: transparent; color: var(--reader-chrome-muted);
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+    }
+    .tts-toggle-btn:hover { background: var(--reader-chrome-hover); color: var(--reader-chrome-fg); }
+    .tts-toggle-btn:active { transform: scale(0.95); }
+    .tts-toggle-btn.active {
+      color: var(--reader-chrome-active);
+      background: color-mix(in srgb, var(--reader-chrome-active) 10%, transparent);
+    }
+
+    /* ═══════════════════════════════════════
+       TOC PANEL (left)
+       ═══════════════════════════════════════ */
+    .panel-overlay {
+      position: absolute; inset: 0; z-index: 55;
+      background: rgba(0,0,0,0); pointer-events: none;
+      transition: background 300ms ease;
+    }
+    .panel-overlay.visible { background: rgba(0,0,0,0.3); pointer-events: auto; }
+
+    .toc-panel {
+      position: absolute; top: 0; bottom: 0; left: 0; z-index: 60;
+      width: 300px;
+      background: var(--reader-panel-bg);
+      border-right: 1px solid var(--reader-chrome-border);
+      box-shadow: 8px 0 24px oklch(0.35 0.04 55 / 0.10);
+      display: flex; flex-direction: column;
+      transform: translateX(-100%); opacity: 0;
+      transition: transform 300ms ease-out, opacity 300ms ease-out,
+                  background 350ms ease, border-color 350ms ease;
+    }
+    .toc-panel.visible { transform: translateX(0); opacity: 1; }
+
+    .toc-header {
+      padding: 16px 20px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--reader-chrome-border);
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 15px; font-weight: 600; color: var(--reader-chrome-fg);
+    }
+    .toc-header i { opacity: 0.6; }
+
+    .toc-search {
+      margin: 12px 16px 8px; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid var(--reader-chrome-border);
+      background: color-mix(in srgb, var(--reader-chrome-bg) 60%, transparent);
+      font-size: 13px; font-family: inherit; color: var(--reader-chrome-fg);
+      outline: none; transition: border-color 0.2s;
+    }
+    .toc-search::placeholder { color: var(--reader-chrome-muted); }
+    .toc-search:focus { border-color: var(--reader-chrome-active); }
+
+    .toc-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+
+    .toc-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px; cursor: pointer;
+      font-size: 13.5px; color: var(--reader-chrome-fg);
+      transition: all 0.12s; position: relative;
+    }
+    .toc-item:hover { background: var(--reader-chrome-hover); padding-left: 22px; }
+    .toc-item.active {
+      color: var(--reader-chrome-active); font-weight: 600;
+      background: color-mix(in srgb, var(--reader-chrome-active) 8%, transparent);
+    }
+    .toc-item.active::before {
+      content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 20px; background: var(--reader-chrome-active);
+      border-radius: 0 3px 3px 0;
+    }
+    .toc-item .toc-progress {
+      margin-left: auto; font-size: 11px; color: var(--reader-chrome-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .toc-item .toc-check {
+      margin-left: auto; color: var(--reader-chrome-active); opacity: 0.6;
+    }
+
+    .toc-tabs {
+      display: flex; border-top: 1px solid var(--reader-chrome-border);
+    }
+    .toc-tab {
+      flex: 1; padding: 12px; text-align: center; border: none; background: transparent;
+      font-size: 12.5px; font-family: inherit; color: var(--reader-chrome-muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .toc-tab:hover { background: var(--reader-chrome-hover); }
+    .toc-tab.active { color: var(--reader-chrome-active); font-weight: 600;
+      box-shadow: inset 0 -2px 0 var(--reader-chrome-active);
+    }
+
+    /* ═══════════════════════════════════════
+       SETTINGS PANEL (right)
+       ═══════════════════════════════════════ */
+    .settings-panel {
+      position: absolute; top: 0; bottom: 0; right: 0; z-index: 60;
+      width: 300px;
+      background: var(--reader-panel-bg);
+      border-left: 1px solid var(--reader-chrome-border);
+      box-shadow: -8px 0 24px oklch(0.35 0.04 55 / 0.10);
+      display: flex; flex-direction: column; overflow-y: auto;
+      transform: translateX(100%); opacity: 0;
+      transition: transform 300ms ease-out, opacity 300ms ease-out,
+                  background 350ms ease, border-color 350ms ease;
+    }
+    .settings-panel.visible { transform: translateX(0); opacity: 1; }
+
+    .settings-header {
+      padding: 16px 20px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--reader-chrome-border);
+      font-family: 'Lora', 'Noto Serif SC', serif !important;
+      font-size: 15px; font-weight: 600; color: var(--reader-chrome-fg);
+    }
+
+    .settings-section { padding: 16px 20px; }
+    .settings-section + .settings-section { border-top: 1px solid var(--reader-chrome-border); }
+    .settings-section-title {
+      font-size: 11.5px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--reader-chrome-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Theme pills */
+    .theme-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .theme-pill {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px 6px; border-radius: 10px; cursor: pointer;
+      border: 2px solid transparent; transition: all 0.2s;
+    }
+    .theme-pill:hover { background: var(--reader-chrome-hover); }
+    .theme-pill.active { border-color: var(--reader-chrome-active); }
+    .theme-swatch {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid var(--reader-chrome-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .theme-pill-label { font-size: 11px; font-weight: 500; color: var(--reader-chrome-fg); }
+
+    /* Slider settings */
+    .setting-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .setting-row:last-child { margin-bottom: 0; }
+    .setting-label {
+      font-size: 13px; font-weight: 500; color: var(--reader-chrome-fg);
+      min-width: 40px;
+    }
+    .setting-slider {
+      flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+      background: var(--reader-chrome-border); border-radius: 2px;
+      outline: none; cursor: pointer;
+    }
+    .setting-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--reader-chrome-active); border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12); cursor: pointer;
+    }
+    .setting-value {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      min-width: 28px; text-align: right; color: var(--reader-chrome-muted);
+    }
+
+    /* Font selector */
+    .font-options { display: flex; flex-direction: column; gap: 6px; }
+    .font-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px; cursor: pointer;
+      border: 1px solid transparent; transition: all 0.15s;
+      font-size: 14px; color: var(--reader-chrome-fg);
+    }
+    .font-option:hover { background: var(--reader-chrome-hover); }
+    .font-option.active {
+      border-color: var(--reader-chrome-active);
+      background: color-mix(in srgb, var(--reader-chrome-active) 8%, transparent);
+      color: var(--reader-chrome-active); font-weight: 500;
+    }
+    .font-option .font-sample { flex: 1; }
+    .font-option .font-check { width: 16px; color: var(--reader-chrome-active); }
+
+    /* TTS settings in settings panel */
+    .tts-setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .tts-setting-label { font-size: 13px; color: var(--reader-chrome-fg); min-width: 60px; font-weight: 500; }
+    .tts-setting-select {
+      flex: 1; padding: 6px 10px; border-radius: 8px;
+      border: 1px solid var(--reader-chrome-border);
+      background: transparent; color: var(--reader-chrome-fg);
+      font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
+    }
+
+    /* ═══════════════════════════════════════
+       REDUCED MOTION
+       ═══════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.05ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="reader-container" id="reader-container">
+
+    <!-- ═══ Click Zones ═══ -->
+    <div class="click-zone click-zone-left" id="zone-left"></div>
+    <div class="click-zone click-zone-center" id="zone-center"></div>
+    <div class="click-zone click-zone-right" id="zone-right"></div>
+
+    <!-- ═══ TOP BAR ═══ -->
+    <header class="reader-topbar" id="topbar">
+      <button class="topbar-back">
+        <span class="back-arrow-icon"><i data-lucide="arrow-left" style="width:16px;height:16px;"></i></span>
+        返回
+      </button>
+      <div class="topbar-title">
+        三体<span class="chapter-sep">·</span>第三章 红岸基地
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" id="btn-toc" title="目录" onclick="toggleTOC()">
+          <i data-lucide="list" style="width:18px;height:18px;"></i>
+        </button>
+        <button class="topbar-btn" id="btn-bookmark" title="书签" onclick="toggleBookmark()">
+          <i data-lucide="bookmark" style="width:18px;height:18px;"></i>
+        </button>
+        <button class="topbar-btn" id="btn-settings" title="设置" onclick="toggleSettings()">
+          <i data-lucide="settings" style="width:18px;height:18px;"></i>
+        </button>
+        <button class="topbar-btn" id="btn-fullscreen" title="全屏">
+          <i data-lucide="maximize" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- ═══ CONTENT VIEWPORT ═══ -->
+    <main class="reader-content" id="reader-content">
+      <div class="reader-content-inner" id="content-inner">
+
+        <h1 class="chapter-heading">
+          <span class="chapter-number">第三章</span>
+          红岸基地
+        </h1>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="0">叶文洁跟着两名不苟言笑的军人，走进了那座隐藏在大兴安岭深处的军事设施。</span>
+          <span class="tts-sentence" data-idx="1">巨大的抛物面天线直指苍穹，在夕阳的映照下闪耀着冷冽的金属光泽。</span>
+          <span class="tts-sentence" data-idx="2">这就是红岸基地——一个在任何公开资料中都找不到的地方。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="3">基地坐落在雷达峰的峰顶，海拔一千五百多米。</span>
+          <span class="tts-sentence" data-idx="4">周围是一望无际的林海，在秋风中泛起金色的波浪。</span>
+          <span class="tts-sentence" data-idx="5">从这里望出去，可以看到大兴安岭绵延的山脊线在天际起伏，仿佛大地沉睡中缓缓的呼吸。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="6">叶文洁被领进一间简朴的办公室。</span>
+          <span class="tts-sentence" data-idx="7">房间不大，但窗户朝向那面巨型天线，透过玻璃可以看到它银色的弧面反射着最后一缕晚霞。</span>
+          <span class="tts-sentence" data-idx="8">一位中年军人坐在办公桌后，目光锐利而深沉。</span>
+          <span class="tts-sentence" data-idx="9">他就是雷志成，红岸基地的政委。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="10">"叶文洁同志，"雷志成开口了，声音低沉而平稳，"你的学术能力和专业背景，组织上是充分了解的。"</span>
+          <span class="tts-sentence" data-idx="11">他顿了顿，似乎在斟酌措辞。</span>
+          <span class="tts-sentence" data-idx="12">"你被调来这里，是因为红岸工程需要你的专业知识。"</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="13">叶文洁没有说话。</span>
+          <span class="tts-sentence" data-idx="14">过去几年的经历已经教会了她沉默的价值。</span>
+          <span class="tts-sentence" data-idx="15">她只是静静地看着窗外那面巨大的天线，心中涌起一种奇异的感觉。</span>
+          <span class="tts-sentence" data-idx="16">那面天线就像一只仰望星空的巨眼，在暮色中显得既孤独又庄严。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="17">雷志成继续说道："红岸工程的核心任务是监听——监听来自太空的无线电信号。</span>
+          <span class="tts-sentence" data-idx="18">当然，在那个年代，这样的描述需要包装成另一种说法：对敌方军事通信进行电子侦察。"</span>
+          <span class="tts-sentence" data-idx="19">他的嘴角浮现出一丝苦笑。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="20">叶文洁终于开口了："我明白了。那我的具体工作是什么？"</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="21">"信号分析与模式识别，"雷志成说，"你在清华的研究方向正是我们所需要的。</span>
+          <span class="tts-sentence" data-idx="22">宇宙中的无线电信号浩如烟海，我们需要从中找出那些……不寻常的模式。"</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="23">不寻常的模式。</span>
+          <span class="tts-sentence" data-idx="24">叶文洁在心中重复着这几个字。</span>
+          <span class="tts-sentence" data-idx="25">她忽然意识到，这个藏在深山中的军事基地，所追寻的也许并不仅仅是敌人的通信信号。</span>
+          <span class="tts-sentence" data-idx="26">那面巨大的天线，正在聆听整个宇宙的低语。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="27">窗外，夜幕已经完全降临。</span>
+          <span class="tts-sentence" data-idx="28">大兴安岭的星空清澈得令人屏息，银河横贯天际，无数星辰安静地闪烁。</span>
+          <span class="tts-sentence" data-idx="29">叶文洁凝视着那片星海，第一次感到自己的命运正与某种宏大而未知的事物紧紧相连。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="30">而在四光年之外，一个垂死的文明正在黑暗中挣扎。</span>
+          <span class="tts-sentence" data-idx="31">三颗太阳的无序运动主宰着那个世界的生与死，一百九十余次文明的毁灭与重建，已经将那个种族的耐心消磨殆尽。</span>
+          <span class="tts-sentence" data-idx="32">他们需要一个新的家园，一个稳定的恒星系统，一颗可以栖息的行星。</span>
+        </p>
+
+        <p class="reader-paragraph">
+          <span class="tts-sentence" data-idx="33">在这个宇宙中，距离和时间构成了最深的沉默。</span>
+          <span class="tts-sentence" data-idx="34">但无线电波可以穿越这沉默。</span>
+          <span class="tts-sentence" data-idx="35">而叶文洁即将按下的那个按钮，将打破这沉默中最后的安宁。</span>
+        </p>
+
+      </div>
+    </main>
+
+    <!-- ═══ TTS PANEL ═══ -->
+    <div class="tts-panel" id="tts-panel">
+      <div class="tts-row">
+        <button class="tts-nav-btn" onclick="ttsPrevSentence()">
+          <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
+          上一句
+        </button>
+        <button class="tts-play-btn" id="tts-play-btn" onclick="ttsTogglePlay()">
+          <i data-lucide="play" style="width:22px;height:22px;" id="tts-play-icon"></i>
+        </button>
+        <button class="tts-nav-btn" onclick="ttsNextSentence()">
+          下一句
+          <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+        </button>
+      </div>
+      <div class="tts-row-bottom">
+        <div class="tts-speed-group">
+          <span class="tts-speed-label">语速</span>
+          <span class="tts-speed-value">0.5x</span>
+          <input type="range" class="tts-speed-slider" min="0.5" max="2.0" step="0.1" value="1.0"
+                 id="speed-slider" oninput="updateSpeed(this.value)">
+          <span class="tts-speed-value" id="speed-display">1.0x</span>
+          <span class="tts-speed-value">2.0x</span>
+        </div>
+
+        <div style="position:relative;">
+          <button class="tts-config-btn" id="config-btn" onclick="toggleConfigDropdown(event)">
+            <span class="tts-config-icon"><i data-lucide="audio-lines" style="width:14px;height:14px;"></i></span>
+            <span id="config-name">默认配置</span>
+            <i data-lucide="chevron-up" style="width:12px;height:12px;opacity:0.5;"></i>
+          </button>
+
+          <div class="tts-config-dropdown" id="config-dropdown">
+            <div class="config-option selected" onclick="selectConfig(event, '默认配置')">
+              <div class="config-detail">
+                <div class="config-name">默认配置</div>
+                <div class="config-desc">晓晓 · 中文普通话</div>
+              </div>
+              <span class="config-check"><i data-lucide="check" style="width:14px;height:14px;"></i></span>
+            </div>
+            <div class="config-option" onclick="selectConfig(event, '英文阅读')">
+              <div class="config-detail">
+                <div class="config-name">英文阅读</div>
+                <div class="config-desc">Jenny · English</div>
+              </div>
+              <span class="config-check"></span>
+            </div>
+            <div class="config-option" onclick="selectConfig(event, '儿童故事')">
+              <div class="config-detail">
+                <div class="config-name">儿童故事</div>
+                <div class="config-desc">云希 · 活泼语调</div>
+              </div>
+              <span class="config-check"></span>
+            </div>
+            <div class="config-divider"></div>
+            <div class="config-option add-config">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i>
+              <span>管理配置…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BOTTOM BAR ═══ -->
+    <footer class="reader-bottombar" id="bottombar">
+      <div class="bottombar-nav">
+        <button class="page-nav-btn">
+          <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+          上一页
+        </button>
+
+        <div class="progress-group">
+          <div class="progress-slider-wrap" id="progress-wrap">
+            <div class="progress-track">
+              <div class="progress-fill" id="progress-fill" style="width:72%"></div>
+            </div>
+            <div class="progress-thumb" id="progress-thumb" style="left:72%"></div>
+          </div>
+          <div class="progress-info">位置 #3244 / 234533 · 36%</div>
+        </div>
+
+        <button class="page-nav-btn">
+          下一页
+          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+        </button>
+
+        <button class="tts-toggle-btn" id="tts-toggle" title="TTS 朗读" onclick="toggleTTS()">
+          <i data-lucide="headphones" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+    </footer>
+
+    <!-- ═══ PANEL OVERLAY ═══ -->
+    <div class="panel-overlay" id="panel-overlay" onclick="closeAllPanels()"></div>
+
+    <!-- ═══ TOC PANEL ═══ -->
+    <aside class="toc-panel" id="toc-panel">
+      <div class="toc-header">
+        <i data-lucide="list" style="width:18px;height:18px;"></i>
+        目录
+      </div>
+      <input class="toc-search" type="text" placeholder="搜索章节…">
+      <div class="toc-list">
+        <div class="toc-item">
+          <span>第一章 科学边界</span>
+          <span class="toc-check"><i data-lucide="check" style="width:12px;height:12px;"></i></span>
+        </div>
+        <div class="toc-item">
+          <span>第二章 台球</span>
+          <span class="toc-check"><i data-lucide="check" style="width:12px;height:12px;"></i></span>
+        </div>
+        <div class="toc-item active">
+          <span>第三章 红岸基地</span>
+          <span class="toc-progress">72%</span>
+        </div>
+        <div class="toc-item"><span>第四章 宇宙闪烁</span></div>
+        <div class="toc-item"><span>第五章 叛逆</span></div>
+        <div class="toc-item"><span>第六章 射手与农场主</span></div>
+        <div class="toc-item"><span>第七章 疯狂年代</span></div>
+        <div class="toc-item"><span>第八章 寂静的春天</span></div>
+        <div class="toc-item"><span>第九章 红岸之二</span></div>
+        <div class="toc-item"><span>第十章 大史</span></div>
+        <div class="toc-item"><span>第十一章 三体问题</span></div>
+        <div class="toc-item"><span>第十二章 地球叛军</span></div>
+        <div class="toc-item"><span>第十三章 红岸之三</span></div>
+        <div class="toc-item"><span>第十四章 红岸之四</span></div>
+        <div class="toc-item"><span>第十五章 三体、哥白尼</span></div>
+        <div class="toc-item"><span>第十六章 三体、墨子</span></div>
+        <div class="toc-item"><span>第十七章 三体问题（续）</span></div>
+      </div>
+      <div class="toc-tabs">
+        <button class="toc-tab active">目录</button>
+        <button class="toc-tab">书签 (3)</button>
+        <button class="toc-tab">笔记 (7)</button>
+      </div>
+    </aside>
+
+    <!-- ═══ SETTINGS PANEL ═══ -->
+    <aside class="settings-panel" id="settings-panel">
+      <div class="settings-header">
+        <i data-lucide="settings" style="width:18px;height:18px;opacity:0.6;"></i>
+        阅读设置
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">主题</div>
+        <div class="theme-options">
+          <div class="theme-pill" data-theme="light" onclick="setTheme('light')">
+            <div class="theme-swatch" style="background:#ffffff;">☀</div>
+            <span class="theme-pill-label">亮色</span>
+          </div>
+          <div class="theme-pill active" data-theme="paper" onclick="setTheme('paper')">
+            <div class="theme-swatch" style="background:#f5efe6;">📖</div>
+            <span class="theme-pill-label">纸张</span>
+          </div>
+          <div class="theme-pill" data-theme="green" onclick="setTheme('green')">
+            <div class="theme-swatch" style="background:#e8f0e4;">🌿</div>
+            <span class="theme-pill-label">护眼</span>
+          </div>
+          <div class="theme-pill" data-theme="dark" onclick="setTheme('dark')">
+            <div class="theme-swatch" style="background:#1e1e1e;color:#d4d0c8;">🌙</div>
+            <span class="theme-pill-label">暗色</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">字体</div>
+        <div class="font-options">
+          <div class="font-option active" onclick="setFont(this, `'Lora','Noto Serif SC',serif`)">
+            <span class="font-sample" style="font-family:'Lora','Noto Serif SC',serif;">衬线体 Serif</span>
+            <span class="font-check"><i data-lucide="check" style="width:14px;height:14px;"></i></span>
+          </div>
+          <div class="font-option" onclick="setFont(this, `'DM Sans','Noto Sans SC',sans-serif`)">
+            <span class="font-sample" style="font-family:'DM Sans','Noto Sans SC',sans-serif;">无衬线 Sans</span>
+            <span class="font-check"></span>
+          </div>
+          <div class="font-option" onclick="setFont(this, `'JetBrains Mono',monospace`)">
+            <span class="font-sample" style="font-family:'JetBrains Mono',monospace;">等宽体 Mono</span>
+            <span class="font-check"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">排版</div>
+        <div class="setting-row">
+          <span class="setting-label">字号</span>
+          <span class="setting-value" style="font-size:12px;">A</span>
+          <input type="range" class="setting-slider" min="14" max="28" value="18" step="1"
+                 oninput="setFontSize(this.value)">
+          <span class="setting-value" id="font-size-val">18</span>
+          <span class="setting-value" style="font-size:20px;">A</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">行距</span>
+          <input type="range" class="setting-slider" min="1.4" max="2.4" value="1.85" step="0.05"
+                 oninput="setLineHeight(this.value)">
+          <span class="setting-value" id="line-height-val">1.85</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">边距</span>
+          <input type="range" class="setting-slider" min="1.0" max="5.0" value="2.5" step="0.5"
+                 oninput="setMargin(this.value)">
+          <span class="setting-value" id="margin-val">2.5</span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">TTS 设置</div>
+        <div class="tts-setting-row">
+          <span class="tts-setting-label">默认语速</span>
+          <select class="tts-setting-select">
+            <option>0.75x</option>
+            <option selected>1.0x</option>
+            <option>1.25x</option>
+            <option>1.5x</option>
+          </select>
+        </div>
+        <div class="tts-setting-row">
+          <span class="tts-setting-label">自动翻页</span>
+          <select class="tts-setting-select">
+            <option selected>开启</option>
+            <option>关闭</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    /* ═══ State ═══ */
+    let chromeVisible = false;
+    let ttsActive = false;
+    let ttsPlaying = false;
+    let ttsCurrent = -1;
+    let tocOpen = false;
+    let settingsOpen = false;
+    let configDropdownOpen = false;
+    
+
+    const topbar = document.getElementById('topbar');
+    const bottombar = document.getElementById('bottombar');
+    const ttsPanel = document.getElementById('tts-panel');
+    const ttsToggleBtn = document.getElementById('tts-toggle');
+    const tocPanel = document.getElementById('toc-panel');
+    const settingsPanel = document.getElementById('settings-panel');
+    const panelOverlay = document.getElementById('panel-overlay');
+    const container = document.getElementById('reader-container');
+    const sentences = document.querySelectorAll('.tts-sentence');
+
+    /* ═══ Chrome show/hide ═══ */
+    function showChrome() {
+      chromeVisible = true;
+      topbar.classList.add('visible');
+      bottombar.classList.add('visible');
+      container.classList.add('chrome-visible');
+    }
+
+    function hideChrome() {
+      chromeVisible = false;
+      topbar.classList.remove('visible');
+      bottombar.classList.remove('visible');
+      container.classList.remove('chrome-visible');
+      if (tocOpen) toggleTOC();
+      if (settingsOpen) toggleSettings();
+      if (ttsActive && !ttsPlaying) {
+        ttsPanel.classList.remove('visible');
+      }
+    }
+
+    function toggleChrome() {
+      chromeVisible ? hideChrome() : showChrome();
+    }
+
+    /* ═══ Click zones ═══ */
+    document.getElementById('zone-center').addEventListener('click', toggleChrome);
+    document.getElementById('zone-left').addEventListener('click', () => {
+      if (!chromeVisible) showChrome();
+    });
+    document.getElementById('zone-right').addEventListener('click', () => {
+      if (!chromeVisible) showChrome();
+    });
+
+    /* ═══ TTS Toggle ═══ */
+    function toggleTTS() {
+      ttsActive = !ttsActive;
+      ttsToggleBtn.classList.toggle('active', ttsActive);
+      ttsPanel.classList.toggle('visible', ttsActive);
+
+      if (!ttsActive) {
+        stopTTS();
+      }
+    }
+
+    function ttsTogglePlay() {
+      if (ttsPlaying) {
+        pauseTTS();
+      } else {
+        playTTS();
+      }
+    }
+
+    function playTTS() {
+      ttsPlaying = true;
+      updatePlayIcon();
+      if (ttsCurrent < 0) ttsCurrent = 0;
+      highlightSentence(ttsCurrent);
+    }
+
+    function pauseTTS() {
+      ttsPlaying = false;
+      updatePlayIcon();
+    }
+
+    function stopTTS() {
+      ttsPlaying = false;
+      ttsCurrent = -1;
+      updatePlayIcon();
+      sentences.forEach(s => {
+        s.classList.remove('speaking');
+        s.classList.remove('spoken');
+      });
+    }
+
+    function updatePlayIcon() {
+      const icon = document.getElementById('tts-play-icon');
+      icon.setAttribute('data-lucide', ttsPlaying ? 'pause' : 'play');
+      lucide.createIcons();
+    }
+
+    function highlightSentence(idx) {
+      sentences.forEach(s => {
+        s.classList.remove('speaking');
+        const sIdx = parseInt(s.dataset.idx);
+        if (sIdx < idx) {
+          s.classList.add('spoken');
+        } else {
+          s.classList.remove('spoken');
+        }
+      });
+
+      if (idx >= 0 && idx < sentences.length) {
+        sentences[idx].classList.remove('spoken');
+        sentences[idx].classList.add('speaking');
+        sentences[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function ttsNextSentence() {
+      if (ttsCurrent < sentences.length - 1) {
+        ttsCurrent++;
+        highlightSentence(ttsCurrent);
+      }
+    }
+
+    function ttsPrevSentence() {
+      if (ttsCurrent > 0) {
+        ttsCurrent--;
+        highlightSentence(ttsCurrent);
+      }
+    }
+
+    /* TTS auto-advance */
+    let ttsInterval = null;
+    function startAutoAdvance() {
+      stopAutoAdvance();
+      ttsInterval = setInterval(() => {
+        if (ttsPlaying && ttsCurrent < sentences.length - 1) {
+          ttsNextSentence();
+        } else if (ttsCurrent >= sentences.length - 1) {
+          pauseTTS();
+        }
+      }, 3000);
+    }
+    function stopAutoAdvance() { clearInterval(ttsInterval); }
+
+    const origPlayTTS = playTTS;
+    playTTS = function() { origPlayTTS(); startAutoAdvance(); };
+    const origPauseTTS = pauseTTS;
+    pauseTTS = function() { origPauseTTS(); stopAutoAdvance(); };
+    const origStopTTS = stopTTS;
+    stopTTS = function() { origStopTTS(); stopAutoAdvance(); };
+
+    /* Click sentence to jump TTS */
+    sentences.forEach(s => {
+      s.addEventListener('click', (e) => {
+        if (ttsActive) {
+          e.stopPropagation();
+          ttsCurrent = parseInt(s.dataset.idx);
+          highlightSentence(ttsCurrent);
+          if (!ttsPlaying) playTTS();
+        }
+      });
+    });
+
+    /* ═══ Speed slider ═══ */
+    function updateSpeed(val) {
+      document.getElementById('speed-display').textContent = parseFloat(val).toFixed(1) + 'x';
+    }
+
+    /* ═══ Config dropdown ═══ */
+    function toggleConfigDropdown(e) {
+      e.stopPropagation();
+      configDropdownOpen = !configDropdownOpen;
+      document.getElementById('config-dropdown').classList.toggle('open', configDropdownOpen);
+    }
+
+    function selectConfig(e, name) {
+      e.stopPropagation();
+      document.querySelectorAll('.config-option').forEach(opt => {
+        opt.classList.remove('selected');
+        const check = opt.querySelector('.config-check');
+        if (check) check.innerHTML = '';
+      });
+      const option = e.currentTarget;
+      option.classList.add('selected');
+      const checkEl = option.querySelector('.config-check');
+      if (checkEl) {
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', 'check');
+        icon.style.width = '14px'; icon.style.height = '14px';
+        checkEl.appendChild(icon);
+      }
+      document.getElementById('config-name').textContent = name;
+      configDropdownOpen = false;
+      document.getElementById('config-dropdown').classList.remove('open');
+      lucide.createIcons();
+    }
+
+    document.addEventListener('click', () => {
+      if (configDropdownOpen) {
+        configDropdownOpen = false;
+        document.getElementById('config-dropdown').classList.remove('open');
+      }
+    });
+
+    /* ═══ TOC Panel ═══ */
+    function toggleTOC() {
+      tocOpen = !tocOpen;
+      tocPanel.classList.toggle('visible', tocOpen);
+      panelOverlay.classList.toggle('visible', tocOpen || settingsOpen);
+      if (tocOpen && settingsOpen) toggleSettings();
+    }
+
+    /* ═══ Settings Panel ═══ */
+    function toggleSettings() {
+      settingsOpen = !settingsOpen;
+      settingsPanel.classList.toggle('visible', settingsOpen);
+      panelOverlay.classList.toggle('visible', tocOpen || settingsOpen);
+      if (settingsOpen && tocOpen) toggleTOC();
+    }
+
+    function closeAllPanels() {
+      if (tocOpen) toggleTOC();
+      if (settingsOpen) toggleSettings();
+    }
+
+    /* ═══ Bookmark toggle ═══ */
+    function toggleBookmark() {
+      const btn = document.getElementById('btn-bookmark');
+      btn.classList.toggle('active');
+      btn.style.transform = 'scale(1.15)';
+      setTimeout(() => { btn.style.transform = ''; }, 500);
+    }
+
+    /* ═══ Theme switching ═══ */
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-reader-theme', theme);
+      document.querySelectorAll('.theme-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.theme === theme);
+      });
+    }
+
+    /* ═══ Font setting ═══ */
+    function setFont(el, fontValue) {
+      document.querySelectorAll('.font-option').forEach(o => {
+        o.classList.remove('active');
+        o.querySelector('.font-check').innerHTML = '';
+      });
+      el.classList.add('active');
+      const check = el.querySelector('.font-check');
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', 'check');
+      icon.style.width = '14px'; icon.style.height = '14px';
+      check.appendChild(icon);
+      document.documentElement.style.setProperty('--reader-content-font', fontValue);
+      lucide.createIcons();
+    }
+
+    /* ═══ Typography settings ═══ */
+    function setFontSize(val) {
+      document.documentElement.style.setProperty('--reader-content-size', val + 'px');
+      document.getElementById('font-size-val').textContent = val;
+    }
+    function setLineHeight(val) {
+      document.documentElement.style.setProperty('--reader-content-line-h', val);
+      document.getElementById('line-height-val').textContent = parseFloat(val).toFixed(2);
+    }
+    function setMargin(val) {
+      document.documentElement.style.setProperty('--reader-content-padding-x', val + 'rem');
+      document.getElementById('margin-val').textContent = parseFloat(val).toFixed(1);
+    }
+
+    /* ═══ Init: show chrome briefly ═══ */
+    setTimeout(showChrome, 300);
+  </script>
+</body>
+</html>

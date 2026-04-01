@@ -224,3 +224,36 @@ pub fn get_book_cover_path(library_path: &str, book_path: &str) -> Option<PathBu
     let cover = Path::new(library_path).join(book_path).join("cover.jpg");
     cover.exists().then_some(cover)
 }
+
+/// Resolve the on-disk file path for a specific format of a book.
+/// Calibre stores: `library_root / book.path / data.name . format_lower`
+pub fn get_book_file_path(
+    library_path: &str,
+    conn: &Connection,
+    book_id: i64,
+    format: &str,
+) -> SqlResult<Option<PathBuf>> {
+    let mut stmt = conn.prepare(
+        "SELECT b.path, d.name, d.format \
+         FROM books b JOIN data d ON d.book = b.id \
+         WHERE b.id = ?1 AND UPPER(d.format) = UPPER(?2)",
+    )?;
+
+    let result = stmt.query_row(rusqlite::params![book_id, format], |row| {
+        let book_path: String = row.get(0)?;
+        let file_name: String = row.get(1)?;
+        let fmt: String = row.get(2)?;
+        Ok((book_path, file_name, fmt))
+    });
+
+    match result {
+        Ok((book_path, file_name, fmt)) => {
+            let full = Path::new(library_path)
+                .join(&book_path)
+                .join(format!("{}.{}", file_name, fmt.to_lowercase()));
+            Ok(Some(full))
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e),
+    }
+}

@@ -2,7 +2,6 @@ mod calibre;
 mod commands;
 mod error;
 mod models;
-
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
@@ -71,6 +70,67 @@ pub fn run() {
                     .header("cache-control", "max-age=604800, immutable")
                     .body(data)
                     .unwrap(),
+                Err(_) => not_found(),
+            }
+        })
+        .register_uri_scheme_protocol("bookfile", |ctx, request| {
+            let not_found = || -> tauri::http::Response<Vec<u8>> {
+                tauri::http::Response::builder()
+                    .status(404)
+                    .body(Vec::new())
+                    .unwrap()
+            };
+
+            let raw_path = request.uri().path();
+            let path = raw_path.trim_start_matches('/');
+
+            // URL: bookfile://localhost/{libraryId}/{bookId}/{FORMAT}
+            let parts: Vec<&str> = path.splitn(3, '/').collect();
+            if parts.len() < 3 {
+                return not_found();
+            }
+
+            let lib_id = parts[0];
+            let book_id: i64 = match parts[1].parse() {
+                Ok(id) => id,
+                Err(_) => return not_found(),
+            };
+            let format = parts[2];
+
+            let app = ctx.app_handle();
+            let state = app.state::<AppState>();
+            let config = state.lock().unwrap();
+
+            let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
+                return not_found();
+            };
+
+            let conn = match calibre::open_calibre_db(&lib.path) {
+                Ok(c) => c,
+                Err(_) => return not_found(),
+            };
+
+            let file_path =
+                match calibre::get_book_file_path(&lib.path, &conn, book_id, format) {
+                    Ok(Some(p)) => p,
+                    _ => return not_found(),
+                };
+
+            match std::fs::read(&file_path) {
+                Ok(data) => {
+                    let content_type = match format.to_uppercase().as_str() {
+                        "EPUB" => "application/epub+zip",
+                        "CBZ" | "CBR" => "application/zip",
+                        "PDF" => "application/pdf",
+                        _ => "application/octet-stream",
+                    };
+                    tauri::http::Response::builder()
+                        .status(200)
+                        .header("content-type", content_type)
+                        .header("access-control-allow-origin", "*")
+                        .body(data)
+                        .unwrap()
+                }
                 Err(_) => not_found(),
             }
         })
