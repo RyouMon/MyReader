@@ -1,11 +1,4 @@
-import {
-  ArrowLeft,
-  Bookmark,
-  List,
-  Maximize,
-  Minimize,
-  Settings,
-} from "lucide-react"
+import { Bookmark, List, Maximize, Minimize, Settings } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { cn } from "@/lib/utils"
@@ -15,7 +8,6 @@ interface ReaderTopBarProps {
   bookTitle: string
   chapterTitle: string
   bookmarked: boolean
-  onBack: () => void
   onToggleToc: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
@@ -26,7 +18,6 @@ export function ReaderTopBar({
   bookTitle,
   chapterTitle,
   bookmarked,
-  onBack,
   onToggleToc,
   onToggleBookmark,
   onToggleSettings,
@@ -50,7 +41,7 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "absolute inset-x-0 top-0 z-50 flex h-[52px] items-center gap-3 border-b px-5 transition-opacity duration-300 ease-out",
+        "absolute inset-x-0 top-0 z-50 grid h-[52px] grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-5 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
       style={{
@@ -63,30 +54,10 @@ export function ReaderTopBar({
           "opacity 300ms ease-out, background 350ms ease, border-color 350ms ease",
       }}
     >
-      <button
-        type="button"
-        onClick={onBack}
-        className="group/back flex items-center gap-1.5 rounded-lg border-none px-3.5 py-[7px] text-[13.5px] transition-all"
-        style={{
-          background: "transparent",
-          color: "var(--reader-chrome-muted)",
-          fontFamily: "inherit",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--reader-chrome-hover)"
-          e.currentTarget.style.color = "var(--reader-chrome-fg)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "transparent"
-          e.currentTarget.style.color = "var(--reader-chrome-muted)"
-        }}
-      >
-        <ArrowLeft className="size-4 transition-transform group-hover/back:-translate-x-0.5" />
-        返回
-      </button>
+      <div aria-hidden className="min-w-0" />
 
       <div
-        className="min-w-0 flex-1 truncate text-center text-sm font-medium"
+        className="min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium"
         style={{
           fontFamily: "'Lora', 'Noto Serif SC', serif",
           color: "var(--reader-chrome-fg)",
@@ -102,7 +73,7 @@ export function ReaderTopBar({
         {chapterTitle}
       </div>
 
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center justify-end gap-0.5">
         <TopBarButton title="目录" onClick={onToggleToc}>
           <List className="size-[18px]" />
         </TopBarButton>

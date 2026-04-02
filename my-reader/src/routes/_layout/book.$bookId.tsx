@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { invoke } from "@tauri-apps/api/core"
+import { invoke, isTauri } from "@tauri-apps/api/core"
 import {
   ArrowLeft,
   BookOpen,
@@ -13,17 +12,18 @@ import {
   Send,
   Star,
 } from "lucide-react"
-
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { useLibrary } from "@/contexts/LibraryContext"
 import { buildCoverUrl } from "@/lib/cover"
+import { openReaderInNewWindow } from "@/lib/readerWindow"
 import {
   isReadableInAppFormat,
   pickReadableFormat,
 } from "@/lib/rendition/utils"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import type { BookDetail, CalibreBook } from "@/types/book"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
@@ -200,14 +200,18 @@ function BookDetailPage() {
   }, [book])
 
   const navigateToRead = useCallback(
-    (id: number, fmt: string) => {
+    async (id: number, fmt?: string) => {
+      if (isTauri()) {
+        await openReaderInNewWindow(String(id), fmt?.toUpperCase(), book?.title)
+        return
+      }
       navigate({
         to: "/read/$bookId",
         params: { bookId: String(id) },
-        search: { format: fmt.toUpperCase() },
+        search: fmt ? { format: fmt.toUpperCase() } : {},
       })
     },
-    [navigate],
+    [navigate, book?.title],
   )
 
   if (loading) {
@@ -477,12 +481,7 @@ function BookDetailPage() {
                       if (!canReadInApp) return
                       const fmt =
                         selectedFormat ?? pickReadableFormat(book.formats)
-                      if (fmt) navigateToRead(book.id, fmt)
-                      else
-                        navigate({
-                          to: "/read/$bookId",
-                          params: { bookId: String(book.id) },
-                        })
+                      void navigateToRead(book.id, fmt ?? undefined)
                     }}
                   >
                     <BookOpen className="size-[18px]" />

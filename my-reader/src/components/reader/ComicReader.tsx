@@ -38,15 +38,9 @@ interface ComicReaderProps {
   /** Calibre format code, e.g. CBZ / PDF — shown in the top bar. */
   format: string
   reader: UseReaderReturn
-  onBack: () => void
 }
 
-export function ComicReader({
-  bookTitle,
-  format,
-  reader,
-  onBack,
-}: ComicReaderProps) {
+export function ComicReader({ bookTitle, format, reader }: ComicReaderProps) {
   const readerRootRef = useRef<HTMLDivElement>(null)
   const chrome = useReadingChrome({ rootRef: readerRootRef })
   const comicScrollRef = useRef<HTMLDivElement>(null)
@@ -413,7 +407,6 @@ export function ComicReader({
         bookTitle={bookTitle}
         chapterTitle={topChapterLine}
         bookmarked={bookmarked}
-        onBack={onBack}
         onToggleToc={toggleToc}
         onToggleBookmark={toggleBookmark}
         onToggleSettings={toggleSettings}

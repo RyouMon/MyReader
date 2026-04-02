@@ -84,6 +84,7 @@ pub fn run() {
             let not_found = || -> tauri::http::Response<Vec<u8>> {
                 tauri::http::Response::builder()
                     .status(404)
+                    .header("access-control-allow-origin", "*")
                     .body(Vec::new())
                     .unwrap()
             };

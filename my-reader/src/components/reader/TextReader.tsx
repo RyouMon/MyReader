@@ -27,7 +27,6 @@ interface TextReaderProps {
   gotoNextPage: () => Promise<void>
   gotoPrevPage: () => Promise<void>
   gotoPageInChapter: (totalPages: number, pageOffset: number) => void
-  onBack: () => void
 }
 
 export function TextReader({
@@ -44,7 +43,6 @@ export function TextReader({
   gotoNextPage,
   gotoPrevPage,
   gotoPageInChapter,
-  onBack,
 }: TextReaderProps) {
   const store = useReaderStore()
   const readerRootRef = useRef<HTMLDivElement>(null)
@@ -440,7 +438,6 @@ export function TextReader({
         bookTitle={bookTitle}
         chapterTitle={chapter.title}
         bookmarked={store.bookmarked}
-        onBack={onBack}
         onToggleToc={store.toggleToc}
         onToggleBookmark={store.toggleBookmark}
         onToggleSettings={store.toggleSettings}
