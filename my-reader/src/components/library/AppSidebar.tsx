@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { Link, useLocation } from "@tanstack/react-router"
 import {
   BookCopy,
   Check,
@@ -10,7 +10,7 @@ import {
   Tags,
   User,
 } from "lucide-react"
-import { Link, useLocation } from "@tanstack/react-router"
+import { useState } from "react"
 
 import {
   Sidebar,
@@ -26,8 +26,8 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
 import { useLibrary } from "@/contexts/LibraryContext"
+import { cn } from "@/lib/utils"
 
 export type SidebarView = "all" | "recent" | "favorites"
 
@@ -41,8 +41,11 @@ export default function AppSidebar() {
   const totalCount = activeLibrary?.bookCount ?? 0
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="gap-0 pt-3 pb-2">
+    <Sidebar
+      collapsible="icon"
+      className="min-w-0 overflow-x-hidden touch-pan-y overscroll-x-none"
+    >
+      <SidebarHeader className="gap-0 pt-3 pb-2 overflow-x-hidden">
         <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
           <div
             className="size-9 flex items-center justify-center rounded-[10px] text-white font-bold text-base flex-shrink-0"
@@ -121,7 +124,7 @@ export default function AppSidebar() {
 
       <SidebarSeparator />
 
-      <SidebarContent>
+      <SidebarContent className="overflow-y-auto overflow-x-hidden touch-pan-y overscroll-x-none">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -192,7 +195,7 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="overflow-x-hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
