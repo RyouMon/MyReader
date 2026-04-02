@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { BookReader } from "../../lib/rendition/BookReader"
-import type { TextChapterPaginationResult } from "../../lib/rendition/pagination/BinarySearchPaginator"
+import type { TextChapterPaginationResult } from "../../lib/rendition/types"
 import type {
   ChapterData,
   ContentType,
@@ -60,6 +60,7 @@ export function useBookReader({
   format,
 }: UseReaderOptions): UseReaderReturn {
   const coreRef = useRef<BookReader | null>(null)
+  const mountedRef = useRef(true)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -76,6 +77,13 @@ export function useBookReader({
     setCurChapter(core.curChapter)
     setCurPageIndex(core.curPage.index)
     setIsChapterStartFromEnd(core.chapterStartFromEnd)
+  }, [])
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
   useEffect(() => {
@@ -207,10 +215,11 @@ export function useBookReader({
   const layout = useCallback(
     async (config: LayoutConfig, measureHost: HTMLDivElement) => {
       const core = coreRef.current
-      if (!core?.ready) {
-        throw new Error("Reader not ready")
-      }
+      if (!core?.ready) return undefined
       const result = await core.layout(config, measureHost)
+      if (!mountedRef.current || coreRef.current !== core || !core.ready) {
+        return undefined
+      }
       syncNavigationState(core)
       return result
     },

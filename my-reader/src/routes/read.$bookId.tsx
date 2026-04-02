@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useState } from "react"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { invoke } from "@tauri-apps/api/core"
+import { useCallback, useEffect, useState } from "react"
 
 import { ComicReader } from "@/components/reader/ComicReader"
 import { TextReader } from "@/components/reader/TextReader"
-import { useLibrary } from "@/contexts/LibraryContext"
-import { buildBookFileUrl } from "@/lib/rendition/utils"
-import { resolveReadFormat } from "@/lib/rendition/utils"
 import { useBookReader } from "@/components/reader/useReader"
+import { useLibrary } from "@/contexts/LibraryContext"
 import type { TextChapterData } from "@/lib/rendition"
+import { buildBookFileUrl, resolveReadFormat } from "@/lib/rendition/utils"
 import type { BookDetail } from "@/types/book"
 
 export const Route = createFileRoute("/read/$bookId")({

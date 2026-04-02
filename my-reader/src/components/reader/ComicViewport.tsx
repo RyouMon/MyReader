@@ -1,8 +1,7 @@
 import { Loader2 } from "lucide-react"
 import type { CSSProperties } from "react"
-
-import { cn } from "@/lib/utils"
 import type { ImageChapterData } from "@/lib/rendition"
+import { cn } from "@/lib/utils"
 
 import type { DisplayMode, ReadingDirection, ZoomMode } from "./ComicReader"
 

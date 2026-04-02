@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { ImageChapterData, TocItem } from "@/lib/rendition"
-
-import type { UseReaderReturn } from "./useReader"
-
 import { ComicBottomBar } from "./ComicBottomBar"
 import { ComicScrollViewport } from "./ComicScrollViewport"
 import { ComicSettingsPanel } from "./ComicSettingsPanel"
@@ -11,6 +8,7 @@ import { ComicTocPanel } from "./ComicTocPanel"
 import { ComicViewport } from "./ComicViewport"
 import { ReaderTopBar } from "./ReaderTopBar"
 import type { ReadingLayout } from "./types"
+import type { UseReaderReturn } from "./useReader"
 import { useReadingChrome } from "./useReadingChrome"
 
 export type DisplayMode = "single" | "spread"

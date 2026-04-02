@@ -2,6 +2,7 @@ import type {
   IPaginator,
   LayoutConfig,
   PageData,
+  ReaderTypographyConfig,
   TextChapterData,
 } from "../types"
 import { scopeEpubCss } from "../utils"
@@ -122,13 +123,6 @@ export const READER_TYPOGRAPHY_OVERRIDE_CSS = `
   letter-spacing: var(--reader-letter-spacing) !important;
 }
 `.trim()
-
-export interface ReaderTypographyConfig {
-  fontFamily: string
-  fontSize: number
-  lineHeight: number | string
-  paddingX: number
-}
 
 export interface TextChapterPaginationResult {
   mode: "sliced" | "full"

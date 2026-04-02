@@ -1,10 +1,11 @@
 /* biome-ignore-all lint/security/noDangerouslySetInnerHtml: 阅读器需要渲染已解析的 HTML 与样式 */
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { LayoutConfig, TextChapterData } from "@/lib/rendition"
-import {
-  renderTextChapterPage,
-  type TextChapterPaginationResult,
-} from "@/lib/rendition/pagination/BinarySearchPaginator"
+import type {
+  LayoutConfig,
+  TextChapterData,
+  TextChapterPaginationResult,
+} from "@/lib/rendition"
+import { renderTextChapterPage } from "@/lib/rendition/pagination/ProgressivePaginator"
 
 interface ReaderContentProps {
   chapter: TextChapterData
@@ -51,7 +52,7 @@ export function ReaderContent({
   const pageIndexRef = useRef(0)
   const pageCountRef = useRef(1)
 
-  const [pages, setPages] = useState<{ start: number; end: number }[]>([])
+  const [pages, setPages] = useState<TextChapterPaginationResult["pages"]>([])
   const [chapterMode, setChapterMode] = useState<"sliced" | "full">("full")
   const [pageCount, setPageCount] = useState(1)
   const [pageIndex, setPageIndex] = useState(0)
@@ -79,34 +80,38 @@ export function ReaderContent({
       viewPortWidth: w,
       viewPortHeight: h,
     }
-    void layout(config, host).then((next) => {
-      if (!next) return
-      if (cancelled) return
-      if (next.mode === "full") {
-        setChapterMode("full")
-        setPages([])
-      } else {
-        setChapterMode("sliced")
-        setPages(next.pages)
-      }
-      parsedRootRef.current = next.sourceRoot
-      textsRef.current = next.texts
-      pageCountRef.current = next.pageCount
-      setPageCount(next.pageCount)
+    void layout(config, host)
+      .then((next) => {
+        if (!next) return
+        if (cancelled) return
+        if (next.mode === "full") {
+          setChapterMode("full")
+          setPages([])
+        } else {
+          setChapterMode("sliced")
+          setPages(next.pages)
+        }
+        parsedRootRef.current = next.sourceRoot
+        textsRef.current = next.texts
+        pageCountRef.current = next.pageCount
+        setPageCount(next.pageCount)
 
-      let nextIdx = 0
-      if (startFromEndRef.current && !startFromEndAppliedRef.current) {
-        startFromEndAppliedRef.current = true
-        nextIdx = Math.max(0, next.pageCount - 1)
-      } else {
-        nextIdx = Math.min(
-          pageIndexRef.current,
-          Math.max(0, next.pageCount - 1),
-        )
-      }
-      pageIndexRef.current = nextIdx
-      setPageIndex(nextIdx)
-    })
+        let nextIdx = 0
+        if (startFromEndRef.current && !startFromEndAppliedRef.current) {
+          startFromEndAppliedRef.current = true
+          nextIdx = Math.max(0, next.pageCount - 1)
+        } else {
+          nextIdx = Math.min(
+            pageIndexRef.current,
+            Math.max(0, next.pageCount - 1),
+          )
+        }
+        pageIndexRef.current = nextIdx
+        setPageIndex(nextIdx)
+      })
+      .catch(() => {
+        if (cancelled) return
+      })
 
     return () => {
       cancelled = true

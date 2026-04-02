@@ -67,6 +67,36 @@ export interface PageData {
   isEndOfChapter: boolean
 }
 
+/** Range boundary serialized relative to the sliced content root (progressive paginator). */
+export interface RangeBoundary {
+  path: number[]
+  offset: number
+  isText: boolean
+}
+
+/** Page slice described by DOM start/end boundaries (progressive paginator). */
+export interface DomPageSlice {
+  start: RangeBoundary
+  end: RangeBoundary
+}
+
+/** Reader typography values applied to source and measure roots. */
+export interface ReaderTypographyConfig {
+  fontFamily: string
+  fontSize: number
+  lineHeight: number | string
+  paddingX: number
+}
+
+/** Pagination result returned to the React reader shell (progressive DOM layout). */
+export interface TextChapterPaginationResult {
+  mode: "sliced" | "full"
+  pages: DomPageSlice[]
+  pageCount: number
+  sourceRoot: HTMLDivElement | null
+  texts: Text[]
+}
+
 /**
  * 全书流式分页后的一屏数据（{@link paginateTextChapters}），
  * 在 {@link TextChapterData} 上增加全局页码与章内页序。

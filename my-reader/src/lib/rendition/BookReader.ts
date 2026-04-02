@@ -1,8 +1,7 @@
 import {
-  BinarySearchPaginator,
   layoutTextChapterAtMeasureHost,
-  type TextChapterPaginationResult,
-} from "./pagination/BinarySearchPaginator"
+  ProgressivePaginator,
+} from "./pagination/ProgressivePaginator"
 import { ComicParser } from "./parsers/ComicParser"
 import { EpubParser } from "./parsers/EpubParser"
 import { PdfParser } from "./parsers/PdfParser"
@@ -17,6 +16,7 @@ import type {
   PageData,
   ParsedBook,
   ReaderProgress,
+  TextChapterPaginationResult,
   TocItem,
 } from "./types"
 
@@ -121,7 +121,7 @@ export class BookReader {
     this.parser = BookReader.createParser(format)
     this.book = await this.parser.parse(buffer)
     this.paginator =
-      this.book.contentType === "text" ? new BinarySearchPaginator() : null
+      this.book.contentType === "text" ? new ProgressivePaginator() : null
     this._currentIndex = 0
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
@@ -149,7 +149,7 @@ export class BookReader {
   /**
    * 应用版式配置。文本书且传入 `measureHost` 时，在隐藏容器中测量当前章并填充分页器；
    * 仅传 `config` 时（文本书）只清空分页缓存，待下次带 `measureHost` 的调用再测量。
-   * 非 {@link BinarySearchPaginator} 时走通用 `IPaginator.layout`。
+   * 非 {@link ProgressivePaginator} 时走通用 `IPaginator.layout`。
    */
   async layout(
     config: LayoutConfig,
@@ -157,7 +157,7 @@ export class BookReader {
   ): Promise<TextChapterPaginationResult | undefined> {
     this._layoutConfig = config
     if (!this.paginator) return undefined
-    if (this.paginator instanceof BinarySearchPaginator) {
+    if (this.paginator instanceof ProgressivePaginator) {
       if (measureHost) {
         const ch = await this.getChapter(this._currentIndex)
         if (ch.type !== "text") {
@@ -209,7 +209,7 @@ export class BookReader {
     if (startFromEnd) this.gotoChapterFromEnd(chapter)
     else this.gotoChapter(chapter)
     const ch = await this.getChapter(chapter)
-    if (this.paginator instanceof BinarySearchPaginator) {
+    if (this.paginator instanceof ProgressivePaginator) {
       await this.paginator.clearCache()
       if (!startFromEnd) {
         this._currentPageOffset = Math.max(0, offset)
@@ -240,7 +240,7 @@ export class BookReader {
    * Advances one page and crosses chapter boundary when needed.
    */
   async gotoNextPage(): Promise<ChapterData | null> {
-    if (this.paginator instanceof BinarySearchPaginator) {
+    if (this.paginator instanceof ProgressivePaginator) {
       const slices = this.paginator.getAllSlices()
       if (slices.length > 0) {
         const lastIdx = slices.length - 1
@@ -298,7 +298,7 @@ export class BookReader {
    * Moves one page backward and crosses chapter boundary when needed.
    */
   async gotoPrevPage(): Promise<ChapterData | null> {
-    if (this.paginator instanceof BinarySearchPaginator) {
+    if (this.paginator instanceof ProgressivePaginator) {
       const slices = this.paginator.getAllSlices()
       if (slices.length > 0) {
         const before = this.paginator.curPage?.index ?? -1
@@ -360,7 +360,7 @@ export class BookReader {
       0,
       Math.min(pageOffset, this._totalPagesOfCurChapter - 1),
     )
-    if (this.paginator instanceof BinarySearchPaginator) {
+    if (this.paginator instanceof ProgressivePaginator) {
       void this.paginator.gotoPage(this._currentPageOffset)
     }
     this.syncPageStateFromPaginator()
@@ -450,7 +450,7 @@ export class BookReader {
    */
   private syncPageStateFromPaginator(): void {
     if (!this.paginator?.curPage) {
-      if (this.paginator instanceof BinarySearchPaginator) {
+      if (this.paginator instanceof ProgressivePaginator) {
         this.invalidatePageDescriptorCaches()
         return
       }
