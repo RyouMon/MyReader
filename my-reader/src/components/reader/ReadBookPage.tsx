@@ -9,7 +9,6 @@ import { TextReader } from "@/components/reader/TextReader"
 import { useBookReader } from "@/components/reader/useReader"
 import { useLibrary } from "@/contexts/LibraryContext"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import type { TextChapterData } from "@/lib/rendition"
 import { buildBookFileUrl, resolveReadFormat } from "@/lib/rendition/utils"
 import type { BookDetail } from "@/types/book"
 
@@ -146,26 +145,10 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }
 
   if (reader.contentType === "image") {
-    return <ComicReader bookTitle={bookTitle} format={format} reader={reader} />
+    return <ComicReader bookTitle={bookTitle} reader={reader} />
   }
 
-  const textChapter = reader.chapter as TextChapterData
-
   return (
-    <TextReader
-      bookTitle={bookTitle}
-      chapter={textChapter}
-      toc={reader.toc}
-      totalChapters={reader.totalChapters}
-      curChapter={reader.curChapter}
-      curPageIndex={reader.curPageIndex}
-      isChapterStartFromEnd={reader.isChapterStartFromEnd}
-      applyLayout={reader.layout}
-      getChapter={reader.getChapter}
-      gotoPage={reader.gotoPage}
-      gotoNextPage={reader.gotoNextPage}
-      gotoPrevPage={reader.gotoPrevPage}
-      gotoPageInChapter={reader.gotoPageInChapter}
-    />
+    <TextReader bookTitle={bookTitle} reader={reader} />
   )
 }

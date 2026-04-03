@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { ChapterData, TextChapterData, TocItem } from "@/lib/rendition"
+import type { TextChapterData } from "@/lib/rendition"
 import { ReaderBottomBar } from "./ReaderBottomBar"
 import { ReaderContent } from "./ReaderContent"
 import { ReaderScrollContent } from "./ReaderScrollContent"
@@ -9,41 +9,26 @@ import { ReaderTopBar } from "./ReaderTopBar"
 import { SettingsPanel } from "./SettingsPanel"
 import { TocPanel } from "./TocPanel"
 import { TtsPanel } from "./TtsPanel"
-import type { UseReaderReturn } from "./useReader"
+import type { ReaderSurfaceProps } from "./types"
 import { useReaderStore } from "./useReaderStore"
 import { useReadingChrome } from "./useReadingChrome"
 
-interface TextReaderProps {
-  bookTitle: string
-  chapter: TextChapterData
-  toc: TocItem[]
-  totalChapters: number
-  curChapter: number
-  curPageIndex: number
-  isChapterStartFromEnd: boolean
-  applyLayout: UseReaderReturn["layout"]
-  getChapter: (index: number) => Promise<ChapterData | null>
-  gotoPage: (chapter: number, pageOffset: number) => Promise<void>
-  gotoNextPage: () => Promise<void>
-  gotoPrevPage: () => Promise<void>
-  gotoPageInChapter: (totalPages: number, pageOffset: number) => void
-}
-
-export function TextReader({
-  bookTitle,
-  chapter,
-  toc,
-  totalChapters,
-  curChapter,
-  curPageIndex,
-  isChapterStartFromEnd,
-  applyLayout,
-  getChapter,
-  gotoPage,
-  gotoNextPage,
-  gotoPrevPage,
-  gotoPageInChapter,
-}: TextReaderProps) {
+export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
+  const chapter = reader.chapter as TextChapterData
+  const {
+    toc,
+    totalChapters,
+    curChapter,
+    curPageIndex,
+    isChapterStartFromEnd,
+    getChapter,
+    gotoPage,
+    gotoNextPage,
+    gotoPrevPage,
+    gotoPageInChapter,
+    layout: applyLayout,
+    format,
+  } = reader
   const store = useReaderStore()
   const readerRootRef = useRef<HTMLDivElement>(null)
   const chrome = useReadingChrome({
@@ -67,6 +52,18 @@ export function TextReader({
 
   const layout = store.settings.readingLayout
   const prevLayoutRef = useRef<typeof layout | null>(null)
+
+  const mediaLabel = useMemo(() => {
+    const u = format.toUpperCase()
+    if (u === "PDF") return "PDF"
+    if (u === "CBZ") return "漫画"
+    return u
+  }, [format])
+
+  const topChapterLine = useMemo(
+    () => (mediaLabel ? `${mediaLabel} · ${chapter.title}` : chapter.title),
+    [mediaLabel, chapter.title],
+  )
 
   // ── TTS ──────────────────────────────────────────────────────────────────
   const ttsChapter = useMemo(() => {
@@ -436,7 +433,7 @@ export function TextReader({
       <ReaderTopBar
         visible={chrome.chromeVisible}
         bookTitle={bookTitle}
-        chapterTitle={chapter.title}
+        chapterTitle={topChapterLine}
         bookmarked={store.bookmarked}
         onToggleToc={store.toggleToc}
         onToggleBookmark={store.toggleBookmark}

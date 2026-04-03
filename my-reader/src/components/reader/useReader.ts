@@ -26,6 +26,8 @@ export interface UseReaderReturn {
 
   /** Whether the content is text-based or image-based. */
   contentType: ContentType
+  /** Same as the `format` passed to {@link useBookReader}, e.g. `"EPUB"` / `"CBZ"`. */
+  format: string
   toc: TocItem[]
   totalChapters: number
 
@@ -240,6 +242,7 @@ export function useBookReader({
     error,
     loading,
     contentType,
+    format,
     toc,
     totalChapters,
     curChapter,

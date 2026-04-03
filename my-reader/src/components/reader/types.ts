@@ -1,3 +1,10 @@
+import type { UseReaderReturn } from "./useReader"
+
+export interface ReaderSurfaceProps {
+  bookTitle: string
+  reader: UseReaderReturn
+}
+
 export type ReaderTheme = "light" | "paper" | "green" | "dark"
 
 /** 滚动：全书连续滚动。翻页：分页/分章，点击左右或方向键翻页。 */

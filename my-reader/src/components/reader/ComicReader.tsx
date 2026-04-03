@@ -7,8 +7,7 @@ import { ComicSettingsPanel } from "./ComicSettingsPanel"
 import { ComicTocPanel } from "./ComicTocPanel"
 import { ComicViewport } from "./ComicViewport"
 import { ReaderTopBar } from "./ReaderTopBar"
-import type { ReadingLayout } from "./types"
-import type { UseReaderReturn } from "./useReader"
+import type { ReaderSurfaceProps, ReadingLayout } from "./types"
 import { useReadingChrome } from "./useReadingChrome"
 
 export type DisplayMode = "single" | "spread"
@@ -33,14 +32,7 @@ const DEFAULT_COMIC_SETTINGS: ComicSettings = {
   pageGap: 16,
 }
 
-interface ComicReaderProps {
-  bookTitle: string
-  /** Calibre format code, e.g. CBZ / PDF — shown in the top bar. */
-  format: string
-  reader: UseReaderReturn
-}
-
-export function ComicReader({ bookTitle, format, reader }: ComicReaderProps) {
+export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const readerRootRef = useRef<HTMLDivElement>(null)
   const chrome = useReadingChrome({ rootRef: readerRootRef })
   const comicScrollRef = useRef<HTMLDivElement>(null)
@@ -280,11 +272,11 @@ export function ComicReader({ bookTitle, format, reader }: ComicReaderProps) {
   )
 
   const mediaLabel = useMemo(() => {
-    const u = format.toUpperCase()
+    const u = reader.format.toUpperCase()
     if (u === "PDF") return "PDF"
     if (u === "CBZ") return "漫画"
     return u
-  }, [format])
+  }, [reader.format])
 
   const pageTitle = useMemo(() => {
     if (settings.displayMode === "spread" && currentIndex + 1 < totalPages) {
