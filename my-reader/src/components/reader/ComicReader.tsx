@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-
 import type { ImageChapterData, TocItem } from "@/lib/rendition"
+import { cn } from "@/lib/utils"
 import { ComicBottomBar } from "./ComicBottomBar"
 import { ComicScrollViewport } from "./ComicScrollViewport"
 import { ComicSettingsPanel } from "./ComicSettingsPanel"
@@ -359,8 +359,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
     <div
       ref={readerRootRef}
       data-reader-mode="comic"
-      className="relative flex size-full flex-col overflow-hidden"
-      style={{ background: "var(--viewer-bg, #1a1a1a)" }}
+      className="relative flex size-full flex-col overflow-hidden bg-viewer-bg"
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: 阅读区鼠标手势 */}
       <div
@@ -421,12 +420,12 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: 全屏蒙层 */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc 关闭侧栏 */}
       <div
-        className="absolute inset-0 z-55 transition-all duration-300"
-        style={{
-          background:
-            tocOpen || settingsOpen ? "rgba(0,0,0,0.5)" : "rgba(0,0,0,0)",
-          pointerEvents: tocOpen || settingsOpen ? "auto" : "none",
-        }}
+        className={cn(
+          "absolute inset-0 z-55 transition-all duration-300",
+          tocOpen || settingsOpen
+            ? "pointer-events-auto bg-black/30"
+            : "pointer-events-none bg-transparent",
+        )}
         onClick={closePanels}
       />
 

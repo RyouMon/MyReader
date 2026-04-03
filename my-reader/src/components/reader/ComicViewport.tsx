@@ -32,15 +32,14 @@ export function ComicViewport({
 
   return (
     <div
-      className="relative flex flex-1 items-center justify-center overflow-hidden"
+      className="relative flex flex-1 items-center justify-center overflow-hidden bg-viewer-bg"
       style={{
-        background: "var(--viewer-bg, #1a1a1a)",
         filter:
           brightness < 100 ? `brightness(${brightness / 100})` : undefined,
       }}
     >
       {loading && !page && (
-        <div className="flex flex-col items-center gap-3 text-white/40">
+        <div className="flex flex-col items-center gap-3 text-reader-chrome-muted">
           <Loader2 className="size-8 animate-spin" />
           <span className="text-sm">加载中…</span>
         </div>

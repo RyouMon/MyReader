@@ -41,35 +41,15 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "absolute inset-x-0 top-0 z-50 grid h-[52px] grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-5 transition-opacity duration-300 ease-out",
+        "reader-chrome-frost absolute inset-x-0 top-0 z-50 grid h-[52px] grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-reader-chrome-border px-5 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
-      style={{
-        background:
-          "color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderColor: "var(--reader-chrome-border)",
-        transition:
-          "opacity 300ms ease-out, background 350ms ease, border-color 350ms ease",
-      }}
     >
       <div aria-hidden className="min-w-0" />
 
-      <div
-        className="min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium"
-        style={{
-          fontFamily: "'Lora', 'Noto Serif SC', serif",
-          color: "var(--reader-chrome-fg)",
-        }}
-      >
+      <div className="font-serif min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium text-reader-chrome-fg">
         {bookTitle}
-        <span
-          className="mx-1.5"
-          style={{ color: "var(--reader-chrome-muted)" }}
-        >
-          ·
-        </span>
+        <span className="mx-1.5 text-reader-chrome-muted">·</span>
         {chapterTitle}
       </div>
 
@@ -115,22 +95,8 @@ function TopBarButton({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex size-9 items-center justify-center rounded-lg border-none transition-all active:scale-95"
-      style={{
-        background: "transparent",
-        color: active
-          ? "var(--reader-chrome-active)"
-          : "var(--reader-chrome-muted)",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--reader-chrome-hover)"
-        if (!active) e.currentTarget.style.color = "var(--reader-chrome-fg)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent"
-        if (!active) e.currentTarget.style.color = "var(--reader-chrome-muted)"
-      }}
+      className="reader-chrome-icon-btn"
+      data-active={active ? "true" : undefined}
     >
       {children}
     </button>

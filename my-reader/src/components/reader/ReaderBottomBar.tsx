@@ -56,18 +56,9 @@ export function ReaderBottomBar({
   return (
     <footer
       className={cn(
-        "absolute inset-x-0 bottom-0 z-45 flex h-16 flex-col justify-center px-6 transition-opacity duration-300 ease-out",
+        "reader-chrome-frost absolute inset-x-0 bottom-0 z-45 flex h-16 flex-col justify-center border-t border-reader-chrome-border px-6 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
-      style={{
-        background:
-          "color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderTop: "1px solid var(--reader-chrome-border)",
-        transition:
-          "opacity 300ms ease-out, background 350ms ease, border-color 350ms ease",
-      }}
     >
       <div className="flex items-center gap-3">
         <ChapterNavBtn onClick={onPrevChapter}>
@@ -107,10 +98,7 @@ export function ReaderBottomBar({
               style={{ left: `${bookProgress}%` }}
             />
           </div>
-          <div
-            className="text-[11.5px] tabular-nums"
-            style={{ color: "var(--reader-chrome-muted)" }}
-          >
+          <div className="text-[11.5px] tabular-nums text-reader-chrome-muted">
             第 {currentChapter} 章 / 共 {totalChapters} 章 · 全书 {bookProgress}
             %
           </div>
@@ -121,10 +109,7 @@ export function ReaderBottomBar({
           <ChevronRight className="size-3.5" />
         </ChapterNavBtn>
 
-        <div
-          className="flex shrink-0 overflow-hidden rounded-lg"
-          style={{ border: "1px solid var(--reader-chrome-border)" }}
-        >
+        <div className="flex shrink-0 overflow-hidden rounded-lg border border-reader-chrome-border">
           <LayoutToggleBtn
             active={readingLayout === "paginate"}
             title="翻页"
@@ -146,28 +131,9 @@ export function ReaderBottomBar({
           title="TTS 朗读"
           onClick={onToggleTts}
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg border-none transition-all active:scale-95",
+            "reader-chrome-icon-btn reader-chrome-tts-toggle shrink-0",
           )}
-          style={{
-            background: ttsActive
-              ? "color-mix(in srgb, var(--reader-chrome-active) 10%, transparent)"
-              : "transparent",
-            color: ttsActive
-              ? "var(--reader-chrome-active)"
-              : "var(--reader-chrome-muted)",
-          }}
-          onMouseEnter={(e) => {
-            if (!ttsActive) {
-              e.currentTarget.style.background = "var(--reader-chrome-hover)"
-              e.currentTarget.style.color = "var(--reader-chrome-fg)"
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!ttsActive) {
-              e.currentTarget.style.background = "transparent"
-              e.currentTarget.style.color = "var(--reader-chrome-muted)"
-            }
-          }}
+          data-pressed={ttsActive ? "true" : undefined}
         >
           <Headphones className="size-[18px]" />
         </button>
@@ -184,24 +150,7 @@ function ChapterNavBtn({
   children: React.ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1 whitespace-nowrap rounded-md border-none px-3 py-1.5 text-[13px] transition-all active:scale-95"
-      style={{
-        background: "transparent",
-        color: "var(--reader-chrome-muted)",
-        fontFamily: "inherit",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--reader-chrome-hover)"
-        e.currentTarget.style.color = "var(--reader-chrome-fg)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent"
-        e.currentTarget.style.color = "var(--reader-chrome-muted)"
-      }}
-    >
+    <button type="button" onClick={onClick} className="reader-chrome-text-btn">
       {children}
     </button>
   )
@@ -223,28 +172,8 @@ function LayoutToggleBtn({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex items-center justify-center border-none px-2.5 py-1.5 transition-all"
-      style={{
-        background: active
-          ? "color-mix(in srgb, var(--reader-chrome-active) 12%, transparent)"
-          : "transparent",
-        color: active
-          ? "var(--reader-chrome-active)"
-          : "var(--reader-chrome-muted)",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "var(--reader-chrome-hover)"
-          e.currentTarget.style.color = "var(--reader-chrome-fg)"
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "transparent"
-          e.currentTarget.style.color = "var(--reader-chrome-muted)"
-        }
-      }}
+      className="reader-chrome-layout-toggle"
+      data-active={active ? "true" : undefined}
     >
       {children}
     </button>

@@ -9,7 +9,6 @@ import {
 import { useCallback, useRef } from "react"
 
 import { cn } from "@/lib/utils"
-
 import type { DisplayMode } from "./ComicReader"
 import type { ReadingLayout } from "./types"
 
@@ -73,15 +72,9 @@ export function ComicBottomBar({
   return (
     <footer
       className={cn(
-        "absolute inset-x-0 bottom-0 z-45 flex h-16 flex-col justify-center px-6 transition-opacity duration-300 ease-out",
+        "reader-chrome-frost absolute inset-x-0 bottom-0 z-45 flex h-16 flex-col justify-center border-t border-reader-chrome-border px-6 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
-      style={{
-        background: "rgba(18, 18, 18, 0.88)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-      }}
     >
       <div className="flex items-center gap-3">
         <NavBtn onClick={onPrevPage}>
@@ -121,10 +114,7 @@ export function ComicBottomBar({
               style={{ left: `${bookProgress}%` }}
             />
           </div>
-          <div
-            className="text-[11.5px] tabular-nums"
-            style={{ color: "rgba(255,255,255,0.45)" }}
-          >
+          <div className="text-[11.5px] tabular-nums text-reader-chrome-muted">
             {pageInfo}
           </div>
         </div>
@@ -134,10 +124,7 @@ export function ComicBottomBar({
           <ChevronRight className="size-3.5" />
         </NavBtn>
 
-        <div
-          className="flex shrink-0 overflow-hidden rounded-lg"
-          style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-        >
+        <div className="flex shrink-0 overflow-hidden rounded-lg border border-reader-chrome-border">
           <LayoutToggleBtn
             active={readingLayout === "paginate"}
             title="翻页"
@@ -155,10 +142,7 @@ export function ComicBottomBar({
         </div>
 
         {readingLayout === "paginate" && (
-          <div
-            className="flex shrink-0 overflow-hidden rounded-lg"
-            style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-          >
+          <div className="flex shrink-0 overflow-hidden rounded-lg border border-reader-chrome-border">
             <DisplayToggleBtn
               active={displayMode === "single"}
               title="单页"
@@ -188,24 +172,7 @@ function NavBtn({
   children: React.ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-1 whitespace-nowrap rounded-md border-none px-3 py-1.5 text-[13px] transition-all active:scale-95"
-      style={{
-        background: "transparent",
-        color: "rgba(255,255,255,0.50)",
-        fontFamily: "inherit",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(255,255,255,0.08)"
-        e.currentTarget.style.color = "rgba(255,255,255,0.9)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent"
-        e.currentTarget.style.color = "rgba(255,255,255,0.50)"
-      }}
-    >
+    <button type="button" onClick={onClick} className="reader-chrome-text-btn">
       {children}
     </button>
   )
@@ -227,26 +194,8 @@ function LayoutToggleBtn({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex items-center justify-center border-none px-2.5 py-1.5 transition-all"
-      style={{
-        background: active ? "rgba(255,255,255,0.12)" : "transparent",
-        color: active
-          ? "var(--reader-chrome-active)"
-          : "rgba(255,255,255,0.45)",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "rgba(255,255,255,0.06)"
-          e.currentTarget.style.color = "rgba(255,255,255,0.8)"
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "transparent"
-          e.currentTarget.style.color = "rgba(255,255,255,0.45)"
-        }
-      }}
+      className="reader-chrome-layout-toggle"
+      data-active={active ? "true" : undefined}
     >
       {children}
     </button>
@@ -269,26 +218,8 @@ function DisplayToggleBtn({
       type="button"
       title={title}
       onClick={onClick}
-      className="flex items-center justify-center border-none px-2.5 py-1.5 transition-all"
-      style={{
-        background: active ? "rgba(255,255,255,0.12)" : "transparent",
-        color: active
-          ? "var(--reader-chrome-active)"
-          : "rgba(255,255,255,0.45)",
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "rgba(255,255,255,0.06)"
-          e.currentTarget.style.color = "rgba(255,255,255,0.8)"
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.background = "transparent"
-          e.currentTarget.style.color = "rgba(255,255,255,0.45)"
-        }
-      }}
+      className="reader-chrome-layout-toggle"
+      data-active={active ? "true" : undefined}
     >
       {children}
     </button>

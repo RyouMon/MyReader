@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { TextChapterData } from "@/lib/rendition"
+import { cn } from "@/lib/utils"
 import { ReaderBottomBar } from "./ReaderBottomBar"
 import { ReaderContent } from "./ReaderContent"
 import { ReaderScrollContent } from "./ReaderScrollContent"
@@ -329,61 +330,48 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     <div
       ref={readerRootRef}
       data-reader-theme={store.settings.theme}
-      className="relative flex size-full flex-col overflow-hidden"
-      style={{
-        background: "var(--reader-bg)",
-        color: "var(--reader-fg)",
-        transition: "background 350ms ease, color 350ms ease",
-      }}
+      className="relative flex size-full flex-col overflow-hidden bg-reader-bg text-reader-fg transition-[background,color] duration-300 ease-out"
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
         {layout === "paginate" && (
           <>
             <div
-              className="pointer-events-none absolute inset-y-0 left-3 z-30 flex items-center"
-              style={{
-                opacity: paginateNavLeftVisible ? 1 : 0,
-                transition: "opacity 220ms ease",
-              }}
+              className={cn(
+                "pointer-events-none absolute inset-y-0 left-3 z-30 flex items-center transition-opacity duration-[220ms] ease-[ease]",
+                paginateNavLeftVisible ? "opacity-100" : "opacity-0",
+              )}
             >
               <button
                 type="button"
                 aria-label="上一页"
                 title="上一页"
-                className="flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent)",
-                  color: "var(--reader-chrome-fg)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  pointerEvents: paginateNavLeftVisible ? "auto" : "none",
-                }}
+                className={cn(
+                  "reader-chrome-frost-sm flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95",
+                  paginateNavLeftVisible
+                    ? "pointer-events-auto"
+                    : "pointer-events-none",
+                )}
                 onClick={() => handlePaginateTurn("prev")}
               >
                 <ChevronLeft className="size-5" />
               </button>
             </div>
             <div
-              className="pointer-events-none absolute inset-y-0 right-3 z-30 flex items-center"
-              style={{
-                opacity: paginateNavRightVisible ? 1 : 0,
-                transition: "opacity 220ms ease",
-              }}
+              className={cn(
+                "pointer-events-none absolute inset-y-0 right-3 z-30 flex items-center transition-opacity duration-[220ms] ease-[ease]",
+                paginateNavRightVisible ? "opacity-100" : "opacity-0",
+              )}
             >
               <button
                 type="button"
                 aria-label="下一页"
                 title="下一页"
-                className="flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95"
-                style={{
-                  background:
-                    "color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent)",
-                  color: "var(--reader-chrome-fg)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  pointerEvents: paginateNavRightVisible ? "auto" : "none",
-                }}
+                className={cn(
+                  "reader-chrome-frost-sm flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95",
+                  paginateNavRightVisible
+                    ? "pointer-events-auto"
+                    : "pointer-events-none",
+                )}
                 onClick={() => handlePaginateTurn("next")}
               >
                 <ChevronRight className="size-5" />
@@ -469,14 +457,12 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: 全屏蒙层 */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc 关闭侧栏 */}
       <div
-        className="absolute inset-0 z-55 transition-all duration-300"
-        style={{
-          background:
-            store.tocOpen || store.settingsOpen
-              ? "rgba(0,0,0,0.3)"
-              : "rgba(0,0,0,0)",
-          pointerEvents: store.tocOpen || store.settingsOpen ? "auto" : "none",
-        }}
+        className={cn(
+          "absolute inset-0 z-55 transition-all duration-300",
+          store.tocOpen || store.settingsOpen
+            ? "pointer-events-auto bg-black/30"
+            : "pointer-events-none bg-transparent",
+        )}
         onClick={store.closePanels}
       />
 

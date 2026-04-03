@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import type {
   ComicSettings,
   DisplayMode,
@@ -21,29 +22,18 @@ export function ComicSettingsPanel({
 }: ComicSettingsPanelProps) {
   return (
     <aside
-      className="absolute inset-y-0 right-0 z-60 flex w-[300px] flex-col overflow-y-auto transition-all duration-300 ease-out"
-      style={{
-        background: "#222",
-        borderLeft: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "-8px 0 24px rgba(0,0,0,0.30)",
-        transform: visible ? "translateX(0)" : "translateX(100%)",
-        opacity: visible ? 1 : 0,
-      }}
+      className={cn(
+        "reader-chrome-panel-aside reader-chrome-panel-shadow-r absolute inset-y-0 right-0 z-60 flex w-[300px] flex-col overflow-y-auto border-l border-reader-chrome-border transition-all duration-300 ease-out",
+        visible
+          ? "translate-x-0 opacity-100"
+          : "pointer-events-none translate-x-full opacity-0",
+      )}
     >
-      {/* Header */}
-      <div
-        className="flex items-center gap-2.5 border-b px-5 py-4 text-[15px] font-semibold"
-        style={{
-          fontFamily: "'Lora', 'Noto Serif SC', serif",
-          color: "rgba(255,255,255,0.85)",
-          borderColor: "rgba(255,255,255,0.08)",
-        }}
-      >
-        <Settings className="size-[18px] opacity-50" />
+      <div className="font-serif flex items-center gap-2.5 border-b border-reader-chrome-border px-5 py-4 text-[15px] font-semibold text-reader-chrome-fg">
+        <Settings className="size-[18px] opacity-60" />
         阅读设置
       </div>
 
-      {/* Display */}
       <SettingsSection title="显示">
         <SettingRow label="阅读方式">
           <StyledSelect
@@ -94,7 +84,6 @@ export function ComicSettingsPanel({
         </SettingRow>
       </SettingsSection>
 
-      {/* Brightness */}
       <SettingsSection title="背景">
         <SettingSlider
           label="亮度"
@@ -106,7 +95,6 @@ export function ComicSettingsPanel({
         />
       </SettingsSection>
 
-      {/* Page gap */}
       <SettingsSection title="页面间距">
         <SettingSlider
           label="间距"
@@ -129,14 +117,8 @@ function SettingsSection({
   children: React.ReactNode
 }) {
   return (
-    <div
-      className="border-b px-5 py-4"
-      style={{ borderColor: "rgba(255,255,255,0.08)" }}
-    >
-      <div
-        className="mb-3 text-[11.5px] font-semibold uppercase tracking-wider"
-        style={{ color: "rgba(255,255,255,0.40)" }}
-      >
+    <div className="border-b border-reader-chrome-border px-5 py-4">
+      <div className="mb-3 text-[11.5px] font-semibold tracking-wider text-reader-chrome-muted uppercase">
         {title}
       </div>
       {children}
@@ -153,10 +135,7 @@ function SettingRow({
 }) {
   return (
     <div className="mb-3.5 flex items-center gap-2.5 last:mb-0">
-      <span
-        className="min-w-[60px] text-[13px] font-medium"
-        style={{ color: "rgba(255,255,255,0.7)" }}
-      >
+      <span className="min-w-[60px] text-[13px] font-medium text-reader-chrome-fg">
         {label}
       </span>
       {children}
@@ -177,19 +156,13 @@ function StyledSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="flex-1 cursor-pointer rounded-lg border px-3 py-[7px] text-[13px] outline-none"
-      style={{
-        borderColor: "rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.05)",
-        color: "rgba(255,255,255,0.8)",
-        fontFamily: "inherit",
-      }}
+      className="reader-chrome-select flex-1 cursor-pointer rounded-lg border bg-transparent px-3 py-[7px] text-[13px] outline-none"
     >
       {options.map((opt) => (
         <option
           key={opt.value}
           value={opt.value}
-          style={{ background: "#333", color: "#eee" }}
+          className="bg-reader-panel-bg text-reader-chrome-fg"
         >
           {opt.label}
         </option>
@@ -215,10 +188,7 @@ function SettingSlider({
 }) {
   return (
     <div className="mb-3.5 flex items-center gap-2.5 last:mb-0">
-      <span
-        className="min-w-[40px] text-[13px] font-medium"
-        style={{ color: "rgba(255,255,255,0.7)" }}
-      >
+      <span className="min-w-[40px] text-[13px] font-medium text-reader-chrome-fg">
         {label}
       </span>
       <input
@@ -229,10 +199,7 @@ function SettingSlider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-      <span
-        className="min-w-[40px] text-right font-mono text-xs"
-        style={{ color: "rgba(255,255,255,0.45)" }}
-      >
+      <span className="min-w-[40px] text-right font-mono text-xs text-reader-chrome-muted">
         {displayValue}
       </span>
     </div>

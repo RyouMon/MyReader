@@ -59,9 +59,8 @@ export function ComicScrollViewport({
   return (
     <div
       ref={parentRef}
-      className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+      className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-viewer-bg"
       style={{
-        background: "var(--viewer-bg, #1a1a1a)",
         filter:
           brightness < 100 ? `brightness(${brightness / 100})` : undefined,
       }}
@@ -137,7 +136,7 @@ function ComicScrollPageRow({
 
   if (err) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center text-sm text-white/40">
+      <div className="flex min-h-[200px] items-center justify-center text-sm text-reader-chrome-muted">
         {err}
       </div>
     )
@@ -145,7 +144,7 @@ function ComicScrollPageRow({
 
   if (!page) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center text-white/35">
+      <div className="flex min-h-[240px] items-center justify-center text-reader-chrome-muted">
         <Loader2 className="size-7 animate-spin" />
       </div>
     )

@@ -339,3 +339,291 @@
     transition-duration: 0.05ms;
   }
 }
+
+/* ═══ Tailwind-friendly reader chrome (replaces scattered inline styles) ═══ */
+
+@layer components {
+  .reader-chrome-frost {
+    background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition:
+      opacity 300ms ease-out,
+      background 350ms ease,
+      border-color 350ms ease;
+  }
+
+  .reader-chrome-frost-sm {
+    background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
+    color: var(--reader-chrome-fg);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .reader-chrome-icon-btn {
+    display: flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border-style: none;
+    background: transparent;
+    color: var(--reader-chrome-muted);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      transform 100ms;
+  }
+  .reader-chrome-icon-btn:hover {
+    background: var(--reader-chrome-hover);
+    color: var(--reader-chrome-fg);
+  }
+  .reader-chrome-icon-btn[data-active="true"] {
+    color: var(--reader-chrome-active);
+  }
+  .reader-chrome-icon-btn[data-active="true"]:hover {
+    background: var(--reader-chrome-hover);
+    color: var(--reader-chrome-active);
+  }
+  .reader-chrome-icon-btn:active {
+    transform: scale(0.95);
+  }
+
+  .reader-chrome-tts-toggle[data-pressed="true"] {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-active) 10%,
+      transparent
+    );
+    color: var(--reader-chrome-active);
+  }
+  .reader-chrome-tts-toggle[data-pressed="true"]:hover {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-active) 10%,
+      transparent
+    );
+    color: var(--reader-chrome-active);
+  }
+
+  .reader-chrome-text-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    border-radius: 0.375rem;
+    border-style: none;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    background: transparent;
+    color: var(--reader-chrome-muted);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      transform 100ms;
+  }
+  .reader-chrome-text-btn:hover {
+    background: var(--reader-chrome-hover);
+    color: var(--reader-chrome-fg);
+  }
+  .reader-chrome-text-btn:active {
+    transform: scale(0.95);
+  }
+
+  .reader-chrome-layout-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-style: none;
+    padding: 0.375rem 0.625rem;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+    background: transparent;
+    color: var(--reader-chrome-muted);
+  }
+  .reader-chrome-layout-toggle:hover {
+    background: var(--reader-chrome-hover);
+    color: var(--reader-chrome-fg);
+  }
+  .reader-chrome-layout-toggle[data-active="true"] {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-active) 12%,
+      transparent
+    );
+    color: var(--reader-chrome-active);
+  }
+  .reader-chrome-layout-toggle[data-active="true"]:hover {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-active) 12%,
+      transparent
+    );
+    color: var(--reader-chrome-active);
+  }
+
+  .reader-chrome-panel-aside {
+    background: var(--reader-panel-bg);
+    border-color: var(--reader-chrome-border);
+  }
+
+  .reader-chrome-panel-shadow-l {
+    box-shadow: 8px 0 24px oklch(0.35 0.04 55 / 0.1);
+  }
+
+  .reader-chrome-panel-shadow-r {
+    box-shadow: -8px 0 24px oklch(0.35 0.04 55 / 0.1);
+  }
+
+  .reader-chrome-panel-shadow-up {
+    box-shadow: 0 -4px 16px oklch(0.35 0.04 55 / 0.08);
+  }
+
+  .reader-chrome-search-field {
+    border-color: var(--reader-chrome-border);
+    background: color-mix(in srgb, var(--reader-chrome-bg) 60%, transparent);
+  }
+
+  .reader-toc-row {
+    position: relative;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.625rem;
+    border-style: none;
+    padding: 0.625rem 1.25rem;
+    text-align: left;
+    font-size: 0.84375rem;
+    font-family: inherit;
+    color: var(--reader-chrome-fg);
+    background: transparent;
+    transition:
+      background-color 150ms ease,
+      padding-left 150ms ease,
+      color 150ms ease;
+  }
+  .reader-toc-row:hover:not(.toc-item-active) {
+    background: var(--reader-chrome-hover);
+    padding-left: 1.375rem;
+  }
+  .reader-toc-row.toc-item-active {
+    font-weight: 600;
+    color: var(--reader-chrome-active);
+    background: color-mix(in srgb, var(--reader-chrome-active) 8%, transparent);
+  }
+
+  .reader-chrome-tab {
+    flex: 1;
+    border-style: none;
+    background: transparent;
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.78125rem;
+    font-family: inherit;
+    font-weight: 400;
+    color: var(--reader-chrome-muted);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms;
+  }
+  .reader-chrome-tab:hover {
+    background: var(--reader-chrome-hover);
+  }
+  .reader-chrome-tab[data-active="true"] {
+    font-weight: 600;
+    color: var(--reader-chrome-active);
+    box-shadow: inset 0 -2px 0 var(--reader-chrome-active);
+  }
+
+  .reader-chrome-select {
+    border-color: var(--reader-chrome-border);
+    color: var(--reader-chrome-fg);
+    font-family: inherit;
+  }
+
+  .reader-settings-theme-btn {
+    border-color: transparent;
+    background: transparent;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
+  }
+  .reader-settings-theme-btn:hover:not([data-selected="true"]) {
+    background: var(--reader-chrome-hover);
+  }
+  .reader-settings-theme-btn[data-selected="true"] {
+    border-color: var(--reader-chrome-active);
+  }
+
+  .reader-settings-font-btn {
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 0.5rem;
+    border-color: transparent;
+    background: transparent;
+    color: var(--reader-chrome-fg);
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
+  }
+  .reader-settings-font-btn:hover:not([data-active="true"]) {
+    background: var(--reader-chrome-hover);
+  }
+  .reader-settings-font-btn[data-active="true"] {
+    border-color: var(--reader-chrome-active);
+    background: color-mix(in srgb, var(--reader-chrome-active) 8%, transparent);
+    color: var(--reader-chrome-active);
+    font-weight: 500;
+  }
+
+  .reader-chrome-outline-btn {
+    border-color: var(--reader-chrome-border);
+    background: transparent;
+    color: var(--reader-chrome-fg);
+    font-family: inherit;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease;
+  }
+  .reader-chrome-outline-btn:hover {
+    background: var(--reader-chrome-hover);
+    border-color: var(--reader-chrome-active);
+  }
+
+  .reader-chrome-dropdown-item {
+    border-style: none;
+    background: transparent;
+    color: var(--reader-chrome-fg);
+    font-weight: 400;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  .reader-chrome-dropdown-item:hover {
+    background: var(--reader-chrome-hover);
+  }
+  .reader-chrome-dropdown-item[data-active="true"] {
+    color: var(--reader-chrome-active);
+    font-weight: 600;
+  }
+
+  .reader-chrome-dropdown-item-muted {
+    color: var(--reader-chrome-muted);
+  }
+
+  .reader-chrome-dropdown-item-accent {
+    border-style: none;
+    background: transparent;
+    color: var(--reader-chrome-active);
+    font-weight: 500;
+    transition: background-color 150ms ease;
+  }
+  .reader-chrome-dropdown-item-accent:hover {
+    background: var(--reader-chrome-hover);
+  }
+}

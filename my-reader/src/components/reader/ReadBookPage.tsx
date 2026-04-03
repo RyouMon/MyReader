@@ -105,50 +105,74 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [navigate, bookId])
 
   if (mainHandoff) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary" />
-          <p className="text-sm">正在打开阅读窗口…</p>
-        </div>
-      </div>
-    )
+    return <ReadBookLoading message="正在打开阅读窗口…" />
   }
 
   if (fetchError || reader.error) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background text-center">
-        <p className="text-base font-medium text-destructive">加载失败</p>
-        <p className="max-w-md text-sm text-muted-foreground">
-          {fetchError || reader.error}
-        </p>
-        <button
-          type="button"
-          onClick={handleErrorClose}
-          className="mt-2 text-sm text-primary hover:underline"
-        >
-          {isTauri() ? "关闭窗口" : "返回书籍详情"}
-        </button>
-      </div>
+      <ReadBookError
+        message={fetchError ?? reader.error ?? ""}
+        actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+        onAction={handleErrorClose}
+      />
     )
   }
 
   if (!reader.ready || !reader.chapter) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary" />
-          <p className="text-sm">正在加载书籍内容…</p>
-        </div>
-      </div>
-    )
+    return <ReadBookLoading message="正在加载书籍内容…" />
   }
 
   if (reader.contentType === "image") {
     return <ComicReader bookTitle={bookTitle} reader={reader} />
   }
 
+  return <TextReader bookTitle={bookTitle} reader={reader} />
+}
+
+/**
+ * 全屏居中加载态，与阅读器入口其它占位一致（背景、边距、字号）。
+ */
+function ReadBookLoading({ message }: { message: string }) {
   return (
-    <TextReader bookTitle={bookTitle} reader={reader} />
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4">
+      <div
+        className="flex flex-col items-center gap-3 text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary"
+          aria-hidden
+        />
+        <p className="text-sm">{message}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 文件或解析失败时的全屏错误态。
+ */
+function ReadBookError({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string
+  actionLabel: string
+  onAction: () => void
+}) {
+  return (
+    <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-background px-4 text-center">
+      <p className="font-medium text-destructive">加载失败</p>
+      <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+      <button
+        type="button"
+        onClick={onAction}
+        className="mt-2 text-sm text-primary underline-offset-4 hover:underline"
+      >
+        {actionLabel}
+      </button>
+    </div>
   )
 }
