@@ -13,6 +13,14 @@ import type {
   TextChapterPaginationResult,
 } from "@/lib/rendition"
 import { BookReader } from "@/lib/rendition/BookReader"
+import { cn } from "@/lib/utils"
+
+/** 分页视口宽度不低于此值时启用自动双栏（与 {@link LayoutConfig.doubleColumn} 对应）。 */
+const READER_WIDE_COLUMN_MIN_WIDTH_PX = 1300
+
+function readerShouldUseDoubleColumn(viewportWidthPx: number): boolean {
+  return viewportWidthPx >= READER_WIDE_COLUMN_MIN_WIDTH_PX
+}
 
 interface ReaderContentProps {
   chapter: TextChapterData
@@ -28,6 +36,9 @@ interface ReaderContentProps {
   onPageStateChange?: (pageIndex: number, pageCount: number) => void
   pageOffset?: number
 }
+
+const readerPaginatedColumnClass =
+  "reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content reader-chapter-typography-host min-h-0 min-w-0 flex-1 overflow-hidden"
 
 /**
  * 单章分页视口：测量与页码由 {@link BookReader}（经 `layout`）驱动，本组件只负责挂载测量宿主与绘制。
@@ -46,6 +57,8 @@ export function ReaderContent({
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureHostRef = useRef<HTMLDivElement>(null)
   const displayRef = useRef<HTMLDivElement>(null)
+  const leftColRef = useRef<HTMLDivElement>(null)
+  const rightColRef = useRef<HTMLDivElement>(null)
 
   const parsedRootRef = useRef<HTMLDivElement | null>(null)
   const textsRef = useRef<Text[]>([])
@@ -54,18 +67,50 @@ export function ReaderContent({
   const [chapterMode, setChapterMode] = useState<"sliced" | "full">("full")
   const [pageCount, setPageCount] = useState(1)
   const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 })
+  const prevChapterIndexRef = useRef(chapter.index)
 
-  const displayPageIndex = useMemo(() => {
-    const max = Math.max(0, pageCount - 1)
-    if (typeof pageOffset !== "number") return 0
-    return Math.max(0, Math.min(pageOffset, max))
-  }, [pageOffset, pageCount])
+  const typoStyle = {
+    "--reader-padding-x": `${paddingX}rem`,
+    "--reader-font-family": fontFamily,
+    "--reader-font-size": `${fontSize}px`,
+    "--reader-line-height": String(lineHeight),
+  } as CSSProperties
+
+  const layoutDoubleColumn = readerShouldUseDoubleColumn(viewportSize.w)
+
+  const viewportModel = useMemo(
+    () =>
+      BookReader.paginatedViewportModel({
+        wideViewport: layoutDoubleColumn,
+        layoutDoubleColumn,
+        mode: chapterMode,
+        columnSliceCount: pages.length,
+        pageCountState: pageCount,
+        pageOffset,
+      }),
+    [
+      layoutDoubleColumn,
+      chapterMode,
+      pages.length,
+      pageCount,
+      pageOffset,
+    ],
+  )
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
     const host = measureHostRef.current
     if (!viewport || !host) return
     let cancelled = false
+
+    if (prevChapterIndexRef.current !== chapter.index) {
+      prevChapterIndexRef.current = chapter.index
+      setPages([])
+      setChapterMode("full")
+      setPageCount(1)
+      parsedRootRef.current = null
+      textsRef.current = []
+    }
 
     const w = viewportSize.w
     const h = viewportSize.h
@@ -78,6 +123,7 @@ export function ReaderContent({
       paddingX,
       viewPortWidth: w,
       viewPortHeight: h,
+      doubleColumn: readerShouldUseDoubleColumn(w),
     }
     void layout(config, host)
       .then((next) => {
@@ -110,6 +156,7 @@ export function ReaderContent({
     fontSize,
     lineHeight,
     paddingX,
+    chapter.index,
     viewportSize.w,
     viewportSize.h,
   ])
@@ -127,19 +174,23 @@ export function ReaderContent({
   }, [])
 
   useLayoutEffect(() => {
-    const el = displayRef.current
-    if (!el) return
-
-    BookReader.renderPaginatedTextPage(
-      el,
-      chapter,
-      chapterMode,
-      pages,
-      displayPageIndex,
-      parsedRootRef.current,
-      textsRef.current,
+    BookReader.renderPaginatedViewport(
+      {
+        single: displayRef.current,
+        left: leftColRef.current,
+        right: rightColRef.current,
+      },
+      {
+        chapter,
+        mode: chapterMode,
+        pages,
+        leftColumnIndex: viewportModel.leftColumnIndex,
+        sourceRoot: parsedRootRef.current,
+        texts: textsRef.current,
+        twoColumnShell: viewportModel.twoColumnShell,
+      },
     )
-  }, [chapterMode, chapter, pages, displayPageIndex])
+  }, [chapterMode, chapter, pages, viewportModel])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -163,18 +214,19 @@ export function ReaderContent({
     }
   }, [])
 
+  const { spreadIndex, spreadCount, twoColumnShell } = viewportModel
+
   useEffect(() => {
-    if (pageCount <= 1) {
+    if (spreadCount <= 1) {
       onProgressChange(100)
       return
     }
-    const pct = Math.round((displayPageIndex / (pageCount - 1)) * 100)
-    onProgressChange(pct)
-  }, [displayPageIndex, pageCount, onProgressChange])
+    onProgressChange(Math.round((spreadIndex / (spreadCount - 1)) * 100))
+  }, [spreadIndex, spreadCount, onProgressChange])
 
   useEffect(() => {
-    onPageStateChange?.(displayPageIndex, pageCount)
-  }, [onPageStateChange, displayPageIndex, pageCount])
+    onPageStateChange?.(spreadIndex, spreadCount)
+  }, [onPageStateChange, spreadIndex, spreadCount])
 
   return (
     <div className="relative min-h-0 flex-1">
@@ -186,20 +238,36 @@ export function ReaderContent({
       <main className="reader-paginated-main reader-text-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <div
           ref={viewportRef}
-          className="h-full w-full min-h-0 overflow-hidden"
+          className={cn(
+            "h-full w-full min-h-0 overflow-hidden",
+            twoColumnShell && "flex min-h-0 flex-row",
+          )}
+          style={
+            twoColumnShell
+              ? { gap: `${BookReader.PAGINATION_DOUBLE_COLUMN_GAP_PX}px` }
+              : undefined
+          }
         >
-          <div
-            ref={displayRef}
-            className="reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content reader-chapter-typography-host"
-            style={
-              {
-                "--reader-padding-x": `${paddingX}rem`,
-                "--reader-font-family": fontFamily,
-                "--reader-font-size": `${fontSize}px`,
-                "--reader-line-height": String(lineHeight),
-              } as CSSProperties
-            }
-          />
+          {twoColumnShell ? (
+            <>
+              <div
+                ref={leftColRef}
+                className={readerPaginatedColumnClass}
+                style={typoStyle}
+              />
+              <div
+                ref={rightColRef}
+                className={readerPaginatedColumnClass}
+                style={typoStyle}
+              />
+            </>
+          ) : (
+            <div
+              ref={displayRef}
+              className={readerPaginatedColumnClass}
+              style={typoStyle}
+            />
+          )}
         </div>
       </main>
     </div>

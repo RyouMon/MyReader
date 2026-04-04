@@ -31,6 +31,20 @@ interface ClonedAncestorTree {
   innerMost: Node | null
 }
 
+/** 双栏测量半宽与阅读器双栏 flex gap 共用（px）。 */
+export const PAGINATION_DOUBLE_COLUMN_GAP_PX = 28
+
+function paginationColumnMeasureWidthPx(
+  viewportWidth: number,
+  doubleColumn: boolean,
+): number {
+  if (!doubleColumn || viewportWidth <= 0) return viewportWidth
+  return Math.max(
+    96,
+    Math.floor((viewportWidth - PAGINATION_DOUBLE_COLUMN_GAP_PX) / 2),
+  )
+}
+
 const READER_SOURCE_ROOT_CLASS =
   "reader-chapter-container reader-paginated-container reader-body-content"
 
@@ -190,7 +204,10 @@ export async function layoutTextChapterAtMeasureHost(
   measureHost: HTMLDivElement,
   paginator: ProgressivePaginator,
 ): Promise<TextChapterPaginationResult> {
-  const width = config.viewPortWidth
+  const width = paginationColumnMeasureWidthPx(
+    config.viewPortWidth,
+    Boolean(config.doubleColumn),
+  )
   const height = config.viewPortHeight
   const typography: ReaderTypographyConfig = {
     fontFamily: config.fontFamily,

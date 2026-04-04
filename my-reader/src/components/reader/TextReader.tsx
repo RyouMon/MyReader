@@ -403,7 +403,6 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
         )}
         {layout === "paginate" && (
           <ReaderContent
-            key={chapter.index}
             chapter={chapter}
             layout={applyLayout}
             fontFamily={store.settings.fontFamily}

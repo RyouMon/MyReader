@@ -1,6 +1,7 @@
 import {
   findPageIndexForReadingAnchor,
   layoutTextChapterAtMeasureHost,
+  PAGINATION_DOUBLE_COLUMN_GAP_PX,
   ProgressivePaginator,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
@@ -22,6 +23,25 @@ import type {
   TextChapterPaginationResult,
   TocItem,
 } from "./types"
+
+/** 列页切片数 → 双栏下的跨页（屏）数。 */
+function textSpreadCountFromColumns(columnPageCount: number): number {
+  return Math.max(1, Math.ceil(Math.max(0, columnPageCount) / 2))
+}
+
+/** 跨页下标 → 该跨左栏的列页下标。 */
+function spreadIndexToLeftColumn(
+  spread: number,
+  columnPageCount: number,
+): number {
+  if (columnPageCount <= 0) return 0
+  return Math.min(2 * Math.max(0, spread), columnPageCount - 1)
+}
+
+/** 列页下标 → 所在跨页下标。 */
+function columnPageIndexToSpread(columnPageIndex: number): number {
+  return Math.max(0, Math.floor(columnPageIndex / 2))
+}
 
 /**
  * Headless reader state machine.
@@ -180,32 +200,38 @@ export class BookReader {
           measureHost,
           this.paginator,
         )
-        const pageCount = Math.max(1, result.pageCount)
-        let nextOffset = Math.min(
-          this._currentPageOffset,
-          Math.max(0, pageCount - 1),
-        )
+        const N = result.pages.length
+        const maxCol = Math.max(0, N - 1)
+        let nextCol = Math.min(this._currentPageOffset, maxCol)
+        if (config.doubleColumn && N > 0) {
+          nextCol = spreadIndexToLeftColumn(columnPageIndexToSpread(nextCol), N)
+        }
         if (
           this._openAtChapterEndPending &&
           result.mode === "sliced" &&
-          result.pages.length > 0
+          N > 0
         ) {
-          nextOffset = result.pages.length - 1
+          const lastSpread = textSpreadCountFromColumns(N) - 1
+          nextCol = spreadIndexToLeftColumn(lastSpread, N)
           this._openAtChapterEndPending = false
         } else if (
           anchorBefore &&
           result.mode === "sliced" &&
-          result.pages.length > 0 &&
+          N > 0 &&
           result.sourceRoot
         ) {
-          nextOffset = findPageIndexForReadingAnchor(
+          const anchorCol = findPageIndexForReadingAnchor(
             result.sourceRoot,
             result.pages,
             anchorBefore,
           )
-          nextOffset = Math.max(0, Math.min(nextOffset, pageCount - 1))
+          const c = Math.max(0, Math.min(anchorCol, maxCol))
+          const double = Boolean(config.doubleColumn)
+          nextCol = double
+            ? spreadIndexToLeftColumn(columnPageIndexToSpread(c), N)
+            : c
         }
-        await this.paginator.gotoPage(nextOffset)
+        await this.paginator.gotoPage(nextCol)
         this.syncPageStateFromPaginator()
         return result
       }
@@ -286,22 +312,22 @@ export class BookReader {
       if (slices.length > 0) {
         const lastIdx = slices.length - 1
         const before = this.paginator.curPage?.index ?? -1
-        await this.paginator.gotoNextPage()
-        const after = this.paginator.curPage?.index ?? -1
-        if (after !== before) {
+        const step =
+          this._layoutConfig?.doubleColumn && slices.length > 0 ? 2 : 1
+        const target = before + step
+        if (target <= lastIdx) {
+          await this.paginator.gotoPage(target)
           this.syncPageStateFromPaginator()
           return this.getChapter(this._currentIndex)
         }
-        if (before >= lastIdx) {
-          if (!this.nextChapter()) return null
-          const ch = await this.getChapter(this._currentIndex)
-          this._chapterStartFromEnd = false
-          await this.paginator.clearCache()
-          this._currentPageOffset = 0
-          this._totalPagesOfCurChapter = 1
-          this.invalidatePageDescriptorCaches()
-          return ch
-        }
+        if (!this.nextChapter()) return null
+        const ch = await this.getChapter(this._currentIndex)
+        this._chapterStartFromEnd = false
+        await this.paginator.clearCache()
+        this._currentPageOffset = 0
+        this._totalPagesOfCurChapter = 1
+        this.invalidatePageDescriptorCaches()
+        return ch
       }
       if (this._currentPageOffset < this._totalPagesOfCurChapter - 1) {
         this._currentPageOffset += 1
@@ -343,23 +369,23 @@ export class BookReader {
       const slices = this.paginator.getAllSlices()
       if (slices.length > 0) {
         const before = this.paginator.curPage?.index ?? -1
-        await this.paginator.gotoPrevPage()
-        const after = this.paginator.curPage?.index ?? -1
-        if (after !== before) {
+        const step =
+          this._layoutConfig?.doubleColumn && slices.length > 0 ? 2 : 1
+        const target = before - step
+        if (target >= 0) {
+          await this.paginator.gotoPage(target)
           this.syncPageStateFromPaginator()
           return this.getChapter(this._currentIndex)
         }
-        if (before <= 0) {
-          if (!this.prevChapter()) return null
-          const ch = await this.getChapter(this._currentIndex)
-          this._chapterStartFromEnd = true
-          this._openAtChapterEndPending = true
-          await this.paginator.clearCache()
-          this._currentPageOffset = 0
-          this._totalPagesOfCurChapter = 1
-          this.invalidatePageDescriptorCaches()
-          return ch
-        }
+        if (!this.prevChapter()) return null
+        const ch = await this.getChapter(this._currentIndex)
+        this._chapterStartFromEnd = true
+        this._openAtChapterEndPending = true
+        await this.paginator.clearCache()
+        this._currentPageOffset = 0
+        this._totalPagesOfCurChapter = 1
+        this.invalidatePageDescriptorCaches()
+        return ch
       }
       if (this._currentPageOffset > 0) {
         this._currentPageOffset -= 1
@@ -399,12 +425,20 @@ export class BookReader {
    */
   gotoPageInChapter(totalPages: number, pageOffset: number): void {
     this._totalPagesOfCurChapter = Math.max(1, totalPages)
-    this._currentPageOffset = Math.max(
+    const clamped = Math.max(
       0,
       Math.min(pageOffset, this._totalPagesOfCurChapter - 1),
     )
     if (this.paginator instanceof ProgressivePaginator) {
-      void this.paginator.gotoPage(this._currentPageOffset)
+      const N = this.paginator.getAllSlices().length
+      let col = clamped
+      if (this._layoutConfig?.doubleColumn && N > 0) {
+        col = spreadIndexToLeftColumn(clamped, N)
+      }
+      void this.paginator.gotoPage(col)
+      this._currentPageOffset = col
+    } else {
+      this._currentPageOffset = clamped
     }
     this.syncPageStateFromPaginator()
   }
@@ -447,6 +481,133 @@ export class BookReader {
     this.invalidatePageDescriptorCaches()
   }
 
+  static readonly PAGINATION_DOUBLE_COLUMN_GAP_PX =
+    PAGINATION_DOUBLE_COLUMN_GAP_PX
+
+  /**
+   * 分页视口展示模型。
+   * `twoColumnShell` 仅由宽屏决定，避免换章或重测期间因 `pages` 暂空先画单列再跳双列。
+   * 切片与跨页进度仍由 `contentIsSliced` 判定。
+   */
+  static paginatedViewportModel(params: {
+    /** 宽屏双栏壳（可与测量不同策略；通常与 layoutDoubleColumn 同源）。 */
+    wideViewport: boolean
+    /**
+     * 须与 {@link LayoutConfig.doubleColumn} 一致。单列测量时禁用跨页取整，否则奇数列页会被映射成前一跨左栏导致无法翻页。
+     */
+    layoutDoubleColumn: boolean
+    mode: TextChapterPaginationResult["mode"]
+    columnSliceCount: number
+    pageCountState: number
+    pageOffset: number | undefined
+  }): {
+    twoColumnShell: boolean
+    leftColumnIndex: number
+    spreadIndex: number
+    spreadCount: number
+  } {
+    const {
+      wideViewport,
+      layoutDoubleColumn,
+      mode,
+      columnSliceCount,
+      pageCountState,
+      pageOffset,
+    } = params
+    const twoColumnShell = wideViewport
+    const contentIsSliced = mode === "sliced" && columnSliceCount > 0
+    const max = Math.max(0, pageCountState - 1)
+    const raw =
+      typeof pageOffset === "number"
+        ? Math.max(0, Math.min(pageOffset, max))
+        : 0
+    const leftColumnIndex =
+      layoutDoubleColumn && contentIsSliced && pageCountState > 0
+        ? spreadIndexToLeftColumn(columnPageIndexToSpread(raw), pageCountState)
+        : raw
+    const spreadCount =
+      layoutDoubleColumn && contentIsSliced && columnSliceCount > 1
+        ? textSpreadCountFromColumns(columnSliceCount)
+        : Math.max(1, pageCountState)
+    const spreadIndex =
+      layoutDoubleColumn && contentIsSliced && columnSliceCount > 0
+        ? columnPageIndexToSpread(leftColumnIndex)
+        : leftColumnIndex
+    return {
+      twoColumnShell,
+      leftColumnIndex,
+      spreadIndex,
+      spreadCount,
+    }
+  }
+
+  /**
+   * 绘制单列或双栏视口；宽屏双栏壳下 `left`/`right` 须已挂载（整章 mode=full 时只填左栏）。
+   */
+  static renderPaginatedViewport(
+    elements: {
+      single: HTMLElement | null
+      left: HTMLElement | null
+      right: HTMLElement | null
+    },
+    args: {
+      chapter: TextChapterData
+      mode: TextChapterPaginationResult["mode"]
+      pages: TextChapterPaginationResult["pages"]
+      leftColumnIndex: number
+      sourceRoot: HTMLDivElement | null
+      texts: Text[]
+      twoColumnShell: boolean
+    },
+  ): void {
+    const {
+      chapter,
+      mode,
+      pages,
+      leftColumnIndex,
+      sourceRoot,
+      texts,
+      twoColumnShell,
+    } = args
+    if (twoColumnShell && elements.left && elements.right) {
+      renderTextChapterPage(
+        elements.left,
+        chapter,
+        mode,
+        pages,
+        leftColumnIndex,
+        sourceRoot,
+        texts,
+      )
+      const rightIdx = leftColumnIndex + 1
+      if (rightIdx < pages.length) {
+        renderTextChapterPage(
+          elements.right,
+          chapter,
+          mode,
+          pages,
+          rightIdx,
+          sourceRoot,
+          texts,
+        )
+      } else {
+        elements.right.replaceChildren()
+      }
+      return
+    }
+    if (elements.single) {
+      renderTextChapterPage(
+        elements.single,
+        chapter,
+        mode,
+        pages,
+        leftColumnIndex,
+        sourceRoot,
+        texts,
+      )
+    }
+  }
+
   /**
    * 将文本书分页测量结果绘制到视口节点；具体切片逻辑由 ProgressivePaginator 实现。
    */
@@ -471,15 +632,28 @@ export class BookReader {
   }
 
   /**
-   * Builds page descriptor from current chapter/page pointers.
+   * Builds page descriptor from当前列页下标；双栏时 `totalPages` 为跨页数 S，`index` 仍为列下标。
    */
-  private makePage(chapter: number, index: number): PageData {
+  private makePage(
+    chapter: number,
+    columnIndex: number,
+    columnPageCount: number,
+  ): PageData {
+    const double =
+      Boolean(this._layoutConfig?.doubleColumn) && columnPageCount > 0
+    let isEnd: boolean
+    if (double) {
+      const s = textSpreadCountFromColumns(columnPageCount)
+      isEnd = columnPageIndexToSpread(columnIndex) >= s - 1
+    } else {
+      isEnd = columnIndex >= this._totalPagesOfCurChapter - 1
+    }
     return {
-      index,
+      index: columnIndex,
       chapter,
       columns: [],
-      isStartOfChapter: index === 0,
-      isEndOfChapter: index >= this._totalPagesOfCurChapter - 1,
+      isStartOfChapter: columnIndex === 0,
+      isEndOfChapter: isEnd,
     }
   }
 
@@ -492,24 +666,34 @@ export class BookReader {
     if (key === this._pageDescriptorKey) return
     this._pageDescriptorKey = key
 
+    const progSlices =
+      this.paginator instanceof ProgressivePaginator
+        ? this.paginator.getAllSlices()
+        : []
+    const N = progSlices.length
+    const double = Boolean(this._layoutConfig?.doubleColumn) && N > 0
+    const step = double ? 2 : 1
+    const maxCol = N > 0 ? N - 1 : Math.max(0, this._totalPagesOfCurChapter - 1)
+
     this._curPageCache = this.makePage(
       this._currentIndex,
       this._currentPageOffset,
+      N,
     )
 
     this._prevPageCache =
-      this._currentPageOffset > 0
-        ? this.makePage(this._currentIndex, this._currentPageOffset - 1)
+      this._currentPageOffset >= step
+        ? this.makePage(this._currentIndex, this._currentPageOffset - step, N)
         : this._currentIndex <= 0
           ? null
-          : this.makePage(this._currentIndex - 1, 0)
+          : this.makePage(this._currentIndex - 1, 0, 0)
 
     this._nextPageCache =
-      this._currentPageOffset < this._totalPagesOfCurChapter - 1
-        ? this.makePage(this._currentIndex, this._currentPageOffset + 1)
+      this._currentPageOffset + step <= maxCol
+        ? this.makePage(this._currentIndex, this._currentPageOffset + step, N)
         : this._currentIndex >= this.totalChapters - 1
           ? null
-          : this.makePage(this._currentIndex + 1, 0)
+          : this.makePage(this._currentIndex + 1, 0, 0)
   }
 
   /**
@@ -527,10 +711,31 @@ export class BookReader {
       return
     }
     this._currentPageOffset = this.paginator.curPage.index
-    const total = this.paginator.nextPage
-      ? Math.max(this.paginator.nextPage.index + 1, this._currentPageOffset + 1)
-      : this._currentPageOffset + 1
-    this._totalPagesOfCurChapter = Math.max(1, total)
+    if (this.paginator instanceof ProgressivePaginator) {
+      const slices = this.paginator.getAllSlices()
+      const n = slices.length
+      if (n > 0) {
+        this._totalPagesOfCurChapter = this._layoutConfig?.doubleColumn
+          ? textSpreadCountFromColumns(n)
+          : Math.max(1, n)
+      } else {
+        const total = this.paginator.nextPage
+          ? Math.max(
+              this.paginator.nextPage.index + 1,
+              this._currentPageOffset + 1,
+            )
+          : this._currentPageOffset + 1
+        this._totalPagesOfCurChapter = Math.max(1, total)
+      }
+    } else {
+      const total = this.paginator.nextPage
+        ? Math.max(
+            this.paginator.nextPage.index + 1,
+            this._currentPageOffset + 1,
+          )
+        : this._currentPageOffset + 1
+      this._totalPagesOfCurChapter = Math.max(1, total)
+    }
     this.invalidatePageDescriptorCaches()
   }
 
