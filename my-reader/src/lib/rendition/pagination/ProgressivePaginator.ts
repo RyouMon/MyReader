@@ -38,7 +38,54 @@ const READER_MEASURE_ROOT_CLASS =
   "reader-chapter-container reader-paginated-container reader-body-content"
 
 const BREAK_AVOID_VALUES = new Set(["avoid", "avoid-page", "avoid-column"])
-const BREAK_FORCE_VALUES = new Set(["page", "always", "left", "right", "column"])
+const BREAK_FORCE_VALUES = new Set([
+  "page",
+  "always",
+  "left",
+  "right",
+  "column",
+])
+
+/**
+ * Waits until an img has bitmap dimensions so overflow math matches on-screen layout.
+ * Pagination used to treat undecoded images as ~0px tall and kept appending siblings on the same page.
+ */
+async function ensureImageDrawable(img: HTMLImageElement): Promise<void> {
+  if (!img.src && !img.srcset?.trim()) return
+  if (img.complete && img.naturalWidth > 0) return
+  try {
+    if (typeof img.decode === "function") await img.decode()
+  } catch {
+    // broken or unsupported
+  }
+  if (img.complete && img.naturalWidth > 0) return
+  await new Promise<void>((resolve) => {
+    img.addEventListener("load", () => resolve(), { once: true })
+    img.addEventListener("error", () => resolve(), { once: true })
+  })
+}
+
+/** Warms the HTTP cache for every image in the hidden source tree before measuring pages. */
+async function preloadImagesForPagination(root: HTMLElement): Promise<void> {
+  const imgs = root.querySelectorAll("img")
+  if (imgs.length === 0) return
+  await Promise.all([...imgs].map((img) => ensureImageDrawable(img)))
+}
+
+/**
+ * Laid-out column height (container top → measure root bottom). ebook-paginator uses
+ * `heightAdded += target.offsetHeight`, which stays ~0 when most nodes are Text (no offsetHeight);
+ * syncing from geometry fixes false `heightAdded <= 1` and stops spurious “force fit” on images.
+ */
+function syncLaidOutColumnHeight(
+  measureRoot: HTMLElement,
+  measureContainer: HTMLElement,
+): number {
+  return Math.round(
+    measureRoot.getBoundingClientRect().bottom -
+      measureContainer.getBoundingClientRect().top,
+  )
+}
 
 export const READER_TYPOGRAPHY_OVERRIDE_CSS = `
 .reader-epub-scope,
@@ -178,11 +225,13 @@ export async function layoutTextChapterAtMeasureHost(
   measureHost.style.position = "absolute"
   measureHost.style.left = "-9999px"
   measureHost.style.top = "0"
-  measureHost.style.visibility = "hidden"
+  measureHost.style.opacity = "0"
   measureHost.style.pointerEvents = "none"
 
   measureHost.appendChild(sourceContainer)
   measureHost.appendChild(measureContainer)
+
+  await preloadImagesForPagination(sourceContainer)
 
   const pages = await paginateDomIntoPages(
     sourceRoot,
@@ -364,12 +413,10 @@ async function paginateOnePage(
   let target: Node = measureRoot
   let depth = 0
   let breakAtDepth = 0
-  let avoidInside:
-    | {
-        node: Node
-        target: Node
-      }
-    | null = null
+  let avoidInside: {
+    node: Node
+    target: Node
+  } | null = null
   let nodesAdded = 0
   let heightAdded = 0
 
@@ -381,7 +428,9 @@ async function paginateOnePage(
     }
 
     if (offset > 0 && node.nodeType === Node.TEXT_NODE) {
-      const partial = document.createTextNode(node.textContent?.slice(offset) ?? "")
+      const partial = document.createTextNode(
+        node.textContent?.slice(offset) ?? "",
+      )
       target.appendChild(partial)
       if (didOverflow(partial, measureContainer, measureRoot)) {
         const newOffset = findOverflowOffset(
@@ -392,7 +441,9 @@ async function paginateOnePage(
         target.removeChild(partial)
         if (newOffset > 0) {
           target.appendChild(
-            document.createTextNode(partial.textContent?.slice(0, newOffset) ?? ""),
+            document.createTextNode(
+              partial.textContent?.slice(0, newOffset) ?? "",
+            ),
           )
         }
         return {
@@ -408,6 +459,8 @@ async function paginateOnePage(
       target = clonedNode
     }
   }
+
+  heightAdded = syncLaidOutColumnHeight(measureRoot, measureContainer)
 
   let firstRun = true
 
@@ -427,25 +480,41 @@ async function paginateOnePage(
     if (!avoidInside && breakRule === "avoid-inside") {
       avoidInside = { node, target }
       breakAtDepth = depth
-    } else if (depth <= breakAtDepth && avoidInside && node !== avoidInside.node) {
+    } else if (
+      depth <= breakAtDepth &&
+      avoidInside &&
+      node !== avoidInside.node
+    ) {
       breakAtDepth = 0
       avoidInside = null
     }
 
     const breakBefore = breakRule === "before" && nodesAdded > 0
+
+    if (target instanceof HTMLImageElement) {
+      await ensureImageDrawable(target)
+    }
+
     let overflowed = didOverflow(target, measureContainer, measureRoot)
 
+    // ebook-paginator/index.js: only shrink a lone overflowing block when almost nothing
+    // else is on the page (`heightAdded <= 1`). Otherwise remove the node and continue on
+    // the next page — critical for “paragraphs + tall img” so the image is not squeezed
+    // onto the same slice as following text.
     if (
       overflowed &&
       heightAdded <= 1 &&
-      target.nodeType === Node.ELEMENT_NODE &&
+      target.nodeType !== Node.TEXT_NODE &&
       target instanceof HTMLElement
     ) {
-      const rect = measureContainer.getBoundingClientRect()
+      const r = measureContainer.getBoundingClientRect()
+      target.style.boxSizing = "border-box"
       target.style.width = "auto"
-      target.style.maxWidth = `${rect.width}px`
-      target.style.maxHeight = `${rect.height}px`
-      overflowed = false
+      target.style.maxWidth = `${Math.floor(r.width)}px`
+      target.style.maxHeight = `${Math.floor(r.height)}px`
+      target.style.objectFit = "contain"
+      void target.getBoundingClientRect()
+      overflowed = didOverflow(target, measureContainer, measureRoot)
     }
 
     if (overflowed || breakBefore) {
@@ -467,7 +536,9 @@ async function paginateOnePage(
         parent?.removeChild(target)
         if (splitOffset > 0 && parent) {
           parent.appendChild(
-            document.createTextNode(node.textContent?.slice(0, splitOffset) ?? ""),
+            document.createTextNode(
+              node.textContent?.slice(0, splitOffset) ?? "",
+            ),
           )
         }
         return {
@@ -483,10 +554,13 @@ async function paginateOnePage(
       }
     }
 
-    if (target.nodeType !== Node.TEXT_NODE || (target.textContent?.trim() ?? "") !== "") {
+    if (
+      target.nodeType !== Node.TEXT_NODE ||
+      (target.textContent?.trim() ?? "") !== ""
+    ) {
       nodesAdded += 1
-      heightAdded += target instanceof HTMLElement ? target.offsetHeight : 0
     }
+    heightAdded = syncLaidOutColumnHeight(measureRoot, measureContainer)
   }
 }
 
@@ -544,7 +618,10 @@ function appendNextNodeForward(
 }
 
 /** Rebuilds ancestor wrappers from the source node back to the root. */
-function cloneAncestorsUntil(node: Node, root: HTMLElement): ClonedAncestorTree {
+function cloneAncestorsUntil(
+  node: Node,
+  root: HTMLElement,
+): ClonedAncestorTree {
   let tree: Node | null = null
   let innerMost: Node | null = null
   let current: Node | null = node
@@ -575,7 +652,9 @@ function didOverflow(
     target instanceof HTMLElement
       ? target
       : getFirstElementAncestor(target, stopRoot)
-  const spacing = anchor ? getAncestorsCombinedBottomSpacing(anchor, stopRoot) : 0
+  const spacing = anchor
+    ? getAncestorsCombinedBottomSpacing(anchor, stopRoot)
+    : 0
   const pageBottom = Math.floor(measureContainer.getBoundingClientRect().bottom)
   const edge = Math.round(rect.bottom + spacing)
 
@@ -598,7 +677,9 @@ function findOverflowOffset(
   range.setStart(target, 0)
 
   const anchor = getFirstElementAncestor(target, stopRoot)
-  const spacing = anchor ? getAncestorsCombinedBottomSpacing(anchor, stopRoot) : 0
+  const spacing = anchor
+    ? getAncestorsCombinedBottomSpacing(anchor, stopRoot)
+    : 0
   const pageBottom = Math.floor(measureContainer.getBoundingClientRect().bottom)
 
   let previous = 0
@@ -698,7 +779,8 @@ function getAncestorsCombinedBottomSpacing(
 /** Reads bottom spacing used by the overflow calculation. */
 function getBottomSpacing(element: HTMLElement): number {
   const style = window.getComputedStyle(element)
-  const padding = Number.parseFloat(style.getPropertyValue("padding-bottom")) || 0
+  const padding =
+    Number.parseFloat(style.getPropertyValue("padding-bottom")) || 0
   const margin = Number.parseFloat(style.getPropertyValue("margin-bottom")) || 0
   return padding + margin
 }
@@ -783,6 +865,81 @@ function applyRangeBoundary(
   const safeOffset = Math.max(0, Math.min(boundary.offset, maxOffset))
   if (isStart) range.setStart(target, safeOffset)
   else range.setEnd(target, safeOffset)
+}
+
+function compareBoundariesInDocumentOrder(
+  root: HTMLElement,
+  a: RangeBoundary,
+  b: RangeBoundary,
+): number {
+  const doc = root.ownerDocument
+  const ra = doc.createRange()
+  const rb = doc.createRange()
+  try {
+    applyRangeBoundary(ra, root, a, true)
+    ra.collapse(true)
+    applyRangeBoundary(rb, root, b, true)
+    rb.collapse(true)
+    return ra.compareBoundaryPoints(Range.START_TO_START, rb)
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * After typography or viewport reflow, finds which new page still shows the same
+ * document position. Same idea as ebook-paginator `redraw(true)`: keep the current
+ * page start (node + offset) and re-paginate from there.
+ */
+export function findPageIndexForReadingAnchor(
+  sourceRoot: HTMLElement,
+  pages: DomPageSlice[],
+  anchor: RangeBoundary,
+): number {
+  if (pages.length === 0) return 0
+  const doc = sourceRoot.ownerDocument
+  const point = doc.createRange()
+  try {
+    applyRangeBoundary(point, sourceRoot, anchor, true)
+    point.collapse(true)
+  } catch {
+    return 0
+  }
+
+  for (let i = 0; i < pages.length; i++) {
+    const slice = pages[i]
+    const pageRange = doc.createRange()
+    try {
+      applyRangeBoundary(pageRange, sourceRoot, slice.start, true)
+      applyRangeBoundary(pageRange, sourceRoot, slice.end, false)
+    } catch {
+      continue
+    }
+    try {
+      const afterOrAtStart =
+        pageRange.compareBoundaryPoints(Range.START_TO_START, point) <= 0
+      const beforeEnd =
+        point.compareBoundaryPoints(Range.START_TO_END, pageRange) < 0
+      if (afterOrAtStart && beforeEnd) return i
+    } catch {
+      // skip malformed slice
+    }
+  }
+
+  let best = 0
+  for (let i = 0; i < pages.length; i++) {
+    try {
+      if (
+        compareBoundariesInDocumentOrder(sourceRoot, pages[i].start, anchor) <=
+        0
+      ) {
+        best = i
+      }
+    } catch {
+      // skip malformed slice
+    }
+  }
+  return best
 }
 
 /** Resolves a serialized child-index path back into a live DOM node. */

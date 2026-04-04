@@ -1,6 +1,8 @@
 import {
+  findPageIndexForReadingAnchor,
   layoutTextChapterAtMeasureHost,
   ProgressivePaginator,
+  renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
 import { ComicParser } from "./parsers/ComicParser"
 import { EpubParser } from "./parsers/EpubParser"
@@ -16,6 +18,7 @@ import type {
   PageData,
   ParsedBook,
   ReaderProgress,
+  TextChapterData,
   TextChapterPaginationResult,
   TocItem,
 } from "./types"
@@ -23,13 +26,14 @@ import type {
 /**
  * Headless reader state machine.
  *
- * Owns the parser, manages current chapter index, and exposes
- * navigation primitives. Contains zero DOM or rendering logic
- * — the consumer decides how to present the data.
+ * 持有 parser、分页状态与章节导航；文本书分页视图的 DOM 经
+ * {@link BookReader.renderPaginatedTextPage} 委托给分页实现。
  *
  * {@link curPage} / {@link prevPage} / {@link nextPage} 在导航键（章、偏移、章内总页、全书章数）
  * 不变时保持同一对象引用；键变化时替换为新对象，便于 React 等用 `Object.is` 触发更新。
  * 请勿修改返回的 {@link PageData}。
+ *
+ * 文本书分页视图的 DOM 绘制请使用 {@link BookReader.renderPaginatedTextPage}，由控制器统一委托分页实现。
  */
 export class BookReader {
   private parser: IParser | null = null
@@ -40,6 +44,8 @@ export class BookReader {
   private _currentPageOffset = 0
   private _totalPagesOfCurChapter = 1
   private _chapterStartFromEnd = false
+  /** 下一首次成功切片分页后从章末打开（与 UI 层 `startFromEnd` 一次性语义一致） */
+  private _openAtChapterEndPending = false
   private _ready = false
 
   /** 与导航键一致时 {@link curPage}/{@link prevPage}/{@link nextPage} 复用同一对象引用 */
@@ -126,6 +132,7 @@ export class BookReader {
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
+    this._openAtChapterEndPending = false
     this._ready = true
     this.invalidatePageDescriptorCaches()
     return this.book
@@ -163,12 +170,44 @@ export class BookReader {
         if (ch.type !== "text") {
           throw new Error("layout(measureHost) requires a text chapter")
         }
-        return layoutTextChapterAtMeasureHost(
+        const anchorBefore =
+          this.paginator.getAllSlices().length > 0
+            ? (this.paginator.getCurrentSlice()?.start ?? null)
+            : null
+        const result = await layoutTextChapterAtMeasureHost(
           ch,
           config,
           measureHost,
           this.paginator,
         )
+        const pageCount = Math.max(1, result.pageCount)
+        let nextOffset = Math.min(
+          this._currentPageOffset,
+          Math.max(0, pageCount - 1),
+        )
+        if (
+          this._openAtChapterEndPending &&
+          result.mode === "sliced" &&
+          result.pages.length > 0
+        ) {
+          nextOffset = result.pages.length - 1
+          this._openAtChapterEndPending = false
+        } else if (
+          anchorBefore &&
+          result.mode === "sliced" &&
+          result.pages.length > 0 &&
+          result.sourceRoot
+        ) {
+          nextOffset = findPageIndexForReadingAnchor(
+            result.sourceRoot,
+            result.pages,
+            anchorBefore,
+          )
+          nextOffset = Math.max(0, Math.min(nextOffset, pageCount - 1))
+        }
+        await this.paginator.gotoPage(nextOffset)
+        this.syncPageStateFromPaginator()
+        return result
       }
       await this.paginator.clearCache()
       return undefined
@@ -186,6 +225,7 @@ export class BookReader {
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
+    this._openAtChapterEndPending = false
     this.invalidatePageDescriptorCaches()
   }
 
@@ -198,6 +238,7 @@ export class BookReader {
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = true
+    this._openAtChapterEndPending = true
     this.invalidatePageDescriptorCaches()
   }
 
@@ -312,6 +353,7 @@ export class BookReader {
           if (!this.prevChapter()) return null
           const ch = await this.getChapter(this._currentIndex)
           this._chapterStartFromEnd = true
+          this._openAtChapterEndPending = true
           await this.paginator.clearCache()
           this._currentPageOffset = 0
           this._totalPagesOfCurChapter = 1
@@ -336,6 +378,7 @@ export class BookReader {
       if (!this.prevChapter()) return null
       const ch = await this.getChapter(this._currentIndex)
       this._chapterStartFromEnd = true
+      this._openAtChapterEndPending = true
       if (this._layoutConfig)
         await this.paginator.layout(ch, this._layoutConfig)
       await this.paginator.gotoPage(Number.MAX_SAFE_INTEGER)
@@ -400,7 +443,31 @@ export class BookReader {
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
+    this._openAtChapterEndPending = false
     this.invalidatePageDescriptorCaches()
+  }
+
+  /**
+   * 将文本书分页测量结果绘制到视口节点；具体切片逻辑由 ProgressivePaginator 实现。
+   */
+  static renderPaginatedTextPage(
+    display: HTMLElement,
+    chapter: TextChapterData,
+    mode: TextChapterPaginationResult["mode"],
+    pages: TextChapterPaginationResult["pages"],
+    pageIndex: number,
+    sourceRoot: HTMLDivElement | null,
+    texts: Text[],
+  ): void {
+    renderTextChapterPage(
+      display,
+      chapter,
+      mode,
+      pages,
+      pageIndex,
+      sourceRoot,
+      texts,
+    )
   }
 
   /**

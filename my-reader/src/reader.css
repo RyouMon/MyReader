@@ -61,6 +61,7 @@
 }
 
 .reader-paginated-container {
+  container-type: size;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -70,6 +71,16 @@
   column-width: auto;
   column-gap: 0;
   column-fill: auto;
+}
+
+/* 分页/单页：大图按版心缩放到不超出可视区域（cqh/cqw 相对本容器内容盒） */
+.reader-paginated-container :is(img, svg, video) {
+  max-width: min(100%, 100cqw);
+  max-height: 100cqh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  box-sizing: border-box;
 }
 
 /* 测量分页用：高度随内容，避免继承 h-full 导致 scrollHeight 失真 */
@@ -362,6 +373,10 @@
   line-height: var(--reader-line-height);
 }
 
+.reader-scroll-viewport {
+  container-type: size;
+}
+
 .reader-scroll-chapter-inner {
   box-sizing: border-box;
   max-width: 42rem;
@@ -373,6 +388,15 @@
   font-family: var(--reader-font-family);
   font-size: var(--reader-font-size);
   line-height: var(--reader-line-height);
+}
+
+.reader-scroll-chapter-inner :is(img, svg, video) {
+  max-width: min(100%, 100cqw);
+  max-height: 100cqh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  box-sizing: border-box;
 }
 
 /* ═══ Tailwind-friendly reader chrome (replaces scattered inline styles) ═══ */

@@ -81,7 +81,7 @@ export function ReaderScrollContent({
   return (
     <main
       ref={scrollContainerRef}
-      className="reader-text-surface flex-1 overflow-y-auto overflow-x-hidden"
+      className="reader-scroll-viewport reader-text-surface flex-1 overflow-y-auto overflow-x-hidden"
       onScroll={handleScroll}
     >
       {chapters.map((chapter) => (

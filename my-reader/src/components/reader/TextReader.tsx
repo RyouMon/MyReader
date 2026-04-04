@@ -410,7 +410,6 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
             fontSize={store.settings.fontSize}
             lineHeight={store.settings.lineHeight}
             paddingX={store.settings.paddingX}
-            startFromEnd={isChapterStartFromEnd}
             pageOffset={curPageIndex}
             onProgressChange={setChapterProgressPct}
             onPageStateChange={handlePaginatePageStateChange}

@@ -3,6 +3,7 @@ import {
   type CSSProperties,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react"
@@ -11,7 +12,7 @@ import type {
   TextChapterData,
   TextChapterPaginationResult,
 } from "@/lib/rendition"
-import { renderTextChapterPage } from "@/lib/rendition/pagination/ProgressivePaginator"
+import { BookReader } from "@/lib/rendition/BookReader"
 
 interface ReaderContentProps {
   chapter: TextChapterData
@@ -26,16 +27,10 @@ interface ReaderContentProps {
   onProgressChange: (pct: number) => void
   onPageStateChange?: (pageIndex: number, pageCount: number) => void
   pageOffset?: number
-  /**
-   * 从末页开始渲染（向前翻章时使用），每次挂载只生效一次。
-   * 每次 chapter.index 变化时组件会被完全重新挂载（key 驱动），
-   * 因此不需要对 prop 变化做额外处理。
-   */
-  startFromEnd?: boolean
 }
 
 /**
- * 单章分页：Range 测量 scrollHeight + 二分得到页边界，每屏只挂载当前页对应的 DOM 片段。
+ * 单章分页视口：测量与页码由 {@link BookReader}（经 `layout`）驱动，本组件只负责挂载测量宿主与绘制。
  */
 export function ReaderContent({
   chapter,
@@ -47,7 +42,6 @@ export function ReaderContent({
   onProgressChange,
   onPageStateChange,
   pageOffset,
-  startFromEnd = false,
 }: ReaderContentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureHostRef = useRef<HTMLDivElement>(null)
@@ -55,18 +49,17 @@ export function ReaderContent({
 
   const parsedRootRef = useRef<HTMLDivElement | null>(null)
   const textsRef = useRef<Text[]>([])
-  const pageIndexRef = useRef(0)
-  const pageCountRef = useRef(1)
 
   const [pages, setPages] = useState<TextChapterPaginationResult["pages"]>([])
   const [chapterMode, setChapterMode] = useState<"sliced" | "full">("full")
   const [pageCount, setPageCount] = useState(1)
-  const [pageIndex, setPageIndex] = useState(0)
   const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 })
 
-  const startFromEndRef = useRef(startFromEnd)
-  startFromEndRef.current = startFromEnd
-  const startFromEndAppliedRef = useRef(false)
+  const displayPageIndex = useMemo(() => {
+    const max = Math.max(0, pageCount - 1)
+    if (typeof pageOffset !== "number") return 0
+    return Math.max(0, Math.min(pageOffset, max))
+  }, [pageOffset, pageCount])
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current
@@ -99,21 +92,7 @@ export function ReaderContent({
         }
         parsedRootRef.current = next.sourceRoot
         textsRef.current = next.texts
-        pageCountRef.current = next.pageCount
         setPageCount(next.pageCount)
-
-        let nextIdx = 0
-        if (startFromEndRef.current && !startFromEndAppliedRef.current) {
-          startFromEndAppliedRef.current = true
-          nextIdx = Math.max(0, next.pageCount - 1)
-        } else {
-          nextIdx = Math.min(
-            pageIndexRef.current,
-            Math.max(0, next.pageCount - 1),
-          )
-        }
-        pageIndexRef.current = nextIdx
-        setPageIndex(nextIdx)
       })
       .catch(() => {
         if (cancelled) return
@@ -135,18 +114,6 @@ export function ReaderContent({
     viewportSize.h,
   ])
 
-  /** 与父级 BookReader 页指针同步须在绘制前完成，否则会出现一帧旧页 → 抖动 */
-  useLayoutEffect(() => {
-    if (typeof pageOffset !== "number") return
-    const next = Math.max(
-      0,
-      Math.min(pageOffset, Math.max(0, pageCountRef.current - 1)),
-    )
-    if (next === pageIndexRef.current) return
-    pageIndexRef.current = next
-    setPageIndex(next)
-  }, [pageOffset])
-
   useLayoutEffect(() => {
     const v = viewportRef.current
     if (!v) return
@@ -163,16 +130,16 @@ export function ReaderContent({
     const el = displayRef.current
     if (!el) return
 
-    renderTextChapterPage(
+    BookReader.renderPaginatedTextPage(
       el,
       chapter,
       chapterMode,
       pages,
-      pageIndex,
+      displayPageIndex,
       parsedRootRef.current,
       textsRef.current,
     )
-  }, [chapterMode, chapter, pages, pageIndex])
+  }, [chapterMode, chapter, pages, displayPageIndex])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -201,13 +168,13 @@ export function ReaderContent({
       onProgressChange(100)
       return
     }
-    const pct = Math.round((pageIndex / (pageCount - 1)) * 100)
+    const pct = Math.round((displayPageIndex / (pageCount - 1)) * 100)
     onProgressChange(pct)
-  }, [pageIndex, pageCount, onProgressChange])
+  }, [displayPageIndex, pageCount, onProgressChange])
 
   useEffect(() => {
-    onPageStateChange?.(pageIndex, pageCount)
-  }, [onPageStateChange, pageIndex, pageCount])
+    onPageStateChange?.(displayPageIndex, pageCount)
+  }, [onPageStateChange, displayPageIndex, pageCount])
 
   return (
     <div className="relative min-h-0 flex-1">
