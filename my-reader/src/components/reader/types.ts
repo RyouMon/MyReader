@@ -22,6 +22,8 @@ export interface ReaderSettings {
 export interface TocEntry {
   number: number
   title: string
+  /** 嵌套层级，0 为顶层（用于侧栏缩进） */
+  depth?: number
   progress?: number
   completed?: boolean
 }

@@ -454,14 +454,23 @@ interface ComicTocEntry {
 
 function buildTocEntries(toc: TocItem[], totalPages: number): ComicTocEntry[] {
   if (toc.length > 0) {
-    return toc.map((t) => ({
-      label: t.label || `第 ${t.index + 1} 页`,
-      pageIndex: t.index,
-    }))
+    return flattenComicToc(toc)
   }
   if (totalPages <= 0) return []
   return Array.from({ length: totalPages }, (_, i) => ({
     label: `第 ${i + 1} 页`,
     pageIndex: i,
   }))
+}
+
+function flattenComicToc(items: TocItem[]): ComicTocEntry[] {
+  const out: ComicTocEntry[] = []
+  for (const t of items) {
+    out.push({
+      label: t.label || `第 ${t.index + 1} 页`,
+      pageIndex: t.index,
+    })
+    if (t.subitems?.length) out.push(...flattenComicToc(t.subitems))
+  }
+  return out
 }

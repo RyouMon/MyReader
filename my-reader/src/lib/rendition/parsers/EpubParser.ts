@@ -7,8 +7,8 @@ import {
 } from "@/lib/foliate-js/epub.js"
 import type {
   BookMetadata,
-  IParser,
   ChapterInfo,
+  IParser,
   ParsedBook,
   TextChapterData,
   TocItem,
@@ -44,6 +44,7 @@ export class EpubParser implements IParser {
     this.foliateBook = foliate
 
     const toc = this.normalizeToc(foliate.toc ?? [])
+    this.assignTocSpineIndices(toc)
     for (const item of this.flattenToc(toc)) {
       const href = stripHash(item.href)
       if (href) this.titleByHref.set(href, item.label)
@@ -144,7 +145,7 @@ export class EpubParser implements IParser {
     }
   }
 
-  private normalizeToc(raw: unknown[], level = 0): TocItem[] {
+  private normalizeToc(raw: unknown[]): TocItem[] {
     return raw
       .map((item, index) => {
         if (!item || typeof item !== "object") return null
@@ -155,18 +156,54 @@ export class EpubParser implements IParser {
           pickString(row.title) ??
           `Chapter ${index + 1}`
         const subitems = Array.isArray(row.subitems)
-          ? this.normalizeToc(row.subitems, level + 1)
+          ? this.normalizeToc(row.subitems)
           : Array.isArray(row.items)
-            ? this.normalizeToc(row.items, level + 1)
+            ? this.normalizeToc(row.items)
             : undefined
         return {
           label,
           href: stripHash(href),
-          index: Math.max(0, index + level),
+          index: 0,
           subitems,
         } satisfies TocItem
       })
       .filter(Boolean) as TocItem[]
+  }
+
+  /**
+   * 将每条目录项的 index 设为 spine 章节下标（与 {@link gotoChapter} 一致）。
+   * 无 href 的容器节点使用第一个可解析子项的章节下标。
+   */
+  private assignTocSpineIndices(items: TocItem[]): void {
+    for (const item of items) {
+      if (item.subitems?.length) this.assignTocSpineIndices(item.subitems)
+      let idx = this.resolveTocSpineIndex(item.href)
+      if (idx < 0 && item.subitems?.length)
+        idx = this.firstDescendantSpineIndex(item.subitems)
+      item.index = idx >= 0 ? idx : 0
+    }
+  }
+
+  private resolveTocSpineIndex(href: string): number {
+    if (!this.foliateBook || !href.trim()) return -1
+    let r = this.foliateBook.resolveHref(href)
+    if ((r?.index ?? -1) < 0 && href !== decodeURIComponent(href)) {
+      r = this.foliateBook.resolveHref(decodeURIComponent(href))
+    }
+    const i = r?.index
+    return typeof i === "number" && i >= 0 ? i : -1
+  }
+
+  private firstDescendantSpineIndex(items: TocItem[]): number {
+    for (const s of items) {
+      const i = this.resolveTocSpineIndex(s.href)
+      if (i >= 0) return i
+      if (s.subitems?.length) {
+        const j = this.firstDescendantSpineIndex(s.subitems)
+        if (j >= 0) return j
+      }
+    }
+    return -1
   }
 
   private collectCss(doc: Document, chapterDir: string): string {

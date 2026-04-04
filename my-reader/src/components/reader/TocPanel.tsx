@@ -57,16 +57,26 @@ export function TocPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        {filtered.map((entry) => {
+        {filtered.map((entry, rowIndex) => {
           const isActive = entry.number === currentChapter
+          const depth = entry.depth ?? 0
           return (
             <button
-              key={entry.number}
+              key={`${rowIndex}-${depth}-${entry.number}-${entry.title}`}
               type="button"
               onClick={() => onSelectChapter(entry.number)}
               className={cn("reader-toc-row", isActive && "toc-item-active")}
             >
-              <span className="min-w-0 flex-1 truncate">{entry.title}</span>
+              <span
+                className="min-w-0 flex-1 truncate"
+                style={
+                  depth > 0
+                    ? { marginInlineStart: `${depth * 0.75}rem` }
+                    : undefined
+                }
+              >
+                {entry.title}
+              </span>
               {entry.completed && (
                 <Check className="size-3 shrink-0 text-reader-chrome-active opacity-60" />
               )}

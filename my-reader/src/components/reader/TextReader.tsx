@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { TextChapterData } from "@/lib/rendition"
+import type { TextChapterData, TocItem } from "@/lib/rendition"
 import { cn } from "@/lib/utils"
 import { ReaderBottomBar } from "./ReaderBottomBar"
 import { ReaderContent } from "./ReaderContent"
@@ -10,7 +10,7 @@ import { ReaderTopBar } from "./ReaderTopBar"
 import { SettingsPanel } from "./SettingsPanel"
 import { TocPanel } from "./TocPanel"
 import { TtsPanel } from "./TtsPanel"
-import type { ReaderSurfaceProps } from "./types"
+import type { ReaderSurfaceProps, TocEntry } from "./types"
 import { useReaderStore } from "./useReaderStore"
 import { useReadingChrome } from "./useReadingChrome"
 
@@ -314,10 +314,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
   }, [layout])
 
   // ── 目录 ──────────────────────────────────────────────────────────────────
-  const tocEntries = useMemo(
-    () => toc.map((t) => ({ number: t.index + 1, title: t.label })),
-    [toc],
-  )
+  const tocEntries = useMemo(() => flattenTocToPanelEntries(toc), [toc])
 
   const onVisibleChapterChange = useCallback(
     (idx: number) => setScrollFocusIndex(idx),
@@ -481,4 +478,22 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
       />
     </div>
   )
+}
+
+/**
+ * 将树形目录展开为侧栏列表，保留层级缩进（depth）。
+ * number 为 1-based 章节序号，与底栏 {@link ReaderBottomBar} 一致。
+ */
+function flattenTocToPanelEntries(items: TocItem[], depth = 0): TocEntry[] {
+  const out: TocEntry[] = []
+  for (const t of items) {
+    out.push({
+      number: t.index + 1,
+      title: t.label,
+      depth,
+    })
+    if (t.subitems?.length)
+      out.push(...flattenTocToPanelEntries(t.subitems, depth + 1))
+  }
+  return out
 }
