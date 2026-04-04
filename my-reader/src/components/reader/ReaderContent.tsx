@@ -14,9 +14,13 @@ import type {
 } from "@/lib/rendition"
 import { BookReader } from "@/lib/rendition/BookReader"
 import { cn } from "@/lib/utils"
+import { ReaderSkeleton, readerPaginatedColumnClass } from "./ReaderSkeleton"
 
 /** 分页视口宽度不低于此值时启用自动双栏（与 {@link LayoutConfig.doubleColumn} 对应）。 */
 const READER_WIDE_COLUMN_MIN_WIDTH_PX = 1300
+
+/** 视口尺寸停止变化后再跑分页测量，避免拖拽窗口时连续触发布局。 */
+const READER_VIEWPORT_RESIZE_DEBOUNCE_MS = 160
 
 function readerShouldUseDoubleColumn(viewportWidthPx: number): boolean {
   return viewportWidthPx >= READER_WIDE_COLUMN_MIN_WIDTH_PX
@@ -36,9 +40,6 @@ interface ReaderContentProps {
   onPageStateChange?: (pageIndex: number, pageCount: number) => void
   pageOffset?: number
 }
-
-const readerPaginatedColumnClass =
-  "reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content reader-chapter-typography-host min-h-0 min-w-0 flex-1 overflow-hidden"
 
 /**
  * 单章分页视口：测量与页码由 {@link BookReader}（经 `layout`）驱动，本组件只负责挂载测量宿主与绘制。
@@ -66,8 +67,16 @@ export function ReaderContent({
   const [pages, setPages] = useState<TextChapterPaginationResult["pages"]>([])
   const [chapterMode, setChapterMode] = useState<"sliced" | "full">("full")
   const [pageCount, setPageCount] = useState(1)
-  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 })
+  const [viewportLive, setViewportLive] = useState({ w: 0, h: 0 })
+  const [viewportLayout, setViewportLayout] = useState({ w: 0, h: 0 })
+  const [awaitingLayoutAfterResize, setAwaitingLayoutAfterResize] =
+    useState(false)
   const prevChapterIndexRef = useRef(chapter.index)
+  const viewportLiveRef = useRef({ w: 0, h: 0 })
+  const layoutViewportSizeRef = useRef<{ w: number; h: number } | null>(null)
+  const resizeSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   const typoStyle = {
     "--reader-padding-x": `${paddingX}rem`,
@@ -76,7 +85,7 @@ export function ReaderContent({
     "--reader-line-height": String(lineHeight),
   } as CSSProperties
 
-  const layoutDoubleColumn = readerShouldUseDoubleColumn(viewportSize.w)
+  const layoutDoubleColumn = readerShouldUseDoubleColumn(viewportLayout.w)
 
   const viewportModel = useMemo(
     () =>
@@ -88,13 +97,7 @@ export function ReaderContent({
         pageCountState: pageCount,
         pageOffset,
       }),
-    [
-      layoutDoubleColumn,
-      chapterMode,
-      pages.length,
-      pageCount,
-      pageOffset,
-    ],
+    [layoutDoubleColumn, chapterMode, pages.length, pageCount, pageOffset],
   )
 
   useLayoutEffect(() => {
@@ -110,11 +113,20 @@ export function ReaderContent({
       setPageCount(1)
       parsedRootRef.current = null
       textsRef.current = []
+      layoutViewportSizeRef.current = null
     }
 
-    const w = viewportSize.w
-    const h = viewportSize.h
+    const w = viewportLayout.w
+    const h = viewportLayout.h
     if (w <= 0 || h <= 0) return
+
+    const prevCommitted = layoutViewportSizeRef.current
+    if (
+      prevCommitted !== null &&
+      (prevCommitted.w !== w || prevCommitted.h !== h)
+    ) {
+      setAwaitingLayoutAfterResize(true)
+    }
 
     const config: LayoutConfig = {
       fontFamily,
@@ -127,8 +139,11 @@ export function ReaderContent({
     }
     void layout(config, host)
       .then((next) => {
-        if (!next) return
         if (cancelled) return
+        if (!next) {
+          setAwaitingLayoutAfterResize(false)
+          return
+        }
         if (next.mode === "full") {
           setChapterMode("full")
           setPages([])
@@ -139,13 +154,17 @@ export function ReaderContent({
         parsedRootRef.current = next.sourceRoot
         textsRef.current = next.texts
         setPageCount(next.pageCount)
+        layoutViewportSizeRef.current = { w, h }
+        setAwaitingLayoutAfterResize(false)
       })
       .catch(() => {
         if (cancelled) return
+        setAwaitingLayoutAfterResize(false)
       })
 
     return () => {
       cancelled = true
+      setAwaitingLayoutAfterResize(false)
       host.replaceChildren()
       parsedRootRef.current = null
       textsRef.current = []
@@ -157,8 +176,8 @@ export function ReaderContent({
     lineHeight,
     paddingX,
     chapter.index,
-    viewportSize.w,
-    viewportSize.h,
+    viewportLayout.w,
+    viewportLayout.h,
   ])
 
   useLayoutEffect(() => {
@@ -167,7 +186,11 @@ export function ReaderContent({
     const w = v.clientWidth
     const h = v.clientHeight
     if (w > 0 && h > 0) {
-      setViewportSize((prev) =>
+      viewportLiveRef.current = { w, h }
+      setViewportLive((prev) =>
+        prev.w !== w || prev.h !== h ? { w, h } : prev,
+      )
+      setViewportLayout((prev) =>
         prev.w !== w || prev.h !== h ? { w, h } : prev,
       )
     }
@@ -196,25 +219,50 @@ export function ReaderContent({
     const viewport = viewportRef.current
     if (!viewport) return
     let raf = 0
+    const scheduleLayoutSize = () => {
+      if (resizeSettleTimerRef.current !== null) {
+        clearTimeout(resizeSettleTimerRef.current)
+      }
+      resizeSettleTimerRef.current = setTimeout(() => {
+        resizeSettleTimerRef.current = null
+        const { w, h } = viewportLiveRef.current
+        if (w <= 0 || h <= 0) return
+        setViewportLayout((prev) =>
+          prev.w !== w || prev.h !== h ? { w, h } : prev,
+        )
+      }, READER_VIEWPORT_RESIZE_DEBOUNCE_MS)
+    }
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
         const w = viewport.clientWidth
         const h = viewport.clientHeight
         if (w <= 0 || h <= 0) return
-        setViewportSize((prev) =>
+        viewportLiveRef.current = { w, h }
+        setViewportLive((prev) =>
           prev.w !== w || prev.h !== h ? { w, h } : prev,
         )
+        scheduleLayoutSize()
       })
     })
     ro.observe(viewport)
     return () => {
       cancelAnimationFrame(raf)
+      if (resizeSettleTimerRef.current !== null) {
+        clearTimeout(resizeSettleTimerRef.current)
+        resizeSettleTimerRef.current = null
+      }
       ro.disconnect()
     }
   }, [])
 
   const { spreadIndex, spreadCount, twoColumnShell } = viewportModel
+
+  const viewportResizeInProgress =
+    viewportLive.w !== viewportLayout.w || viewportLive.h !== viewportLayout.h
+  const showReaderSkeleton =
+    viewportResizeInProgress || awaitingLayoutAfterResize
+  const skeletonTwoColumnShell = readerShouldUseDoubleColumn(viewportLive.w)
 
   useEffect(() => {
     if (spreadCount <= 1) {
@@ -235,11 +283,14 @@ export function ReaderContent({
         aria-hidden
         className="pointer-events-none z-0"
       />
-      <main className="reader-paginated-main reader-text-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <main
+        className="reader-paginated-main reader-text-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden"
+        aria-busy={showReaderSkeleton}
+      >
         <div
           ref={viewportRef}
           className={cn(
-            "h-full w-full min-h-0 overflow-hidden",
+            "relative h-full w-full min-h-0 overflow-hidden",
             twoColumnShell && "flex min-h-0 flex-row",
           )}
           style={
@@ -268,6 +319,19 @@ export function ReaderContent({
               style={typoStyle}
             />
           )}
+          {showReaderSkeleton ? (
+            <div
+              className="reader-text-surface pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col"
+              aria-hidden
+            >
+              <ReaderSkeleton
+                fontSize={fontSize}
+                lineHeight={lineHeight}
+                typoStyle={typoStyle}
+                twoColumnShell={skeletonTwoColumnShell}
+              />
+            </div>
+          ) : null}
         </div>
       </main>
     </div>
