@@ -320,15 +320,7 @@ function BookDetailPage() {
           <div className="detail-hero mb-8 flex gap-9">
             {/* Cover */}
             <div className="detail-cover-wrap w-[220px] shrink-0">
-              <div
-                className="relative overflow-hidden rounded-xl"
-                style={{
-                  width: 220,
-                  aspectRatio: "2/3",
-                  boxShadow:
-                    "0 8px 24px rgba(59,47,47,0.12), 0 4px 8px rgba(59,47,47,0.06)",
-                }}
-              >
+              <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(59,47,47,0.12),0_4px_8px_rgba(59,47,47,0.06)]">
                 {coverSrc ? (
                   <img
                     src={coverSrc}
@@ -348,22 +340,10 @@ function BookDetailPage() {
                           "linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.18))",
                       }}
                     />
-                    <span
-                      className="relative z-10 text-2xl font-bold leading-[1.35] text-white"
-                      style={{
-                        fontFamily: "'Lora', 'Noto Serif SC', serif",
-                        textShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                      }}
-                    >
+                    <span className="relative z-10 font-serif text-2xl leading-[1.35] font-bold text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.3)]">
                       {book.title}
                     </span>
-                    <span
-                      className="relative z-10 mt-2 text-[13px]"
-                      style={{
-                        color: "rgba(255,255,255,0.8)",
-                        textShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                      }}
-                    >
+                    <span className="relative z-10 mt-2 text-[13px] text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.2)]">
                       {displayAuthors}
                     </span>
                   </div>
@@ -375,12 +355,7 @@ function BookDetailPage() {
                     {book.formats.map((fmt) => (
                       <Badge
                         key={fmt}
-                        className="rounded-[5px] border-none px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide"
-                        style={{
-                          background: "rgba(0,0,0,0.4)",
-                          backdropFilter: "blur(4px)",
-                          color: "rgba(255,255,255,0.88)",
-                        }}
+                        className="rounded-[5px] border-none bg-black/40 px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm"
                       >
                         {fmt}
                       </Badge>
@@ -392,10 +367,7 @@ function BookDetailPage() {
 
             {/* Meta */}
             <div className="detail-meta flex min-w-0 flex-1 flex-col pt-1">
-              <h1
-                className="detail-anim-1 text-[28px] font-bold leading-[1.3]"
-                style={{ fontFamily: "'Lora', 'Noto Serif SC', serif" }}
-              >
+              <h1 className="detail-anim-1 font-serif text-[28px] leading-[1.3] font-bold">
                 {book.title}
               </h1>
 
@@ -774,8 +746,10 @@ function BookDetailPage() {
         </span>
         <div className="flex items-center gap-1.5">
           <span
-            className="inline-block size-1.5 rounded-full"
-            style={{ background: activeLibrary ? "#6dae54" : "#aaa" }}
+            className={cn(
+              "inline-block size-1.5 rounded-full",
+              activeLibrary ? "bg-library-indicator-on" : "bg-library-indicator-off",
+            )}
           />
           {activeLibrary ? "已同步" : "未连接"}
         </div>
@@ -801,10 +775,7 @@ function DetailSection({
 }) {
   return (
     <div className={cn("mt-9", className)}>
-      <h2
-        className="mb-3.5 border-b border-border pb-2.5 text-lg font-semibold"
-        style={{ fontFamily: "'Lora', 'Noto Serif SC', serif" }}
-      >
+      <h2 className="mb-3.5 border-b border-border pb-2.5 font-serif text-lg font-semibold">
         {title}
       </h2>
       {children}
@@ -827,8 +798,10 @@ function InfoCard({
         {label}
       </div>
       <div
-        className={cn("text-sm font-medium", mono && "font-mono text-[12.5px]")}
-        style={mono ? { wordBreak: "break-all" } : undefined}
+        className={cn(
+          "text-sm font-medium",
+          mono && "font-mono break-all text-[12.5px]",
+        )}
       >
         {value}
       </div>
@@ -855,15 +828,7 @@ function RelatedBookCard({
       onClick={onClick}
       className="group/related w-[120px] shrink-0 text-left"
     >
-      <div
-        className="overflow-hidden rounded-lg transition-all duration-200 group-hover/related:-translate-y-[3px]"
-        style={{
-          width: 120,
-          aspectRatio: "2/3",
-          boxShadow:
-            "0 2px 8px rgba(59,47,47,0.10), 0 1px 3px rgba(59,47,47,0.06)",
-        }}
-      >
+      <div className="aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-[0_2px_8px_rgba(59,47,47,0.10),0_1px_3px_rgba(59,47,47,0.06)] transition-all duration-200 group-hover/related:-translate-y-[3px]">
         {coverSrc ? (
           <img
             src={coverSrc}
@@ -880,22 +845,13 @@ function RelatedBookCard({
             className="flex size-full flex-col items-center justify-center px-2 py-3 text-center"
             style={{ background: generateCoverGradient(book.title) }}
           >
-            <span
-              className="text-[13px] font-semibold text-white"
-              style={{
-                fontFamily: "'Lora', 'Noto Serif SC', serif",
-                textShadow: "0 1px 3px rgba(0,0,0,0.3)",
-              }}
-            >
+            <span className="font-serif text-[13px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>
           </div>
         )}
       </div>
-      <p
-        className="mt-2 line-clamp-2 text-[12.5px] font-semibold leading-[1.3] transition-colors duration-200 group-hover/related:text-primary"
-        style={{ fontFamily: "'Lora', 'Noto Serif SC', serif" }}
-      >
+      <p className="mt-2 line-clamp-2 font-serif text-[12.5px] leading-[1.3] font-semibold transition-colors duration-200 group-hover/related:text-primary">
         {book.title}
       </p>
       <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">

@@ -129,6 +129,15 @@
   --progress-track: #3a3028;
 }
 
+@layer utilities {
+  .bg-library-indicator-on {
+    background-color: #6dae54;
+  }
+  .bg-library-indicator-off {
+    background-color: #aaa;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

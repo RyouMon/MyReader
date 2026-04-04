@@ -5,10 +5,9 @@ import {
   Rows3,
   SquareStack,
 } from "lucide-react"
-import { useCallback, useRef } from "react"
-
 import { cn } from "@/lib/utils"
 
+import { BookProgressTrack } from "./BookProgressTrack"
 import type { ReadingLayout } from "./types"
 
 interface ReaderBottomBarProps {
@@ -38,26 +37,11 @@ export function ReaderBottomBar({
   onNextChapter,
   onToggleTts,
 }: ReaderBottomBarProps) {
-  const trackRef = useRef<HTMLDivElement>(null)
-
-  const handleProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = trackRef.current?.getBoundingClientRect()
-      if (!rect) return
-      const pct = Math.max(
-        0,
-        Math.min(100, ((e.clientX - rect.left) / rect.width) * 100),
-      )
-      onBookProgressSeek(pct)
-    },
-    [onBookProgressSeek],
-  )
-
   return (
     <footer
       className={cn(
         "reader-chrome-frost absolute inset-x-0 bottom-0 z-45 flex h-16 flex-col justify-center border-t border-reader-chrome-border px-6 transition-opacity duration-300 ease-out",
-        visible ? "opacity-100" : "opacity-0 pointer-events-none",
+        visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
     >
       <div className="flex items-center gap-3">
@@ -66,43 +50,15 @@ export function ReaderBottomBar({
           上一章
         </ChapterNavBtn>
 
-        <div className="flex flex-1 flex-col items-center gap-1">
-          <div
-            ref={trackRef}
-            className="reader-progress-wrap flex h-5 w-full cursor-pointer items-center"
-            onClick={handleProgressClick}
-            role="slider"
-            aria-valuenow={bookProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-                e.preventDefault()
-                onBookProgressSeek(Math.max(0, bookProgress - 5))
-              }
-              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-                e.preventDefault()
-                onBookProgressSeek(Math.min(100, bookProgress + 5))
-              }
-            }}
-          >
-            <div className="reader-progress-track">
-              <div
-                className="reader-progress-fill"
-                style={{ width: `${bookProgress}%` }}
-              />
-            </div>
-            <div
-              className="reader-progress-thumb"
-              style={{ left: `${bookProgress}%` }}
-            />
-          </div>
+        <BookProgressTrack
+          bookProgress={bookProgress}
+          onBookProgressSeek={onBookProgressSeek}
+        >
           <div className="text-[11.5px] tabular-nums text-reader-chrome-muted">
             第 {currentChapter} 章 / 共 {totalChapters} 章 · 全书 {bookProgress}
             %
           </div>
-        </div>
+        </BookProgressTrack>
 
         <ChapterNavBtn onClick={onNextChapter}>
           下一章

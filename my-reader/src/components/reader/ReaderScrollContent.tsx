@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react"
 
 import type { TextChapterData } from "@/lib/rendition"
 
@@ -75,11 +81,7 @@ export function ReaderScrollContent({
   return (
     <main
       ref={scrollContainerRef}
-      className="flex-1 overflow-y-auto overflow-x-hidden"
-      style={{
-        background: "var(--reader-bg)",
-        transition: "background 350ms ease",
-      }}
+      className="reader-text-surface flex-1 overflow-y-auto overflow-x-hidden"
       onScroll={handleScroll}
     >
       {chapters.map((chapter) => (
@@ -121,17 +123,15 @@ function ScrollChapterSection({
       className="reader-scroll-chapter"
     >
       <div
-        className="reader-chapter-container mx-auto"
-        style={{
-          maxWidth: "42rem",
-          padding: `3rem ${paddingX}rem 4rem`,
-          fontFamily,
-          fontSize: `${fontSize}px`,
-          lineHeight,
-          letterSpacing: "0.01em",
-          color: "var(--reader-fg)",
-          transition: "color 350ms ease",
-        }}
+        className="reader-chapter-container reader-scroll-chapter-inner"
+        style={
+          {
+            "--reader-padding-x": `${paddingX}rem`,
+            "--reader-font-family": fontFamily,
+            "--reader-font-size": `${fontSize}px`,
+            "--reader-line-height": String(lineHeight),
+          } as CSSProperties
+        }
       >
         {scopedCss && <style>{scopedCss}</style>}
         <ChapterBodyContent html={chapter.bodyHtml} />

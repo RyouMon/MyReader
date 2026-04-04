@@ -1,5 +1,11 @@
 /* biome-ignore-all lint/security/noDangerouslySetInnerHtml: 阅读器需要渲染已解析的 HTML 与样式 */
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  type CSSProperties,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import type {
   LayoutConfig,
   TextChapterData,
@@ -157,8 +163,6 @@ export function ReaderContent({
     const el = displayRef.current
     if (!el) return
 
-    el.style.setProperty("--reader-padding-x", `${paddingX}rem`)
-
     renderTextChapterPage(
       el,
       chapter,
@@ -168,7 +172,7 @@ export function ReaderContent({
       parsedRootRef.current,
       textsRef.current,
     )
-  }, [chapterMode, chapter, pages, pageIndex, paddingX])
+  }, [chapterMode, chapter, pages, pageIndex])
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -212,34 +216,22 @@ export function ReaderContent({
         aria-hidden
         className="pointer-events-none z-0"
       />
-      <main
-        className="reader-paginated-main flex h-full min-h-0 flex-1 flex-col overflow-hidden"
-        style={{
-          background: "var(--reader-bg)",
-          transition: "background 350ms ease",
-        }}
-      >
+      <main className="reader-paginated-main reader-text-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <div
           ref={viewportRef}
           className="h-full w-full min-h-0 overflow-hidden"
         >
           <div
             ref={displayRef}
-            className="reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content h-full overflow-hidden"
-            style={{
-              ["--reader-padding-x" as string]: `${paddingX}rem`,
-              ["--reader-font-family" as string]: fontFamily,
-              ["--reader-font-size" as string]: `${fontSize}px`,
-              ["--reader-line-height" as string]: String(lineHeight),
-              ["--reader-letter-spacing" as string]: "0.01em",
-              width: "100%",
-              fontFamily,
-              fontSize: `${fontSize}px`,
-              lineHeight,
-              letterSpacing: "0.01em",
-              color: "var(--reader-fg)",
-              transition: "color 350ms ease",
-            }}
+            className="reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content reader-chapter-typography-host"
+            style={
+              {
+                "--reader-padding-x": `${paddingX}rem`,
+                "--reader-font-family": fontFamily,
+                "--reader-font-size": `${fontSize}px`,
+                "--reader-line-height": String(lineHeight),
+              } as CSSProperties
+            }
           />
         </div>
       </main>

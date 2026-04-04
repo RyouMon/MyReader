@@ -1,13 +1,13 @@
-import { useState } from "react"
-import { BookX, Loader2 } from "lucide-react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-
-import { useLibrary } from "@/contexts/LibraryContext"
-import { usePaginatedBooks } from "@/hooks/usePaginatedBooks"
-import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import type { CalibreBook } from "@/types/book"
+import { BookX, Loader2 } from "lucide-react"
+import { useState } from "react"
 import BookGrid from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
+import { useLibrary } from "@/contexts/LibraryContext"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { usePaginatedBooks } from "@/hooks/usePaginatedBooks"
+import { cn } from "@/lib/utils"
+import type { CalibreBook } from "@/types/book"
 
 export const Route = createFileRoute("/_layout/")({
   component: LibraryPage,
@@ -52,12 +52,7 @@ function LibraryPage() {
 
   const gridHeader = (
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
-      <h2
-        className="text-xl font-semibold"
-        style={{ fontFamily: "'Lora', 'Noto Serif SC', serif" }}
-      >
-        {sectionLabel}
-      </h2>
+      <h2 className="font-serif text-xl font-semibold">{sectionLabel}</h2>
       <span className="text-sm text-muted-foreground font-normal">
         {total} 本
       </span>
@@ -133,10 +128,12 @@ function LibraryPage() {
         </span>
         <div className="flex items-center gap-1.5">
           <span
-            className="size-1.5 rounded-full inline-block"
-            style={{
-              background: activeLibrary ? "#6dae54" : "#aaa",
-            }}
+            className={cn(
+              "inline-block size-1.5 rounded-full",
+              activeLibrary
+                ? "bg-library-indicator-on"
+                : "bg-library-indicator-off",
+            )}
           />
           {activeLibrary ? "已连接" : "未连接"}
         </div>

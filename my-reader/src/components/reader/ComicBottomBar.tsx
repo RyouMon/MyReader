@@ -6,9 +6,9 @@ import {
   Square,
   SquareStack,
 } from "lucide-react"
-import { useCallback, useRef } from "react"
-
 import { cn } from "@/lib/utils"
+
+import { BookProgressTrack } from "./BookProgressTrack"
 import type { DisplayMode } from "./ComicReader"
 import type { ReadingLayout } from "./types"
 
@@ -39,21 +39,6 @@ export function ComicBottomBar({
   onNextPage,
   onDisplayModeChange,
 }: ComicBottomBarProps) {
-  const trackRef = useRef<HTMLDivElement>(null)
-
-  const handleProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = trackRef.current?.getBoundingClientRect()
-      if (!rect) return
-      const pct = Math.max(
-        0,
-        Math.min(100, ((e.clientX - rect.left) / rect.width) * 100),
-      )
-      onBookProgressSeek(pct)
-    },
-    [onBookProgressSeek],
-  )
-
   const approxPage =
     totalPages > 0
       ? Math.min(
@@ -82,42 +67,14 @@ export function ComicBottomBar({
           {readingLayout === "scroll" ? "向上" : "上一页"}
         </NavBtn>
 
-        <div className="flex flex-1 flex-col items-center gap-1">
-          <div
-            ref={trackRef}
-            className="reader-progress-wrap flex h-5 w-full cursor-pointer items-center"
-            onClick={handleProgressClick}
-            role="slider"
-            aria-valuenow={bookProgress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-                e.preventDefault()
-                onBookProgressSeek(Math.max(0, bookProgress - 5))
-              }
-              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-                e.preventDefault()
-                onBookProgressSeek(Math.min(100, bookProgress + 5))
-              }
-            }}
-          >
-            <div className="reader-progress-track">
-              <div
-                className="reader-progress-fill"
-                style={{ width: `${bookProgress}%` }}
-              />
-            </div>
-            <div
-              className="reader-progress-thumb"
-              style={{ left: `${bookProgress}%` }}
-            />
-          </div>
+        <BookProgressTrack
+          bookProgress={bookProgress}
+          onBookProgressSeek={onBookProgressSeek}
+        >
           <div className="text-[11.5px] tabular-nums text-reader-chrome-muted">
             {pageInfo}
           </div>
-        </div>
+        </BookProgressTrack>
 
         <NavBtn onClick={onNextPage}>
           {readingLayout === "scroll" ? "向下" : "下一页"}
