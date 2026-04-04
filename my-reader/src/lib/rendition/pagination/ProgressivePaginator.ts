@@ -833,6 +833,42 @@ export function readingAnchorForElement(
   return serializeLocationAsBoundary(root, { node: el, offset: 0 })
 }
 
+/** 将 {@link RangeBoundary} 应用到 Range 的起点（与分页器内部逻辑一致）。 */
+export function fillRangeStartFromBoundary(
+  range: Range,
+  root: HTMLElement,
+  boundary: RangeBoundary,
+): void {
+  applyRangeBoundary(range, root, boundary, true)
+}
+
+/**
+ * 将任意 Range 的起点化为相对 `root` 的边界（用于 CFI 解析结果与分页 sourceRoot 对齐）。
+ */
+export function readingAnchorForRangeStart(
+  root: HTMLElement,
+  r: Range,
+): RangeBoundary {
+  const sc = r.startContainer
+  const so = r.startOffset
+  if (sc.nodeType === Node.TEXT_NODE) {
+    return serializeLocationAsBoundary(root, { node: sc, offset: so })
+  }
+  if (sc.nodeType === Node.ELEMENT_NODE) {
+    if (sc === root) {
+      return { path: [], offset: so, isText: false }
+    }
+    if (root.contains(sc)) {
+      return {
+        path: getNodePath(root, sc),
+        offset: so,
+        isText: false,
+      }
+    }
+  }
+  return { path: [], offset: 0, isText: false }
+}
+
 /** Serializes a source location into a DOM range boundary. */
 function serializeLocationAsBoundary(
   root: HTMLElement,

@@ -40,6 +40,10 @@ export interface ChapterInfo {
 /** Full text chapter payload returned by `getChapter()`. */
 export interface TextChapterData extends ChapterInfo {
   type: "text"
+  /**
+   * OPF 包内该 spine 项的文档级 CFI 前缀（foliate 解析）；与 `bodyHtml` 同构的独立 XHTML 文档上生成的局部 CFI 可与之拼接为全书 CFI。
+   */
+  spinePackageCfi?: string
   /** Body inner-HTML with resolved resource URLs (images as blob URLs). */
   bodyHtml: string
   /** Combined CSS extracted from the chapter (for EPUB). */

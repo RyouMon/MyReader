@@ -28,4 +28,6 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "1"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
+log = "0.4"
+env_logger = "0.11"
 

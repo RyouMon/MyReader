@@ -2,6 +2,7 @@ mod calibre;
 mod commands;
 mod error;
 mod models;
+mod reading_progress;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
@@ -11,6 +12,14 @@ use commands::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(debug_assertions)]
+    {
+        let _ = env_logger::Builder::from_env(
+            env_logger::Env::default().default_filter_or("my_reader::reading_progress=debug"),
+        )
+        .try_init();
+    }
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init());
@@ -152,6 +161,8 @@ pub fn run() {
             commands::get_books_page,
             commands::get_book_detail,
             commands::get_series_books,
+            commands::get_reading_progress,
+            commands::set_reading_progress,
             commands::get_book_cover,
         ])
         .run(tauri::generate_context!())

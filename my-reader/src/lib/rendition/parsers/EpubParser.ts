@@ -97,11 +97,15 @@ export class EpubParser implements IParser {
     const title =
       info.title || this.firstHeading(doc) || "Chapter " + String(index + 1)
 
+    const sec = section as { cfi?: unknown }
+    const spinePackageCfi = typeof sec.cfi === "string" ? sec.cfi : undefined
+
     const chapter: TextChapterData = {
       type: "text",
       index,
       title,
       href: info.href,
+      spinePackageCfi,
       bodyHtml,
       cssText,
       text,
@@ -139,7 +143,8 @@ export class EpubParser implements IParser {
     const hit = this.files.get(normalizeChapterPath(uri))
     if (hit) return hit
     const decoded = decodeURIComponent(uri)
-    if (decoded !== uri) return this.files.get(normalizeChapterPath(decoded)) ?? null
+    if (decoded !== uri)
+      return this.files.get(normalizeChapterPath(decoded)) ?? null
     return null
   }
 

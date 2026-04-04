@@ -8,9 +8,10 @@ use tauri::{AppHandle, Manager, State};
 use crate::calibre;
 use crate::error::AppError;
 use crate::models::{
-    AppConfig, BookDetail, BookEntry, BookIdentifier, FormatSize, LibraryConfig, LibraryInfo,
-    PaginatedBooks,
+    AppConfig, BookAnchor, BookDetail, BookEntry, BookIdentifier, FormatSize, LibraryConfig,
+    LibraryInfo, PaginatedBooks, ReadingProgressDto,
 };
+use crate::reading_progress;
 
 pub type AppState = Mutex<AppConfig>;
 
@@ -266,6 +267,60 @@ pub fn get_series_books(
 
     calibre::get_books_by_series(&conn, &series_name, exclude_book_id)
         .map_err(|e| AppError::Database(e.to_string()))
+}
+
+fn unix_epoch_secs() -> f64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+#[tauri::command]
+pub fn get_reading_progress(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+    format: String,
+) -> Result<Option<ReadingProgressDto>, AppError> {
+    let config = state.lock().unwrap();
+
+    let lib_id = library_id
+        .or_else(|| config.active_library_id.clone())
+        .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+
+    if !config.libraries.iter().any(|lib| lib.id == lib_id) {
+        return Err(AppError::NotFound(format!("书库 {} 不存在", lib_id)));
+    }
+
+    let conn = reading_progress::open_db(&app)?;
+    reading_progress::get_progress(&conn, &lib_id, book_id, &format)
+}
+
+#[tauri::command]
+pub fn set_reading_progress(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+    format: String,
+    anchor: BookAnchor,
+) -> Result<(), AppError> {
+    let config = state.lock().unwrap();
+
+    let lib_id = library_id
+        .or_else(|| config.active_library_id.clone())
+        .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+
+    if !config.libraries.iter().any(|lib| lib.id == lib_id) {
+        return Err(AppError::NotFound(format!("书库 {} 不存在", lib_id)));
+    }
+
+    let conn = reading_progress::open_db(&app)?;
+    let now = unix_epoch_secs();
+    reading_progress::set_progress(&conn, &lib_id, book_id, &format, &anchor, now)
 }
 
 #[tauri::command]

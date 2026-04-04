@@ -88,3 +88,27 @@ pub struct LibraryInfo {
     pub book_count: usize,
 }
 
+/// 与前端 `BookAnchor` 一致，序列化存入 `reading_progress.anchor_json`。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BookAnchor {
+    pub chapter_index: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub char_offset: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_snippet: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_snippet_after: Option<String>,
+}
+
+/// `get_reading_progress` 返回：含书库/书/格式主键字段，便于前端校验。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingProgressDto {
+    pub library_id: String,
+    pub book_id: i64,
+    pub format: String,
+    pub anchor: BookAnchor,
+    pub updated_at: f64,
+}
+

@@ -8,6 +8,11 @@ import { ComicReader } from "@/components/reader/ComicReader"
 import { TextReader } from "@/components/reader/TextReader"
 import { useBookReader } from "@/components/reader/useReader"
 import { useLibrary } from "@/contexts/LibraryContext"
+import {
+  type ReadingProgressDto,
+  useReadingProgressSync,
+} from "@/hooks/useReadingProgressSync"
+import type { BookAnchor } from "@/lib/progress/BookAnchor"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { buildBookFileUrl, resolveReadFormat } from "@/lib/rendition/utils"
 import type { BookDetail } from "@/types/book"
@@ -25,8 +30,12 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const { activeLibraryId, loading: libraryLoading } = useLibrary()
 
   const [bookTitle, setBookTitle] = useState("")
-  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null)
   const [format, setFormat] = useState("")
+  /** 与阅读进度一并就绪后再交给 `useBookReader`，避免先渲染第 1 章再续读跳转 */
+  const [bookPayload, setBookPayload] = useState<{
+    buffer: ArrayBuffer
+    initialOpenAnchor: BookAnchor | null
+  } | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
@@ -56,6 +65,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         }
         return
       }
+      setBookPayload(null)
       try {
         const detail = await invoke<BookDetail>("get_book_detail", {
           libraryId: activeLibraryId,
@@ -76,13 +86,32 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         setFormat(fmt)
 
         const url = buildBookFileUrl(activeLibraryId, Number(bookId), fmt)
+        const progressP: Promise<ReadingProgressDto | null> =
+          isTauri() && activeLibraryId
+            ? invoke<ReadingProgressDto | null>("get_reading_progress", {
+                libraryId: activeLibraryId,
+                bookId: Number(bookId),
+                format: fmt,
+              }).catch(() => null)
+            : Promise.resolve(null)
+
         const resp = await fetch(url)
         if (!resp.ok) {
           setFetchError(`无法加载书籍文件: HTTP ${resp.status}`)
           return
         }
         if (cancelled) return
-        setBuffer(await resp.arrayBuffer())
+
+        const [row, arrayBuffer] = await Promise.all([
+          progressP,
+          resp.arrayBuffer(),
+        ])
+        if (cancelled) return
+
+        setBookPayload({
+          buffer: arrayBuffer,
+          initialOpenAnchor: row?.anchor ?? null,
+        })
       } catch (e) {
         if (!cancelled) setFetchError(String(e))
       }
@@ -94,7 +123,24 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     }
   }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])
 
-  const reader = useBookReader({ buffer, format })
+  const reader = useBookReader({
+    buffer: bookPayload?.buffer ?? null,
+    format,
+    initialOpenAnchor: bookPayload?.initialOpenAnchor ?? null,
+  })
+
+  useReadingProgressSync({
+    openBookKey: `${activeLibraryId ?? ""}:${bookId}:${format}`,
+    enabled:
+      isTauri() &&
+      !mainHandoff &&
+      Boolean(activeLibraryId && format && bookPayload),
+    resumeHandledAtReaderOpen: Boolean(bookPayload),
+    libraryId: activeLibraryId,
+    bookId: Number(bookId),
+    format,
+    reader,
+  })
 
   const handleErrorClose = useCallback(() => {
     if (isTauri()) {
@@ -118,7 +164,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     )
   }
 
-  if (!reader.ready || !reader.chapter) {
+  if (!reader.chapter) {
     return <ReadBookLoading message="正在加载书籍内容…" />
   }
 

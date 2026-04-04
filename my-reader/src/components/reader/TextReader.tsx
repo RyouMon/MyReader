@@ -30,6 +30,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     gotoPrevPage,
     gotoPageInChapter,
     layout: applyLayout,
+    notifyInitialViewCommitted,
     format,
     contentType,
     ready: readerReady,
@@ -222,6 +223,17 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     }
   }, [layout, totalChapters, getChapter])
 
+  useEffect(() => {
+    if (layout !== "scroll") return
+    if (scrollLoadError) {
+      notifyInitialViewCommitted()
+      return
+    }
+    if (scrollChapters !== null) {
+      notifyInitialViewCommitted()
+    }
+  }, [layout, scrollChapters, scrollLoadError, notifyInitialViewCommitted])
+
   // ── 滚动模式：同步焦点章节 ───────────────────────────────────────────────
   const scrollFocusIndexRef = useRef(scrollFocusIndex)
   scrollFocusIndexRef.current = scrollFocusIndex
@@ -390,6 +402,21 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
       className="relative flex size-full flex-col overflow-hidden bg-reader-bg text-reader-fg transition-[background,color] duration-300 ease-out"
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
+        {!readerReady && (
+          <div
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-reader-bg px-4"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              <div
+                className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary"
+                aria-hidden
+              />
+              <p className="text-sm">正在加载版式与内容…</p>
+            </div>
+          </div>
+        )}
         {layout === "paginate" && (
           <>
             <div

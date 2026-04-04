@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import type { BookAnchor } from "../../lib/progress/BookAnchor"
 import { BookReader } from "../../lib/rendition/BookReader"
-import type { TextChapterPaginationResult } from "../../lib/rendition/types"
 import type {
   ChapterData,
   ContentType,
   LayoutConfig,
+  TextChapterPaginationResult,
   TocItem,
 } from "../../lib/rendition/types"
 
@@ -14,11 +15,25 @@ export interface UseReaderOptions {
   buffer: ArrayBuffer | null
   /** Book format, e.g. `"EPUB"`, `"CBZ"`, `"PDF"`. */
   format: string
+  /**
+   * 首次 `init` 时应用的锚点（与 `buffer` 同批传入），首屏 layout 即对应该位置。
+   * `null` 表示无已存进度，从第 1 章开头打开。
+   */
+  initialOpenAnchor?: BookAnchor | null
 }
 
 export interface UseReaderReturn {
-  /** `true` after the book has been parsed and the first chapter is loaded. */
+  /**
+   * `true` when parsing and first-chapter data are ready and the first screen
+   * layout is committed (text paginate: first successful `layout()`; text scroll:
+   * `notifyInitialViewCommitted()`; image/PDF: same as parsed + first chapter).
+   */
   ready: boolean
+  /**
+   * Text paginate: first successful measured `layout()`. Text scroll: after
+   * `notifyInitialViewCommitted()`. Image/PDF: once the first chapter is loaded.
+   */
+  firstLayoutDone: boolean
   /** Human-readable error, if any. */
   error: string | null
   /** `true` while a chapter is being fetched. */
@@ -37,6 +52,8 @@ export interface UseReaderReturn {
   chapter: ChapterData | null
   /** 当前章内页偏移（0-based），与 BookReader.curPage.index 一致 */
   curPageIndex: number
+  /** 当前章列页/分页总数（文本书 ProgressivePaginator 测量后 ≥1） */
+  totalPagesInChapter: number
   isChapterStartFromEnd: boolean
 
   gotoChapter: (index: number) => void
@@ -48,6 +65,11 @@ export interface UseReaderReturn {
     config: LayoutConfig,
     measureHost: HTMLDivElement,
   ) => Promise<TextChapterPaginationResult | undefined>
+  /**
+   * Scroll mode does not invoke `layout(measureHost)`; call once when the
+   * initial chapter stream is ready or when scroll loading has failed.
+   */
+  notifyInitialViewCommitted: () => void
   getChapter: (index: number) => Promise<ChapterData | null>
 
   /** Text books: resolve in-book `<a href>` from a spine chapter. */
@@ -56,7 +78,27 @@ export interface UseReaderReturn {
     href: string,
   ) => { chapterIndex: number; fragmentId: string | null } | null
   /** Text books: navigate and scroll paginated view to target after layout. */
-  followInternalTextLink: (fromChapter: number, href: string) => Promise<boolean>
+  followInternalTextLink: (
+    fromChapter: number,
+    href: string,
+  ) => Promise<boolean>
+
+  /**
+   * 从本地锚点恢复章节与可选列页偏移；漫画/PDF 通常仅 `chapterIndex`。
+   */
+  applyReadingResume: (
+    chapterIndex: number,
+    columnPageOffset?: number,
+  ) => Promise<void>
+
+  /** 打包当前位置供持久化（文本书含章内 UTF-16 偏移与片段）。 */
+  buildSaveBookAnchor: (fileFormat: string) => BookAnchor
+
+  /** 文本书：按 `chapterIndex` 章内 UTF-16 `charOffset` 续读；失败返回 `false`。 */
+  applyCharOffsetResume: (
+    chapterIndex: number,
+    charOffset: number,
+  ) => Promise<boolean>
 }
 
 /**
@@ -68,10 +110,12 @@ export interface UseReaderReturn {
 export function useBookReader({
   buffer,
   format,
+  initialOpenAnchor = null,
 }: UseReaderOptions): UseReaderReturn {
   const coreRef = useRef<BookReader | null>(null)
   const mountedRef = useRef(true)
-  const [ready, setReady] = useState(false)
+  const [parsedReady, setParsedReady] = useState(false)
+  const [firstLayoutDone, setFirstLayoutDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -81,11 +125,13 @@ export function useBookReader({
   const [curChapter, setCurChapter] = useState(0)
   const [chapter, setChapter] = useState<ChapterData | null>(null)
   const [curPageIndex, setCurPageIndex] = useState(0)
+  const [totalPagesInChapter, setTotalPagesInChapter] = useState(1)
   const [isChapterStartFromEnd, setIsChapterStartFromEnd] = useState(false)
 
   const syncNavigationState = useCallback((core: BookReader) => {
     setCurChapter(core.curChapter)
     setCurPageIndex(core.curPage.index)
+    setTotalPagesInChapter(core.totalPagesOfCurChapter)
     setIsChapterStartFromEnd(core.chapterStartFromEnd)
   }, [])
 
@@ -108,19 +154,24 @@ export function useBookReader({
         setLoading(true)
         setError(null)
 
-        const book = await core.init(buffer!, format)
+        const book = await core.init(buffer!, format, {
+          initialOpenAnchor: initialOpenAnchor ?? undefined,
+        })
         if (cancelled) return
 
         setContentType(book.contentType)
         setToc(book.toc)
         setTotalChapters(book.chapters.length)
 
-        const ch = await core.getChapter(0)
+        const ch = await core.getChapter(core.curChapter)
         if (cancelled) return
 
         setChapter(ch)
         syncNavigationState(core)
-        setReady(true)
+        setParsedReady(true)
+        if (book.contentType !== "text") {
+          setFirstLayoutDone(true)
+        }
       } catch (e) {
         if (!cancelled) setError(String(e))
       } finally {
@@ -134,11 +185,12 @@ export function useBookReader({
       cancelled = true
       core.destroy()
       coreRef.current = null
-      setReady(false)
+      setParsedReady(false)
+      setFirstLayoutDone(false)
       setChapter(null)
       setTotalChapters(0)
     }
-  }, [buffer, format, syncNavigationState])
+  }, [buffer, format, initialOpenAnchor, syncNavigationState])
 
   const gotoChapter = useCallback(
     async (index: number) => {
@@ -231,10 +283,18 @@ export function useBookReader({
         return undefined
       }
       syncNavigationState(core)
+      if (result !== undefined) {
+        setFirstLayoutDone(true)
+      }
       return result
     },
     [syncNavigationState],
   )
+
+  const notifyInitialViewCommitted = useCallback(() => {
+    if (!mountedRef.current) return
+    setFirstLayoutDone(true)
+  }, [])
 
   const getChapter = useCallback(
     async (index: number): Promise<ChapterData | null> => {
@@ -247,9 +307,7 @@ export function useBookReader({
 
   const resolveInternalTextLink = useCallback(
     (fromChapter: number, href: string) => {
-      return (
-        coreRef.current?.resolveInternalTextLink(fromChapter, href) ?? null
-      )
+      return coreRef.current?.resolveInternalTextLink(fromChapter, href) ?? null
     },
     [],
   )
@@ -275,8 +333,66 @@ export function useBookReader({
     [syncNavigationState],
   )
 
+  const applyReadingResume = useCallback(
+    async (chapterIndex: number, columnPageOffset?: number) => {
+      const core = coreRef.current
+      if (!core?.ready) return
+      setLoading(true)
+      try {
+        core.gotoChapterWithResume(chapterIndex, columnPageOffset)
+        const ch = await core.getChapter(chapterIndex)
+        if (!mountedRef.current) return
+        setChapter(ch)
+        syncNavigationState(core)
+      } catch (e) {
+        if (mountedRef.current) setError(String(e))
+      } finally {
+        if (mountedRef.current) setLoading(false)
+      }
+    },
+    [syncNavigationState],
+  )
+
+  const applyCharOffsetResume = useCallback(
+    async (chapterIndex: number, charOffset: number) => {
+      const core = coreRef.current
+      if (!core?.ready) return false
+      setLoading(true)
+      try {
+        const ok = await core.applyCharOffsetResume(chapterIndex, charOffset)
+        if (!ok || !mountedRef.current) return false
+        const ch = await core.getChapter(core.currentIndex)
+        if (!mountedRef.current) return false
+        setChapter(ch)
+        syncNavigationState(core)
+        return true
+      } catch (e) {
+        if (mountedRef.current) setError(String(e))
+        return false
+      } finally {
+        if (mountedRef.current) setLoading(false)
+      }
+    },
+    [syncNavigationState],
+  )
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 依赖导航态 bump 引用，供进度保存 effect 在翻页时重新防抖
+  const buildSaveBookAnchor = useCallback(
+    (fileFormat: string): BookAnchor => {
+      return (
+        coreRef.current?.buildSaveBookAnchor(fileFormat) ?? {
+          chapterIndex: 0,
+        }
+      )
+    },
+    [curChapter, curPageIndex, contentType],
+  )
+
+  const ready = parsedReady && firstLayoutDone
+
   return {
     ready,
+    firstLayoutDone,
     error,
     loading,
     contentType,
@@ -286,6 +402,7 @@ export function useBookReader({
     curChapter,
     chapter,
     curPageIndex,
+    totalPagesInChapter,
     isChapterStartFromEnd,
     gotoChapter,
     gotoPage,
@@ -293,8 +410,12 @@ export function useBookReader({
     gotoPrevPage,
     gotoPageInChapter,
     layout,
+    notifyInitialViewCommitted,
     getChapter,
     resolveInternalTextLink,
     followInternalTextLink,
+    applyReadingResume,
+    applyCharOffsetResume,
+    buildSaveBookAnchor,
   }
 }

@@ -1,4 +1,13 @@
 import {
+  type BookAnchor,
+  bookAnchorFromReaderState,
+} from "../progress/BookAnchor"
+import {
+  buildTextChapterBookAnchorAtBoundary,
+  epubReadingBoundaryFromChapterCharOffset,
+} from "../progress/epubBookAnchor"
+import { genericResolveInternalTextLink } from "./internalTextLink"
+import {
   findPageIndexForReadingAnchor,
   layoutTextChapterAtMeasureHost,
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
@@ -6,8 +15,6 @@ import {
   readingAnchorForElement,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
-import { genericResolveInternalTextLink } from "./internalTextLink"
-import { findHtmlFragmentElement } from "./utils"
 import { ComicParser } from "./parsers/ComicParser"
 import { EpubParser } from "./parsers/EpubParser"
 import { PdfParser } from "./parsers/PdfParser"
@@ -21,12 +28,14 @@ import type {
   LayoutConfig,
   PageData,
   ParsedBook,
+  RangeBoundary,
   ReaderProgress,
   ResolvedInternalTextLink,
   TextChapterData,
   TextChapterPaginationResult,
   TocItem,
 } from "./types"
+import { findHtmlFragmentElement } from "./utils"
 
 /** 列页切片数 → 双栏下的跨页（屏）数。 */
 function textSpreadCountFromColumns(columnPageCount: number): number {
@@ -72,6 +81,13 @@ export class BookReader {
   private _openAtChapterEndPending = false
   /** After layout, open the column/page that contains this EPUB fragment id (NCX `id` / `name`). */
   private _pendingLinkFragment: string | null = null
+  /** 文本书：由 {@link applyCharOffsetResume} 设置，首屏 layout 后对齐到章内偏移对应列页。 */
+  private _pendingTextResumeBoundary: RangeBoundary | null = null
+  /** 最近一次带 `sourceRoot` 的分页结果，供 EPUB 打包 CFI 锚点。 */
+  private _lastTextLayout: {
+    sourceRoot: HTMLDivElement
+    chapter: TextChapterData
+  } | null = null
   private _ready = false
 
   /** 与导航键一致时 {@link curPage}/{@link prevPage}/{@link nextPage} 复用同一对象引用 */
@@ -148,18 +164,51 @@ export class BookReader {
 
   /**
    * Parse the book buffer and prepare for reading.
+   * 若提供 `initialOpenAnchor`，首章与首屏 layout 即对应该锚点（避免先渲染第 1 章再跳转）。
    */
-  async init(buffer: ArrayBuffer, format: string): Promise<ParsedBook> {
+  async init(
+    buffer: ArrayBuffer,
+    format: string,
+    options?: { initialOpenAnchor?: BookAnchor | null },
+  ): Promise<ParsedBook> {
     this.parser = BookReader.createParser(format)
     this.book = await this.parser.parse(buffer)
     this.paginator =
       this.book.contentType === "text" ? new ProgressivePaginator() : null
-    this._currentIndex = 0
-    this._currentPageOffset = 0
-    this._totalPagesOfCurChapter = 1
+
+    this._pendingLinkFragment = null
+    this._pendingTextResumeBoundary = null
+    this._lastTextLayout = null
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
-    this._pendingLinkFragment = null
+
+    const n = this.totalChapters
+    const anchor = options?.initialOpenAnchor ?? null
+    let chIdx = 0
+    if (anchor && n > 0) {
+      chIdx = Math.min(Math.max(0, Math.floor(anchor.chapterIndex)), n - 1)
+    }
+
+    if (
+      this.book.contentType === "text" &&
+      anchor &&
+      anchor.charOffset != null &&
+      Number.isFinite(anchor.charOffset)
+    ) {
+      const ch = await this.getChapter(chIdx)
+      if (ch.type === "text") {
+        const boundary = epubReadingBoundaryFromChapterCharOffset(
+          ch,
+          Math.max(0, Math.floor(anchor.charOffset)),
+        )
+        if (boundary) {
+          this._pendingTextResumeBoundary = boundary
+        }
+      }
+    }
+
+    this.gotoChapterWithResume(chIdx, 0)
+
     this._ready = true
     this.invalidatePageDescriptorCaches()
     return this.book
@@ -207,6 +256,12 @@ export class BookReader {
           measureHost,
           this.paginator,
         )
+        if (result.sourceRoot) {
+          this._lastTextLayout = { sourceRoot: result.sourceRoot, chapter: ch }
+        } else {
+          this._lastTextLayout = null
+        }
+
         const N = result.pages.length
         const maxCol = Math.max(0, N - 1)
         let nextCol = Math.min(this._currentPageOffset, maxCol)
@@ -221,6 +276,25 @@ export class BookReader {
           const lastSpread = textSpreadCountFromColumns(N) - 1
           nextCol = spreadIndexToLeftColumn(lastSpread, N)
           this._openAtChapterEndPending = false
+        } else if (
+          this._pendingTextResumeBoundary &&
+          result.mode === "sliced" &&
+          N > 0 &&
+          result.sourceRoot
+        ) {
+          const anchorCol = findPageIndexForReadingAnchor(
+            result.sourceRoot,
+            result.pages,
+            this._pendingTextResumeBoundary,
+          )
+          const c = Math.max(0, Math.min(anchorCol, maxCol))
+          const double = Boolean(config.doubleColumn)
+          nextCol = double
+            ? spreadIndexToLeftColumn(columnPageIndexToSpread(c), N)
+            : c
+          this._pendingTextResumeBoundary = null
+        } else if (this._pendingTextResumeBoundary && result.mode === "full") {
+          this._pendingTextResumeBoundary = null
         } else if (
           this._pendingLinkFragment &&
           result.mode === "sliced" &&
@@ -283,6 +357,27 @@ export class BookReader {
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
+    this._pendingTextResumeBoundary = null
+    this._lastTextLayout = null
+    this.invalidatePageDescriptorCaches()
+  }
+
+  /**
+   * 与 {@link gotoChapter} 相同，但可指定文本书恢复时的列页下标（首屏 layout 会据此对齐）。
+   * 漫画/PDF 等一章一页时 `columnPageOffset` 忽略。
+   */
+  gotoChapterWithResume(index: number, columnPageOffset?: number): void {
+    if (index < 0 || index >= this.totalChapters) return
+    this._currentIndex = index
+    const col =
+      columnPageOffset != null && Number.isFinite(columnPageOffset)
+        ? Math.max(0, Math.floor(columnPageOffset))
+        : 0
+    this._currentPageOffset = col
+    this._totalPagesOfCurChapter = 1
+    this._chapterStartFromEnd = false
+    this._openAtChapterEndPending = false
+    this._lastTextLayout = null
     this.invalidatePageDescriptorCaches()
   }
 
@@ -498,6 +593,51 @@ export class BookReader {
   }
 
   /**
+   * 当前位置写入本地库用的 {@link BookAnchor}：文本书写章内 UTF-16 `charOffset` 与片段；否则仅章下标。
+   */
+  buildSaveBookAnchor(_fileFormat: string): BookAnchor {
+    const chapterIdx = Math.max(0, this._currentIndex)
+    if (
+      this.contentType === "text" &&
+      this._lastTextLayout?.chapter.type === "text" &&
+      this.paginator instanceof ProgressivePaginator
+    ) {
+      const { chapter } = this._lastTextLayout
+      const slice = this.paginator.getCurrentSlice()
+      const boundary: RangeBoundary = slice?.start ?? {
+        path: [],
+        offset: 0,
+        isText: false,
+      }
+      return buildTextChapterBookAnchorAtBoundary({ chapter, boundary })
+    }
+    return bookAnchorFromReaderState({
+      chapterIndex: chapterIdx,
+    })
+  }
+
+  /**
+   * 文本书：按章内 UTF-16 `charOffset`（相对该章 body 文本）在下一屏 layout 对齐列页。
+   */
+  async applyCharOffsetResume(
+    chapterIndex: number,
+    charOffset: number,
+  ): Promise<boolean> {
+    const ch = await this.getChapter(chapterIndex)
+    if (ch.type !== "text") return false
+    const boundary = epubReadingBoundaryFromChapterCharOffset(ch, charOffset)
+    if (!boundary) return false
+    this._pendingLinkFragment = null
+    this._pendingTextResumeBoundary = boundary
+    this.gotoChapterWithResume(chapterIndex, 0)
+    if (this.paginator instanceof ProgressivePaginator) {
+      void this.paginator.clearCache()
+    }
+    this.invalidatePageDescriptorCaches()
+    return true
+  }
+
+  /**
    * Resolves an in-spine link from `fromChapterIndex` (footnote, multi-file HTML, etc.).
    * Uses the parser’s {@link IParser.resolveInternalLink} when present, otherwise spine `href` matching.
    */
@@ -554,6 +694,8 @@ export class BookReader {
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
     this._pendingLinkFragment = null
+    this._pendingTextResumeBoundary = null
+    this._lastTextLayout = null
     this.invalidatePageDescriptorCaches()
   }
 
