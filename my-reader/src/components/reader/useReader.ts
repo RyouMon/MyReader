@@ -49,6 +49,14 @@ export interface UseReaderReturn {
     measureHost: HTMLDivElement,
   ) => Promise<TextChapterPaginationResult | undefined>
   getChapter: (index: number) => Promise<ChapterData | null>
+
+  /** Text books: resolve in-book `<a href>` from a spine chapter. */
+  resolveInternalTextLink: (
+    fromChapter: number,
+    href: string,
+  ) => { chapterIndex: number; fragmentId: string | null } | null
+  /** Text books: navigate and scroll paginated view to target after layout. */
+  followInternalTextLink: (fromChapter: number, href: string) => Promise<boolean>
 }
 
 /**
@@ -237,6 +245,36 @@ export function useBookReader({
     [],
   )
 
+  const resolveInternalTextLink = useCallback(
+    (fromChapter: number, href: string) => {
+      return (
+        coreRef.current?.resolveInternalTextLink(fromChapter, href) ?? null
+      )
+    },
+    [],
+  )
+
+  const followInternalTextLink = useCallback(
+    async (fromChapter: number, href: string) => {
+      const core = coreRef.current
+      if (!core?.ready) return false
+      const prep = core.prepareInternalTextLinkNavigation(fromChapter, href)
+      if (!prep) return false
+      setLoading(true)
+      try {
+        const ch = await core.getChapter(prep.chapterIndex)
+        setChapter(ch)
+        syncNavigationState(core)
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+      return true
+    },
+    [syncNavigationState],
+  )
+
   return {
     ready,
     error,
@@ -256,5 +294,7 @@ export function useBookReader({
     gotoPageInChapter,
     layout,
     getChapter,
+    resolveInternalTextLink,
+    followInternalTextLink,
   }
 }

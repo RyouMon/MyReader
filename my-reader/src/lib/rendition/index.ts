@@ -18,6 +18,7 @@ export type {
   ParsedBook,
   RangeBoundary,
   ReaderProgress,
+  ResolvedInternalTextLink,
   ReaderTypographyConfig,
   TextChapterData,
   TextChapterPaginationResult,

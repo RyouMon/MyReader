@@ -54,3 +54,25 @@ export function buildBookFileUrl(
     ? `http://bookfile.localhost/${path}`
     : `bookfile://localhost/${path}`
 }
+
+/**
+ * Resolves HTML fragment targets inside a chapter subtree (`id` or legacy `name`).
+ */
+export function findHtmlFragmentElement(
+  root: HTMLElement,
+  fragment: string,
+): HTMLElement | null {
+  if (!fragment) return null
+  try {
+    const byId = root.querySelector(`#${CSS.escape(fragment)}`)
+    if (byId instanceof HTMLElement) return byId
+  } catch {
+    // invalid id for selector
+  }
+  try {
+    const byName = root.querySelector(`[name="${CSS.escape(fragment)}"]`)
+    return byName instanceof HTMLElement ? byName : null
+  } catch {
+    return null
+  }
+}

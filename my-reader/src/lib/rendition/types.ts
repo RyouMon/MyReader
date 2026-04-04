@@ -132,11 +132,25 @@ export interface ReaderProgress {
   totalChapters: number
 }
 
+/** Target of an in-book `<a href>` (same or other spine chapter + optional fragment). */
+export interface ResolvedInternalTextLink {
+  chapterIndex: number
+  fragmentId: string | null
+}
+
 /** Format-specific parser contract. */
 export interface IParser {
   parse(buffer: ArrayBuffer): Promise<ParsedBook>
   getChapter(index: number): Promise<ChapterData>
   destroy(): void
+  /**
+   * Optional: resolve internal links using format-specific rules (e.g. EPUB OPF).
+   * If omitted, {@link BookReader} falls back to spine `href` + relative path matching.
+   */
+  resolveInternalLink?(
+    fromChapterIndex: number,
+    rawHref: string,
+  ): ResolvedInternalTextLink | null
 }
 
 /** Paginator contract that stays renderer-agnostic. */

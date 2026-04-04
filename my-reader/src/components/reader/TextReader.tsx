@@ -2,6 +2,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { TextChapterData, TocItem } from "@/lib/rendition"
+import { isNonBookSchemeHref } from "@/lib/rendition/internalTextLink"
+import { findHtmlFragmentElement } from "@/lib/rendition/utils"
 import { cn } from "@/lib/utils"
 import { ReaderBottomBar } from "./ReaderBottomBar"
 import { ReaderContent } from "./ReaderContent"
@@ -29,6 +31,10 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     gotoPageInChapter,
     layout: applyLayout,
     format,
+    contentType,
+    ready: readerReady,
+    resolveInternalTextLink,
+    followInternalTextLink,
   } = reader
   const store = useReaderStore()
   const readerRootRef = useRef<HTMLDivElement>(null)
@@ -312,6 +318,60 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     document.addEventListener("pointermove", onMove, { passive: true })
     return () => document.removeEventListener("pointermove", onMove)
   }, [layout])
+
+  useEffect(() => {
+    const root = readerRootRef.current
+    if (!root || !readerReady) return
+    if (contentType !== "text") return
+
+    const onClickCapture = (e: MouseEvent) => {
+      const t = e.target
+      if (!t || !(t instanceof Element)) return
+      const a = t.closest("a[href]")
+      if (!a || !(a instanceof HTMLAnchorElement)) return
+      const hrefAttr = a.getAttribute("href")
+      if (!hrefAttr?.trim()) return
+      const href = hrefAttr.trim()
+      if (isNonBookSchemeHref(href)) {
+        e.preventDefault()
+        window.open(href, "_blank", "noopener,noreferrer")
+        return
+      }
+
+      e.preventDefault()
+
+      const fromChapter = layout === "scroll" ? scrollFocusIndex : curChapter
+
+      if (layout === "scroll") {
+        const container = scrollRef.current
+        if (!container) return
+        const r = resolveInternalTextLink(fromChapter, href)
+        if (!r) return
+        const section = container.querySelector(
+          `[data-chapter-index="${r.chapterIndex}"]`,
+        )
+        if (!(section instanceof HTMLElement)) return
+        const el = r.fragmentId
+          ? findHtmlFragmentElement(section, r.fragmentId)
+          : null
+        ;(el ?? section).scrollIntoView({ behavior: "smooth", block: "start" })
+        return
+      }
+
+      void followInternalTextLink(fromChapter, href)
+    }
+
+    root.addEventListener("click", onClickCapture, true)
+    return () => root.removeEventListener("click", onClickCapture, true)
+  }, [
+    readerReady,
+    contentType,
+    layout,
+    scrollFocusIndex,
+    curChapter,
+    resolveInternalTextLink,
+    followInternalTextLink,
+  ])
 
   // ── 目录 ──────────────────────────────────────────────────────────────────
   const tocEntries = useMemo(() => flattenTocToPanelEntries(toc), [toc])

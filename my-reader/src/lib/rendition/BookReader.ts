@@ -3,8 +3,11 @@ import {
   layoutTextChapterAtMeasureHost,
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
   ProgressivePaginator,
+  readingAnchorForElement,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
+import { genericResolveInternalTextLink } from "./internalTextLink"
+import { findHtmlFragmentElement } from "./utils"
 import { ComicParser } from "./parsers/ComicParser"
 import { EpubParser } from "./parsers/EpubParser"
 import { PdfParser } from "./parsers/PdfParser"
@@ -19,6 +22,7 @@ import type {
   PageData,
   ParsedBook,
   ReaderProgress,
+  ResolvedInternalTextLink,
   TextChapterData,
   TextChapterPaginationResult,
   TocItem,
@@ -66,6 +70,8 @@ export class BookReader {
   private _chapterStartFromEnd = false
   /** 下一首次成功切片分页后从章末打开（与 UI 层 `startFromEnd` 一次性语义一致） */
   private _openAtChapterEndPending = false
+  /** After layout, open the column/page that contains this EPUB fragment id (NCX `id` / `name`). */
+  private _pendingLinkFragment: string | null = null
   private _ready = false
 
   /** 与导航键一致时 {@link curPage}/{@link prevPage}/{@link nextPage} 复用同一对象引用 */
@@ -153,6 +159,7 @@ export class BookReader {
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
+    this._pendingLinkFragment = null
     this._ready = true
     this.invalidatePageDescriptorCaches()
     return this.book
@@ -215,6 +222,28 @@ export class BookReader {
           nextCol = spreadIndexToLeftColumn(lastSpread, N)
           this._openAtChapterEndPending = false
         } else if (
+          this._pendingLinkFragment &&
+          result.mode === "sliced" &&
+          N > 0 &&
+          result.sourceRoot
+        ) {
+          const id = this._pendingLinkFragment
+          this._pendingLinkFragment = null
+          const el = findHtmlFragmentElement(result.sourceRoot, id)
+          if (el) {
+            const boundary = readingAnchorForElement(result.sourceRoot, el)
+            const anchorCol = findPageIndexForReadingAnchor(
+              result.sourceRoot,
+              result.pages,
+              boundary,
+            )
+            const c = Math.max(0, Math.min(anchorCol, maxCol))
+            const double = Boolean(config.doubleColumn)
+            nextCol = double
+              ? spreadIndexToLeftColumn(columnPageIndexToSpread(c), N)
+              : c
+          }
+        } else if (
           anchorBefore &&
           result.mode === "sliced" &&
           N > 0 &&
@@ -230,6 +259,8 @@ export class BookReader {
           nextCol = double
             ? spreadIndexToLeftColumn(columnPageIndexToSpread(c), N)
             : c
+        } else if (this._pendingLinkFragment) {
+          this._pendingLinkFragment = null
         }
         await this.paginator.gotoPage(nextCol)
         this.syncPageStateFromPaginator()
@@ -466,6 +497,50 @@ export class BookReader {
     }
   }
 
+  /**
+   * Resolves an in-spine link from `fromChapterIndex` (footnote, multi-file HTML, etc.).
+   * Uses the parser’s {@link IParser.resolveInternalLink} when present, otherwise spine `href` matching.
+   */
+  resolveInternalTextLink(
+    fromChapterIndex: number,
+    rawHref: string,
+  ): ResolvedInternalTextLink | null {
+    if (this.book?.contentType !== "text" || !this.parser || !this.book) {
+      return null
+    }
+    const p = this.parser as IParser
+    if (typeof p.resolveInternalLink === "function") {
+      return p.resolveInternalLink(fromChapterIndex, rawHref)
+    }
+    return genericResolveInternalTextLink(
+      this.book.chapters,
+      fromChapterIndex,
+      rawHref,
+    )
+  }
+
+  /**
+   * Applies spine navigation and optional fragment jump after the next progressive layout.
+   */
+  prepareInternalTextLinkNavigation(
+    fromChapterIndex: number,
+    rawHref: string,
+  ): { chapterIndex: number } | null {
+    const resolved = this.resolveInternalTextLink(fromChapterIndex, rawHref)
+    if (!resolved) return null
+    this._pendingLinkFragment = resolved.fragmentId
+    this.gotoChapter(resolved.chapterIndex)
+    this._currentPageOffset = 0
+    this._totalPagesOfCurChapter = 1
+    this._chapterStartFromEnd = false
+    this._openAtChapterEndPending = false
+    if (this.paginator instanceof ProgressivePaginator) {
+      void this.paginator.clearCache()
+    }
+    this.invalidatePageDescriptorCaches()
+    return { chapterIndex: resolved.chapterIndex }
+  }
+
   destroy(): void {
     this.parser?.destroy()
     this.parser = null
@@ -478,6 +553,7 @@ export class BookReader {
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
+    this._pendingLinkFragment = null
     this.invalidatePageDescriptorCaches()
   }
 

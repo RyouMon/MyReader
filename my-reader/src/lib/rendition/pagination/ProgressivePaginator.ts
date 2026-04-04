@@ -823,6 +823,16 @@ function createRootEndBoundary(root: HTMLElement): RangeBoundary {
   }
 }
 
+/**
+ * Range boundary at the start of an element, for jumping to in-book link targets after pagination.
+ */
+export function readingAnchorForElement(
+  root: HTMLElement,
+  el: HTMLElement,
+): RangeBoundary {
+  return serializeLocationAsBoundary(root, { node: el, offset: 0 })
+}
+
 /** Serializes a source location into a DOM range boundary. */
 function serializeLocationAsBoundary(
   root: HTMLElement,

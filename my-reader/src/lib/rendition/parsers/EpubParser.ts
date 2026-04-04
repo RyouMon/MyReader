@@ -5,6 +5,14 @@ import {
   type EpubBookShape,
   type EpubSection,
 } from "@/lib/foliate-js/epub.js"
+import {
+  chapterPathDirname,
+  decodeLinkFragment,
+  isNonBookSchemeHref,
+  normalizeChapterPath,
+  resolveChapterRelativePath,
+  stripChapterHrefHash,
+} from "../internalTextLink"
 import type {
   BookMetadata,
   ChapterInfo,
@@ -46,13 +54,13 @@ export class EpubParser implements IParser {
     const toc = this.normalizeToc(foliate.toc ?? [])
     this.assignTocSpineIndices(toc)
     for (const item of this.flattenToc(toc)) {
-      const href = stripHash(item.href)
+      const href = stripChapterHrefHash(item.href)
       if (href) this.titleByHref.set(href, item.label)
     }
 
     this.chapterIndex = this.foliateBook.sections.map(
       (section: EpubSection, index: number) => {
-        const href = stripHash(section.id)
+        const href = stripChapterHrefHash(section.id)
         const title =
           this.titleByHref.get(href) ??
           this.titleByHref.get(decodeURIComponent(href)) ??
@@ -81,7 +89,7 @@ export class EpubParser implements IParser {
       throw new Error("Chapter index out of range: " + index)
 
     const doc = await section.createDocument()
-    const chapterDir = getDirname(info.href)
+    const chapterDir = chapterPathDirname(info.href)
     const cssText = this.collectCss(doc, chapterDir)
     this.resolveImages(doc, chapterDir)
     const text = (doc.body?.textContent || "").trim()
@@ -128,10 +136,10 @@ export class EpubParser implements IParser {
   }
 
   private readBinaryFile(uri: string): Uint8Array | null {
-    const hit = this.files.get(normalizePath(uri))
+    const hit = this.files.get(normalizeChapterPath(uri))
     if (hit) return hit
     const decoded = decodeURIComponent(uri)
-    if (decoded !== uri) return this.files.get(normalizePath(decoded)) ?? null
+    if (decoded !== uri) return this.files.get(normalizeChapterPath(decoded)) ?? null
     return null
   }
 
@@ -162,7 +170,7 @@ export class EpubParser implements IParser {
             : undefined
         return {
           label,
-          href: stripHash(href),
+          href: stripChapterHrefHash(href),
           index: 0,
           subitems,
         } satisfies TocItem
@@ -218,10 +226,10 @@ export class EpubParser implements IParser {
     )) {
       const href = link.getAttribute("href")
       if (!href) continue
-      const cssPath = resolveRelativePath(chapterDir, href)
+      const cssPath = resolveChapterRelativePath(chapterDir, href)
       const cssData = this.readBinaryFile(cssPath)
       if (cssData) {
-        const cssDir = getDirname(cssPath)
+        const cssDir = chapterPathDirname(cssPath)
         const css = this.resolveCssUrls(
           new TextDecoder("utf-8").decode(cssData),
           cssDir,
@@ -237,7 +245,9 @@ export class EpubParser implements IParser {
     for (const img of Array.from(doc.querySelectorAll("img"))) {
       const src = img.getAttribute("src")
       if (!src || isExternalUrl(src)) continue
-      const blobUrl = this.resourceBlobUrl(resolveRelativePath(chapterDir, src))
+      const blobUrl = this.resourceBlobUrl(
+        resolveChapterRelativePath(chapterDir, src),
+      )
       if (blobUrl) img.setAttribute("src", blobUrl)
     }
     for (const svgImage of Array.from(doc.querySelectorAll("image"))) {
@@ -246,7 +256,7 @@ export class EpubParser implements IParser {
         svgImage.getAttribute("href")
       if (!href || isExternalUrl(href)) continue
       const blobUrl = this.resourceBlobUrl(
-        resolveRelativePath(chapterDir, href),
+        resolveChapterRelativePath(chapterDir, href),
       )
       if (blobUrl) {
         svgImage.setAttribute("href", blobUrl)
@@ -260,14 +270,16 @@ export class EpubParser implements IParser {
       /url\(\s*['"]?([^'")]+)['"]?\s*\)/g,
       (match, url: string) => {
         if (isExternalUrl(url)) return match
-        const resolved = this.resourceBlobUrl(resolveRelativePath(baseDir, url))
+        const resolved = this.resourceBlobUrl(
+          resolveChapterRelativePath(baseDir, url),
+        )
         return resolved ? `url('${resolved}')` : match
       },
     )
   }
 
   private resourceBlobUrl(path: string): string | null {
-    const normalized = normalizePath(path)
+    const normalized = normalizeChapterPath(path)
     if (this.resourceCache.has(normalized))
       return this.resourceCache.get(normalized)!
     const data = this.readBinaryFile(normalized)
@@ -294,6 +306,52 @@ export class EpubParser implements IParser {
     }
     return out
   }
+
+  /**
+   * Resolves a raw `<a href>` from spine chapter `fromChapterIndex` to target spine index and fragment id.
+   */
+  resolveInternalLink(
+    fromChapterIndex: number,
+    rawHref: string,
+  ): { chapterIndex: number; fragmentId: string | null } | null {
+    if (!this.foliateBook) return null
+    const trimmed = rawHref.trim()
+    if (!trimmed) return null
+    if (isNonBookSchemeHref(trimmed)) return null
+
+    const info = this.chapterIndex[fromChapterIndex]
+    if (!info) return null
+
+    const hashIdx = trimmed.indexOf("#")
+    const pathPart = hashIdx >= 0 ? trimmed.slice(0, hashIdx) : trimmed
+    const fragment =
+      hashIdx >= 0 && hashIdx < trimmed.length - 1
+        ? decodeLinkFragment(trimmed.slice(hashIdx + 1))
+        : null
+
+    const manifestPath =
+      !pathPart || pathPart === ""
+        ? stripChapterHrefHash(info.href)
+        : resolveChapterRelativePath(
+            chapterPathDirname(stripChapterHrefHash(info.href)),
+            pathPart,
+          )
+
+    const fullHref = fragment ? `${manifestPath}#${fragment}` : manifestPath
+
+    let resolved = this.foliateBook.resolveHref(fullHref)
+    if (
+      (resolved?.index ?? -1) < 0 &&
+      manifestPath !== decodeURIComponent(manifestPath)
+    ) {
+      const decPath = decodeURIComponent(manifestPath)
+      const retry = fragment ? `${decPath}#${fragment}` : decPath
+      resolved = this.foliateBook.resolveHref(retry)
+    }
+    const idx = resolved?.index
+    if (typeof idx !== "number" || idx < 0) return null
+    return { chapterIndex: idx, fragmentId: fragment }
+  }
 }
 
 /**
@@ -304,46 +362,9 @@ function toFileMap(
 ): Map<string, Uint8Array> {
   const out = new Map<string, Uint8Array>()
   for (const [path, data] of Object.entries(entries)) {
-    out.set(normalizePath(path), data)
+    out.set(normalizeChapterPath(path), data)
   }
   return out
-}
-
-/**
- * Resolves a relative href against chapter directory.
- */
-function resolveRelativePath(base: string, relative: string): string {
-  if (!base) return normalizePath(relative)
-  if (relative.startsWith("/")) return normalizePath(relative.substring(1))
-  const parts = normalizePath(base).split("/").filter(Boolean)
-  for (const seg of normalizePath(relative).split("/")) {
-    if (!seg || seg === ".") continue
-    if (seg === "..") parts.pop()
-    else parts.push(seg)
-  }
-  return parts.join("/")
-}
-
-/**
- * Normalizes resource path for ZIP lookup.
- */
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/^\/+/, "")
-}
-
-/**
- * Computes directory part from a normalized path.
- */
-function getDirname(path: string): string {
-  const idx = path.lastIndexOf("/")
-  return idx >= 0 ? path.slice(0, idx) : ""
-}
-
-/**
- * Strips hash fragment from href.
- */
-function stripHash(href: string): string {
-  return normalizePath(href.split("#")[0] || "")
 }
 
 /**
