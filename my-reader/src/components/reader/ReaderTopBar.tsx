@@ -45,15 +45,7 @@ export function ReaderTopBar({
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
     >
-      <div aria-hidden className="min-w-0" />
-
-      <div className="font-serif min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium text-reader-chrome-fg">
-        {bookTitle}
-        <span className="mx-1.5 text-reader-chrome-muted">·</span>
-        {chapterTitle}
-      </div>
-
-      <div className="flex items-center justify-end gap-0.5">
+      <div className="flex min-w-0 items-center justify-start gap-0.5">
         <TopBarButton title="目录" onClick={onToggleToc}>
           <List className="size-[18px]" />
         </TopBarButton>
@@ -64,6 +56,15 @@ export function ReaderTopBar({
         >
           <Bookmark className="size-[18px]" />
         </TopBarButton>
+      </div>
+
+      <div className="font-serif min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium text-reader-chrome-fg">
+        {bookTitle}
+        <span className="mx-1.5 text-reader-chrome-muted">·</span>
+        {chapterTitle}
+      </div>
+
+      <div className="flex items-center justify-end gap-0.5">
         <TopBarButton title="设置" onClick={onToggleSettings}>
           <Settings className="size-[18px]" />
         </TopBarButton>
