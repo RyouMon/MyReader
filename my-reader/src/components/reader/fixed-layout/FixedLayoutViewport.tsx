@@ -3,9 +3,9 @@ import type { CSSProperties } from "react"
 import type { ImageChapterData } from "@/lib/rendition"
 import { cn } from "@/lib/utils"
 
-import type { DisplayMode, ReadingDirection, ZoomMode } from "./ComicReader"
+import type { DisplayMode, ReadingDirection, ZoomMode } from "./FixedLayoutReader"
 
-interface ComicViewportProps {
+interface FixedLayoutViewportProps {
   page: ImageChapterData | null
   spreadPage: ImageChapterData | null
   displayMode: DisplayMode
@@ -17,7 +17,7 @@ interface ComicViewportProps {
   loading: boolean
 }
 
-export function ComicViewport({
+export function FixedLayoutViewport({
   page,
   spreadPage,
   displayMode,
@@ -27,7 +27,7 @@ export function ComicViewport({
   pageGap,
   turnDirection,
   loading,
-}: ComicViewportProps) {
+}: FixedLayoutViewportProps) {
   const zoomStyle = getZoomStyle(zoomMode)
 
   return (
@@ -49,8 +49,8 @@ export function ComicViewport({
         <div
           className={cn(
             "flex items-center justify-center transition-transform duration-250 ease-out",
-            turnDirection === "forward" && "comic-turning-forward",
-            turnDirection === "backward" && "comic-turning-backward",
+            turnDirection === "forward" && "fixed-layout-turning-forward",
+            turnDirection === "backward" && "fixed-layout-turning-backward",
           )}
           style={{
             gap: `${pageGap}px`,
@@ -64,7 +64,7 @@ export function ComicViewport({
                 key={p.index}
                 src={p.imageUrl}
                 alt={p.title}
-                className="comic-page-img"
+                className="fixed-layout-page-img"
                 style={zoomStyle}
                 draggable={false}
               />

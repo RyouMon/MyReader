@@ -8,7 +8,7 @@ import {
 
 import type { TextChapterData } from "@/lib/rendition"
 
-interface ReaderScrollContentProps {
+interface ReflowableScrollContentProps {
   chapters: TextChapterData[]
   fontFamily: string
   fontSize: number
@@ -22,7 +22,7 @@ interface ReaderScrollContentProps {
 /**
  * 全书连续滚动：多章 HTML 拼接在同一滚动容器中，进度按整卷 scroll 计算。
  */
-export function ReaderScrollContent({
+export function ReflowableScrollContent({
   chapters,
   fontFamily,
   fontSize,
@@ -31,7 +31,7 @@ export function ReaderScrollContent({
   scrollContainerRef,
   onBookProgress,
   onVisibleChapterChange,
-}: ReaderScrollContentProps) {
+}: ReflowableScrollContentProps) {
   const sectionRefs = useRef<Map<number, HTMLElement>>(new Map())
 
   const setSectionRef = useCallback((index: number, el: HTMLElement | null) => {

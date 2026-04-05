@@ -8,7 +8,7 @@ export type {
   BookParser,
   ChapterData,
   ChapterInfo,
-  ContentType,
+  LayoutMode,
   DomPageSlice,
   ImageChapterData,
   IPaginator,

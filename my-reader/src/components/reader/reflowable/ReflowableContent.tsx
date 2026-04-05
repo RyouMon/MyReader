@@ -14,19 +14,22 @@ import type {
 } from "@/lib/rendition"
 import { BookReader } from "@/lib/rendition/BookReader"
 import { cn } from "@/lib/utils"
-import { ReaderSkeleton, readerPaginatedColumnClass } from "./ReaderSkeleton"
+import {
+  ReflowableSkeleton,
+  reflowablePaginatedColumnClass,
+} from "./ReflowableSkeleton"
 
 /** 分页视口宽度不低于此值时启用自动双栏（与 {@link LayoutConfig.doubleColumn} 对应）。 */
-const READER_WIDE_COLUMN_MIN_WIDTH_PX = 1300
+const REFLOWABLE_WIDE_COLUMN_MIN_WIDTH_PX = 1300
 
 /** 视口尺寸停止变化后再跑分页测量，避免拖拽窗口时连续触发布局。 */
-const READER_VIEWPORT_RESIZE_DEBOUNCE_MS = 160
+const REFLOWABLE_VIEWPORT_RESIZE_DEBOUNCE_MS = 160
 
-function readerShouldUseDoubleColumn(viewportWidthPx: number): boolean {
-  return viewportWidthPx >= READER_WIDE_COLUMN_MIN_WIDTH_PX
+function reflowableShouldUseDoubleColumn(viewportWidthPx: number): boolean {
+  return viewportWidthPx >= REFLOWABLE_WIDE_COLUMN_MIN_WIDTH_PX
 }
 
-interface ReaderContentProps {
+interface ReflowableContentProps {
   chapter: TextChapterData
   layout: (
     config: LayoutConfig,
@@ -44,7 +47,7 @@ interface ReaderContentProps {
 /**
  * 单章分页视口：测量与页码由 {@link BookReader}（经 `layout`）驱动，本组件只负责挂载测量宿主与绘制。
  */
-export function ReaderContent({
+export function ReflowableContent({
   chapter,
   layout,
   fontFamily,
@@ -54,7 +57,7 @@ export function ReaderContent({
   onProgressChange,
   onPageStateChange,
   pageOffset,
-}: ReaderContentProps) {
+}: ReflowableContentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureHostRef = useRef<HTMLDivElement>(null)
   const displayRef = useRef<HTMLDivElement>(null)
@@ -85,7 +88,7 @@ export function ReaderContent({
     "--reader-line-height": String(lineHeight),
   } as CSSProperties
 
-  const layoutDoubleColumn = readerShouldUseDoubleColumn(viewportLayout.w)
+  const layoutDoubleColumn = reflowableShouldUseDoubleColumn(viewportLayout.w)
 
   const viewportModel = useMemo(
     () =>
@@ -135,7 +138,7 @@ export function ReaderContent({
       paddingX,
       viewPortWidth: w,
       viewPortHeight: h,
-      doubleColumn: readerShouldUseDoubleColumn(w),
+      doubleColumn: reflowableShouldUseDoubleColumn(w),
     }
     void layout(config, host)
       .then((next) => {
@@ -230,7 +233,7 @@ export function ReaderContent({
         setViewportLayout((prev) =>
           prev.w !== w || prev.h !== h ? { w, h } : prev,
         )
-      }, READER_VIEWPORT_RESIZE_DEBOUNCE_MS)
+      }, REFLOWABLE_VIEWPORT_RESIZE_DEBOUNCE_MS)
     }
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf)
@@ -260,9 +263,9 @@ export function ReaderContent({
 
   const viewportResizeInProgress =
     viewportLive.w !== viewportLayout.w || viewportLive.h !== viewportLayout.h
-  const showReaderSkeleton =
+  const showReflowableSkeleton =
     viewportResizeInProgress || awaitingLayoutAfterResize
-  const skeletonTwoColumnShell = readerShouldUseDoubleColumn(viewportLive.w)
+  const skeletonTwoColumnShell = reflowableShouldUseDoubleColumn(viewportLive.w)
 
   useEffect(() => {
     if (spreadCount <= 1) {
@@ -285,7 +288,7 @@ export function ReaderContent({
       />
       <main
         className="reader-paginated-main reader-text-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden"
-        aria-busy={showReaderSkeleton}
+        aria-busy={showReflowableSkeleton}
       >
         <div
           ref={viewportRef}
@@ -303,28 +306,28 @@ export function ReaderContent({
             <>
               <div
                 ref={leftColRef}
-                className={readerPaginatedColumnClass}
+                className={reflowablePaginatedColumnClass}
                 style={typoStyle}
               />
               <div
                 ref={rightColRef}
-                className={readerPaginatedColumnClass}
+                className={reflowablePaginatedColumnClass}
                 style={typoStyle}
               />
             </>
           ) : (
             <div
               ref={displayRef}
-              className={readerPaginatedColumnClass}
+              className={reflowablePaginatedColumnClass}
               style={typoStyle}
             />
           )}
-          {showReaderSkeleton ? (
+          {showReflowableSkeleton ? (
             <div
               className="reader-text-surface pointer-events-none absolute inset-0 z-10 flex min-h-0 flex-col"
               aria-hidden
             >
-              <ReaderSkeleton
+              <ReflowableSkeleton
                 fontSize={fontSize}
                 lineHeight={lineHeight}
                 typoStyle={typoStyle}

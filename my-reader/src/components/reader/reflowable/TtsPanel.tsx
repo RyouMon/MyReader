@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
 
-import { DEFAULT_TTS_CONFIGS, type TtsConfig } from "./types"
+import { DEFAULT_TTS_CONFIGS, type TtsConfig } from "../types"
 
 interface TtsPanelProps {
   visible: boolean

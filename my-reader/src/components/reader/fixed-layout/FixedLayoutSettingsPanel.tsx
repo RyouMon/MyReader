@@ -2,24 +2,24 @@ import { Settings } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type {
-  ComicSettings,
   DisplayMode,
+  FixedLayoutSettings,
   ReadingDirection,
   ZoomMode,
-} from "./ComicReader"
-import type { ReadingLayout } from "./types"
+} from "./FixedLayoutReader"
+import type { ReadingLayout } from "../types"
 
-interface ComicSettingsPanelProps {
+interface FixedLayoutSettingsPanelProps {
   visible: boolean
-  settings: ComicSettings
-  onSettingsChange: (patch: Partial<ComicSettings>) => void
+  settings: FixedLayoutSettings
+  onSettingsChange: (patch: Partial<FixedLayoutSettings>) => void
 }
 
-export function ComicSettingsPanel({
+export function FixedLayoutSettingsPanel({
   visible,
   settings,
   onSettingsChange,
-}: ComicSettingsPanelProps) {
+}: FixedLayoutSettingsPanelProps) {
   return (
     <aside
       className={cn(

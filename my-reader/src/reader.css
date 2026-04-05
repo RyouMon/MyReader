@@ -261,10 +261,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   COMIC / PDF VIEWER
+   FIXED LAYOUT VIEWER (CBZ / fixed EPUB / PDF)
    ═══════════════════════════════════════════════════════════ */
 
-[data-reader-mode="comic"] {
+[data-reader-mode="fixed-layout"] {
   --viewer-bg: oklch(0.18 0.005 60);
   --viewer-page-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   --viewer-page-gap: 16px;
@@ -283,7 +283,7 @@
 }
 
 /* Page turn animations */
-@keyframes comic-turn-forward {
+@keyframes fixed-layout-turn-forward {
   0% {
     opacity: 1;
     transform: translateX(0);
@@ -301,7 +301,7 @@
     transform: translateX(0);
   }
 }
-@keyframes comic-turn-backward {
+@keyframes fixed-layout-turn-backward {
   0% {
     opacity: 1;
     transform: translateX(0);
@@ -320,15 +320,15 @@
   }
 }
 
-.comic-turning-forward {
-  animation: comic-turn-forward 300ms ease-out;
+.fixed-layout-turning-forward {
+  animation: fixed-layout-turn-forward 300ms ease-out;
 }
-.comic-turning-backward {
-  animation: comic-turn-backward 300ms ease-out;
+.fixed-layout-turning-backward {
+  animation: fixed-layout-turn-backward 300ms ease-out;
 }
 
-/* Comic page image styling */
-.comic-page-img {
+/* Fixed-layout page image styling */
+.fixed-layout-page-img {
   max-height: calc(100vh - 48px);
   max-width: 100%;
   border-radius: var(--viewer-page-radius, 2px);
@@ -346,8 +346,8 @@
   .reader-progress-track,
   .reader-progress-fill,
   .reader-progress-thumb,
-  .comic-turning-forward,
-  .comic-turning-backward {
+  .fixed-layout-turning-forward,
+  .fixed-layout-turning-backward {
     animation-duration: 0.01ms;
     transition-duration: 0.05ms;
   }

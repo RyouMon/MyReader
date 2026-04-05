@@ -52,7 +52,7 @@ export class ComicParser implements IParser {
       metadata: {},
       toc,
       chapters,
-      contentType: "image",
+      layoutMode: "fixedLayout",
     }
   }
 

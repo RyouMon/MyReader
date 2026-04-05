@@ -22,10 +22,10 @@ import type {
   BookMetadata,
   ChapterData,
   ChapterInfo,
-  ContentType,
   IPaginator,
   IParser,
   LayoutConfig,
+  LayoutMode,
   PageData,
   ParsedBook,
   RangeBoundary,
@@ -71,7 +71,7 @@ function columnPageIndexToSpread(columnPageIndex: number): number {
 export class BookReader {
   private parser: IParser | null = null
   private paginator: IPaginator<any, PageData> | null = null
-  private book: ParsedBook | null = null
+  private _book: ParsedBook | null = null
   private _currentIndex = 0
   private _layoutConfig: LayoutConfig | null = null
   private _currentPageOffset = 0
@@ -102,24 +102,28 @@ export class BookReader {
   private _prevPageCache: PageData | null = null
   private _nextPageCache: PageData | null = null
 
+  get book(): ParsedBook | null {
+    return this._book ?? null
+  }
+
   get ready(): boolean {
     return this._ready
   }
 
   get metadata(): BookMetadata {
-    return this.book?.metadata ?? {}
+    return this._book?.metadata ?? {}
   }
 
   get toc(): TocItem[] {
-    return this.book?.toc ?? []
+    return this._book?.toc ?? []
   }
 
   get chapters(): ChapterInfo[] {
-    return this.book?.chapters ?? []
+    return this._book?.chapters ?? []
   }
 
   get totalChapters(): number {
-    return this.book?.chapters.length ?? 0
+    return this._book?.chapters.length ?? 0
   }
 
   /** 当前章节下标（与架构文档中的 curChapter 一致） */
@@ -131,8 +135,8 @@ export class BookReader {
     return this._currentIndex
   }
 
-  get contentType(): ContentType {
-    return this.book?.contentType ?? "text"
+  get layoutMode(): LayoutMode {
+    return this._book?.layoutMode ?? "unknown"
   }
 
   get layoutConfig(): LayoutConfig | null {
@@ -172,9 +176,9 @@ export class BookReader {
     options?: { initialOpenAnchor?: BookAnchor | null },
   ): Promise<ParsedBook> {
     this.parser = BookReader.createParser(format)
-    this.book = await this.parser.parse(buffer)
+    this._book = await this.parser.parse(buffer)
     this.paginator =
-      this.book.contentType === "text" ? new ProgressivePaginator() : null
+      this._book.layoutMode === "reflowable" ? new ProgressivePaginator() : null
 
     this._pendingLinkFragment = null
     this._pendingTextResumeBoundary = null
@@ -190,7 +194,7 @@ export class BookReader {
     }
 
     if (
-      this.book.contentType === "text" &&
+      this._book.layoutMode === "reflowable" &&
       anchor &&
       anchor.charOffset != null &&
       Number.isFinite(anchor.charOffset)
@@ -211,7 +215,7 @@ export class BookReader {
 
     this._ready = true
     this.invalidatePageDescriptorCaches()
-    return this.book
+    return this._book
   }
 
   /**
@@ -219,7 +223,7 @@ export class BookReader {
    * Results are cached inside the parser.
    */
   async getChapter(index?: number): Promise<ChapterData> {
-    if (!this.parser || !this.book) {
+    if (!this.parser || !this._book) {
       throw new Error("Reader not initialized — call init() first")
     }
     const idx = index ?? this._currentIndex
@@ -584,7 +588,7 @@ export class BookReader {
   }
 
   getProgress(): ReaderProgress {
-    const info = this.book?.chapters[this._currentIndex]
+    const info = this._book?.chapters[this._currentIndex]
     return {
       chapterIndex: this._currentIndex,
       chapterTitle: info?.title ?? "",
@@ -598,7 +602,7 @@ export class BookReader {
   buildSaveBookAnchor(_fileFormat: string): BookAnchor {
     const chapterIdx = Math.max(0, this._currentIndex)
     if (
-      this.contentType === "text" &&
+      this.layoutMode === "reflowable" &&
       this._lastTextLayout?.chapter.type === "text" &&
       this.paginator instanceof ProgressivePaginator
     ) {
@@ -645,7 +649,11 @@ export class BookReader {
     fromChapterIndex: number,
     rawHref: string,
   ): ResolvedInternalTextLink | null {
-    if (this.book?.contentType !== "text" || !this.parser || !this.book) {
+    if (
+      this._book?.layoutMode !== "reflowable" ||
+      !this.parser ||
+      !this._book
+    ) {
       return null
     }
     const p = this.parser as IParser
@@ -653,7 +661,7 @@ export class BookReader {
       return p.resolveInternalLink(fromChapterIndex, rawHref)
     }
     return genericResolveInternalTextLink(
-      this.book.chapters,
+      this._book.chapters,
       fromChapterIndex,
       rawHref,
     )
@@ -684,7 +692,7 @@ export class BookReader {
   destroy(): void {
     this.parser?.destroy()
     this.parser = null
-    this.book = null
+    this._book = null
     this._ready = false
     this._currentIndex = 0
     this._layoutConfig = null

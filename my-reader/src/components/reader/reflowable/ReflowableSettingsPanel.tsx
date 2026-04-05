@@ -7,21 +7,21 @@ import {
   READER_THEMES,
   type ReaderSettings,
   type ReaderTheme,
-} from "./types"
+} from "../types"
 
-interface SettingsPanelProps {
+interface ReflowableSettingsPanelProps {
   visible: boolean
   settings: ReaderSettings
   onThemeChange: (theme: ReaderTheme) => void
   onSettingsChange: (patch: Partial<ReaderSettings>) => void
 }
 
-export function SettingsPanel({
+export function ReflowableSettingsPanel({
   visible,
   settings,
   onThemeChange,
   onSettingsChange,
-}: SettingsPanelProps) {
+}: ReflowableSettingsPanelProps) {
   return (
     <aside
       className={cn(

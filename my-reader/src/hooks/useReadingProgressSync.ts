@@ -1,7 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useEffect, useRef, useState } from "react"
 
-import type { UseReaderReturn } from "@/components/reader/useReader"
+import type { UseReaderReturn } from "@/hooks/useReader"
 import type { BookAnchor } from "@/lib/progress/BookAnchor"
 
 const SAVE_DEBOUNCE_MS = 1600
@@ -52,7 +52,7 @@ export function useReadingProgressSync(params: {
     | "curChapter"
     | "curPageIndex"
     | "totalChapters"
-    | "contentType"
+    | "layoutMode"
     | "applyReadingResume"
     | "applyCharOffsetResume"
     | "buildSaveBookAnchor"
@@ -114,7 +114,7 @@ export function useReadingProgressSync(params: {
             Math.max(0, r.totalChapters - 1),
           )
           if (
-            r.contentType === "text" &&
+            r.layoutMode === "reflowable" &&
             row.anchor.charOffset != null &&
             Number.isFinite(row.anchor.charOffset)
           ) {

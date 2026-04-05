@@ -8,11 +8,11 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-import { BookProgressTrack } from "./BookProgressTrack"
-import type { DisplayMode } from "./ComicReader"
-import type { ReadingLayout } from "./types"
+import { BookProgressTrack } from "@/components/reader/shared/BookProgressTrack"
+import type { DisplayMode } from "./FixedLayoutReader"
+import type { ReadingLayout } from "../types"
 
-interface ComicBottomBarProps {
+interface FixedLayoutBottomBarProps {
   visible: boolean
   currentPage: number
   totalPages: number
@@ -26,7 +26,7 @@ interface ComicBottomBarProps {
   onDisplayModeChange: (mode: DisplayMode) => void
 }
 
-export function ComicBottomBar({
+export function FixedLayoutBottomBar({
   visible,
   currentPage,
   totalPages,
@@ -38,7 +38,7 @@ export function ComicBottomBar({
   onPrevPage,
   onNextPage,
   onDisplayModeChange,
-}: ComicBottomBarProps) {
+}: FixedLayoutBottomBarProps) {
   const approxPage =
     totalPages > 0
       ? Math.min(

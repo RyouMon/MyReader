@@ -3,14 +3,11 @@ import { useCallback, useEffect, useState } from "react"
 import type { ChapterData } from "@/lib/rendition"
 import { cn } from "@/lib/utils"
 
-interface ComicTocEntry {
-  label: string
-  pageIndex: number
-}
+import type { FixedLayoutTocEntry } from "../types"
 
-interface ComicTocPanelProps {
+interface FixedLayoutTocPanelProps {
   visible: boolean
-  entries: ComicTocEntry[]
+  entries: FixedLayoutTocEntry[]
   currentPage: number
   totalPages: number
   onSelectPage: (pageIndex: number) => void
@@ -19,14 +16,14 @@ interface ComicTocPanelProps {
 
 type TabId = "chapters" | "thumbs"
 
-export function ComicTocPanel({
+export function FixedLayoutTocPanel({
   visible,
   entries,
   currentPage,
   totalPages,
   onSelectPage,
   getPageImage,
-}: ComicTocPanelProps) {
+}: FixedLayoutTocPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("chapters")
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map())
   const [loadingThumbs, setLoadingThumbs] = useState(false)

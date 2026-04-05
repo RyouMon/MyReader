@@ -55,7 +55,7 @@
   --color-reader-chrome-hover: var(--reader-chrome-hover);
   --color-reader-chrome-active: var(--reader-chrome-active);
   --color-reader-panel-bg: var(--reader-panel-bg);
-  /* Comic viewport — set on [data-reader-mode="comic"] in reader.css */
+  /* Fixed-layout viewport — set on [data-reader-mode="fixed-layout"] in reader.css */
   --color-viewer-bg: var(--viewer-bg);
 }
 

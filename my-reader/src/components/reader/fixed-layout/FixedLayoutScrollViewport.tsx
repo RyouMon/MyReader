@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { ImageChapterData } from "@/lib/rendition"
 
-import type { ZoomMode } from "./ComicReader"
+import type { ZoomMode } from "./FixedLayoutReader"
 
-interface ComicScrollViewportProps {
+interface FixedLayoutScrollViewportProps {
   totalPages: number
   getChapter: (
     index: number,
@@ -18,16 +18,16 @@ interface ComicScrollViewportProps {
 }
 
 /**
- * 漫画/图片 PDF 纵向连续滚动，虚拟列表按页懒加载。
+ * 固定版式（CBZ / 图片 PDF 等）纵向连续滚动，虚拟列表按页懒加载。
  */
-export function ComicScrollViewport({
+export function FixedLayoutScrollViewport({
   totalPages,
   getChapter,
   scrollRef,
   brightness,
   zoomMode,
   onScrollProgress,
-}: ComicScrollViewportProps) {
+}: FixedLayoutScrollViewportProps) {
   const parentRef = scrollRef
 
   const handleScroll = useCallback(() => {
@@ -78,7 +78,7 @@ export function ComicScrollViewport({
             className="absolute left-0 top-0 w-full px-4 py-3"
             style={{ transform: `translateY(${vi.start}px)` }}
           >
-            <ComicScrollPageRow
+            <FixedLayoutScrollPageRow
               index={vi.index}
               getChapter={getChapter}
               zoomMode={zoomMode}
@@ -91,7 +91,7 @@ export function ComicScrollViewport({
   )
 }
 
-function ComicScrollPageRow({
+function FixedLayoutScrollPageRow({
   index,
   getChapter,
   zoomMode,
@@ -155,7 +155,7 @@ function ComicScrollPageRow({
       <img
         src={page.imageUrl}
         alt={page.title}
-        className="comic-page-img rounded-sm shadow-lg"
+        className="fixed-layout-page-img rounded-sm shadow-lg"
         style={zoomStyle}
         draggable={false}
         onLoad={() => {

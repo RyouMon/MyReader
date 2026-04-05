@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ImageChapterData, TocItem } from "@/lib/rendition"
 import { cn } from "@/lib/utils"
-import { ComicBottomBar } from "./ComicBottomBar"
-import { ComicScrollViewport } from "./ComicScrollViewport"
-import { ComicSettingsPanel } from "./ComicSettingsPanel"
-import { ComicTocPanel } from "./ComicTocPanel"
-import { ComicViewport } from "./ComicViewport"
-import { ReaderTopBar } from "./ReaderTopBar"
-import type { ReaderSurfaceProps, ReadingLayout } from "./types"
-import { useReadingChrome } from "./useReadingChrome"
+import { FixedLayoutBottomBar } from "./FixedLayoutBottomBar"
+import { FixedLayoutScrollViewport } from "./FixedLayoutScrollViewport"
+import { FixedLayoutSettingsPanel } from "./FixedLayoutSettingsPanel"
+import { FixedLayoutTocPanel } from "./FixedLayoutTocPanel"
+import { FixedLayoutViewport } from "./FixedLayoutViewport"
+import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
+import type { FixedLayoutTocEntry, ReaderSurfaceProps, ReadingLayout } from "../types"
+import { useReadingChrome } from "@/hooks/useReadingChrome"
 
 export type DisplayMode = "single" | "spread"
 export type ZoomMode = "fit-height" | "fit-width" | "original"
 export type ReadingDirection = "ltr" | "rtl"
 
-export interface ComicSettings {
+export interface FixedLayoutSettings {
   readingLayout: ReadingLayout
   displayMode: DisplayMode
   zoomMode: ZoomMode
@@ -23,7 +23,7 @@ export interface ComicSettings {
   pageGap: number
 }
 
-const DEFAULT_COMIC_SETTINGS: ComicSettings = {
+const DEFAULT_FIXED_LAYOUT_SETTINGS: FixedLayoutSettings = {
   readingLayout: "paginate",
   displayMode: "single",
   zoomMode: "fit-height",
@@ -32,17 +32,17 @@ const DEFAULT_COMIC_SETTINGS: ComicSettings = {
   pageGap: 16,
 }
 
-export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
+export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const readerRootRef = useRef<HTMLDivElement>(null)
   const chrome = useReadingChrome({ rootRef: readerRootRef })
-  const comicScrollRef = useRef<HTMLDivElement>(null)
+  const fixedLayoutScrollRef = useRef<HTMLDivElement>(null)
   const [scrollBookProgress, setScrollBookProgress] = useState(0)
 
   const [tocOpen, setTocOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
-  const [settings, setSettings] = useState<ComicSettings>(
-    DEFAULT_COMIC_SETTINGS,
+  const [settings, setSettings] = useState<FixedLayoutSettings>(
+    DEFAULT_FIXED_LAYOUT_SETTINGS,
   )
   const [turnDirection, setTurnDirection] = useState<
     "forward" | "backward" | null
@@ -132,7 +132,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
   )
 
   const scrollByViewport = useCallback((dir: 1 | -1) => {
-    const el = comicScrollRef.current
+    const el = fixedLayoutScrollRef.current
     if (!el) return
     const step = Math.round(el.clientHeight * 0.92)
     el.scrollBy({ top: dir * step, behavior: "smooth" })
@@ -185,7 +185,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
       closePanels()
       if (settings.readingLayout === "scroll") {
         requestAnimationFrame(() => {
-          comicScrollRef.current
+          fixedLayoutScrollRef.current
             ?.querySelector(`[data-index="${index}"]`)
             ?.scrollIntoView({ behavior: "smooth", block: "start" })
         })
@@ -198,7 +198,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
     (pct: number) => {
       const p = Math.max(0, Math.min(100, pct))
       if (settings.readingLayout === "scroll") {
-        const el = comicScrollRef.current
+        const el = fixedLayoutScrollRef.current
         if (!el) return
         const max = el.scrollHeight - el.clientHeight
         if (max <= 0) return
@@ -266,7 +266,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
   )
 
   const updateSettings = useCallback(
-    (patch: Partial<ComicSettings>) =>
+    (patch: Partial<FixedLayoutSettings>) =>
       setSettings((prev) => ({ ...prev, ...patch })),
     [],
   )
@@ -358,7 +358,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
   return (
     <div
       ref={readerRootRef}
-      data-reader-mode="comic"
+      data-reader-mode="fixed-layout"
       className="relative flex size-full flex-col overflow-hidden bg-viewer-bg"
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: 阅读区鼠标手势 */}
@@ -370,16 +370,16 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onMouseLeave={resetClickTurnState}
       >
         {settings.readingLayout === "scroll" ? (
-          <ComicScrollViewport
+          <FixedLayoutScrollViewport
             totalPages={totalPages}
             getChapter={getChapter}
-            scrollRef={comicScrollRef}
+            scrollRef={fixedLayoutScrollRef}
             brightness={settings.brightness}
             zoomMode={settings.zoomMode}
             onScrollProgress={setScrollBookProgress}
           />
         ) : (
-          <ComicViewport
+          <FixedLayoutViewport
             page={currentPage}
             spreadPage={spreadPage}
             displayMode={settings.displayMode}
@@ -403,7 +403,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onToggleSettings={toggleSettings}
       />
 
-      <ComicBottomBar
+      <FixedLayoutBottomBar
         visible={chrome.chromeVisible}
         currentPage={currentIndex}
         totalPages={totalPages}
@@ -429,7 +429,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onClick={closePanels}
       />
 
-      <ComicTocPanel
+      <FixedLayoutTocPanel
         visible={tocOpen}
         entries={tocEntries}
         currentPage={currentIndex}
@@ -438,7 +438,7 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
         getPageImage={reader.getChapter}
       />
 
-      <ComicSettingsPanel
+      <FixedLayoutSettingsPanel
         visible={settingsOpen}
         settings={settings}
         onSettingsChange={updateSettings}
@@ -447,14 +447,12 @@ export function ComicReader({ bookTitle, reader }: ReaderSurfaceProps) {
   )
 }
 
-interface ComicTocEntry {
-  label: string
-  pageIndex: number
-}
-
-function buildTocEntries(toc: TocItem[], totalPages: number): ComicTocEntry[] {
+function buildTocEntries(
+  toc: TocItem[],
+  totalPages: number,
+): FixedLayoutTocEntry[] {
   if (toc.length > 0) {
-    return flattenComicToc(toc)
+    return flattenFixedLayoutToc(toc)
   }
   if (totalPages <= 0) return []
   return Array.from({ length: totalPages }, (_, i) => ({
@@ -463,14 +461,14 @@ function buildTocEntries(toc: TocItem[], totalPages: number): ComicTocEntry[] {
   }))
 }
 
-function flattenComicToc(items: TocItem[]): ComicTocEntry[] {
-  const out: ComicTocEntry[] = []
+function flattenFixedLayoutToc(items: TocItem[]): FixedLayoutTocEntry[] {
+  const out: FixedLayoutTocEntry[] = []
   for (const t of items) {
     out.push({
       label: t.label || `第 ${t.index + 1} 页`,
       pageIndex: t.index,
     })
-    if (t.subitems?.length) out.push(...flattenComicToc(t.subitems))
+    if (t.subitems?.length) out.push(...flattenFixedLayoutToc(t.subitems))
   }
   return out
 }

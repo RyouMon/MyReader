@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { BookAnchor } from "../../lib/progress/BookAnchor"
-import { BookReader } from "../../lib/rendition/BookReader"
+import type { BookAnchor } from "@/lib/progress/BookAnchor"
+import { BookReader } from "@/lib/rendition/BookReader"
 import type {
   ChapterData,
-  ContentType,
   LayoutConfig,
+  LayoutMode,
   TextChapterPaginationResult,
   TocItem,
-} from "../../lib/rendition/types"
+} from "@/lib/rendition/types"
 
 export interface UseReaderOptions {
   /** Raw book file bytes — pass `null` while still loading. */
@@ -39,8 +39,8 @@ export interface UseReaderReturn {
   /** `true` while a chapter is being fetched. */
   loading: boolean
 
-  /** Whether the content is text-based or image-based. */
-  contentType: ContentType
+  /** 全书排版模式：可重排正文 vs 固定版式（漫画/PDF 等）。 */
+  layoutMode: LayoutMode
   /** Same as the `format` passed to {@link useBookReader}, e.g. `"EPUB"` / `"CBZ"`. */
   format: string
   toc: TocItem[]
@@ -119,7 +119,7 @@ export function useBookReader({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const [contentType, setContentType] = useState<ContentType>("text")
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("unknown")
   const [toc, setToc] = useState<TocItem[]>([])
   const [totalChapters, setTotalChapters] = useState(0)
   const [curChapter, setCurChapter] = useState(0)
@@ -159,7 +159,7 @@ export function useBookReader({
         })
         if (cancelled) return
 
-        setContentType(book.contentType)
+        setLayoutMode(book.layoutMode)
         setToc(book.toc)
         setTotalChapters(book.chapters.length)
 
@@ -169,7 +169,7 @@ export function useBookReader({
         setChapter(ch)
         syncNavigationState(core)
         setParsedReady(true)
-        if (book.contentType !== "text") {
+        if (book.layoutMode === "fixedLayout") {
           setFirstLayoutDone(true)
         }
       } catch (e) {
@@ -385,7 +385,7 @@ export function useBookReader({
         }
       )
     },
-    [curChapter, curPageIndex, contentType],
+    [curChapter, curPageIndex, layoutMode],
   )
 
   const ready = parsedReady && firstLayoutDone
@@ -395,7 +395,7 @@ export function useBookReader({
     firstLayoutDone,
     error,
     loading,
-    contentType,
+    layoutMode,
     format,
     toc,
     totalChapters,

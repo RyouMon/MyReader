@@ -1,4 +1,4 @@
-import type { UseReaderReturn } from "./useReader"
+import type { UseReaderReturn } from "@/hooks/useReader"
 
 export interface ReaderSurfaceProps {
   bookTitle: string
@@ -26,6 +26,12 @@ export interface TocEntry {
   depth?: number
   progress?: number
   completed?: boolean
+}
+
+/** 固定版式阅读器目录侧栏条目（按页） */
+export interface FixedLayoutTocEntry {
+  label: string
+  pageIndex: number
 }
 
 export interface TtsConfig {

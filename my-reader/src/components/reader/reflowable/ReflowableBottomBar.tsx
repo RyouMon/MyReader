@@ -7,10 +7,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-import { BookProgressTrack } from "./BookProgressTrack"
-import type { ReadingLayout } from "./types"
+import { BookProgressTrack } from "@/components/reader/shared/BookProgressTrack"
+import type { ReadingLayout } from "../types"
 
-interface ReaderBottomBarProps {
+interface ReflowableBottomBarProps {
   visible: boolean
   currentChapter: number
   totalChapters: number
@@ -24,7 +24,7 @@ interface ReaderBottomBarProps {
   onToggleTts: () => void
 }
 
-export function ReaderBottomBar({
+export function ReflowableBottomBar({
   visible,
   currentChapter,
   totalChapters,
@@ -36,7 +36,7 @@ export function ReaderBottomBar({
   onPrevChapter,
   onNextChapter,
   onToggleTts,
-}: ReaderBottomBarProps) {
+}: ReflowableBottomBarProps) {
   return (
     <footer
       className={cn(

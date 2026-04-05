@@ -61,7 +61,7 @@ export class PdfParser implements IParser {
       metadata,
       toc,
       chapters,
-      contentType: "image",
+      layoutMode: "fixedLayout",
     }
   }
 

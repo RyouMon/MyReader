@@ -3,21 +3,21 @@ import { useState } from "react"
 
 import { cn } from "@/lib/utils"
 
-import type { TocEntry } from "./types"
+import type { TocEntry } from "../types"
 
-interface TocPanelProps {
+interface ReflowableTocPanelProps {
   visible: boolean
   entries: TocEntry[]
   currentChapter: number
   onSelectChapter: (chapter: number) => void
 }
 
-export function TocPanel({
+export function ReflowableTocPanel({
   visible,
   entries,
   currentChapter,
   onSelectChapter,
-}: TocPanelProps) {
+}: ReflowableTocPanelProps) {
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<"toc" | "bookmarks" | "notes">(
     "toc",

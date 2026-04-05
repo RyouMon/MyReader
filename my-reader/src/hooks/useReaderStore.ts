@@ -4,7 +4,7 @@ import {
   DEFAULT_SETTINGS,
   type ReaderSettings,
   type ReaderTheme,
-} from "./types"
+} from "@/components/reader/types"
 
 export function useReaderStore() {
   const [tocOpen, setTocOpen] = useState(false)

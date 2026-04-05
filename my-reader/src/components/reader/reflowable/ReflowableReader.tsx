@@ -5,18 +5,18 @@ import type { TextChapterData, TocItem } from "@/lib/rendition"
 import { isNonBookSchemeHref } from "@/lib/rendition/internalTextLink"
 import { findHtmlFragmentElement } from "@/lib/rendition/utils"
 import { cn } from "@/lib/utils"
-import { ReaderBottomBar } from "./ReaderBottomBar"
-import { ReaderContent } from "./ReaderContent"
-import { ReaderScrollContent } from "./ReaderScrollContent"
-import { ReaderTopBar } from "./ReaderTopBar"
-import { SettingsPanel } from "./SettingsPanel"
-import { TocPanel } from "./TocPanel"
+import { ReflowableBottomBar } from "./ReflowableBottomBar"
+import { ReflowableContent } from "./ReflowableContent"
+import { ReflowableScrollContent } from "./ReflowableScrollContent"
+import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
+import { ReflowableSettingsPanel } from "./ReflowableSettingsPanel"
+import { ReflowableTocPanel } from "./ReflowableTocPanel"
 import { TtsPanel } from "./TtsPanel"
-import type { ReaderSurfaceProps, TocEntry } from "./types"
-import { useReaderStore } from "./useReaderStore"
-import { useReadingChrome } from "./useReadingChrome"
+import type { ReaderSurfaceProps, TocEntry } from "../types"
+import { useReaderStore } from "@/hooks/useReaderStore"
+import { useReadingChrome } from "@/hooks/useReadingChrome"
 
-export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
+export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const chapter = reader.chapter as TextChapterData
   const {
     toc,
@@ -32,7 +32,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     layout: applyLayout,
     notifyInitialViewCommitted,
     format,
-    contentType,
+    layoutMode,
     ready: readerReady,
     resolveInternalTextLink,
     followInternalTextLink,
@@ -47,7 +47,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const [paginateNavLeftVisible, setPaginateNavLeftVisible] = useState(false)
   const [paginateNavRightVisible, setPaginateNavRightVisible] = useState(false)
 
-  // 章节内页级进度（0-100），由 ReaderContent.onProgressChange 驱动
+  // 章节内页级进度（0-100），由 ReflowableContent.onProgressChange 驱动
   const [chapterProgressPct, setChapterProgressPct] = useState(0)
 
   // ── 滚动模式：全书章节列表 ─────────────────────────────────────────────
@@ -334,7 +334,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
   useEffect(() => {
     const root = readerRootRef.current
     if (!root || !readerReady) return
-    if (contentType !== "text") return
+    if (layoutMode !== "reflowable") return
 
     const onClickCapture = (e: MouseEvent) => {
       const t = e.target
@@ -377,7 +377,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
     return () => root.removeEventListener("click", onClickCapture, true)
   }, [
     readerReady,
-    contentType,
+    layoutMode,
     layout,
     scrollFocusIndex,
     curChapter,
@@ -474,7 +474,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
           </main>
         )}
         {layout === "scroll" && scrollChapters && scrollChapters.length > 0 && (
-          <ReaderScrollContent
+          <ReflowableScrollContent
             chapters={scrollChapters}
             fontFamily={store.settings.fontFamily}
             fontSize={store.settings.fontSize}
@@ -486,7 +486,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
           />
         )}
         {layout === "paginate" && (
-          <ReaderContent
+          <ReflowableContent
             chapter={chapter}
             layout={applyLayout}
             fontFamily={store.settings.fontFamily}
@@ -522,7 +522,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onConfigChange={store.setTtsConfigId}
       />
 
-      <ReaderBottomBar
+      <ReflowableBottomBar
         visible={chrome.chromeVisible}
         currentChapter={curChapter + 1}
         totalChapters={totalChapters}
@@ -548,7 +548,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onClick={store.closePanels}
       />
 
-      <TocPanel
+      <ReflowableTocPanel
         visible={store.tocOpen}
         entries={tocEntries}
         currentChapter={
@@ -557,7 +557,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onSelectChapter={(num) => handleSelectChapter(num - 1)}
       />
 
-      <SettingsPanel
+      <ReflowableSettingsPanel
         visible={store.settingsOpen}
         settings={store.settings}
         onThemeChange={store.setTheme}
@@ -569,7 +569,7 @@ export function TextReader({ bookTitle, reader }: ReaderSurfaceProps) {
 
 /**
  * 将树形目录展开为侧栏列表，保留层级缩进（depth）。
- * number 为 1-based 章节序号，与底栏 {@link ReaderBottomBar} 一致。
+ * number 为 1-based 章节序号，与底栏 {@link ReflowableBottomBar} 一致。
  */
 function flattenTocToPanelEntries(items: TocItem[], depth = 0): TocEntry[] {
   const out: TocEntry[] = []

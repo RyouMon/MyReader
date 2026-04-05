@@ -4,10 +4,10 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { ComicReader } from "@/components/reader/ComicReader"
-import { TextReader } from "@/components/reader/TextReader"
-import { useBookReader } from "@/components/reader/useReader"
+import { FixedLayoutReader } from "@/components/reader/fixed-layout/FixedLayoutReader"
+import { ReflowableReader } from "@/components/reader/reflowable/ReflowableReader"
 import { useLibrary } from "@/contexts/LibraryContext"
+import { useBookReader } from "@/hooks/useReader"
 import {
   type ReadingProgressDto,
   useReadingProgressSync,
@@ -23,7 +23,7 @@ export type ReadBookPageProps = {
 }
 
 /**
- * 独立阅读窗口：加载书籍文件、驱动 useBookReader，并在漫画/文本阅读器之间切换。
+ * 独立阅读窗口：加载书籍文件、驱动 useBookReader，并在固定版式与流式阅读器之间切换。
  */
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
@@ -168,11 +168,11 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     return <ReadBookLoading message="正在加载书籍内容…" />
   }
 
-  if (reader.contentType === "image") {
-    return <ComicReader bookTitle={bookTitle} reader={reader} />
+  if (reader.layoutMode === "fixedLayout") {
+    return <FixedLayoutReader bookTitle={bookTitle} reader={reader} />
   }
 
-  return <TextReader bookTitle={bookTitle} reader={reader} />
+  return <ReflowableReader bookTitle={bookTitle} reader={reader} />
 }
 
 /**

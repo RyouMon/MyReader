@@ -2,7 +2,7 @@
 // Inspired by TanStack Table: parse-only, no rendering opinions.
 // Consumers decide how to present chapters (React DOM, iframe, native, etc.)
 
-export type ContentType = "text" | "image"
+export type LayoutMode = "reflowable" | "fixedLayout" | "unknown"
 
 export interface TocItem {
   label: string
@@ -126,7 +126,7 @@ export interface ParsedBook {
   metadata: BookMetadata
   toc: TocItem[]
   chapters: ChapterInfo[]
-  contentType: ContentType
+  layoutMode: LayoutMode
 }
 
 /** Progress snapshot. */

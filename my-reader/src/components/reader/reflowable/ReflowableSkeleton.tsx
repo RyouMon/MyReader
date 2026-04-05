@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { BookReader } from "@/lib/rendition/BookReader"
 
 /** 与分页正文栏 DOM 类名一致，保证骨架与真文的页边距、版心一致。 */
-export const readerPaginatedColumnClass =
+export const reflowablePaginatedColumnClass =
   "reader-chapter-container reader-paginated-container reader-paginated-range-page reader-body-content reader-chapter-typography-host min-h-0 min-w-0 flex-1 overflow-hidden"
 
 /** 确定性 [0,1) 伪随机，用于骨架段落节奏（同 seed 下可复现）。 */
@@ -62,7 +62,7 @@ function buildParagraphStyleSkeletonWidths(rowCount: number, seed: number) {
 /**
  * 单栏版心内按视口高度铺满骨架行：行盒高度为 fontSize×lineHeight，条高为字号，与正文行距一致。
  */
-function ReaderSkeletonColumn({
+function ReflowableSkeletonColumn({
   fontSize,
   lineHeight,
   typoStyle,
@@ -103,14 +103,14 @@ function ReaderSkeletonColumn({
   )
 
   return (
-    <div className={readerPaginatedColumnClass} style={typoStyle}>
+    <div className={reflowablePaginatedColumnClass} style={typoStyle}>
       <div
         ref={measureRef}
         className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden"
       >
         {lineWidths.map((frac, i) => (
           <div
-            key={`reader-skel-line-${i}`}
+            key={`reflowable-skel-line-${i}`}
             className="flex w-full shrink-0 items-start"
             style={{ height: lineStridePx }}
           >
@@ -129,7 +129,7 @@ function ReaderSkeletonColumn({
   )
 }
 
-export interface ReaderSkeletonProps {
+export interface ReflowableSkeletonProps {
   fontSize: number
   lineHeight: number
   typoStyle: CSSProperties
@@ -139,16 +139,16 @@ export interface ReaderSkeletonProps {
 /**
  * 分页阅读视口占位骨架：页边距与分页栏（reader-paginated-container）一致，行高/行距与阅读设置一致。
  */
-export function ReaderSkeleton({
+export function ReflowableSkeleton({
   fontSize,
   lineHeight,
   typoStyle,
   twoColumnShell,
-}: ReaderSkeletonProps) {
+}: ReflowableSkeletonProps) {
   if (!twoColumnShell) {
     return (
       <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
-        <ReaderSkeletonColumn
+        <ReflowableSkeletonColumn
           fontSize={fontSize}
           lineHeight={lineHeight}
           typoStyle={typoStyle}
@@ -163,13 +163,13 @@ export function ReaderSkeleton({
       className="flex h-full min-h-0 w-full min-w-0 flex-row"
       style={{ gap: `${BookReader.PAGINATION_DOUBLE_COLUMN_GAP_PX}px` }}
     >
-      <ReaderSkeletonColumn
+      <ReflowableSkeletonColumn
         fontSize={fontSize}
         lineHeight={lineHeight}
         typoStyle={typoStyle}
         patternSeed={0x4b1d_4e5f}
       />
-      <ReaderSkeletonColumn
+      <ReflowableSkeletonColumn
         fontSize={fontSize}
         lineHeight={lineHeight}
         typoStyle={typoStyle}

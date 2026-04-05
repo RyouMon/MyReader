@@ -73,7 +73,7 @@ export class EpubParser implements IParser {
       metadata: this.normalizeMetadata(foliate.metadata ?? {}),
       toc,
       chapters: this.chapterIndex,
-      contentType: "text",
+      layoutMode: "reflowable",
     }
   }
 
