@@ -7,11 +7,11 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { FixedLayoutReader } from "@/components/reader/fixed-layout/FixedLayoutReader"
 import { ReflowableReader } from "@/components/reader/reflowable/ReflowableReader"
 import { useLibrary } from "@/contexts/LibraryContext"
-import { useBookReader } from "@/hooks/useReader"
 import {
   type ReadingProgressDto,
   useReadingProgressSync,
-} from "@/hooks/useReadingProgressSync"
+} from "@/hooks/reader/useReadingProgressSync"
+import { useBookReader } from "@/hooks/reader/useReader"
 import type { BookAnchor } from "@/lib/progress/BookAnchor"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { buildBookFileUrl, resolveReadFormat } from "@/lib/rendition/utils"

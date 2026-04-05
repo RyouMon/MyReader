@@ -1,4 +1,4 @@
-import type { UseReaderReturn } from "@/hooks/useReader"
+import type { UseReaderReturn } from "@/hooks/reader/useReader"
 
 export interface ReaderSurfaceProps {
   bookTitle: string
@@ -9,6 +9,29 @@ export type ReaderTheme = "light" | "paper" | "green" | "dark"
 
 /** 滚动：全书连续滚动。翻页：分页/分章，点击左右或方向键翻页。 */
 export type ReadingLayout = "scroll" | "paginate"
+
+export type DisplayMode = "single" | "spread"
+export type ZoomMode = "fit-height" | "fit-width" | "original"
+export type ReadingDirection = "ltr" | "rtl"
+
+/** 固定版式（漫画 / PDF 等）阅读器专用设置，与 {@link ReaderSettings} 独立。 */
+export interface FixedLayoutSettings {
+  readingLayout: ReadingLayout
+  displayMode: DisplayMode
+  zoomMode: ZoomMode
+  direction: ReadingDirection
+  brightness: number
+  pageGap: number
+}
+
+export const DEFAULT_FIXED_LAYOUT_SETTINGS: FixedLayoutSettings = {
+  readingLayout: "paginate",
+  displayMode: "single",
+  zoomMode: "fit-height",
+  direction: "ltr",
+  brightness: 100,
+  pageGap: 16,
+}
 
 export interface ReaderSettings {
   theme: ReaderTheme

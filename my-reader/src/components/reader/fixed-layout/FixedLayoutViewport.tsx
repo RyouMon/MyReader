@@ -3,7 +3,7 @@ import type { CSSProperties } from "react"
 import type { ImageChapterData } from "@/lib/rendition"
 import { cn } from "@/lib/utils"
 
-import type { DisplayMode, ReadingDirection, ZoomMode } from "./FixedLayoutReader"
+import type { DisplayMode, ReadingDirection, ZoomMode } from "../types"
 
 interface FixedLayoutViewportProps {
   page: ImageChapterData | null

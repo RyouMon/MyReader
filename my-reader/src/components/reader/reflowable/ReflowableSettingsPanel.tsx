@@ -1,6 +1,14 @@
 import { Check, Settings } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import {
+  ReaderSettingSlider,
+  ReaderSettingsLayoutChoice,
+  ReaderSettingsSection,
+} from "@/components/reader/shared/ReaderSettingsPanelPrimitives"
+import {
+  ReaderSidePanelFrame,
+  ReaderSidePanelHeader,
+} from "@/components/reader/shared/ReaderSidePanelChrome"
 
 import {
   READER_FONTS,
@@ -23,20 +31,10 @@ export function ReflowableSettingsPanel({
   onSettingsChange,
 }: ReflowableSettingsPanelProps) {
   return (
-    <aside
-      className={cn(
-        "reader-chrome-panel-aside reader-chrome-panel-shadow-r absolute inset-y-0 right-0 z-60 flex w-[300px] flex-col overflow-y-auto border-l border-reader-chrome-border transition-all duration-300 ease-out",
-        visible
-          ? "translate-x-0 opacity-100"
-          : "pointer-events-none translate-x-full opacity-0",
-      )}
-    >
-      <div className="font-serif flex items-center gap-2.5 border-b border-reader-chrome-border px-5 py-4 text-[15px] font-semibold text-reader-chrome-fg">
-        <Settings className="size-[18px] opacity-60" />
-        阅读设置
-      </div>
+    <ReaderSidePanelFrame visible={visible} side="right">
+      <ReaderSidePanelHeader title="阅读设置" icon={Settings} />
 
-      <SettingsSection title="主题">
+      <ReaderSettingsSection title="主题">
         <div className="grid grid-cols-4 gap-2">
           {READER_THEMES.map((t) => (
             <button
@@ -58,9 +56,9 @@ export function ReflowableSettingsPanel({
             </button>
           ))}
         </div>
-      </SettingsSection>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="字体">
+      <ReaderSettingsSection title="字体">
         <div className="flex flex-col gap-1.5">
           {READER_FONTS.map((font) => {
             const isActive = settings.fontFamily === font.value
@@ -81,25 +79,25 @@ export function ReflowableSettingsPanel({
             )
           })}
         </div>
-      </SettingsSection>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="阅读方式">
+      <ReaderSettingsSection title="阅读方式">
         <div className="flex gap-2">
-          <LayoutChoice
+          <ReaderSettingsLayoutChoice
             label="翻页"
             active={settings.readingLayout === "paginate"}
             onClick={() => onSettingsChange({ readingLayout: "paginate" })}
           />
-          <LayoutChoice
+          <ReaderSettingsLayoutChoice
             label="滚动"
             active={settings.readingLayout === "scroll"}
             onClick={() => onSettingsChange({ readingLayout: "scroll" })}
           />
         </div>
-      </SettingsSection>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="排版">
-        <SettingSlider
+      <ReaderSettingsSection title="排版">
+        <ReaderSettingSlider
           label="字号"
           min={14}
           max={28}
@@ -110,7 +108,7 @@ export function ReflowableSettingsPanel({
           rightHint={<span className="text-xl">A</span>}
           onChange={(v) => onSettingsChange({ fontSize: v })}
         />
-        <SettingSlider
+        <ReaderSettingSlider
           label="行距"
           min={1.4}
           max={2.4}
@@ -119,7 +117,7 @@ export function ReflowableSettingsPanel({
           displayValue={settings.lineHeight.toFixed(2)}
           onChange={(v) => onSettingsChange({ lineHeight: v })}
         />
-        <SettingSlider
+        <ReaderSettingSlider
           label="边距"
           min={1.0}
           max={5.0}
@@ -128,9 +126,9 @@ export function ReflowableSettingsPanel({
           displayValue={settings.paddingX.toFixed(1)}
           onChange={(v) => onSettingsChange({ paddingX: v })}
         />
-      </SettingsSection>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="TTS 设置">
+      <ReaderSettingsSection title="TTS 设置">
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-2.5">
             <span className="min-w-[60px] text-[13px] font-medium text-reader-chrome-fg">
@@ -159,95 +157,7 @@ export function ReflowableSettingsPanel({
             </select>
           </div>
         </div>
-      </SettingsSection>
-    </aside>
-  )
-}
-
-function LayoutChoice({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex-1 rounded-lg border px-3 py-2.5 text-[13px] font-medium transition-all",
-        active
-          ? "border-reader-chrome-active bg-[color-mix(in_srgb,var(--reader-chrome-active)_10%,transparent)] text-reader-chrome-active"
-          : "border-reader-chrome-border text-reader-chrome-fg",
-      )}
-    >
-      {label}
-    </button>
-  )
-}
-
-function SettingsSection({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="border-b border-reader-chrome-border px-5 py-4">
-      <div className="mb-3 text-[11.5px] font-semibold tracking-wider text-reader-chrome-muted uppercase">
-        {title}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function SettingSlider({
-  label,
-  min,
-  max,
-  step,
-  value,
-  displayValue,
-  leftHint,
-  rightHint,
-  onChange,
-}: {
-  label: string
-  min: number
-  max: number
-  step: number
-  value: number
-  displayValue: string
-  leftHint?: React.ReactNode
-  rightHint?: React.ReactNode
-  onChange: (v: number) => void
-}) {
-  return (
-    <div className="mb-3.5 flex items-center gap-2.5 last:mb-0">
-      <span className="min-w-[40px] text-[13px] font-medium text-reader-chrome-fg">
-        {label}
-      </span>
-      {leftHint && <span className="text-reader-chrome-muted">{leftHint}</span>}
-      <input
-        type="range"
-        className="reader-slider flex-1"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <span className="min-w-[28px] text-right font-mono text-xs text-reader-chrome-muted">
-        {displayValue}
-      </span>
-      {rightHint && (
-        <span className="text-reader-chrome-muted">{rightHint}</span>
-      )}
-    </div>
+      </ReaderSettingsSection>
+    </ReaderSidePanelFrame>
   )
 }

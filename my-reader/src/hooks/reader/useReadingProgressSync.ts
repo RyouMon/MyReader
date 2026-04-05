@@ -1,7 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useEffect, useRef, useState } from "react"
 
-import type { UseReaderReturn } from "@/hooks/useReader"
+import type { UseReaderReturn } from "./useReader"
 import type { BookAnchor } from "@/lib/progress/BookAnchor"
 
 const SAVE_DEBOUNCE_MS = 1600

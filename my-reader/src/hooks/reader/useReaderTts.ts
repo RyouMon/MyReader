@@ -1,25 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import {
-  DEFAULT_SETTINGS,
-  type ReaderSettings,
-  type ReaderTheme,
-} from "@/components/reader/types"
-
-export function useReaderStore() {
-  const [tocOpen, setTocOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [bookmarked, setBookmarked] = useState(false)
-  const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS)
-
+/**
+ * 朗读面板状态：播放进度、速度与配置；含自动翻句定时器。
+ */
+export function useReaderTts() {
   const [ttsActive, setTtsActive] = useState(false)
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [ttsCurrent, setTtsCurrent] = useState(-1)
   const [ttsSpeed, setTtsSpeed] = useState(1.0)
   const [ttsConfigId, setTtsConfigId] = useState("default")
-
-  const [progress, setProgress] = useState(0)
-  const [currentChapter, setCurrentChapter] = useState(0)
 
   const ttsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -31,38 +20,6 @@ export function useReaderStore() {
   }, [])
 
   useEffect(() => stopAutoAdvance, [stopAutoAdvance])
-
-  const toggleToc = useCallback(() => {
-    setTocOpen((prev) => {
-      if (!prev) setSettingsOpen(false)
-      return !prev
-    })
-  }, [])
-
-  const toggleSettings = useCallback(() => {
-    setSettingsOpen((prev) => {
-      if (!prev) setTocOpen(false)
-      return !prev
-    })
-  }, [])
-
-  const closePanels = useCallback(() => {
-    setTocOpen(false)
-    setSettingsOpen(false)
-  }, [])
-
-  const toggleBookmark = useCallback(() => setBookmarked((prev) => !prev), [])
-
-  const updateSettings = useCallback(
-    (patch: Partial<ReaderSettings>) =>
-      setSettings((prev) => ({ ...prev, ...patch })),
-    [],
-  )
-
-  const setTheme = useCallback(
-    (theme: ReaderTheme) => updateSettings({ theme }),
-    [updateSettings],
-  )
 
   const startAutoAdvance = useCallback(
     (total: number) => {
@@ -123,19 +80,6 @@ export function useReaderStore() {
   )
 
   return {
-    tocOpen,
-    toggleToc,
-    settingsOpen,
-    toggleSettings,
-    closePanels,
-
-    bookmarked,
-    toggleBookmark,
-
-    settings,
-    updateSettings,
-    setTheme,
-
     ttsActive,
     toggleTts,
     ttsPlaying,
@@ -148,10 +92,5 @@ export function useReaderStore() {
     setTtsSpeed,
     ttsConfigId,
     setTtsConfigId,
-
-    progress,
-    setProgress,
-    currentChapter,
-    setCurrentChapter,
   }
 }

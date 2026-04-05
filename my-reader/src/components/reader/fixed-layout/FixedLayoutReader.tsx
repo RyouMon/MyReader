@@ -1,46 +1,46 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
+import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
+import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
+import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
+import {
+  useFixedLayoutScrollSpreadGuard,
+  useFixedLayoutSpreadNeighborPage,
+} from "@/hooks/reader/useFixedLayoutSpreadEffects"
+import { useReaderBookmark } from "@/hooks/reader/useReaderBookmark"
+import { useReaderBookProgressSeek } from "@/hooks/reader/useReaderBookProgressSeek"
+import { useReaderKeyboardNavigation } from "@/hooks/reader/useReaderKeyboardNavigation"
+import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
+import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import type { ImageChapterData, TocItem } from "@/lib/rendition"
-import { cn } from "@/lib/utils"
+import type {
+  FixedLayoutSettings,
+  FixedLayoutTocEntry,
+  ReaderSurfaceProps,
+} from "../types"
+import { DEFAULT_FIXED_LAYOUT_SETTINGS } from "../types"
 import { FixedLayoutBottomBar } from "./FixedLayoutBottomBar"
 import { FixedLayoutScrollViewport } from "./FixedLayoutScrollViewport"
 import { FixedLayoutSettingsPanel } from "./FixedLayoutSettingsPanel"
 import { FixedLayoutTocPanel } from "./FixedLayoutTocPanel"
 import { FixedLayoutViewport } from "./FixedLayoutViewport"
-import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
-import type { FixedLayoutTocEntry, ReaderSurfaceProps, ReadingLayout } from "../types"
-import { useReadingChrome } from "@/hooks/useReadingChrome"
 
-export type DisplayMode = "single" | "spread"
-export type ZoomMode = "fit-height" | "fit-width" | "original"
-export type ReadingDirection = "ltr" | "rtl"
+export type {
+  DisplayMode,
+  FixedLayoutSettings,
+  ReadingDirection,
+  ZoomMode,
+} from "../types"
 
-export interface FixedLayoutSettings {
-  readingLayout: ReadingLayout
-  displayMode: DisplayMode
-  zoomMode: ZoomMode
-  direction: ReadingDirection
-  brightness: number
-  pageGap: number
-}
-
-const DEFAULT_FIXED_LAYOUT_SETTINGS: FixedLayoutSettings = {
-  readingLayout: "paginate",
-  displayMode: "single",
-  zoomMode: "fit-height",
-  direction: "ltr",
-  brightness: 100,
-  pageGap: 16,
-}
+export { DEFAULT_FIXED_LAYOUT_SETTINGS } from "../types"
 
 export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
-  const readerRootRef = useRef<HTMLDivElement>(null)
-  const chrome = useReadingChrome({ rootRef: readerRootRef })
+  const panels = useReaderPanels()
+  const bookmark = useReaderBookmark()
+  const { readerRootRef, chromeVisible, hideChrome } = useReadingChrome(false)
   const fixedLayoutScrollRef = useRef<HTMLDivElement>(null)
   const [scrollBookProgress, setScrollBookProgress] = useState(0)
 
-  const [tocOpen, setTocOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [bookmarked, setBookmarked] = useState(false)
   const [settings, setSettings] = useState<FixedLayoutSettings>(
     DEFAULT_FIXED_LAYOUT_SETTINGS,
   )
@@ -48,9 +48,6 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
     "forward" | "backward" | null
   >(null)
   const turnTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const clickTurnPendingRef = useRef(false)
-  const clickTurnMovedRef = useRef(false)
-  const clickTurnStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const [spreadPage, setSpreadPage] = useState<ImageChapterData | null>(null)
 
@@ -60,62 +57,19 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
 
   const getChapter = reader.getChapter
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 需在布局或双页模式变化时校正双页设置
-  useEffect(() => {
-    setSettings((s) => {
-      if (s.readingLayout === "scroll" && s.displayMode === "spread") {
-        return { ...s, displayMode: "single" }
-      }
-      return s
-    })
-  }, [settings.readingLayout, settings.displayMode])
-
-  useEffect(() => {
-    if (
-      settings.readingLayout !== "paginate" ||
-      settings.displayMode !== "spread" ||
-      currentIndex + 1 >= totalPages
-    ) {
-      setSpreadPage(null)
-      return
-    }
-    let cancelled = false
-    getChapter(currentIndex + 1).then((ch) => {
-      if (cancelled) return
-      if (ch?.type === "image") setSpreadPage(ch)
-      else setSpreadPage(null)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [
+  useFixedLayoutScrollSpreadGuard(
+    setSettings,
+    settings.readingLayout,
+    settings.displayMode,
+  )
+  useFixedLayoutSpreadNeighborPage(
     settings.readingLayout,
     settings.displayMode,
     currentIndex,
     totalPages,
     getChapter,
-  ])
-
-  const toggleToc = useCallback(() => {
-    setTocOpen((v) => {
-      if (!v) setSettingsOpen(false)
-      return !v
-    })
-  }, [])
-
-  const toggleSettings = useCallback(() => {
-    setSettingsOpen((v) => {
-      if (!v) setTocOpen(false)
-      return !v
-    })
-  }, [])
-
-  const closePanels = useCallback(() => {
-    setTocOpen(false)
-    setSettingsOpen(false)
-  }, [])
-
-  const toggleBookmark = useCallback(() => setBookmarked((v) => !v), [])
+    setSpreadPage,
+  )
 
   const animateTurn = useCallback((dir: "forward" | "backward") => {
     if (turnTimer.current) clearTimeout(turnTimer.current)
@@ -179,10 +133,36 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
     scrollByViewport,
   ])
 
+  const paginateKeyboardPrev = useCallback(() => {
+    if (settings.direction === "rtl") nextPage()
+    else prevPage()
+  }, [settings.direction, nextPage, prevPage])
+
+  const paginateKeyboardNext = useCallback(() => {
+    if (settings.direction === "rtl") prevPage()
+    else nextPage()
+  }, [settings.direction, nextPage, prevPage])
+
+  useReaderKeyboardNavigation({
+    readingLayout: settings.readingLayout,
+    scrollContainerRef: fixedLayoutScrollRef,
+    scrollStepViewportRatio: 0.92,
+    onPaginatePrev: paginateKeyboardPrev,
+    onPaginateNext: paginateKeyboardNext,
+    panels,
+    hideChrome,
+    fullscreenHotkey: true,
+  })
+
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    settings.readingLayout === "paginate",
+    readerRootRef,
+  )
+
   const handleSelectPage = useCallback(
     (index: number) => {
       goToPage(index)
-      closePanels()
+      panels.closePanels()
       if (settings.readingLayout === "scroll") {
         requestAnimationFrame(() => {
           fixedLayoutScrollRef.current
@@ -191,79 +171,15 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
         })
       }
     },
-    [goToPage, closePanels, settings.readingLayout],
+    [goToPage, panels, settings.readingLayout],
   )
 
-  const handleBookProgressSeek = useCallback(
-    (pct: number) => {
-      const p = Math.max(0, Math.min(100, pct))
-      if (settings.readingLayout === "scroll") {
-        const el = fixedLayoutScrollRef.current
-        if (!el) return
-        const max = el.scrollHeight - el.clientHeight
-        if (max <= 0) return
-        el.scrollTo({ top: (p / 100) * max, behavior: "smooth" })
-        return
-      }
-      if (totalPages <= 0) return
-      const idx = Math.round((p / 100) * Math.max(0, totalPages - 1))
-      goToPage(idx)
-    },
-    [settings.readingLayout, totalPages, goToPage],
-  )
-
-  const handleReadingMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0 || e.detail !== 1) return
-      if (chrome.chromeVisible) return
-      if (settings.readingLayout !== "paginate") return
-      clickTurnPendingRef.current = true
-      clickTurnMovedRef.current = false
-      clickTurnStartRef.current = { x: e.clientX, y: e.clientY }
-    },
-    [chrome, settings.readingLayout],
-  )
-
-  const handleReadingMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!clickTurnPendingRef.current || clickTurnMovedRef.current) return
-    const start = clickTurnStartRef.current
-    if (!start) return
-    if (e.clientX !== start.x || e.clientY !== start.y) {
-      clickTurnMovedRef.current = true
-    }
-  }, [])
-
-  const resetClickTurnState = useCallback(() => {
-    clickTurnPendingRef.current = false
-    clickTurnMovedRef.current = false
-    clickTurnStartRef.current = null
-  }, [])
-
-  const handleReadingMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (!clickTurnPendingRef.current || e.button !== 0) {
-        resetClickTurnState()
-        return
-      }
-      const shouldTurnPage = !clickTurnMovedRef.current
-      if (!shouldTurnPage) {
-        resetClickTurnState()
-        return
-      }
-
-      const el = e.currentTarget as HTMLElement
-      const r = el.getBoundingClientRect()
-      const x = e.clientX - r.left
-      const ltr = settings.direction === "ltr"
-      if (x < r.width / 2) {
-        ;(ltr ? prevPage : nextPage)()
-      } else {
-        ;(ltr ? nextPage : prevPage)()
-      }
-      resetClickTurnState()
-    },
-    [settings.direction, prevPage, nextPage, resetClickTurnState],
-  )
+  const handleBookProgressSeek = useReaderBookProgressSeek({
+    readingLayout: settings.readingLayout,
+    scrollContainerRef: fixedLayoutScrollRef,
+    paginateUnitCount: totalPages,
+    seekPaginate: goToPage,
+  })
 
   const updateSettings = useCallback(
     (patch: Partial<FixedLayoutSettings>) =>
@@ -271,24 +187,12 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
     [],
   )
 
-  const mediaLabel = useMemo(() => {
-    const u = reader.format.toUpperCase()
-    if (u === "PDF") return "PDF"
-    if (u === "CBZ") return "漫画"
-    return u
-  }, [reader.format])
-
   const pageTitle = useMemo(() => {
     if (settings.displayMode === "spread" && currentIndex + 1 < totalPages) {
       return `第 ${currentIndex + 1}-${currentIndex + 2} / ${totalPages} 页`
     }
     return `第 ${currentIndex + 1} / ${totalPages} 页`
   }, [settings.displayMode, currentIndex, totalPages])
-
-  const topChapterLine = useMemo(
-    () => (mediaLabel ? `${mediaLabel} · ${pageTitle}` : pageTitle),
-    [mediaLabel, pageTitle],
-  )
 
   const paginateProgress =
     totalPages > 0 ? Math.round(((currentIndex + 1) / totalPages) * 100) : 0
@@ -300,75 +204,23 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
     [reader.toc, totalPages],
   )
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      if (target.closest?.("input, textarea, select, [contenteditable=true]"))
-        return
-
-      switch (e.key) {
-        case "ArrowUp":
-          if (settings.readingLayout === "scroll") {
-            e.preventDefault()
-            scrollByViewport(-1)
-          }
-          break
-        case "ArrowDown":
-          if (settings.readingLayout === "scroll") {
-            e.preventDefault()
-            scrollByViewport(1)
-          }
-          break
-        case "ArrowLeft":
-          if (settings.readingLayout !== "scroll") {
-            settings.direction === "rtl" ? nextPage() : prevPage()
-          }
-          break
-        case "ArrowRight":
-          if (settings.readingLayout !== "scroll") {
-            settings.direction === "rtl" ? prevPage() : nextPage()
-          }
-          break
-        case "Escape":
-          if (tocOpen || settingsOpen) closePanels()
-          else chrome.hideChrome()
-          break
-        case "f":
-        case "F":
-          document.documentElement.requestFullscreen?.()
-          break
-        default:
-          break
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [
-    settings.direction,
-    settings.readingLayout,
-    nextPage,
-    prevPage,
-    tocOpen,
-    settingsOpen,
-    closePanels,
-    chrome,
-    scrollByViewport,
-  ])
-
   return (
     <div
       ref={readerRootRef}
       data-reader-mode="fixed-layout"
       className="relative flex size-full flex-col overflow-hidden bg-viewer-bg"
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: 阅读区鼠标手势 */}
-      <div
-        className="relative flex min-h-0 flex-1 flex-col"
-        onMouseDown={handleReadingMouseDown}
-        onMouseMove={handleReadingMouseMove}
-        onMouseUp={handleReadingMouseUp}
-        onMouseLeave={resetClickTurnState}
-      >
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {settings.readingLayout === "paginate" && (
+          <ReaderPaginateEdgeTurnStrips
+            nearLeft={nearLeft}
+            nearRight={nearRight}
+            onPrev={paginateKeyboardPrev}
+            onNext={paginateKeyboardNext}
+            prevLabel={settings.direction === "rtl" ? "下一页" : "上一页"}
+            nextLabel={settings.direction === "rtl" ? "上一页" : "下一页"}
+          />
+        )}
         {settings.readingLayout === "scroll" ? (
           <FixedLayoutScrollViewport
             totalPages={totalPages}
@@ -394,17 +246,17 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
       </div>
 
       <ReaderTopBar
-        visible={chrome.chromeVisible}
+        visible={chromeVisible}
         bookTitle={bookTitle}
-        chapterTitle={topChapterLine}
-        bookmarked={bookmarked}
-        onToggleToc={toggleToc}
-        onToggleBookmark={toggleBookmark}
-        onToggleSettings={toggleSettings}
+        chapterTitle={pageTitle}
+        bookmarked={bookmark.bookmarked}
+        onToggleToc={panels.toggleToc}
+        onToggleBookmark={bookmark.toggleBookmark}
+        onToggleSettings={panels.toggleSettings}
       />
 
       <FixedLayoutBottomBar
-        visible={chrome.chromeVisible}
+        visible={chromeVisible}
         currentPage={currentIndex}
         totalPages={totalPages}
         bookProgress={barProgress}
@@ -417,20 +269,13 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
         onDisplayModeChange={(mode) => updateSettings({ displayMode: mode })}
       />
 
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: 全屏蒙层 */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc 关闭侧栏 */}
-      <div
-        className={cn(
-          "absolute inset-0 z-55 transition-all duration-300",
-          tocOpen || settingsOpen
-            ? "pointer-events-auto bg-black/30"
-            : "pointer-events-none bg-transparent",
-        )}
-        onClick={closePanels}
+      <ReaderPanelsBackdrop
+        open={panels.tocOpen || panels.settingsOpen}
+        onClose={panels.closePanels}
       />
 
       <FixedLayoutTocPanel
-        visible={tocOpen}
+        visible={panels.tocOpen}
         entries={tocEntries}
         currentPage={currentIndex}
         totalPages={totalPages}
@@ -439,7 +284,7 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
       />
 
       <FixedLayoutSettingsPanel
-        visible={settingsOpen}
+        visible={panels.settingsOpen}
         settings={settings}
         onSettingsChange={updateSettings}
       />

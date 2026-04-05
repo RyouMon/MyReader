@@ -1,13 +1,22 @@
 import { Settings } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import {
+  ReaderSettingRow,
+  ReaderSettingSelect,
+  ReaderSettingSlider,
+  ReaderSettingsSection,
+} from "@/components/reader/shared/ReaderSettingsPanelPrimitives"
+import {
+  ReaderSidePanelFrame,
+  ReaderSidePanelHeader,
+} from "@/components/reader/shared/ReaderSidePanelChrome"
 import type {
   DisplayMode,
   FixedLayoutSettings,
   ReadingDirection,
+  ReadingLayout,
   ZoomMode,
-} from "./FixedLayoutReader"
-import type { ReadingLayout } from "../types"
+} from "../types"
 
 interface FixedLayoutSettingsPanelProps {
   visible: boolean
@@ -21,22 +30,12 @@ export function FixedLayoutSettingsPanel({
   onSettingsChange,
 }: FixedLayoutSettingsPanelProps) {
   return (
-    <aside
-      className={cn(
-        "reader-chrome-panel-aside reader-chrome-panel-shadow-r absolute inset-y-0 right-0 z-60 flex w-[300px] flex-col overflow-y-auto border-l border-reader-chrome-border transition-all duration-300 ease-out",
-        visible
-          ? "translate-x-0 opacity-100"
-          : "pointer-events-none translate-x-full opacity-0",
-      )}
-    >
-      <div className="font-serif flex items-center gap-2.5 border-b border-reader-chrome-border px-5 py-4 text-[15px] font-semibold text-reader-chrome-fg">
-        <Settings className="size-[18px] opacity-60" />
-        阅读设置
-      </div>
+    <ReaderSidePanelFrame visible={visible} side="right">
+      <ReaderSidePanelHeader title="阅读设置" icon={Settings} />
 
-      <SettingsSection title="显示">
-        <SettingRow label="阅读方式">
-          <StyledSelect
+      <ReaderSettingsSection title="显示">
+        <ReaderSettingRow label="阅读方式">
+          <ReaderSettingSelect
             value={settings.readingLayout}
             onChange={(v) =>
               onSettingsChange({ readingLayout: v as ReadingLayout })
@@ -46,9 +45,9 @@ export function FixedLayoutSettingsPanel({
               { value: "scroll", label: "连续滚动" },
             ]}
           />
-        </SettingRow>
-        <SettingRow label="页面模式">
-          <StyledSelect
+        </ReaderSettingRow>
+        <ReaderSettingRow label="页面模式">
+          <ReaderSettingSelect
             value={settings.displayMode}
             onChange={(v) =>
               onSettingsChange({ displayMode: v as DisplayMode })
@@ -58,9 +57,9 @@ export function FixedLayoutSettingsPanel({
               { value: "spread", label: "双页展开" },
             ]}
           />
-        </SettingRow>
-        <SettingRow label="缩放">
-          <StyledSelect
+        </ReaderSettingRow>
+        <ReaderSettingRow label="缩放">
+          <ReaderSettingSelect
             value={settings.zoomMode}
             onChange={(v) => onSettingsChange({ zoomMode: v as ZoomMode })}
             options={[
@@ -69,9 +68,9 @@ export function FixedLayoutSettingsPanel({
               { value: "original", label: "原始尺寸" },
             ]}
           />
-        </SettingRow>
-        <SettingRow label="阅读方向">
-          <StyledSelect
+        </ReaderSettingRow>
+        <ReaderSettingRow label="阅读方向">
+          <ReaderSettingSelect
             value={settings.direction}
             onChange={(v) =>
               onSettingsChange({ direction: v as ReadingDirection })
@@ -81,11 +80,11 @@ export function FixedLayoutSettingsPanel({
               { value: "rtl", label: "从右到左 (日漫)" },
             ]}
           />
-        </SettingRow>
-      </SettingsSection>
+        </ReaderSettingRow>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="背景">
-        <SettingSlider
+      <ReaderSettingsSection title="背景">
+        <ReaderSettingSlider
           label="亮度"
           min={20}
           max={100}
@@ -93,10 +92,10 @@ export function FixedLayoutSettingsPanel({
           displayValue={`${settings.brightness}%`}
           onChange={(v) => onSettingsChange({ brightness: v })}
         />
-      </SettingsSection>
+      </ReaderSettingsSection>
 
-      <SettingsSection title="页面间距">
-        <SettingSlider
+      <ReaderSettingsSection title="页面间距">
+        <ReaderSettingSlider
           label="间距"
           min={0}
           max={48}
@@ -104,104 +103,7 @@ export function FixedLayoutSettingsPanel({
           displayValue={`${settings.pageGap}px`}
           onChange={(v) => onSettingsChange({ pageGap: v })}
         />
-      </SettingsSection>
-    </aside>
-  )
-}
-
-function SettingsSection({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="border-b border-reader-chrome-border px-5 py-4">
-      <div className="mb-3 text-[11.5px] font-semibold tracking-wider text-reader-chrome-muted uppercase">
-        {title}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function SettingRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-3.5 flex items-center gap-2.5 last:mb-0">
-      <span className="min-w-[60px] text-[13px] font-medium text-reader-chrome-fg">
-        {label}
-      </span>
-      {children}
-    </div>
-  )
-}
-
-function StyledSelect({
-  value,
-  onChange,
-  options,
-}: {
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="reader-chrome-select flex-1 cursor-pointer rounded-lg border bg-transparent px-3 py-[7px] text-[13px] outline-none"
-    >
-      {options.map((opt) => (
-        <option
-          key={opt.value}
-          value={opt.value}
-          className="bg-reader-panel-bg text-reader-chrome-fg"
-        >
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  )
-}
-
-function SettingSlider({
-  label,
-  min,
-  max,
-  value,
-  displayValue,
-  onChange,
-}: {
-  label: string
-  min: number
-  max: number
-  value: number
-  displayValue: string
-  onChange: (v: number) => void
-}) {
-  return (
-    <div className="mb-3.5 flex items-center gap-2.5 last:mb-0">
-      <span className="min-w-[40px] text-[13px] font-medium text-reader-chrome-fg">
-        {label}
-      </span>
-      <input
-        type="range"
-        className="reader-slider flex-1"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <span className="min-w-[40px] text-right font-mono text-xs text-reader-chrome-muted">
-        {displayValue}
-      </span>
-    </div>
+      </ReaderSettingsSection>
+    </ReaderSidePanelFrame>
   )
 }

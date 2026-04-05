@@ -3,18 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
 const TOP_BAND_PX = 56
 const BOTTOM_BAR_PX = 72
 const TTS_EXTRA_BOTTOM_PX = 176
-/** 离开工具栏感应区后延迟再隐藏，便于现有 CSS transition 做渐变收起 */
 const CHROME_HIDE_DELAY_MS = 200
 
 /**
- * 工具栏显隐：指针在顶/底工具栏区域内时显示；离开该区域后延迟再隐藏（渐变由顶栏/底栏 transition 负责）。
+ * 阅读器根节点 ref + 顶底工具栏指针感应：指针在顶/底感应区内时显示工具栏，离开后延迟隐藏。
+ * 朗读开启时可加大底部感应区，避免从底栏移到 TTS 条时误关。
  */
-export function useReadingChrome(opts: {
-  rootRef: React.RefObject<HTMLElement | null>
-  /** 朗读开启时加大底部感应区，便于从底栏移到 TTS 条时不误关 */
-  expandBottomForTts?: boolean
-}) {
-  const { rootRef, expandBottomForTts } = opts
+export function useReadingChrome(expandBottomForTts: boolean) {
+  const readerRootRef = useRef<HTMLDivElement>(null)
   const [chromeVisible, setChromeVisible] = useState(false)
   const hideTimerRef = useRef<number | null>(null)
 
@@ -35,7 +31,7 @@ export function useReadingChrome(opts: {
     }
 
     const onMove = (e: PointerEvent) => {
-      const root = rootRef.current
+      const root = readerRootRef.current
       if (!root) return
       const r = root.getBoundingClientRect()
       const { clientX: x, clientY: y } = e
@@ -66,7 +62,7 @@ export function useReadingChrome(opts: {
       document.removeEventListener("pointermove", onMove)
       clearHideTimer()
     }
-  }, [rootRef, expandBottomForTts, clearHideTimer])
+  }, [expandBottomForTts, clearHideTimer])
 
   const hideChrome = useCallback(() => {
     clearHideTimer()
@@ -79,6 +75,7 @@ export function useReadingChrome(opts: {
   }, [clearHideTimer])
 
   return {
+    readerRootRef,
     chromeVisible,
     setChromeVisible,
     showChrome,

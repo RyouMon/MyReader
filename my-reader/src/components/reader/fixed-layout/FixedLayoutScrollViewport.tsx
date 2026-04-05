@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { ImageChapterData } from "@/lib/rendition"
 
-import type { ZoomMode } from "./FixedLayoutReader"
+import type { ZoomMode } from "../types"
 
 interface FixedLayoutScrollViewportProps {
   totalPages: number

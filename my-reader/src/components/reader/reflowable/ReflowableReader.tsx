@@ -1,20 +1,24 @@
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-
+import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
+import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
+import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
+import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderBookmark } from "@/hooks/reader/useReaderBookmark"
+import { useReaderKeyboardNavigation } from "@/hooks/reader/useReaderKeyboardNavigation"
+import { useReaderBookProgressSeek } from "@/hooks/reader/useReaderBookProgressSeek"
+import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
+import { useReaderTts } from "@/hooks/reader/useReaderTts"
+import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import { useReflowableInternalLinkCapture } from "@/hooks/reader/useReflowableInternalLinkCapture"
+import { useReflowReaderSettings } from "@/hooks/reader/useReflowableReaderSettings"
 import type { TextChapterData, TocItem } from "@/lib/rendition"
-import { isNonBookSchemeHref } from "@/lib/rendition/internalTextLink"
-import { findHtmlFragmentElement } from "@/lib/rendition/utils"
-import { cn } from "@/lib/utils"
+import type { ReaderSurfaceProps, TocEntry } from "../types"
 import { ReflowableBottomBar } from "./ReflowableBottomBar"
 import { ReflowableContent } from "./ReflowableContent"
 import { ReflowableScrollContent } from "./ReflowableScrollContent"
-import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
 import { ReflowableSettingsPanel } from "./ReflowableSettingsPanel"
 import { ReflowableTocPanel } from "./ReflowableTocPanel"
 import { TtsPanel } from "./TtsPanel"
-import type { ReaderSurfaceProps, TocEntry } from "../types"
-import { useReaderStore } from "@/hooks/useReaderStore"
-import { useReadingChrome } from "@/hooks/useReadingChrome"
 
 export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const chapter = reader.chapter as TextChapterData
@@ -31,21 +35,19 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     gotoPageInChapter,
     layout: applyLayout,
     notifyInitialViewCommitted,
-    format,
     layoutMode,
     ready: readerReady,
     resolveInternalTextLink,
     followInternalTextLink,
   } = reader
-  const store = useReaderStore()
-  const readerRootRef = useRef<HTMLDivElement>(null)
-  const chrome = useReadingChrome({
-    rootRef: readerRootRef,
-    expandBottomForTts: store.ttsActive,
-  })
+  const panels = useReaderPanels()
+  const bookmark = useReaderBookmark()
+  const reflow = useReflowReaderSettings()
+  const tts = useReaderTts()
+  const { readerRootRef, chromeVisible, hideChrome } = useReadingChrome(
+    tts.ttsActive,
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [paginateNavLeftVisible, setPaginateNavLeftVisible] = useState(false)
-  const [paginateNavRightVisible, setPaginateNavRightVisible] = useState(false)
 
   // 章节内页级进度（0-100），由 ReflowableContent.onProgressChange 驱动
   const [chapterProgressPct, setChapterProgressPct] = useState(0)
@@ -58,20 +60,15 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const [bookProgress, setBookProgress] = useState(0)
   const [scrollFocusIndex, setScrollFocusIndex] = useState(curChapter)
 
-  const layout = store.settings.readingLayout
+  const layout = reflow.settings.readingLayout
   const prevLayoutRef = useRef<typeof layout | null>(null)
 
-  const mediaLabel = useMemo(() => {
-    const u = format.toUpperCase()
-    if (u === "PDF") return "PDF"
-    if (u === "CBZ") return "漫画"
-    return u
-  }, [format])
-
-  const topChapterLine = useMemo(
-    () => (mediaLabel ? `${mediaLabel} · ${chapter.title}` : chapter.title),
-    [mediaLabel, chapter.title],
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    layout === "paginate",
+    readerRootRef,
   )
+
+  const topChapterLine = useMemo(() => chapter.title, [chapter.title])
 
   // ── TTS ──────────────────────────────────────────────────────────────────
   const ttsChapter = useMemo(() => {
@@ -91,13 +88,13 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   )
 
   const handleTtsTogglePlay = useCallback(
-    () => store.ttsTogglePlay(sentences.length),
-    [store, sentences.length],
+    () => tts.ttsTogglePlay(sentences.length),
+    [tts, sentences.length],
   )
 
   const handleTtsNext = useCallback(
-    () => store.ttsNext(sentences.length),
-    [store, sentences.length],
+    () => tts.ttsNext(sentences.length),
+    [tts, sentences.length],
   )
 
   // ── 章节导航 ─────────────────────────────────────────────────────────────
@@ -117,9 +114,9 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const handleSelectChapter = useCallback(
     (idx: number) => {
       void gotoPage(idx, 0)
-      store.closePanels()
+      panels.closePanels()
     },
-    [gotoPage, store],
+    [gotoPage, panels],
   )
 
   // ── 翻页（分页模式） ──────────────────────────────────────────────────────
@@ -138,12 +135,43 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     [layout, gotoNextPage, gotoPrevPage],
   )
 
+  const onKeyboardPaginatePrev = useCallback(
+    () => handlePaginateTurn("prev"),
+    [handlePaginateTurn],
+  )
+  const onKeyboardPaginateNext = useCallback(
+    () => handlePaginateTurn("next"),
+    [handlePaginateTurn],
+  )
+
+  useReaderKeyboardNavigation({
+    readingLayout: layout,
+    scrollContainerRef: scrollRef,
+    scrollStepViewportRatio: 0.85,
+    onPaginatePrev: onKeyboardPaginatePrev,
+    onPaginateNext: onKeyboardPaginateNext,
+    panels,
+    hideChrome,
+  })
+
+  useReflowableInternalLinkCapture({
+    readerRootRef,
+    scrollContainerRef: scrollRef,
+    readerReady,
+    layoutMode,
+    layout,
+    scrollFocusChapterIndex: scrollFocusIndex,
+    curChapter,
+    resolveInternalTextLink,
+    followInternalTextLink,
+  })
+
   // ── 布局切换 ─────────────────────────────────────────────────────────────
   const handleLayoutChange = useCallback(
     (l: typeof layout) => {
-      store.updateSettings({ readingLayout: l })
+      reflow.updateSettings({ readingLayout: l })
     },
-    [store],
+    [reflow],
   )
 
   // ── 进度 ──────────────────────────────────────────────────────────────────
@@ -177,23 +205,19 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     [gotoPageInChapter],
   )
 
-  const handleBookProgressSeek = useCallback(
-    (pct: number) => {
-      const p = Math.max(0, Math.min(100, pct))
-      if (layout === "paginate") {
-        if (totalChapters <= 0) return
-        const idx = Math.round((p / 100) * Math.max(0, totalChapters - 1))
-        void gotoPage(idx, 0)
-        return
-      }
-      const el = scrollRef.current
-      if (!el) return
-      const max = el.scrollHeight - el.clientHeight
-      if (max <= 0) return
-      el.scrollTo({ top: (p / 100) * max, behavior: "smooth" })
+  const seekPaginateChapterStart = useCallback(
+    (idx: number) => {
+      void gotoPage(idx, 0)
     },
-    [layout, totalChapters, gotoPage],
+    [gotoPage],
   )
+
+  const handleBookProgressSeek = useReaderBookProgressSeek({
+    readingLayout: layout,
+    scrollContainerRef: scrollRef,
+    paginateUnitCount: totalChapters,
+    seekPaginate: seekPaginateChapterStart,
+  })
 
   // ── 滚动模式：加载全书 ────────────────────────────────────────────────────
   useEffect(() => {
@@ -272,119 +296,6 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     }
   }, [layout, curChapter, gotoPage])
 
-  // ── 键盘 ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement
-      if (target.closest?.("input, textarea, select, [contenteditable=true]"))
-        return
-
-      if (e.key === "Escape") {
-        if (store.tocOpen || store.settingsOpen) store.closePanels()
-        else chrome.hideChrome()
-        return
-      }
-
-      if (layout === "scroll") {
-        const el = scrollRef.current
-        if (el && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-          e.preventDefault()
-          const step = Math.round(el.clientHeight * 0.85)
-          el.scrollBy({
-            top: e.key === "ArrowUp" ? -step : step,
-            behavior: "smooth",
-          })
-        }
-        return
-      }
-
-      if (e.key === "ArrowLeft") handlePaginateTurn("prev")
-      if (e.key === "ArrowRight") handlePaginateTurn("next")
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [store, chrome, layout, handlePaginateTurn])
-
-  /** 指针靠近阅读器左/右边缘时分别显示对应翻页键（与顶底工具栏感应方式一致，用 document 监听） */
-  useEffect(() => {
-    if (layout !== "paginate") {
-      setPaginateNavLeftVisible(false)
-      setPaginateNavRightVisible(false)
-      return
-    }
-    const edgePx = 72
-    const onMove = (e: PointerEvent) => {
-      const root = readerRootRef.current
-      if (!root) return
-      const r = root.getBoundingClientRect()
-      const { clientX: x, clientY: y } = e
-      const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
-      if (!inside) {
-        setPaginateNavLeftVisible(false)
-        setPaginateNavRightVisible(false)
-        return
-      }
-      setPaginateNavLeftVisible(x - r.left <= edgePx)
-      setPaginateNavRightVisible(r.right - x <= edgePx)
-    }
-    document.addEventListener("pointermove", onMove, { passive: true })
-    return () => document.removeEventListener("pointermove", onMove)
-  }, [layout])
-
-  useEffect(() => {
-    const root = readerRootRef.current
-    if (!root || !readerReady) return
-    if (layoutMode !== "reflowable") return
-
-    const onClickCapture = (e: MouseEvent) => {
-      const t = e.target
-      if (!t || !(t instanceof Element)) return
-      const a = t.closest("a[href]")
-      if (!a || !(a instanceof HTMLAnchorElement)) return
-      const hrefAttr = a.getAttribute("href")
-      if (!hrefAttr?.trim()) return
-      const href = hrefAttr.trim()
-      if (isNonBookSchemeHref(href)) {
-        e.preventDefault()
-        window.open(href, "_blank", "noopener,noreferrer")
-        return
-      }
-
-      e.preventDefault()
-
-      const fromChapter = layout === "scroll" ? scrollFocusIndex : curChapter
-
-      if (layout === "scroll") {
-        const container = scrollRef.current
-        if (!container) return
-        const r = resolveInternalTextLink(fromChapter, href)
-        if (!r) return
-        const section = container.querySelector(
-          `[data-chapter-index="${r.chapterIndex}"]`,
-        )
-        if (!(section instanceof HTMLElement)) return
-        const el = r.fragmentId
-          ? findHtmlFragmentElement(section, r.fragmentId)
-          : null
-        ;(el ?? section).scrollIntoView({ behavior: "smooth", block: "start" })
-        return
-      }
-
-      void followInternalTextLink(fromChapter, href)
-    }
-
-    root.addEventListener("click", onClickCapture, true)
-    return () => root.removeEventListener("click", onClickCapture, true)
-  }, [
-    readerReady,
-    layoutMode,
-    layout,
-    scrollFocusIndex,
-    curChapter,
-    resolveInternalTextLink,
-    followInternalTextLink,
-  ])
-
   // ── 目录 ──────────────────────────────────────────────────────────────────
   const tocEntries = useMemo(() => flattenTocToPanelEntries(toc), [toc])
 
@@ -398,7 +309,7 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   return (
     <div
       ref={readerRootRef}
-      data-reader-theme={store.settings.theme}
+      data-reader-theme={reflow.settings.theme}
       className="relative flex size-full flex-col overflow-hidden bg-reader-bg text-reader-fg transition-[background,color] duration-300 ease-out"
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -418,50 +329,14 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
           </div>
         )}
         {layout === "paginate" && (
-          <>
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-y-0 left-3 z-30 flex items-center transition-opacity duration-[220ms] ease-[ease]",
-                paginateNavLeftVisible ? "opacity-100" : "opacity-0",
-              )}
-            >
-              <button
-                type="button"
-                aria-label="上一页"
-                title="上一页"
-                className={cn(
-                  "reader-chrome-frost-sm flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95",
-                  paginateNavLeftVisible
-                    ? "pointer-events-auto"
-                    : "pointer-events-none",
-                )}
-                onClick={() => handlePaginateTurn("prev")}
-              >
-                <ChevronLeft className="size-5" />
-              </button>
-            </div>
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-y-0 right-3 z-30 flex items-center transition-opacity duration-[220ms] ease-[ease]",
-                paginateNavRightVisible ? "opacity-100" : "opacity-0",
-              )}
-            >
-              <button
-                type="button"
-                aria-label="下一页"
-                title="下一页"
-                className={cn(
-                  "reader-chrome-frost-sm flex size-11 items-center justify-center rounded-full border-none transition-all active:scale-95",
-                  paginateNavRightVisible
-                    ? "pointer-events-auto"
-                    : "pointer-events-none",
-                )}
-                onClick={() => handlePaginateTurn("next")}
-              >
-                <ChevronRight className="size-5" />
-              </button>
-            </div>
-          </>
+          <ReaderPaginateEdgeTurnStrips
+            nearLeft={nearLeft}
+            nearRight={nearRight}
+            onPrev={() => handlePaginateTurn("prev")}
+            onNext={() => handlePaginateTurn("next")}
+            prevLabel="上一页"
+            nextLabel="下一页"
+          />
         )}
         {layout === "scroll" && scrollLoadError && (
           <main className="flex flex-1 items-center justify-center px-6 text-center text-sm text-destructive">
@@ -476,10 +351,10 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
         {layout === "scroll" && scrollChapters && scrollChapters.length > 0 && (
           <ReflowableScrollContent
             chapters={scrollChapters}
-            fontFamily={store.settings.fontFamily}
-            fontSize={store.settings.fontSize}
-            lineHeight={store.settings.lineHeight}
-            paddingX={store.settings.paddingX}
+            fontFamily={reflow.settings.fontFamily}
+            fontSize={reflow.settings.fontSize}
+            lineHeight={reflow.settings.lineHeight}
+            paddingX={reflow.settings.paddingX}
             scrollContainerRef={scrollRef}
             onBookProgress={setBookProgress}
             onVisibleChapterChange={onVisibleChapterChange}
@@ -489,10 +364,10 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
           <ReflowableContent
             chapter={chapter}
             layout={applyLayout}
-            fontFamily={store.settings.fontFamily}
-            fontSize={store.settings.fontSize}
-            lineHeight={store.settings.lineHeight}
-            paddingX={store.settings.paddingX}
+            fontFamily={reflow.settings.fontFamily}
+            fontSize={reflow.settings.fontSize}
+            lineHeight={reflow.settings.lineHeight}
+            paddingX={reflow.settings.paddingX}
             pageOffset={curPageIndex}
             onProgressChange={setChapterProgressPct}
             onPageStateChange={handlePaginatePageStateChange}
@@ -501,55 +376,48 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
       </div>
 
       <ReaderTopBar
-        visible={chrome.chromeVisible}
+        visible={chromeVisible}
         bookTitle={bookTitle}
         chapterTitle={topChapterLine}
-        bookmarked={store.bookmarked}
-        onToggleToc={store.toggleToc}
-        onToggleBookmark={store.toggleBookmark}
-        onToggleSettings={store.toggleSettings}
+        bookmarked={bookmark.bookmarked}
+        onToggleToc={panels.toggleToc}
+        onToggleBookmark={bookmark.toggleBookmark}
+        onToggleSettings={panels.toggleSettings}
       />
 
       <TtsPanel
-        visible={store.ttsActive && chrome.chromeVisible}
-        playing={store.ttsPlaying}
-        speed={store.ttsSpeed}
-        configId={store.ttsConfigId}
+        visible={tts.ttsActive && chromeVisible}
+        playing={tts.ttsPlaying}
+        speed={tts.ttsSpeed}
+        configId={tts.ttsConfigId}
         onTogglePlay={handleTtsTogglePlay}
-        onPrev={store.ttsPrev}
+        onPrev={tts.ttsPrev}
         onNext={handleTtsNext}
-        onSpeedChange={store.setTtsSpeed}
-        onConfigChange={store.setTtsConfigId}
+        onSpeedChange={tts.setTtsSpeed}
+        onConfigChange={tts.setTtsConfigId}
       />
 
       <ReflowableBottomBar
-        visible={chrome.chromeVisible}
+        visible={chromeVisible}
         currentChapter={curChapter + 1}
         totalChapters={totalChapters}
         bookProgress={displayedBookProgress}
         readingLayout={layout}
         onReadingLayoutChange={handleLayoutChange}
         onBookProgressSeek={handleBookProgressSeek}
-        ttsActive={store.ttsActive}
+        ttsActive={tts.ttsActive}
         onPrevChapter={handlePrevChapter}
         onNextChapter={handleNextChapter}
-        onToggleTts={store.toggleTts}
+        onToggleTts={tts.toggleTts}
       />
 
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: 全屏蒙层 */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc 关闭侧栏 */}
-      <div
-        className={cn(
-          "absolute inset-0 z-55 transition-all duration-300",
-          store.tocOpen || store.settingsOpen
-            ? "pointer-events-auto bg-black/30"
-            : "pointer-events-none bg-transparent",
-        )}
-        onClick={store.closePanels}
+      <ReaderPanelsBackdrop
+        open={panels.tocOpen || panels.settingsOpen}
+        onClose={panels.closePanels}
       />
 
       <ReflowableTocPanel
-        visible={store.tocOpen}
+        visible={panels.tocOpen}
         entries={tocEntries}
         currentChapter={
           layout === "scroll" ? scrollFocusIndex + 1 : curChapter + 1
@@ -558,10 +426,10 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
       />
 
       <ReflowableSettingsPanel
-        visible={store.settingsOpen}
-        settings={store.settings}
-        onThemeChange={store.setTheme}
-        onSettingsChange={store.updateSettings}
+        visible={panels.settingsOpen}
+        settings={reflow.settings}
+        onThemeChange={reflow.setTheme}
+        onSettingsChange={reflow.updateSettings}
       />
     </div>
   )

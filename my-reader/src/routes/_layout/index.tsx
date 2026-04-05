@@ -5,7 +5,7 @@ import BookGrid from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
 import { useLibrary } from "@/contexts/LibraryContext"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import { usePaginatedBooks } from "@/hooks/usePaginatedBooks"
+import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { cn } from "@/lib/utils"
 import type { CalibreBook } from "@/types/book"
 

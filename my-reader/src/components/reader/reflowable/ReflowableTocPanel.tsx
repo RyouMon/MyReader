@@ -1,6 +1,10 @@
 import { Check, List, Search } from "lucide-react"
 import { useState } from "react"
 
+import {
+  ReaderSidePanelFrame,
+  ReaderSidePanelHeader,
+} from "@/components/reader/shared/ReaderSidePanelChrome"
 import { cn } from "@/lib/utils"
 
 import type { TocEntry } from "../types"
@@ -30,18 +34,8 @@ export function ReflowableTocPanel({
     : entries
 
   return (
-    <aside
-      className={cn(
-        "reader-chrome-panel-aside reader-chrome-panel-shadow-l absolute inset-y-0 left-0 z-60 flex w-[300px] flex-col border-r border-reader-chrome-border transition-all duration-300 ease-out",
-        visible
-          ? "translate-x-0 opacity-100"
-          : "pointer-events-none -translate-x-full opacity-0",
-      )}
-    >
-      <div className="font-serif flex items-center gap-2.5 border-b border-reader-chrome-border px-5 py-4 text-[15px] font-semibold text-reader-chrome-fg">
-        <List className="size-[18px] opacity-60" />
-        目录
-      </div>
+    <ReaderSidePanelFrame visible={visible} side="left">
+      <ReaderSidePanelHeader title="目录" icon={List} />
 
       <div className="px-4 pt-3 pb-2">
         <div className="reader-chrome-search-field flex items-center gap-2 rounded-lg border px-3 py-2">
@@ -109,6 +103,6 @@ export function ReflowableTocPanel({
           </button>
         ))}
       </div>
-    </aside>
+    </ReaderSidePanelFrame>
   )
 }
