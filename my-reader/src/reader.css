@@ -338,6 +338,11 @@
   -webkit-user-drag: none;
 }
 
+/* 连续滚动：按宽度适配后的整页高度展示，避免被单屏 max-height 裁切 */
+.fixed-layout-scroll-viewport .fixed-layout-page-img {
+  max-height: none;
+}
+
 /* ═══ Reduced Motion ═══ */
 
 @media (prefers-reduced-motion: reduce) {

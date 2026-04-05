@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { Loader2 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import type { ImageChapterData } from "@/lib/rendition"
 
@@ -41,25 +41,22 @@ export function FixedLayoutScrollViewport({
   const virtualizer = useVirtualizer({
     count: totalPages,
     getScrollElement: () => parentRef.current,
-    estimateSize: () =>
-      typeof window !== "undefined"
-        ? Math.min(900, window.innerHeight * 0.82)
-        : 720,
+    estimateSize: () => {
+      if (typeof window === "undefined") return 720
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const byAspect = Math.round(w * 1.45 + 56)
+      const byViewport = Math.round(h * 1.12 + 56)
+      return Math.min(2400, Math.max(320, byAspect, byViewport))
+    },
     overscan: 2,
-    measureElement:
-      typeof window !== "undefined"
-        ? (el) => el.getBoundingClientRect().height
-        : undefined,
+    useAnimationFrameWithResizeObserver: true,
   })
-
-  useEffect(() => {
-    virtualizer.measure()
-  }, [virtualizer])
 
   return (
     <div
       ref={parentRef}
-      className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-viewer-bg"
+      className="fixed-layout-scroll-viewport relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-viewer-bg"
       style={{
         filter:
           brightness < 100 ? `brightness(${brightness / 100})` : undefined,
@@ -82,7 +79,6 @@ export function FixedLayoutScrollViewport({
               index={vi.index}
               getChapter={getChapter}
               zoomMode={zoomMode}
-              onLoaded={() => virtualizer.measure()}
             />
           </div>
         ))}
@@ -95,24 +91,20 @@ function FixedLayoutScrollPageRow({
   index,
   getChapter,
   zoomMode,
-  onLoaded,
 }: {
   index: number
   getChapter: (
     index: number,
   ) => Promise<import("@/lib/rendition").ChapterData | null>
   zoomMode: ZoomMode
-  onLoaded: () => void
 }) {
   const [page, setPage] = useState<ImageChapterData | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const loadedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     setPage(null)
     setErr(null)
-    loadedRef.current = false
     getChapter(index)
       .then((ch) => {
         if (cancelled) return
@@ -158,12 +150,6 @@ function FixedLayoutScrollPageRow({
         className="fixed-layout-page-img rounded-sm shadow-lg"
         style={zoomStyle}
         draggable={false}
-        onLoad={() => {
-          if (!loadedRef.current) {
-            loadedRef.current = true
-            onLoaded()
-          }
-        }}
       />
     </div>
   )
