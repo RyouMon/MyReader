@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useAppUiStore } from "@/stores/appUiStore"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
@@ -21,7 +21,10 @@ import type {
   ReaderSurfaceProps,
 } from "../types"
 import { FixedLayoutBottomBar } from "./FixedLayoutBottomBar"
-import { FixedLayoutScrollViewport } from "./FixedLayoutScrollViewport"
+import {
+  type FixedLayoutScrollViewportHandle,
+  FixedLayoutScrollViewport,
+} from "./FixedLayoutScrollViewport"
 import { FixedLayoutSettingsPanel } from "./FixedLayoutSettingsPanel"
 import { FixedLayoutTocPanel } from "./FixedLayoutTocPanel"
 import { FixedLayoutViewport } from "./FixedLayoutViewport"
@@ -40,7 +43,8 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const bookmark = useReaderBookmark()
   const { readerRootRef, chromeVisible, hideChrome } = useReadingChrome(false)
   const fixedLayoutScrollRef = useRef<HTMLDivElement>(null)
-  const [scrollBookProgress, setScrollBookProgress] = useState(0)
+  const fixedScrollViewportRef = useRef<FixedLayoutScrollViewportHandle>(null)
+  const prevReadingLayoutRef = useRef<"scroll" | "paginate" | null>(null)
 
   const settings = useAppUiStore((s) => s.fixedLayout)
   const patchFixedLayout = useAppUiStore((s) => s.patchFixedLayout)
@@ -54,8 +58,10 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const currentPage = reader.chapter as ImageChapterData | null
   const currentIndex = reader.curChapter
   const totalPages = reader.totalChapters
+  const readerProgress = reader.progress
 
   const getChapter = reader.getChapter
+  const syncChapterIndexFromScroll = reader.syncChapterIndexFromScroll
 
   useFixedLayoutScrollSpreadGuard(
     patchFixedLayout,
@@ -193,10 +199,25 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
     return `第 ${currentIndex + 1} / ${totalPages} 页`
   }, [settings.displayMode, currentIndex, totalPages])
 
-  const paginateProgress =
-    totalPages > 0 ? Math.round(((currentIndex + 1) / totalPages) * 100) : 0
-  const barProgress =
-    settings.readingLayout === "scroll" ? scrollBookProgress : paginateProgress
+  const barProgress = Math.round(readerProgress.fraction * 100)
+
+  const handleVisibleScrollPage = useCallback(
+    (pageIndex: number) => {
+      if (pageIndex === currentIndex) return
+      syncChapterIndexFromScroll(pageIndex)
+    },
+    [currentIndex, syncChapterIndexFromScroll],
+  )
+
+  useEffect(() => {
+    const prev = prevReadingLayoutRef.current
+    prevReadingLayoutRef.current = settings.readingLayout
+    if (settings.readingLayout !== "scroll") return
+    if (prev !== "paginate" && prev !== null) return
+    window.requestAnimationFrame(() =>
+      fixedScrollViewportRef.current?.scrollToPageIndex(currentIndex),
+    )
+  }, [settings.readingLayout, currentIndex])
 
   const tocEntries = useMemo(
     () => buildTocEntries(reader.toc, totalPages),
@@ -222,12 +243,13 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
         )}
         {settings.readingLayout === "scroll" ? (
           <FixedLayoutScrollViewport
+            ref={fixedScrollViewportRef}
             totalPages={totalPages}
             getChapter={getChapter}
             scrollRef={fixedLayoutScrollRef}
             brightness={settings.brightness}
             zoomMode={settings.zoomMode}
-            onScrollProgress={setScrollBookProgress}
+            onVisiblePageIndexChange={handleVisibleScrollPage}
           />
         ) : (
           <FixedLayoutViewport

@@ -11,11 +11,20 @@ import { useReaderTts } from "@/hooks/reader/useReaderTts"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { useReflowableInternalLinkCapture } from "@/hooks/reader/useReflowableInternalLinkCapture"
 import { useReflowReaderSettings } from "@/hooks/reader/useReflowableReaderSettings"
+import type { BookAnchor } from "@/lib/progress/BookAnchor"
+import {
+  bookAnchorFromScrollViewport,
+  fallbackBookAnchorFromFraction,
+  scrollScrollContainerToBookAnchor,
+} from "@/lib/progress/reflowViewportAnchor"
 import type { TextChapterData, TocItem } from "@/lib/rendition"
 import type { ReaderSurfaceProps, TocEntry } from "../types"
 import { ReflowableBottomBar } from "./ReflowableBottomBar"
 import { ReflowableContent } from "./ReflowableContent"
-import { ReflowableScrollContent } from "./ReflowableScrollContent"
+import {
+  type ReflowableScrollAnchor,
+  ReflowableScrollContent,
+} from "./ReflowableScrollContent"
 import { ReflowableSettingsPanel } from "./ReflowableSettingsPanel"
 import { ReflowableTocPanel } from "./ReflowableTocPanel"
 import { TtsPanel } from "./TtsPanel"
@@ -25,6 +34,7 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const {
     toc,
     totalChapters,
+    totalPagesInChapter,
     curChapter,
     curPageIndex,
     isChapterStartFromEnd,
@@ -39,6 +49,12 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     ready: readerReady,
     resolveInternalTextLink,
     followInternalTextLink,
+    syncChapterIndexFromScroll,
+    applyCharOffsetResume,
+    buildSaveBookAnchorMidSlice,
+    format: bookFormat,
+    getPendingTextResumeBoundary,
+    clearPendingTextResumeBoundary,
   } = reader
   const panels = useReaderPanels()
   const bookmark = useReaderBookmark()
@@ -60,6 +76,16 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const [bookProgress, setBookProgress] = useState(0)
   const [scrollFocusIndex, setScrollFocusIndex] = useState(curChapter)
 
+  const pendingScrollAnchorRef = useRef<ReflowableScrollAnchor | null>(null)
+  const scrollChaptersRef = useRef(scrollChapters)
+  scrollChaptersRef.current = scrollChapters
+  const scrollToPaginateAnchorRef = useRef<BookAnchor | null>(null)
+  const paginateToScrollAnchorRef = useRef<BookAnchor | null>(null)
+  const syncScrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
+  const hadScrollChaptersRef = useRef(false)
+
   const layout = reflow.settings.readingLayout
   const prevLayoutRef = useRef<typeof layout | null>(null)
 
@@ -68,7 +94,13 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     readerRootRef,
   )
 
-  const topChapterLine = useMemo(() => chapter.title, [chapter.title])
+  const topChapterLine = useMemo(() => {
+    if (layout === "scroll" && scrollChapters?.length) {
+      const c = scrollChapters.find((c) => c.index === scrollFocusIndex)
+      if (c?.title) return c.title
+    }
+    return chapter.title
+  }, [layout, scrollChapters, scrollFocusIndex, chapter.title])
 
   // ── TTS ──────────────────────────────────────────────────────────────────
   const ttsChapter = useMemo(() => {
@@ -169,9 +201,34 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   // ── 布局切换 ─────────────────────────────────────────────────────────────
   const handleLayoutChange = useCallback(
     (l: typeof layout) => {
+      if (l === "paginate" && reflow.settings.readingLayout === "scroll") {
+        let anchor: BookAnchor | null = null
+        const root = scrollRef.current
+        if (root) {
+          anchor = bookAnchorFromScrollViewport(root)
+        }
+        if (!anchor) {
+          const pend = pendingScrollAnchorRef.current
+          if (pend) {
+            const ch = scrollChaptersRef.current?.find(
+              (c) => c.index === pend.chapterIndex,
+            )
+            anchor = fallbackBookAnchorFromFraction(
+              pend.chapterIndex,
+              pend.withinChapterFraction,
+              ch,
+            )
+          }
+        }
+        scrollToPaginateAnchorRef.current = anchor
+      }
+      if (l === "scroll" && reflow.settings.readingLayout === "paginate") {
+        paginateToScrollAnchorRef.current =
+          buildSaveBookAnchorMidSlice(bookFormat)
+      }
       reflow.updateSettings({ readingLayout: l })
     },
-    [reflow],
+    [reflow, buildSaveBookAnchorMidSlice, bookFormat],
   )
 
   // ── 进度 ──────────────────────────────────────────────────────────────────
@@ -190,12 +247,10 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const displayedBookProgress =
     layout === "scroll" ? bookProgress : paginateBookProgress
 
-  // 切章/切布局时将章内进度重置为起始端，避免短暂显示旧章进度。
-  // 起始端由 Reader 控制器提供。
   useEffect(() => {
     if (layout !== "paginate") return
     setChapterProgressPct(isChapterStartFromEnd ? 100 : 0)
-  }, [layout, isChapterStartFromEnd])
+  }, [curChapter, isChapterStartFromEnd, layout])
 
   // ── 进度拖动/跳转 ─────────────────────────────────────────────────────────
   const handlePaginatePageStateChange = useCallback(
@@ -258,43 +313,71 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
     }
   }, [layout, scrollChapters, scrollLoadError, notifyInitialViewCommitted])
 
-  // ── 滚动模式：同步焦点章节 ───────────────────────────────────────────────
-  const scrollFocusIndexRef = useRef(scrollFocusIndex)
-  scrollFocusIndexRef.current = scrollFocusIndex
-
   useEffect(() => {
-    if (layout !== "scroll") return
-    setScrollFocusIndex(curChapter)
+    if (layout === "paginate") {
+      setScrollFocusIndex(curChapter)
+    }
   }, [curChapter, layout])
 
-  const scrollToChapterStart = useCallback((chapterIndex: number) => {
-    const root = scrollRef.current
-    if (!root) return
-    const el = root.querySelector<HTMLElement>(
-      `[data-chapter-index="${chapterIndex}"]`,
-    )
-    el?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [])
-
   useEffect(() => {
-    if (layout !== "scroll" || !scrollChapters?.length) return
-    const t = window.requestAnimationFrame(() =>
-      scrollToChapterStart(curChapter),
-    )
+    if (layout !== "scroll") {
+      hadScrollChaptersRef.current = false
+      return
+    }
+    if (!scrollChapters?.length) return
+    const firstPaint = !hadScrollChaptersRef.current
+    hadScrollChaptersRef.current = true
+    if (!firstPaint) return
+    const t = window.requestAnimationFrame(() => {
+      const root = scrollRef.current
+      if (!root) return
+      let anchor = paginateToScrollAnchorRef.current
+      paginateToScrollAnchorRef.current = null
+      if (!anchor) {
+        const built = buildSaveBookAnchorMidSlice(bookFormat)
+        anchor =
+          built.charOffset != null
+            ? built
+            : fallbackBookAnchorFromFraction(
+                curChapter,
+                totalPagesInChapter > 1
+                  ? curPageIndex / (totalPagesInChapter - 1)
+                  : 0,
+                scrollChapters.find((c) => c.index === curChapter),
+              )
+      }
+      scrollScrollContainerToBookAnchor(root, anchor)
+    })
     return () => window.cancelAnimationFrame(t)
-  }, [layout, scrollChapters, curChapter, scrollToChapterStart])
+  }, [
+    layout,
+    scrollChapters,
+    curChapter,
+    curPageIndex,
+    totalPagesInChapter,
+    buildSaveBookAnchorMidSlice,
+    bookFormat,
+  ])
 
-  // ── 滚动 → 翻页切换时保留焦点章节 ──────────────────────────────────────
   useEffect(() => {
     const prev = prevLayoutRef.current
     prevLayoutRef.current = layout
-    if (prev === "scroll" && layout === "paginate") {
-      const target = scrollFocusIndexRef.current
-      if (target !== curChapter) {
-        void gotoPage(target, 0)
-      }
+    if (prev !== "scroll" || layout !== "paginate") return
+    if (syncScrollDebounceRef.current) {
+      clearTimeout(syncScrollDebounceRef.current)
+      syncScrollDebounceRef.current = null
     }
-  }, [layout, curChapter, gotoPage])
+    const captured = scrollToPaginateAnchorRef.current
+    scrollToPaginateAnchorRef.current = null
+    const anchor: BookAnchor = captured ?? {
+      chapterIndex: curChapter,
+      charOffset: 0,
+    }
+    void applyCharOffsetResume(
+      anchor.chapterIndex,
+      Math.max(0, anchor.charOffset ?? 0),
+    )
+  }, [layout, applyCharOffsetResume, curChapter])
 
   // ── 目录 ──────────────────────────────────────────────────────────────────
   const tocEntries = useMemo(() => flattenTocToPanelEntries(toc), [toc])
@@ -302,6 +385,21 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const onVisibleChapterChange = useCallback(
     (idx: number) => setScrollFocusIndex(idx),
     [],
+  )
+
+  const handleScrollAnchor = useCallback(
+    (anchor: ReflowableScrollAnchor) => {
+      pendingScrollAnchorRef.current = anchor
+      setScrollFocusIndex(anchor.chapterIndex)
+      if (syncScrollDebounceRef.current) {
+        clearTimeout(syncScrollDebounceRef.current)
+      }
+      syncScrollDebounceRef.current = setTimeout(() => {
+        syncScrollDebounceRef.current = null
+        syncChapterIndexFromScroll(anchor.chapterIndex)
+      }, 90)
+    },
+    [syncChapterIndexFromScroll],
   )
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -358,6 +456,7 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
             scrollContainerRef={scrollRef}
             onBookProgress={setBookProgress}
             onVisibleChapterChange={onVisibleChapterChange}
+            onScrollAnchor={handleScrollAnchor}
           />
         )}
         {layout === "paginate" && (
@@ -371,6 +470,8 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
             pageOffset={curPageIndex}
             onProgressChange={setChapterProgressPct}
             onPageStateChange={handlePaginatePageStateChange}
+            getPendingTextResumeBoundary={getPendingTextResumeBoundary}
+            clearPendingTextResumeBoundary={clearPendingTextResumeBoundary}
           />
         )}
       </div>

@@ -954,6 +954,27 @@ function compareBoundariesInDocumentOrder(
  * document position. Same idea as ebook-paginator `redraw(true)`: keep the current
  * page start (node + offset) and re-paginate from there.
  */
+function findPageIndexByStartOrderFallback(
+  sourceRoot: HTMLElement,
+  pages: DomPageSlice[],
+  anchor: RangeBoundary,
+): number {
+  let best = 0
+  for (let i = 0; i < pages.length; i++) {
+    try {
+      if (
+        compareBoundariesInDocumentOrder(sourceRoot, pages[i].start, anchor) <=
+        0
+      ) {
+        best = i
+      }
+    } catch {
+      // skip malformed slice
+    }
+  }
+  return best
+}
+
 export function findPageIndexForReadingAnchor(
   sourceRoot: HTMLElement,
   pages: DomPageSlice[],
@@ -966,7 +987,7 @@ export function findPageIndexForReadingAnchor(
     applyRangeBoundary(point, sourceRoot, anchor, true)
     point.collapse(true)
   } catch {
-    return 0
+    return findPageIndexByStartOrderFallback(sourceRoot, pages, anchor)
   }
 
   for (let i = 0; i < pages.length; i++) {
@@ -989,20 +1010,7 @@ export function findPageIndexForReadingAnchor(
     }
   }
 
-  let best = 0
-  for (let i = 0; i < pages.length; i++) {
-    try {
-      if (
-        compareBoundariesInDocumentOrder(sourceRoot, pages[i].start, anchor) <=
-        0
-      ) {
-        best = i
-      }
-    } catch {
-      // skip malformed slice
-    }
-  }
-  return best
+  return findPageIndexByStartOrderFallback(sourceRoot, pages, anchor)
 }
 
 /** Resolves a serialized child-index path back into a live DOM node. */

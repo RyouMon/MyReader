@@ -6,6 +6,7 @@ import type {
   ChapterData,
   LayoutConfig,
   LayoutMode,
+  RangeBoundary,
   ReaderProgress,
   TextChapterPaginationResult,
   TocItem,
@@ -95,11 +96,26 @@ export interface UseReaderReturn {
   /** 打包当前位置供持久化（文本书含章内 UTF-16 偏移与片段）。 */
   buildSaveBookAnchor: (fileFormat: string) => BookAnchor
 
+  /**
+   * 文本书：当前列页切片在章内 UTF-16 区间的中点（与切换滚动视图时对齐整页插图更稳）。
+   */
+  buildSaveBookAnchorMidSlice: (fileFormat: string) => BookAnchor
+
   /** 文本书：按 `chapterIndex` 章内 UTF-16 `charOffset` 续读；失败返回 `false`。 */
   applyCharOffsetResume: (
     chapterIndex: number,
     charOffset: number,
   ) => Promise<boolean>
+
+  /** 文本书整章（full）首屏滚动续读：有边界时由视口消费；分页（sliced）由 `layout` 消费。 */
+  getPendingTextResumeBoundary: () => RangeBoundary | null
+  clearPendingTextResumeBoundary: () => void
+
+  /**
+   * 滚动视图中与可见章节对齐：仅更新 {@link BookReader} 当前 spine 下标并拉取章节数据，
+   * 不进入全局 loading。翻页/持久化锚点与 {@link BookReader} 一致。
+   */
+  syncChapterIndexFromScroll: (chapterIndex: number) => void
 
   /**
    * 全书阅读进度快照（0..1 的 `fraction`），由 {@link BookReader} 按章体量与章内位置在内部计算，
@@ -396,11 +412,45 @@ export function useBookReader({
     [syncNavigationState],
   )
 
+  const getPendingTextResumeBoundary = useCallback((): RangeBoundary | null => {
+    return coreRef.current?.getPendingTextResumeBoundary() ?? null
+  }, [])
+
+  const clearPendingTextResumeBoundary = useCallback(() => {
+    coreRef.current?.clearPendingTextResumeBoundary()
+  }, [])
+
+  const syncChapterIndexFromScroll = useCallback(
+    (chapterIndex: number) => {
+      const core = coreRef.current
+      if (!core?.ready) return
+      if (chapterIndex < 0 || chapterIndex >= core.totalChapters) return
+      core.gotoChapter(chapterIndex)
+      syncNavigationState(core)
+      void core.getChapter(chapterIndex).then((ch) => {
+        if (!mountedRef.current || coreRef.current !== core) return
+        setChapter(ch)
+      })
+    },
+    [syncNavigationState],
+  )
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: 依赖导航态 bump 引用，供进度保存 effect 在翻页时重新防抖
   const buildSaveBookAnchor = useCallback(
     (fileFormat: string): BookAnchor => {
       return (
         coreRef.current?.buildSaveBookAnchor(fileFormat) ?? {
+          chapterIndex: 0,
+        }
+      )
+    },
+    [curChapter, curPageIndex, layoutMode],
+  )
+
+  const buildSaveBookAnchorMidSlice = useCallback(
+    (fileFormat: string): BookAnchor => {
+      return (
+        coreRef.current?.buildSaveBookAnchorMidSlice(fileFormat) ?? {
           chapterIndex: 0,
         }
       )
@@ -436,7 +486,11 @@ export function useBookReader({
     followInternalTextLink,
     applyReadingResume,
     applyCharOffsetResume,
+    getPendingTextResumeBoundary,
+    clearPendingTextResumeBoundary,
+    syncChapterIndexFromScroll,
     buildSaveBookAnchor,
+    buildSaveBookAnchorMidSlice,
     progress,
   }
 }

@@ -1,10 +1,21 @@
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { Loader2 } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react"
 
 import type { ImageChapterData } from "@/lib/rendition"
 
 import type { ZoomMode } from "../types"
+
+export type FixedLayoutScrollViewportHandle = {
+  scrollToPageIndex: (index: number) => void
+}
 
 interface FixedLayoutScrollViewportProps {
   totalPages: number
@@ -14,29 +25,33 @@ interface FixedLayoutScrollViewportProps {
   scrollRef: React.RefObject<HTMLDivElement>
   brightness: number
   zoomMode: ZoomMode
-  onScrollProgress: (pct: number) => void
+  /** 可选；底栏进度可由 {@link BookReader#getProgress} 驱动 */
+  onScrollProgress?: (pct: number) => void
+  /** 与 {@link BookReader} 当前 spine 对齐的可见页（0-based） */
+  onVisiblePageIndexChange?: (pageIndex: number) => void
 }
 
 /**
  * 固定版式（CBZ / 图片 PDF 等）纵向连续滚动，虚拟列表按页懒加载。
  */
-export function FixedLayoutScrollViewport({
-  totalPages,
-  getChapter,
-  scrollRef,
-  brightness,
-  zoomMode,
-  onScrollProgress,
-}: FixedLayoutScrollViewportProps) {
+export const FixedLayoutScrollViewport = forwardRef<
+  FixedLayoutScrollViewportHandle,
+  FixedLayoutScrollViewportProps
+>(function FixedLayoutScrollViewport(
+  {
+    totalPages,
+    getChapter,
+    scrollRef,
+    brightness,
+    zoomMode,
+    onScrollProgress,
+    onVisiblePageIndexChange,
+  },
+  ref,
+) {
   const parentRef = scrollRef
-
-  const handleScroll = useCallback(() => {
-    const el = parentRef.current
-    if (!el) return
-    const max = el.scrollHeight - el.clientHeight
-    const pct = max <= 0 ? 100 : Math.round((el.scrollTop / max) * 100)
-    onScrollProgress(pct)
-  }, [parentRef, onScrollProgress])
+  const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressVisibleSyncUntilRef = useRef(0)
 
   const virtualizer = useVirtualizer({
     count: totalPages,
@@ -52,6 +67,59 @@ export function FixedLayoutScrollViewport({
     overscan: 2,
     useAnimationFrameWithResizeObserver: true,
   })
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToPageIndex: (index: number) => {
+        suppressVisibleSyncUntilRef.current = Date.now() + 320
+        virtualizer.scrollToIndex(Math.max(0, index), { align: "start" })
+      },
+    }),
+    [virtualizer],
+  )
+
+  const handleScroll = useCallback(() => {
+    const el = parentRef.current
+    if (!el) return
+    const max = el.scrollHeight - el.clientHeight
+    const pct = max <= 0 ? 100 : Math.round((el.scrollTop / max) * 100)
+    onScrollProgress?.(pct)
+    if (!onVisiblePageIndexChange) return
+    const items = virtualizer.getVirtualItems()
+    if (items.length === 0) return
+    const center = el.scrollTop + el.clientHeight / 2
+    let best = items[0].index
+    let bestDist = Number.POSITIVE_INFINITY
+    for (const vi of items) {
+      const mid = (vi.start + vi.end) / 2
+      const d = Math.abs(center - mid)
+      if (d < bestDist) {
+        bestDist = d
+        best = vi.index
+      }
+    }
+    if (Date.now() < suppressVisibleSyncUntilRef.current) return
+    if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current)
+    syncDebounceRef.current = setTimeout(() => {
+      syncDebounceRef.current = null
+      if (Date.now() < suppressVisibleSyncUntilRef.current) return
+      onVisiblePageIndexChange(best)
+    }, 90)
+  }, [parentRef, onScrollProgress, onVisiblePageIndexChange, virtualizer])
+
+  useEffect(() => {
+    const el = parentRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => handleScroll())
+    ro.observe(el)
+    const id = window.requestAnimationFrame(() => handleScroll())
+    return () => {
+      window.cancelAnimationFrame(id)
+      ro.disconnect()
+      if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current)
+    }
+  }, [handleScroll])
 
   return (
     <div
@@ -85,7 +153,7 @@ export function FixedLayoutScrollViewport({
       </div>
     </div>
   )
-}
+})
 
 function FixedLayoutScrollPageRow({
   index,

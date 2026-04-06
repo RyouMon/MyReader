@@ -13,6 +13,8 @@ import type {
   TextChapterPaginationResult,
 } from "@/lib/rendition"
 import { BookReader } from "@/lib/rendition/BookReader"
+import { fillRangeStartFromBoundary } from "@/lib/rendition/pagination/ProgressivePaginator"
+import type { RangeBoundary } from "@/lib/rendition/types"
 import { cn } from "@/lib/utils"
 import {
   ReflowableSkeleton,
@@ -42,6 +44,9 @@ interface ReflowableContentProps {
   onProgressChange: (pct: number) => void
   onPageStateChange?: (pageIndex: number, pageCount: number) => void
   pageOffset?: number
+  /** 整章（full）首屏挂载后按边界滚动；成功后再调用 `clearPendingTextResumeBoundary`。 */
+  getPendingTextResumeBoundary?: () => RangeBoundary | null
+  clearPendingTextResumeBoundary?: () => void
 }
 
 /**
@@ -57,6 +62,8 @@ export function ReflowableContent({
   onProgressChange,
   onPageStateChange,
   pageOffset,
+  getPendingTextResumeBoundary,
+  clearPendingTextResumeBoundary,
 }: ReflowableContentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const measureHostRef = useRef<HTMLDivElement>(null)
@@ -218,6 +225,47 @@ export function ReflowableContent({
     )
   }, [chapterMode, chapter, pages, viewportModel])
 
+  const viewportResizeInProgress =
+    viewportLive.w !== viewportLayout.w || viewportLive.h !== viewportLayout.h
+  const showReflowableSkeleton =
+    viewportResizeInProgress || awaitingLayoutAfterResize
+
+  useLayoutEffect(() => {
+    if (chapterMode !== "full") return
+    if (showReflowableSkeleton) return
+    const getB = getPendingTextResumeBoundary
+    const clearB = clearPendingTextResumeBoundary
+    if (!getB || !clearB) return
+    const boundary = getB()
+    if (!boundary) return
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const scope = viewport.querySelector(".reader-epub-scope")
+    if (!(scope instanceof HTMLElement)) return
+    const doc = scope.ownerDocument
+    const range = doc.createRange()
+    try {
+      fillRangeStartFromBoundary(range, scope, boundary)
+      range.collapse(true)
+      const n = range.startContainer
+      const el =
+        n.nodeType === Node.TEXT_NODE
+          ? (n.parentElement as HTMLElement | null)
+          : (n as HTMLElement)
+      el?.scrollIntoView({ block: "center", behavior: "instant" })
+      clearB()
+    } catch {
+      // 保留 pending，待切片分页后由 BookReader.layout 对齐列页
+    }
+  }, [
+    chapterMode,
+    chapter.index,
+    showReflowableSkeleton,
+    viewportModel,
+    getPendingTextResumeBoundary,
+    clearPendingTextResumeBoundary,
+  ])
+
   useEffect(() => {
     const viewport = viewportRef.current
     if (!viewport) return
@@ -261,10 +309,6 @@ export function ReflowableContent({
 
   const { spreadIndex, spreadCount, twoColumnShell } = viewportModel
 
-  const viewportResizeInProgress =
-    viewportLive.w !== viewportLayout.w || viewportLive.h !== viewportLayout.h
-  const showReflowableSkeleton =
-    viewportResizeInProgress || awaitingLayoutAfterResize
   const skeletonTwoColumnShell = reflowableShouldUseDoubleColumn(viewportLive.w)
 
   useEffect(() => {

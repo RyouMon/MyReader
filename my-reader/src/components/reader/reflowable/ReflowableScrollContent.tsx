@@ -8,6 +8,12 @@ import {
 
 import type { TextChapterData } from "@/lib/rendition"
 
+export interface ReflowableScrollAnchor {
+  chapterIndex: number
+  /** 当前可见章内纵向位置 0..1（用于与分页模式对齐） */
+  withinChapterFraction: number
+}
+
 interface ReflowableScrollContentProps {
   chapters: TextChapterData[]
   fontFamily: string
@@ -17,6 +23,8 @@ interface ReflowableScrollContentProps {
   scrollContainerRef: React.RefObject<HTMLDivElement>
   onBookProgress: (pct: number) => void
   onVisibleChapterChange: (index: number) => void
+  /** 每次滚动更新，供与 {@link BookReader} 同步及布局切换时恢复分页位置 */
+  onScrollAnchor?: (anchor: ReflowableScrollAnchor) => void
 }
 
 /**
@@ -31,6 +39,7 @@ export function ReflowableScrollContent({
   scrollContainerRef,
   onBookProgress,
   onVisibleChapterChange,
+  onScrollAnchor,
 }: ReflowableScrollContentProps) {
   const sectionRefs = useRef<Map<number, HTMLElement>>(new Map())
 
@@ -60,8 +69,25 @@ export function ReflowableScrollContent({
         best = idx
       }
     }
-    if (bestVisible >= 0) onVisibleChapterChange(best)
-  }, [scrollContainerRef, onBookProgress, onVisibleChapterChange])
+    if (bestVisible >= 0) {
+      onVisibleChapterChange(best)
+      const section = sectionRefs.current.get(best)
+      let withinChapterFraction = 0
+      if (section) {
+        const range = Math.max(0, section.offsetHeight - el.clientHeight)
+        if (range > 0) {
+          const raw = (el.scrollTop - section.offsetTop) / range
+          withinChapterFraction = Math.max(0, Math.min(1, raw))
+        }
+      }
+      onScrollAnchor?.({ chapterIndex: best, withinChapterFraction })
+    }
+  }, [
+    scrollContainerRef,
+    onBookProgress,
+    onVisibleChapterChange,
+    onScrollAnchor,
+  ])
 
   useEffect(() => {
     const el = scrollContainerRef.current

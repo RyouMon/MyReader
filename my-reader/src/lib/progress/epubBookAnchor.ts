@@ -51,6 +51,22 @@ export function readingBoundaryFromRootUtf16Offset(
   return readingAnchorForRangeStart(root, range)
 }
 
+/**
+ * 将续读用的 `charOffset` 限制在章 body 文本长度内，避免略大的存盘值导致边界解析失败而退回章首。
+ */
+export function clampChapterCharOffset(
+  chapter: TextChapterData,
+  charOffset: number,
+): number {
+  const maxLen = Math.max(
+    0,
+    chapter.bodyUtf16Length ?? chapter.text?.length ?? 0,
+  )
+  const raw = Math.max(0, Math.floor(charOffset))
+  if (maxLen <= 0) return 0
+  return Math.min(raw, maxLen - 1)
+}
+
 /** 在章节 XHTML body 上与保存锚点时相同的合成文档中解析 `charOffset`（相对该章 `body` 文本，UTF-16）。 */
 export function epubReadingBoundaryFromChapterCharOffset(
   chapter: TextChapterData,
@@ -59,7 +75,10 @@ export function epubReadingBoundaryFromChapterCharOffset(
   const doc = syntheticBodyDocument(chapter.bodyHtml)
   const body = doc.body
   if (!body) return null
-  return readingBoundaryFromRootUtf16Offset(body, charOffset)
+  return readingBoundaryFromRootUtf16Offset(
+    body,
+    clampChapterCharOffset(chapter, charOffset),
+  )
 }
 
 function snippetsAround(

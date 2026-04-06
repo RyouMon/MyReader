@@ -220,7 +220,7 @@ export class BookReader {
       if (ch.type === "text") {
         const boundary = epubReadingBoundaryFromChapterCharOffset(
           ch,
-          Math.max(0, Math.floor(anchor.charOffset)),
+          anchor.charOffset,
         )
         if (boundary) {
           this._pendingTextResumeBoundary = boundary
@@ -313,8 +313,6 @@ export class BookReader {
           nextCol = double
             ? spreadIndexToLeftColumn(columnPageIndexToSpread(c), N)
             : c
-          this._pendingTextResumeBoundary = null
-        } else if (this._pendingTextResumeBoundary && result.mode === "full") {
           this._pendingTextResumeBoundary = null
         } else if (
           this._pendingLinkFragment &&
@@ -715,6 +713,42 @@ export class BookReader {
   }
 
   /**
+   * 当前列页切片在章内 UTF-16 区间的中点。纯图/少文页时比仅用切片起点更贴近视口中心，便于与滚动视图对齐。
+   */
+  buildSaveBookAnchorMidSlice(_fileFormat: string): BookAnchor {
+    const chapterIdx = Math.max(0, this._currentIndex)
+    if (
+      this.layoutMode !== "reflowable" ||
+      this._lastTextLayout?.chapter.type !== "text" ||
+      !(this.paginator instanceof ProgressivePaginator)
+    ) {
+      return bookAnchorFromReaderState({ chapterIndex: chapterIdx })
+    }
+    const { chapter } = this._lastTextLayout
+    const slice = this.paginator.getCurrentSlice()
+    if (!slice) {
+      return this.buildSaveBookAnchor(_fileFormat)
+    }
+    const startA = buildTextChapterBookAnchorAtBoundary({
+      chapter,
+      boundary: slice.start,
+    })
+    const endA = buildTextChapterBookAnchorAtBoundary({
+      chapter,
+      boundary: slice.end,
+    })
+    const lo = Math.max(0, startA.charOffset ?? 0)
+    const hi = Math.max(lo, endA.charOffset ?? lo)
+    const mid = Math.floor((lo + hi) / 2)
+    return {
+      chapterIndex: chapter.index,
+      charOffset: mid,
+      textSnippet: startA.textSnippet,
+      textSnippetAfter: endA.textSnippetAfter,
+    }
+  }
+
+  /**
    * 文本书：按章内 UTF-16 `charOffset`（相对该章 body 文本）在下一屏 layout 对齐列页。
    */
   async applyCharOffsetResume(
@@ -733,6 +767,18 @@ export class BookReader {
     }
     this.invalidatePageDescriptorCaches()
     return true
+  }
+
+  /**
+   * 供整章（full）首屏 DOM 挂载后滚动定位；分页（sliced）成功对齐列页后由 `layout` 清空。
+   */
+  getPendingTextResumeBoundary(): RangeBoundary | null {
+    return this._pendingTextResumeBoundary
+  }
+
+  /** 在视口已滚动到锚点后调用，避免重复 `scrollIntoView`。 */
+  clearPendingTextResumeBoundary(): void {
+    this._pendingTextResumeBoundary = null
   }
 
   /**
