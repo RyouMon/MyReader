@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react"
+
+import { useAppUiStore } from "@/stores/appUiStore"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
 import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
@@ -18,7 +20,6 @@ import type {
   FixedLayoutTocEntry,
   ReaderSurfaceProps,
 } from "../types"
-import { DEFAULT_FIXED_LAYOUT_SETTINGS } from "../types"
 import { FixedLayoutBottomBar } from "./FixedLayoutBottomBar"
 import { FixedLayoutScrollViewport } from "./FixedLayoutScrollViewport"
 import { FixedLayoutSettingsPanel } from "./FixedLayoutSettingsPanel"
@@ -41,9 +42,8 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const fixedLayoutScrollRef = useRef<HTMLDivElement>(null)
   const [scrollBookProgress, setScrollBookProgress] = useState(0)
 
-  const [settings, setSettings] = useState<FixedLayoutSettings>(
-    DEFAULT_FIXED_LAYOUT_SETTINGS,
-  )
+  const settings = useAppUiStore((s) => s.fixedLayout)
+  const patchFixedLayout = useAppUiStore((s) => s.patchFixedLayout)
   const [turnDirection, setTurnDirection] = useState<
     "forward" | "backward" | null
   >(null)
@@ -58,7 +58,7 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   const getChapter = reader.getChapter
 
   useFixedLayoutScrollSpreadGuard(
-    setSettings,
+    patchFixedLayout,
     settings.readingLayout,
     settings.displayMode,
   )
@@ -182,9 +182,8 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
   })
 
   const updateSettings = useCallback(
-    (patch: Partial<FixedLayoutSettings>) =>
-      setSettings((prev) => ({ ...prev, ...patch })),
-    [],
+    (patch: Partial<FixedLayoutSettings>) => patchFixedLayout(patch),
+    [patchFixedLayout],
   )
 
   const pageTitle = useMemo(() => {

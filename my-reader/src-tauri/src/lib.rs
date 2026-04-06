@@ -2,6 +2,7 @@ mod calibre;
 mod commands;
 mod error;
 mod models;
+mod reader_ui_prefs;
 mod reading_progress;
 use std::sync::Mutex;
 
@@ -164,6 +165,8 @@ pub fn run() {
             commands::get_reading_progress,
             commands::set_reading_progress,
             commands::get_book_cover,
+            commands::get_reader_ui_preferences,
+            commands::set_reader_ui_preferences,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

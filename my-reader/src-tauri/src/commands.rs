@@ -11,9 +11,19 @@ use crate::models::{
     AppConfig, BookAnchor, BookDetail, BookEntry, BookIdentifier, FormatSize, LibraryConfig,
     LibraryInfo, PaginatedBooks, ReadingProgressDto,
 };
+use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::reading_progress;
 
 pub type AppState = Mutex<AppConfig>;
+
+fn reader_ui_preferences_path(app: &AppHandle) -> Result<PathBuf, AppError> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Config(e.to_string()))?;
+    fs::create_dir_all(&dir)?;
+    Ok(dir.join("reader_ui_preferences.json"))
+}
 
 fn config_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     let dir = app
@@ -344,4 +354,26 @@ pub fn get_book_cover(
         }
         None => Ok(None),
     }
+}
+
+#[tauri::command]
+pub fn get_reader_ui_preferences(app: AppHandle) -> Result<ReaderUiPreferences, AppError> {
+    let path = reader_ui_preferences_path(&app)?;
+    if !path.exists() {
+        return Ok(ReaderUiPreferences::default());
+    }
+    let json = fs::read_to_string(&path)?;
+    Ok(serde_json::from_str(&json).unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn set_reader_ui_preferences(
+    app: AppHandle,
+    prefs: ReaderUiPreferences,
+) -> Result<(), AppError> {
+    let path = reader_ui_preferences_path(&app)?;
+    let json =
+        serde_json::to_string_pretty(&prefs).map_err(|e| AppError::Serialize(e.to_string()))?;
+    fs::write(path, json)?;
+    Ok(())
 }

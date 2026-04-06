@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { useAppUiStore } from "@/stores/appUiStore"
+
 /**
  * 朗读面板状态：播放进度、速度与配置；含自动翻句定时器。
+ * 持久化的 TTS 配置（预设与语速）来自全局 store。
  */
 export function useReaderTts() {
+  const ttsConfigId = useAppUiStore((s) => s.reflowable.tts.ttsConfigId)
+  const ttsSpeed = useAppUiStore((s) => s.reflowable.tts.ttsSpeed)
+  const patchReflowableTts = useAppUiStore((s) => s.patchReflowableTts)
+
   const [ttsActive, setTtsActive] = useState(false)
   const [ttsPlaying, setTtsPlaying] = useState(false)
   const [ttsCurrent, setTtsCurrent] = useState(-1)
-  const [ttsSpeed, setTtsSpeed] = useState(1.0)
-  const [ttsConfigId, setTtsConfigId] = useState("default")
+
+  const setTtsConfigId = useCallback(
+    (id: string) => patchReflowableTts({ ttsConfigId: id }),
+    [patchReflowableTts],
+  )
+
+  const setTtsSpeed = useCallback(
+    (speed: number) => patchReflowableTts({ ttsSpeed: speed }),
+    [patchReflowableTts],
+  )
 
   const ttsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
