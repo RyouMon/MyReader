@@ -167,12 +167,10 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   })
 
   useReadingProgressSync({
-    openBookKey: `${activeLibraryId ?? ""}:${bookId}:${format}`,
     enabled:
       isTauri() &&
       !mainHandoff &&
       Boolean(activeLibraryId && format && bookPayload),
-    resumeHandledAtReaderOpen: Boolean(bookPayload),
     libraryId: activeLibraryId,
     bookId: Number(bookId),
     format,
