@@ -117,4 +117,3 @@ pub struct ReadingProgressDto {
     pub anchor: BookAnchor,
     pub updated_at: f64,
 }
-

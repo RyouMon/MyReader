@@ -44,9 +44,22 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     if (!mainHandoff) return
     let cancelled = false
     void (async () => {
-      await openReaderInNewWindow(bookId, formatFromSearch)
-      if (cancelled) return
-      navigate({ to: "/book/$bookId", params: { bookId } })
+      console.info(
+        `Start to open dedicated reader window from main route. book id: "${bookId}", format from search: "${formatFromSearch ?? ""}"`,
+      )
+      try {
+        await openReaderInNewWindow(bookId, formatFromSearch)
+        if (cancelled) return
+        console.info(
+          `Success to open dedicated reader window from main route. book id: "${bookId}"`,
+        )
+        navigate({ to: "/book/$bookId", params: { bookId } })
+      } catch (e) {
+        console.error(
+          `Failed to open dedicated reader window from main route. book id: "${bookId}", error:`,
+          e,
+        )
+      }
     })()
     return () => {
       cancelled = true
@@ -61,11 +74,17 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       if (libraryLoading) return
       if (!activeLibraryId) {
         if (!cancelled) {
+          console.error(
+            `Failed to load book for reading. reason: no active library, book id: "${bookId}"`,
+          )
           setFetchError("未选择书库，请先在主窗口选择书库后再阅读")
         }
         return
       }
       setBookPayload(null)
+      console.info(
+        `Start to load book for reading. book id: "${bookId}", library id: "${activeLibraryId}", format hint: "${formatFromSearch ?? ""}"`,
+      )
       try {
         const detail = await invoke<BookDetail>("get_book_detail", {
           libraryId: activeLibraryId,
@@ -73,6 +92,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         })
         if (cancelled) return
 
+        console.info(
+          `Success to load book detail for reading. book id: ${detail.id}, title: "${detail.title}"`,
+        )
         setBookTitle(detail.title)
         if (isTauri()) {
           void WebviewWindow.getCurrent().setTitle(detail.title)
@@ -80,6 +102,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const fmt = resolveReadFormat(detail.formats, formatFromSearch)
         if (!fmt) {
+          console.error(
+            `Failed to load book for reading. reason: no supported format, book id: "${bookId}", formats: "${detail.formats.join(", ")}"`,
+          )
           setFetchError("该书籍没有可阅读的格式（需要 EPUB、CBZ 或 PDF）")
           return
         }
@@ -97,6 +122,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const resp = await fetch(url)
         if (!resp.ok) {
+          console.error(
+            `Failed to fetch book file. url: "${url}", http status: ${resp.status}`,
+          )
           setFetchError(`无法加载书籍文件: HTTP ${resp.status}`)
           return
         }
@@ -112,8 +140,17 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           buffer: arrayBuffer,
           initialOpenAnchor: row?.anchor ?? null,
         })
+        console.info(
+          `Success to load book file for reading. format: "${fmt}", bytes: ${arrayBuffer.byteLength}, has initial anchor: ${Boolean(row?.anchor)}`,
+        )
       } catch (e) {
-        if (!cancelled) setFetchError(String(e))
+        if (!cancelled) {
+          console.error(
+            `Failed to load book for reading. book id: "${bookId}", library id: "${activeLibraryId}", error:`,
+            e,
+          )
+          setFetchError(String(e))
+        }
       }
     }
 

@@ -3,5 +3,10 @@
   "identifier": "reader",
   "description": "独立阅读器窗口（invoke、对话框等与主窗口一致）",
   "windows": ["reader-*"],
-  "permissions": ["core:default", "opener:default", "dialog:default"]
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "dialog:default",
+    "log:default"
+  ]
 }

@@ -31,6 +31,9 @@ export function usePaginatedBooks(
       return
     }
 
+    console.info(
+      `Start to fetch books page (initial). library id: "${libraryId}", offset: 0, limit: ${PAGE_SIZE}, sort by: "${sortBy}", search: "${search}"`,
+    )
     invoke<PaginatedBooks>("get_books_page", {
       libraryId,
       offset: 0,
@@ -46,9 +49,16 @@ export function usePaginatedBooks(
         }
         setBooks(m)
         setTotal(result.total)
+        console.info(
+          `Success to fetch books page (initial). total: ${result.total}, returned: ${result.items.length}`,
+        )
       })
       .catch((e) => {
         if (epochRef.current !== epoch) return
+        console.error(
+          `Failed to fetch books page (initial). library id: "${libraryId}", error:`,
+          e,
+        )
         setError(String(e))
       })
       .finally(() => {
@@ -67,6 +77,9 @@ export function usePaginatedBooks(
         if (loadedPagesRef.current.has(p)) continue
         loadedPagesRef.current.add(p)
 
+        console.info(
+          `Start to fetch books page (range). library id: "${libraryId}", page index: ${p}, offset: ${p * PAGE_SIZE}`,
+        )
         invoke<PaginatedBooks>("get_books_page", {
           libraryId,
           offset: p * PAGE_SIZE,
@@ -84,11 +97,17 @@ export function usePaginatedBooks(
               }
               return next
             })
+            console.info(
+              `Success to fetch books page (range). page index: ${p}, returned: ${result.items.length}`,
+            )
           })
           .catch((e) => {
             if (epochRef.current !== epoch) return
             loadedPagesRef.current.delete(p)
-            console.error(`Failed to load page ${p}:`, e)
+            console.error(
+              `Failed to fetch books page (range). library id: "${libraryId}", page index: ${p}, error:`,
+              e,
+            )
           })
       }
     },

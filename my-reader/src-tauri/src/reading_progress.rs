@@ -21,18 +21,41 @@ CREATE INDEX IF NOT EXISTS idx_reading_progress_format
   ON reading_progress(format);
 ";
 
+const LOG_TARGET: &str = "my_reader_lib::reading_progress";
+
 /// 应用数据目录下的 `my-reader.db`（MyReader 本地数据，未来可扩展多表；阅读进度见表 `reading_progress`）。
 pub fn open_db(app: &AppHandle) -> Result<Connection, AppError> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Config(e.to_string()))?;
-    std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
-    let path = dir.join("my-reader.db");
-    let conn = Connection::open(&path).map_err(|e| AppError::Database(e.to_string()))?;
-    conn.execute_batch(SCHEMA)
-        .map_err(|e| AppError::Database(e.to_string()))?;
-    Ok(conn)
+    log::info!(target: LOG_TARGET, "Start to open reading progress database.");
+    let result = (|| {
+        let dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| AppError::Config(e.to_string()))?;
+        std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
+        let path = dir.join("my-reader.db");
+        let conn = Connection::open(&path).map_err(|e| AppError::Database(e.to_string()))?;
+        conn.execute_batch(SCHEMA)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok((conn, path))
+    })();
+
+    match result {
+        Ok((conn, path)) => {
+            log::info!(
+                target: LOG_TARGET,
+                "Success to open reading progress database. path: \"{}\"",
+                path.display()
+            );
+            Ok(conn)
+        }
+        Err(err) => {
+            log::error!(
+                target: LOG_TARGET,
+                "Failed to open reading progress database. error: {err}"
+            );
+            Err(err)
+        }
+    }
 }
 
 /// 按书库 id、书籍 id、格式读取一条进度；`format` 大小写不敏感。
@@ -43,9 +66,9 @@ pub fn get_progress(
     format: &str,
 ) -> Result<Option<ReadingProgressDto>, AppError> {
     let fmt = format.to_uppercase();
-    log::debug!(
-        target: "my_reader::reading_progress",
-        "get_progress request library_id={library_id} book_id={book_id} format={fmt}"
+    log::info!(
+        target: LOG_TARGET,
+        "Start to get reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
     );
     let row = conn.query_row(
         "SELECT anchor_json, updated_at FROM reading_progress \
@@ -60,16 +83,16 @@ pub fn get_progress(
     let (s, updated_at) = match row {
         Ok(v) => v,
         Err(rusqlite::Error::QueryReturnedNoRows) => {
-            log::debug!(
-                target: "my_reader::reading_progress",
-                "get_progress no_row library_id={library_id} book_id={book_id} format={fmt}"
+            log::info!(
+                target: LOG_TARGET,
+                "Success to get reading progress row. found: false, library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
             );
             return Ok(None);
         }
         Err(e) => {
-            log::warn!(
-                target: "my_reader::reading_progress",
-                "get_progress query_failed library_id={library_id} book_id={book_id} format={fmt} err={e}"
+            log::error!(
+                target: LOG_TARGET,
+                "Failed to get reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", error: {e}"
             );
             return Err(AppError::Database(e.to_string()));
         }
@@ -78,9 +101,9 @@ pub fn get_progress(
     let anchor: BookAnchor =
         serde_json::from_str(&s).map_err(|e| AppError::Serialize(e.to_string()))?;
 
-    log::debug!(
-        target: "my_reader::reading_progress",
-        "get_progress hit updated_at={updated_at} chapter_index={} char_offset={:?} anchor_json_len={}",
+    log::info!(
+        target: LOG_TARGET,
+        "Success to get reading progress row. found: true, updated at: {updated_at}, chapter index: {}, char offset: {:?}, anchor json length: {}",
         anchor.chapter_index,
         anchor.char_offset,
         s.len(),
@@ -105,11 +128,10 @@ pub fn set_progress(
     updated_at: f64,
 ) -> Result<(), AppError> {
     let fmt = format.to_uppercase();
-    let json =
-        serde_json::to_string(anchor).map_err(|e| AppError::Serialize(e.to_string()))?;
-    log::debug!(
-        target: "my_reader::reading_progress",
-        "set_progress write library_id={library_id} book_id={book_id} format={fmt} updated_at={updated_at} chapter_index={} char_offset={:?} json_len={}",
+    let json = serde_json::to_string(anchor).map_err(|e| AppError::Serialize(e.to_string()))?;
+    log::info!(
+        target: LOG_TARGET,
+        "Start to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", updated at: {updated_at}, chapter index: {}, char offset: {:?}, json length: {}",
         anchor.chapter_index,
         anchor.char_offset,
         json.len(),
@@ -121,15 +143,15 @@ pub fn set_progress(
         rusqlite::params![library_id, book_id, fmt, json, updated_at],
     )
     .map_err(|e| {
-        log::warn!(
-            target: "my_reader::reading_progress",
-            "set_progress write_failed library_id={library_id} book_id={book_id} format={fmt} err={e}"
+        log::error!(
+            target: LOG_TARGET,
+            "Failed to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", error: {e}"
         );
         AppError::Database(e.to_string())
     })?;
-    log::debug!(
-        target: "my_reader::reading_progress",
-        "set_progress ok library_id={library_id} book_id={book_id} format={fmt}"
+    log::info!(
+        target: LOG_TARGET,
+        "Success to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
     );
     Ok(())
 }

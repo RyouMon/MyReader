@@ -54,6 +54,7 @@ export default function LibrariesSection() {
   }
 
   async function handleBrowse() {
+    console.info("Start to open directory picker for Calibre library path.")
     try {
       const selected = await open({
         directory: true,
@@ -61,12 +62,16 @@ export default function LibrariesSection() {
         title: "选择 Calibre 书库目录",
       })
       if (selected) {
-        setPathInput(selected as string)
+        const path = selected as string
+        console.info(`Success to pick library directory. path: "${path}"`)
+        setPathInput(path)
         setPathError(null)
         pathInputRef.current?.focus()
+      } else {
+        console.info("Success to open directory picker. result: cancelled")
       }
     } catch (e) {
-      console.error("Dialog error:", e)
+      console.error("Failed to open directory picker for library path. error:", e)
     }
   }
 
@@ -84,6 +89,10 @@ export default function LibrariesSection() {
       await addLibrary(path)
       handleCloseAddPanel()
     } catch (e) {
+      console.error(
+        `Failed to confirm add library from settings UI. path: "${path}", error:`,
+        e,
+      )
       setPathError(String(e))
     } finally {
       setAdding(false)

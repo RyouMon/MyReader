@@ -166,4 +166,3 @@ impl Default for ReaderUiPreferences {
         }
     }
 }
-

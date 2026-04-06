@@ -6,17 +6,6 @@ import type { BookAnchor } from "@/lib/progress/BookAnchor"
 
 const SAVE_DEBOUNCE_MS = 1600
 
-const LOG_NS = "[MyReader][readingProgress]"
-
-function logProgress(message: string, data?: Record<string, unknown>): void {
-  if (!import.meta.env.DEV) return
-  if (data !== undefined) {
-    console.debug(LOG_NS, message, data)
-  } else {
-    console.debug(LOG_NS, message)
-  }
-}
-
 function summarizeAnchor(a: BookAnchor): Record<string, unknown> {
   return {
     chapterIndex: a.chapterIndex,
@@ -88,11 +77,9 @@ export function useReadingProgressSync(params: {
     void (async () => {
       const r = readerRef.current
       try {
-        logProgress("resume: invoking get_reading_progress", {
-          libraryId,
-          bookId,
-          format,
-        })
+        console.info(
+          `Start to resume reading from stored progress. library id: "${libraryId}", book id: ${bookId}, format: "${format}"`,
+        )
         const row = await invoke<ReadingProgressDto | null>(
           "get_reading_progress",
           {
@@ -103,12 +90,14 @@ export function useReadingProgressSync(params: {
         )
         if (cancelled) return
         if (!row?.anchor) {
-          logProgress("resume: no stored anchor", { libraryId, bookId, format })
+          console.info(
+            `Success to load stored reading progress. has anchor: false, library id: "${libraryId}", book id: ${bookId}, format: "${format}"`,
+          )
         } else {
-          logProgress("resume: loaded anchor", {
-            ...summarizeAnchor(row.anchor),
-            updatedAt: row.updatedAt,
-          })
+          console.info(
+            `Success to load stored reading progress. has anchor: true, updated at: ${row.updatedAt}, anchor summary:`,
+            summarizeAnchor(row.anchor),
+          )
           const ch = Math.min(
             Math.max(0, Math.floor(row.anchor.chapterIndex)),
             Math.max(0, r.totalChapters - 1),
@@ -119,27 +108,33 @@ export function useReadingProgressSync(params: {
             Number.isFinite(row.anchor.charOffset)
           ) {
             const co = Math.max(0, Math.floor(row.anchor.charOffset))
-            logProgress("resume: trying charOffset (UTF-16 in chapter body)", {
-              chapterIndex: ch,
-              charOffset: co,
-            })
+            console.info(
+              `Start to apply char offset resume. chapter index: ${ch}, char offset: ${co}`,
+            )
             const ok = await r.applyCharOffsetResume(ch, co)
             if (ok) {
-              logProgress("resume: charOffset succeeded")
+              console.info(
+                "Success to apply char offset resume.",
+              )
               resumeAppliedRef.current = true
               return
             }
-            logProgress(
-              "resume: charOffset failed, fallback applyReadingResume (chapter start)",
+            console.info(
+              "Failed to apply char offset resume. reason: navigation returned false, fallback to chapter start.",
             )
           }
-          logProgress("resume: applyReadingResume", { chapterIndex: ch })
+          console.info(
+            `Start to apply chapter resume. chapter index: ${ch}`,
+          )
           resumeAppliedRef.current = true
           await r.applyReadingResume(ch)
-          logProgress("resume: applyReadingResume done")
+          console.info("Success to apply chapter resume.")
         }
       } catch (e) {
-        logProgress("resume: error", { error: String(e) })
+        console.error(
+          `Failed to resume reading from stored progress. library id: "${libraryId}", book id: ${bookId}, format: "${format}", error:`,
+          e,
+        )
       } finally {
         if (!cancelled) setResumeGateOpen(true)
       }
@@ -172,21 +167,24 @@ export function useReadingProgressSync(params: {
       void (async () => {
         try {
           const anchor = reader.buildSaveBookAnchor(format)
-          logProgress("save: debounced set_reading_progress", {
-            libraryId,
-            bookId,
-            format,
-            anchor: summarizeAnchor(anchor),
-          })
+          console.info(
+            `Start to save reading progress (debounced). library id: "${libraryId}", book id: ${bookId}, format: "${format}", anchor summary:`,
+            summarizeAnchor(anchor),
+          )
           await invoke("set_reading_progress", {
             libraryId,
             bookId,
             format,
             anchor,
           })
-          logProgress("save: succeeded")
+          console.info(
+            `Success to save reading progress. library id: "${libraryId}", book id: ${bookId}, format: "${format}"`,
+          )
         } catch (e) {
-          logProgress("save: failed", { error: String(e) })
+          console.error(
+            `Failed to save reading progress. library id: "${libraryId}", book id: ${bookId}, format: "${format}", error:`,
+            e,
+          )
         }
       })()
     }, SAVE_DEBOUNCE_MS)

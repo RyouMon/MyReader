@@ -24,49 +24,90 @@ export const useLibraryStore = create<LibraryStoreState>()((set, get) => ({
 
   refreshLibraries: async () => {
     if (!isTauri()) return
+    console.info("Start to refresh library list.")
     try {
       const libs = await invoke<LibraryInfo[]>("list_libraries")
       set({ libraries: libs })
+      console.info(
+        `Success to refresh library list. count: ${libs.length}`,
+      )
     } catch (e) {
-      console.error("Failed to list libraries:", e)
+      console.error("Failed to refresh library list. error:", e)
     }
   },
 
   hydrateFromBackend: async () => {
     if (!isTauri()) {
+      console.info(
+        "Success to hydrate library state. reason: skipped (not in Tauri).",
+      )
       set({ loading: false, hydrated: true })
       return
     }
+    console.info("Start to hydrate library state from backend.")
     set({ loading: true })
     try {
       const libs = await invoke<LibraryInfo[]>("list_libraries")
       const id = await invoke<string | null>("get_active_library_id")
       set({ libraries: libs, activeLibraryId: id })
+      console.info(
+        `Success to hydrate library state from backend. library count: ${libs.length}, active library id: "${id ?? ""}"`,
+      )
     } catch (e) {
-      console.error("Init failed:", e)
+      console.error("Failed to hydrate library state from backend. error:", e)
     } finally {
       set({ loading: false, hydrated: true })
     }
   },
 
   addLibrary: async (path, name) => {
-    const info = await invoke<LibraryInfo>("add_library", { path, name })
-    await get().refreshLibraries()
-    const newId = await invoke<string | null>("get_active_library_id")
-    if (newId) set({ activeLibraryId: newId })
-    return info
+    console.info(
+      `Start to add library. path: "${path}", requested name: "${name ?? ""}"`,
+    )
+    try {
+      const info = await invoke<LibraryInfo>("add_library", { path, name })
+      await get().refreshLibraries()
+      const newId = await invoke<string | null>("get_active_library_id")
+      if (newId) set({ activeLibraryId: newId })
+      console.info(
+        `Success to add library. id: "${info.id}", name: "${info.name}", book count: ${info.bookCount}`,
+      )
+      return info
+    } catch (e) {
+      console.error(
+        `Failed to add library. path: "${path}", error:`,
+        e,
+      )
+      throw e
+    }
   },
 
   removeLibrary: async (id) => {
-    await invoke("remove_library", { id })
-    await get().refreshLibraries()
-    const newId = await invoke<string | null>("get_active_library_id")
-    set({ activeLibraryId: newId })
+    console.info(`Start to remove library. id: "${id}"`)
+    try {
+      await invoke("remove_library", { id })
+      await get().refreshLibraries()
+      const newId = await invoke<string | null>("get_active_library_id")
+      set({ activeLibraryId: newId })
+      console.info(
+        `Success to remove library. id: "${id}", active library id after: "${newId ?? ""}"`,
+      )
+    } catch (e) {
+      console.error(`Failed to remove library. id: "${id}", error:`, e)
+      throw e
+    }
   },
 
   switchLibrary: async (id) => {
-    await invoke("switch_library", { id })
-    set({ activeLibraryId: id })
+    console.info(`Start to switch active library. id: "${id}"`)
+    try {
+      await invoke("switch_library", { id })
+      set({ activeLibraryId: id })
+      console.info(`Success to switch active library. id: "${id}"`)
+    } catch (e) {
+      console.error(`Failed to switch active library. id: "${id}", error:`, e)
+      throw e
+    }
   },
 }))
 

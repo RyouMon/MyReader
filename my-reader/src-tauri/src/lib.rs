@@ -8,32 +8,53 @@ mod reading_progress;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use log::{debug, error, info, LevelFilter};
 use tauri::Manager;
+use time::{macros::format_description, OffsetDateTime};
 
 use commands::AppState;
 
+/// 本地日期时间 + 毫秒（无法解析本地时区时回退 UTC）。勿使用错误嵌套的 `[[[year]…]]`。
+const LOG_LINE_TIMESTAMP: &[time::format_description::FormatItem<'static>] =
+    format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(debug_assertions)]
-    {
-        let _ = env_logger::Builder::from_env(
-            env_logger::Env::default().default_filter_or("my_reader::reading_progress=debug"),
+    let base = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(if cfg!(debug_assertions) {
+                    LevelFilter::Debug
+                } else {
+                    LevelFilter::Info
+                })
+                .format(|out, message, record| {
+                    let ts = OffsetDateTime::now_local()
+                        .unwrap_or_else(|_| OffsetDateTime::now_utc())
+                        .format(LOG_LINE_TIMESTAMP)
+                        .unwrap_or_else(|_| "?".into());
+                    out.finish(format_args!(
+                        "{} [{}] [{}] {}",
+                        ts,
+                        record.target(),
+                        record.level(),
+                        message
+                    ))
+                })
+                .build(),
         )
-        .try_init();
-    }
-
-    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init());
 
     #[cfg(debug_assertions)]
-    {
-        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
-    }
+    let builder = base.plugin(tauri_plugin_mcp_bridge::init());
+    #[cfg(not(debug_assertions))]
+    let builder = base;
 
     builder
         .manage(Mutex::new(models::AppConfig::default()))
         .setup(|app| {
+            info!("Start to initialize application.");
             let config_path = app.path().app_data_dir()?.join("config.json");
             let config = if config_path.exists() {
                 std::fs::read_to_string(&config_path)
@@ -43,11 +64,20 @@ pub fn run() {
             } else {
                 models::AppConfig::default()
             };
+            info!(
+                "Loaded config from disk. path: \"{}\", library count: {}, active library id: {:?}",
+                config_path.display(),
+                config.libraries.len(),
+                config.active_library_id
+            );
             *app.state::<AppState>().lock().unwrap() = config;
+            info!("Success to initialize application.");
             Ok(())
         })
         .register_uri_scheme_protocol("bookcover", |ctx, request| {
+            debug!("Start to serve book cover. uri: \"{}\"", request.uri());
             let not_found = || -> tauri::http::Response<Vec<u8>> {
+                error!("Failed to serve book cover. reason: not found");
                 tauri::http::Response::builder()
                     .status(404)
                     .body(Vec::new())
@@ -81,18 +111,28 @@ pub fn run() {
                 .join("cover.jpg");
 
             match std::fs::read(&cover_file) {
-                Ok(data) => tauri::http::Response::builder()
-                    .status(200)
-                    .header("content-type", "image/jpeg")
-                    .header("access-control-allow-origin", "*")
-                    .header("cache-control", "max-age=604800, immutable")
-                    .body(data)
-                    .unwrap(),
+                Ok(data) => {
+                    debug!(
+                        "Success to serve book cover. library id: \"{}\", cover file: \"{}\", bytes: {}",
+                        lib_id,
+                        cover_file.display(),
+                        data.len()
+                    );
+                    tauri::http::Response::builder()
+                        .status(200)
+                        .header("content-type", "image/jpeg")
+                        .header("access-control-allow-origin", "*")
+                        .header("cache-control", "max-age=604800, immutable")
+                        .body(data)
+                        .unwrap()
+                }
                 Err(_) => not_found(),
             }
         })
         .register_uri_scheme_protocol("bookfile", |ctx, request| {
+            debug!("Start to serve book file. uri: \"{}\"", request.uri());
             let not_found = || -> tauri::http::Response<Vec<u8>> {
+                error!("Failed to serve book file. reason: not found");
                 tauri::http::Response::builder()
                     .status(404)
                     .header("access-control-allow-origin", "*")
@@ -143,6 +183,15 @@ pub fn run() {
                         "PDF" => "application/pdf",
                         _ => "application/octet-stream",
                     };
+                    debug!(
+                        "Success to serve book file. library id: \"{}\", book id: {}, format: \"{}\", file path: \"{}\", bytes: {}, content type: \"{}\"",
+                        lib_id,
+                        book_id,
+                        format,
+                        file_path.display(),
+                        data.len(),
+                        content_type
+                    );
                     tauri::http::Response::builder()
                         .status(200)
                         .header("content-type", content_type)

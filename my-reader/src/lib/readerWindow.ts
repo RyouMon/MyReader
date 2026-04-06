@@ -21,11 +21,17 @@ export async function openReaderInNewWindow(
   const windowTitle = bookTitle?.trim() || "阅读"
 
   const label = readerWindowLabel(bookId)
+  console.info(
+    `Start to open or focus reader window. book id: "${bookId}", format: "${format ?? ""}", title: "${windowTitle}"`,
+  )
   const existing = await WebviewWindow.getByLabel(label)
   if (existing) {
     await existing.setTitle(windowTitle)
     await existing.show()
     await existing.setFocus()
+    console.info(
+      `Success to focus existing reader window. label: "${label}"`,
+    )
     return
   }
 
@@ -45,8 +51,14 @@ export async function openReaderInNewWindow(
   })
 
   win.once("tauri://error", (e) => {
-    console.error("阅读窗口创建失败", e)
+    console.error(
+      `Failed to create reader window. label: "${label}", url: "${url}", error:`,
+      e,
+    )
   })
+  console.info(
+    `Success to create reader window instance. label: "${label}", url: "${url}"`,
+  )
 }
 
 /**

@@ -35,9 +35,16 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
       fixedLayout: s.fixedLayout,
       reflowable: s.reflowable,
     }
-    void invoke("set_reader_ui_preferences", { prefs: payload }).catch((e) => {
-      console.error("Failed to save reader UI preferences", e)
-    })
+    console.info(
+      `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
+    )
+    void invoke("set_reader_ui_preferences", { prefs: payload })
+      .then(() => {
+        console.info("Success to persist reader UI preferences.")
+      })
+      .catch((e) => {
+        console.error("Failed to persist reader UI preferences. error:", e)
+      })
   }, 450)
 }
 

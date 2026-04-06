@@ -3,7 +3,10 @@ import ReactDOM from "react-dom/client"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 
 import { routeTree } from "./routeTree.gen"
+import { installForwardConsoleToLog } from "./forward-console-to-log"
 import "./index.css"
+
+installForwardConsoleToLog()
 
 const router = createRouter({ routeTree })
 

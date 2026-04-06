@@ -147,6 +147,9 @@ function BookDetailPage() {
     async function load() {
       setLoading(true)
       setError(null)
+      console.info(
+        `Start to load book detail page. book id: "${bookId}", library id: "${activeLibraryId ?? ""}"`,
+      )
       try {
         const detail = await invoke<BookDetail>("get_book_detail", {
           libraryId: activeLibraryId,
@@ -155,16 +158,29 @@ function BookDetailPage() {
         setBook(detail)
         setSelectedFormat(pickReadableFormat(detail.formats))
         setCoverFailed(brokenCovers.has(detail.path))
+        console.info(
+          `Success to load book detail. book id: ${detail.id}, title: "${detail.title}", series: "${detail.series ?? ""}"`,
+        )
 
         if (detail.series) {
+          console.info(
+            `Start to load series books. series name: "${detail.series}", exclude book id: ${detail.id}`,
+          )
           const related = await invoke<CalibreBook[]>("get_series_books", {
             libraryId: activeLibraryId,
             seriesName: detail.series,
             excludeBookId: detail.id,
           })
           setSeriesBooks(related)
+          console.info(
+            `Success to load series books. count: ${related.length}`,
+          )
         }
       } catch (e) {
+        console.error(
+          `Failed to load book detail page. book id: "${bookId}", library id: "${activeLibraryId ?? ""}", error:`,
+          e,
+        )
         setError(String(e))
       } finally {
         setLoading(false)
@@ -202,14 +218,31 @@ function BookDetailPage() {
   const navigateToRead = useCallback(
     async (id: number, fmt?: string) => {
       if (isTauri()) {
-        await openReaderInNewWindow(String(id), fmt?.toUpperCase(), book?.title)
+        console.info(
+          `Start to open reader window from book detail. book id: ${id}, format: "${fmt?.toUpperCase() ?? ""}", title: "${book?.title ?? ""}"`,
+        )
+        try {
+          await openReaderInNewWindow(String(id), fmt?.toUpperCase(), book?.title)
+          console.info(
+            `Success to open reader window from book detail. book id: ${id}`,
+          )
+        } catch (e) {
+          console.error(
+            `Failed to open reader window from book detail. book id: ${id}, error:`,
+            e,
+          )
+        }
         return
       }
+      console.info(
+        `Start to navigate to in-app reader. book id: ${id}, format: "${fmt?.toUpperCase() ?? ""}"`,
+      )
       navigate({
         to: "/read/$bookId",
         params: { bookId: String(id) },
         search: fmt ? { format: fmt.toUpperCase() } : {},
       })
+      console.info(`Success to navigate to in-app reader. book id: ${id}`)
     },
     [navigate, book?.title],
   )
