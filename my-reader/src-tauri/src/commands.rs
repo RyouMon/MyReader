@@ -16,22 +16,13 @@ use crate::reading_progress;
 
 pub type AppState = Mutex<AppConfig>;
 
-fn reader_ui_preferences_path(app: &AppHandle) -> Result<PathBuf, AppError> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Config(e.to_string()))?;
-    fs::create_dir_all(&dir)?;
-    Ok(dir.join("reader_ui_preferences.json"))
-}
-
 fn config_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     let dir = app
         .path()
         .app_data_dir()
         .map_err(|e| AppError::Config(e.to_string()))?;
     fs::create_dir_all(&dir)?;
-    Ok(dir.join("libraries.json"))
+    Ok(dir.join("config.json"))
 }
 
 fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), AppError> {
@@ -357,23 +348,18 @@ pub fn get_book_cover(
 }
 
 #[tauri::command]
-pub fn get_reader_ui_preferences(app: AppHandle) -> Result<ReaderUiPreferences, AppError> {
-    let path = reader_ui_preferences_path(&app)?;
-    if !path.exists() {
-        return Ok(ReaderUiPreferences::default());
-    }
-    let json = fs::read_to_string(&path)?;
-    Ok(serde_json::from_str(&json).unwrap_or_default())
+pub fn get_reader_ui_preferences(state: State<'_, AppState>) -> Result<ReaderUiPreferences, AppError> {
+    Ok(state.lock().unwrap().reader_ui.clone())
 }
 
 #[tauri::command]
 pub fn set_reader_ui_preferences(
     app: AppHandle,
+    state: State<'_, AppState>,
     prefs: ReaderUiPreferences,
 ) -> Result<(), AppError> {
-    let path = reader_ui_preferences_path(&app)?;
-    let json =
-        serde_json::to_string_pretty(&prefs).map_err(|e| AppError::Serialize(e.to_string()))?;
-    fs::write(path, json)?;
+    let mut config = state.lock().unwrap();
+    config.reader_ui = prefs;
+    save_config(&app, &config)?;
     Ok(())
 }

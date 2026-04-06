@@ -5,7 +5,7 @@ import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
 import { useAppUiStore } from "@/stores/appUiStore"
 
 /**
- * 在 Tauri 下从应用数据目录加载 `reader_ui_preferences.json` 并写回；
+ * 在 Tauri 下从应用数据目录的 `config.json`（readerUi 段）加载并写回；
  * 非 Tauri 环境仅标记 hydrated，使用内存默认值。
  */
 export function AppUiPreferencesSync() {

@@ -4,6 +4,7 @@ mod error;
 mod models;
 mod reader_ui_prefs;
 mod reading_progress;
+
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
@@ -33,16 +34,16 @@ pub fn run() {
     builder
         .manage(Mutex::new(models::AppConfig::default()))
         .setup(|app| {
-            let config_dir = app.path().app_data_dir()?;
-            let config_path = config_dir.join("libraries.json");
-            if config_path.exists() {
-                if let Ok(json) = std::fs::read_to_string(&config_path) {
-                    if let Ok(config) = serde_json::from_str::<models::AppConfig>(&json) {
-                        let state = app.state::<AppState>();
-                        *state.lock().unwrap() = config;
-                    }
-                }
-            }
+            let config_path = app.path().app_data_dir()?.join("config.json");
+            let config = if config_path.exists() {
+                std::fs::read_to_string(&config_path)
+                    .ok()
+                    .and_then(|json| serde_json::from_str::<models::AppConfig>(&json).ok())
+                    .unwrap_or_default()
+            } else {
+                models::AppConfig::default()
+            };
+            *app.state::<AppState>().lock().unwrap() = config;
             Ok(())
         })
         .register_uri_scheme_protocol("bookcover", |ctx, request| {

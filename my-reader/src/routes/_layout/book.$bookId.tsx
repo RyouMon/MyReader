@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { useLibrary } from "@/contexts/LibraryContext"
+import { useLibrary } from "@/stores/libraryStore"
 import { buildCoverUrl } from "@/lib/cover"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import {

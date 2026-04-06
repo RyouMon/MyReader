@@ -13,7 +13,7 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { useLibrary } from "@/contexts/LibraryContext"
+import { useLibrary } from "@/stores/libraryStore"
 import type { LibraryInfo } from "@/types/book"
 
 export default function LibrariesSection() {

@@ -1,16 +1,17 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 
 import { AppUiPreferencesSync } from "@/components/AppUiPreferencesSync"
-import { LibraryProvider } from "@/contexts/LibraryContext"
+import { LibrarySync } from "@/stores/libraryStore"
 
 export const Route = createRootRoute({
   component: () => (
-    <LibraryProvider>
+    <>
+      <LibrarySync />
       <AppUiPreferencesSync />
       <Outlet />
       {/* {import.meta.env.DEV && (
         <TanStackRouterDevtools position="bottom-right" />
       )} */}
-    </LibraryProvider>
+    </>
   ),
 })

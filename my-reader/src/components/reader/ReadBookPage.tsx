@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { FixedLayoutReader } from "@/components/reader/fixed-layout/FixedLayoutReader"
 import { ReflowableReader } from "@/components/reader/reflowable/ReflowableReader"
-import { useLibrary } from "@/contexts/LibraryContext"
+import { useLibrary } from "@/stores/libraryStore"
 import {
   type ReadingProgressDto,
   useReadingProgressSync,

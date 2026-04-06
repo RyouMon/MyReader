@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::reader_ui_prefs::ReaderUiPreferences;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryConfig {
@@ -8,11 +10,14 @@ pub struct LibraryConfig {
     pub path: String,
 }
 
+/// 应用配置根结构，持久化为 `app_data_dir/config.json`（书库列表、活动书库、阅读器 UI）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub libraries: Vec<LibraryConfig>,
     pub active_library_id: Option<String>,
+    #[serde(default)]
+    pub reader_ui: ReaderUiPreferences,
 }
 
 impl Default for AppConfig {
@@ -20,6 +25,7 @@ impl Default for AppConfig {
         Self {
             libraries: Vec::new(),
             active_library_id: None,
+            reader_ui: ReaderUiPreferences::default(),
         }
     }
 }
