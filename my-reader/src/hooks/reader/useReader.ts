@@ -6,6 +6,7 @@ import type {
   ChapterData,
   LayoutConfig,
   LayoutMode,
+  ReaderProgress,
   TextChapterPaginationResult,
   TocItem,
 } from "@/lib/rendition/types"
@@ -99,6 +100,12 @@ export interface UseReaderReturn {
     chapterIndex: number,
     charOffset: number,
   ) => Promise<boolean>
+
+  /**
+   * 全书阅读进度快照（0..1 的 `fraction`），由 {@link BookReader} 按章体量与章内位置在内部计算，
+   * 无需外部写入。
+   */
+  progress: ReaderProgress
 }
 
 /**
@@ -127,12 +134,19 @@ export function useBookReader({
   const [curPageIndex, setCurPageIndex] = useState(0)
   const [totalPagesInChapter, setTotalPagesInChapter] = useState(1)
   const [isChapterStartFromEnd, setIsChapterStartFromEnd] = useState(false)
+  const [progress, setProgress] = useState<ReaderProgress>({
+    chapterIndex: 0,
+    chapterTitle: "",
+    totalChapters: 0,
+    fraction: 0,
+  })
 
   const syncNavigationState = useCallback((core: BookReader) => {
     setCurChapter(core.curChapter)
     setCurPageIndex(core.curPage.index)
     setTotalPagesInChapter(core.totalPagesOfCurChapter)
     setIsChapterStartFromEnd(core.chapterStartFromEnd)
+    setProgress(core.getProgress())
   }, [])
 
   useEffect(() => {
@@ -189,6 +203,12 @@ export function useBookReader({
       setFirstLayoutDone(false)
       setChapter(null)
       setTotalChapters(0)
+      setProgress({
+        chapterIndex: 0,
+        chapterTitle: "",
+        totalChapters: 0,
+        fraction: 0,
+      })
     }
   }, [buffer, format, initialOpenAnchor, syncNavigationState])
 
@@ -417,5 +437,6 @@ export function useBookReader({
     applyReadingResume,
     applyCharOffsetResume,
     buildSaveBookAnchor,
+    progress,
   }
 }

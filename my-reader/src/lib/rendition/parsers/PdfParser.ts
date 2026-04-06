@@ -51,6 +51,7 @@ export class PdfParser implements IParser {
         index: i,
         title: `Page ${i + 1}`,
         href: `page${i}`,
+        contentWeight: 1,
       }),
     )
 
@@ -91,6 +92,7 @@ export class PdfParser implements IParser {
       index,
       title: `Page ${index + 1}`,
       href: `page${index}`,
+      contentWeight: 1,
       imageUrl,
     }
 

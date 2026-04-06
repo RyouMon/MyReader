@@ -57,6 +57,23 @@ function columnPageIndexToSpread(columnPageIndex: number): number {
 }
 
 /**
+ * 与 foliate-js `SectionProgress` 一致：按 spine 项 `contentWeight` 加权；
+ * 全为 0 或未设置时退化为均分，避免除零。
+ */
+function spineWeightsForChapters(chapters: ChapterInfo[]): number[] {
+  const raw = chapters.map((c) => {
+    const w = c.contentWeight
+    if (typeof w === "number" && Number.isFinite(w) && w > 0) {
+      return w
+    }
+    return 0
+  })
+  const sum = raw.reduce((a, b) => a + b, 0)
+  if (sum > 0) return raw
+  return chapters.map(() => 1)
+}
+
+/**
  * Headless reader state machine.
  *
  * 持有 parser、分页状态与章节导航；文本书分页视图的 DOM 经
@@ -587,13 +604,90 @@ export class BookReader {
     return true
   }
 
+  /**
+   * 当前全书阅读进度（0..1），按各章 {@link ChapterInfo.contentWeight} 与章内位置在内部维护；
+   * 外部仅读取，无需调用任何「更新进度」接口。
+   */
   getProgress(): ReaderProgress {
-    const info = this._book?.chapters[this._currentIndex]
+    const chapters = this._book?.chapters ?? []
+    const n = chapters.length
+    const info = n > 0 ? chapters[Math.min(this._currentIndex, n - 1)] : undefined
+    if (n === 0) {
+      return {
+        chapterIndex: 0,
+        chapterTitle: "",
+        totalChapters: 0,
+        fraction: 0,
+      }
+    }
+    const weights = spineWeightsForChapters(chapters)
+    const totalW = weights.reduce((a, b) => a + b, 0)
+    const idx = Math.min(Math.max(0, this._currentIndex), n - 1)
+    let sumBefore = 0
+    for (let k = 0; k < idx; k++) sumBefore += weights[k] ?? 0
+    const wCur = weights[idx] ?? 0
+    const inCh = this.computeInChapterFraction()
+    const fraction =
+      totalW > 0
+        ? Math.min(1, Math.max(0, (sumBefore + wCur * inCh) / totalW))
+        : 0
     return {
       chapterIndex: this._currentIndex,
       chapterTitle: info?.title ?? "",
-      totalChapters: this.totalChapters,
+      totalChapters: n,
+      fraction,
     }
+  }
+
+  /**
+   * 当前章内阅读位置 0..1：流式正文按 UTF-16 偏移 / 章正文长度；固定版式按列页在章内占比。
+   */
+  private computeInChapterFraction(): number {
+    if (this.layoutMode === "fixedLayout") {
+      const tp = Math.max(1, this._totalPagesOfCurChapter)
+      const col = Math.max(0, this._currentPageOffset)
+      return Math.min(1, (col + 1) / tp)
+    }
+    if (this.layoutMode !== "reflowable") {
+      return 0
+    }
+    if (
+      this.paginator instanceof ProgressivePaginator &&
+      this._lastTextLayout?.chapter.type === "text"
+    ) {
+      const chapter = this._lastTextLayout.chapter
+      const slices = this.paginator.getAllSlices()
+      if (slices.length > 0) {
+        const slice = this.paginator.getCurrentSlice()
+        const boundary = slice?.start
+        if (boundary) {
+          const anchor = buildTextChapterBookAnchorAtBoundary({
+            chapter,
+            boundary,
+          })
+          const co = anchor.charOffset ?? 0
+          const denom = Math.max(
+            1,
+            chapter.bodyUtf16Length ?? chapter.text?.length ?? 1,
+          )
+          return Math.min(1, Math.max(0, co / denom))
+        }
+      }
+      if (this._totalPagesOfCurChapter > 1) {
+        return Math.min(
+          1,
+          this._currentPageOffset / Math.max(1, this._totalPagesOfCurChapter - 1),
+        )
+      }
+      return 0
+    }
+    if (this._totalPagesOfCurChapter > 1) {
+      return Math.min(
+        1,
+        this._currentPageOffset / Math.max(1, this._totalPagesOfCurChapter - 1),
+      )
+    }
+    return 0
   }
 
   /**

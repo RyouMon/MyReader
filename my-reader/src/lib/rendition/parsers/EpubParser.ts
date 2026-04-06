@@ -58,16 +58,7 @@ export class EpubParser implements IParser {
       if (href) this.titleByHref.set(href, item.label)
     }
 
-    this.chapterIndex = this.foliateBook.sections.map(
-      (section: EpubSection, index: number) => {
-        const href = stripChapterHrefHash(section.id)
-        const title =
-          this.titleByHref.get(href) ??
-          this.titleByHref.get(decodeURIComponent(href)) ??
-          ""
-        return { index, href, title }
-      },
-    )
+    this.chapterIndex = await this.buildChapterIndexWithBodyCharWeights()
 
     return {
       metadata: this.normalizeMetadata(foliate.metadata ?? {}),
@@ -75,6 +66,37 @@ export class EpubParser implements IParser {
       chapters: this.chapterIndex,
       layoutMode: "reflowable",
     }
+  }
+
+  /**
+   * 为每道 spine 解析 XHTML 并取 `body.textContent` 的 UTF-16 长度作为 {@link ChapterInfo.contentWeight}，
+   * 与阅读时章内进度所用正文范围一致；`linear === 'no'` 的项权重为 0。
+   */
+  private async buildChapterIndexWithBodyCharWeights(): Promise<ChapterInfo[]> {
+    if (!this.foliateBook) return []
+    return Promise.all(
+      this.foliateBook.sections.map(
+        async (section: EpubSection, index: number) => {
+          const href = stripChapterHrefHash(section.id)
+          const title =
+            this.titleByHref.get(href) ??
+            this.titleByHref.get(decodeURIComponent(href)) ??
+            ""
+          const linearNo = section.linear === "no"
+          let contentWeight = 0
+          if (!linearNo) {
+            try {
+              const doc = await section.createDocument()
+              const n = doc.body?.textContent?.length ?? 0
+              contentWeight = n > 0 ? n : 0
+            } catch {
+              contentWeight = 0
+            }
+          }
+          return { index, href, title, contentWeight }
+        },
+      ),
+    )
   }
 
   /**
@@ -92,8 +114,10 @@ export class EpubParser implements IParser {
     const chapterDir = chapterPathDirname(info.href)
     const cssText = this.collectCss(doc, chapterDir)
     this.resolveImages(doc, chapterDir)
-    const text = (doc.body?.textContent || "").trim()
+    const bodyPlain = doc.body?.textContent ?? ""
+    const text = bodyPlain.trim()
     const bodyHtml = doc.body?.innerHTML || ""
+    const bodyUtf16Length = bodyPlain.length
     const title =
       info.title || this.firstHeading(doc) || "Chapter " + String(index + 1)
 
@@ -105,10 +129,12 @@ export class EpubParser implements IParser {
       index,
       title,
       href: info.href,
+      contentWeight: info.contentWeight,
       spinePackageCfi,
       bodyHtml,
       cssText,
       text,
+      bodyUtf16Length,
     }
     this.chapterCache.set(index, chapter)
     return chapter

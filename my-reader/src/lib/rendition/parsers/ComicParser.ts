@@ -44,6 +44,7 @@ export class ComicParser implements IParser {
       index: i,
       title: `Page ${i + 1}`,
       href: img.name,
+      contentWeight: 1,
     }))
 
     const toc = buildComicToc(this.images)
@@ -73,6 +74,7 @@ export class ComicParser implements IParser {
       index,
       title: `Page ${index + 1}`,
       href: img.name,
+      contentWeight: 1,
       imageUrl: url,
     }
 
