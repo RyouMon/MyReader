@@ -1,6 +1,51 @@
 {
   "version": 1,
   "skills": {
+    "building-native-ui": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "a0316d2ce842d2dd8067a144e339cf502329dc7701f9f5122268fdb3d4c980f7"
+    },
+    "expo-api-routes": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "267bd3bfa27718103a74458df1e875ff6f6db31cba2ebe1d8a527cf25da39761"
+    },
+    "expo-cicd-workflows": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "6cd9fa605a8144d424daa02489633fa0b0fcb15d74e29d0d23e6d6d894fc51df"
+    },
+    "expo-deployment": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "2a26de7ec3faaf19333ec5660152e5e711ef000a29d75324dff51967bc382755"
+    },
+    "expo-dev-client": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "ea568acdc9036b82b969159757456e9a4cdfae7f645ac2fad5fdf0f734f53568"
+    },
+    "expo-module": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "1ceba87ce33e5954ad37770d268f5937fd7ed6ecd707f7968f0f78d4eef711da"
+    },
+    "expo-tailwind-setup": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "16c53e80cacd65369acfd8a4f5cf06a60083cc6d980127b4b2e384b81ce0e547"
+    },
+    "mobile-design": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "856ea34ed7f67bed22055b2f6a638b03e7cb10bd796da1b0973358da19e2e96b"
+    },
+    "native-data-fetching": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "1127a1ab326935169ecf92ffda2d9fc04dc1450a7eecfbafd5157fa9c0126d31"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
@@ -20,6 +65,16 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "computedHash": "e4453d2f51a009f6b49876cc4d46ce452194c54ea931d4a552a0eb0e9dd24c27"
+    },
+    "upgrading-expo": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "7ccc3de855963fcfd8fa25a81a0baa98e165be0ae46577b736367c104959c30a"
+    },
+    "use-dom": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "63a18bc2e07d18313aa9749bbb59c542c9b141424c56bd5514907be276c5bf80"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
