@@ -10,7 +10,7 @@ pub struct LibraryConfig {
     pub path: String,
 }
 
-/// 应用配置根结构，持久化为 `app_data_dir/config.json`（书库列表、活动书库、阅读器 UI）。
+/// 应用配置根结构，持久化为 `app_data_dir/config.json`（仅机器本地：书库注册、活动书库、阅读器 UI）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {

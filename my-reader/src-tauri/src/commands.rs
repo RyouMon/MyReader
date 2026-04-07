@@ -29,7 +29,10 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     })();
 
     match &result {
-        Ok(path) => info!("Success to resolve config file path. path: \"{}\"", path.display()),
+        Ok(path) => info!(
+            "Success to resolve config file path. path: \"{}\"",
+            path.display()
+        ),
         Err(err) => error!("Failed to resolve config file path. error: {err}"),
     }
 
@@ -51,7 +54,10 @@ fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), AppError> {
     })();
 
     match &result {
-        Ok(path) => info!("Success to save application config. path: \"{}\"", path.display()),
+        Ok(path) => info!(
+            "Success to save application config. path: \"{}\"",
+            path.display()
+        ),
         Err(err) => error!("Failed to save application config. error: {err}"),
     }
 
@@ -116,6 +122,8 @@ pub fn add_library(
 
         let id = uuid::Uuid::new_v4().to_string();
 
+        reading_progress::ensure_library_data_dir(&path)?;
+
         let book_count = calibre::open_calibre_db(&path)
             .and_then(|conn| calibre::get_book_count(&conn))
             .unwrap_or(0);
@@ -178,9 +186,9 @@ pub fn remove_library(
     })();
 
     match &result {
-        Ok(removed_count) => info!(
-            "Success to remove library. id: \"{id}\", removed count: {removed_count}"
-        ),
+        Ok(removed_count) => {
+            info!("Success to remove library. id: \"{id}\", removed count: {removed_count}")
+        }
         Err(err) => error!("Failed to remove library. id: \"{id}\", error: {err}"),
     }
 
@@ -248,9 +256,9 @@ pub fn get_books(
 
     match &result {
         Ok(books) => info!("Success to get books. count: {}", books.len()),
-        Err(err) => error!(
-            "Failed to get books. requested library id: {library_id:?}, error: {err}"
-        ),
+        Err(err) => {
+            error!("Failed to get books. requested library id: {library_id:?}, error: {err}")
+        }
     }
 
     result
@@ -299,9 +307,9 @@ pub fn get_books_page(
             page.items.len(),
             page.total
         ),
-        Err(err) => error!(
-            "Failed to get books page. requested library id: {library_id:?}, error: {err}"
-        ),
+        Err(err) => {
+            error!("Failed to get books page. requested library id: {library_id:?}, error: {err}")
+        }
     }
 
     result
@@ -442,11 +450,13 @@ pub fn get_reading_progress(
             .or_else(|| config.active_library_id.clone())
             .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
 
-        if !config.libraries.iter().any(|lib| lib.id == lib_id) {
-            return Err(AppError::NotFound(format!("书库 {} 不存在", lib_id)));
-        }
+        let lib = config
+            .libraries
+            .iter()
+            .find(|lib| lib.id == lib_id)
+            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
 
-        let conn = reading_progress::open_db(&app)?;
+        let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
         reading_progress::get_progress(&conn, &lib_id, book_id, &format)
     })();
 
@@ -489,11 +499,13 @@ pub fn set_reading_progress(
             .or_else(|| config.active_library_id.clone())
             .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
 
-        if !config.libraries.iter().any(|lib| lib.id == lib_id) {
-            return Err(AppError::NotFound(format!("书库 {} 不存在", lib_id)));
-        }
+        let lib = config
+            .libraries
+            .iter()
+            .find(|lib| lib.id == lib_id)
+            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
 
-        let conn = reading_progress::open_db(&app)?;
+        let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
         let now = unix_epoch_secs();
         reading_progress::set_progress(&conn, &lib_id, book_id, &format, &anchor, now)
     })();

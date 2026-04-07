@@ -1,8 +1,11 @@
+use std::path::{Path, PathBuf};
+
 use rusqlite::Connection;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 use crate::error::AppError;
 use crate::models::{BookAnchor, ReadingProgressDto};
+use crate::storage_paths::{MYREADER_LIBRARY_DB_FILE_NAME, MYREADER_LIBRARY_DIR_NAME};
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS reading_progress (
@@ -23,16 +26,25 @@ CREATE INDEX IF NOT EXISTS idx_reading_progress_format
 
 const LOG_TARGET: &str = "my_reader_lib::reading_progress";
 
-/// 应用数据目录下的 `my-reader.db`（MyReader 本地数据，未来可扩展多表；阅读进度见表 `reading_progress`）。
-pub fn open_db(app: &AppHandle) -> Result<Connection, AppError> {
+pub fn ensure_library_data_dir(library_path: &str) -> Result<PathBuf, AppError> {
+    let dir = Path::new(library_path).join(MYREADER_LIBRARY_DIR_NAME);
+    std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
+    Ok(dir)
+}
+
+fn library_db_path(library_path: &str) -> Result<PathBuf, AppError> {
+    Ok(ensure_library_data_dir(library_path)?.join(MYREADER_LIBRARY_DB_FILE_NAME))
+}
+
+/// 每个书库根目录下的 `.myreader/myreader.db`（可跨客户端同步的书库级数据）。
+pub fn open_db(
+    _app: &AppHandle,
+    library_path: &str,
+    _library_id: &str,
+) -> Result<Connection, AppError> {
     log::info!(target: LOG_TARGET, "Start to open reading progress database.");
     let result = (|| {
-        let dir = app
-            .path()
-            .app_data_dir()
-            .map_err(|e| AppError::Config(e.to_string()))?;
-        std::fs::create_dir_all(&dir).map_err(AppError::Io)?;
-        let path = dir.join("my-reader.db");
+        let path = library_db_path(library_path)?;
         let conn = Connection::open(&path).map_err(|e| AppError::Database(e.to_string()))?;
         conn.execute_batch(SCHEMA)
             .map_err(|e| AppError::Database(e.to_string()))?;

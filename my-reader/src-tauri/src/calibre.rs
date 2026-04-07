@@ -107,7 +107,10 @@ pub fn get_all_books(conn: &Connection) -> SqlResult<Vec<BookEntry>> {
     })();
 
     match &result {
-        Ok(books) => info!("Success to load all books from Calibre. count: {}", books.len()),
+        Ok(books) => info!(
+            "Success to load all books from Calibre. count: {}",
+            books.len()
+        ),
         Err(err) => error!("Failed to load all books from Calibre. error: {err}"),
     }
 
@@ -289,9 +292,7 @@ pub fn get_book_format_sizes(conn: &Connection, book_id: i64) -> SqlResult<Vec<(
             book_id,
             rows.len()
         ),
-        Err(err) => error!(
-            "Failed to load book format sizes. book id: {book_id}, error: {err}"
-        ),
+        Err(err) => error!("Failed to load book format sizes. book id: {book_id}, error: {err}"),
     }
 
     result
@@ -315,9 +316,7 @@ pub fn get_book_identifiers(conn: &Connection, book_id: i64) -> SqlResult<Vec<(S
             book_id,
             rows.len()
         ),
-        Err(err) => error!(
-            "Failed to load book identifiers. book id: {book_id}, error: {err}"
-        ),
+        Err(err) => error!("Failed to load book identifiers. book id: {book_id}, error: {err}"),
     }
 
     result

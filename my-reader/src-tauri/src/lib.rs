@@ -4,6 +4,7 @@ mod error;
 mod models;
 mod reader_ui_prefs;
 mod reading_progress;
+mod storage_paths;
 
 use std::sync::Mutex;
 

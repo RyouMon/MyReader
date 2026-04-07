@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// 与前端 `FixedLayoutSettings` 对齐，持久化在 `config.json` 的 `readerUi` 字段。
+/// 与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FixedLayoutSettingsDto {
