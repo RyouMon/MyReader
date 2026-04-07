@@ -36,6 +36,11 @@
       "sourceType": "github",
       "computedHash": "16c53e80cacd65369acfd8a4f5cf06a60083cc6d980127b4b2e384b81ce0e547"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
     "mobile-design": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -50,6 +55,11 @@
       "source": "shadcn/ui",
       "sourceType": "github",
       "computedHash": "77faba608ea949351d1757e29e6cb726f6ec5937f7595be0593038a7d2d76bb9"
+    },
+    "superdesign": {
+      "source": "superdesigndev/superdesign-skill",
+      "sourceType": "github",
+      "computedHash": "1b40558de735457eaaa3e94f5bd2f5004492922b6b1a7c7301773888633ba464"
     },
     "tailwind-design-system": {
       "source": "wshobson/agents",
