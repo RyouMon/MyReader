@@ -24,7 +24,7 @@ export interface ReadingProgressDto {
 }
 
 /**
- * MyReader 本地库 `my-reader.db`（表 `reading_progress`）：防抖写回当前 `BookAnchor`。
+ * 书库内 `.myreader/myreader.db`（表 `reading_progress`）：防抖写回当前 `BookAnchor`。
  * 续读由打开书时的 `initialOpenAnchor` + `BookReader.init` 完成，不在此 hook 内拉进度。
  * 主键为书库 id + 书籍 id + 格式（由后端与存储层保证）。
  */

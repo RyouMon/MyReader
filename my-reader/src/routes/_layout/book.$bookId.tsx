@@ -45,18 +45,16 @@ function generateCoverGradient(title: string): string {
   return `linear-gradient(160deg, hsl(${hue}, 30%, 30%) 0%, hsl(${hue + 30}, 25%, 20%) 50%, hsl(${hue + 15}, 20%, 15%) 100%)`
 }
 
-const FORMAT_COLORS: Record<string, string> = {
-  EPUB: "linear-gradient(135deg, #5b8a3c, #3d6b28)",
-  PDF: "linear-gradient(135deg, #c44b4b, #9a3030)",
-  MOBI: "linear-gradient(135deg, #5a6abf, #3a4a9f)",
-  AZW3: "linear-gradient(135deg, #e8a44a, #c4862e)",
-  TXT: "linear-gradient(135deg, #7a7a7a, #5a5a5a)",
-  CBZ: "linear-gradient(135deg, #9b59b6, #7d3c98)",
-  DJVU: "linear-gradient(135deg, #2c3e50, #1a252f)",
-  FB2: "linear-gradient(135deg, #27ae60, #1e8449)",
+const FORMAT_TONES: Record<string, string> = {
+  EPUB: "bg-primary text-primary-foreground",
+  PDF: "bg-secondary text-secondary-foreground border border-border",
+  MOBI: "bg-accent text-accent-foreground border border-border",
+  AZW3: "bg-primary/85 text-primary-foreground",
+  TXT: "bg-muted text-muted-foreground border border-border",
+  CBZ: "bg-primary/70 text-primary-foreground",
+  DJVU: "bg-foreground text-background",
+  FB2: "bg-primary/75 text-primary-foreground",
 }
-
-const DEFAULT_FORMAT_COLOR = "linear-gradient(135deg, #6b6b6b, #4a4a4a)"
 
 const FORMAT_LABELS: Record<string, string> = {
   EPUB: "可重排版",
@@ -118,6 +116,10 @@ function extractYear(dateStr: string | null): string | null {
   } catch {
     return null
   }
+}
+
+function getFormatTone(format: string): string {
+  return FORMAT_TONES[format] ?? "bg-muted text-foreground border border-border"
 }
 
 /** Module-level set consistent with BookCard */
@@ -261,13 +263,14 @@ function BookDetailPage() {
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
         <p className="text-base font-medium">加载失败</p>
         <p className="max-w-md text-sm opacity-80">{error}</p>
-        <button
-          type="button"
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => navigate({ to: "/" })}
-          className="mt-2 text-sm text-primary hover:underline"
+          className="mt-2 px-0 text-sm"
         >
           返回书库
-        </button>
+        </Button>
       </div>
     )
   }
@@ -303,14 +306,18 @@ function BookDetailPage() {
             : "border-transparent",
         )}
       >
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate({ to: "/" })}
-          className="group/back flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13.5px] text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+          className="group/back text-[13.5px] text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
-          <ArrowLeft className="size-4 transition-transform group-hover/back:-translate-x-0.5" />
+          <ArrowLeft
+            data-icon="inline-start"
+            className="transition-transform group-hover/back:-translate-x-0.5"
+          />
           返回书库
-        </button>
+        </Button>
 
         <div className="ml-auto flex items-center gap-0.5">
           <Button
@@ -318,14 +325,14 @@ function BookDetailPage() {
             size="icon"
             className={cn(
               "size-8",
-              isFavorite && "text-[#e8a44a] hover:text-[#e8a44a]",
+              isFavorite && "text-primary hover:text-primary",
             )}
             title={isFavorite ? "取消收藏" : "收藏"}
             onClick={() => setIsFavorite(!isFavorite)}
           >
             <Star
               className="size-[18px]"
-              fill={isFavorite ? "#e8a44a" : "none"}
+              fill={isFavorite ? "currentColor" : "none"}
             />
           </Button>
           <Button
@@ -385,13 +392,14 @@ function BookDetailPage() {
                 {/* Format badges on cover */}
                 {book.formats.length > 0 && (
                   <div className="absolute right-3 bottom-3 left-3 z-[2] flex flex-wrap gap-[5px]">
-                    {book.formats.map((fmt) => (
-                      <Badge
-                        key={fmt}
-                        className="rounded-[5px] border-none bg-black/40 px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm"
-                      >
-                        {fmt}
-                      </Badge>
+                {book.formats.map((fmt) => (
+                  <Badge
+                    key={fmt}
+                    variant="outline"
+                    className="rounded-[5px] border-white/10 bg-black/40 px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm"
+                  >
+                    {fmt}
+                  </Badge>
                     ))}
                   </div>
                 )}
@@ -439,8 +447,8 @@ function BookDetailPage() {
                           <Star
                             key={i}
                             className="size-[13px]"
-                            fill={i < ratingStars ? "#e8a44a" : "none"}
-                            color={i < ratingStars ? "#e8a44a" : "currentColor"}
+                            fill={i < ratingStars ? "currentColor" : "none"}
+                            color={i < ratingStars ? "var(--primary)" : "currentColor"}
                           />
                         ))}
                       </span>
@@ -454,13 +462,14 @@ function BookDetailPage() {
               {book.tags.length > 0 && (
                 <div className="detail-anim-6 mt-4 flex flex-wrap gap-2">
                   {book.tags.map((tag, i) => (
-                    <span
+                    <Badge
                       key={tag}
-                      className="detail-tag cursor-default rounded-full border border-border bg-card px-3 py-1 text-[12.5px] font-[450] text-secondary-foreground transition-colors hover:border-primary hover:bg-secondary hover:text-primary"
+                      variant="outline"
+                      className="detail-tag cursor-default bg-card px-3 py-1 text-[12.5px] font-[450] text-secondary-foreground transition-colors hover:border-primary hover:bg-secondary hover:text-primary"
                       style={{ animationDelay: `${0.42 + i * 0.04}s` }}
                     >
                       {tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
@@ -477,11 +486,10 @@ function BookDetailPage() {
               {/* Actions */}
               <div className="detail-anim-8 mt-[22px] flex flex-wrap items-stretch gap-2.5">
                 {/* Split read button */}
-                <div className="flex overflow-hidden rounded-lg">
-                  <button
-                    type="button"
+                <div className="flex overflow-hidden rounded-md border border-primary/20 bg-primary text-primary-foreground shadow-sm">
+                  <Button
                     disabled={!canReadInApp}
-                    className="flex items-center gap-2 bg-primary px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+                    className="rounded-none border-0 bg-transparent px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                     onClick={() => {
                       if (!canReadInApp) return
                       const fmt =
@@ -489,26 +497,26 @@ function BookDetailPage() {
                       void navigateToRead(book.id, fmt ?? undefined)
                     }}
                   >
-                    <BookOpen className="size-[18px]" />
+                    <BookOpen data-icon="inline-start" className="size-[18px]" />
                     <span>开始阅读</span>
                     {selectedFormat && (
                       <span className="ml-0.5 text-[13px] font-normal opacity-80">
                         ({selectedFormat})
                       </span>
                     )}
-                  </button>
+                  </Button>
                   <div ref={dropdownRef} className="relative">
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       disabled={!canReadInApp}
-                      className="flex h-full items-center border-l border-white/20 bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-45"
+                      className="h-full rounded-none border-0 border-l border-white/20 bg-transparent px-3 text-primary-foreground hover:bg-primary/90"
                       onClick={(e) => {
                         e.stopPropagation()
                         setFormatDropdownOpen(!formatDropdownOpen)
                       }}
                     >
                       <ChevronDown className="size-[14px]" />
-                    </button>
+                    </Button>
                     {formatDropdownOpen && (
                       <div className="animate-in fade-in-0 slide-in-from-top-1 absolute top-[calc(100%+6px)] right-0 z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg duration-150">
                         <div className="border-b border-border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -531,11 +539,10 @@ function BookDetailPage() {
                             }}
                           >
                             <div
-                              className="flex size-8 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-white"
-                              style={{
-                                background:
-                                  FORMAT_COLORS[fmt] ?? DEFAULT_FORMAT_COLOR,
-                              }}
+                              className={cn(
+                                "flex size-8 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold uppercase",
+                                getFormatTone(fmt),
+                              )}
                             >
                               {fmt}
                             </div>
@@ -565,7 +572,7 @@ function BookDetailPage() {
                   className={cn(
                     "gap-[7px] px-5",
                     onShelf &&
-                      "border-primary bg-primary/8 font-medium text-primary",
+                      "border-primary bg-primary/8 font-medium text-primary hover:bg-primary/12",
                   )}
                   onClick={() => setOnShelf(!onShelf)}
                 >
@@ -609,9 +616,10 @@ function BookDetailPage() {
                   />
                 )}
               </div>
-              <button
-                type="button"
-                className="mt-2 flex items-center gap-1 text-[13px] font-medium text-primary transition-colors hover:text-accent-foreground"
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2 h-auto gap-1 px-0 text-[13px] font-medium"
                 onClick={() => setSynopsisExpanded(!synopsisExpanded)}
               >
                 {synopsisExpanded ? "收起" : "展开全文"}
@@ -621,7 +629,7 @@ function BookDetailPage() {
                     synopsisExpanded && "rotate-180",
                   )}
                 />
-              </button>
+              </Button>
             </DetailSection>
           )}
 
@@ -648,11 +656,10 @@ function BookDetailPage() {
                         <td className="px-3.5 py-3">
                           <div className="flex items-center gap-2.5">
                             <div
-                              className="flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white"
-                              style={{
-                                background:
-                                  FORMAT_COLORS[fmt] ?? DEFAULT_FORMAT_COLOR,
-                              }}
+                              className={cn(
+                                "flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold uppercase",
+                                getFormatTone(fmt),
+                              )}
                             >
                               {fmt}
                             </div>
@@ -670,7 +677,7 @@ function BookDetailPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 gap-1 border-primary bg-primary/8 px-2.5 text-[12px] font-medium text-primary hover:bg-primary/15"
+                                className="h-7 gap-1 border-primary bg-primary/8 px-2.5 text-[12px] font-medium text-primary hover:bg-primary/12"
                                 onClick={() => navigateToRead(book.id, fmt)}
                               >
                                 <BookOpen className="size-3" />

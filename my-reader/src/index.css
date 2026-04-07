@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
+@import "./design-tokens.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./reader.css";
@@ -38,11 +39,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-settings-nav: var(--settings-nav);
   --color-progress: var(--progress);
   --color-progress-track: var(--progress-track);
 
-  --font-sans: "DM Sans", "Noto Sans SC", system-ui, sans-serif;
-  --font-serif: "Lora", "Noto Serif SC", serif;
+  --font-sans: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Lora", serif;
   --font-mono: "JetBrains Mono", monospace;
 
   /* Reader chrome — cascade from [data-reader-theme] / comic mode in reader.css */
@@ -59,82 +61,12 @@
   --color-viewer-bg: var(--viewer-bg);
 }
 
-:root {
-  --radius: 0.75rem;
-
-  --background: #f5efe6;
-  --foreground: #3b2f2f;
-  --card: #f0e8db;
-  --card-foreground: #3b2f2f;
-  --popover: #f7f1e8;
-  --popover-foreground: #3b2f2f;
-  --primary: #b5651d;
-  --primary-foreground: #faf5ef;
-  --secondary: #e8dcc8;
-  --secondary-foreground: #4a3c2e;
-  --muted: #ebe3d5;
-  --muted-foreground: #7a6b5d;
-  /* sidebar-accent used for hover AND active state in shadcn sidebar */
-  --accent: #ede5d8;
-  --accent-foreground: #3b2f2f;
-  --destructive: #b44a3a;
-  --border: #ddd2c0;
-  --input: #e3d8c8;
-  --ring: #b5651d;
-
-  --sidebar: #ebe3d3;
-  --sidebar-foreground: #3e3228;
-  --sidebar-primary: #b5651d;
-  --sidebar-primary-foreground: #faf5ef;
-  /* Used for both hover bg and active bg in SidebarMenuButton */
-  --sidebar-accent: #e2d8c8;
-  --sidebar-accent-foreground: #3e3228;
-  --sidebar-border: #d9cebb;
-  --sidebar-ring: #b5651d;
-
-  --progress: #b5651d;
-  --progress-track: #e3d8c8;
-}
-
-.dark {
-  --background: #1e1a17;
-  --foreground: #f0e8db;
-  --card: #2a2420;
-  --card-foreground: #f0e8db;
-  --popover: #2a2420;
-  --popover-foreground: #f0e8db;
-  --primary: #c97c3a;
-  --primary-foreground: #1e1a17;
-  --secondary: #3a3028;
-  --secondary-foreground: #e8dcc8;
-  --muted: #312820;
-  --muted-foreground: #a08870;
-  --accent: #3a3028;
-  --accent-foreground: #e8dcc8;
-  --destructive: #d45a4a;
-  --border: #3d3228;
-  --input: #3a3028;
-  --ring: #c97c3a;
-
-  --sidebar: #231f1b;
-  --sidebar-foreground: #e8dcc8;
-  --sidebar-primary: #c97c3a;
-  --sidebar-primary-foreground: #1e1a17;
-  --sidebar-accent: #302820;
-  --sidebar-accent-foreground: #e8dcc8;
-  --sidebar-border: #3a3028;
-  --sidebar-ring: #c97c3a;
-
-  --progress: #c97c3a;
-  --progress-track: #3a3028;
-}
-
 @layer utilities {
   .bg-library-indicator-on {
-    background-color: #6dae54;
+    background-color: var(--success);
   }
   .bg-library-indicator-off {
-    background-color: #aaa;
+    background-color: var(--text-muted);
   }
 }
 
@@ -148,7 +80,7 @@
     @apply bg-background text-foreground;
     height: 100%;
     overflow: hidden;
-    font-family: "DM Sans", "Noto Sans SC", system-ui, sans-serif;
+    font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
   }
   h1,
   h2,
@@ -156,7 +88,7 @@
   h4,
   h5,
   h6 {
-    font-family: "Lora", "Noto Serif SC", serif;
+    font-family: "Noto Serif SC", "Lora", serif;
   }
   button,
   [role="button"] {

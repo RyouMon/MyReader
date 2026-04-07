@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "MyReader semantic design tokens",
+  "description": "Platform-agnostic semantic token source of truth for shared desktop and mobile design semantics.",
+  "themes": {
+    "light": {
+      "color": {
+        "bg": "#F7F3EC",
+        "surface": "#FFFDF8",
+        "text": "#3B322B",
+        "text-muted": "#7D6F64",
+        "primary": "#A86A3A",
+        "primary-strong": "#8D542B",
+        "border": "#E6DDD1",
+        "success": "#2F8F68",
+        "warning": "#B27A2A",
+        "error": "#B64A4A"
+      }
+    },
+    "dark": {
+      "color": {
+        "bg": "#1C1916",
+        "surface": "#25211D",
+        "text": "#EEE7DD",
+        "text-muted": "#B8AB9D",
+        "primary": "#C9874E",
+        "primary-strong": "#D89E6D",
+        "border": "#3A332D",
+        "success": "#55A884",
+        "warning": "#CF9A4F",
+        "error": "#CF6A6A"
+      }
+    }
+  },
+  "typography": {
+    "display": ["Noto Serif SC", "Lora", "serif"],
+    "body": ["Noto Sans SC", "DM Sans", "system-ui", "sans-serif"],
+    "mono": ["JetBrains Mono", "monospace"]
+  },
+  "shape": {
+    "radius": {
+      "sm": "minor controls and chips",
+      "md": "cards and list groups",
+      "lg": "hero and grouped containers"
+    }
+  },
+  "semantics": {
+    "primary-action": "warm primary color with highest visual prominence",
+    "secondary-action": "low emphasis but clear affordance",
+    "destructive-action": "explicit error hue and confirmation flow",
+    "reading-progress": "glanceable and visually subordinate to reading content"
+  },
+  "platforms": {
+    "shared": "All semantic colors, typography roles, and shared component meaning come from this file.",
+    "desktop": "Desktop docs may map these tokens into denser layouts and pointer-first interaction patterns.",
+    "mobile": "Mobile docs may map these tokens into touch-first layouts and safe-area aware patterns, but may not redefine the shared semantic values."
+  }
+}

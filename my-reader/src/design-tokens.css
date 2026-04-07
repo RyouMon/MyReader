@@ -1,0 +1,100 @@
+/*
+ * MyReader app token implementation.
+ * Canonical semantic values live in ../DESIGN.tokens.json.
+ * This file maps that shared source into app-consumable CSS variables.
+ */
+
+:root {
+  --radius: 0.75rem;
+
+  /* Shared semantic tokens from DESIGN.tokens.json */
+  --bg: #f7f3ec;
+  --surface: #fffdf8;
+  --text: #3b322b;
+  --text-muted: #7d6f64;
+  --primary: #a86a3a;
+  --primary-strong: #8d542b;
+  --border: #e6ddd1;
+  --success: #2f8f68;
+  --warning: #b27a2a;
+  --error: #b64a4a;
+
+  /* App token mapping consumed by shadcn/Tailwind utilities */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #fffaf3;
+  --secondary: color-mix(in srgb, var(--surface) 60%, var(--bg));
+  --secondary-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--surface) 35%, var(--bg));
+  --muted-foreground: var(--text-muted);
+  --accent: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --input: color-mix(in srgb, var(--surface) 55%, var(--border));
+  --ring: var(--primary);
+
+  --sidebar: color-mix(in srgb, var(--surface) 40%, var(--bg));
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+
+  --progress: var(--primary);
+  --progress-track: color-mix(in srgb, var(--surface) 30%, var(--border));
+
+  /* Convenience aliases for page-level surfaces that should stay in-system. */
+  --settings-nav-bg: color-mix(in srgb, var(--surface) 24%, var(--bg));
+  --settings-nav: var(--settings-nav-bg);
+}
+
+.dark {
+  --bg: #1c1916;
+  --surface: #25211d;
+  --text: #eee7dd;
+  --text-muted: #b8ab9d;
+  --primary: #c9874e;
+  --primary-strong: #d89e6d;
+  --border: #3a332d;
+  --success: #55a884;
+  --warning: #cf9a4f;
+  --error: #cf6a6a;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #1c1916;
+  --secondary: color-mix(in srgb, var(--surface) 72%, black);
+  --secondary-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--surface) 82%, black);
+  --muted-foreground: var(--text-muted);
+  --accent: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --input: color-mix(in srgb, var(--surface) 84%, black);
+  --ring: var(--primary);
+
+  --sidebar: color-mix(in srgb, var(--surface) 80%, black);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+
+  --progress: var(--primary);
+  --progress-track: color-mix(in srgb, var(--surface) 70%, black);
+
+  --settings-nav-bg: color-mix(in srgb, var(--surface) 65%, black);
+  --settings-nav: var(--settings-nav-bg);
+}

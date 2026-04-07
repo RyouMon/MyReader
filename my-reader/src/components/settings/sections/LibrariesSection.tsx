@@ -138,26 +138,16 @@ export default function LibrariesSection() {
         {/* Add panel */}
         <div
           className={cn(
-            "rounded-[var(--radius)] overflow-hidden transition-colors",
+            "overflow-hidden rounded-[var(--radius)] transition-colors",
             addPanelOpen
               ? "border border-primary"
               : "border border-dashed border-border",
           )}
         >
           <button
+            type="button"
             onClick={addPanelOpen ? handleCloseAddPanel : handleOpenAddPanel}
-            className="w-full flex items-center gap-2.5 px-4 py-3 text-[13.5px] font-medium text-primary transition-colors"
-            style={{
-              background: "color-mix(in srgb, var(--primary) 4%, transparent)",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background =
-                "color-mix(in srgb, var(--primary) 8%, transparent)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background =
-                "color-mix(in srgb, var(--primary) 4%, transparent)")
-            }
+            className="flex w-full items-center gap-2.5 bg-primary/5 px-4 py-3 text-[13.5px] font-medium text-primary transition-colors hover:bg-primary/10"
           >
             <PlusCircle className="size-[15px]" />
             添加书库
@@ -228,21 +218,14 @@ export default function LibrariesSection() {
         </div>
 
         {/* Hint */}
-        <div
-          className="flex gap-2.5 p-3 rounded-[9px] border mt-4"
-          style={{
-            background: "color-mix(in srgb, var(--primary) 6%, transparent)",
-            borderColor: "color-mix(in srgb, var(--primary) 15%, transparent)",
-          }}
-        >
-          <Info className="size-3.5 text-primary flex-shrink-0 mt-[1px]" />
-          <p className="text-[12.5px] text-muted-foreground leading-relaxed">
+        <div className="mt-4 flex gap-2.5 rounded-[9px] border border-primary/20 bg-primary/5 p-3">
+          <Info className="mt-[1px] shrink-0 text-primary size-3.5" />
+          <p className="text-[12.5px] leading-relaxed text-muted-foreground">
             请选择包含{" "}
-            <code className="text-[11px] px-1 py-0.5 rounded bg-muted">
+            <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
               metadata.db
             </code>{" "}
-            的 Calibre
-            书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。
+            的 Calibre 书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。
           </p>
         </div>
       </div>
@@ -285,12 +268,7 @@ function LibraryCard({
       style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Icon */}
-      <div
-        className="size-[38px] rounded-[9px] flex items-center justify-center shrink-0 text-primary"
-        style={{
-          background: "color-mix(in srgb, var(--primary) 10%, transparent)",
-        }}
-      >
+      <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[9px] bg-primary/10 text-primary">
         <LibIcon className="size-[18px]" />
       </div>
 
@@ -324,30 +302,15 @@ function LibraryCard({
 
       {/* Delete button */}
       <button
+        type="button"
         onClick={() => onDeleteClick(lib.id)}
         title="删除书库"
         className={cn(
           "shrink-0 size-[30px] rounded-[7px] border flex items-center justify-center transition-colors",
           isPendingDelete
-            ? "text-destructive border-destructive/30"
-            : "text-muted-foreground border-transparent hover:text-destructive hover:border-destructive/20",
+            ? "border-destructive/30 bg-destructive/10 text-destructive"
+            : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
         )}
-        style={
-          isPendingDelete
-            ? {
-                background:
-                  "color-mix(in srgb, var(--destructive) 14%, transparent)",
-              }
-            : undefined
-        }
-        onMouseEnter={(e) => {
-          if (!isPendingDelete)
-            e.currentTarget.style.background =
-              "color-mix(in srgb, var(--destructive) 10%, transparent)"
-        }}
-        onMouseLeave={(e) => {
-          if (!isPendingDelete) e.currentTarget.style.background = ""
-        }}
       >
         <Trash2 className="size-3.5" />
       </button>
