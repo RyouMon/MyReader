@@ -4,7 +4,7 @@ import {
   EPUB,
   type EpubBookShape,
   type EpubSection,
-} from "@/lib/foliate-js/epub.js"
+} from "my-reader-tools/foliate-js/epub.js"
 import {
   chapterPathDirname,
   decodeLinkFragment,

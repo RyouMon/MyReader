@@ -11,13 +11,13 @@ import { useReaderTts } from "@/hooks/reader/useReaderTts"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { useReflowableInternalLinkCapture } from "@/hooks/reader/useReflowableInternalLinkCapture"
 import { useReflowReaderSettings } from "@/hooks/reader/useReflowableReaderSettings"
-import type { BookAnchor } from "@/lib/progress/BookAnchor"
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import {
   bookAnchorFromScrollViewport,
   fallbackBookAnchorFromFraction,
   scrollScrollContainerToBookAnchor,
-} from "@/lib/progress/reflowViewportAnchor"
-import type { TextChapterData, TocItem } from "@/lib/rendition"
+} from "my-reader-tools/progress/reflowViewportAnchor"
+import type { TextChapterData, TocItem } from "my-reader-tools/rendition"
 import type { ReaderSurfaceProps, TocEntry } from "../types"
 import { ReflowableBottomBar } from "./ReflowableBottomBar"
 import { ReflowableContent } from "./ReflowableContent"

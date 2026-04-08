@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react"
 import type { CSSProperties } from "react"
-import type { ImageChapterData } from "@/lib/rendition"
+import type { ImageChapterData } from "my-reader-tools/rendition"
 import { cn } from "@/lib/utils"
 
 import type { DisplayMode, ReadingDirection, ZoomMode } from "../types"

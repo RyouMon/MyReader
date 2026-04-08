@@ -2,7 +2,6 @@ declare module "my-reader-tools/foliate-js/epub.js" {
   export interface EpubSection {
     id: string
     createDocument: () => Promise<Document>
-    /** 解压后 manifest 项字节长度，用于全书进度加权（见 foliate-js `SectionProgress`） */
     size?: number
     linear?: string
   }

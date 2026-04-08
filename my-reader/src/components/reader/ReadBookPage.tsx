@@ -12,9 +12,9 @@ import {
   useReadingProgressSync,
 } from "@/hooks/reader/useReadingProgressSync"
 import { useBookReader } from "@/hooks/reader/useReader"
-import type { BookAnchor } from "@/lib/progress/BookAnchor"
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import { buildBookFileUrl, resolveReadFormat } from "@/lib/rendition/utils"
+import { buildBookFileUrl, resolveReadFormat } from "my-reader-tools/rendition/utils"
 import type { BookDetail } from "@/types/book"
 
 export type ReadBookPageProps = {
@@ -23,7 +23,7 @@ export type ReadBookPageProps = {
 }
 
 /**
- * ç‹¬ç«‹é˜…è¯»çª—å£ï¼šåŠ è½½ä¹¦ç±æ–‡ä»¶ã€é©±åŠ¨ useBookReaderï¼Œå¹¶åœ¨å›ºå®šç‰ˆå¼ä¸æµå¼é˜…è¯»å™¨ä¹‹é—´åˆ‡æ¢ã€‚
+ * ç?¬ç«?é??è¯»çª?å£ï¼?å? è½½ä¹¦ç±æ??ä»¶ã?é©±å?¨ useBookReaderï¼?å¹¶å?¨å?ºå®?ç??å¼ä¸?æµå¼é??è¯»å?¨ä¹?é?´å??æ¢ã??
  */
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
@@ -31,7 +31,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
-  /** ä¸é˜…è¯»è¿›åº¦ä¸€å¹¶å°±ç»ªåå†äº¤ç»™ `useBookReader`ï¼Œé¿å…å…ˆæ¸²æŸ“ç¬¬ 1 ç« å†ç»­è¯»è·³è½¬ */
+  /** ä¸?é??è¯»è¿?åº¦ä¸?å¹¶å°±ç»ªå?å?äº¤ç»? `useBookReader`ï¼?é¿å?å??æ¸²æ??ç¬¬ 1 ç« å?ç»­è¯»è·³è½¬ */
   const [bookPayload, setBookPayload] = useState<{
     buffer: ArrayBuffer
     initialOpenAnchor: BookAnchor | null
@@ -77,7 +77,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no active library, book id: "${bookId}"`,
           )
-          setFetchError("æœªé€‰æ‹©ä¹¦åº“ï¼Œè¯·å…ˆåœ¨ä¸»çª—å£é€‰æ‹©ä¹¦åº“åå†é˜…è¯»")
+          setFetchError("æ?ªé??æ?©ä¹¦åº?ï¼?è¯·å??å?¨ä¸»çª?å£é??æ?©ä¹¦åº?å?å?é??è¯»")
         }
         return
       }
@@ -105,7 +105,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no supported format, book id: "${bookId}", formats: "${detail.formats.join(", ")}"`,
           )
-          setFetchError("è¯¥ä¹¦ç±æ²¡æœ‰å¯é˜…è¯»çš„æ ¼å¼ï¼ˆéœ€è¦ EPUBã€CBZ æˆ– PDFï¼‰")
+          setFetchError("è¯¥ä¹¦ç±æ²¡æ??å¯é??è¯»ç??æ ¼å¼ï¼?é??è¦ EPUBã?CBZ æ?? PDFï¼?")
           return
         }
         setFormat(fmt)
@@ -125,7 +125,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to fetch book file. url: "${url}", http status: ${resp.status}`,
           )
-          setFetchError(`æ— æ³•åŠ è½½ä¹¦ç±æ–‡ä»¶: HTTP ${resp.status}`)
+          setFetchError(`æ? æ³?å? è½½ä¹¦ç±æ??ä»¶: HTTP ${resp.status}`)
           return
         }
         if (cancelled) return
@@ -186,21 +186,21 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [navigate, bookId])
 
   if (mainHandoff) {
-    return <ReadBookLoading message="æ­£åœ¨æ‰“å¼€é˜…è¯»çª—å£â€¦" />
+    return <ReadBookLoading message="æ­£å?¨æ??å¼?é??è¯»çª?å£â?¦" />
   }
 
   if (fetchError || reader.error) {
     return (
       <ReadBookError
         message={fetchError ?? reader.error ?? ""}
-        actionLabel={isTauri() ? "å…³é—­çª—å£" : "è¿”å›ä¹¦ç±è¯¦æƒ…"}
+        actionLabel={isTauri() ? "å?³é?­çª?å£" : "è¿?å??ä¹¦ç±è¯¦æ??"}
         onAction={handleErrorClose}
       />
     )
   }
 
   if (!reader.chapter) {
-    return <ReadBookLoading message="æ­£åœ¨åŠ è½½ä¹¦ç±å†…å®¹â€¦" />
+    return <ReadBookLoading message="æ­£å?¨å? è½½ä¹¦ç±å??å®¹â?¦" />
   }
 
   if (reader.layoutMode === "fixedLayout") {
@@ -211,7 +211,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 }
 
 /**
- * å…¨å±å±…ä¸­åŠ è½½æ€ï¼Œä¸é˜…è¯»å™¨å…¥å£å…¶å®ƒå ä½ä¸€è‡´ï¼ˆèƒŒæ™¯ã€è¾¹è·ã€å­—å·ï¼‰ã€‚
+ * å?¨å±å±?ä¸­å? è½½æ?ï¼?ä¸?é??è¯»å?¨å?¥å£å?¶å®?å ä½ä¸?è?´ï¼?è??æ?¯ã?è¾¹è·ã?å­?å·ï¼?ã??
  */
 function ReadBookLoading({ message }: { message: string }) {
   return (
@@ -232,7 +232,7 @@ function ReadBookLoading({ message }: { message: string }) {
 }
 
 /**
- * æ–‡ä»¶æˆ–è§£æå¤±è´¥æ—¶çš„å…¨å±é”™è¯¯æ€ã€‚
+ * æ??ä»¶æ??è§£æ?å¤±è´¥æ?¶ç??å?¨å±é??è¯¯æ?ã??
  */
 function ReadBookError({
   message,
@@ -245,7 +245,7 @@ function ReadBookError({
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-background px-4 text-center">
-      <p className="font-medium text-destructive">åŠ è½½å¤±è´¥</p>
+      <p className="font-medium text-destructive">å? è½½å¤±è´¥</p>
       <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <button
         type="button"

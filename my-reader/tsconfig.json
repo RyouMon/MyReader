@@ -21,7 +21,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "my-reader-tools/*": ["../my-reader-tools/src/*"]
     }
   },
   "include": ["src"],

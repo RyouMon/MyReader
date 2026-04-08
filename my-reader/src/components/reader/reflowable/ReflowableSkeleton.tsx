@@ -6,7 +6,7 @@ import {
   useState,
 } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BookReader } from "@/lib/rendition/BookReader"
+import { BookReader } from "my-reader-tools/rendition/BookReader"
 
 /** 与分页正文栏 DOM 类名一致，保证骨架与真文的页边距、版心一致。 */
 export const reflowablePaginatedColumnClass =

@@ -1,0 +1,16 @@
+{
+  "name": "my-reader-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./rendition": "./src/rendition/index.ts",
+    "./rendition/*": "./src/rendition/*",
+    "./progress/*": "./src/progress/*",
+    "./foliate-js/*": "./src/foliate-js/*"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "pdfjs-dist": "^5.5.207"
+  }
+}

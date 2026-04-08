@@ -1,8 +1,8 @@
 import {
   fillRangeStartFromBoundary,
   readingAnchorForRangeStart,
-} from "@/lib/rendition/pagination/ProgressivePaginator"
-import type { RangeBoundary, TextChapterData } from "@/lib/rendition/types"
+} from "../rendition/pagination/ProgressivePaginator"
+import type { RangeBoundary, TextChapterData } from "../rendition/types"
 
 import type { BookAnchor } from "./BookAnchor"
 

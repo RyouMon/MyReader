@@ -26,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fflate": "^0.8.2",
+    "my-reader-tools": "file:../my-reader-tools",
     "lucide-react": "^1.7.0",
     "pdfjs-dist": "^5.5.207",
     "radix-ui": "^1.4.3",

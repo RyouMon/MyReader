@@ -1,6 +1,6 @@
 import { List } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import type { ChapterData } from "@/lib/rendition"
+import type { ChapterData } from "my-reader-tools/rendition"
 import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,

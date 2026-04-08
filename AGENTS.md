@@ -33,7 +33,7 @@
 
 ## Editing Guardrails
 - If you add or rename routes under `my-reader/src/routes/`, expect `my-reader/src/routeTree.gen.ts` to regenerate from the Vite plugin.
-- `my-reader/src/lib/foliate-js/` is a vendored subtree with its own `package.json`; avoid incidental edits there unless the task is specifically about the reading engine/vendor code.
+- `my-reader-tools/src/foliate-js/` (workspace package `my-reader-tools`, depended on by `my-reader` and intended for `my-reader-mobile`) is a vendored subtree with its own `package.json`; avoid incidental edits there unless the task is specifically about the reading engine/vendor code.
 
 ## gstack
 - Browser tasks (open page, snapshot, click-through QA, visual verification) should use gstack `/browse` workflow.

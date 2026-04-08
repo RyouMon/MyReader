@@ -11,10 +11,10 @@ import type {
   LayoutConfig,
   TextChapterData,
   TextChapterPaginationResult,
-} from "@/lib/rendition"
-import { BookReader } from "@/lib/rendition/BookReader"
-import { fillRangeStartFromBoundary } from "@/lib/rendition/pagination/ProgressivePaginator"
-import type { RangeBoundary } from "@/lib/rendition/types"
+} from "my-reader-tools/rendition"
+import { BookReader } from "my-reader-tools/rendition/BookReader"
+import { fillRangeStartFromBoundary } from "my-reader-tools/rendition/pagination/ProgressivePaginator"
+import type { RangeBoundary } from "my-reader-tools/rendition/types"
 import { cn } from "@/lib/utils"
 import {
   ReflowableSkeleton,

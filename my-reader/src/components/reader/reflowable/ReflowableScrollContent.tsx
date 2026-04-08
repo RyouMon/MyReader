@@ -6,7 +6,7 @@ import {
   useRef,
 } from "react"
 
-import type { TextChapterData } from "@/lib/rendition"
+import type { TextChapterData } from "my-reader-tools/rendition"
 
 export interface ReflowableScrollAnchor {
   chapterIndex: number

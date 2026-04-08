@@ -9,7 +9,7 @@ import {
   useState,
 } from "react"
 
-import type { ImageChapterData } from "@/lib/rendition"
+import type { ImageChapterData } from "my-reader-tools/rendition"
 
 import type { ZoomMode } from "../types"
 
@@ -21,7 +21,7 @@ interface FixedLayoutScrollViewportProps {
   totalPages: number
   getChapter: (
     index: number,
-  ) => Promise<import("@/lib/rendition").ChapterData | null>
+  ) => Promise<import("my-reader-tools/rendition").ChapterData | null>
   scrollRef: React.RefObject<HTMLDivElement>
   brightness: number
   zoomMode: ZoomMode
@@ -163,7 +163,7 @@ function FixedLayoutScrollPageRow({
   index: number
   getChapter: (
     index: number,
-  ) => Promise<import("@/lib/rendition").ChapterData | null>
+  ) => Promise<import("my-reader-tools/rendition").ChapterData | null>
   zoomMode: ZoomMode
 }) {
   const [page, setPage] = useState<ImageChapterData | null>(null)

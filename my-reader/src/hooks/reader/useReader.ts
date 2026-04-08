@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { BookAnchor } from "@/lib/progress/BookAnchor"
-import { BookReader } from "@/lib/rendition/BookReader"
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
+import { BookReader } from "my-reader-tools/rendition/BookReader"
 import type {
   ChapterData,
   LayoutConfig,
@@ -10,7 +10,7 @@ import type {
   ReaderProgress,
   TextChapterPaginationResult,
   TocItem,
-} from "@/lib/rendition/types"
+} from "my-reader-tools/rendition/types"
 
 export interface UseReaderOptions {
   /** Raw book file bytes — pass `null` while still loading. */

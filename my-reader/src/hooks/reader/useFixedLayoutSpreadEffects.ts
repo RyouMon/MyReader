@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch, type SetStateAction } from "react"
-import type { ChapterData, ImageChapterData } from "@/lib/rendition"
+import type { ChapterData, ImageChapterData } from "my-reader-tools/rendition"
 import type { FixedLayoutSettings } from "@/components/reader/types"
 
 /**

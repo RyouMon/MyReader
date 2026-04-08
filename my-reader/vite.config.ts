@@ -10,6 +10,7 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "my-reader-tools": path.resolve(__dirname, "../my-reader-tools/src"),
     },
   },
   plugins: [

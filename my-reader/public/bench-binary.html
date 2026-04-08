@@ -40,8 +40,8 @@
         const impl = await resolveImpl();
         const mod =
           impl === "progressive"
-            ? await import("/src/lib/rendition/pagination/ProgressivePaginator.ts")
-            : await import("/src/lib/rendition/pagination/BinarySearchPaginator.ts");
+            ? await import("/node_modules/my-reader-tools/src/rendition/pagination/ProgressivePaginator.ts")
+            : await import("/node_modules/my-reader-tools/src/rendition/pagination/BinarySearchPaginator.ts");
 
         const PaginatorClass =
           impl === "progressive"
