@@ -1,0 +1,215 @@
+/* MyReader · Mobile Reading Theme
+   Based on DESIGN.md + DESIGN.mobile.md + src/design-tokens.css
+   Scope: mobile reader shell, content surface, TOC/settings sheets, progress
+   Excludes TTS on purpose for this iteration.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Lora:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Shared semantic tokens */
+  --bg: #f7f3ec !important;
+  --surface: #fffdf8 !important;
+  --text: #3b322b !important;
+  --text-muted: #7d6f64 !important;
+  --primary: #a86a3a !important;
+  --primary-strong: #8d542b !important;
+  --border: #e6ddd1 !important;
+  --success: #2f8f68 !important;
+  --warning: #b27a2a !important;
+  --error: #b64a4a !important;
+
+  /* App aliases */
+  --background: var(--bg) !important;
+  --foreground: var(--text) !important;
+  --card: var(--surface) !important;
+  --card-foreground: var(--text) !important;
+  --popover: var(--surface) !important;
+  --popover-foreground: var(--text) !important;
+  --primary-foreground: #fffaf3 !important;
+  --secondary: color-mix(in srgb, var(--surface) 60%, var(--bg)) !important;
+  --secondary-foreground: var(--text) !important;
+  --muted: color-mix(in srgb, var(--surface) 35%, var(--bg)) !important;
+  --muted-foreground: var(--text-muted) !important;
+  --accent: color-mix(in srgb, var(--primary) 8%, var(--surface)) !important;
+  --accent-foreground: var(--text) !important;
+  --destructive: var(--error) !important;
+  --input: color-mix(in srgb, var(--surface) 55%, var(--border)) !important;
+  --ring: var(--primary) !important;
+  --progress: var(--primary) !important;
+  --progress-track: color-mix(in srgb, var(--surface) 30%, var(--border)) !important;
+
+  /* Typography */
+  --font-sans: 'Noto Sans SC', 'DM Sans', system-ui, sans-serif !important;
+  --font-serif: 'Noto Serif SC', 'Lora', serif !important;
+  --font-mono: 'JetBrains Mono', monospace !important;
+
+  /* Mobile spacing / shape */
+  --space-1: 4px !important;
+  --space-2: 8px !important;
+  --space-3: 12px !important;
+  --space-4: 16px !important;
+  --space-5: 20px !important;
+  --space-6: 24px !important;
+  --space-8: 32px !important;
+  --radius-sm: 10px !important;
+  --radius-md: 14px !important;
+  --radius-lg: 18px !important;
+  --hit-target: 44px !important;
+
+  /* Elevation */
+  --elev-1: 0 1px 3px rgba(59, 50, 43, 0.06), 0 1px 2px rgba(59, 50, 43, 0.04) !important;
+  --elev-2: 0 10px 30px rgba(59, 50, 43, 0.12), 0 4px 12px rgba(59, 50, 43, 0.08) !important;
+
+  /* Reader shell */
+  --reader-shell-bg: var(--bg) !important;
+  --reader-content-bg: #f5efe6 !important;
+  --reader-content-fg: #3b2f2f !important;
+  --reader-content-muted: #7d6f64 !important;
+  --reader-chrome-bg: color-mix(in srgb, var(--surface) 88%, transparent) !important;
+  --reader-chrome-fg: var(--text) !important;
+  --reader-chrome-muted: var(--text-muted) !important;
+  --reader-chrome-border: var(--border) !important;
+  --reader-chrome-hover: color-mix(in srgb, var(--surface) 72%, var(--bg)) !important;
+  --reader-chrome-active: var(--primary) !important;
+  --reader-chrome-blur: 14px !important;
+
+  /* Mobile bars */
+  --reader-topbar-h: 56px !important;
+  --reader-bottombar-h: 78px !important;
+  --reader-progress-h: 3px !important;
+  --reader-progress-active-h: 4px !important;
+
+  /* Content layout */
+  --reader-content-size: 18px !important;
+  --reader-content-line-h: 1.85 !important;
+  --reader-content-letter-sp: 0.01em !important;
+  --reader-content-padding-x: 20px !important;
+  --reader-content-padding-top: calc(env(safe-area-inset-top, 0px) + 72px) !important;
+  --reader-content-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 104px) !important;
+  --reader-para-indent: 2em !important;
+  --reader-para-gap: 0.8em !important;
+  --reader-chapter-font: var(--font-serif) !important;
+  --reader-chapter-size: 1.625rem !important;
+  --reader-chapter-weight: 600 !important;
+  --reader-chapter-gap: 28px !important;
+
+  /* Controls */
+  --reader-icon-btn-size: 44px !important;
+  --reader-icon-btn-radius: 12px !important;
+  --reader-segment-h: 40px !important;
+  --reader-slider-track-h: 4px !important;
+  --reader-slider-thumb: 18px !important;
+
+  /* Sheets */
+  --reader-sheet-bg: color-mix(in srgb, var(--surface) 94%, var(--bg)) !important;
+  --reader-sheet-border: var(--border) !important;
+  --reader-sheet-radius: 24px !important;
+  --reader-sheet-shadow: var(--elev-2) !important;
+  --reader-sheet-handle: color-mix(in srgb, var(--border) 70%, var(--text-muted)) !important;
+  --reader-sheet-max-h: 82vh !important;
+}
+
+.dark,
+[data-reader-theme='dark'] {
+  --bg: #1c1916 !important;
+  --surface: #25211d !important;
+  --text: #eee7dd !important;
+  --text-muted: #b8ab9d !important;
+  --primary: #c9874e !important;
+  --primary-strong: #d89e6d !important;
+  --border: #3a332d !important;
+  --success: #55a884 !important;
+  --warning: #cf9a4f !important;
+  --error: #cf6a6a !important;
+
+  --background: var(--bg) !important;
+  --foreground: var(--text) !important;
+  --card: var(--surface) !important;
+  --card-foreground: var(--text) !important;
+  --popover: var(--surface) !important;
+  --popover-foreground: var(--text) !important;
+  --primary-foreground: #1c1916 !important;
+  --secondary: color-mix(in srgb, var(--surface) 72%, black) !important;
+  --secondary-foreground: var(--text) !important;
+  --muted: color-mix(in srgb, var(--surface) 82%, black) !important;
+  --muted-foreground: var(--text-muted) !important;
+  --accent: color-mix(in srgb, var(--primary) 12%, var(--surface)) !important;
+  --accent-foreground: var(--text) !important;
+  --destructive: var(--error) !important;
+  --input: color-mix(in srgb, var(--surface) 84%, black) !important;
+  --ring: var(--primary) !important;
+  --progress: var(--primary) !important;
+  --progress-track: color-mix(in srgb, var(--surface) 70%, black) !important;
+
+  --elev-1: 0 1px 3px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.16) !important;
+  --elev-2: 0 14px 36px rgba(0, 0, 0, 0.34), 0 6px 14px rgba(0, 0, 0, 0.22) !important;
+
+  --reader-shell-bg: var(--bg) !important;
+  --reader-content-bg: #1e1e1e !important;
+  --reader-content-fg: #d4d0c8 !important;
+  --reader-content-muted: #b8ab9d !important;
+  --reader-chrome-bg: color-mix(in srgb, var(--surface) 86%, transparent) !important;
+  --reader-chrome-fg: var(--text) !important;
+  --reader-chrome-muted: var(--text-muted) !important;
+  --reader-chrome-border: var(--border) !important;
+  --reader-chrome-hover: color-mix(in srgb, var(--surface) 85%, black) !important;
+  --reader-chrome-active: var(--primary) !important;
+  --reader-sheet-bg: color-mix(in srgb, var(--surface) 92%, black) !important;
+  --reader-sheet-border: var(--border) !important;
+  --reader-sheet-handle: color-mix(in srgb, var(--border) 72%, var(--text-muted)) !important;
+  --reader-sheet-shadow: var(--elev-2) !important;
+}
+
+[data-reader-theme='light'] {
+  --reader-content-bg: #ffffff !important;
+  --reader-content-fg: #1a1a1a !important;
+}
+
+[data-reader-theme='paper'] {
+  --reader-content-bg: #f5efe6 !important;
+  --reader-content-fg: #3b2f2f !important;
+}
+
+[data-reader-theme='green'] {
+  --reader-content-bg: #e8f0e4 !important;
+  --reader-content-fg: #2a3328 !important;
+}
+
+/* Suggested semantic utility classes for the mock / implementation */
+.mobile-reader-shell {
+  background: var(--reader-shell-bg) !important;
+  color: var(--reader-chrome-fg) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.mobile-reader-content {
+  background: var(--reader-content-bg) !important;
+  color: var(--reader-content-fg) !important;
+}
+
+.mobile-reader-topbar,
+.mobile-reader-bottombar {
+  background: var(--reader-chrome-bg) !important;
+  color: var(--reader-chrome-fg) !important;
+  border-color: var(--reader-chrome-border) !important;
+  backdrop-filter: blur(var(--reader-chrome-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--reader-chrome-blur)) !important;
+}
+
+.mobile-reader-sheet {
+  background: var(--reader-sheet-bg) !important;
+  color: var(--reader-chrome-fg) !important;
+  border-color: var(--reader-sheet-border) !important;
+  border-top-left-radius: var(--reader-sheet-radius) !important;
+  border-top-right-radius: var(--reader-sheet-radius) !important;
+  box-shadow: var(--reader-sheet-shadow) !important;
+}
+
+.mobile-reader-progress {
+  background: var(--progress-track) !important;
+}
+
+.mobile-reader-progress > span {
+  background: var(--progress) !important;
+}

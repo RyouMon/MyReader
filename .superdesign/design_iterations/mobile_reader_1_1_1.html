@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-reader-theme="paper">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MyReader · Mobile Reader Variant 2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@2.0.0/dist/flowbite.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="mobile_reader_theme_1.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0 !important;
+      width: 100% !important;
+      min-height: 100% !important;
+      background: #111 !important;
+      font-family: var(--font-sans) !important;
+      -webkit-font-smoothing: antialiased !important;
+      text-rendering: optimizeLegibility !important;
+    }
+
+    body {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 24px !important;
+    }
+
+    .phone-frame {
+      width: min(100%, 420px) !important;
+      height: min(920px, calc(100vh - 48px)) !important;
+      min-height: 760px !important;
+      border-radius: 34px !important;
+      overflow: hidden !important;
+      background: var(--reader-shell-bg) !important;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      position: relative !important;
+    }
+
+    .mobile-reader {
+      position: relative !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      background: var(--reader-content-bg) !important;
+      color: var(--reader-content-fg) !important;
+      transition: background-color 220ms ease-in-out, color 220ms ease-in-out !important;
+    }
+
+    .chrome-scrim-top,
+    .chrome-scrim-bottom {
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 20 !important;
+      pointer-events: none !important;
+      transition: opacity 220ms ease-out !important;
+    }
+
+    .chrome-scrim-top {
+      top: 0 !important;
+      height: 128px !important;
+      background: linear-gradient(to bottom, color-mix(in srgb, var(--reader-content-bg) 84%, transparent), transparent) !important;
+      opacity: 1 !important;
+    }
+
+    .chrome-scrim-bottom {
+      bottom: 0 !important;
+      height: 144px !important;
+      background: linear-gradient(to top, color-mix(in srgb, var(--reader-content-bg) 88%, transparent), transparent) !important;
+      opacity: 1 !important;
+    }
+
+    .status-bar {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 30 !important;
+      height: calc(env(safe-area-inset-top, 0px) + 24px) !important;
+      padding: max(8px, env(safe-area-inset-top, 0px)) 18px 0 18px !important;
+      display: flex !important;
+      align-items: flex-start !important;
+      justify-content: space-between !important;
+      font-size: 12px !important;
+      line-height: 1 !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 54%, var(--reader-content-bg)) !important;
+      pointer-events: none !important;
+      transition: opacity 220ms ease-out, transform 220ms ease-out !important;
+    }
+
+    .topbar {
+      position: absolute !important;
+      top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+      left: 10px !important;
+      right: 10px !important;
+      z-index: 30 !important;
+      height: 52px !important;
+      display: grid !important;
+      grid-template-columns: 44px 1fr 44px !important;
+      align-items: center !important;
+      gap: 8px !important;
+      padding: 4px !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 88%, var(--reader-content-bg)) !important;
+      transition: opacity 220ms ease-out, transform 220ms ease-out, color 220ms ease-in-out !important;
+    }
+
+    .icon-btn {
+      width: var(--reader-icon-btn-size) !important;
+      height: var(--reader-icon-btn-size) !important;
+      border: 0 !important;
+      border-radius: 999px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 22%, transparent) !important;
+      color: inherit !important;
+      cursor: pointer !important;
+      backdrop-filter: blur(6px) !important;
+      -webkit-backdrop-filter: blur(6px) !important;
+      transition: background-color 120ms ease-out, transform 120ms ease-out, color 220ms ease-in-out !important;
+    }
+
+    .icon-btn:active { transform: scale(0.96) !important; }
+
+    .icon-btn.bookmarked {
+      background: color-mix(in srgb, var(--primary) 12%, var(--reader-content-bg)) !important;
+      color: color-mix(in srgb, var(--primary) 88%, var(--reader-content-fg)) !important;
+    }
+
+    .topbar-title {
+      min-width: 0 !important;
+      text-align: center !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 2px !important;
+      padding: 0 8px !important;
+    }
+
+    .topbar-title strong {
+      font-family: var(--font-serif) !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      color: inherit !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      letter-spacing: -0.01em !important;
+    }
+
+    .topbar-title span {
+      font-size: 11px !important;
+      color: color-mix(in srgb, currentColor 62%, transparent) !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    .content {
+      position: absolute !important;
+      inset: 0 !important;
+      overflow-y: auto !important;
+      background: var(--reader-content-bg) !important;
+      color: var(--reader-content-fg) !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+      transition: background-color 220ms ease-in-out, color 220ms ease-in-out, filter 160ms ease-out !important;
+    }
+
+    .content::-webkit-scrollbar { display: none !important; }
+
+    .content-inner {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 92px) !important;
+      padding-right: max(var(--reader-content-padding-x), env(safe-area-inset-right, 0px) + 20px) !important;
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 118px) !important;
+      padding-left: max(var(--reader-content-padding-x), env(safe-area-inset-left, 0px) + 20px) !important;
+      max-width: 100% !important;
+    }
+
+    .chapter-label {
+      display: inline-flex !important;
+      align-items: center !important;
+      min-height: 26px !important;
+      padding: 0 10px !important;
+      border-radius: 999px !important;
+      background: color-mix(in srgb, var(--primary) 6%, var(--reader-content-bg)) !important;
+      color: color-mix(in srgb, var(--primary-strong) 82%, var(--reader-content-fg)) !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      margin-bottom: 16px !important;
+    }
+
+    h1 {
+      margin: 0 0 12px 0 !important;
+      font-family: var(--reader-chapter-font) !important;
+      font-size: var(--reader-chapter-size) !important;
+      line-height: 1.35 !important;
+      font-weight: var(--reader-chapter-weight) !important;
+      color: var(--reader-content-fg) !important;
+      letter-spacing: -0.01em !important;
+      transition: color 220ms ease-in-out !important;
+    }
+
+    .chapter-subtitle {
+      margin: 0 0 24px 0 !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 56%, var(--reader-content-bg)) !important;
+      font-size: 13px !important;
+      line-height: 1.5 !important;
+      transition: color 220ms ease-in-out !important;
+    }
+
+    p {
+      margin: 0 0 var(--reader-para-gap) 0 !important;
+      font-family: var(--font-serif) !important;
+      font-size: var(--reader-content-size) !important;
+      line-height: var(--reader-content-line-h) !important;
+      letter-spacing: var(--reader-content-letter-sp) !important;
+      color: var(--reader-content-fg) !important;
+      text-indent: var(--reader-para-indent) !important;
+      transition: color 220ms ease-in-out, font-size 160ms ease-out, line-height 160ms ease-out !important;
+    }
+
+    .quote {
+      margin: 22px 0 !important;
+      padding: 16px 18px !important;
+      border-left: 3px solid color-mix(in srgb, var(--primary) 72%, var(--reader-content-bg)) !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 90%, var(--surface)) !important;
+      border-radius: 0 16px 16px 0 !important;
+      transition: background-color 220ms ease-in-out, border-color 220ms ease-in-out !important;
+    }
+
+    .quote p {
+      text-indent: 0 !important;
+      margin-bottom: 0 !important;
+      font-size: calc(var(--reader-content-size) - 2px) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 90%, var(--reader-content-bg)) !important;
+    }
+
+    .reading-note {
+      margin-top: 32px !important;
+      padding: 14px 16px !important;
+      border: 1px solid color-mix(in srgb, var(--reader-content-fg) 10%, transparent) !important;
+      border-radius: 16px !important;
+      background: color-mix(in srgb, var(--surface) 36%, var(--reader-content-bg)) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 58%, var(--reader-content-bg)) !important;
+      font-size: 13px !important;
+      line-height: 1.55 !important;
+    }
+
+    .bookmark-toast {
+      position: absolute !important;
+      top: calc(env(safe-area-inset-top, 0px) + 70px) !important;
+      left: 50% !important;
+      z-index: 35 !important;
+      transform: translate(-50%, -10px) !important;
+      min-height: 34px !important;
+      padding: 0 14px !important;
+      border-radius: 999px !important;
+      background: color-mix(in srgb, var(--reader-content-fg) 10%, var(--reader-content-bg)) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 84%, var(--reader-content-bg)) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: opacity 180ms ease-out, transform 180ms ease-out, background-color 220ms ease-in-out, color 220ms ease-in-out !important;
+    }
+
+    .bookmark-toast.visible {
+      opacity: 1 !important;
+      transform: translate(-50%, 0) !important;
+    }
+
+    .bottombar {
+      position: absolute !important;
+      left: 14px !important;
+      right: 14px !important;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+      z-index: 30 !important;
+      padding: 12px 14px !important;
+      border-radius: 24px !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 18%, transparent) !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+      transition: opacity 220ms ease-out, transform 220ms ease-out, background-color 220ms ease-in-out !important;
+    }
+
+    .progress-info {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      margin-bottom: 9px !important;
+      font-size: 11px !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 52%, var(--reader-content-bg)) !important;
+    }
+
+    .progress-track {
+      width: 100% !important;
+      height: 2px !important;
+      border-radius: 999px !important;
+      overflow: hidden !important;
+      background: color-mix(in srgb, var(--reader-content-fg) 14%, transparent) !important;
+      margin-bottom: 12px !important;
+    }
+
+    .progress-fill {
+      width: 41% !important;
+      height: 100% !important;
+      border-radius: inherit !important;
+      background: color-mix(in srgb, var(--primary) 82%, var(--reader-content-bg)) !important;
+      transition: width 180ms linear, background-color 220ms ease-in-out !important;
+    }
+
+    .bottom-actions {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+    }
+
+    .primary-tool {
+      min-height: 44px !important;
+      border-radius: 18px !important;
+      border: 0 !important;
+      background: color-mix(in srgb, var(--reader-content-fg) 8%, transparent) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 76%, var(--reader-content-bg)) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 10px !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out !important;
+    }
+
+    .primary-tool.active {
+      background: color-mix(in srgb, var(--primary) 12%, var(--reader-content-bg)) !important;
+      color: color-mix(in srgb, var(--primary) 84%, var(--reader-content-fg)) !important;
+    }
+
+    .primary-tool:active { transform: scale(0.97) !important; }
+
+    .tap-zone {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 10 !important;
+      cursor: pointer !important;
+      background: transparent !important;
+    }
+
+    .sheet-scrim {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 39 !important;
+      background: rgba(31, 25, 21, 0.08) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: opacity 220ms linear !important;
+    }
+
+    .sheet {
+      position: absolute !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 50 !important;
+      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+      border-top: 1px solid color-mix(in srgb, var(--reader-content-fg) 8%, transparent) !important;
+      border-top-left-radius: 26px !important;
+      border-top-right-radius: 26px !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 97%, var(--surface)) !important;
+      box-shadow: 0 -8px 30px rgba(59, 50, 43, 0.05) !important;
+      transform: translateY(calc(100% + 32px)) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: transform 280ms ease-out, opacity 220ms ease-out, background-color 220ms ease-in-out, border-color 220ms ease-in-out, box-shadow 220ms ease-in-out !important;
+    }
+
+    [data-reader-theme='paper'] .sheet {
+      background: color-mix(in srgb, var(--reader-content-bg) 98%, var(--surface)) !important;
+      border-top-color: color-mix(in srgb, var(--reader-content-fg) 6%, transparent) !important;
+      box-shadow: 0 -6px 24px rgba(59, 50, 43, 0.04) !important;
+    }
+
+    .sheet.open {
+      transform: translateY(0) !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+
+    .sheet.toc-sheet { height: 50% !important; }
+    .sheet.aa-sheet { height: 58% !important; }
+
+    .sheet-handle {
+      width: 44px !important;
+      height: 5px !important;
+      border-radius: 999px !important;
+      background: color-mix(in srgb, var(--reader-content-fg) 18%, transparent) !important;
+      margin: 12px auto 10px auto !important;
+    }
+
+    .sheet-header {
+      display: block !important;
+      height: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+    }
+
+    .sheet-close {
+      display: none !important;
+    }
+
+    .sheet-body {
+      height: calc(100% - 16px) !important;
+      overflow: auto !important;
+      padding: 2px 18px 22px 18px !important;
+    }
+
+    .search-field {
+      min-height: 44px !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 0 14px !important;
+      border-radius: 14px !important;
+      border: 1px solid color-mix(in srgb, var(--reader-content-fg) 8%, transparent) !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 93%, var(--surface)) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 52%, var(--reader-content-bg)) !important;
+      margin-bottom: 14px !important;
+      font-size: 14px !important;
+    }
+
+    .toc-list { display: flex !important; flex-direction: column !important; gap: 8px !important; margin-bottom: 16px !important; }
+
+    .toc-item {
+      display: block !important;
+      padding: 14px 14px 14px 16px !important;
+      border-radius: 16px !important;
+      border: 1px solid color-mix(in srgb, var(--reader-content-fg) 8%, transparent) !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 94%, var(--surface)) !important;
+      cursor: pointer !important;
+      transition: background-color 120ms ease-out, border-color 120ms ease-out !important;
+    }
+
+    .toc-item.current {
+      border-color: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+      background: color-mix(in srgb, var(--primary) 7%, var(--reader-content-bg)) !important;
+    }
+
+    .toc-item strong { display: block !important; margin-bottom: 0 !important; color: color-mix(in srgb, var(--reader-content-fg) 86%, var(--reader-content-bg)) !important; font-size: 14px !important; font-weight: 600 !important; }
+
+    .tabs, .chips, .segmented { display: grid !important; gap: 8px !important; }
+    .tabs { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .chips { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    .segmented { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+    .tab, .chip, .segment {
+      min-height: 40px !important;
+      border-radius: 14px !important;
+      border: 1px solid color-mix(in srgb, var(--reader-content-fg) 7%, transparent) !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 94%, var(--surface)) !important;
+      color: color-mix(in srgb, var(--reader-content-fg) 52%, var(--reader-content-bg)) !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out !important;
+    }
+
+    .tab.active, .chip.active, .segment.active {
+      background: color-mix(in srgb, var(--primary) 7%, var(--reader-content-bg)) !important;
+      color: var(--reader-chrome-active) !important;
+      border-color: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+    }
+
+    .section { margin-bottom: 20px !important; }
+    .section-label { display: block !important; margin-bottom: 10px !important; font-size: 12px !important; font-weight: 700 !important; letter-spacing: 0.06em !important; text-transform: uppercase !important; color: color-mix(in srgb, var(--reader-content-fg) 52%, var(--reader-content-bg)) !important; }
+
+    .range-row {
+      display: grid !important;
+      grid-template-columns: auto 1fr auto !important;
+      align-items: center !important;
+      gap: 12px !important;
+      padding: 12px 14px !important;
+      border-radius: 16px !important;
+      background: color-mix(in srgb, var(--reader-content-bg) 94%, var(--surface)) !important;
+      border: 1px solid color-mix(in srgb, var(--reader-content-fg) 7%, transparent) !important;
+      margin-bottom: 10px !important;
+    }
+
+    .range-row span, .range-row strong { font-size: 14px !important; color: color-mix(in srgb, var(--reader-content-fg) 86%, var(--reader-content-bg)) !important; }
+    .range-row small { font-size: 12px !important; color: color-mix(in srgb, var(--reader-content-fg) 52%, var(--reader-content-bg)) !important; font-family: var(--font-mono) !important; }
+
+    .slider {
+      position: relative !important;
+      height: 4px !important;
+      border-radius: 999px !important;
+      background: var(--progress-track) !important;
+      overflow: visible !important;
+      cursor: pointer !important;
+    }
+
+    .slider::before {
+      content: "" !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      width: var(--value, 50%) !important;
+      border-radius: inherit !important;
+      background: var(--progress) !important;
+    }
+
+    .slider::after {
+      content: "" !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: var(--value, 50%) !important;
+      width: 18px !important;
+      height: 18px !important;
+      border-radius: 999px !important;
+      background: var(--progress) !important;
+      border: 3px solid var(--surface) !important;
+      box-shadow: 0 2px 8px rgba(59, 50, 43, 0.14) !important;
+      transform: translate(-50%, -50%) !important;
+    }
+
+    .chrome-hidden .status-bar,
+    .chrome-hidden .topbar { opacity: 0 !important; transform: translateY(-8px) !important; }
+
+    .chrome-hidden .bottombar { opacity: 0 !important; transform: translateY(10px) !important; }
+
+    .chrome-hidden .chrome-scrim-top,
+    .chrome-hidden .chrome-scrim-bottom { opacity: 0 !important; }
+
+    .has-sheet .sheet-scrim { opacity: 1 !important; pointer-events: auto !important; }
+    .has-sheet .tap-zone, .has-sheet .topbar, .has-sheet .bottombar, .has-sheet .status-bar { pointer-events: none !important; }
+  </style>
+</head>
+<body>
+  <div class="phone-frame">
+    <main id="reader" class="mobile-reader">
+      <div class="chrome-scrim-top"></div>
+      <div class="chrome-scrim-bottom"></div>
+      <div id="sheetScrim" class="sheet-scrim"></div>
+      <div id="bookmarkToast" class="bookmark-toast">已加入书签</div>
+      <button id="tapZone" type="button" class="tap-zone" aria-label="切换工具栏显示"></button>
+
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>5G 87%</span>
+      </div>
+
+      <header class="topbar">
+        <button type="button" class="icon-btn" aria-label="返回">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="topbar-title">
+          <strong id="bookTitle">悉达多</strong>
+          <span id="chapterTitle">第二章 · 在河边</span>
+        </div>
+        <button id="bookmarkButton" type="button" class="icon-btn" aria-label="加入书签" aria-pressed="false">
+          <i id="bookmarkIcon" data-lucide="bookmark"></i>
+        </button>
+      </header>
+
+      <section id="content" class="content" aria-label="阅读正文">
+        <div class="content-inner">
+          <article>
+            <div class="chapter-label">第二章</div>
+            <h1 id="chapterHeading">在河边，时间像一只被放慢的手</h1>
+            <p class="chapter-subtitle">右上角改为书签动作，阅读样式仍由底部 Aa 面板统一承载，避免顶栏出现和阅读无关的功能按钮。</p>
+
+            <p>悉达多在河边停下时，天色还没有完全暗去。水面上浮着一层温柔的灰金色，像旧书页上缓慢游走的光。他觉得自己并不是来到一个新的地方，而是走回了一段早已埋在身体里的安静。</p>
+            <p>他坐下来，听见水流在石缝之间说话。那声音并不急，也不强迫谁去理解，它只是持续地、准确地存在着。人在这样的声音里，很难继续维持白天那种紧张的判断和辩解。</p>
+            <p>他想起曾经所有被自己用力追赶的目标，那些名字、身份、方法、胜负，都在此刻显得轻了些。不是它们不重要，而是河流提醒他，重要的东西往往不会大声出现。</p>
+
+            <div class="quote">
+              <p>“真正持久的，不是你抓住了什么，而是你终于能安静地与它共处。”</p>
+            </div>
+
+            <p>他俯身掬起一捧水，掌心很快就空了，却留下了凉意。那凉意比水更久，像阅读之后停在心里的某一句话。你已经不能完整复述它，但它改变了你看待世界的角度。</p>
+            <p>不远处有舟影缓慢经过。桨叶切开河面，又让河面重新合拢。悉达多忽然明白，生活并不总是需要被彻底解释，很多时刻更适合被耐心地经过。人若总想把一切说清，反而听不见真正重要的回声。</p>
+            <p>他继续坐着，让视线落在渐暗的水光里。风从岸边的草丛间穿过去，把空气也梳理得平整了。那些无法立即回答的问题并没有消失，只是终于不再像石头一样压在胸口，而像夜色一样，慢慢展开。</p>
+
+            <div class="reading-note">这版把顶栏的次要控制彻底收敛成“返回 + 书签”。主题、亮度、字号、行距全部回到底部阅读样式面板，顶栏只保留真正与当前阅读位置强相关的动作。</div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="bottombar">
+        <div class="progress-info">
+          <span id="chapterCountLabel">第 2 / 6 章</span>
+          <span id="overallProgressLabel">41%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div class="bottom-actions">
+          <button id="openToc" type="button" class="primary-tool" aria-label="打开目录">
+            <i data-lucide="list"></i>
+            <span>目录</span>
+          </button>
+          <button id="openAa" type="button" class="primary-tool active" aria-label="打开阅读样式">
+            <i data-lucide="type"></i>
+            <span>Aa</span>
+          </button>
+        </div>
+      </footer>
+
+      <section id="tocSheet" class="sheet toc-sheet" aria-label="目录面板">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header"></div>
+        <div class="sheet-body">
+          <div class="search-field">
+            <i data-lucide="search"></i>
+            <span>搜索章节</span>
+          </div>
+
+          <div class="toc-list">
+            <button type="button" class="toc-item" data-chapter="1" data-progress="18" data-heading="第一章 · 出走" data-subtitle="第一章 · 出走">
+              <strong>第一章 · 出走</strong>
+            </button>
+            <button type="button" class="toc-item current" data-chapter="2" data-progress="41" data-heading="第二章 · 在河边" data-subtitle="第二章 · 在河边">
+              <strong>第二章 · 在河边</strong>
+            </button>
+            <button type="button" class="toc-item" data-chapter="3" data-progress="56" data-heading="第三章 · 倾听" data-subtitle="第三章 · 倾听">
+              <strong>第三章 · 倾听</strong>
+            </button>
+          </div>
+
+          <div class="tabs">
+            <button type="button" class="tab active">目录</button>
+            <button type="button" class="tab">书签</button>
+            <button type="button" class="tab">笔记</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="aaSheet" class="sheet aa-sheet" aria-label="阅读样式面板">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header"></div>
+        <div class="sheet-body">
+          <div class="section">
+            <span class="section-label">亮度</span>
+            <div class="range-row">
+              <span>暗</span>
+              <div id="brightnessSlider" class="slider" style="--value: 78%" data-value="78"></div>
+              <small id="brightnessValue">78%</small>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="section-label">主题</span>
+            <div class="chips" id="themeChips">
+              <button type="button" class="chip active" data-theme="paper">纸张</button>
+              <button type="button" class="chip" data-theme="light">浅色</button>
+              <button type="button" class="chip" data-theme="green">护眼</button>
+              <button type="button" class="chip" data-theme="dark">深色</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="section-label">字号</span>
+            <div class="range-row">
+              <span>A</span>
+              <div id="fontSlider" class="slider" style="--value: 52%" data-value="52"></div>
+              <strong id="fontValue">18px</strong>
+            </div>
+            <div class="range-row">
+              <span>行距</span>
+              <div id="lineHeightSlider" class="slider" style="--value: 62%" data-value="62"></div>
+              <strong id="lineHeightValue">1.85x</strong>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="section-label">边距</span>
+            <div class="segmented" id="marginControls">
+              <button type="button" class="segment" data-padding="16">窄</button>
+              <button type="button" class="segment active" data-padding="20">标准</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="section-label">翻页方式</span>
+            <div class="segmented" id="flowControls">
+              <button type="button" class="segment active">滚动</button>
+              <button type="button" class="segment">左右翻页</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const reader = document.getElementById('reader');
+    const tapZone = document.getElementById('tapZone');
+    const tocSheet = document.getElementById('tocSheet');
+    const aaSheet = document.getElementById('aaSheet');
+    const sheetScrim = document.getElementById('sheetScrim');
+    const openToc = document.getElementById('openToc');
+    const openAa = document.getElementById('openAa');
+    const progressFill = document.getElementById('progressFill');
+    const overallProgressLabel = document.getElementById('overallProgressLabel');
+    const chapterProgressLabel = document.getElementById('chapterProgressLabel');
+    const chapterCountLabel = document.getElementById('chapterCountLabel');
+    const chapterTitle = document.getElementById('chapterTitle');
+    const chapterHeading = document.getElementById('chapterHeading');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const fontSlider = document.getElementById('fontSlider');
+    const lineHeightSlider = document.getElementById('lineHeightSlider');
+    const brightnessValue = document.getElementById('brightnessValue');
+    const fontValue = document.getElementById('fontValue');
+    const lineHeightValue = document.getElementById('lineHeightValue');
+    const content = document.getElementById('content');
+    const themeChips = [...document.querySelectorAll('#themeChips .chip')];
+    const tocItems = [...document.querySelectorAll('.toc-item')];
+    const marginButtons = [...document.querySelectorAll('#marginControls .segment')];
+    const flowButtons = [...document.querySelectorAll('#flowControls .segment')];
+    const bookmarkButton = document.getElementById('bookmarkButton');
+    const bookmarkToast = document.getElementById('bookmarkToast');
+
+    const themes = ['paper', 'light', 'green', 'dark'];
+    let chromeHidden = false;
+    let activeSheet = null;
+    let bookmarkActive = false;
+    let bookmarkToastTimer = null;
+
+    function syncChrome() {
+      reader.classList.toggle('chrome-hidden', chromeHidden && !activeSheet);
+    }
+
+    function updateSheetState() {
+      reader.classList.toggle('has-sheet', Boolean(activeSheet));
+      tocSheet.classList.toggle('open', activeSheet === 'toc');
+      aaSheet.classList.toggle('open', activeSheet === 'aa');
+      openToc.classList.toggle('active', activeSheet === 'toc');
+      openAa.classList.toggle('active', activeSheet === 'aa');
+      syncChrome();
+    }
+
+    function openSheet(sheetName) {
+      activeSheet = sheetName;
+      updateSheetState();
+    }
+
+    function closeSheets() {
+      activeSheet = null;
+      updateSheetState();
+    }
+
+    tapZone.addEventListener('click', () => {
+      if (activeSheet) return;
+      chromeHidden = !chromeHidden;
+      syncChrome();
+    });
+
+    openToc.addEventListener('click', () => {
+      if (activeSheet === 'toc') {
+        closeSheets();
+        return;
+      }
+      openSheet('toc');
+    });
+
+    openAa.addEventListener('click', () => {
+      if (activeSheet === 'aa') {
+        closeSheets();
+        return;
+      }
+      openSheet('aa');
+    });
+
+    sheetScrim.addEventListener('click', closeSheets);
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-reader-theme', theme);
+      themeChips.forEach((chip) => {
+        chip.classList.toggle('active', chip.dataset.theme === theme);
+      });
+    }
+
+    themeChips.forEach((chip) => {
+      chip.addEventListener('click', () => {
+        applyTheme(chip.dataset.theme);
+      });
+    });
+
+    function setSliderValue(slider, value) {
+      const safeValue = Math.max(0, Math.min(100, value));
+      slider.dataset.value = safeValue;
+      slider.style.setProperty('--value', safeValue + '%');
+      return safeValue;
+    }
+
+    function bindSlider(slider, callback) {
+      slider.addEventListener('click', (event) => {
+        const rect = slider.getBoundingClientRect();
+        const value = ((event.clientX - rect.left) / rect.width) * 100;
+        callback(setSliderValue(slider, value));
+      });
+    }
+
+    bindSlider(brightnessSlider, (value) => {
+      const percent = Math.round(value);
+      brightnessValue.textContent = percent + '%';
+      content.style.filter = 'brightness(' + (0.72 + percent / 280).toFixed(2) + ')';
+    });
+
+    bindSlider(fontSlider, (value) => {
+      const fontSize = Math.round(15 + value * 0.08);
+      fontValue.textContent = fontSize + 'px';
+      reader.style.setProperty('--reader-content-size', fontSize + 'px');
+    });
+
+    bindSlider(lineHeightSlider, (value) => {
+      const lineHeight = (1.45 + value * 0.0065).toFixed(2);
+      lineHeightValue.textContent = lineHeight + 'x';
+      reader.style.setProperty('--reader-content-line-h', lineHeight);
+    });
+
+    tocItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        tocItems.forEach((node) => {
+          node.classList.remove('current');
+        });
+        item.classList.add('current');
+        const chapter = item.dataset.chapter;
+        const heading = item.dataset.heading;
+        const subtitle = item.dataset.subtitle;
+        const progress = item.dataset.progress;
+        chapterTitle.textContent = heading;
+        chapterHeading.textContent = heading;
+        chapterProgressLabel.textContent = '阅读 ' + progress + '%';
+        overallProgressLabel.textContent = progress + '%';
+        chapterCountLabel.textContent = '第 ' + chapter + ' / 6 章';
+        progressFill.style.width = progress + '%';
+        document.querySelector('.chapter-label').textContent = '第' + chapter + '章';
+        document.querySelector('.chapter-subtitle').textContent = subtitle;
+        content.scrollTo({ top: 0, behavior: 'smooth' });
+        closeSheets();
+      });
+    });
+
+    marginButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        marginButtons.forEach((node) => {
+          node.classList.remove('active');
+        });
+        button.classList.add('active');
+        reader.style.setProperty('--reader-content-padding-x', button.dataset.padding + 'px');
+      });
+    });
+
+    flowButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        flowButtons.forEach((node) => {
+          node.classList.remove('active');
+        });
+        button.classList.add('active');
+      });
+    });
+
+    function showBookmarkToast(message) {
+      bookmarkToast.textContent = message;
+      bookmarkToast.classList.add('visible');
+      if (bookmarkToastTimer) {
+        window.clearTimeout(bookmarkToastTimer);
+      }
+      bookmarkToastTimer = window.setTimeout(() => {
+        bookmarkToast.classList.remove('visible');
+      }, 1300);
+    }
+
+    bookmarkButton.addEventListener('click', () => {
+      bookmarkActive = !bookmarkActive;
+      bookmarkButton.classList.toggle('bookmarked', bookmarkActive);
+      bookmarkButton.setAttribute('aria-pressed', String(bookmarkActive));
+      const icon = bookmarkButton.querySelector('svg');
+      if (icon) {
+        icon.setAttribute('fill', bookmarkActive ? 'currentColor' : 'none');
+        icon.setAttribute('stroke-width', bookmarkActive ? '2.2' : '2');
+      }
+      showBookmarkToast(bookmarkActive ? '已加入书签' : '已移除书签');
+    });
+
+    applyTheme('paper');
+    setSliderValue(brightnessSlider, 78);
+    setSliderValue(fontSlider, 52);
+    setSliderValue(lineHeightSlider, 62);
+    syncChrome();
+  </script>
+</body>
+</html>
