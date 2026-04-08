@@ -1,0 +1,231 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f3ec;
+  --surface: #fffdf8;
+  --text: #3b322b;
+  --text-muted: #7d6f64;
+  --primary: #a86a3a;
+  --primary-strong: #8d542b;
+  --border: #e6ddd1;
+  --success: #2f8f68;
+  --warning: #b27a2a;
+  --error: #b64a4a;
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #fffaf3;
+  --secondary: color-mix(in srgb, var(--surface) 60%, var(--bg));
+  --secondary-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--surface) 35%, var(--bg));
+  --muted-foreground: var(--text-muted);
+  --accent: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --input: color-mix(in srgb, var(--surface) 55%, var(--border));
+  --ring: var(--primary);
+  --hero-surface: color-mix(in srgb, var(--surface) 82%, var(--bg));
+  --tab-idle: color-mix(in srgb, var(--text-muted) 82%, var(--surface));
+  --hairline: color-mix(in srgb, var(--border) 75%, white);
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.35rem;
+  --shadow-soft: 0 8px 24px rgba(59, 50, 43, 0.05);
+  --shadow-raised: 0 14px 28px rgba(59, 50, 43, 0.07);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #1c1916;
+  --surface: #25211d;
+  --text: #eee7dd;
+  --text-muted: #b8ab9d;
+  --primary: #c9874e;
+  --primary-strong: #d89e6d;
+  --border: #3a332d;
+  --success: #55a884;
+  --warning: #cf9a4f;
+  --error: #cf6a6a;
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #1c1916;
+  --secondary: color-mix(in srgb, var(--surface) 72%, black);
+  --secondary-foreground: var(--text);
+  --muted: color-mix(in srgb, var(--surface) 82%, black);
+  --muted-foreground: var(--text-muted);
+  --accent: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --input: color-mix(in srgb, var(--surface) 84%, black);
+  --ring: var(--primary);
+  --hero-surface: color-mix(in srgb, var(--surface) 88%, black);
+  --tab-idle: color-mix(in srgb, var(--text-muted) 92%, var(--surface));
+  --hairline: color-mix(in srgb, var(--border) 86%, black);
+  --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.24);
+  --shadow-raised: 0 16px 36px rgba(0, 0, 0, 0.32);
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  background: linear-gradient(180deg, var(--hero-surface), var(--background) 22%, var(--background));
+  color: var(--foreground);
+  font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+}
+
+body { min-height: 100vh; }
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  color: var(--foreground);
+  font-family: "Noto Serif SC", "Lora", serif;
+  letter-spacing: -0.02em;
+}
+
+button,
+input { font: inherit; }
+
+.mobile-shell { background: transparent; }
+
+.mobile-surface {
+  background: color-mix(in srgb, var(--card) 94%, white 6%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-search {
+  background: color-mix(in srgb, var(--input) 92%, white 8%);
+  border: 1px solid var(--border);
+}
+
+.meta-subtle { color: var(--muted-foreground); }
+
+.mobile-tabbar {
+  background: color-mix(in srgb, var(--card) 92%, transparent 8%);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+
+.mobile-tab--active {
+  color: var(--primary-strong);
+  background: transparent;
+}
+
+.mobile-tab--idle { color: var(--tab-idle); }
+
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 94%, white 6%);
+  color: var(--foreground);
+  box-shadow: var(--shadow-soft);
+}
+
+.library-list {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--card) 95%, white 5%);
+  box-shadow: var(--shadow-soft);
+}
+
+.library-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 5.25rem;
+  padding: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.library-row + .library-row { border-top: 1px solid var(--hairline); }
+
+.library-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, var(--accent) 18%);
+  background: color-mix(in srgb, var(--surface) 84%, var(--accent) 16%);
+  color: var(--primary-strong);
+}
+
+.library-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.library-name {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.library-meta {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+  line-height: 1.2;
+  color: var(--muted-foreground);
+}
+
+.library-chevron {
+  color: var(--muted-foreground);
+  flex: 0 0 auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --bg: #1c1916;
+    --surface: #25211d;
+    --text: #eee7dd;
+    --text-muted: #b8ab9d;
+    --primary: #c9874e;
+    --primary-strong: #d89e6d;
+    --border: #3a332d;
+    --success: #55a884;
+    --warning: #cf9a4f;
+    --error: #cf6a6a;
+    --background: var(--bg);
+    --foreground: var(--text);
+    --card: var(--surface);
+    --card-foreground: var(--text);
+    --popover: var(--surface);
+    --popover-foreground: var(--text);
+    --primary-foreground: #1c1916;
+    --secondary: color-mix(in srgb, var(--surface) 72%, black);
+    --secondary-foreground: var(--text);
+    --muted: color-mix(in srgb, var(--surface) 82%, black);
+    --muted-foreground: var(--text-muted);
+    --accent: color-mix(in srgb, var(--primary) 12%, var(--surface));
+    --accent-foreground: var(--text);
+    --destructive: var(--error);
+    --input: color-mix(in srgb, var(--surface) 84%, black);
+    --ring: var(--primary);
+    --hero-surface: color-mix(in srgb, var(--surface) 88%, black);
+    --tab-idle: color-mix(in srgb, var(--text-muted) 92%, var(--surface));
+    --hairline: color-mix(in srgb, var(--border) 86%, black);
+    --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.24);
+    --shadow-raised: 0 16px 36px rgba(0, 0, 0, 0.32);
+  }
+}

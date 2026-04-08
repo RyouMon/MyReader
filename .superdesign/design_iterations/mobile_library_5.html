@@ -30,16 +30,19 @@
 <body>
   <main class="mobile-shell phone-frame page-enter">
     <div class="content-scroll">
-      <header class="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <button class="touch-target flex items-center gap-2 px-1 py-1 text-left" type="button">
-            <h1 class="text-[1.72rem] font-semibold leading-none">小说总库</h1>
-            <i data-lucide="chevron-down" class="size-5 meta-subtle"></i>
-          </button>
-        </div>
+      <header class="mb-4">
+        <button id="library-back-link" class="touch-target mb-2 inline-flex items-center gap-2 px-1 py-1 text-left meta-subtle" type="button" aria-label="返回书库列表">
+          <i data-lucide="chevron-left" class="size-5"></i>
+          <span class="text-sm font-semibold">返回</span>
+        </button>
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h1 id="library-title" class="text-[1.72rem] font-semibold leading-none">小说总库</h1>
+          </div>
         <button id="view-settings-trigger" class="mobile-surface touch-target flex size-12 items-center justify-center rounded-2xl" type="button" aria-label="排序与视图">
           <i data-lucide="sliders-horizontal" class="size-5"></i>
         </button>
+        </div>
       </header>
 
       <label class="mobile-search mb-4 flex items-center gap-3 rounded-[1.1rem] px-4 py-3 shadow-sm">
@@ -150,6 +153,21 @@
 
     applyTheme(storedTheme);
     lucide.createIcons();
+
+    const params = new URLSearchParams(window.location.search);
+    const libraryName = params.get('library');
+    const titleNode = document.getElementById('library-title');
+    const backLink = document.getElementById('library-back-link');
+
+    if (libraryName && titleNode) {
+      titleNode.textContent = libraryName;
+      document.title = `MyReader · ${libraryName}`;
+    }
+
+    backLink?.addEventListener('click', () => {
+      window.location.href = 'mobile_library_root_1.html';
+    });
+
     const overlay = document.getElementById('overlay');
     const popover = document.getElementById('settings-popover');
     const trigger = document.getElementById('view-settings-trigger');
