@@ -3,6 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
+      "@/src": [
+        "./src"
+      ],
       "@/tw": [
         "./src/tw/index.tsx"
       ],
