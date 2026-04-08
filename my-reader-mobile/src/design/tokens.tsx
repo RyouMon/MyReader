@@ -1,13 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { setBackgroundColorAsync } from "expo-system-ui";
 import { useColorScheme, type ColorSchemeName } from "react-native";
+
+import { useAppStore } from "../store/app-store";
+import { useThemeModeSetting } from "../store/settings-store";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -78,11 +74,19 @@ function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
   return mode;
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const initialize = useAppStore((state) => state.initialize);
+  const hasHydrated = useAppStore((state) => state.hasHydrated);
   const systemColorScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>("system");
+  const { mode } = useThemeModeSetting();
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    void initialize();
+  }, [hasHydrated, initialize]);
 
   const colorScheme = resolveThemeMode(mode, systemColorScheme);
   const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);
@@ -91,27 +95,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void setBackgroundColorAsync(palette.background);
   }, [palette.background]);
 
-  const value = useMemo<ThemeContextValue>(
+  return children;
+}
+
+export function useTheme() {
+  const systemColorScheme = useColorScheme();
+  const { mode, setThemeMode } = useThemeModeSetting();
+  const colorScheme = resolveThemeMode(mode, systemColorScheme);
+  const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);
+
+  return useMemo<ThemeContextValue>(
     () => ({
       colorScheme,
       mode,
       palette,
-      setMode,
+      setMode: setThemeMode,
     }),
-    [colorScheme, mode, palette]
+    [colorScheme, mode, palette, setThemeMode]
   );
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-
-  if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider");
-  }
-
-  return context;
 }
 
 export function useThemePalette() {

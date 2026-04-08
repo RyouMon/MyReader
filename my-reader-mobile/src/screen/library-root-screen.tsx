@@ -7,8 +7,8 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 import { EmptyState, RoundIconButton, Screen, SearchField, SectionCard, SettingsRow } from "../components";
-import { useLibraries } from "../data/library-context";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useLibraryStore } from "../store/library-store";
 
 function getLibraryIconName(index: number) {
   const icons: (keyof typeof MaterialIcons.glyphMap)[] = [
@@ -23,7 +23,7 @@ function getLibraryIconName(index: number) {
 
 export default function LibraryRootScreen() {
   const palette = useThemePalette();
-  const { libraries, activeLibraryId, loadingLibraries, refreshBooks, addLibrary, setActiveLibrary } = useLibraries();
+  const { libraries, activeLibraryId, loadingLibraries, refreshBooks, addLibrary, setActiveLibrary } = useLibraryStore();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 180);
 

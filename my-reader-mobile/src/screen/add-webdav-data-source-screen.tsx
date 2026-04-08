@@ -5,7 +5,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TextInput, View } from "@/tw";
 
 import { Screen } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useDataSourceStore } from "../store/data-source-store";
 import { testWebDavConnection } from "../data/webdav";
 
 function createId() {
@@ -14,7 +14,7 @@ function createId() {
 
 export default function AddWebDavDataSourceScreen() {
   const palette = useThemePalette();
-  const { addDataSource } = useLibraries();
+  const { addDataSource } = useDataSourceStore();
   const [name, setName] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [basePath, setBasePath] = useState("");

@@ -5,8 +5,9 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
-import { useLibraries } from "../data/library-context";
 import type { WebDavDataSource } from "../data/types";
+import { useDataSourceStore } from "../store/data-source-store";
+import { useLibraryStore } from "../store/library-store";
 import { createWebDavLibraryFromPath, listWebDavDirectory } from "../data/webdav";
 
 type BrowserEntry = {
@@ -18,7 +19,8 @@ type BrowserEntry = {
 export default function WebDavBrowserScreen() {
   const palette = useThemePalette();
   const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
-  const { dataSources, addResolvedLibrary } = useLibraries();
+  const { dataSources } = useDataSourceStore();
+  const { addResolvedLibrary } = useLibraryStore();
   const source = useMemo<WebDavDataSource | null>(() => {
     const candidate = dataSources.find(
       (item) => item.id === dataSourceId && item.type === "webdav"

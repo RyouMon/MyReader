@@ -7,7 +7,8 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useDataSourceStore } from "../store/data-source-store";
+import { useLibraryStore } from "../store/library-store";
 
 function TrailingLabel({ text, emphasize = false }: { text: string; emphasize?: boolean }) {
   const palette = useThemePalette();
@@ -16,7 +17,8 @@ function TrailingLabel({ text, emphasize = false }: { text: string; emphasize?: 
 
 export default function WebDavSourcesScreen() {
   const palette = useThemePalette();
-  const { dataSources, libraries, removeDataSource } = useLibraries();
+  const { dataSources, removeDataSource } = useDataSourceStore();
+  const { libraries } = useLibraryStore();
   const [error, setError] = useState<string | null>(null);
 
   const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);

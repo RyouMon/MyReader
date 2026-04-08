@@ -7,8 +7,8 @@ import { ActionSheetIOS, Alert, FlatList, Platform } from "react-native";
 import { useThemePalette } from "@/src/design/tokens";
 
 import { EmptyState, FilterChip, LibraryGrid, RoundIconButton, Screen, SearchField, SectionHeading } from "../components";
-import { useLibraries } from "../data/library-context";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useLibraryStore } from "../store/library-store";
 
 const libraryFilters = ["全部", "已加入"];
 const sortOptions = ["书名", "作者", "最近添加"];
@@ -16,7 +16,7 @@ const viewOptions = ["网格视图"];
 
 export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
   const palette = useThemePalette();
-  const { activeLibraryId, libraries, books, loadingBooks, addLibrary, setActiveLibrary, error } = useLibraries();
+  const { activeLibraryId, libraries, books, loadingBooks, setActiveLibrary, error } = useLibraryStore();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 180);
 
@@ -50,8 +50,6 @@ export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
     []
   );
 
-  const libraryOptions = useMemo(() => libraries.map((library) => library.name), [libraries]);
-
   function openBookDetail(bookId: string) {
     router.push({ pathname: "/library/book/[id]", params: { id: bookId } });
   }
@@ -69,36 +67,6 @@ export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
       return;
     }
     Alert.alert("排序与视图", menuOptions.join("\n"), [{ text: "关闭", style: "cancel" }]);
-  }
-
-  function openLibrarySwitcher() {
-    if (libraries.length === 0) {
-      void addLibrary();
-      return;
-    }
-
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...libraryOptions, "添加书库", "取消"],
-          cancelButtonIndex: libraryOptions.length + 1,
-          userInterfaceStyle: palette.background === "#1C1916" ? "dark" : "light",
-        },
-        (index) => {
-          if (index === undefined || index === libraryOptions.length + 1) return;
-          if (index === libraryOptions.length) {
-            void addLibrary();
-            return;
-          }
-          const target = libraries[index];
-          if (target) {
-            if (target.id !== activeLibraryId) void setActiveLibrary(target.id);
-            router.replace({ pathname: "/library/[libraryId]", params: { libraryId: target.id } });
-          }
-        }
-      );
-      return;
-    }
   }
 
   if (!selectedLibrary) {

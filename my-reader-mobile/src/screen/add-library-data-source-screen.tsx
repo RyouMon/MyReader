@@ -4,11 +4,13 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useDataSourceStore } from "../store/data-source-store";
+import { useLibraryStore } from "../store/library-store";
 
 export default function AddLibraryDataSourceScreen() {
   const palette = useThemePalette();
-  const { addLibrary, dataSources } = useLibraries();
+  const { addLibrary } = useLibraryStore();
+  const { dataSources } = useDataSourceStore();
 
   return (
     <Screen>

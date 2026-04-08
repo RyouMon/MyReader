@@ -8,7 +8,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Image, Pressable, ScrollView, Text, View } from "@/tw";
 
 import { EmptyState, ProgressBar, Sheet, SheetOption } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useLibraryStore } from "../store/library-store";
 
 const formatOptions = ["EPUB", "AZW3", "PDF"] as const;
 
@@ -16,7 +16,7 @@ export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
-  const { books, activeLibrary } = useLibraries();
+  const { books, activeLibrary } = useLibraryStore();
   const [selectedFormat, setSelectedFormat] = useState<(typeof formatOptions)[number]>("EPUB");
   const [formatSheetOpen, setFormatSheetOpen] = useState(false);
 

@@ -4,11 +4,11 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Image, Text, View } from "@/tw";
 
 import { EmptyState, HeroCard, HorizontalBookShelf, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useLibraryStore } from "../store/library-store";
 
 export default function HomeScreen() {
   const palette = useThemePalette();
-  const { activeLibrary, books, addLibrary, loadingBooks } = useLibraries();
+  const { activeLibrary, books, addLibrary, loadingBooks } = useLibraryStore();
 
   const currentBook = books[0];
   const recentBooks = books.slice(0, 5);
@@ -18,7 +18,7 @@ export default function HomeScreen() {
   const continueProgress = 0.32;
 
   function openBookDetail(bookId: string) {
-    router.push({ pathname: "/book/[id]", params: { id: bookId } });
+    router.push({ pathname: "/home/book/[id]", params: { id: bookId } });
   }
 
   return (

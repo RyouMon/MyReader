@@ -1,11 +1,12 @@
-﻿import { Link } from "expo-router";
+import { Link } from "expo-router";
 import { useMemo, useState } from "react";
 
 import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 import { Screen, SectionCard, SectionHeading, SettingsRow, SettingsSwitch, Sheet, SheetOption } from "../components";
-import { useLibraries } from "../data/library-context";
+import { useLibraryStore } from "../store/library-store";
+import { useSyncSetting } from "../store/settings-store";
 
 const themeModes = ["跟随设备", "浅色", "深色"];
 const themeModeMap: Record<string, ThemeMode> = { 跟随设备: "system", 浅色: "light", 深色: "dark" };
@@ -19,8 +20,8 @@ function TrailingLabel({ text, emphasize }: { text: string; emphasize?: boolean 
 export default function SettingsScreen() {
   const palette = useThemePalette();
   const { mode, setMode } = useTheme();
-  const { libraries, activeLibraryId, setActiveLibrary, loadingLibraries, error } = useLibraries();
-  const [syncEnabled, setSyncEnabled] = useState(true);
+  const { libraries, activeLibraryId, setActiveLibrary, loadingLibraries, error } = useLibraryStore();
+  const { syncEnabled, setSyncEnabled } = useSyncSetting();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
 

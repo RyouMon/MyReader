@@ -4,7 +4,6 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import { LibraryProvider } from "@/src/data/library-context";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 
 function RootNavigator() {
@@ -49,9 +48,7 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <LibraryProvider>
-        <RootNavigator />
-      </LibraryProvider>
+      <RootNavigator />
     </ThemeProvider>
   );
 }
