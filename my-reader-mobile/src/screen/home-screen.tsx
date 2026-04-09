@@ -18,7 +18,7 @@ export default function HomeScreen() {
   const continueProgress = 0.32;
 
   function openBookDetail(bookId: string) {
-    router.push({ pathname: "/home/book/[id]", params: { id: bookId } });
+    router.push({ pathname: "/book/[id]", params: { id: bookId } });
   }
 
   return (

@@ -40,6 +40,7 @@ function RootNavigator() {
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="book/[id]" options={{ title: "书籍详情", headerShown: true }} />
       </Stack>
     </NavigationThemeProvider>
   );

@@ -51,7 +51,7 @@ export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
   );
 
   function openBookDetail(bookId: string) {
-    router.push({ pathname: "/library/book/[id]", params: { id: bookId } });
+    router.push({ pathname: "/book/[id]", params: { id: bookId } });
   }
 
   function openNativeMenu() {

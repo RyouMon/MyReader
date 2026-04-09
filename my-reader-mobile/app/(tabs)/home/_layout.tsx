@@ -8,7 +8,6 @@ export default function HomeStackLayout() {
   return (
     <Stack screenOptions={screenOptions}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="book/[id]" options={{ title: "书籍详情" }} />
     </Stack>
   );
 }
