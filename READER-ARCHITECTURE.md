@@ -14,7 +14,7 @@
 
 ### 二、 接口设计 (TypeScript)
 
-```Mermaid
+```mermaid
 classDiagram
     class Reader {
         -IParser parser
@@ -137,7 +137,7 @@ classDiagram
 
 展示了用户发起操作时，Reader 如何协调 Parser 解析文件、Paginator 计算和缓存分页、Render 呈现视图的完整生命周期。
 
-```Mermaid
+```mermaid
 sequenceDiagram
     participant User as 使用者 (UI/Render)
     participant Reader as Reader (控制器)
@@ -207,22 +207,3 @@ sequenceDiagram
     Reader-->>User: 更新界面
     end
 ```
-
-
-
-# 技术架构
-
-[https://github.com/koodo-reader/kookit](https://github.com/koodo-reader/kookit)
-
-|Package|Purpose|
-|-|-|
-|`foliate-js`|EPUB / MOBI / AZW3 / FB2 rendering engine|
-|`pdf-js`|PDF rendering engine|
-|`jszip` / `@zip.js/zip.js` / `fflate`|ZIP decompression (multiple engines for compatibility)|
-|`7z-wasm`|7z archive support (CB7)|
-|`js-untar`|TAR archive support (CBT)|
-|`mammoth`|DOCX to HTML conversion|
-|`marked`|Markdown to HTML conversion|
-|`mhtml2html`|MHTML to HTML conversion|
-|`rangy`|Cross-browser text selection and range utilities|
-|`chardet`|Automatic character encoding detection|
