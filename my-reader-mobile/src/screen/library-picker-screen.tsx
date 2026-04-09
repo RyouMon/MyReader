@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
+import { View } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { Text, View } from "@/tw";
 
 import { EmptyState, RoundIconButton, Screen, SearchField, SectionCard, SettingsRow } from "../components";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
@@ -21,7 +21,10 @@ function getLibraryIconName(index: number) {
   return icons[index % icons.length] ?? "local-library";
 }
 
-export default function LibraryRootScreen() {
+/**
+ * 书库切换列表：由 `/library/picker` 以 Stack `presentation: 'modal'` 呈现（见 Expo Router modals）。
+ */
+export default function LibraryPickerScreen() {
   const palette = useThemePalette();
   const { libraries, activeLibraryId, loadingLibraries, refreshBooks, addLibrary, setActiveLibrary } = useLibraryStore();
   const [query, setQuery] = useState("");
@@ -34,18 +37,29 @@ export default function LibraryRootScreen() {
     return libraries.filter((library) => library.name.toLowerCase().includes(needle));
   }, [debouncedQuery, libraries]);
 
-  function openLibrary(libraryId: string) {
+  function selectLibrary(libraryId: string) {
     void setActiveLibrary(libraryId);
-    router.push({ pathname: "/library/[libraryId]", params: { libraryId } });
+    if (router.canGoBack()) {
+      router.back();
+    }
   }
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: "书库",
-          headerLargeTitle: true,
-          headerLargeTitleShadowVisible: false,
+          title: "切换书库",
+          headerLargeTitle: false,
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <RoundIconButton
+              label="关闭"
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+              }}
+              icon={<MaterialIcons name="close" size={22} color={palette.textMuted} />}
+            />
+          ),
           headerRight: () => (
             <View className="flex-row items-center gap-2">
               <RoundIconButton
@@ -56,7 +70,7 @@ export default function LibraryRootScreen() {
               <RoundIconButton
                 label="添加书库"
                 onPress={() => void addLibrary()}
-                icon={<MaterialIcons name="add" size={20} color={palette.text} />}
+                icon={<MaterialIcons name="add" size={22} color={palette.text} />}
               />
             </View>
           ),
@@ -75,7 +89,7 @@ export default function LibraryRootScreen() {
               return (
                 <SettingsRow
                   key={library.id}
-                  onPress={() => openLibrary(library.id)}
+                  onPress={() => selectLibrary(library.id)}
                   isLast={index === visibleLibraries.length - 1}
                   title={library.name}
                   detail={`${library.bookCount.toLocaleString("zh-CN")} 本${isActive ? " · 当前使用" : ""}`}
@@ -92,9 +106,7 @@ export default function LibraryRootScreen() {
                         />
                       </View>
                       {isActive ? (
-                        <Text className="text-sm font-semibold" style={{ color: palette.primary }}>
-                          当前
-                        </Text>
+                        <MaterialIcons name="check" size={22} color={palette.primary} />
                       ) : (
                         <MaterialIcons name="chevron-right" size={20} color={palette.textMuted} />
                       )}
@@ -109,7 +121,7 @@ export default function LibraryRootScreen() {
         ) : (
           <EmptyState
             title="还没有添加书库"
-            detail="先添加一个 Calibre 书库，之后可从这里进入每个书库的图书列表。"
+            detail="先添加一个 Calibre 书库，之后可在这里切换书库。"
             action={<RoundIconButton label="添加书库" onPress={() => void addLibrary()} />}
           />
         )}

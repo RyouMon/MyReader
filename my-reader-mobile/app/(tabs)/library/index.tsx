@@ -1,16 +1,5 @@
-import { Stack } from "expo-router";
-
-import LibraryRootScreen from "@/src/screen/library-root-screen";
+import LibraryScreen from "@/src/screen/library-screen";
 
 export default function LibraryRoute() {
-  return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-        }}
-      />
-      <LibraryRootScreen />
-    </>
-  );
+  return <LibraryScreen />;
 }

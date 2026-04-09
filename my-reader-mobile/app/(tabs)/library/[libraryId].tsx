@@ -1,9 +1,19 @@
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
-import LibraryScreen from "@/src/screen/library-screen";
+import { useAppStore } from "@/src/store/app-store";
 
-export default function LibraryDetailRoute() {
+/**
+ * 兼容旧链接 /library/[libraryId]：同步当前书库后统一到根路由 /library。
+ */
+export default function LibraryIdBridgeRoute() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
 
-  return <LibraryScreen libraryId={libraryId} />;
+  if (typeof libraryId === "string") {
+    const { activeLibraryId, setActiveLibrary } = useAppStore.getState();
+    if (activeLibraryId !== libraryId) {
+      void setActiveLibrary(libraryId);
+    }
+  }
+
+  return <Redirect href="/library" />;
 }
