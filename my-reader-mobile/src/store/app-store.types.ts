@@ -28,6 +28,7 @@ export type AppState = PersistedAppState & {
   clearError: () => void;
   addLibrary: () => Promise<void>;
   addResolvedLibrary: (library: MobileLibrary) => Promise<void>;
+  removeLibrary: (id: string) => Promise<void>;
   setActiveLibrary: (id: string) => Promise<void>;
   addDataSource: (dataSource: DataSource) => Promise<void>;
   removeDataSource: (id: string) => Promise<void>;

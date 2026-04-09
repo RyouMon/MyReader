@@ -23,6 +23,7 @@ type LibrarySlice = Pick<
   | "clearError"
   | "addLibrary"
   | "addResolvedLibrary"
+  | "removeLibrary"
   | "setActiveLibrary"
   | "refreshBooks"
 >;
@@ -129,6 +130,25 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
 
     const nextLibraries = [...state.libraries, library];
     const nextActiveLibraryId = state.activeLibraryId ?? library.id;
+
+    set({
+      libraries: nextLibraries,
+      activeLibraryId: nextActiveLibraryId,
+      error: null,
+    });
+
+    await get().refreshBooks();
+  },
+  /**
+   * 移除指定书库，并在必要时回退当前激活书库。
+   */
+  async removeLibrary(id) {
+    const state = get();
+    const nextLibraries = state.libraries.filter((library) => library.id !== id);
+    const removedActiveLibrary = state.activeLibraryId === id;
+    const nextActiveLibraryId = removedActiveLibrary
+      ? nextLibraries[0]?.id ?? null
+      : state.activeLibraryId;
 
     set({
       libraries: nextLibraries,

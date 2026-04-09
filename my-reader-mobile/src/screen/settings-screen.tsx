@@ -1,8 +1,10 @@
 import { Link } from "expo-router";
 import { useMemo, useState } from "react";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
+import type { SharedValue } from "react-native-reanimated";
 
 import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
-import { Text, View } from "@/tw";
+import { Pressable, Text, View } from "@/tw";
 
 import { Screen, SectionCard, SectionHeading, SettingsRow, SettingsSwitch, Sheet, SheetOption } from "../components";
 import { useLibraryStore } from "../store/library-store";
@@ -17,10 +19,38 @@ function TrailingLabel({ text, emphasize }: { text: string; emphasize?: boolean 
   return <Text className="text-sm font-semibold" style={{ color: emphasize ? palette.primary : palette.textMuted }}>{text}</Text>;
 }
 
+/**
+ * 右侧删除操作，配合 Swipeable 左滑显示。
+ */
+function DeleteAction({
+  progress: _progress,
+  drag: _drag,
+  onPress,
+}: {
+  progress: SharedValue<number>;
+  drag: SharedValue<number>;
+  onPress: () => void;
+}) {
+  const palette = useThemePalette();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className="items-center justify-center px-5"
+      onPress={onPress}
+      style={{ backgroundColor: palette.error }}
+    >
+      <Text className="text-sm font-semibold" style={{ color: palette.primaryForeground }}>
+        删除
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function SettingsScreen() {
   const palette = useThemePalette();
   const { mode, setMode } = useTheme();
-  const { libraries, activeLibraryId, setActiveLibrary, loadingLibraries, error } = useLibraryStore();
+  const { libraries, activeLibraryId, setActiveLibrary, removeLibrary, loadingLibraries, error } = useLibraryStore();
   const { syncEnabled, setSyncEnabled } = useSyncSetting();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
@@ -32,13 +62,22 @@ export default function SettingsScreen() {
           <SectionHeading title="书库" />
           <SectionCard>
             {libraries.map((library) => (
-              <SettingsRow
+              <Swipeable
                 key={library.id}
-                title={library.name}
-                detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
-                trailing={activeLibraryId === library.id ? <TrailingLabel text="当前" emphasize /> : <TrailingLabel text="切换" />}
-                onPress={activeLibraryId === library.id ? undefined : () => void setActiveLibrary(library.id)}
-              />
+                friction={2}
+                overshootRight={false}
+                rightThreshold={40}
+                renderRightActions={(progress, drag) => (
+                  <DeleteAction progress={progress} drag={drag} onPress={() => void removeLibrary(library.id)} />
+                )}
+              >
+                <SettingsRow
+                  title={library.name}
+                  detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
+                  trailing={activeLibraryId === library.id ? <TrailingLabel text="当前" emphasize /> : <TrailingLabel text="切换" />}
+                  onPress={activeLibraryId === library.id ? undefined : () => void setActiveLibrary(library.id)}
+                />
+              </Swipeable>
             ))}
             <Link href="/settings/add-library" asChild>
               <SettingsRow title="添加书库" detail={loadingLibraries ? "正在加载本地书库配置" : error ?? "先选择数据源，再选择书库目录"} trailing={<TrailingLabel text="添加" />} isLast />

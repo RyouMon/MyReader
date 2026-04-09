@@ -11,6 +11,7 @@ export function useLibraryStore() {
   const error = useAppStore((state) => state.error);
   const addLibrary = useAppStore((state) => state.addLibrary);
   const addResolvedLibrary = useAppStore((state) => state.addResolvedLibrary);
+  const removeLibrary = useAppStore((state) => state.removeLibrary);
   const setActiveLibrary = useAppStore((state) => state.setActiveLibrary);
   const refreshBooks = useAppStore((state) => state.refreshBooks);
 
@@ -30,6 +31,7 @@ export function useLibraryStore() {
       error,
       addLibrary,
       addResolvedLibrary,
+      removeLibrary,
       setActiveLibrary,
       refreshBooks,
     }),
@@ -43,6 +45,7 @@ export function useLibraryStore() {
       error,
       addLibrary,
       addResolvedLibrary,
+      removeLibrary,
       setActiveLibrary,
       refreshBooks,
     ]
