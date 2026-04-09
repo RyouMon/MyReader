@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 
-import type { CalibreBook, PaginatedBooks } from "@/types/book"
+import type { CalibreBook, PaginatedBooks } from "my-reader-tools/types/book"
 
 const PAGE_SIZE = 100
 

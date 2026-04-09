@@ -7,7 +7,8 @@
     "./rendition": "./src/rendition/index.ts",
     "./rendition/*": "./src/rendition/*",
     "./progress/*": "./src/progress/*",
-    "./foliate-js/*": "./src/foliate-js/*"
+    "./foliate-js/*": "./src/foliate-js/*",
+    "./types/book": "./src/types/book.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",

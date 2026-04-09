@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useLibrary } from "@/stores/libraryStore"
-import type { LibraryInfo } from "@/types/book"
+import type { LibraryInfo } from "my-reader-tools/types/book"
 
 export default function LibrariesSection() {
   const { libraries, addLibrary, removeLibrary, activeLibraryId } = useLibrary()

@@ -15,7 +15,7 @@ import { useBookReader } from "@/hooks/reader/useReader"
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { buildBookFileUrl, resolveReadFormat } from "my-reader-tools/rendition/utils"
-import type { BookDetail } from "@/types/book"
+import type { BookDetail } from "my-reader-tools/types/book"
 
 export type ReadBookPageProps = {
   bookId: string

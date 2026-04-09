@@ -7,7 +7,7 @@ import { useLibrary } from "@/stores/libraryStore"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "@/types/book"
+import type { CalibreBook } from "my-reader-tools/types/book"
 
 export const Route = createFileRoute("/_layout/")({
   component: LibraryPage,

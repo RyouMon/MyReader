@@ -24,7 +24,7 @@ import {
   pickReadableFormat,
 } from "my-reader-tools/rendition/utils"
 import { cn } from "@/lib/utils"
-import type { BookDetail, CalibreBook } from "@/types/book"
+import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 
-import type { CalibreBook } from "@/types/book"
+import type { CalibreBook } from "my-reader-tools/types/book"
 import BookCard from "./BookCard"
 
 const MIN_COL_WIDTH = 152

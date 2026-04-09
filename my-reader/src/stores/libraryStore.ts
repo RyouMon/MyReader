@@ -2,7 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 
-import type { LibraryInfo } from "@/types/book"
+import type { LibraryInfo } from "my-reader-tools/types/book"
 
 interface LibraryStoreState {
   libraries: LibraryInfo[]

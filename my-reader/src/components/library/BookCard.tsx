@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { buildCoverUrl } from "@/lib/cover"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "@/types/book"
+import type { CalibreBook } from "my-reader-tools/types/book"
 
 interface BookCardProps {
   book: CalibreBook
