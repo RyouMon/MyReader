@@ -41,7 +41,10 @@ export function pickReadableFormat(formats: string[]): string | null {
   return null
 }
 
-const IS_WINDOWS = navigator.userAgent.includes("Windows")
+const IS_WINDOWS =
+  typeof navigator !== "undefined" &&
+  typeof navigator.userAgent === "string" &&
+  navigator.userAgent.includes("Windows")
 
 /** Build a URL for the `bookfile` custom protocol. */
 export function buildBookFileUrl(

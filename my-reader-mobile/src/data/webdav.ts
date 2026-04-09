@@ -3,6 +3,24 @@ import * as SQLite from "expo-sqlite";
 
 import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
 
+export function buildWebDavBookCoverUri(
+  library: MobileLibrary,
+  source: WebDavDataSource,
+  bookPath: string,
+  hasCover: boolean
+): BookItem["coverUri"] | undefined {
+  if (!bookPath || !hasCover) {
+    return undefined;
+  }
+
+  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
+
+  return {
+    uri: buildUrl(source, remoteCoverPath),
+    headers: buildAuthHeader(source),
+  };
+}
+
 type WebDavEntry = {
   href: string;
   name: string;

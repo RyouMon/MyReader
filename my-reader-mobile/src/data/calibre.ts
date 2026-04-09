@@ -3,6 +3,8 @@ import { Directory, File as FSFile, Paths } from "expo-file-system";
 import * as SQLite from "expo-sqlite";
 import { Platform } from "react-native";
 
+import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
+
 import type { BookItem, MobileLibrary } from "./types";
 
 type PickedDirectoryLike = {
@@ -20,6 +22,84 @@ type RawBookRow = {
   has_cover: number | null;
   timestamp: string | null;
 };
+
+type BookDetailRow = {
+  id: number;
+  title: string | null;
+  author_sort: string | null;
+  timestamp: string | null;
+  pubdate: string | null;
+  series_index: number | null;
+  last_modified: string | null;
+  path: string | null;
+  has_cover: number | null;
+  uuid: string | null;
+  authors: string | null;
+  tags: string | null;
+  series: string | null;
+  formats: string | null;
+  comment: string | null;
+  publisher: string | null;
+  languages: string | null;
+  rating: number | null;
+};
+
+const BOOK_DETAIL_QUERY = `
+  SELECT
+    b.id,
+    b.title,
+    b.author_sort,
+    b.timestamp,
+    b.pubdate,
+    b.series_index,
+    b.last_modified,
+    b.path,
+    b.has_cover,
+    b.uuid,
+    (
+      SELECT GROUP_CONCAT(a.name, '||')
+      FROM authors a
+      JOIN books_authors_link bal ON a.id = bal.author
+      WHERE bal.book = b.id
+    ) AS authors,
+    (
+      SELECT GROUP_CONCAT(t.name, '||')
+      FROM tags t
+      JOIN books_tags_link btl ON t.id = btl.tag
+      WHERE btl.book = b.id
+    ) AS tags,
+    (
+      SELECT s.name FROM series s
+      JOIN books_series_link bsl ON s.id = bsl.series
+      WHERE bsl.book = b.id LIMIT 1
+    ) AS series,
+    (
+      SELECT GROUP_CONCAT(d.format, '||')
+      FROM data d WHERE d.book = b.id
+    ) AS formats,
+    (
+      SELECT c.text FROM comments c
+      WHERE c.book = b.id LIMIT 1
+    ) AS comment,
+    (
+      SELECT p.name FROM publishers p
+      JOIN books_publishers_link bpl ON p.id = bpl.publisher
+      WHERE bpl.book = b.id LIMIT 1
+    ) AS publisher,
+    (
+      SELECT GROUP_CONCAT(l.lang_code, '||')
+      FROM languages l
+      JOIN books_languages_link bll ON l.id = bll.lang_code
+      WHERE bll.book = b.id
+    ) AS languages,
+    (
+      SELECT r.rating FROM ratings r
+      JOIN books_ratings_link brl ON r.id = brl.rating
+      WHERE brl.book = b.id LIMIT 1
+    ) AS rating
+  FROM books b
+  WHERE b.id = ?
+`;
 
 const BOOKS_QUERY = `
   SELECT
@@ -84,7 +164,7 @@ function copyMetadataToCache(sourceUri: string, libraryId: string) {
   return destination.uri;
 }
 
-function buildCoverUri(
+export function buildCoverUri(
   library: MobileLibrary,
   bookPath: string | null,
   hasCover: boolean
@@ -203,6 +283,85 @@ export async function readBookCountFromMetadata(metadataUri: string) {
       "SELECT COUNT(*) as count FROM books"
     );
     return row?.count ?? 0;
+  } finally {
+    await db.closeAsync();
+  }
+}
+
+export async function readBookDetailFromMetadata(
+  library: MobileLibrary,
+  calibreBookId: number
+): Promise<BookDetail | null> {
+  const metadataFile = new FSFile(library.metadataUri);
+  const bytes = await metadataFile.bytes();
+  const db = await SQLite.deserializeDatabaseAsync(bytes);
+
+  try {
+    const row = await db.getFirstAsync<BookDetailRow>(BOOK_DETAIL_QUERY, calibreBookId);
+    if (!row) {
+      return null;
+    }
+
+    const formatRows = await db.getAllAsync<{ format: string; uncompressed_size: number | null }>(
+      "SELECT format, uncompressed_size FROM data WHERE book = ? ORDER BY format",
+      calibreBookId
+    );
+
+    const identifierRows = await db.getAllAsync<{ type: string; val: string }>(
+      "SELECT type, val FROM identifiers WHERE book = ? ORDER BY type",
+      calibreBookId
+    );
+
+    const authors = splitConcat(row.authors);
+    const tags = splitConcat(row.tags);
+    const rawFormats = splitConcat(row.formats);
+    const formats = rawFormats.map((f) => f.toUpperCase());
+    const languages = splitConcat(row.languages);
+
+    const seriesIndexRaw = row.series_index;
+    const seriesIndex =
+      seriesIndexRaw !== null && seriesIndexRaw !== undefined && !Number.isNaN(Number(seriesIndexRaw))
+        ? Number(seriesIndexRaw)
+        : null;
+
+    const formatSizes: FormatSize[] = formatRows.map((r) => ({
+      format: r.format.toUpperCase(),
+      sizeBytes: Math.trunc(Number(r.uncompressed_size ?? 0)),
+    }));
+
+    const identifiers: BookIdentifier[] = identifierRows.map((r) => ({
+      idType: r.type,
+      value: r.val,
+    }));
+
+    const ratingRaw = row.rating;
+    const rating =
+      ratingRaw !== null && ratingRaw !== undefined && !Number.isNaN(Number(ratingRaw))
+        ? Math.round(Number(ratingRaw))
+        : null;
+
+    return {
+      id: row.id,
+      title: row.title || "未命名书籍",
+      authorSort: row.author_sort ?? "",
+      authors,
+      tags,
+      series: row.series,
+      seriesIndex,
+      formats,
+      hasCover: (row.has_cover ?? 0) !== 0,
+      path: row.path ?? "",
+      timestamp: row.timestamp,
+      pubdate: row.pubdate,
+      lastModified: row.last_modified,
+      comment: row.comment,
+      publisher: row.publisher,
+      languages,
+      rating,
+      uuid: row.uuid,
+      formatSizes,
+      identifiers,
+    } satisfies BookDetail;
   } finally {
     await db.closeAsync();
   }
