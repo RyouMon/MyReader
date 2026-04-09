@@ -1,43 +1,59 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Icon, Label, NativeTabs, VectorIcon } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 import { useThemePalette } from "@/src/design/tokens";
+
+const Trigger = NativeTabs.Trigger;
 
 export default function TabsLayout() {
   const palette = useThemePalette();
 
   return (
     <NativeTabs tintColor={palette.primary} backgroundColor={palette.surface}>
-      <NativeTabs.Trigger name="home">
-        <Icon
+      <Trigger name="home">
+        <Trigger.Icon
           sf={{ default: "house", selected: "house.fill" }}
-          androidSrc={{
-            default: <VectorIcon family={MaterialIcons} name="home-filled" />,
-            selected: <VectorIcon family={MaterialIcons} name="home-filled" />,
+          src={{
+            default: (
+              <Trigger.VectorIcon family={MaterialIcons} name="home-filled" />
+            ),
+            selected: (
+              <Trigger.VectorIcon family={MaterialIcons} name="home-filled" />
+            ),
           }}
         />
-        <Label>主页</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="library">
-        <Icon
+        <Trigger.Label>主页</Trigger.Label>
+      </Trigger>
+      <Trigger name="library">
+        <Trigger.Icon
           sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
-          androidSrc={{
-            default: <VectorIcon family={MaterialIcons} name="library-books" />,
-            selected: <VectorIcon family={MaterialIcons} name="library-books" />,
+          src={{
+            default: (
+              <Trigger.VectorIcon
+                family={MaterialIcons}
+                name="library-books"
+              />
+            ),
+            selected: (
+              <Trigger.VectorIcon
+                family={MaterialIcons}
+                name="library-books"
+              />
+            ),
           }}
         />
-        <Label>书库</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="settings">
-        <Icon
+        <Trigger.Label>书库</Trigger.Label>
+      </Trigger>
+      <Trigger name="settings">
+        <Trigger.Icon
           sf={{ default: "gearshape", selected: "gearshape.fill" }}
-          androidSrc={{
-            default: <VectorIcon family={MaterialIcons} name="settings" />,
-            selected: <VectorIcon family={MaterialIcons} name="settings" />,
+          src={{
+            default: <Trigger.VectorIcon family={MaterialIcons} name="settings" />,
+            selected: <Trigger.VectorIcon family={MaterialIcons} name="settings" />,
           }}
         />
-        <Label>设置</Label>
-      </NativeTabs.Trigger>
+        <Trigger.Label>设置</Trigger.Label>
+      </Trigger>
     </NativeTabs>
   );
 }

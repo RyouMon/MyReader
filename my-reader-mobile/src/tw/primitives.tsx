@@ -15,9 +15,19 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
+const cssElement = useCssElement as unknown as (
+  Component: React.ComponentType<any>,
+  props: any,
+  mapping: any
+) => any;
+
+const RouterLinkForCss = RouterLink as React.ComponentType<
+  LinkProps & { className?: string }
+>;
+
 export const Link = Object.assign(
   (props: LinkProps & { className?: string }) => {
-    return useCssElement(RouterLink, props, { className: "style" });
+    return cssElement(RouterLinkForCss, props, { className: "style" });
   },
   {
     resolveHref: RouterLink.resolveHref,
@@ -38,24 +48,26 @@ export type ViewProps = React.ComponentProps<typeof RNView> & {
 };
 
 export const View = (props: ViewProps) => {
-  return useCssElement(RNView, props, { className: "style" });
+  return cssElement(RNView, props, { className: "style" });
 };
 View.displayName = "CSS(View)";
 
 export const Text = (
   props: React.ComponentProps<typeof RNText> & { className?: string }
 ) => {
-  return useCssElement(RNText, props, { className: "style" });
+  return cssElement(RNText, props, { className: "style" });
 };
 Text.displayName = "CSS(Text)";
 
-export const ScrollView = (
-  props: React.ComponentProps<typeof RNScrollView> & {
-    className?: string;
-    contentContainerClassName?: string;
-  }
-) => {
-  return useCssElement(RNScrollView, props, {
+type ScrollViewCssProps = React.ComponentProps<typeof RNScrollView> & {
+  className?: string;
+  contentContainerClassName?: string;
+};
+
+const RNScrollViewForCss = RNScrollView as React.ComponentType<ScrollViewCssProps>;
+
+export const ScrollView = (props: ScrollViewCssProps) => {
+  return cssElement(RNScrollViewForCss, props, {
     className: "style",
     contentContainerClassName: "contentContainerStyle",
   });
@@ -65,14 +77,14 @@ ScrollView.displayName = "CSS(ScrollView)";
 export const Pressable = (
   props: React.ComponentProps<typeof RNPressable> & { className?: string }
 ) => {
-  return useCssElement(RNPressable, props, { className: "style" });
+  return cssElement(RNPressable, props, { className: "style" });
 };
 Pressable.displayName = "CSS(Pressable)";
 
 export const TextInput = (
   props: React.ComponentProps<typeof RNTextInput> & { className?: string }
 ) => {
-  return useCssElement(RNTextInput, props, { className: "style" });
+  return cssElement(RNTextInput, props, { className: "style" });
 };
 TextInput.displayName = "CSS(TextInput)";
 
@@ -85,7 +97,7 @@ type AnimatedScrollViewProps = React.ComponentProps<
 };
 
 export function AnimatedScrollView(props: AnimatedScrollViewProps) {
-  return useCssElement(
+  return cssElement(
     Animated.ScrollView as React.ComponentType<Record<string, unknown>>,
     props,
     {
@@ -117,6 +129,6 @@ export const TouchableHighlight = (
     className?: string;
   }
 ) => {
-  return useCssElement(XXTouchableHighlight, props, { className: "style" });
+  return cssElement(XXTouchableHighlight, props, { className: "style" });
 };
 TouchableHighlight.displayName = "CSS(TouchableHighlight)";
