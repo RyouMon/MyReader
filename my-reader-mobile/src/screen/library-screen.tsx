@@ -75,6 +75,7 @@ export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
         <Stack.Screen
           options={{
             title: "书库",
+            headerLargeTitle: true,
           }}
         />
         <Screen>
@@ -89,7 +90,7 @@ export default function LibraryScreen({ libraryId }: { libraryId?: string }) {
       <Stack.Screen
         options={{
           title: selectedLibrary.name,
-          headerLargeTitle: false,
+          headerLargeTitle: true,
           headerRight: () => (
               <RoundIconButton
                 label="排序与视图"
