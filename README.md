@@ -131,8 +131,3 @@ pnpm test:e2e:ui
 
 - [架构文档](./ARCHITECTURE.md) — 系统架构、模块设计与技术决策
 
----
-
-## 许可证
-
-[AGPL-3.0](./LICENSE)
