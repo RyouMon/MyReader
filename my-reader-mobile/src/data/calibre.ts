@@ -367,6 +367,50 @@ export async function readBookDetailFromMetadata(
   }
 }
 
+/**
+ * Reads a book file from a local Calibre library and returns raw bytes.
+ *
+ * Calibre stores files at: `{library.path}/{book.path}/{data.name}.{format_lower}`
+ * where `data.name` comes from the `data` table (typically matches the book title).
+ */
+export async function readBookFileBytes(
+  library: MobileLibrary,
+  calibreBookId: number,
+  format: string
+): Promise<Uint8Array> {
+  const metadataFile = new FSFile(library.metadataUri);
+  const metadataBytes = await metadataFile.bytes();
+  const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
+
+  try {
+    const row = await db.getFirstAsync<{ path: string; name: string }>(
+      "SELECT b.path, d.name FROM books b JOIN data d ON d.book = b.id WHERE b.id = ? AND UPPER(d.format) = ?",
+      [calibreBookId, format.toUpperCase()]
+    );
+
+    if (!row) {
+      throw new Error(`格式 ${format} 在书库中未找到 (bookId=${calibreBookId})`);
+    }
+
+    const segments = row.path.split("/").filter(Boolean);
+    const fileName = `${row.name}.${format.toLowerCase()}`;
+    const bookFile = new FSFile(new Directory(library.path), ...segments, fileName);
+
+    if (!bookFile.exists) {
+      throw new Error(
+        `书籍文件不存在: ${fileName}\n` +
+        `完整路径: ${bookFile.uri}\n` +
+        `书库路径: ${library.path}\n` +
+        `书内路径: ${row.path}`
+      );
+    }
+
+    return bookFile.bytes();
+  } finally {
+    await db.closeAsync();
+  }
+}
+
 export async function readBooksFromLibrary(library: MobileLibrary): Promise<BookItem[]> {
   const metadataFile = new FSFile(library.metadataUri);
   const bytes = await metadataFile.bytes();

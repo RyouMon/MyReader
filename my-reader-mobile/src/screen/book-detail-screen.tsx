@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import type { BookDetail } from "my-reader-tools/types/book";
 import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/rendition/utils";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -511,6 +511,14 @@ export default function BookDetailScreen() {
           <Pressable
             accessibilityRole="button"
             disabled={!canReadInApp}
+            onPress={() => {
+              if (canReadInApp && selectedFormat) {
+                router.push({
+                  pathname: "/reader/[id]",
+                  params: { id, format: selectedFormat },
+                });
+              }
+            }}
             className="min-h-14 flex-1 flex-row items-center justify-between rounded-[20px] px-4"
             style={{
               backgroundColor: canReadInApp ? palette.primary : palette.surface,
