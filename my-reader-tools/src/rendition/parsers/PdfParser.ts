@@ -3,6 +3,7 @@ import {
   GlobalWorkerOptions,
   type PDFDocumentProxy,
 } from "pdfjs-dist"
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 
 import type {
   BookMetadata,
@@ -19,10 +20,7 @@ let workerConfigured = false
 
 function ensureWorker() {
   if (workerConfigured) return
-  GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString()
+  GlobalWorkerOptions.workerSrc = pdfWorkerUrl
   workerConfigured = true
 }
 
