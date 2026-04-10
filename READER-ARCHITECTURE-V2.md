@@ -679,3 +679,516 @@ V1 的问题之一是：文档里看起来已经跨平台解耦，但代码里�
 **把阅读器拆成 Headless Core、Format Adapters、Layout Engines 和 Platform Surfaces，让固定版式与浮动版式分别沿着最合适的性能路径演进。**
 
 这也是后续桌面端稳定演进、移动端补齐 EPUB 阅读、以及长期统一阅读器能力的基础。
+
+---
+
+## 五、基于当前仓库的迁移计划
+
+这一节不描述理想架构本身，而是把 V2 如何从当前仓库逐步落地写成一个可执行迁移计划。迁移原则如下：
+
+1. 优先做“边界拆分”，再做“能力替换”。
+2. 优先保证桌面端不回退，再逐步补齐移动端。
+3. 固定版式与浮动版式分开迁移，避免互相阻塞。
+4. 先提炼兼容层，再迁移调用方，最后删除旧实现。
+
+### 5.1 当前仓库的起点
+
+当前仓库里与阅读器重构最相关的模块如下：
+
+#### `my-reader-tools`
+
+当前核心文件：
+
+1. `my-reader-tools/src/rendition/BookReader.ts`
+2. `my-reader-tools/src/rendition/types.ts`
+3. `my-reader-tools/src/rendition/pagination/ProgressivePaginator.ts`
+4. `my-reader-tools/src/rendition/parsers/EpubParser.ts`
+5. `my-reader-tools/src/rendition/parsers/PdfParser.ts`
+6. `my-reader-tools/src/rendition/parsers/ComicParser.ts`
+7. `my-reader-tools/src/progress/BookAnchor.ts`
+8. `my-reader-tools/src/progress/epubBookAnchor.ts`
+9. `my-reader-tools/src/progress/reflowViewportAnchor.ts`
+
+#### `my-reader`
+
+桌面端阅读器主入口和关键 Surface：
+
+1. `my-reader/src/hooks/reader/useReader.ts`
+2. `my-reader/src/components/reader/ReadBookPage.tsx`
+3. `my-reader/src/components/reader/fixed-layout/FixedLayoutReader.tsx`
+4. `my-reader/src/components/reader/fixed-layout/FixedLayoutScrollViewport.tsx`
+5. `my-reader/src/components/reader/reflowable/ReflowableReader.tsx`
+6. `my-reader/src/components/reader/reflowable/ReflowableContent.tsx`
+7. `my-reader/src/components/reader/reflowable/ReflowableScrollContent.tsx`
+
+#### `my-reader-mobile`
+
+移动端当前阅读器入口：
+
+1. `my-reader-mobile/src/screen/reader-screen.tsx`
+2. `my-reader-mobile/src/components/reader/FixedLayoutDOMReader.tsx`
+3. `my-reader-mobile/app/reader/[id].tsx`
+
+这些文件构成了当前 V1 实现的真实边界，也是迁移计划的落点。
+
+---
+
+### 5.2 迁移阶段总览
+
+迁移建议拆成 6 个阶段：
+
+1. 阶段 A：提炼 V2 核心边界，但保留旧 API 兼容层。
+2. 阶段 B：拆出 DOM reflow engine，桌面端改为新边界调用。
+3. 阶段 C：拆出 fixed layout engine 与资源缓存层。
+4. 阶段 D：移动端 fixed layout 改为原生 Surface。
+5. 阶段 E：移动端接入 reflowable WebView Surface。
+6. 阶段 F：删除旧实现、收口目录、更新调用方。
+
+每个阶段都应满足“单独可提交、可验证、不强依赖后续阶段”的要求。
+
+---
+
+### 5.3 阶段 A：提炼 Reader Core，保留兼容层
+
+#### 目标
+
+先不改变桌面端和移动端的 UI Surface，只把当前 `BookReader` 里真正属于 Core 的职责抽出来，建立 V2 的骨架。
+
+#### 目标产物
+
+在 `my-reader-tools/src/` 下新增目录：
+
+```text
+reader-core/
+  ReaderSession.ts
+  NavigationController.ts
+  ProgressController.ts
+  ResourceCache.ts
+  types.ts
+```
+
+#### 当前文件处理建议
+
+1. `my-reader-tools/src/rendition/BookReader.ts`
+   保留为兼容层入口，但内部逐步委托给 `ReaderSession`。
+
+2. `my-reader-tools/src/rendition/types.ts`
+   继续保留公开类型，但把状态类接口逐步迁到 `reader-core/types.ts`。
+
+3. `my-reader/src/hooks/reader/useReader.ts`
+   第一阶段暂不改接口，只把内部实例从“直持有 `BookReader`”改成“可兼容 `ReaderSession` 封装”。
+
+#### 建议步骤
+
+1. 新建 `ReaderSession` 的最小实现，只包含：
+   `open`
+   `close`
+   `getSnapshot`
+   `gotoChapter`
+   `gotoPageInChapter`
+   `gotoNext`
+   `gotoPrev`
+
+2. 新建 `ReaderSnapshot`、`OpenBookRequest`、`OpenBookResult` 等类型。
+
+3. 把 `BookReader` 中以下职责搬到 `ReaderSession`：
+   当前章节索引
+   当前章内页偏移
+   当前总页数
+   当前进度快照
+   章节切换与页切换控制
+
+4. `BookReader` 暂时保留旧方法名，内部调用 `ReaderSession`，确保桌面端现有逻辑不需要一次性全改。
+
+#### 文件级调整建议
+
+1. 新增：`my-reader-tools/src/reader-core/types.ts`
+2. 新增：`my-reader-tools/src/reader-core/ReaderSession.ts`
+3. 新增：`my-reader-tools/src/reader-core/NavigationController.ts`
+4. 新增：`my-reader-tools/src/reader-core/ProgressController.ts`
+5. 新增：`my-reader-tools/src/reader-core/ResourceCache.ts`
+6. 更新：`my-reader-tools/src/rendition/BookReader.ts`
+7. 更新：`my-reader-tools/src/rendition/index.ts`
+
+#### 验收标准
+
+1. 桌面端阅读器行为不变。
+2. `useReader.ts` 仍能正常驱动 fixed/reflow 两种模式。
+3. `BookReader` 内部状态字段显著减少，不再承担所有职责。
+
+---
+
+### 5.4 阶段 B：拆出 DomReflowEngine，桌面端 reflow 改为新边界
+
+#### 目标
+
+把当前 DOM 测量分页逻辑从 `BookReader` 中拆出来，形成独立 `DomReflowEngine`，让“核心状态机”和“DOM 排版测量”解耦。
+
+#### 当前文件处理建议
+
+1. `my-reader-tools/src/rendition/pagination/ProgressivePaginator.ts`
+   拆为：
+   `layout-engines/reflow/DomReflowEngine.ts`
+   `layout-engines/reflow/DomBoundaryMapper.ts`
+   `layout-engines/reflow/DomSliceRenderer.ts`
+
+2. `my-reader-tools/src/rendition/BookReader.ts`
+   删除对 `HTMLDivElement measureHost` 的直接测量控制，只保留对 layout result 的消费。
+
+3. `my-reader/src/components/reader/reflowable/ReflowableContent.tsx`
+   从“直接依赖 `BookReader.layout()` 的 DOM 语义”改为“依赖 `DomReflowEngine` 输出结果”。
+
+#### 建议步骤
+
+1. 新建 `DomReflowEngine` 接口与实现。
+2. 把以下函数迁出 `ProgressivePaginator.ts`：
+   `layoutTextChapterAtMeasureHost`
+   `renderTextChapterPage`
+   boundary 映射和样式注入逻辑
+
+3. `ReaderSession` 或兼容层 `BookReader` 改为只保存 `ReflowLayoutResult`，不直接管理 DOM 节点。
+
+4. 桌面端 `ReflowableContent.tsx` 和 `ReflowableScrollContent.tsx` 改为通过新 engine 渲染分页视图和滚动视图。
+
+#### 文件级调整建议
+
+1. 新增：`my-reader-tools/src/layout-engines/reflow/DomReflowEngine.ts`
+2. 新增：`my-reader-tools/src/layout-engines/reflow/DomBoundaryMapper.ts`
+3. 新增：`my-reader-tools/src/layout-engines/reflow/DomSliceRenderer.ts`
+4. 新增：`my-reader-tools/src/layout-engines/reflow/types.ts`
+5. 更新：`my-reader-tools/src/rendition/pagination/ProgressivePaginator.ts`
+6. 更新：`my-reader-tools/src/rendition/BookReader.ts`
+7. 更新：`my-reader/src/components/reader/reflowable/ReflowableContent.tsx`
+8. 更新：`my-reader/src/components/reader/reflowable/ReflowableReader.tsx`
+9. 更新：`my-reader/src/hooks/reader/useReader.ts`
+
+#### 验收标准
+
+1. 桌面端 EPUB 分页与滚动阅读行为保持一致。
+2. DOM 测量逻辑不再散落在 `BookReader` 内部。
+3. 后续移动端可在不依赖 `BookReader.layout(measureHost)` 的前提下接入 reflow。
+
+---
+
+### 5.5 阶段 C：拆出 FixedLayoutEngine 与 ResourceCache
+
+#### 目标
+
+为固定版式建立真正适合性能优化的路径，把“页窗口策略”和“资源缓存策略”从解析器内部抽出来。
+
+#### 当前文件处理建议
+
+1. `my-reader-tools/src/rendition/parsers/PdfParser.ts`
+   保留文档解析与单页资源能力，但不再独自承担完整缓存策略。
+
+2. `my-reader-tools/src/rendition/parsers/ComicParser.ts`
+   同上。
+
+3. `my-reader/src/components/reader/fixed-layout/FixedLayoutReader.tsx`
+   逐步改为消费 `FixedViewportState`。
+
+4. `my-reader/src/components/reader/fixed-layout/FixedLayoutScrollViewport.tsx`
+   改为基于 `ResourceCache + FixedLayoutEngine` 获取 visible/preload 页面。
+
+#### 建议步骤
+
+1. 在 `my-reader-tools` 新建 `layout-engines/fixed/FixedLayoutEngine.ts`。
+
+2. 定义：
+
+```ts
+interface FixedPageResource {
+  index: number
+  uri: string
+  width?: number
+  height?: number
+}
+```
+
+3. 让 `PdfAdapter` / `ComicAdapter` 暴露：
+   `getFixedPage(index)`
+   `prefetchFixedPages(indexes)`
+   `releaseFixedPages(indexes)`
+
+4. `ResourceCache` 开始负责：
+   页资源 LRU
+   邻近页预取
+   超出窗口释放
+
+5. 桌面端 fixed layout 先改用新 engine，但视觉行为不变。
+
+#### 文件级调整建议
+
+1. 新增：`my-reader-tools/src/layout-engines/fixed/FixedLayoutEngine.ts`
+2. 更新：`my-reader-tools/src/reader-core/ResourceCache.ts`
+3. 更新：`my-reader-tools/src/rendition/parsers/PdfParser.ts`
+4. 更新：`my-reader-tools/src/rendition/parsers/ComicParser.ts`
+5. 更新：`my-reader/src/components/reader/fixed-layout/FixedLayoutReader.tsx`
+6. 更新：`my-reader/src/components/reader/fixed-layout/FixedLayoutScrollViewport.tsx`
+7. 更新：`my-reader/src/hooks/reader/useReader.ts`
+
+#### 验收标准
+
+1. 桌面端 fixed layout 页面切换行为不回退。
+2. 当前页及邻近页资源可以提前预取。
+3. 页资源缓存不再只散落在 parser 内部。
+
+---
+
+### 5.6 阶段 D：移动端 fixed layout 切到原生 Surface
+
+#### 目标
+
+用 React Native 原生实现替换当前 `FixedLayoutDOMReader`，优先拿到移动端最明显的性能收益。
+
+#### 当前文件处理建议
+
+1. `my-reader-mobile/src/components/reader/FixedLayoutDOMReader.tsx`
+   作为过渡实现保留，但不再继续增强。
+
+2. 新建：
+
+```text
+my-reader-mobile/src/components/reader/fixed/
+  MobileFixedReader.tsx
+  FixedPagerView.tsx
+  FixedScrollView.tsx
+  PageCell.tsx
+```
+
+3. `my-reader-mobile/src/screen/reader-screen.tsx`
+   改为根据 `layoutMode` 选择 `MobileFixedReader`。
+
+#### 建议步骤
+
+1. 先保持移动端仍只支持 PDF/CBZ，但渲染路径改为 React Native 原生。
+
+2. `ReaderScreen` 仍负责：
+   书籍定位
+   文件 URI 获取
+   加载态
+   顶层 chrome
+
+3. `MobileFixedReader` 负责：
+   横向分页或连续滚动
+   调用 `FixedLayoutEngine`
+   消费 `ResourceCache`
+   页窗口同步
+
+4. `PageCell` 只负责基于 `expo-image` 显示单页图片。
+
+5. 把当前 `gotoPageCommand`、TOC 跳转、进度显示迁到新的固定版式 Surface 中。
+
+#### 文件级调整建议
+
+1. 新增：`my-reader-mobile/src/components/reader/fixed/MobileFixedReader.tsx`
+2. 新增：`my-reader-mobile/src/components/reader/fixed/FixedPagerView.tsx`
+3. 新增：`my-reader-mobile/src/components/reader/fixed/FixedScrollView.tsx`
+4. 新增：`my-reader-mobile/src/components/reader/fixed/PageCell.tsx`
+5. 更新：`my-reader-mobile/src/screen/reader-screen.tsx`
+6. 保留：`my-reader-mobile/src/components/reader/FixedLayoutDOMReader.tsx`
+
+#### 验收标准
+
+1. 移动端 fixed layout 不再依赖 `expo/dom`。
+2. 翻页、目录跳转、相邻页切换明显更顺滑。
+3. 内存峰值和翻页等待时间优于旧实现。
+
+---
+
+### 5.7 阶段 E：移动端接入 reflowable WebView Surface
+
+#### 目标
+
+在不引入原生排版引擎的前提下，尽快补齐移动端 EPUB 阅读能力。
+
+#### 当前文件处理建议
+
+1. `my-reader-mobile/src/screen/reader-screen.tsx`
+   去掉“非 PDF/CBZ 一律不支持”的分支逻辑，改为根据 `layoutMode` 分流。
+
+2. 新建：
+
+```text
+my-reader-mobile/src/components/reader/reflow/
+  MobileReflowReader.tsx
+  ReflowWebViewBridge.tsx
+  ReflowChapterWindow.ts
+```
+
+3. `my-reader-tools` 中已拆出的 `DomReflowEngine` 通过 WebView 适配复用。
+
+#### 建议步骤
+
+1. `ReaderScreen` 打开 EPUB 后，不再直接报错，而是进入 `MobileReflowReader`。
+
+2. `MobileReflowReader` 外层负责：
+   顶栏、底栏、目录、设置、亮度、主题变量、进度同步。
+
+3. `ReflowWebViewBridge` 负责：
+   注入 HTML / CSS
+   回传滚动位置
+   响应 anchor 跳转
+   内部链接事件上报
+
+4. `ReflowChapterWindow` 控制章节窗口，推荐只保留：
+   `current - 1`
+   `current`
+   `current + 1`
+
+5. 首版默认只支持滚动阅读模式；分页模式可后续再接。
+
+#### 文件级调整建议
+
+1. 新增：`my-reader-mobile/src/components/reader/reflow/MobileReflowReader.tsx`
+2. 新增：`my-reader-mobile/src/components/reader/reflow/ReflowWebViewBridge.tsx`
+3. 新增：`my-reader-mobile/src/components/reader/reflow/ReflowChapterWindow.ts`
+4. 更新：`my-reader-mobile/src/screen/reader-screen.tsx`
+5. 更新：`my-reader-mobile/src/data/calibre.ts`
+6. 视情况新增：移动端 reflow 设置 store / hook
+
+#### 验收标准
+
+1. 移动端可以打开 EPUB。
+2. 续读恢复可用。
+3. TOC 跳转和章内滚动同步可用。
+4. 不采用“全书一次性加载章节”的实现方式。
+
+---
+
+### 5.8 阶段 F：删除旧实现、收口导出、更新文档
+
+#### 目标
+
+在新路径稳定后，移除 V1 遗留兼容实现，减少维护成本。
+
+#### 需要清理的内容
+
+1. `BookReader` 中仅用于兼容旧 UI 的方法。
+2. `ProgressivePaginator.ts` 中已迁走的 DOM 渲染/测量逻辑。
+3. `my-reader-mobile/src/components/reader/FixedLayoutDOMReader.tsx`。
+4. `reader-screen.tsx` 里与旧 fixed DOM reader 强绑定的状态字段。
+
+#### 同步更新内容
+
+1. `my-reader-tools/src/rendition/index.ts` 导出整理。
+2. `README` / 架构文档更新。
+3. 视情况补充桌面端和移动端阅读器的验证说明。
+
+#### 验收标准
+
+1. 旧路径不再是主路径。
+2. 导出目录清晰，调用方不再依赖过时 API。
+3. 文档与实现一致。
+
+---
+
+### 5.9 每个阶段的风险点与控制策略
+
+#### 风险 1：桌面端 reflow 行为回退
+
+原因：分页切片、anchor 对齐、内部链接跳转逻辑较复杂。
+
+控制策略：
+
+1. 阶段 B 只做边界迁移，不做功能增强。
+2. 先保证现有桌面端行为一致，再继续移动端接入。
+
+#### 风险 2：移动端 fixed layout 切原生后功能不全
+
+原因：旧实现把很多目录、跳页、状态同步逻辑写在 `ReaderScreen` 和 DOM reader 的组合里。
+
+控制策略：
+
+1. 先保证“单页翻页 + TOC 跳转 + 进度显示”。
+2. 再逐步补连续滚动、缩放模式等扩展能力。
+
+#### 风险 3：移动端 reflow WebView 与桌面端 reflow 行为不完全一致
+
+原因：WebView 环境、viewport 行为、滚动事件节奏与桌面 DOM 不同。
+
+控制策略：
+
+1. 首版只承诺滚动阅读可用。
+2. 分页阅读模式放到后续阶段。
+3. 统一通过 `BookAnchor` 而不是 UI 偏移量做持久化。
+
+#### 风险 4：迁移期间类型和导出混乱
+
+原因：V1 与 V2 将短期并存。
+
+控制策略：
+
+1. 新目录使用稳定命名：`reader-core`、`layout-engines`、`format-adapters`。
+2. 旧目录保留兼容层，但通过注释标明过渡状态。
+
+---
+
+### 5.10 推荐实施顺序
+
+如果要结合当前仓库的开发成本、风险和收益，建议按下面顺序执行：
+
+1. 先做阶段 A：拆 Reader Core 骨架。
+2. 再做阶段 B：拆 DomReflowEngine，稳住桌面端。
+3. 然后做阶段 C：建立 fixed layout engine 和缓存层。
+4. 接着做阶段 D：移动端 fixed layout 原生化。
+5. 再做阶段 E：移动端补 EPUB 阅读。
+6. 最后做阶段 F：清理旧实现。
+
+原因是：
+
+1. 阶段 A/B 解决的是架构边界问题，是后续所有演进的基础。
+2. 阶段 D 的收益最大，能最快改善移动端当前体验。
+3. 阶段 E 虽然对产品价值很高，但应建立在前面边界已稳定的前提上。
+
+---
+
+### 5.11 阶段性里程碑定义
+
+#### 里程碑 M1：Core 完成拆分
+
+标志：
+
+1. `ReaderSession` 存在并承担主要控制职责。
+2. `BookReader` 退化为兼容层或 facade。
+
+#### 里程碑 M2：桌面端完成新边界接入
+
+标志：
+
+1. 桌面端 fixed/reflow 两条 Surface 都通过新 engine / core 工作。
+2. 用户侧体验无明显回退。
+
+#### 里程碑 M3：移动端 fixed layout 原生化
+
+标志：
+
+1. `FixedLayoutDOMReader` 不再是主路径。
+2. 移动端 PDF/CBZ 阅读性能显著改善。
+
+#### 里程碑 M4：移动端 reflowable 可用
+
+标志：
+
+1. EPUB 可在移动端打开。
+2. TOC、续读、滚动阅读完成闭环。
+
+#### 里程碑 M5：V1 兼容层移除
+
+标志：
+
+1. 旧路径全部下线。
+2. 文档、目录和实现完全对齐。
+
+---
+
+### 5.12 最后建议
+
+这个迁移计划里，最重要的不是一次写完所有新模块，而是按阶段控制改动面。
+
+从当前仓库出发，最值得优先落地的两步是：
+
+1. 先把 `BookReader` 拆成 `ReaderSession + DomReflowEngine` 的边界。
+2. 然后尽快把移动端 fixed layout 从 `expo/dom` 切到 React Native 原生 Surface。
+
+这两步一旦完成，后续移动端 EPUB 接入和缓存优化都会顺很多，也能避免在旧架构上继续堆功能。
