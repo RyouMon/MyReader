@@ -1,26 +1,12 @@
 "use dom";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { BookReader } from "my-reader-tools/rendition/BookReader";
-import type {
-  ImageChapterData,
-  TocItem,
-} from "my-reader-tools/rendition/types";
+import type { ImageChapterData } from "my-reader-tools/rendition/types";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export type ReaderState = {
-  ready: boolean;
-  currentPage: number;
-  totalPages: number;
-  progress: number;
-  chapterTitle: string;
-  loading: boolean;
-  error: string | null;
-};
+import { flattenFixedToc } from "@/src/components/reader/reader-toc";
+import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
-export type ReaderTocItem = {
-  label: string;
-  pageIndex: number;
-};
 
 export default function FixedLayoutDOMReader({
   bookBase64,
@@ -41,6 +27,9 @@ export default function FixedLayoutDOMReader({
   gotoPageCommand?: number;
   dom?: import("expo/dom").DOMProps;
 }) {
+  void onRequestClose;
+  void dom;
+
   const readerRef = useRef<BookReader | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,7 +85,7 @@ export default function FixedLayoutDOMReader({
         setTotalPages(book.chapters.length);
         setCurrentPage(reader.curChapter);
 
-        const toc = flattenToc(book.toc, book.chapters.length);
+        const toc = flattenFixedToc(book.toc, book.chapters.length);
         onTocReady(toc);
 
         const ch = (await reader.getChapter(reader.curChapter)) as ImageChapterData;
@@ -179,7 +168,10 @@ export default function FixedLayoutDOMReader({
     <div style={styles.container}>
       {error ? (
         <div style={styles.errorContainer}>
-          <p style={styles.errorText}>{error}</p>
+          <div style={styles.errorCard}>
+            <p style={styles.errorTitle}>无法渲染</p>
+            <p style={styles.errorText}>{error}</p>
+          </div>
         </div>
       ) : imageUrl ? (
         <div style={styles.imageContainer} onClick={handleTap}>
@@ -197,30 +189,6 @@ export default function FixedLayoutDOMReader({
       ) : null}
     </div>
   );
-}
-
-function flattenToc(
-  toc: TocItem[],
-  totalPages: number,
-): ReaderTocItem[] {
-  if (toc.length > 0) {
-    const items: ReaderTocItem[] = [];
-    function walk(list: TocItem[]) {
-      for (const t of list) {
-        items.push({ label: t.label || `Page ${t.index + 1}`, pageIndex: t.index });
-        if (t.subitems?.length) walk(t.subitems);
-      }
-    }
-    walk(toc);
-    return items;
-  }
-  if (totalPages <= 20) {
-    return Array.from({ length: totalPages }, (_, i) => ({
-      label: `第 ${i + 1} 页`,
-      pageIndex: i,
-    }));
-  }
-  return [];
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -269,12 +237,30 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     width: "100%",
     height: "100%",
+    minHeight: "100vh",
     padding: 24,
+    boxSizing: "border-box",
+  },
+  errorCard: {
+    maxWidth: 400,
+    width: "100%",
+    padding: "22px 20px",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.12)",
+  },
+  errorTitle: {
+    color: "rgba(255,255,255,0.96)",
+    fontSize: 16,
+    fontWeight: 700,
+    textAlign: "center" as const,
+    margin: "0 0 10px 0",
   },
   errorText: {
-    color: "#ef4444",
+    color: "rgba(255,255,255,0.78)",
     fontSize: 14,
     textAlign: "center" as const,
-    lineHeight: 1.6,
+    lineHeight: 1.65,
+    margin: 0,
   },
 };

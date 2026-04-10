@@ -3,7 +3,6 @@ import {
   GlobalWorkerOptions,
   type PDFDocumentProxy,
 } from "pdfjs-dist"
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 
 import type {
   BookMetadata,
@@ -16,11 +15,56 @@ import type {
 
 const RENDER_SCALE = 2
 
+/** 与 package.json 中 pdfjs-dist 版本一致 */
+const PDFJS_DIST_VERSION = "5.5.207"
+
 let workerConfigured = false
+
+/**
+ * - **Vite（桌面 my-reader）**：用 `new URL(..., import.meta.url)` 指向 `pdfjs-dist` 的 worker，
+ *   由 Vite 打成独立 asset，可离线、无需 `?url`（Metro 不认 `?url`）。
+ * - **Metro / Expo（my-reader-mobile）**：`import.meta.url` 下的 node_modules 路径不可靠，改用 CDN worker。
+ * - **兜底**：任一侧解析失败时仍用 CDN，避免白屏。
+ */
+function resolvePdfWorkerSrc(): string {
+  if (shouldUseCdnPdfWorker()) {
+    return cdnPdfWorkerSrc()
+  }
+  try {
+    const href = new URL(
+      "../../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url,
+    ).href
+    if (href && href.length > 0) return href
+  } catch {
+    /* fall through */
+  }
+  return cdnPdfWorkerSrc()
+}
+
+function cdnPdfWorkerSrc(): string {
+  return `https://unpkg.com/pdfjs-dist@${PDFJS_DIST_VERSION}/build/pdf.worker.min.mjs`
+}
+
+function isExpoMetroRuntime(): boolean {
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process
+  return Boolean(proc?.env?.EXPO_OS)
+}
+
+/**
+ * Metro 不认 `?url`；部分 expo/dom WebView 里 `process.env.EXPO_OS` 可能未注入，再检测 `globalThis.expo`。
+ * 成立则走 CDN worker（需联网）。桌面 Vite 仍用相对 URL 以支持离线。
+ */
+function shouldUseCdnPdfWorker(): boolean {
+  if (isExpoMetroRuntime()) return true
+  const g = globalThis as { expo?: unknown }
+  return g.expo != null
+}
 
 function ensureWorker() {
   if (workerConfigured) return
-  GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+  GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc()
   workerConfigured = true
 }
 

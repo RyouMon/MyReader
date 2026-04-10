@@ -1,9 +1,7 @@
-import type { BookAnchor } from "../progress/BookAnchor"
 import { FixedLayoutEngine } from "../layout-engines/fixed/FixedLayoutEngine"
 import type { FixedViewportState } from "../layout-engines/fixed/types"
+import type { BookAnchor } from "../progress/BookAnchor"
 import { ComicParser } from "../rendition/parsers/ComicParser"
-import { EpubParser } from "../rendition/parsers/EpubParser"
-import { PdfParser } from "../rendition/parsers/PdfParser"
 import type {
   ChapterData,
   IParser,
@@ -61,7 +59,7 @@ export class ReaderSession {
   async open(input: OpenBookRequest): Promise<OpenBookResult> {
     this.close()
 
-    this.parserInstance = ReaderSession.createParser(input.format)
+    this.parserInstance = await ReaderSession.createParser(input.format)
     this.parsedBook = await this.parserInstance.parse(input.buffer)
     this.readyState = true
 
@@ -314,18 +312,22 @@ export class ReaderSession {
     }
   }
 
-  private static createParser(format: string): IParser {
+  private static async createParser(format: string): Promise<IParser> {
     switch (format.toUpperCase()) {
-      case "EPUB":
+      case "EPUB": {
+        const { EpubParser } = await import("../rendition/parsers/EpubParser")
         return new EpubParser()
+      }
       case "CBZ":
         return new ComicParser()
       case "CBR":
         throw new Error(
           "CBR（RAR 压缩）暂不支持客户端解压，请将漫画转为 CBZ（ZIP）后在书库中阅读。",
         )
-      case "PDF":
+      case "PDF": {
+        const { PdfParser } = await import("../rendition/parsers/PdfParser")
         return new PdfParser()
+      }
       default:
         throw new Error(`Unsupported format: ${format}`)
     }

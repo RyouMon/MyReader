@@ -61,10 +61,8 @@ export class ComicParser implements IParser {
     if (!img) throw new Error("Page index out of range: " + index)
 
     const mime = guessImageMime(img.name)
-    const url = URL.createObjectURL(
-      new Blob([img.data.slice()], { type: mime }),
-    )
-    this.blobUrls.push(url)
+    const bytes = img.data.slice()
+    const imageUrl = objectUrlOrDataUriForImage(bytes, mime, this.blobUrls)
 
     const page: ImageChapterData = {
       type: "image",
@@ -72,7 +70,7 @@ export class ComicParser implements IParser {
       title: `Page ${index + 1}`,
       href: img.name,
       contentWeight: 1,
-      imageUrl: url,
+      imageUrl,
     }
 
     return page
@@ -89,6 +87,47 @@ function isImageFile(name: string): boolean {
   if (name.startsWith("__MACOSX") || name.startsWith(".")) return false
   const ext = name.split(".").pop()?.toLowerCase() ?? ""
   return IMAGE_EXTS.has(ext)
+}
+
+/**
+ * Web / Tauri: blob URLs are efficient. React Native Hermes rejects
+ * `new Blob([ArrayBuffer|ArrayBufferView])` — fall back to a data URI.
+ */
+function objectUrlOrDataUriForImage(
+  bytes: Uint8Array,
+  mime: string,
+  blobUrls: string[],
+): string {
+  try {
+    const blob = new Blob([new Uint8Array(bytes)], { type: mime })
+    const url = URL.createObjectURL(blob)
+    blobUrls.push(url)
+    return url
+  } catch {
+    return `data:${mime};base64,${uint8ToBase64(bytes)}`
+  }
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const g = globalThis as typeof globalThis & {
+    Buffer?: {
+      from(
+        data: Uint8Array,
+      ): { toString(encoding: "base64"): string }
+    }
+  }
+  if (g.Buffer?.from) {
+    return g.Buffer.from(bytes).toString("base64")
+  }
+  const btoaFn = globalThis.btoa as ((s: string) => string) | undefined
+  if (typeof btoaFn === "function") {
+    let binary = ""
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]!)
+    }
+    return btoaFn(binary)
+  }
+  throw new Error("无法将漫画页编码为 Base64（缺少 btoa / Buffer）")
 }
 
 function guessImageMime(name: string): string {

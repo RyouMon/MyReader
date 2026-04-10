@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -24,10 +24,11 @@ import { downloadWebDavBookFileBytes } from "@/src/data/webdav";
 import { useLibraryStore } from "@/src/store/library-store";
 import { useAppStore } from "@/src/store/app-store";
 import type { WebDavDataSource } from "@/src/data/types";
-import FixedLayoutDOMReader, {
-  type ReaderState,
-  type ReaderTocItem,
-} from "@/src/components/reader/FixedLayoutDOMReader";
+import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+
+/** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
+const MobileFixedReader = lazy(async () => import("@/src/components/reader/fixed/MobileFixedReader"));
+const FixedLayoutDOMReader = lazy(async () => import("@/src/components/reader/FixedLayoutDOMReader"));
 
 type LoadState =
   | { status: "loading"; message: string }
@@ -199,28 +200,27 @@ export default function ReaderScreen() {
 
   if (loadState.status === "error") {
     return (
-      <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: palette.background }}>
+      <View style={[styles.errorScreen, { backgroundColor: palette.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Text className="text-base" style={{ color: palette.error, fontWeight: "600" }}>
-          加载失败
-        </Text>
-        <Text className="mt-2 text-center text-sm" style={{ color: palette.textMuted }}>
-          {loadState.message}
-        </Text>
-        <Pressable
-          className="mt-6 rounded-2xl px-6 py-3"
-          style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-          onPress={handleBack}
-        >
-          <Text className="text-sm" style={{ color: palette.text, fontWeight: "600" }}>
-            返回
-          </Text>
-        </Pressable>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.errorCard}>
+          <Text style={styles.errorTitle}>无法打开书籍</Text>
+          <Text style={styles.errorBody}>{loadState.message}</Text>
+          <Pressable
+            style={[styles.errorBackBtn, { borderColor: "rgba(255,255,255,0.2)" }]}
+            onPress={handleBack}
+          >
+            <Text style={styles.errorBackBtnText}>返回</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   const title = loadState.title;
+  const fmtUpper = loadState.format.toUpperCase();
+  /** CBZ：原生 Surface（expo-image + 分页列表）。PDF：仍依赖 DOM 内 canvas/pdf.js，暂用 expo/dom。 */
+  const useNativeFixedSurface = fmtUpper === "CBZ";
 
   return (
     <View className="flex-1" style={{ backgroundColor: "#111" }}>
@@ -228,19 +228,39 @@ export default function ReaderScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <Pressable style={StyleSheet.absoluteFill} onPress={toggleChrome}>
-        <FixedLayoutDOMReader
-          bookBase64={loadState.bookBase64}
-          format={loadState.format}
-          initialPage={loadState.initialPage}
-          onStateChange={handleStateChange}
-          onTocReady={handleTocReady}
-          onRequestClose={handleRequestClose}
-          gotoPageCommand={gotoPageCmd}
-          dom={{
-            style: { flex: 1, width: screenWidth, height: screenHeight },
-            scrollEnabled: false,
-          }}
-        />
+        <Suspense
+          fallback={
+            <View className="flex-1 items-center justify-center" style={{ backgroundColor: "#111" }}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          }
+        >
+          {useNativeFixedSurface ? (
+            <MobileFixedReader
+              bookBase64={loadState.bookBase64}
+              format={loadState.format}
+              initialPage={loadState.initialPage}
+              onStateChange={handleStateChange}
+              onTocReady={handleTocReady}
+              onRequestClose={handleRequestClose}
+              gotoPageCommand={gotoPageCmd}
+            />
+          ) : (
+            <FixedLayoutDOMReader
+              bookBase64={loadState.bookBase64}
+              format={loadState.format}
+              initialPage={loadState.initialPage}
+              onStateChange={handleStateChange}
+              onTocReady={handleTocReady}
+              onRequestClose={handleRequestClose}
+              gotoPageCommand={gotoPageCmd}
+              dom={{
+                style: { flex: 1, width: screenWidth, height: screenHeight },
+                scrollEnabled: false,
+              }}
+            />
+          )}
+        </Suspense>
       </Pressable>
 
       {chromeVisible && (
@@ -440,6 +460,50 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 const styles = StyleSheet.create({
+  errorScreen: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
+  errorCard: {
+    maxWidth: 400,
+    width: "100%",
+    alignItems: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  errorTitle: {
+    color: "rgba(255,255,255,0.96)",
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  errorBody: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  errorBackBtn: {
+    marginTop: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  errorBackBtnText: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 15,
+    fontWeight: "600",
+  },
   topBar: {
     position: "absolute",
     top: 0,
