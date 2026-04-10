@@ -15,9 +15,7 @@ import {
   readingAnchorForElement,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
-import { ComicParser } from "./parsers/ComicParser"
-import { EpubParser } from "./parsers/EpubParser"
-import { PdfParser } from "./parsers/PdfParser"
+import { ReaderSession } from "../reader-core/ReaderSession"
 import type {
   BookMetadata,
   ChapterData,
@@ -57,23 +55,6 @@ function columnPageIndexToSpread(columnPageIndex: number): number {
 }
 
 /**
- * 与 foliate-js `SectionProgress` 一致：按 spine 项 `contentWeight` 加权；
- * 全为 0 或未设置时退化为均分，避免除零。
- */
-function spineWeightsForChapters(chapters: ChapterInfo[]): number[] {
-  const raw = chapters.map((c) => {
-    const w = c.contentWeight
-    if (typeof w === "number" && Number.isFinite(w) && w > 0) {
-      return w
-    }
-    return 0
-  })
-  const sum = raw.reduce((a, b) => a + b, 0)
-  if (sum > 0) return raw
-  return chapters.map(() => 1)
-}
-
-/**
  * Headless reader state machine.
  *
  * 持有 parser、分页状态与章节导航；文本书分页视图的 DOM 经
@@ -86,14 +67,11 @@ function spineWeightsForChapters(chapters: ChapterInfo[]): number[] {
  * 文本书分页视图的 DOM 绘制请使用 {@link BookReader.renderPaginatedTextPage}，由控制器统一委托分页实现。
  */
 export class BookReader {
+  private readonly session = new ReaderSession()
   private parser: IParser | null = null
   private paginator: IPaginator<any, PageData> | null = null
   private _book: ParsedBook | null = null
-  private _currentIndex = 0
   private _layoutConfig: LayoutConfig | null = null
-  private _currentPageOffset = 0
-  private _totalPagesOfCurChapter = 1
-  private _chapterStartFromEnd = false
   /** 下一首次成功切片分页后从章末打开（与 UI 层 `startFromEnd` 一次性语义一致） */
   private _openAtChapterEndPending = false
   /** After layout, open the column/page that contains this EPUB fragment id (NCX `id` / `name`). */
@@ -118,6 +96,38 @@ export class BookReader {
   }
   private _prevPageCache: PageData | null = null
   private _nextPageCache: PageData | null = null
+
+  private get _currentIndex(): number {
+    return this.session.currentChapter
+  }
+
+  private set _currentIndex(value: number) {
+    this.session.setCurrentChapter(value)
+  }
+
+  private get _currentPageOffset(): number {
+    return this.session.currentPageInChapter
+  }
+
+  private set _currentPageOffset(value: number) {
+    this.session.setCurrentPageInChapter(value)
+  }
+
+  private get _totalPagesOfCurChapter(): number {
+    return this.session.totalPagesInChapter
+  }
+
+  private set _totalPagesOfCurChapter(value: number) {
+    this.session.setTotalPagesInChapter(value)
+  }
+
+  private get _chapterStartFromEnd(): boolean {
+    return this.session.chapterStartFromEnd
+  }
+
+  private set _chapterStartFromEnd(value: boolean) {
+    this.session.setChapterStartFromEnd(value)
+  }
 
   get book(): ParsedBook | null {
     return this._book ?? null
@@ -145,11 +155,11 @@ export class BookReader {
 
   /** 当前章节下标（与架构文档中的 curChapter 一致） */
   get curChapter(): number {
-    return this._currentIndex
+    return this.session.currentChapter
   }
 
   get currentIndex(): number {
-    return this._currentIndex
+    return this.session.currentChapter
   }
 
   get layoutMode(): LayoutMode {
@@ -161,11 +171,11 @@ export class BookReader {
   }
 
   get totalPagesOfCurChapter(): number {
-    return this._totalPagesOfCurChapter
+    return this.session.totalPagesInChapter
   }
 
   get chapterStartFromEnd(): boolean {
-    return this._chapterStartFromEnd
+    return this.session.chapterStartFromEnd
   }
 
   get curPage(): PageData {
@@ -192,15 +202,19 @@ export class BookReader {
     format: string,
     options?: { initialOpenAnchor?: BookAnchor | null },
   ): Promise<ParsedBook> {
-    this.parser = BookReader.createParser(format)
-    this._book = await this.parser.parse(buffer)
+    const { book } = await this.session.open({
+      buffer,
+      format,
+      initialOpenAnchor: options?.initialOpenAnchor ?? null,
+    })
+    this._book = book
+    this.parser = this.session.parser
     this.paginator =
       this._book.layoutMode === "reflowable" ? new ProgressivePaginator() : null
 
     this._pendingLinkFragment = null
     this._pendingTextResumeBoundary = null
     this._lastTextLayout = null
-    this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
 
     const n = this.totalChapters
@@ -216,8 +230,8 @@ export class BookReader {
       anchor.charOffset != null &&
       Number.isFinite(anchor.charOffset)
     ) {
-      const ch = await this.getChapter(chIdx)
-      if (ch.type === "text") {
+        const ch = await this.getChapter(chIdx)
+        if (ch.type === "text") {
         const boundary = epubReadingBoundaryFromChapterCharOffset(
           ch,
           anchor.charOffset,
@@ -243,11 +257,12 @@ export class BookReader {
     if (!this.parser || !this._book) {
       throw new Error("Reader not initialized — call init() first")
     }
-    const idx = index ?? this._currentIndex
+    const currentIndex = this.currentIndex
+    const idx = index ?? currentIndex
     if (idx < 0 || idx >= this.totalChapters) {
       throw new Error(`Chapter index out of range: ${idx}`)
     }
-    return this.parser.getChapter(idx)
+    return this.session.getChapter(idx)
   }
 
   /**
@@ -607,34 +622,7 @@ export class BookReader {
    * 外部仅读取，无需调用任何「更新进度」接口。
    */
   getProgress(): ReaderProgress {
-    const chapters = this._book?.chapters ?? []
-    const n = chapters.length
-    const info = n > 0 ? chapters[Math.min(this._currentIndex, n - 1)] : undefined
-    if (n === 0) {
-      return {
-        chapterIndex: 0,
-        chapterTitle: "",
-        totalChapters: 0,
-        fraction: 0,
-      }
-    }
-    const weights = spineWeightsForChapters(chapters)
-    const totalW = weights.reduce((a, b) => a + b, 0)
-    const idx = Math.min(Math.max(0, this._currentIndex), n - 1)
-    let sumBefore = 0
-    for (let k = 0; k < idx; k++) sumBefore += weights[k] ?? 0
-    const wCur = weights[idx] ?? 0
-    const inCh = this.computeInChapterFraction()
-    const fraction =
-      totalW > 0
-        ? Math.min(1, Math.max(0, (sumBefore + wCur * inCh) / totalW))
-        : 0
-    return {
-      chapterIndex: this._currentIndex,
-      chapterTitle: info?.title ?? "",
-      totalChapters: n,
-      fraction,
-    }
+    return this.session.getProgress(this.computeInChapterFraction())
   }
 
   /**
@@ -1105,20 +1093,4 @@ export class BookReader {
     this.invalidatePageDescriptorCaches()
   }
 
-  private static createParser(format: string): IParser {
-    switch (format.toUpperCase()) {
-      case "EPUB":
-        return new EpubParser()
-      case "CBZ":
-        return new ComicParser()
-      case "CBR":
-        throw new Error(
-          "CBR（RAR 压缩）暂不支持客户端解压，请将漫画转为 CBZ（ZIP）后在书库中阅读。",
-        )
-      case "PDF":
-        return new PdfParser()
-      default:
-        throw new Error(`Unsupported format: ${format}`)
-    }
-  }
 }

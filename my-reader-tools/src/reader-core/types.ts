@@ -1,0 +1,39 @@
+import type { BookAnchor } from "../progress/BookAnchor"
+import type {
+  LayoutMode,
+  ParsedBook,
+  ReaderProgress,
+  TocItem,
+} from "../rendition/types"
+
+export interface OpenBookRequest {
+  buffer: ArrayBuffer
+  format: string
+  initialOpenAnchor?: BookAnchor | null
+}
+
+export interface ReaderSnapshot {
+  ready: boolean
+  loading: boolean
+  error: string | null
+  layoutMode: LayoutMode
+  totalChapters: number
+  toc: TocItem[]
+  currentChapter: number
+  currentPageInChapter: number
+  totalPagesInChapter: number
+  progress: ReaderProgress
+  currentAnchor: BookAnchor | null
+}
+
+export interface OpenBookResult {
+  book: ParsedBook
+  snapshot: ReaderSnapshot
+}
+
+export interface ReaderNavigationState {
+  currentChapter: number
+  currentPageInChapter: number
+  totalPagesInChapter: number
+  chapterStartFromEnd: boolean
+}

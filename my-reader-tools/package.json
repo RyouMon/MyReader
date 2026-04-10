@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./reader-core": "./src/reader-core/index.ts",
+    "./reader-core/*": "./src/reader-core/*",
     "./rendition": "./src/rendition/index.ts",
     "./rendition/*": "./src/rendition/*",
     "./progress/*": "./src/progress/*",
