@@ -6,8 +6,8 @@
     "postinstall": "patch-package",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios --device",
     "web": "expo start --web",
     "lint": "expo lint"
   },
@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "expo": "~55.0.13",
     "expo-constants": "~55.0.13",
+    "expo-dev-client": "55.0.24",
     "expo-document-picker": "~55.0.13",
     "expo-file-system": "~55.0.16",
     "expo-font": "~55.0.6",
