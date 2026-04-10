@@ -54,7 +54,7 @@ export interface UseReaderReturn {
   chapter: ChapterData | null
   /** 当前章内页偏移（0-based），与 BookReader.curPage.index 一致 */
   curPageIndex: number
-  /** 当前章列页/分页总数（文本书 ProgressivePaginator 测量后 ≥1） */
+  /** 当前章列页/分页总数（文本书经 DomReflowEngine 测量后 ≥1） */
   totalPagesInChapter: number
   isChapterStartFromEnd: boolean
 

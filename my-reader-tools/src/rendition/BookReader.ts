@@ -8,11 +8,14 @@ import {
 } from "../progress/epubBookAnchor"
 import { genericResolveInternalTextLink } from "./internalTextLink"
 import {
+  defaultDomReflowEngine,
   findPageIndexForReadingAnchor,
-  layoutTextChapterAtMeasureHost,
+  readingAnchorForElement,
+  type DomReflowEngine,
+} from "../layout-engines/reflow"
+import {
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
   ProgressivePaginator,
-  readingAnchorForElement,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
 import { ReaderSession } from "../reader-core/ReaderSession"
@@ -64,7 +67,7 @@ function columnPageIndexToSpread(columnPageIndex: number): number {
  * 不变时保持同一对象引用；键变化时替换为新对象，便于 React 等用 `Object.is` 触发更新。
  * 请勿修改返回的 {@link PageData}。
  *
- * 文本书分页视图的 DOM 绘制请使用 {@link BookReader.renderPaginatedTextPage}，由控制器统一委托分页实现。
+   * 文本书分页视图的 DOM 绘制请使用 {@link BookReader.renderPaginatedTextPage}，由 {@link DomReflowEngine} / 切片渲染完成。
  */
 export class BookReader {
   private readonly session = new ReaderSession()
@@ -286,12 +289,10 @@ export class BookReader {
           this.paginator.getAllSlices().length > 0
             ? (this.paginator.getCurrentSlice()?.start ?? null)
             : null
-        const result = await layoutTextChapterAtMeasureHost(
-          ch,
-          config,
+        const result = await defaultDomReflowEngine.layoutChapter(ch, config, {
           measureHost,
-          this.paginator,
-        )
+          paginator: this.paginator,
+        })
         if (result.sourceRoot) {
           this._lastTextLayout = { sourceRoot: result.sourceRoot, chapter: ch }
         } else {
@@ -963,7 +964,7 @@ export class BookReader {
   }
 
   /**
-   * 将文本书分页测量结果绘制到视口节点；具体切片逻辑由 ProgressivePaginator 实现。
+   * 将文本书分页测量结果绘制到视口节点；测量由 {@link DomReflowEngine}，切片状态由 ProgressivePaginator 持有。
    */
   static renderPaginatedTextPage(
     display: HTMLElement,

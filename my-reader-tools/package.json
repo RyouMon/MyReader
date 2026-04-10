@@ -8,6 +8,8 @@
     "./reader-core/*": "./src/reader-core/*",
     "./rendition": "./src/rendition/index.ts",
     "./rendition/*": "./src/rendition/*",
+    "./layout-engines/reflow": "./src/layout-engines/reflow/index.ts",
+    "./layout-engines/*": "./src/layout-engines/*",
     "./progress/*": "./src/progress/*",
     "./foliate-js/*": "./src/foliate-js/*",
     "./types/book": "./src/types/book.ts"

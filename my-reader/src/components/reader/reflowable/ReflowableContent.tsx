@@ -1,4 +1,14 @@
 /* biome-ignore-all lint/security/noDangerouslySetInnerHtml: 阅读器需要渲染已解析的 HTML 与样式 */
+
+import { cn } from "@/lib/utils"
+import { fillRangeStartFromBoundary } from "my-reader-tools/layout-engines/reflow"
+import type {
+  LayoutConfig,
+  TextChapterData,
+  TextChapterPaginationResult,
+} from "my-reader-tools/rendition"
+import { BookReader } from "my-reader-tools/rendition/BookReader"
+import type { RangeBoundary } from "my-reader-tools/rendition/types"
 import {
   type CSSProperties,
   useEffect,
@@ -7,15 +17,6 @@ import {
   useRef,
   useState,
 } from "react"
-import type {
-  LayoutConfig,
-  TextChapterData,
-  TextChapterPaginationResult,
-} from "my-reader-tools/rendition"
-import { BookReader } from "my-reader-tools/rendition/BookReader"
-import { fillRangeStartFromBoundary } from "my-reader-tools/rendition/pagination/ProgressivePaginator"
-import type { RangeBoundary } from "my-reader-tools/rendition/types"
-import { cn } from "@/lib/utils"
 import {
   ReflowableSkeleton,
   reflowablePaginatedColumnClass,
@@ -259,9 +260,7 @@ export function ReflowableContent({
     }
   }, [
     chapterMode,
-    chapter.index,
     showReflowableSkeleton,
-    viewportModel,
     getPendingTextResumeBoundary,
     clearPendingTextResumeBoundary,
   ])
