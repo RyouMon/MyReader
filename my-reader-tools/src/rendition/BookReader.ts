@@ -18,6 +18,7 @@ import {
   ProgressivePaginator,
   renderTextChapterPage,
 } from "./pagination/ProgressivePaginator"
+import type { FixedViewportState } from "../layout-engines/fixed/types"
 import { ReaderSession } from "../reader-core/ReaderSession"
 import type {
   BookMetadata,
@@ -819,7 +820,7 @@ export class BookReader {
   }
 
   destroy(): void {
-    this.parser?.destroy()
+    this.session.close()
     this.parser = null
     this._book = null
     this._ready = false
@@ -834,6 +835,21 @@ export class BookReader {
     this._pendingTextResumeBoundary = null
     this._lastTextLayout = null
     this.invalidatePageDescriptorCaches()
+  }
+
+  /** Fixed-layout (PDF/CBZ): viewport window for surfaces; `null` for reflowable books. */
+  getFixedViewportState(): FixedViewportState | null {
+    return this.session.getFixedViewportState()
+  }
+
+  /** Fixed-layout: prefetch neighbors around current page (session LRU policy). */
+  prefetchFixedLayoutNeighbors(): void {
+    void this.session.prefetchAroundCurrent()
+  }
+
+  /** Fixed-layout: prefetch visible virtualized indices (e.g. scroll mode). */
+  prefetchFixedPageIndices(indices: readonly number[]): void {
+    this.session.prefetchFixedPageIndices(indices)
   }
 
   static readonly PAGINATION_DOUBLE_COLUMN_GAP_PX =

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
+import type { FixedViewportState } from "my-reader-tools/layout-engines/fixed"
 import { BookReader } from "my-reader-tools/rendition/BookReader"
 import type {
   ChapterData,
@@ -122,6 +123,13 @@ export interface UseReaderReturn {
    * 无需外部写入。
    */
   progress: ReaderProgress
+
+  /** 固定版式：当前页窗口快照；EPUB 等为 `null`。 */
+  fixedViewport: FixedViewportState | null
+  /** 固定版式：按当前 spine 预取邻近页（分页模式已由会话自动触发，滚动模式可额外调用）。 */
+  prefetchFixedLayoutNeighbors: () => void
+  /** 固定版式滚动：为虚拟列表可见行预取解码页。 */
+  prefetchFixedPageIndices: (indices: readonly number[]) => void
 }
 
 /**
@@ -156,6 +164,24 @@ export function useBookReader({
     totalChapters: 0,
     fraction: 0,
   })
+
+  // Recompute when navigation or book shape changes; snapshot reads live session state via coreRef.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: curChapter/totalChapters drive fixed window display
+  const fixedViewport = useMemo((): FixedViewportState | null => {
+    if (layoutMode !== "fixedLayout" || !parsedReady) return null
+    return coreRef.current?.getFixedViewportState() ?? null
+  }, [layoutMode, curChapter, totalChapters, parsedReady])
+
+  const prefetchFixedLayoutNeighbors = useCallback(() => {
+    coreRef.current?.prefetchFixedLayoutNeighbors()
+  }, [])
+
+  const prefetchFixedPageIndices = useCallback(
+    (indices: readonly number[]) => {
+      coreRef.current?.prefetchFixedPageIndices(indices)
+    },
+    [],
+  )
 
   const syncNavigationState = useCallback((core: BookReader) => {
     setCurChapter(core.curChapter)
@@ -492,5 +518,8 @@ export function useBookReader({
     buildSaveBookAnchor,
     buildSaveBookAnchorMidSlice,
     progress,
+    fixedViewport,
+    prefetchFixedLayoutNeighbors,
+    prefetchFixedPageIndices,
   }
 }

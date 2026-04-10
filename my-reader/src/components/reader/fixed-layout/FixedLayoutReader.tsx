@@ -250,6 +250,7 @@ export function FixedLayoutReader({ bookTitle, reader }: ReaderSurfaceProps) {
             brightness={settings.brightness}
             zoomMode={settings.zoomMode}
             onVisiblePageIndexChange={handleVisibleScrollPage}
+            onVisiblePageIndicesChange={reader.prefetchFixedPageIndices}
           />
         ) : (
           <FixedLayoutViewport

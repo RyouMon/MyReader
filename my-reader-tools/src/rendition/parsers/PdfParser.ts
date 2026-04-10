@@ -34,7 +34,6 @@ function ensureWorker() {
 export class PdfParser implements IParser {
   private pdfDoc: PDFDocumentProxy | null = null
   private blobUrls: string[] = []
-  private cache = new Map<number, ImageChapterData>()
 
   async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
     ensureWorker()
@@ -65,7 +64,6 @@ export class PdfParser implements IParser {
   }
 
   async getChapter(index: number): Promise<ImageChapterData> {
-    if (this.cache.has(index)) return this.cache.get(index)!
     if (!this.pdfDoc) throw new Error("Call parse() before getChapter()")
 
     const page = await this.pdfDoc.getPage(index + 1)
@@ -94,14 +92,12 @@ export class PdfParser implements IParser {
       imageUrl,
     }
 
-    this.cache.set(index, result)
     return result
   }
 
   destroy(): void {
     for (const url of this.blobUrls) URL.revokeObjectURL(url)
     this.blobUrls = []
-    this.cache.clear()
     this.pdfDoc?.destroy()
     this.pdfDoc = null
   }

@@ -29,6 +29,8 @@ interface FixedLayoutScrollViewportProps {
   onScrollProgress?: (pct: number) => void
   /** 与 {@link BookReader} 当前 spine 对齐的可见页（0-based） */
   onVisiblePageIndexChange?: (pageIndex: number) => void
+  /** 虚拟列表当前可见行下标；用于 {@link FixedLayoutEngine} 预取解码页 */
+  onVisiblePageIndicesChange?: (indices: readonly number[]) => void
 }
 
 /**
@@ -46,6 +48,7 @@ export const FixedLayoutScrollViewport = forwardRef<
     zoomMode,
     onScrollProgress,
     onVisiblePageIndexChange,
+    onVisiblePageIndicesChange,
   },
   ref,
 ) {
@@ -85,8 +88,11 @@ export const FixedLayoutScrollViewport = forwardRef<
     const max = el.scrollHeight - el.clientHeight
     const pct = max <= 0 ? 100 : Math.round((el.scrollTop / max) * 100)
     onScrollProgress?.(pct)
-    if (!onVisiblePageIndexChange) return
     const items = virtualizer.getVirtualItems()
+    if (items.length > 0) {
+      onVisiblePageIndicesChange?.(items.map((v) => v.index))
+    }
+    if (!onVisiblePageIndexChange) return
     if (items.length === 0) return
     const center = el.scrollTop + el.clientHeight / 2
     let best = items[0].index
@@ -106,20 +112,33 @@ export const FixedLayoutScrollViewport = forwardRef<
       if (Date.now() < suppressVisibleSyncUntilRef.current) return
       onVisiblePageIndexChange(best)
     }, 90)
-  }, [parentRef, onScrollProgress, onVisiblePageIndexChange, virtualizer])
+  }, [
+    parentRef,
+    onScrollProgress,
+    onVisiblePageIndexChange,
+    onVisiblePageIndicesChange,
+    virtualizer,
+  ])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: parentRef is stable scroll root; observe its current node
   useEffect(() => {
     const el = parentRef.current
     if (!el) return
     const ro = new ResizeObserver(() => handleScroll())
     ro.observe(el)
-    const id = window.requestAnimationFrame(() => handleScroll())
+    const id = window.requestAnimationFrame(() => {
+      handleScroll()
+      const vis = virtualizer.getVirtualItems()
+      if (vis.length > 0) {
+        onVisiblePageIndicesChange?.(vis.map((v) => v.index))
+      }
+    })
     return () => {
       window.cancelAnimationFrame(id)
       ro.disconnect()
       if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current)
     }
-  }, [handleScroll])
+  }, [handleScroll, virtualizer, onVisiblePageIndicesChange])
 
   return (
     <div

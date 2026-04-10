@@ -1,4 +1,6 @@
 import type { BookAnchor } from "../progress/BookAnchor"
+import { FixedLayoutEngine } from "../layout-engines/fixed/FixedLayoutEngine"
+import type { FixedViewportState } from "../layout-engines/fixed/types"
 import { ComicParser } from "../rendition/parsers/ComicParser"
 import { EpubParser } from "../rendition/parsers/EpubParser"
 import { PdfParser } from "../rendition/parsers/PdfParser"
@@ -21,6 +23,7 @@ export class ReaderSession {
   private parserInstance: IParser | null = null
   private parsedBook: ParsedBook | null = null
   private readyState = false
+  private fixedLayoutEngine: FixedLayoutEngine | null = null
   private readonly navigation = new NavigationController()
   private readonly progress = new ProgressController()
   private readonly listeners = new Set<() => void>()
@@ -71,7 +74,20 @@ export class ReaderSession {
       : 0
 
     this.navigation.gotoChapterWithResume(initialChapter, totalChapters, 0)
+
+    if (this.parsedBook.layoutMode === "fixedLayout" && this.parserInstance) {
+      const parser = this.parserInstance
+      this.fixedLayoutEngine = new FixedLayoutEngine(async (i) => {
+        const ch = await parser.getChapter(i)
+        if (ch.type !== "image") {
+          throw new Error("Fixed layout book expected image chapter data")
+        }
+        return ch
+      })
+    }
+
     this.emit()
+    this.touchFixedPrefetch()
 
     return {
       book: this.parsedBook,
@@ -80,6 +96,8 @@ export class ReaderSession {
   }
 
   close(): void {
+    this.fixedLayoutEngine?.clear()
+    this.fixedLayoutEngine = null
     this.parserInstance?.destroy()
     this.parserInstance = null
     this.parsedBook = null
@@ -121,12 +139,26 @@ export class ReaderSession {
     if (index < 0 || index >= this.parsedBook.chapters.length) {
       throw new Error(`Chapter index out of range: ${index}`)
     }
+    if (this.fixedLayoutEngine) {
+      return this.fixedLayoutEngine.getFixedPage(index)
+    }
     return this.parserInstance.getChapter(index)
+  }
+
+  getFixedViewportState(): FixedViewportState | null {
+    if (!this.fixedLayoutEngine || !this.parsedBook) return null
+    return this.fixedLayoutEngine.getViewportState(
+      this.currentChapter,
+      this.parsedBook.chapters.length,
+    )
   }
 
   gotoChapter(index: number): boolean {
     const changed = this.navigation.gotoChapter(index, this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
@@ -136,13 +168,19 @@ export class ReaderSession {
       this.totalChapters(),
       columnPageOffset,
     )
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
   gotoChapterFromEnd(index: number): boolean {
     const changed = this.navigation.gotoChapterFromEnd(index, this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
@@ -160,11 +198,15 @@ export class ReaderSession {
         navigation.totalPagesInChapter,
         navigation.currentPageInChapter + 1,
       )
+      this.touchFixedPrefetch()
       this.emit()
       return true
     }
     const changed = this.navigation.nextChapter(this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
@@ -175,28 +217,39 @@ export class ReaderSession {
         navigation.totalPagesInChapter,
         navigation.currentPageInChapter - 1,
       )
+      this.touchFixedPrefetch()
       this.emit()
       return true
     }
     const changed = this.navigation.prevChapter(this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
   nextChapter(): boolean {
     const changed = this.navigation.nextChapter(this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
   prevChapter(): boolean {
     const changed = this.navigation.prevChapter(this.totalChapters())
-    if (changed) this.emit()
+    if (changed) {
+      this.touchFixedPrefetch()
+      this.emit()
+    }
     return changed
   }
 
   setCurrentChapter(index: number): void {
     this.navigation.setCurrentChapter(index)
+    this.touchFixedPrefetch()
     this.emit()
   }
 
@@ -231,7 +284,24 @@ export class ReaderSession {
   }
 
   prefetchAroundCurrent(): Promise<void> {
+    this.touchFixedPrefetch()
     return Promise.resolve()
+  }
+
+  prefetchFixedPageIndices(indices: readonly number[]): void {
+    if (!this.fixedLayoutEngine || !this.parsedBook) return
+    this.fixedLayoutEngine.prefetchFixedPages(
+      indices,
+      this.parsedBook.chapters.length,
+    )
+  }
+
+  private touchFixedPrefetch(): void {
+    if (!this.fixedLayoutEngine || !this.parsedBook) return
+    this.fixedLayoutEngine.prefetchFixedPagesAround(
+      this.currentChapter,
+      this.parsedBook.chapters.length,
+    )
   }
 
   private totalChapters(): number {

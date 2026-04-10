@@ -19,7 +19,6 @@ const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "avif"])
 export class ComicParser implements IParser {
   private images: { name: string; data: Uint8Array }[] = []
   private blobUrls: string[] = []
-  private cache = new Map<number, ImageChapterData>()
 
   async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
     const raw = new Uint8Array(buffer)
@@ -58,8 +57,6 @@ export class ComicParser implements IParser {
   }
 
   async getChapter(index: number): Promise<ImageChapterData> {
-    if (this.cache.has(index)) return this.cache.get(index)!
-
     const img = this.images[index]
     if (!img) throw new Error("Page index out of range: " + index)
 
@@ -78,14 +75,12 @@ export class ComicParser implements IParser {
       imageUrl: url,
     }
 
-    this.cache.set(index, page)
     return page
   }
 
   destroy(): void {
     for (const url of this.blobUrls) URL.revokeObjectURL(url)
     this.blobUrls = []
-    this.cache.clear()
     this.images = []
   }
 }
