@@ -453,3 +453,27 @@ Rust stable ≥ 1.85 is required (the `time-core` crate needs `edition2024` supp
 
 ### Testing with a Calibre library
 The app requires a Calibre library directory containing `metadata.db`. For local testing, create a minimal one with `sqlite3` or Python's `sqlite3` module containing at least the `books`, `authors`, `books_authors_link`, `data`, and `tags` tables. Add the directory via Settings → 书库管理 → 添加书库.
+
+### Mobile app (my-reader-mobile)
+
+#### Android SDK setup
+Android SDK must be installed at `/opt/android-sdk`. Required components:
+- `platform-tools`, `build-tools;35.0.0`, `platforms;android-35`, `emulator`, `system-images;android-35;google_apis;x86_64`
+- Environment variables: `ANDROID_HOME=/opt/android-sdk`, `ANDROID_SDK_ROOT=/opt/android-sdk`, both bin dirs on `PATH`.
+- These are persisted in `~/.bashrc` by the setup agent.
+
+#### Gradle 9 + React Native 0.83 compatibility
+Expo SDK 55 uses Gradle 9.0.0 which removed `JvmVendorSpec.IBM_SEMERU`. The `@react-native/gradle-plugin` ships `foojay-resolver-convention` 0.5.0 which references this constant. A `patch-package` patch at `my-reader-mobile/patches/@react-native+gradle-plugin+0.83.4.patch` upgrades it to 1.0.0. This patch is applied automatically by the `postinstall` script.
+
+#### Running the mobile app
+- Install deps: `cd my-reader-mobile && npm install` (runs `patch-package` via postinstall)
+- Lint: `cd my-reader-mobile && npm run lint`
+- Generate native project: `cd my-reader-mobile && npx expo prebuild --platform android`
+- Build + run on emulator: `cd my-reader-mobile && npx expo run:android`
+- Start Metro bundler only: `cd my-reader-mobile && npx expo start`
+
+#### Emulator caveats in Cloud Agent VMs
+KVM is not available in Firecracker VMs, so the Android emulator must run with `-no-accel` (software emulation). This makes it extremely slow — cold boot takes ~8 minutes, and ANR dialogs appear frequently. Dismiss them by tapping "Wait". The emulator command: `emulator -avd pixel_api35 -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim -memory 2048 -no-accel`
+
+#### First Gradle build
+The first `expo run:android` takes ~15 minutes as it downloads Gradle 9.0.0, resolves all dependencies, and compiles Kotlin/Java. Subsequent builds are significantly faster due to Gradle build cache.
