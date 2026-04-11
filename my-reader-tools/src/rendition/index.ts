@@ -3,6 +3,7 @@
 
 export { BookReader } from "./BookReader"
 export { ReaderSession } from "../reader-core"
+export { configurePdfJsWorker } from "./parsers/PdfParser"
 export {
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
   renderTextChapterPage,

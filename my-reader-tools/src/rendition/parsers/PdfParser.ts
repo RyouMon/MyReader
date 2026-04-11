@@ -16,27 +16,32 @@ import type {
 
 const RENDER_SCALE = 2
 
+type PdfWorkerOverride = {
+  workerSrc?: string
+}
+
+const pdfWorkerOverride: PdfWorkerOverride = {}
+
+export function configurePdfJsWorker(options: PdfWorkerOverride): void {
+  pdfWorkerOverride.workerSrc = options.workerSrc
+}
+
 /** 与 package.json 中 pdfjs-dist 版本一致 */
 let workerConfigured = false
 
 /**
- * - **Vite（桌面 my-reader）**：用 `new URL(..., import.meta.url)` 指向 `pdfjs-dist` 的 worker，
- *   由 Vite 打成独立 asset，可离线、无需 `?url`（Metro 不认 `?url`）。
- * - **Metro / Expo（my-reader-mobile）**：`import.meta.url` 下的 node_modules 路径不可靠，改用 CDN worker。
- * - **兜底**：任一侧解析失败时仍用 CDN，避免白屏。
+ * - 宿主应用可通过 `configurePdfJsWorker()` 注入最适合当前 bundler 的 worker URL。
+ * - **Vite（桌面 my-reader）**：在应用侧用 `?url` 导入并注入，避免 shared package 里静态引用
+ *   `?url` 导致 Metro 无法解析。
+ * - **Metro / Expo（my-reader-mobile）**：继续使用 CDN worker。
+ * - **兜底**：未注入时按运行时环境选择，避免白屏。
  */
 function resolvePdfWorkerSrc(): string {
+  if (pdfWorkerOverride.workerSrc && pdfWorkerOverride.workerSrc.length > 0) {
+    return pdfWorkerOverride.workerSrc
+  }
   if (shouldUseCdnPdfWorker()) {
     return cdnPdfWorkerSrc()
-  }
-  try {
-    const href = new URL(
-      "../../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url,
-    ).href
-    if (href && href.length > 0) return href
-  } catch {
-    /* fall through */
   }
   return cdnPdfWorkerSrc()
 }
