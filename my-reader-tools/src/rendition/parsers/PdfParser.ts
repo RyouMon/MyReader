@@ -1,6 +1,7 @@
 import {
   getDocument,
   GlobalWorkerOptions,
+  version as pdfjsVersion,
   type PDFDocumentProxy,
 } from "pdfjs-dist"
 
@@ -16,8 +17,6 @@ import type {
 const RENDER_SCALE = 2
 
 /** 与 package.json 中 pdfjs-dist 版本一致 */
-const PDFJS_DIST_VERSION = "5.5.207"
-
 let workerConfigured = false
 
 /**
@@ -43,7 +42,7 @@ function resolvePdfWorkerSrc(): string {
 }
 
 function cdnPdfWorkerSrc(): string {
-  return `https://unpkg.com/pdfjs-dist@${PDFJS_DIST_VERSION}/build/pdf.worker.min.mjs`
+  return `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`
 }
 
 function isExpoMetroRuntime(): boolean {
@@ -68,6 +67,7 @@ function ensureWorker() {
   console.info("[pdf-parser] worker-configured", {
     workerSrc: GlobalWorkerOptions.workerSrc,
     useCdnWorker: shouldUseCdnPdfWorker(),
+    pdfjsVersion,
   })
   workerConfigured = true
 }

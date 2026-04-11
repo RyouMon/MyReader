@@ -28,7 +28,7 @@ import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 /** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
 const MobileFixedReader = lazy(async () => import("@/src/components/reader/fixed/MobileFixedReader"));
-const FixedLayoutDOMReader = lazy(async () => import("@/src/components/reader/FixedLayoutDOMReader"));
+const FixedLayoutDOMReader = lazy(async () => import("@/src/components/reader/fixed/FixedLayoutDOMReader"));
 const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
 
 type LoadState =
@@ -332,19 +332,21 @@ export default function ReaderScreen() {
   /** CBZ：原生 Surface（expo-image + 分页列表）。PDF：仍依赖 DOM 内 canvas/pdf.js，暂用 expo/dom。 */
   const useNativeFixedSurface = loadState.layoutMode === "fixedLayout" && fmtUpper === "CBZ";
 
-  console.info("[mobile-reader] render:ready-screen", {
-    title,
-    format: fmtUpper,
-    layoutMode: loadState.layoutMode,
-    useNativeFixedSurface,
-    isReflowSurface,
-    readerReady: readerState?.ready ?? false,
-    currentPage: readerState?.currentPage ?? null,
-    totalPages: readerState?.totalPages ?? null,
-    tocCount: toc.length,
-    chromeVisible,
-    tocOpen,
-  });
+  if (__DEV__) {
+    console.info("[mobile-reader] render:ready-screen", {
+      title,
+      format: fmtUpper,
+      layoutMode: loadState.layoutMode,
+      useNativeFixedSurface,
+      isReflowSurface,
+      readerReady: readerState?.ready ?? false,
+      currentPage: readerState?.currentPage ?? null,
+      totalPages: readerState?.totalPages ?? null,
+      tocCount: toc.length,
+      chromeVisible,
+      tocOpen,
+    });
+  }
 
   return (
     <View className="flex-1" style={{ backgroundColor: "#111" }}>

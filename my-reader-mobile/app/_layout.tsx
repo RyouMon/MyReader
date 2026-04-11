@@ -1,3 +1,4 @@
+import "@/src/polyfills/reader-engine-globals";
 import "../src/global.css";
 
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";

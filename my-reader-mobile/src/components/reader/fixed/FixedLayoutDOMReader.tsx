@@ -37,19 +37,16 @@ export default function FixedLayoutDOMReader({
   void onRequestClose;
   void dom;
 
-  void onDomProbe({
-    stage: "component-render",
-    detail: {
-      format,
-      hasBookBase64: Boolean(bookBase64),
-      base64Length: bookBase64?.length ?? 0,
-      initialPage: initialPage ?? 0,
-      gotoPageCommand: gotoPageCommand ?? null,
-    },
-  });
-
   const readerRef = useRef<BookReader | null>(null);
+  const onStateChangeRef = useRef(onStateChange);
+  const onTocReadyRef = useRef(onTocReady);
+  const onDomProbeRef = useRef(onDomProbe);
+  onStateChangeRef.current = onStateChange;
+  onTocReadyRef.current = onTocReady;
+  onDomProbeRef.current = onDomProbe;
+
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -57,7 +54,7 @@ export default function FixedLayoutDOMReader({
   const readyRef = useRef(false);
 
   useEffect(() => {
-    void onDomProbe({
+    void onDomProbeRef.current({
       stage: "effect-mounted",
       detail: {
         format,
@@ -65,12 +62,12 @@ export default function FixedLayoutDOMReader({
       },
     });
     return () => {
-      void onDomProbe({
+      void onDomProbeRef.current({
         stage: "effect-unmounted",
         detail: { format },
       });
     };
-  }, [bookBase64, format, onDomProbe]);
+  }, [bookBase64, format]);
 
   const reportState = useCallback(
     (page: number, total: number, reader: BookReader, err: string | null, isLoading: boolean) => {
@@ -84,7 +81,7 @@ export default function FixedLayoutDOMReader({
         isLoading,
         err,
       });
-      onStateChange({
+      onStateChangeRef.current({
         ready: readyRef.current,
         currentPage: page,
         totalPages: total,
@@ -94,11 +91,12 @@ export default function FixedLayoutDOMReader({
         error: err,
       });
     },
-    [onStateChange],
+    [],
   );
 
   useEffect(() => {
-    if (!bookBase64 || !format) return;
+    const encodedBook = bookBase64;
+    if (!encodedBook || !format) return;
 
     let cancelled = false;
     const reader = new BookReader();
@@ -109,12 +107,12 @@ export default function FixedLayoutDOMReader({
       initialPage: initialPage ?? 0,
       base64Length: bookBase64.length,
     });
-    void onDomProbe({
+    void onDomProbeRef.current({
       stage: "init-effect-start",
       detail: {
         format,
         initialPage: initialPage ?? 0,
-        base64Length: bookBase64.length,
+        base64Length: encodedBook.length,
       },
     });
 
@@ -123,12 +121,13 @@ export default function FixedLayoutDOMReader({
         setLoading(true);
         setError(null);
 
+        const base64 = encodedBook!;
         console.info("[mobile-pdf-dom] init:decode-base64:start", {
           format,
-          base64Length: bookBase64?.length ?? 0,
+          base64Length: base64.length,
         });
 
-        const binaryStr = atob(bookBase64!);
+        const binaryStr = atob(base64);
         const len = binaryStr.length;
         const bytes = new Uint8Array(len);
         for (let i = 0; i < len; i++) {
@@ -139,7 +138,7 @@ export default function FixedLayoutDOMReader({
           format,
           byteLength: bytes.byteLength,
         });
-        void onDomProbe({
+        void onDomProbeRef.current({
           stage: "base64-decoded",
           detail: {
             format,
@@ -162,7 +161,7 @@ export default function FixedLayoutDOMReader({
           tocCount: book.toc.length,
           readerCurrentChapter: reader.curChapter,
         });
-        void onDomProbe({
+        await onDomProbeRef.current({
           stage: "reader-ready",
           detail: {
             format,
@@ -183,7 +182,7 @@ export default function FixedLayoutDOMReader({
           flattenedCount: toc.length,
           firstItems: toc.slice(0, 5),
         });
-        onTocReady(toc);
+        await onTocReadyRef.current(toc);
 
         const ch = (await reader.getChapter(reader.curChapter)) as ImageChapterData;
         if (cancelled) return;
@@ -193,7 +192,7 @@ export default function FixedLayoutDOMReader({
           chapterType: ch?.type,
           imageUrlPrefix: ch?.imageUrl?.slice(0, 64) ?? null,
         });
-        void onDomProbe({
+        await onDomProbeRef.current({
           stage: "first-chapter-ready",
           detail: {
             chapterIndex: reader.curChapter,
@@ -213,7 +212,7 @@ export default function FixedLayoutDOMReader({
           initialPage: initialPage ?? 0,
           error: e,
         });
-        void onDomProbe({
+        await onDomProbeRef.current({
           stage: "init-failed",
           detail: {
             format,
@@ -223,7 +222,7 @@ export default function FixedLayoutDOMReader({
         });
         setError(msg);
         setLoading(false);
-        onStateChange({
+        onStateChangeRef.current({
           ready: false,
           currentPage: 0,
           totalPages: 0,
@@ -247,7 +246,7 @@ export default function FixedLayoutDOMReader({
       readerRef.current = null;
       readyRef.current = false;
     };
-  }, [bookBase64, format, initialPage, onStateChange, onTocReady, onDomProbe, reportState]);
+  }, [bookBase64, format, initialPage, reportState]);
 
   const gotoPage = useCallback(
     async (index: number) => {
