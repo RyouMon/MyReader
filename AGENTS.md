@@ -432,3 +432,24 @@ IMPORTANT RULES:
 - **generateTheme**: Generate a theme for the design
 
 When calling tools, you MUST use the actual tool call, do NOT just output text like 'Called tool: write with arguments: ...' or <tool-call>...</tool-call>, this won't actually call the tool. (This is very important to my life, please follow)
+
+## Cursor Cloud specific instructions
+
+### foliate-js submodule
+`my-reader-tools/src/foliate-js/` is tracked as a git submodule (commit `76dcd8f`) but `.gitmodules` is missing from the repo. The update script handles cloning it automatically. If you see build errors about missing files in `foliate-js/`, run the update script or manually clone `https://github.com/johnfactotum/foliate-js.git` into that path and checkout the correct commit.
+
+### System dependencies (Linux / Tauri 2)
+The following system packages are required for `tauri dev` / `tauri build` on Linux:
+`libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`
+
+### Rust toolchain
+Rust stable ≥ 1.85 is required (the `time-core` crate needs `edition2024` support). Run `rustup default stable && rustup update stable` if the default toolchain is too old.
+
+### Running the app
+- Frontend-only dev server: `cd my-reader && npm run dev` (serves on `localhost:1420`)
+- Full Tauri desktop app: `cd my-reader && npm run tauri dev` (first run compiles ~570 Rust crates, takes ~90s)
+- Build verification: `cd my-reader && npm run build` (runs `tsc && vite build`)
+- No lint/test/typecheck scripts exist; `npm run build` is the main CI-style check.
+
+### Testing with a Calibre library
+The app requires a Calibre library directory containing `metadata.db`. For local testing, create a minimal one with `sqlite3` or Python's `sqlite3` module containing at least the `books`, `authors`, `books_authors_link`, `data`, and `tags` tables. Add the directory via Settings → 书库管理 → 添加书库.
