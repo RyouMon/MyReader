@@ -206,6 +206,11 @@ export class BookReader {
     format: string,
     options?: { initialOpenAnchor?: BookAnchor | null },
   ): Promise<ParsedBook> {
+    console.info("[book-reader] init:start", {
+      format,
+      byteLength: buffer.byteLength,
+      initialOpenAnchor: options?.initialOpenAnchor ?? null,
+    })
     const { book } = await this.session.open({
       buffer,
       format,
@@ -250,6 +255,14 @@ export class BookReader {
 
     this._ready = true
     this.invalidatePageDescriptorCaches()
+    console.info("[book-reader] init:done", {
+      format,
+      layoutMode: this._book.layoutMode,
+      chapterCount: this.totalChapters,
+      tocCount: this.toc.length,
+      currentChapter: this.curChapter,
+      currentPageOffset: this.curPage.index,
+    })
     return this._book
   }
 
@@ -266,7 +279,19 @@ export class BookReader {
     if (idx < 0 || idx >= this.totalChapters) {
       throw new Error(`Chapter index out of range: ${idx}`)
     }
-    return this.session.getChapter(idx)
+    console.info("[book-reader] get-chapter:start", {
+      requestedIndex: index ?? null,
+      resolvedIndex: idx,
+      currentIndex,
+      totalChapters: this.totalChapters,
+    })
+    const ch = await this.session.getChapter(idx)
+    console.info("[book-reader] get-chapter:done", {
+      resolvedIndex: idx,
+      type: ch.type,
+      title: ch.title,
+    })
+    return ch
   }
 
   /**
@@ -388,6 +413,11 @@ export class BookReader {
   /** Navigate to a specific chapter. */
   gotoChapter(index: number): void {
     if (index < 0 || index >= this.totalChapters) return
+    console.info("[book-reader] goto-chapter", {
+      from: this._currentIndex,
+      to: index,
+      totalChapters: this.totalChapters,
+    })
     this._currentIndex = index
     this._currentPageOffset = 0
     this._totalPagesOfCurChapter = 1
@@ -404,6 +434,11 @@ export class BookReader {
    */
   gotoChapterWithResume(index: number, columnPageOffset?: number): void {
     if (index < 0 || index >= this.totalChapters) return
+    console.info("[book-reader] goto-chapter-with-resume", {
+      to: index,
+      columnPageOffset: columnPageOffset ?? 0,
+      totalChapters: this.totalChapters,
+    })
     this._currentIndex = index
     const col =
       columnPageOffset != null && Number.isFinite(columnPageOffset)

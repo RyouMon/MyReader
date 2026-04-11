@@ -6,9 +6,9 @@ import {
 
 import type {
   BookMetadata,
-  IParser,
   ChapterInfo,
   ImageChapterData,
+  IParser,
   ParsedBook,
   TocItem,
 } from "../types"
@@ -65,6 +65,10 @@ function shouldUseCdnPdfWorker(): boolean {
 function ensureWorker() {
   if (workerConfigured) return
   GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc()
+  console.info("[pdf-parser] worker-configured", {
+    workerSrc: GlobalWorkerOptions.workerSrc,
+    useCdnWorker: shouldUseCdnPdfWorker(),
+  })
   workerConfigured = true
 }
 
@@ -82,8 +86,16 @@ export class PdfParser implements IParser {
   async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
     ensureWorker()
 
+    console.info("[pdf-parser] parse:start", {
+      byteLength: buffer.byteLength,
+    })
+
     const data = new Uint8Array(buffer)
     this.pdfDoc = await getDocument({ data }).promise
+
+    console.info("[pdf-parser] parse:document-ready", {
+      numPages: this.pdfDoc.numPages,
+    })
 
     const numPages = this.pdfDoc.numPages
     const chapters: ChapterInfo[] = Array.from(
@@ -99,6 +111,13 @@ export class PdfParser implements IParser {
     const metadata = await this.extractMetadata()
     const toc = await this.extractOutline()
 
+    console.info("[pdf-parser] parse:summary", {
+      numPages,
+      metadata,
+      tocCount: toc.length,
+      tocPreview: toc.slice(0, 5),
+    })
+
     return {
       metadata,
       toc,
@@ -110,8 +129,20 @@ export class PdfParser implements IParser {
   async getChapter(index: number): Promise<ImageChapterData> {
     if (!this.pdfDoc) throw new Error("Call parse() before getChapter()")
 
+    console.info("[pdf-parser] get-chapter:start", {
+      index,
+      pageNumber: index + 1,
+    })
+
     const page = await this.pdfDoc.getPage(index + 1)
     const viewport = page.getViewport({ scale: RENDER_SCALE })
+
+    console.info("[pdf-parser] get-chapter:viewport", {
+      index,
+      width: viewport.width,
+      height: viewport.height,
+      scale: RENDER_SCALE,
+    })
 
     const canvas = document.createElement("canvas")
     canvas.width = viewport.width
@@ -127,6 +158,13 @@ export class PdfParser implements IParser {
     const imageUrl = URL.createObjectURL(blob)
     this.blobUrls.push(imageUrl)
 
+    console.info("[pdf-parser] get-chapter:image-ready", {
+      index,
+      blobSize: blob.size,
+      imageUrlPrefix: imageUrl.slice(0, 64),
+      blobUrlCount: this.blobUrls.length,
+    })
+
     const result: ImageChapterData = {
       type: "image",
       index,
@@ -140,6 +178,10 @@ export class PdfParser implements IParser {
   }
 
   destroy(): void {
+    console.info("[pdf-parser] destroy", {
+      blobUrlCount: this.blobUrls.length,
+      hasPdfDoc: Boolean(this.pdfDoc),
+    })
     for (const url of this.blobUrls) URL.revokeObjectURL(url)
     this.blobUrls = []
     this.pdfDoc?.destroy()
@@ -152,11 +194,14 @@ export class PdfParser implements IParser {
       const meta = await this.pdfDoc.getMetadata()
       const info = meta.info as Record<string, string> | undefined
       if (!info) return {}
-      return {
+      const metadata = {
         title: info.Title || undefined,
         author: info.Author || undefined,
       }
+      console.info("[pdf-parser] metadata", metadata)
+      return metadata
     } catch {
+      console.warn("[pdf-parser] metadata:failed")
       return {}
     }
   }
@@ -165,9 +210,21 @@ export class PdfParser implements IParser {
     if (!this.pdfDoc) return []
     try {
       const outline = await this.pdfDoc.getOutline()
-      if (!outline) return []
-      return this.walkOutline(outline)
+      if (!outline) {
+        console.info("[pdf-parser] outline:empty")
+        return []
+      }
+      console.info("[pdf-parser] outline:raw", {
+        itemCount: outline.length,
+      })
+      const toc = this.walkOutline(outline)
+      console.info("[pdf-parser] outline:normalized", {
+        itemCount: toc.length,
+        preview: toc.slice(0, 5),
+      })
+      return toc
     } catch {
+      console.warn("[pdf-parser] outline:failed")
       return []
     }
   }

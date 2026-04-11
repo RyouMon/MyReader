@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -61,9 +61,22 @@ export default function ReaderScreen() {
   const [chromeVisible, setChromeVisible] = useState(true);
   const [tocOpen, setTocOpen] = useState(false);
   const [gotoPageCmd, setGotoPageCmd] = useState<number | undefined>(undefined);
+  const [domProbeEvents, setDomProbeEvents] = useState<string[]>([]);
 
   useEffect(() => {
+    console.info("[mobile-reader] effect:start", {
+      id,
+      formatParam,
+      activeLibraryId: activeLibrary?.id ?? null,
+      activeLibrarySourceType: activeLibrary?.sourceType ?? null,
+      hasWebDavSource: Boolean(webDavSource),
+    });
+
     if (!id || !activeLibrary) {
+      console.error("[mobile-reader] effect:missing-input", {
+        id,
+        hasActiveLibrary: Boolean(activeLibrary),
+      });
       setLoadState({
         status: "error",
         message: !id ? "缺少书籍参数" : "未选择书库",
@@ -75,10 +88,17 @@ export default function ReaderScreen() {
 
     async function load() {
       try {
+        console.info("[mobile-reader] load:start", {
+          id,
+          formatParam,
+          libraryId: activeLibrary.id,
+          sourceType: activeLibrary.sourceType,
+        });
         setLoadState({ status: "loading", message: "正在读取书籍信息…" });
 
         const calibreId = Number(id);
         if (!Number.isFinite(calibreId) || calibreId <= 0) {
+          console.error("[mobile-reader] load:invalid-book-id", { id, calibreId });
           setLoadState({ status: "error", message: "无效的书籍 ID" });
           return;
         }
@@ -86,12 +106,27 @@ export default function ReaderScreen() {
         const detail = await readBookDetailFromMetadata(activeLibrary!, calibreId);
         if (cancelled) return;
         if (!detail) {
+          console.error("[mobile-reader] load:book-detail-not-found", {
+            calibreId,
+            libraryId: activeLibrary.id,
+          });
           setLoadState({ status: "error", message: "在书库中未找到该书" });
           return;
         }
 
+        console.info("[mobile-reader] load:book-detail-ready", {
+          calibreId,
+          title: detail.title,
+          formats: detail.formats,
+        });
+
         const fmt = resolveReadFormat(detail.formats, formatParam);
         if (!fmt) {
+          console.error("[mobile-reader] load:no-supported-format", {
+            calibreId,
+            formats: detail.formats,
+            formatParam,
+          });
           setLoadState({
             status: "error",
             message: `该书没有可阅读的格式（需要 EPUB、CBZ 或 PDF）`,
@@ -100,7 +135,16 @@ export default function ReaderScreen() {
         }
 
         const fmtUpper = fmt.toUpperCase();
+        console.info("[mobile-reader] load:resolved-format", {
+          calibreId,
+          resolvedFormat: fmtUpper,
+        });
+
         if (fmtUpper !== "PDF" && fmtUpper !== "CBZ") {
+          console.error("[mobile-reader] load:unsupported-mobile-format", {
+            calibreId,
+            resolvedFormat: fmtUpper,
+          });
           setLoadState({
             status: "error",
             message: `暂不支持 ${fmtUpper} 格式阅读，仅支持 PDF 和 CBZ`,
@@ -118,7 +162,21 @@ export default function ReaderScreen() {
           : await readBookFileBytes(activeLibrary!, calibreId, fmt);
         if (cancelled) return;
 
+        console.info("[mobile-reader] load:file-bytes-ready", {
+          calibreId,
+          format: fmtUpper,
+          byteLength: bytes.byteLength,
+          sourceType: webDavSource ? "webdav" : "local",
+        });
+
         const base64 = uint8ArrayToBase64(bytes);
+
+        console.info("[mobile-reader] load:base64-ready", {
+          calibreId,
+          format: fmtUpper,
+          base64Length: base64.length,
+          renderer: fmtUpper === "PDF" ? "dom" : "native-fixed",
+        });
 
         setLoadState({
           status: "ready",
@@ -127,8 +185,21 @@ export default function ReaderScreen() {
           title: detail.title,
           initialPage: 0,
         });
+
+        console.info("[mobile-reader] load:ready", {
+          calibreId,
+          format: fmtUpper,
+          title: detail.title,
+          initialPage: 0,
+        });
       } catch (e) {
         if (cancelled) return;
+        console.error("[mobile-reader] load:failed", {
+          id,
+          formatParam,
+          libraryId: activeLibrary.id,
+          error: e,
+        });
         setLoadState({
           status: "error",
           message: e instanceof Error ? e.message : String(e),
@@ -143,11 +214,27 @@ export default function ReaderScreen() {
   }, [id, activeLibrary, formatParam, webDavSource]);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
+    console.info("[mobile-reader] state-change", state);
     setReaderState(state);
   }, []);
 
   const handleTocReady = useCallback(async (items: ReaderTocItem[]) => {
+    console.info("[mobile-reader] toc-ready", {
+      count: items.length,
+      firstItems: items.slice(0, 5),
+    });
     setToc(items);
+  }, []);
+
+  const handleDomProbe = useCallback(async (event: {
+    stage: string;
+    detail?: Record<string, unknown> | null;
+  }) => {
+    console.info("[mobile-reader] dom-probe", event);
+    setDomProbeEvents((prev) => {
+      const next = [...prev, `${event.stage}:${JSON.stringify(event.detail ?? {})}`];
+      return next.slice(-20);
+    });
   }, []);
 
   const handleRequestClose = useCallback(async () => {
@@ -175,10 +262,22 @@ export default function ReaderScreen() {
   }, [tocOpen]);
 
   const handleTocSelect = useCallback((pageIndex: number) => {
+    console.info("[mobile-reader] toc-select", { pageIndex });
     setGotoPageCmd(pageIndex);
     setTocOpen(false);
     setTimeout(() => setGotoPageCmd(undefined), 100);
   }, []);
+
+  const domFallback = useMemo(
+    () => (
+      <DomReaderFallback
+        format={loadState.status === "ready" ? loadState.format : null}
+        title={loadState.status === "ready" ? loadState.title : null}
+        domProbeEvents={domProbeEvents}
+      />
+    ),
+    [loadState, domProbeEvents]
+  );
 
   const progressPercent = readerState?.progress ?? 0;
   const pageLabel = readerState
@@ -222,6 +321,18 @@ export default function ReaderScreen() {
   /** CBZ：原生 Surface（expo-image + 分页列表）。PDF：仍依赖 DOM 内 canvas/pdf.js，暂用 expo/dom。 */
   const useNativeFixedSurface = fmtUpper === "CBZ";
 
+  console.info("[mobile-reader] render:ready-screen", {
+    title,
+    format: fmtUpper,
+    useNativeFixedSurface,
+    readerReady: readerState?.ready ?? false,
+    currentPage: readerState?.currentPage ?? null,
+    totalPages: readerState?.totalPages ?? null,
+    tocCount: toc.length,
+    chromeVisible,
+    tocOpen,
+  });
+
   return (
     <View className="flex-1" style={{ backgroundColor: "#111" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -229,11 +340,7 @@ export default function ReaderScreen() {
 
       <Pressable style={StyleSheet.absoluteFill} onPress={toggleChrome}>
         <Suspense
-          fallback={
-            <View className="flex-1 items-center justify-center" style={{ backgroundColor: "#111" }}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
-          }
+          fallback={domFallback}
         >
           {useNativeFixedSurface ? (
             <MobileFixedReader
@@ -252,6 +359,7 @@ export default function ReaderScreen() {
               initialPage={loadState.initialPage}
               onStateChange={handleStateChange}
               onTocReady={handleTocReady}
+              onDomProbe={handleDomProbe}
               onRequestClose={handleRequestClose}
               gotoPageCommand={gotoPageCmd}
               dom={{
@@ -457,6 +565,54 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
     result += i + 2 < len ? base64Chars[b3 & 0x3f] : "=";
   }
   return result;
+}
+
+function DomReaderFallback({
+  format,
+  title,
+  domProbeEvents,
+}: {
+  format: string | null;
+  title: string | null;
+  domProbeEvents: string[];
+}) {
+  useEffect(() => {
+    console.info("[mobile-reader] dom-fallback:mounted", {
+      format,
+      title,
+      domProbeCount: domProbeEvents.length,
+    });
+  }, [format, title, domProbeEvents.length]);
+
+  return (
+    <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: "#111" }}>
+      <ActivityIndicator size="large" color="#fff" />
+      <Text className="mt-4 text-sm" style={{ color: "rgba(255,255,255,0.72)" }}>
+        正在挂载 PDF DOM 阅读器…
+      </Text>
+      <Text className="mt-2 text-center text-xs" style={{ color: "rgba(255,255,255,0.42)" }}>
+        {format ? `format=${format}` : "format=unknown"}
+        {title ? ` · ${title}` : ""}
+      </Text>
+      {domProbeEvents.length > 0 ? (
+        <View className="mt-4 w-full max-w-[320px] rounded-2xl px-4 py-3" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+          <Text className="mb-2 text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
+            DOM probe
+          </Text>
+          {domProbeEvents.slice(-4).map((entry, idx) => (
+            <Text
+              key={`${entry}-${idx}`}
+              className="mb-1 text-[11px]"
+              style={{ color: "rgba(255,255,255,0.7)" }}
+              numberOfLines={2}
+            >
+              {entry}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

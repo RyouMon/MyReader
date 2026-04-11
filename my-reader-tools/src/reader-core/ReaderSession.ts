@@ -2,6 +2,8 @@ import { FixedLayoutEngine } from "../layout-engines/fixed/FixedLayoutEngine"
 import type { FixedViewportState } from "../layout-engines/fixed/types"
 import type { BookAnchor } from "../progress/BookAnchor"
 import { ComicParser } from "../rendition/parsers/ComicParser"
+import { EpubParser } from "../rendition/parsers/EpubParser"
+import { PdfParser } from "../rendition/parsers/PdfParser"
 import type {
   ChapterData,
   IParser,
@@ -57,11 +59,27 @@ export class ReaderSession {
   }
 
   async open(input: OpenBookRequest): Promise<OpenBookResult> {
+    console.info("[reader-session] open:start", {
+      format: input.format,
+      byteLength: input.buffer.byteLength,
+      initialOpenAnchor: input.initialOpenAnchor ?? null,
+    })
     this.close()
 
     this.parserInstance = await ReaderSession.createParser(input.format)
+    console.info("[reader-session] open:parser-created", {
+      format: input.format,
+      parser: this.parserInstance.constructor.name,
+    })
     this.parsedBook = await this.parserInstance.parse(input.buffer)
     this.readyState = true
+
+    console.info("[reader-session] open:parsed", {
+      layoutMode: this.parsedBook.layoutMode,
+      chapterCount: this.parsedBook.chapters.length,
+      tocCount: this.parsedBook.toc.length,
+      metadata: this.parsedBook.metadata,
+    })
 
     const totalChapters = this.parsedBook.chapters.length
     const initialChapter = input.initialOpenAnchor
@@ -73,13 +91,29 @@ export class ReaderSession {
 
     this.navigation.gotoChapterWithResume(initialChapter, totalChapters, 0)
 
+    console.info("[reader-session] open:initial-navigation", {
+      totalChapters,
+      initialChapter,
+    })
+
     if (this.parsedBook.layoutMode === "fixedLayout" && this.parserInstance) {
       const parser = this.parserInstance
+      console.info("[reader-session] open:fixed-layout-engine:create", {
+        chapterCount: this.parsedBook.chapters.length,
+      })
       this.fixedLayoutEngine = new FixedLayoutEngine(async (i) => {
+        console.info("[reader-session] fixed-layout-engine:load-page", {
+          index: i,
+        })
         const ch = await parser.getChapter(i)
         if (ch.type !== "image") {
           throw new Error("Fixed layout book expected image chapter data")
         }
+        console.info("[reader-session] fixed-layout-engine:page-ready", {
+          index: i,
+          title: ch.title,
+          imageUrlPrefix: ch.imageUrl.slice(0, 64),
+        })
         return ch
       })
     }
@@ -94,6 +128,11 @@ export class ReaderSession {
   }
 
   close(): void {
+    console.info("[reader-session] close", {
+      hadParser: Boolean(this.parserInstance),
+      hadBook: Boolean(this.parsedBook),
+      hadFixedLayoutEngine: Boolean(this.fixedLayoutEngine),
+    })
     this.fixedLayoutEngine?.clear()
     this.fixedLayoutEngine = null
     this.parserInstance?.destroy()
@@ -137,10 +176,27 @@ export class ReaderSession {
     if (index < 0 || index >= this.parsedBook.chapters.length) {
       throw new Error(`Chapter index out of range: ${index}`)
     }
+    console.info("[reader-session] get-chapter:start", {
+      index,
+      currentChapter: this.currentChapter,
+      usesFixedLayoutEngine: Boolean(this.fixedLayoutEngine),
+    })
     if (this.fixedLayoutEngine) {
-      return this.fixedLayoutEngine.getFixedPage(index)
+      const ch = await this.fixedLayoutEngine.getFixedPage(index)
+      console.info("[reader-session] get-chapter:fixed-ready", {
+        index,
+        type: ch.type,
+        title: ch.title,
+      })
+      return ch
     }
-    return this.parserInstance.getChapter(index)
+    const ch = await this.parserInstance.getChapter(index)
+    console.info("[reader-session] get-chapter:parser-ready", {
+      index,
+      type: ch.type,
+      title: ch.title,
+    })
+    return ch
   }
 
   getFixedViewportState(): FixedViewportState | null {
@@ -313,9 +369,9 @@ export class ReaderSession {
   }
 
   private static async createParser(format: string): Promise<IParser> {
+    console.info("[reader-session] create-parser", { format })
     switch (format.toUpperCase()) {
       case "EPUB": {
-        const { EpubParser } = await import("../rendition/parsers/EpubParser")
         return new EpubParser()
       }
       case "CBZ":
@@ -325,7 +381,6 @@ export class ReaderSession {
           "CBR（RAR 压缩）暂不支持客户端解压，请将漫画转为 CBZ（ZIP）后在书库中阅读。",
         )
       case "PDF": {
-        const { PdfParser } = await import("../rendition/parsers/PdfParser")
         return new PdfParser()
       }
       default:

@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
+console.info("[mobile-pdf-dom] module:loaded");
+
 
 export default function FixedLayoutDOMReader({
   bookBase64,
@@ -14,6 +16,7 @@ export default function FixedLayoutDOMReader({
   initialPage,
   onStateChange,
   onTocReady,
+  onDomProbe,
   onRequestClose,
   gotoPageCommand,
   dom,
@@ -23,12 +26,27 @@ export default function FixedLayoutDOMReader({
   initialPage?: number;
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
+  onDomProbe: (event: {
+    stage: string;
+    detail?: Record<string, unknown> | null;
+  }) => Promise<void>;
   onRequestClose: () => Promise<void>;
   gotoPageCommand?: number;
   dom?: import("expo/dom").DOMProps;
 }) {
   void onRequestClose;
   void dom;
+
+  void onDomProbe({
+    stage: "component-render",
+    detail: {
+      format,
+      hasBookBase64: Boolean(bookBase64),
+      base64Length: bookBase64?.length ?? 0,
+      initialPage: initialPage ?? 0,
+      gotoPageCommand: gotoPageCommand ?? null,
+    },
+  });
 
   const readerRef = useRef<BookReader | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -38,9 +56,35 @@ export default function FixedLayoutDOMReader({
   const [totalPages, setTotalPages] = useState(0);
   const readyRef = useRef(false);
 
+  useEffect(() => {
+    void onDomProbe({
+      stage: "effect-mounted",
+      detail: {
+        format,
+        hasBookBase64: Boolean(bookBase64),
+        base64Length: bookBase64?.length ?? 0,
+      },
+    });
+    return () => {
+      void onDomProbe({
+        stage: "effect-unmounted",
+        detail: { format },
+      });
+    };
+  }, [bookBase64, format, onDomProbe]);
+
   const reportState = useCallback(
     (page: number, total: number, reader: BookReader, err: string | null, isLoading: boolean) => {
       const progress = reader.getProgress();
+      console.info("[mobile-pdf-dom] report-state", {
+        ready: readyRef.current,
+        page,
+        total,
+        progressPercent: Math.round(progress.fraction * 100),
+        chapterTitle: progress.chapterTitle,
+        isLoading,
+        err,
+      });
       onStateChange({
         ready: readyRef.current,
         currentPage: page,
@@ -61,10 +105,29 @@ export default function FixedLayoutDOMReader({
     const reader = new BookReader();
     readerRef.current = reader;
 
+    console.info("[mobile-pdf-dom] init-effect:start", {
+      format,
+      initialPage: initialPage ?? 0,
+      base64Length: bookBase64.length,
+    });
+    void onDomProbe({
+      stage: "init-effect-start",
+      detail: {
+        format,
+        initialPage: initialPage ?? 0,
+        base64Length: bookBase64.length,
+      },
+    });
+
     async function init() {
       try {
         setLoading(true);
         setError(null);
+
+        console.info("[mobile-pdf-dom] init:decode-base64:start", {
+          format,
+          base64Length: bookBase64.length,
+        });
 
         const binaryStr = atob(bookBase64!);
         const len = binaryStr.length;
@@ -72,6 +135,18 @@ export default function FixedLayoutDOMReader({
         for (let i = 0; i < len; i++) {
           bytes[i] = binaryStr.charCodeAt(i);
         }
+
+        console.info("[mobile-pdf-dom] init:decode-base64:done", {
+          format,
+          byteLength: bytes.byteLength,
+        });
+        void onDomProbe({
+          stage: "base64-decoded",
+          detail: {
+            format,
+            byteLength: bytes.byteLength,
+          },
+        });
 
         const book = await reader.init(bytes.buffer as ArrayBuffer, format, {
           initialOpenAnchor:
@@ -81,15 +156,52 @@ export default function FixedLayoutDOMReader({
         });
         if (cancelled) return;
 
+        console.info("[mobile-pdf-dom] init:reader-ready", {
+          format,
+          layoutMode: book.layoutMode,
+          chapterCount: book.chapters.length,
+          tocCount: book.toc.length,
+          readerCurrentChapter: reader.curChapter,
+        });
+        void onDomProbe({
+          stage: "reader-ready",
+          detail: {
+            format,
+            layoutMode: book.layoutMode,
+            chapterCount: book.chapters.length,
+            tocCount: book.toc.length,
+            readerCurrentChapter: reader.curChapter,
+          },
+        });
+
         readyRef.current = true;
         setTotalPages(book.chapters.length);
         setCurrentPage(reader.curChapter);
 
         const toc = flattenFixedToc(book.toc, book.chapters.length);
+        console.info("[mobile-pdf-dom] init:flattened-toc", {
+          sourceTocCount: book.toc.length,
+          flattenedCount: toc.length,
+          firstItems: toc.slice(0, 5),
+        });
         onTocReady(toc);
 
         const ch = (await reader.getChapter(reader.curChapter)) as ImageChapterData;
         if (cancelled) return;
+
+        console.info("[mobile-pdf-dom] init:first-chapter-ready", {
+          chapterIndex: reader.curChapter,
+          chapterType: ch?.type,
+          imageUrlPrefix: ch?.imageUrl?.slice(0, 64) ?? null,
+        });
+        void onDomProbe({
+          stage: "first-chapter-ready",
+          detail: {
+            chapterIndex: reader.curChapter,
+            chapterType: ch?.type,
+            hasImageUrl: Boolean(ch?.imageUrl),
+          },
+        });
 
         setImageUrl(ch.imageUrl);
         setLoading(false);
@@ -97,6 +209,19 @@ export default function FixedLayoutDOMReader({
       } catch (e) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
+        console.error("[mobile-pdf-dom] init:failed", {
+          format,
+          initialPage: initialPage ?? 0,
+          error: e,
+        });
+        void onDomProbe({
+          stage: "init-failed",
+          detail: {
+            format,
+            initialPage: initialPage ?? 0,
+            message: msg,
+          },
+        });
         setError(msg);
         setLoading(false);
         onStateChange({
@@ -115,35 +240,70 @@ export default function FixedLayoutDOMReader({
 
     return () => {
       cancelled = true;
+      console.info("[mobile-pdf-dom] init-effect:cleanup", {
+        format,
+        ready: readyRef.current,
+      });
       reader.destroy();
       readerRef.current = null;
       readyRef.current = false;
     };
-  }, [bookBase64, format]);
+  }, [bookBase64, format, initialPage, onStateChange, onTocReady, onDomProbe, reportState]);
 
   const gotoPage = useCallback(
     async (index: number) => {
       const reader = readerRef.current;
-      if (!reader || !readyRef.current) return;
-      if (index < 0 || index >= totalPages) return;
+      if (!reader || !readyRef.current) {
+        console.warn("[mobile-pdf-dom] goto-page:reader-not-ready", {
+          index,
+          hasReader: Boolean(reader),
+          ready: readyRef.current,
+        });
+        return;
+      }
+      if (index < 0 || index >= totalPages) {
+        console.warn("[mobile-pdf-dom] goto-page:out-of-range", {
+          index,
+          totalPages,
+        });
+        return;
+      }
 
       setLoading(true);
       try {
+        console.info("[mobile-pdf-dom] goto-page:start", {
+          from: currentPage,
+          to: index,
+          totalPages,
+        });
         reader.gotoChapter(index);
         const ch = (await reader.getChapter(index)) as ImageChapterData;
+        console.info("[mobile-pdf-dom] goto-page:chapter-ready", {
+          index,
+          chapterType: ch?.type,
+          imageUrlPrefix: ch?.imageUrl?.slice(0, 64) ?? null,
+        });
         setImageUrl(ch.imageUrl);
         setCurrentPage(index);
         setLoading(false);
         reportState(index, totalPages, reader, null, false);
       } catch (e) {
+        console.error("[mobile-pdf-dom] goto-page:failed", {
+          index,
+          totalPages,
+          error: e,
+        });
         setLoading(false);
       }
     },
-    [totalPages, reportState],
+    [currentPage, totalPages, reportState],
   );
 
   useEffect(() => {
     if (gotoPageCommand != null && gotoPageCommand >= 0 && readyRef.current) {
+      console.info("[mobile-pdf-dom] goto-page-command", {
+        gotoPageCommand,
+      });
       gotoPage(gotoPageCommand);
     }
   }, [gotoPageCommand, gotoPage]);
@@ -166,6 +326,13 @@ export default function FixedLayoutDOMReader({
 
   return (
     <div style={styles.container}>
+      {console.info("[mobile-pdf-dom] render", {
+        hasImageUrl: Boolean(imageUrl),
+        loading,
+        error,
+        currentPage,
+        totalPages,
+      })}
       {error ? (
         <div style={styles.errorContainer}>
           <div style={styles.errorCard}>
