@@ -2,11 +2,21 @@ import { useMemo, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { View } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 
-import { EmptyState, RoundIconButton, Screen, SearchField, SectionCard, SettingsRow } from "../components";
+import {
+  EmptyState,
+  HeaderToolbar,
+  RoundIconButton,
+  Screen,
+  SearchField,
+  SectionCard,
+  SettingsRow,
+  type HeaderToolbarAction,
+} from "../components";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useLibraryStore } from "../store/library-store";
 
@@ -21,9 +31,6 @@ function getLibraryIconName(index: number) {
   return icons[index % icons.length] ?? "local-library";
 }
 
-/**
- * 书库切换列表：由 `/library/picker` 以 Stack `presentation: 'modal'` 呈现（见 Expo Router modals）。
- */
 export default function LibraryPickerScreen() {
   const palette = useThemePalette();
   const { libraries, activeLibraryId, loadingLibraries, refreshBooks, addLibrary, setActiveLibrary } = useLibraryStore();
@@ -44,6 +51,32 @@ export default function LibraryPickerScreen() {
     }
   }
 
+  const leftToolbar: HeaderToolbarAction[] = [
+    {
+      label: "关闭",
+      onPress: () => {
+        if (router.canGoBack()) router.back();
+      },
+      icon: <SymbolView name="xmark" size={16} tintColor={palette.textMuted} />,
+      iosSfSymbol: "xmark",
+    },
+  ];
+
+  const rightToolbar: HeaderToolbarAction[] = [
+    {
+      label: "刷新书库",
+      onPress: () => void refreshBooks(),
+      icon: <SymbolView name="arrow.clockwise" size={16} tintColor={palette.textMuted} />,
+      iosSfSymbol: "arrow.clockwise",
+    },
+    {
+      label: "添加书库",
+      onPress: () => void addLibrary(),
+      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
+      iosSfSymbol: "plus",
+    },
+  ];
+
   return (
     <>
       <Stack.Screen
@@ -51,31 +84,9 @@ export default function LibraryPickerScreen() {
           title: "切换书库",
           headerLargeTitle: false,
           headerShadowVisible: false,
-          headerLeft: () => (
-            <RoundIconButton
-              label="关闭"
-              onPress={() => {
-                if (router.canGoBack()) router.back();
-              }}
-              icon={<MaterialIcons name="close" size={22} color={palette.textMuted} />}
-            />
-          ),
-          headerRight: () => (
-            <View className="flex-row items-center gap-2">
-              <RoundIconButton
-                label="刷新书库"
-                onPress={() => void refreshBooks()}
-                icon={<MaterialIcons name="refresh" size={20} color={palette.textMuted} />}
-              />
-              <RoundIconButton
-                label="添加书库"
-                onPress={() => void addLibrary()}
-                icon={<MaterialIcons name="add" size={22} color={palette.text} />}
-              />
-            </View>
-          ),
         }}
       />
+      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
       <Screen>
         <SearchField placeholder="搜索书库名称" value={query} onChangeText={setQuery} />
 

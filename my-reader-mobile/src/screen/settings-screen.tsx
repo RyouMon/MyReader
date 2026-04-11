@@ -6,18 +6,12 @@ import type { SharedValue } from "react-native-reanimated";
 import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
 import { Pressable, Text, View } from "@/tw";
 
-import { Screen, SectionCard, SectionHeading, SettingsRow, SettingsSwitch, Sheet, SheetOption } from "../components";
+import { Screen, SectionCard, SectionHeading, SettingsRow, Sheet, SheetOption } from "../components";
 import { useLibraryStore } from "../store/library-store";
-import { useSyncSetting } from "../store/settings-store";
 
 const themeModes = ["跟随设备", "浅色", "深色"];
 const themeModeMap: Record<string, ThemeMode> = { 跟随设备: "system", 浅色: "light", 深色: "dark" };
 const themeModeLabels: Record<ThemeMode, string> = { system: "跟随设备", light: "浅色", dark: "深色" };
-
-function TrailingLabel({ text, emphasize }: { text: string; emphasize?: boolean }) {
-  const palette = useThemePalette();
-  return <Text className="text-sm font-semibold" style={{ color: emphasize ? palette.primary : palette.textMuted }}>{text}</Text>;
-}
 
 /**
  * 右侧删除操作，配合 Swipeable 左滑显示。
@@ -51,7 +45,6 @@ export default function SettingsScreen() {
   const palette = useThemePalette();
   const { mode, setMode } = useTheme();
   const { libraries, activeLibraryId, setActiveLibrary, removeLibrary, loadingLibraries, error } = useLibraryStore();
-  const { syncEnabled, setSyncEnabled } = useSyncSetting();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
 
@@ -74,32 +67,31 @@ export default function SettingsScreen() {
                 <SettingsRow
                   title={library.name}
                   detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
-                  trailing={activeLibraryId === library.id ? <TrailingLabel text="当前" emphasize /> : <TrailingLabel text="切换" />}
                   onPress={activeLibraryId === library.id ? undefined : () => void setActiveLibrary(library.id)}
                 />
               </Swipeable>
             ))}
             <Link href="/settings/add-library" asChild>
-              <SettingsRow title="添加书库" detail={loadingLibraries ? "正在加载本地书库配置" : error ?? "先选择数据源，再选择书库目录"} trailing={<TrailingLabel text="添加" />} isLast />
+              <SettingsRow title="添加书库" detail={loadingLibraries ? "正在加载本地书库配置" : error ?? "先选择数据源，再选择书库目录"} isLast />
             </Link>
           </SectionCard>
         </View>
         <View className="gap-3">
           <SectionHeading title="阅读偏好" />
           <SectionCard>
-            <SettingsRow title="深色模式" detail={themeMode} trailing={<TrailingLabel text="选择" />} onPress={() => setThemeSheetOpen(true)} />
-            <SettingsRow title="同步阅读进度" detail="在已连接设备间保留最近位置" trailing={<SettingsSwitch value={syncEnabled} onValueChange={setSyncEnabled} />} />
-            <SettingsRow title="阅读器样式" detail="字体、字号、页边距" trailing={<TrailingLabel text="进入" />} isLast />
+            <SettingsRow title="深色模式" detail={themeMode} onPress={() => setThemeSheetOpen(true)} />
+            <SettingsRow title="同步阅读进度" detail="在已连接设备间保留最近位置" />
+            <SettingsRow title="阅读器样式" detail="字体、字号、页边距" isLast />
           </SectionCard>
         </View>
         <View className="gap-3">
           <SectionHeading title="数据与来源" />
           <SectionCard>
             <Link href="/settings/add-library" asChild>
-              <SettingsRow title="手机" detail="默认数据源，无需配置，不能删除" trailing={<TrailingLabel text="进入" />} />
+              <SettingsRow title="手机" detail="默认数据源，无需配置，不能删除" />
             </Link>
             <Link href="/settings/webdav-sources" asChild>
-              <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" trailing={<TrailingLabel text="管理" />} isLast />
+              <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" isLast />
             </Link>
           </SectionCard>
         </View>

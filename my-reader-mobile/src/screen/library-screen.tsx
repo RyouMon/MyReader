@@ -2,20 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
-import { ActionSheetIOS, Alert, FlatList, Platform, View } from "react-native";
+import { SymbolView } from "expo-symbols";
+import { Alert, FlatList, Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 
-import { EmptyState, FilterChip, LibraryGrid, RoundIconButton, Screen, SearchField, SectionHeading } from "../components";
+import {
+  EmptyState,
+  FilterChip,
+  HeaderToolbar,
+  LibraryGrid,
+  RoundIconButton,
+  Screen,
+  SearchField,
+  SectionHeading,
+  type HeaderToolbarAction,
+} from "../components";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useLibraryStore } from "../store/library-store";
 
-const libraryFilters = ["全部", "已加入"];
-const sortOptions = ["书名", "作者", "最近添加"];
-const viewOptions = ["网格视图"];
+const libraryFilters = ["全部", "已加入"] as const;
+const sortOptions = ["书名", "作者", "最近添加"] as const;
+const viewOptions = ["网格视图"] as const;
+
+type SortOption = (typeof sortOptions)[number];
+type ViewOption = (typeof viewOptions)[number];
 
 type LibraryScreenProps = {
-  /** 若省略则使用 store 中的当前书库（根路由默认如此）。 */
   libraryId?: string;
 };
 
@@ -24,6 +37,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, addLibrary, error } =
     useLibraryStore();
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>(sortOptions[0]);
+  const [viewMode, setViewMode] = useState<ViewOption>(viewOptions[0]);
   const debouncedQuery = useDebouncedValue(query, 180);
 
   function openLibraryPicker() {
@@ -47,41 +62,104 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const visibleBooks = useMemo(() => {
     const needle = debouncedQuery.trim().toLowerCase();
-    if (!needle) return books;
-    return books.filter((book) => {
-      const authorMatches = book.authors?.some((author) => author.toLowerCase().includes(needle));
-      return book.title.toLowerCase().includes(needle) || book.author.toLowerCase().includes(needle) || Boolean(authorMatches);
-    });
-  }, [books, debouncedQuery]);
+    const filteredBooks = !needle
+      ? books
+      : books.filter((book) => {
+          const authorMatches = book.authors?.some((author) => author.toLowerCase().includes(needle));
+          return (
+            book.title.toLowerCase().includes(needle) ||
+            book.author.toLowerCase().includes(needle) ||
+            Boolean(authorMatches)
+          );
+        });
 
-  const menuOptions = useMemo(
-    () => [
-      ...sortOptions.map((option, index) => `${index === 0 ? "排序: 当前 · " : "排序: "}${option}`),
-      ...viewOptions.map((option, index) => `${index === 0 ? "视图: 当前 · " : "视图: "}${option}`),
-    ],
-    []
-  );
+    return [...filteredBooks].sort((left, right) => {
+      switch (sortBy) {
+        case "作者":
+          return left.author.localeCompare(right.author, "zh-CN");
+        case "最近添加":
+          return right.id.localeCompare(left.id, "zh-CN", { numeric: true });
+        case "书名":
+        default:
+          return left.title.localeCompare(right.title, "zh-CN");
+      }
+    });
+  }, [books, debouncedQuery, sortBy]);
 
   function openBookDetail(bookId: string) {
     router.push({ pathname: "/book/[id]", params: { id: bookId } });
   }
 
-  function openNativeMenu() {
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...menuOptions, "取消"],
-          cancelButtonIndex: menuOptions.length,
-          userInterfaceStyle: palette.background === "#1C1916" ? "dark" : "light",
-        },
-        () => {}
-      );
-      return;
-    }
-    Alert.alert("排序与视图", menuOptions.join("\n"), [{ text: "关闭", style: "cancel" }]);
+  function applySort(option: SortOption) {
+    setSortBy(option);
   }
 
-  /** 书库列表或元数据仍在拉取，当前 id 暂时解析不到：不要当成「找不到书库」。 */
+  function applyView(option: ViewOption) {
+    setViewMode(option);
+  }
+
+  function openSortViewMenu() {
+    Alert.alert(
+      "排序与视图",
+      `当前排序：${sortBy}\n当前视图：${viewMode}`,
+      [
+        ...sortOptions.map((option) => ({
+          text: `${sortBy === option ? "✓ " : ""}排序：${option}`,
+          onPress: () => applySort(option),
+        })),
+        ...viewOptions.map((option) => ({
+          text: `${viewMode === option ? "✓ " : ""}视图：${option}`,
+          onPress: () => applyView(option),
+        })),
+        { text: "关闭", style: "cancel" },
+      ]
+    );
+  }
+
+  const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
+    {
+      label: "添加书库",
+      onPress: () => void addLibrary(),
+      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
+      iosSfSymbol: "plus",
+    },
+  ];
+
+  const unselectedLibraryToolbarRight: HeaderToolbarAction[] = [
+    {
+      label: "切换书库",
+      onPress: openLibraryPicker,
+      icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
+      iosSfSymbol: "arrow.left.arrow.right",
+    },
+    {
+      label: "添加书库",
+      onPress: () => void addLibrary(),
+      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
+      iosSfSymbol: "plus",
+    },
+  ];
+
+  const selectedLibraryToolbarLeft: HeaderToolbarAction[] = [
+    {
+      label: "切换书库",
+      onPress: openLibraryPicker,
+      icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
+      iosSfSymbol: "arrow.left.arrow.right",
+      iconOnly: true,
+    },
+  ];
+
+  const selectedLibraryToolbarRight: HeaderToolbarAction[] = [
+    {
+      label: "排序与视图",
+      onPress: openSortViewMenu,
+      icon: <MaterialIcons name="tune" size={22} color={palette.text} />,
+      iosSfSymbol: "slider.horizontal.3",
+      iconOnly: true,
+    },
+  ];
+
   if (loadingLibraries && typeof effectiveLibraryId === "string" && !selectedLibrary) {
     return (
       <>
@@ -98,7 +176,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  /** 仅在书库列表已就绪且其中不包含当前 id 时视为失效（避免持久化 id 已恢复但 libraries 仍在加载时误判）。 */
   const showInvalidLibrary =
     typeof effectiveLibraryId === "string" &&
     !selectedLibrary &&
@@ -129,15 +206,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             title: "书库",
             headerLargeTitle: true,
             headerLargeTitleShadowVisible: false,
-            headerRight: () => (
-              <RoundIconButton
-                label="添加书库"
-                onPress={() => void addLibrary()}
-                icon={<MaterialIcons name="add" size={22} color={palette.text} />}
-              />
-            ),
           }}
         />
+        <HeaderToolbar right={emptyLibrariesToolbarRight} />
         <Screen>
           <EmptyState
             title="还没有添加书库"
@@ -172,22 +243,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           options={{
             title: "书库",
             headerLargeTitle: true,
-            headerRight: () => (
-              <View className="flex-row items-center gap-2">
-                <RoundIconButton
-                  label="切换书库"
-                  onPress={openLibraryPicker}
-                  icon={<MaterialIcons name="swap-horiz" size={22} color={palette.text} />}
-                />
-                <RoundIconButton
-                  label="添加书库"
-                  onPress={() => void addLibrary()}
-                  icon={<MaterialIcons name="add" size={22} color={palette.text} />}
-                />
-              </View>
-            ),
           }}
         />
+        <HeaderToolbar right={unselectedLibraryToolbarRight} />
         <Screen>
           <EmptyState
             title="未选择书库"
@@ -211,22 +269,27 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         options={{
           title: selectedLibrary.name,
           headerLargeTitle: true,
-          headerLeft: () => (
-            <RoundIconButton
-              label="切换书库"
-              onPress={openLibraryPicker}
-              icon={<MaterialIcons name="swap-horiz" size={22} color={palette.text} />}
-            />
-          ),
-          headerRight: () => (
-            <RoundIconButton
-              label="排序与视图"
-              onPress={openNativeMenu}
-              icon={<MaterialIcons name="tune" size={30} color={palette.text} />}
-            />
-          ),
         }}
       />
+      <HeaderToolbar left={selectedLibraryToolbarLeft} right={Platform.OS === "ios" ? undefined : selectedLibraryToolbarRight} />
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Menu icon="line.3.horizontal.decrease.circle">
+            {sortOptions.map((option) => (
+              <Stack.Toolbar.MenuAction key={`sort-${option}`} isOn={sortBy === option} onPress={() => applySort(option)}>
+                {`排序: ${option}`}
+              </Stack.Toolbar.MenuAction>
+            ))}
+            <Stack.Toolbar.Menu inline title="视图">
+              {viewOptions.map((option) => (
+                <Stack.Toolbar.MenuAction key={`view-${option}`} isOn={viewMode === option} onPress={() => applyView(option)}>
+                  {option}
+                </Stack.Toolbar.MenuAction>
+              ))}
+            </Stack.Toolbar.Menu>
+          </Stack.Toolbar.Menu>
+        </Stack.Toolbar>
+      ) : null}
       <Screen>
         <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
 
