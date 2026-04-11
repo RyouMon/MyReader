@@ -84,7 +84,7 @@ async function ensureImageDrawable(img: HTMLImageElement): Promise<void> {
 async function preloadImagesForPagination(root: HTMLElement): Promise<void> {
   const imgs = root.querySelectorAll("img")
   if (imgs.length === 0) return
-  await Promise.all([...imgs].map((img) => ensureImageDrawable(img)))
+  await Promise.all(Array.from(imgs).map((img) => ensureImageDrawable(img)))
 }
 
 function syncLaidOutColumnHeight(

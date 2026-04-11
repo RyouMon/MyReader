@@ -29,11 +29,20 @@ import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 /** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
 const MobileFixedReader = lazy(async () => import("@/src/components/reader/fixed/MobileFixedReader"));
 const FixedLayoutDOMReader = lazy(async () => import("@/src/components/reader/FixedLayoutDOMReader"));
+const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
 
 type LoadState =
   | { status: "loading"; message: string }
   | { status: "error"; message: string }
-  | { status: "ready"; bookBase64: string; format: string; title: string; initialPage: number };
+  | {
+      status: "ready";
+      bookBase64: string;
+      bookBuffer: Uint8Array;
+      format: string;
+      title: string;
+      initialPage: number;
+      layoutMode: "fixedLayout" | "reflowable" | "unknown";
+    };
 
 export default function ReaderScreen() {
   const { id, format: formatParam } = useLocalSearchParams<{
@@ -84,6 +93,7 @@ export default function ReaderScreen() {
       return;
     }
 
+    const currentLibrary = activeLibrary;
     let cancelled = false;
 
     async function load() {
@@ -91,8 +101,8 @@ export default function ReaderScreen() {
         console.info("[mobile-reader] load:start", {
           id,
           formatParam,
-          libraryId: activeLibrary.id,
-          sourceType: activeLibrary.sourceType,
+          libraryId: currentLibrary.id,
+          sourceType: currentLibrary.sourceType,
         });
         setLoadState({ status: "loading", message: "正在读取书籍信息…" });
 
@@ -103,12 +113,12 @@ export default function ReaderScreen() {
           return;
         }
 
-        const detail = await readBookDetailFromMetadata(activeLibrary!, calibreId);
+        const detail = await readBookDetailFromMetadata(currentLibrary, calibreId);
         if (cancelled) return;
         if (!detail) {
           console.error("[mobile-reader] load:book-detail-not-found", {
             calibreId,
-            libraryId: activeLibrary.id,
+            libraryId: currentLibrary.id,
           });
           setLoadState({ status: "error", message: "在书库中未找到该书" });
           return;
@@ -140,26 +150,14 @@ export default function ReaderScreen() {
           resolvedFormat: fmtUpper,
         });
 
-        if (fmtUpper !== "PDF" && fmtUpper !== "CBZ") {
-          console.error("[mobile-reader] load:unsupported-mobile-format", {
-            calibreId,
-            resolvedFormat: fmtUpper,
-          });
-          setLoadState({
-            status: "error",
-            message: `暂不支持 ${fmtUpper} 格式阅读，仅支持 PDF 和 CBZ`,
-          });
-          return;
-        }
-
         setLoadState({
           status: "loading",
           message: webDavSource ? "正在从 WebDAV 下载书籍…" : "正在加载书籍文件…",
         });
 
         const bytes = webDavSource
-          ? await downloadWebDavBookFileBytes(activeLibrary!, webDavSource, calibreId, fmt)
-          : await readBookFileBytes(activeLibrary!, calibreId, fmt);
+          ? await downloadWebDavBookFileBytes(currentLibrary, webDavSource, calibreId, fmt)
+          : await readBookFileBytes(currentLibrary, calibreId, fmt);
         if (cancelled) return;
 
         console.info("[mobile-reader] load:file-bytes-ready", {
@@ -169,21 +167,31 @@ export default function ReaderScreen() {
           sourceType: webDavSource ? "webdav" : "local",
         });
 
+        const detailLayoutMode =
+          fmtUpper === "EPUB" ? "reflowable" : fmtUpper === "PDF" || fmtUpper === "CBZ" ? "fixedLayout" : "unknown";
         const base64 = uint8ArrayToBase64(bytes);
 
         console.info("[mobile-reader] load:base64-ready", {
           calibreId,
           format: fmtUpper,
           base64Length: base64.length,
-          renderer: fmtUpper === "PDF" ? "dom" : "native-fixed",
+          layoutMode: detailLayoutMode,
+          renderer:
+            detailLayoutMode === "reflowable"
+              ? "native-reflow-webview"
+              : fmtUpper === "PDF"
+                ? "dom"
+                : "native-fixed",
         });
 
         setLoadState({
           status: "ready",
           bookBase64: base64,
+          bookBuffer: bytes,
           format: fmt,
           title: detail.title,
           initialPage: 0,
+          layoutMode: detailLayoutMode,
         });
 
         console.info("[mobile-reader] load:ready", {
@@ -191,13 +199,15 @@ export default function ReaderScreen() {
           format: fmtUpper,
           title: detail.title,
           initialPage: 0,
+          layoutMode: detailLayoutMode,
         });
       } catch (e) {
         if (cancelled) return;
         console.error("[mobile-reader] load:failed", {
           id,
           formatParam,
-          libraryId: activeLibrary.id,
+            libraryId: currentLibrary.id,
+
           error: e,
         });
         setLoadState({
@@ -318,13 +328,16 @@ export default function ReaderScreen() {
 
   const title = loadState.title;
   const fmtUpper = loadState.format.toUpperCase();
+  const isReflowSurface = loadState.layoutMode === "reflowable";
   /** CBZ：原生 Surface（expo-image + 分页列表）。PDF：仍依赖 DOM 内 canvas/pdf.js，暂用 expo/dom。 */
-  const useNativeFixedSurface = fmtUpper === "CBZ";
+  const useNativeFixedSurface = loadState.layoutMode === "fixedLayout" && fmtUpper === "CBZ";
 
   console.info("[mobile-reader] render:ready-screen", {
     title,
     format: fmtUpper,
+    layoutMode: loadState.layoutMode,
     useNativeFixedSurface,
+    isReflowSurface,
     readerReady: readerState?.ready ?? false,
     currentPage: readerState?.currentPage ?? null,
     totalPages: readerState?.totalPages ?? null,
@@ -342,7 +355,22 @@ export default function ReaderScreen() {
         <Suspense
           fallback={domFallback}
         >
-          {useNativeFixedSurface ? (
+          {isReflowSurface ? (
+            <ReflowableDOMReader
+              bookBase64={loadState.bookBase64}
+              format={loadState.format}
+              initialPage={loadState.initialPage}
+              onStateChange={handleStateChange}
+              onTocReady={handleTocReady}
+              onDomProbe={handleDomProbe}
+              onRequestClose={handleRequestClose}
+              gotoPageCommand={gotoPageCmd}
+              dom={{
+                style: { flex: 1, width: screenWidth, height: screenHeight },
+                scrollEnabled: true,
+              }}
+            />
+          ) : useNativeFixedSurface ? (
             <MobileFixedReader
               bookBase64={loadState.bookBase64}
               format={loadState.format}
@@ -482,13 +510,14 @@ export default function ReaderScreen() {
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 16 }}
                 >
-                  {toc.map((item, idx) => {
-                    const isActive = readerState
-                      ? item.pageIndex === readerState.currentPage
-                      : false;
-                    return (
-                      <Pressable
-                        key={`${item.pageIndex}-${idx}`}
+                    {toc.map((item) => {
+                      const isActive = readerState
+                        ? item.pageIndex === readerState.currentPage
+                        : false;
+                      return (
+                        <Pressable
+                          key={item.id}
+
                         className="mb-2 rounded-2xl px-4 py-3"
                         style={{
                           backgroundColor: isActive
@@ -599,9 +628,9 @@ function DomReaderFallback({
           <Text className="mb-2 text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
             DOM probe
           </Text>
-          {domProbeEvents.slice(-4).map((entry, idx) => (
+          {domProbeEvents.slice(-4).map((entry) => (
             <Text
-              key={`${entry}-${idx}`}
+              key={entry}
               className="mb-1 text-[11px]"
               style={{ color: "rgba(255,255,255,0.7)" }}
               numberOfLines={2}

@@ -9,6 +9,9 @@ export type ReaderState = {
 };
 
 export type ReaderTocItem = {
+  id: string;
   label: string;
   pageIndex: number;
+  chapterIndex?: number;
+  href?: string;
 };

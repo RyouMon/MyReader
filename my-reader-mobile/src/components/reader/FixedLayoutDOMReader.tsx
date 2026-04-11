@@ -62,7 +62,6 @@ export default function FixedLayoutDOMReader({
       detail: {
         format,
         hasBookBase64: Boolean(bookBase64),
-        base64Length: bookBase64?.length ?? 0,
       },
     });
     return () => {
@@ -126,7 +125,7 @@ export default function FixedLayoutDOMReader({
 
         console.info("[mobile-pdf-dom] init:decode-base64:start", {
           format,
-          base64Length: bookBase64.length,
+          base64Length: bookBase64?.length ?? 0,
         });
 
         const binaryStr = atob(bookBase64!);
@@ -309,7 +308,11 @@ export default function FixedLayoutDOMReader({
   }, [gotoPageCommand, gotoPage]);
 
   const handleTap = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+    (
+      e:
+        | React.MouseEvent<HTMLDivElement>
+        | React.MouseEvent<HTMLButtonElement>
+    ) => {
       const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
       const x = e.clientX - rect.left;
       const width = rect.width;
@@ -326,13 +329,6 @@ export default function FixedLayoutDOMReader({
 
   return (
     <div style={styles.container}>
-      {console.info("[mobile-pdf-dom] render", {
-        hasImageUrl: Boolean(imageUrl),
-        loading,
-        error,
-        currentPage,
-        totalPages,
-      })}
       {error ? (
         <div style={styles.errorContainer}>
           <div style={styles.errorCard}>
@@ -341,14 +337,23 @@ export default function FixedLayoutDOMReader({
           </div>
         </div>
       ) : imageUrl ? (
-        <div style={styles.imageContainer} onClick={handleTap}>
+        <button
+          type="button"
+          style={styles.imageButton}
+          onClick={handleTap}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              handleTap(e as unknown as React.MouseEvent<HTMLDivElement>);
+            }
+          }}
+        >
           <img
             src={imageUrl}
             alt={`Page ${currentPage + 1}`}
             style={styles.pageImage}
             draggable={false}
           />
-        </div>
+        </button>
       ) : loading ? (
         <div style={styles.loadingContainer}>
           <div style={styles.spinner} />
@@ -377,6 +382,17 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
+  },
+  imageButton: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    padding: 0,
+    border: "none",
+    background: "transparent",
   },
   pageImage: {
     maxWidth: "100%",

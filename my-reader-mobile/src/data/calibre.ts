@@ -378,6 +378,15 @@ export async function readBookFileBytes(
   calibreBookId: number,
   format: string
 ): Promise<Uint8Array> {
+  const bookFile = await resolveBookFile(library, calibreBookId, format);
+  return bookFile.bytes();
+}
+
+export async function resolveBookFile(
+  library: MobileLibrary,
+  calibreBookId: number,
+  format: string
+): Promise<FSFile> {
   const metadataFile = new FSFile(library.metadataUri);
   const metadataBytes = await metadataFile.bytes();
   const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
@@ -405,7 +414,7 @@ export async function readBookFileBytes(
       );
     }
 
-    return bookFile.bytes();
+    return bookFile;
   } finally {
     await db.closeAsync();
   }
