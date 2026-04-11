@@ -3,6 +3,63 @@
  * Hermes does not provide these; install minimal stubs before any import of my-reader-tools.
  */
 
+type PromiseWithResolversResult<T> = {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: unknown) => void;
+};
+
+type PromiseConstructorWithResolvers = PromiseConstructor & {
+  withResolvers?<T>(): PromiseWithResolversResult<T>;
+};
+
+function installPromiseWithResolvers(): void {
+  const PromiseCtor = Promise as PromiseConstructorWithResolvers;
+  if (typeof PromiseCtor.withResolvers === "function") return;
+
+  PromiseCtor.withResolvers = function withResolvers<T>(): PromiseWithResolversResult<T> {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+function installNavigator(): void {
+  const currentNavigator = globalThis.navigator as
+    | {
+        userAgent?: string;
+        platform?: string;
+        product?: string;
+      }
+    | undefined;
+
+  if (
+    currentNavigator &&
+    typeof currentNavigator.userAgent === "string" &&
+    typeof currentNavigator.platform === "string"
+  ) {
+    return;
+  }
+
+  const navigatorPolyfill = {
+    ...(currentNavigator ?? {}),
+    userAgent: currentNavigator?.userAgent ?? "ReactNative Hermes",
+    platform: currentNavigator?.platform ?? "Linux arm64",
+    product: currentNavigator?.product ?? "ReactNative",
+  };
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: navigatorPolyfill,
+  });
+}
+
 function installEventTarget(): void {
   if (typeof globalThis.EventTarget !== "undefined") return;
 
@@ -114,5 +171,7 @@ function installDOMMatrix(): void {
   }
 }
 
+installPromiseWithResolvers();
+installNavigator();
 installEventTarget();
 installDOMMatrix();

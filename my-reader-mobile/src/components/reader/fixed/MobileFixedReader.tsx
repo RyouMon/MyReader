@@ -1,5 +1,4 @@
-import { BookReader } from "my-reader-tools/rendition/BookReader";
-import type { ImageChapterData } from "my-reader-tools/rendition/types";
+import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 import {

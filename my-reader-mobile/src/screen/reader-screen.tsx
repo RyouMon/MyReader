@@ -1,10 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
   StatusBar,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import Animated, {
@@ -27,8 +26,7 @@ import type { WebDavDataSource } from "@/src/data/types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 /** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
-const MobileFixedReader = lazy(async () => import("@/src/components/reader/fixed/MobileFixedReader"));
-const FixedLayoutDOMReader = lazy(async () => import("@/src/components/reader/fixed/FixedLayoutDOMReader"));
+const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
 const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
 
 type LoadState =
@@ -51,7 +49,6 @@ export default function ReaderScreen() {
   }>();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { activeLibrary } = useLibraryStore();
   const dataSources = useAppStore((s) => s.dataSources);
 
@@ -70,7 +67,6 @@ export default function ReaderScreen() {
   const [chromeVisible, setChromeVisible] = useState(true);
   const [tocOpen, setTocOpen] = useState(false);
   const [gotoPageCmd, setGotoPageCmd] = useState<number | undefined>(undefined);
-  const [domProbeEvents, setDomProbeEvents] = useState<string[]>([]);
 
   useEffect(() => {
     console.info("[mobile-reader] effect:start", {
@@ -236,17 +232,6 @@ export default function ReaderScreen() {
     setToc(items);
   }, []);
 
-  const handleDomProbe = useCallback(async (event: {
-    stage: string;
-    detail?: Record<string, unknown> | null;
-  }) => {
-    console.info("[mobile-reader] dom-probe", event);
-    setDomProbeEvents((prev) => {
-      const next = [...prev, `${event.stage}:${JSON.stringify(event.detail ?? {})}`];
-      return next.slice(-20);
-    });
-  }, []);
-
   const handleRequestClose = useCallback(async () => {
     if (router.canGoBack()) {
       router.back();
@@ -283,10 +268,9 @@ export default function ReaderScreen() {
       <DomReaderFallback
         format={loadState.status === "ready" ? loadState.format : null}
         title={loadState.status === "ready" ? loadState.title : null}
-        domProbeEvents={domProbeEvents}
       />
     ),
-    [loadState, domProbeEvents]
+    [loadState]
   );
 
   const progressPercent = readerState?.progress ?? 0;
@@ -329,15 +313,14 @@ export default function ReaderScreen() {
   const title = loadState.title;
   const fmtUpper = loadState.format.toUpperCase();
   const isReflowSurface = loadState.layoutMode === "reflowable";
-  /** CBZ：原生 Surface（expo-image + 分页列表）。PDF：仍依赖 DOM 内 canvas/pdf.js，暂用 expo/dom。 */
-  const useNativeFixedSurface = loadState.layoutMode === "fixedLayout" && fmtUpper === "CBZ";
+  const isFixedSurface = loadState.layoutMode === "fixedLayout";
 
   if (__DEV__) {
     console.info("[mobile-reader] render:ready-screen", {
       title,
       format: fmtUpper,
       layoutMode: loadState.layoutMode,
-      useNativeFixedSurface,
+      isFixedSurface,
       isReflowSurface,
       readerReady: readerState?.ready ?? false,
       currentPage: readerState?.currentPage ?? null,
@@ -354,51 +337,35 @@ export default function ReaderScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <Pressable style={StyleSheet.absoluteFill} onPress={toggleChrome}>
-        <Suspense
-          fallback={domFallback}
-        >
-          {isReflowSurface ? (
-            <ReflowableDOMReader
-              bookBase64={loadState.bookBase64}
-              format={loadState.format}
-              initialPage={loadState.initialPage}
-              onStateChange={handleStateChange}
-              onTocReady={handleTocReady}
-              onDomProbe={handleDomProbe}
-              onRequestClose={handleRequestClose}
-              gotoPageCommand={gotoPageCmd}
-              dom={{
-                style: { flex: 1, width: screenWidth, height: screenHeight },
-                scrollEnabled: true,
-              }}
-            />
-          ) : useNativeFixedSurface ? (
-            <MobileFixedReader
-              bookBase64={loadState.bookBase64}
-              format={loadState.format}
-              initialPage={loadState.initialPage}
-              onStateChange={handleStateChange}
-              onTocReady={handleTocReady}
-              onRequestClose={handleRequestClose}
-              gotoPageCommand={gotoPageCmd}
-            />
-          ) : (
-            <FixedLayoutDOMReader
-              bookBase64={loadState.bookBase64}
-              format={loadState.format}
-              initialPage={loadState.initialPage}
-              onStateChange={handleStateChange}
-              onTocReady={handleTocReady}
-              onDomProbe={handleDomProbe}
-              onRequestClose={handleRequestClose}
-              gotoPageCommand={gotoPageCmd}
-              dom={{
-                style: { flex: 1, width: screenWidth, height: screenHeight },
-                scrollEnabled: false,
-              }}
-            />
-          )}
-        </Suspense>
+        {isReflowSurface ? (
+          <ReflowableDOMReader
+            bookBase64={loadState.bookBase64}
+            format={loadState.format}
+            initialPage={loadState.initialPage}
+            onStateChange={handleStateChange}
+            onTocReady={handleTocReady}
+            onDomProbe={async (event) => {
+              console.info("[mobile-reader] dom-probe", event);
+            }}
+            onRequestClose={handleRequestClose}
+            gotoPageCommand={gotoPageCmd}
+            dom={{
+              style: { flex: 1 },
+              scrollEnabled: true,
+            }}
+          />
+        ) : isFixedSurface ? (
+          <FixedReaderSurface
+            bookBase64={loadState.bookBase64}
+            format={loadState.format}
+            initialPage={loadState.initialPage}
+            onStateChange={handleStateChange}
+            onTocReady={handleTocReady}
+            onRequestClose={handleRequestClose}
+            gotoPageCommand={gotoPageCmd}
+            fallback={domFallback}
+          />
+        ) : null}
       </Pressable>
 
       {chromeVisible && (
@@ -601,47 +568,27 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 function DomReaderFallback({
   format,
   title,
-  domProbeEvents,
 }: {
   format: string | null;
   title: string | null;
-  domProbeEvents: string[];
 }) {
   useEffect(() => {
     console.info("[mobile-reader] dom-fallback:mounted", {
       format,
       title,
-      domProbeCount: domProbeEvents.length,
     });
-  }, [format, title, domProbeEvents.length]);
+  }, [format, title]);
 
   return (
     <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: "#111" }}>
       <ActivityIndicator size="large" color="#fff" />
       <Text className="mt-4 text-sm" style={{ color: "rgba(255,255,255,0.72)" }}>
-        正在挂载 PDF DOM 阅读器…
+        正在挂载阅读器…
       </Text>
       <Text className="mt-2 text-center text-xs" style={{ color: "rgba(255,255,255,0.42)" }}>
         {format ? `format=${format}` : "format=unknown"}
         {title ? ` · ${title}` : ""}
       </Text>
-      {domProbeEvents.length > 0 ? (
-        <View className="mt-4 w-full max-w-[320px] rounded-2xl px-4 py-3" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
-          <Text className="mb-2 text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
-            DOM probe
-          </Text>
-          {domProbeEvents.slice(-4).map((entry) => (
-            <Text
-              key={entry}
-              className="mb-1 text-[11px]"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-              numberOfLines={2}
-            >
-              {entry}
-            </Text>
-          ))}
-        </View>
-      ) : null}
     </View>
   );
 }

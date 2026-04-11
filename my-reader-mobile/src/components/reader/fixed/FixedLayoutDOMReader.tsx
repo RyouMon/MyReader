@@ -1,14 +1,12 @@
 "use dom";
 
-import { BookReader } from "my-reader-tools/rendition/BookReader";
-import type { ImageChapterData } from "my-reader-tools/rendition/types";
+import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 console.info("[mobile-pdf-dom] module:loaded");
-
 
 export default function FixedLayoutDOMReader({
   bookBase64,
@@ -46,7 +44,6 @@ export default function FixedLayoutDOMReader({
   onDomProbeRef.current = onDomProbe;
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -121,7 +118,7 @@ export default function FixedLayoutDOMReader({
         setLoading(true);
         setError(null);
 
-        const base64 = encodedBook!;
+        const base64 = encodedBook;
         console.info("[mobile-pdf-dom] init:decode-base64:start", {
           format,
           base64Length: base64.length,
@@ -234,7 +231,7 @@ export default function FixedLayoutDOMReader({
       }
     }
 
-    init();
+    void init();
 
     return () => {
       cancelled = true;
@@ -259,105 +256,56 @@ export default function FixedLayoutDOMReader({
         });
         return;
       }
-      if (index < 0 || index >= totalPages) {
-        console.warn("[mobile-pdf-dom] goto-page:out-of-range", {
-          index,
-          totalPages,
-        });
-        return;
-      }
+      if (index < 0 || index >= totalPages) return;
 
-      setLoading(true);
-      try {
-        console.info("[mobile-pdf-dom] goto-page:start", {
-          from: currentPage,
-          to: index,
-          totalPages,
-        });
-        reader.gotoChapter(index);
-        const ch = (await reader.getChapter(index)) as ImageChapterData;
-        console.info("[mobile-pdf-dom] goto-page:chapter-ready", {
-          index,
-          chapterType: ch?.type,
-          imageUrlPrefix: ch?.imageUrl?.slice(0, 64) ?? null,
-        });
-        setImageUrl(ch.imageUrl);
-        setCurrentPage(index);
-        setLoading(false);
-        reportState(index, totalPages, reader, null, false);
-      } catch (e) {
-        console.error("[mobile-pdf-dom] goto-page:failed", {
-          index,
-          totalPages,
-          error: e,
-        });
-        setLoading(false);
-      }
+      reader.gotoChapter(index);
+      const ch = (await reader.getChapter(index)) as ImageChapterData;
+      setCurrentPage(index);
+      setImageUrl(ch.imageUrl);
+      reportState(index, totalPages, reader, null, false);
     },
-    [currentPage, totalPages, reportState],
+    [reportState, totalPages],
   );
 
   useEffect(() => {
-    if (gotoPageCommand != null && gotoPageCommand >= 0 && readyRef.current) {
-      console.info("[mobile-pdf-dom] goto-page-command", {
-        gotoPageCommand,
-      });
-      gotoPage(gotoPageCommand);
+    if (
+      gotoPageCommand != null &&
+      gotoPageCommand >= 0 &&
+      readyRef.current &&
+      gotoPageCommand < totalPages
+    ) {
+      void gotoPage(gotoPageCommand);
     }
-  }, [gotoPageCommand, gotoPage]);
+  }, [gotoPageCommand, totalPages, gotoPage]);
 
-  const handleTap = useCallback(
-    (
-      e:
-        | React.MouseEvent<HTMLDivElement>
-        | React.MouseEvent<HTMLButtonElement>
-    ) => {
-      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const width = rect.width;
-      const ratio = x / width;
-
-      if (ratio < 0.3) {
-        if (currentPage > 0) gotoPage(currentPage - 1);
-      } else if (ratio > 0.7) {
-        if (currentPage < totalPages - 1) gotoPage(currentPage + 1);
-      }
-    },
-    [currentPage, totalPages, gotoPage],
-  );
+  if (error) {
+    return (
+      <div style={styles.centered}>
+        <div style={styles.card}>
+          <div style={styles.title}>无法打开 PDF</div>
+          <div style={styles.errorText}>{error}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
-      {error ? (
-        <div style={styles.errorContainer}>
-          <div style={styles.errorCard}>
-            <p style={styles.errorTitle}>无法渲染</p>
-            <p style={styles.errorText}>{error}</p>
-          </div>
+      {loading ? (
+        <div style={styles.centered}>
+          <div style={styles.card}>正在加载 PDF…</div>
         </div>
       ) : imageUrl ? (
-        <button
-          type="button"
-          style={styles.imageButton}
-          onClick={handleTap}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              handleTap(e as unknown as React.MouseEvent<HTMLDivElement>);
-            }
-          }}
-        >
-          <img
-            src={imageUrl}
-            alt={`Page ${currentPage + 1}`}
-            style={styles.pageImage}
-            draggable={false}
-          />
-        </button>
-      ) : loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner} />
+        <img
+          src={imageUrl}
+          alt={`page-${currentPage + 1}`}
+          style={styles.image}
+        />
+      ) : (
+        <div style={styles.centered}>
+          <div style={styles.card}>暂无可显示页面</div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -369,80 +317,40 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#111",
+    background: "#111",
     overflow: "hidden",
-    userSelect: "none",
-    WebkitUserSelect: "none",
   },
-  imageContainer: {
+  centered: {
     width: "100%",
     height: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    cursor: "pointer",
-  },
-  imageButton: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    padding: 0,
-    border: "none",
-    background: "transparent",
-  },
-  pageImage: {
-    maxWidth: "100%",
-    maxHeight: "100%",
-    objectFit: "contain",
-  },
-  loadingContainer: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    height: "100%",
-  },
-  spinner: {
-    width: 32,
-    height: 32,
-    border: "3px solid rgba(255,255,255,0.15)",
-    borderTopColor: "rgba(255,255,255,0.7)",
-    borderRadius: "50%",
-    animation: "spin 0.8s linear infinite",
-  },
-  errorContainer: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    height: "100%",
-    minHeight: "100vh",
     padding: 24,
     boxSizing: "border-box",
   },
-  errorCard: {
-    maxWidth: 400,
-    width: "100%",
-    padding: "22px 20px",
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
+  card: {
+    color: "rgba(255,255,255,0.9)",
+    background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    padding: 16,
+    maxWidth: 360,
   },
-  errorTitle: {
-    color: "rgba(255,255,255,0.96)",
-    fontSize: 16,
+  title: {
+    fontSize: 18,
     fontWeight: 700,
-    textAlign: "center" as const,
-    margin: "0 0 10px 0",
+    marginBottom: 8,
   },
   errorText: {
-    color: "rgba(255,255,255,0.78)",
     fontSize: 14,
-    textAlign: "center" as const,
-    lineHeight: 1.65,
-    margin: 0,
+    lineHeight: 1.5,
+    whiteSpace: "pre-wrap",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    background: "#111",
   },
 };

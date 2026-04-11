@@ -18,7 +18,7 @@ function serializeBoundaryForDebug(boundary: RangeBoundary): string {
   return `${kind}:${path}:${boundary.offset}`
 }
 
-/** Progressive DOM paginator inspired by ebook-paginator's page-fill model. */
+/** Progressive paginator over precomputed page slices. */
 export class ProgressivePaginator
   implements IPaginator<ProgressivePaginatorInput, PageData>
 {

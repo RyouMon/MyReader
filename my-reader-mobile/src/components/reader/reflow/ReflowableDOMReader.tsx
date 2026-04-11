@@ -1,7 +1,6 @@
 "use dom";
 
-import { BookReader } from "my-reader-tools/rendition/BookReader";
-import type { TextChapterData } from "my-reader-tools/rendition/types";
+import { BookReader, type TextChapterData } from "my-reader-tools/rendition";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { flattenReflowToc } from "@/src/components/reader/reader-toc";

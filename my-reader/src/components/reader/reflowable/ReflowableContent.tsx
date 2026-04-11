@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils"
 import { fillRangeStartFromBoundary } from "my-reader-tools/layout-engines/reflow"
 import type {
   LayoutConfig,
+  RangeBoundary,
   TextChapterData,
   TextChapterPaginationResult,
 } from "my-reader-tools/rendition"
-import { BookReader } from "my-reader-tools/rendition/BookReader"
-import type { RangeBoundary } from "my-reader-tools/rendition/types"
+import { BookReader } from "my-reader-tools/rendition"
 import {
   type CSSProperties,
   useEffect,

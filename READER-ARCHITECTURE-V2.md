@@ -1081,6 +1081,14 @@ my-reader-mobile/src/components/reader/reflow/
 2. 导出目录清晰，调用方不再依赖过时 API。
 3. 文档与实现一致。
 
+#### 当前阶段落地说明
+
+1. 移动端 fixed layout 已统一切到 `MobileFixedReader`，`FixedLayoutDOMReader.tsx` 已移除。
+2. `reader-screen.tsx` 不再维护旧 fixed DOM reader 的探针状态与渲染分支。
+3. `BookReader.renderPaginatedTextPage` 已删除，分页 DOM 渲染能力由 `layout-engines/reflow` 导出承担。
+4. `ProgressivePaginator.ts` 仅保留预计算切片分页职责，不再承担 DOM 渲染/测量语义。
+5. `my-reader-tools/src/rendition/index.ts` 标记为兼容导出入口，并补充指向 `reader-core` / `layout-engines` 的稳定导出。
+
 ---
 
 ### 5.9 每个阶段的风险点与控制策略

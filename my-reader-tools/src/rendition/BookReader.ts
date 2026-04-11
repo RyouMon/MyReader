@@ -11,7 +11,6 @@ import {
   defaultDomReflowEngine,
   findPageIndexForReadingAnchor,
   readingAnchorForElement,
-  type DomReflowEngine,
 } from "../layout-engines/reflow"
 import {
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
@@ -61,14 +60,11 @@ function columnPageIndexToSpread(columnPageIndex: number): number {
 /**
  * Headless reader state machine.
  *
- * 持有 parser、分页状态与章节导航；文本书分页视图的 DOM 经
- * {@link BookReader.renderPaginatedTextPage} 委托给分页实现。
+ * 持有 parser、分页状态与章节导航。
  *
  * {@link curPage} / {@link prevPage} / {@link nextPage} 在导航键（章、偏移、章内总页、全书章数）
  * 不变时保持同一对象引用；键变化时替换为新对象，便于 React 等用 `Object.is` 触发更新。
  * 请勿修改返回的 {@link PageData}。
- *
-   * 文本书分页视图的 DOM 绘制请使用 {@link BookReader.renderPaginatedTextPage}，由 {@link DomReflowEngine} / 切片渲染完成。
  */
 export class BookReader {
   private readonly session = new ReaderSession()
@@ -1012,29 +1008,6 @@ export class BookReader {
         texts,
       )
     }
-  }
-
-  /**
-   * 将文本书分页测量结果绘制到视口节点；测量由 {@link DomReflowEngine}，切片状态由 ProgressivePaginator 持有。
-   */
-  static renderPaginatedTextPage(
-    display: HTMLElement,
-    chapter: TextChapterData,
-    mode: TextChapterPaginationResult["mode"],
-    pages: TextChapterPaginationResult["pages"],
-    pageIndex: number,
-    sourceRoot: HTMLDivElement | null,
-    texts: Text[],
-  ): void {
-    renderTextChapterPage(
-      display,
-      chapter,
-      mode,
-      pages,
-      pageIndex,
-      sourceRoot,
-      texts,
-    )
   }
 
   /**
