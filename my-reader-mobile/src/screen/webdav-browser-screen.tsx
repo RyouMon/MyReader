@@ -78,8 +78,10 @@ export default function WebDavBrowserScreen() {
 
     try {
       const library = await createWebDavLibraryFromPath(source, currentPath || "/");
-      await addResolvedLibrary(library);
-      router.replace("/library");
+      const added = await addResolvedLibrary(library);
+      if (added) {
+        router.dismissTo("/settings");
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "当前目录不是有效的 Calibre 书库。");
     } finally {

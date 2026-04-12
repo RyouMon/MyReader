@@ -1,3 +1,5 @@
+import { Alert } from "react-native";
+
 import {
   ensureLibraryMetadataCached,
   pickCalibreLibrary,
@@ -93,6 +95,10 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
 
     try {
       const picked = await pickCalibreLibrary();
+      if (picked === null) {
+        return false;
+      }
+
       const state = get();
 
       const nextLibrary: MobileLibrary = {
@@ -108,7 +114,8 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
           (item) => item.metadataUri === preparedLibrary.metadataUri || item.path === preparedLibrary.path
         )
       ) {
-        throw new Error("该书库已经添加过了");
+        Alert.alert("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+        return false;
       }
 
       const nextLibraries = [...state.libraries, preparedLibrary];
@@ -120,10 +127,11 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
       });
 
       await get().refreshBooks();
+      return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "添加书库失败";
       set({ error: message });
-      throw caught;
+      return false;
     }
   },
   async addResolvedLibrary(library) {
@@ -137,7 +145,8 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
         (item) => item.metadataUri === prepared.metadataUri || item.path === prepared.path
       )
     ) {
-      throw new Error("该书库已经添加过了");
+      Alert.alert("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+      return false;
     }
 
     const nextLibraries = [...state.libraries, prepared];
@@ -150,6 +159,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
     });
 
     await get().refreshBooks();
+    return true;
   },
   /**
    * 移除指定书库，并在必要时回退当前激活书库。

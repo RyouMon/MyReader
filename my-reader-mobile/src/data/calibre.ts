@@ -1,5 +1,5 @@
-import * as DocumentPicker from "expo-document-picker";
 import { Directory, File as FSFile, Paths } from "expo-file-system";
+import { Alert } from "react-native";
 import * as SQLite from "expo-sqlite";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
@@ -211,56 +211,31 @@ function getMetadataFileFromDirectory(directory: PickedDirectoryLike) {
   return metadata instanceof FSFile ? metadata : null;
 }
 
-async function pickMetadataFileFallback() {
-  const result = await DocumentPicker.getDocumentAsync({
-    type: "*/*",
-    copyToCacheDirectory: true,
-    multiple: false,
-  });
-
-  if (result.canceled || !result.assets?.[0]) {
-    return null;
-  }
-
-  const asset = result.assets[0];
-  if (asset.name !== "metadata.db") {
-    throw new Error("请选择 Calibre 书库中的 metadata.db 文件");
-  }
-
-  const file = new FSFile(asset.uri);
-
-  return {
-    directory: file.parentDirectory,
-    metadataFile: file,
-  };
-}
-
-export async function pickCalibreLibrary(): Promise<MobileLibrary> {
+export async function pickCalibreLibrary(): Promise<MobileLibrary | null> {
   let directory: PickedDirectoryLike | null = null;
   let metadataFile: FSFile | null = null;
 
   try {
     directory = await Directory.pickDirectoryAsync();
-  } catch {
-    throw new Error("已取消选择书库");
+  } catch (error) {
+    console.log("[MyReader] 用户取消或未选择书库目录", error);
+    return null;
   }
+
+  if (directory == null) {
+    console.log("[MyReader] 用户取消或未选择书库目录（无返回目录）");
+    return null;
+  }
+
   metadataFile = getMetadataFileFromDirectory(directory);
 
-  const needsMetadataFilePicker = directory !== null && !metadataFile;
-
-  if (needsMetadataFilePicker) {
-    const fallback = await pickMetadataFileFallback();
-
-    if (!fallback) {
-      throw new Error("已取消选择书库");
-    }
-
-    directory = fallback.directory;
-    metadataFile = fallback.metadataFile;
-  }
-
-  if (!metadataFile || directory === null) {
-    throw new Error("所选目录中未找到 metadata.db，请选择 Calibre 书库根目录");
+  if (!metadataFile) {
+    Alert.alert(
+      "未找到 metadata.db",
+      "所选目录中未找到 Calibre 的 metadata.db。请选择书库根目录（该文件夹内应包含 metadata.db）。",
+      [{ text: "知道了" }]
+    );
+    return null;
   }
 
   const libraryRoot = directory;

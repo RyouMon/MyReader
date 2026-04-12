@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -27,7 +27,14 @@ export default function AddLibraryDataSourceScreen() {
                 key={source.id}
                 title={source.name}
                 detail="直接从手机中选择 Calibre 书库，不需要配置。"
-                onPress={() => void addLibrary()}
+                onPress={() => {
+                  void (async () => {
+                    const added = await addLibrary();
+                    if (added) {
+                      router.dismissTo("/settings");
+                    }
+                  })();
+                }}
                 isLast={index === dataSources.length - 1}
               />
             ) : (
