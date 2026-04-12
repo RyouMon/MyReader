@@ -1,5 +1,6 @@
 export { EmptyState } from "./empty-state";
 export { FilterChip } from "./filter-chip";
+export { HeaderToolbar, type HeaderToolbarAction, type HeaderToolbarProps } from "./header-toolbar";
 export { HeroCard } from "./hero-card";
 export { PageHeader } from "./page-header";
 export { PrimaryButton } from "./primary-button";

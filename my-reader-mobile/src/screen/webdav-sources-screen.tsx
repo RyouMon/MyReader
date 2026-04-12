@@ -10,9 +10,18 @@ import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
 import { useLibraryStore } from "../store/library-store";
 
-function TrailingLabel({ text, emphasize = false }: { text: string; emphasize?: boolean }) {
+function TrailingLabel({
+  text,
+  emphasize = false,
+  destructive = false,
+}: {
+  text: string;
+  emphasize?: boolean;
+  destructive?: boolean;
+}) {
   const palette = useThemePalette();
-  return <Text className="text-sm font-semibold" style={{ color: emphasize ? palette.primary : palette.textMuted }}>{text}</Text>;
+  const color = destructive ? palette.destructive : emphasize ? palette.primary : palette.textMuted;
+  return <Text className="text-sm font-semibold" style={{ color }}>{text}</Text>;
 }
 
 export default function WebDavSourcesScreen() {
@@ -69,7 +78,7 @@ export default function WebDavSourcesScreen() {
                   key={source.id}
                   title={source.name}
                   detail={`${source.serverUrl}${source.basePath}${linkedLibraryCount > 0 ? ` · 已关联 ${linkedLibraryCount} 个书库` : ""}`}
-                  trailing={<TrailingLabel text="删除" />}
+                  trailing={<TrailingLabel text="删除" destructive />}
                   onPress={() => handleDelete(source.id, source.name)}
                   isLast={index === webdavSources.length - 1}
                 />

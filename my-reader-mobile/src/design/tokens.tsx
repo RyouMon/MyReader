@@ -1,7 +1,8 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { setBackgroundColorAsync } from "expo-system-ui";
-import { useColorScheme, type ColorSchemeName } from "react-native";
+import { useColorScheme, type ColorSchemeName, type ColorValue } from "react-native";
 
+import { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
 import { useAppStore } from "../store/app-store";
 import { useThemeModeSetting } from "../store/settings-store";
 
@@ -19,7 +20,12 @@ export type ThemePalette = {
   border: string;
   success: string;
   warning: string;
+  /** Inline validation / failure messages (theme-tinted, not necessarily system red). */
   error: string;
+  /** Delete / irreversible controls; maps to system Material error red on native. */
+  destructive: ColorValue;
+  /** Text and icons on a solid `destructive` background. */
+  onDestructive: ColorValue;
   overlay: string;
 };
 
@@ -30,7 +36,7 @@ type ThemeContextValue = {
   setMode: (mode: ThemeMode) => void;
 };
 
-const lightPalette: ThemePalette = {
+const lightPaletteBase = {
   background: "#F7F3EC",
   surface: "#FFFDF8",
   surfaceMuted: "#F2ECE3",
@@ -44,9 +50,15 @@ const lightPalette: ThemePalette = {
   warning: "#B27A2A",
   error: "#B64A4A",
   overlay: "rgba(41, 31, 21, 0.22)",
+} as const;
+
+const lightPalette: ThemePalette = {
+  ...lightPaletteBase,
+  destructive: getSemanticDestructiveColor(),
+  onDestructive: getSemanticOnDestructiveColor(),
 };
 
-const darkPalette: ThemePalette = {
+const darkPaletteBase = {
   background: "#1C1916",
   surface: "#25211D",
   surfaceMuted: "#2E2823",
@@ -60,6 +72,12 @@ const darkPalette: ThemePalette = {
   warning: "#CF9A4F",
   error: "#CF6A6A",
   overlay: "rgba(0, 0, 0, 0.38)",
+} as const;
+
+const darkPalette: ThemePalette = {
+  ...darkPaletteBase,
+  destructive: getSemanticDestructiveColor(),
+  onDestructive: getSemanticOnDestructiveColor(),
 };
 
 export function getThemePalette(colorScheme: ColorSchemeName) {
@@ -118,3 +136,5 @@ export function useTheme() {
 export function useThemePalette() {
   return useTheme().palette;
 }
+
+export { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";

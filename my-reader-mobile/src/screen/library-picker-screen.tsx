@@ -10,7 +10,6 @@ import { useThemePalette } from "@/src/design/tokens";
 import {
   EmptyState,
   HeaderToolbar,
-  RoundIconButton,
   Screen,
   SearchField,
   SectionCard,
@@ -33,7 +32,7 @@ function getLibraryIconName(index: number) {
 
 export default function LibraryPickerScreen() {
   const palette = useThemePalette();
-  const { libraries, activeLibraryId, loadingLibraries, refreshBooks, addLibrary, setActiveLibrary } = useLibraryStore();
+  const { libraries, activeLibraryId, loadingLibraries, setActiveLibrary } = useLibraryStore();
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 180);
 
@@ -62,21 +61,6 @@ export default function LibraryPickerScreen() {
     },
   ];
 
-  const rightToolbar: HeaderToolbarAction[] = [
-    {
-      label: "刷新书库",
-      onPress: () => void refreshBooks(),
-      icon: <SymbolView name="arrow.clockwise" size={16} tintColor={palette.textMuted} />,
-      iosSfSymbol: "arrow.clockwise",
-    },
-    {
-      label: "添加书库",
-      onPress: () => void addLibrary(),
-      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
-      iosSfSymbol: "plus",
-    },
-  ];
-
   return (
     <>
       <Stack.Screen
@@ -86,7 +70,7 @@ export default function LibraryPickerScreen() {
           headerShadowVisible: false,
         }}
       />
-      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
+      <HeaderToolbar left={leftToolbar} />
       <Screen>
         <SearchField placeholder="搜索书库名称" value={query} onChangeText={setQuery} />
 
@@ -106,16 +90,6 @@ export default function LibraryPickerScreen() {
                   detail={`${library.bookCount.toLocaleString("zh-CN")} 本${isActive ? " · 当前使用" : ""}`}
                   trailing={
                     <View className="flex-row items-center gap-3">
-                      <View
-                        className="size-10 items-center justify-center rounded-[16px]"
-                        style={{ backgroundColor: isActive ? palette.surfaceMuted : palette.background }}
-                      >
-                        <MaterialIcons
-                          name={getLibraryIconName(index)}
-                          size={20}
-                          color={isActive ? palette.primary : palette.textMuted}
-                        />
-                      </View>
                       {isActive ? (
                         <MaterialIcons name="check" size={22} color={palette.primary} />
                       ) : (
@@ -132,8 +106,7 @@ export default function LibraryPickerScreen() {
         ) : (
           <EmptyState
             title="还没有添加书库"
-            detail="先添加一个 Calibre 书库，之后可在这里切换书库。"
-            action={<RoundIconButton label="添加书库" onPress={() => void addLibrary()} />}
+            detail="请到设置 → 书库中添加 Calibre 书库，之后可在这里切换。"
           />
         )}
       </Screen>

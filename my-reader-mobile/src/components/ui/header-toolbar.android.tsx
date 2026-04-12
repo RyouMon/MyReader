@@ -2,10 +2,11 @@ import { type ReactNode } from "react";
 
 import type { SFSymbol } from "expo-symbols";
 import { Stack } from "expo-router";
+import type { ColorValue } from "react-native";
 
 import { View } from "@/tw";
 
-import { RoundIconButton } from "../ui/round-icon-button";
+import { RoundIconButton } from "./round-icon-button";
 
 type HeaderToolbarAction = {
   label: string;
@@ -13,6 +14,8 @@ type HeaderToolbarAction = {
   icon?: ReactNode;
   /** SF Symbol name for iOS `Stack.Toolbar.Icon` (native toolbar does not accept arbitrary React children). */
   iosSfSymbol?: SFSymbol;
+  /** Toolbar icon tint; on iOS maps to `Stack.Toolbar.Button` `tintColor`. */
+  color?: ColorValue;
   iconOnly?: boolean;
 };
 
