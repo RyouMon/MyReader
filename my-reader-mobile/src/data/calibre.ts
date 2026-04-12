@@ -5,6 +5,10 @@ import { Platform } from "react-native";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
 
+import {
+  createSecurityScopedBookmark,
+  withSecurityScopedLibraryAccess,
+} from "./security-scoped-bookmarks";
 import type { BookItem, MobileLibrary } from "./types";
 
 type PickedDirectoryLike = {
@@ -164,10 +168,25 @@ function copyMetadataToCache(sourceUri: string, libraryId: string) {
   return destination.uri;
 }
 
+async function refreshCachedMetadataFromDirectory(library: MobileLibrary, directoryUri: string) {
+  const metadataFile = getMetadataFileFromDirectory({ uri: directoryUri });
+
+  if (!metadataFile) {
+    throw new Error("所选书库中未找到 metadata.db，请确认仍是有效的 Calibre 书库");
+  }
+
+  return copyMetadataToCache(metadataFile.uri, library.id);
+}
+
+function getLibraryRootUri(library: MobileLibrary, resolvedPath?: string) {
+  return resolvedPath ?? library.securityScopedBookmark?.resolvedUri ?? library.path;
+}
+
 export function buildCoverUri(
   library: MobileLibrary,
   bookPath: string | null,
-  hasCover: boolean
+  hasCover: boolean,
+  resolvedPath?: string
 ) {
   if (!bookPath || !hasCover) {
     return undefined;
@@ -175,7 +194,7 @@ export function buildCoverUri(
 
   const segments = bookPath.split("/").filter(Boolean);
   const coverFile = new FSFile(
-    new Directory(library.path),
+    new Directory(getLibraryRootUri(library, resolvedPath)),
     ...segments,
     "cover.jpg"
   );
@@ -247,21 +266,40 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary> {
   }
 
   const id = createId();
+  const securityScopedBookmark = await createSecurityScopedBookmark(directory.uri);
   const cachedMetadataUri = copyMetadataToCache(metadataFile.uri, id);
   const bookCount = await readBookCountFromMetadata(cachedMetadataUri);
+  const resolvedPath = securityScopedBookmark?.resolvedUri ?? directory.uri;
 
   return {
     id,
     name: directory.name || new Directory(directory.uri).name || "未命名书库",
-    path: directory.uri,
+    path: resolvedPath,
     metadataUri: cachedMetadataUri,
     bookCount,
     addedAt: Date.now(),
+    securityScopedBookmark: securityScopedBookmark ?? undefined,
   };
 }
 
 export async function ensureLibraryMetadataCached(library: MobileLibrary): Promise<MobileLibrary> {
-  if (library.sourceType === "webdav" || isCachedMetadataUri(library.metadataUri)) {
+  if (library.sourceType === "webdav") {
+    return library;
+  }
+
+  if (library.securityScopedBookmark) {
+    const { result: cachedMetadataUri, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+      library,
+      async (resolvedPath) => refreshCachedMetadataFromDirectory(library, resolvedPath)
+    );
+
+    return {
+      ...(refreshedLibrary ?? library),
+      metadataUri: cachedMetadataUri,
+    };
+  }
+
+  if (isCachedMetadataUri(library.metadataUri)) {
     return library;
   }
 
@@ -270,6 +308,19 @@ export async function ensureLibraryMetadataCached(library: MobileLibrary): Promi
   return {
     ...library,
     metadataUri: cachedMetadataUri,
+  };
+}
+
+export async function readBookCountFromLibrary(library: MobileLibrary) {
+  const nextLibrary = await ensureLibraryMetadataCached(library);
+  const bookCount = await readBookCountFromMetadata(nextLibrary.metadataUri);
+
+  return {
+    library: {
+      ...nextLibrary,
+      bookCount,
+    },
+    bookCount,
   };
 }
 
@@ -403,14 +454,37 @@ export async function resolveBookFile(
 
     const segments = row.path.split("/").filter(Boolean);
     const fileName = `${row.name}.${format.toLowerCase()}`;
-    const bookFile = new FSFile(new Directory(library.path), ...segments, fileName);
+
+    const buildBookFile = (rootUri: string) =>
+      new FSFile(new Directory(rootUri), ...segments, fileName);
+
+    if (library.securityScopedBookmark) {
+      const { result: bookFile, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+        library,
+        async (resolvedPath) => buildBookFile(resolvedPath)
+      );
+
+      const effectiveLibrary = refreshedLibrary ?? library;
+      if (!bookFile.exists) {
+        throw new Error(
+          `书籍文件不存在: ${fileName}\n` +
+            `完整路径: ${bookFile.uri}\n` +
+            `书库路径: ${effectiveLibrary.path}\n` +
+            `书内路径: ${row.path}`
+        );
+      }
+
+      return bookFile;
+    }
+
+    const bookFile = buildBookFile(library.path);
 
     if (!bookFile.exists) {
       throw new Error(
         `书籍文件不存在: ${fileName}\n` +
-        `完整路径: ${bookFile.uri}\n` +
-        `书库路径: ${library.path}\n` +
-        `书内路径: ${row.path}`
+          `完整路径: ${bookFile.uri}\n` +
+          `书库路径: ${library.path}\n` +
+          `书内路径: ${row.path}`
       );
     }
 
@@ -427,6 +501,35 @@ export async function readBooksFromLibrary(library: MobileLibrary): Promise<Book
 
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
+
+    if (library.securityScopedBookmark) {
+      const { result: coverRootPath, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+        library,
+        async (resolvedPath) => resolvedPath
+      );
+      const effectiveLibrary = refreshedLibrary ?? library;
+
+      return rows.map((row) => {
+        const authors = splitConcat(row.authors);
+
+        return {
+          id: `${row.id}`,
+          calibreId: row.id,
+          title: row.title || "未命名书籍",
+          author: authors[0] || row.author_sort || "未知作者",
+          authors,
+          path: row.path || undefined,
+          hasCover: (row.has_cover ?? 0) !== 0,
+          timestamp: row.timestamp,
+          coverUri: buildCoverUri(
+            effectiveLibrary,
+            row.path,
+            (row.has_cover ?? 0) !== 0,
+            coverRootPath
+          ),
+        } satisfies BookItem;
+      });
+    }
 
     return rows.map((row) => {
       const authors = splitConcat(row.authors);

@@ -13,6 +13,12 @@ export type BookItem = {
 
 export type DataSourceType = "local" | "webdav";
 
+export type SecurityScopedBookmark = {
+  bookmarkBase64: string;
+  resolvedUri: string;
+  stale: boolean;
+};
+
 export type LocalDataSource = {
   id: string;
   type: "local";
@@ -44,6 +50,7 @@ export type MobileLibrary = {
   dataSourceId?: string;
   sourceType?: DataSourceType;
   sourcePath?: string;
+  securityScopedBookmark?: SecurityScopedBookmark;
 };
 
 export type MobileLibrariesConfig = {

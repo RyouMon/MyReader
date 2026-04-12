@@ -1,6 +1,7 @@
 import {
   ensureLibraryMetadataCached,
   pickCalibreLibrary,
+  readBookCountFromLibrary,
   readBooksFromLibrary,
 } from "../data/calibre";
 import type { MobileLibrary, WebDavDataSource } from "../data/types";
@@ -27,6 +28,12 @@ type LibrarySlice = Pick<
   | "setActiveLibrary"
   | "refreshBooks"
 >;
+
+function mergeLibraryUpdate(libraries: MobileLibrary[], updatedLibrary: MobileLibrary) {
+  return libraries.map((library) =>
+    library.id === updatedLibrary.id ? updatedLibrary : library
+  );
+}
 
 export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
   libraries: [],
@@ -88,22 +95,24 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
       const picked = await pickCalibreLibrary();
       const state = get();
 
-      if (
-        state.libraries.some(
-          (item) => item.metadataUri === picked.metadataUri || item.path === picked.path
-        )
-      ) {
-        throw new Error("该书库已经添加过了");
-      }
-
       const nextLibrary: MobileLibrary = {
         ...picked,
         dataSourceId: BUILT_IN_LOCAL_SOURCE_ID,
         sourceType: "local",
       };
 
-      const nextLibraries = [...state.libraries, nextLibrary];
-      const nextActiveLibraryId = state.activeLibraryId ?? nextLibrary.id;
+      const { library: preparedLibrary } = await readBookCountFromLibrary(nextLibrary);
+
+      if (
+        state.libraries.some(
+          (item) => item.metadataUri === preparedLibrary.metadataUri || item.path === preparedLibrary.path
+        )
+      ) {
+        throw new Error("该书库已经添加过了");
+      }
+
+      const nextLibraries = [...state.libraries, preparedLibrary];
+      const nextActiveLibraryId = state.activeLibraryId ?? preparedLibrary.id;
 
       set({
         libraries: nextLibraries,
@@ -119,17 +128,20 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
   },
   async addResolvedLibrary(library) {
     const state = get();
+    const prepared = library.sourceType === "webdav"
+      ? library
+      : (await readBookCountFromLibrary(library)).library;
 
     if (
       state.libraries.some(
-        (item) => item.metadataUri === library.metadataUri || item.path === library.path
+        (item) => item.metadataUri === prepared.metadataUri || item.path === prepared.path
       )
     ) {
       throw new Error("该书库已经添加过了");
     }
 
-    const nextLibraries = [...state.libraries, library];
-    const nextActiveLibraryId = state.activeLibraryId ?? library.id;
+    const nextLibraries = [...state.libraries, prepared];
+    const nextActiveLibraryId = state.activeLibraryId ?? prepared.id;
 
     set({
       libraries: nextLibraries,
@@ -185,7 +197,19 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
             )
           : await readBooksFromLibrary(activeLibrary);
 
-      set({ books: nextBooks, loadingBooks: false });
+      const { library: refreshedLibrary, bookCount } =
+        activeLibrary.sourceType === "webdav"
+          ? { library: activeLibrary, bookCount: activeLibrary.bookCount }
+          : await readBookCountFromLibrary(activeLibrary);
+
+      set((currentState) => ({
+        books: nextBooks,
+        loadingBooks: false,
+        libraries: mergeLibraryUpdate(
+          currentState.libraries,
+          refreshedLibrary.bookCount === bookCount ? refreshedLibrary : { ...refreshedLibrary, bookCount }
+        ),
+      }));
     } catch (caught) {
       set({
         books: [],

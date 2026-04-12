@@ -119,6 +119,9 @@ export default function FixedLayoutDOMReader({
         setError(null);
 
         const base64 = encodedBook;
+        if (!base64) {
+          throw new Error("缺少书籍内容，无法初始化阅读器");
+        }
         console.info("[mobile-pdf-dom] init:decode-base64:start", {
           format,
           base64Length: base64.length,
