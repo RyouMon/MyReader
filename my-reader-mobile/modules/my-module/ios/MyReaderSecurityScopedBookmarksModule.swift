@@ -11,15 +11,10 @@ public class MyReaderSecurityScopedBookmarksModule: Module {
         throw InvalidUriException(uriString)
       }
 
-      let didAccess = url.startAccessingSecurityScopedResource()
-      defer {
-        if didAccess {
-          url.stopAccessingSecurityScopedResource()
-        }
-      }
-
+      // expo-file-system 中获取目录URL时，已经调用了 startAccessingSecurityScopedResource 和 stopAccessingSecurityScopedResource
+      // 所以这里不需要再调用 startAccessingSecurityScopedResource 和 stopAccessingSecurityScopedResource，直接创建 bookmarkData
       let bookmarkData = try url.bookmarkData(
-        options: [.withSecurityScope],
+        options: .minimalBookmark,
         includingResourceValuesForKeys: nil,
         relativeTo: nil
       )
@@ -79,7 +74,6 @@ public class MyReaderSecurityScopedBookmarksModule: Module {
     var isStale = false
     let url = try URL(
       resolvingBookmarkData: data,
-      options: [.withSecurityScope],
       relativeTo: nil,
       bookmarkDataIsStale: &isStale
     )
@@ -88,19 +82,19 @@ public class MyReaderSecurityScopedBookmarksModule: Module {
   }
 }
 
-internal final class InvalidUriException: GenericException<String> {
+internal final class InvalidUriException: GenericException<String>, @unchecked Sendable {
   override var reason: String {
     "Invalid URI: \(param)"
   }
 }
 
-internal final class InvalidBookmarkException: Exception {
+internal final class InvalidBookmarkException: Exception, @unchecked Sendable {
   override var reason: String {
     "Invalid security-scoped bookmark data"
   }
 }
 
-internal final class SecurityScopeAccessException: Exception {
+internal final class SecurityScopeAccessException: Exception, @unchecked Sendable {
   override var reason: String {
     "Unable to start accessing security-scoped resource"
   }
