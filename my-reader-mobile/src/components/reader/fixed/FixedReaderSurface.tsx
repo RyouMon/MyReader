@@ -1,5 +1,10 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 
+import type {
+  FixedNavigationMode,
+  ReadingLayout,
+  ReaderTheme,
+} from "@/src/store/app-store.types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 const MobileFixedReader = lazy(async () => import("./MobileFixedReader"));
@@ -14,6 +19,14 @@ export type FixedReaderSurfaceProps = {
   onRequestClose: () => Promise<void>;
   gotoPageCommand?: number;
   fallback: React.ReactNode;
+  readingLayout?: ReadingLayout;
+  navigationMode?: FixedNavigationMode;
+  theme?: ReaderTheme;
+  brightness?: number;
+  zoomScale?: number;
+  onZoomScaleChange?: (scale: number) => void;
+  contentInsetTop?: number;
+  contentInsetBottom?: number;
 };
 
 function isPdfFormat(format: string): boolean {
@@ -33,6 +46,14 @@ export default function FixedReaderSurface({
   onRequestClose,
   gotoPageCommand,
   fallback,
+  readingLayout = "paginate",
+  navigationMode = "horizontal",
+  theme = "dark",
+  brightness = 100,
+  zoomScale = 1,
+  onZoomScaleChange,
+  contentInsetTop = 0,
+  contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
   const [domProbeEvents, setDomProbeEvents] = useState<string[]>([]);
 
@@ -60,6 +81,13 @@ export default function FixedReaderSurface({
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           gotoPageCommand={gotoPageCommand}
+          navigationMode={navigationMode === "horizontal" ? "horizontal" : "vertical"}
+          brightness={brightness}
+          zoomScale={zoomScale}
+          pinchZoomEnabled
+          onZoomScaleChange={onZoomScaleChange}
+          contentInsetTop={contentInsetTop}
+          contentInsetBottom={contentInsetBottom}
         />
       </Suspense>
     );
@@ -77,9 +105,14 @@ export default function FixedReaderSurface({
           onDomProbe={handleDomProbe}
           onRequestClose={onRequestClose}
           gotoPageCommand={gotoPageCommand}
+          readingLayout={readingLayout}
+          theme={theme}
+          brightness={brightness}
+          zoomScale={zoomScale}
+          onZoomScaleChange={onZoomScaleChange}
           dom={{
             style: { flex: 1 },
-            scrollEnabled: false,
+            scrollEnabled: readingLayout === "scroll",
           }}
         />
       </Suspense>

@@ -1,13 +1,7 @@
 import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FlatList } from "react-native";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import type { FlatList, GestureResponderEvent } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
@@ -29,6 +23,12 @@ type MobileFixedReaderProps = {
   onRequestClose: () => Promise<void>;
   gotoPageCommand?: number;
   navigationMode?: MobileFixedNavigationMode;
+  zoomScale?: number;
+  brightness?: number;
+  pinchZoomEnabled?: boolean;
+  onZoomScaleChange?: (scale: number) => void;
+  contentInsetTop?: number;
+  contentInsetBottom?: number;
 };
 
 function FixedPageLoader({
@@ -36,11 +36,19 @@ function FixedPageLoader({
   readerRef,
   width,
   height,
+  scale,
+  brightness,
+  insetTop,
+  insetBottom,
 }: {
   pageIndex: number;
   readerRef: React.MutableRefObject<BookReader | null>;
   width: number;
   height: number;
+  scale: number;
+  brightness: number;
+  insetTop: number;
+  insetBottom: number;
 }) {
   const [uri, setUri] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -73,7 +81,7 @@ function FixedPageLoader({
 
   if (err) {
     return (
-      <View style={[styles.pageFallback, { width, height }]}>
+      <View style={[styles.pageFallback, { width, height }]}> 
         <View style={styles.pageErrCard}>
           <Text style={styles.pageErr} numberOfLines={6}>
             {err}
@@ -83,7 +91,24 @@ function FixedPageLoader({
     );
   }
 
-  return <PageCell uri={uri} loading={!uri} width={width} height={height} />;
+  return (
+    <View className="bg-[#111]" style={{ width, height }}>
+      <View
+        style={[
+          styles.pageCanvas,
+          {
+            width,
+            height,
+            opacity: brightness / 100,
+            paddingTop: insetTop,
+            paddingBottom: insetBottom,
+          },
+        ]}
+      >
+        <PageCell uri={uri} loading={!uri} width={width} height={Math.max(120, height - insetTop - insetBottom)} scale={scale} />
+      </View>
+    </View>
+  );
 }
 
 export default function MobileFixedReader({
@@ -95,12 +120,20 @@ export default function MobileFixedReader({
   onRequestClose: _onRequestClose,
   gotoPageCommand,
   navigationMode = "horizontal",
+  zoomScale = 1,
+  brightness = 100,
+  pinchZoomEnabled = true,
+  onZoomScaleChange,
+  contentInsetTop = 0,
+  contentInsetBottom = 0,
 }: MobileFixedReaderProps) {
   const readerRef = useRef<BookReader | null>(null);
   const pagerRef = useRef<FlatList<number>>(null);
   const readyRef = useRef(false);
   const onStateChangeRef = useRef(onStateChange);
   const onTocReadyRef = useRef(onTocReady);
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  const pinchStartScaleRef = useRef(zoomScale);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
 
@@ -240,14 +273,56 @@ export default function MobileFixedReader({
         readerRef={readerRef}
         width={screenWidth}
         height={screenHeight}
+        scale={zoomScale}
+        brightness={brightness}
+        insetTop={navigationMode === "horizontal" ? contentInsetTop : 0}
+        insetBottom={navigationMode === "horizontal" ? contentInsetBottom : 0}
       />
     ),
-    [screenWidth, screenHeight],
+    [screenWidth, screenHeight, zoomScale, brightness, navigationMode, contentInsetTop, contentInsetBottom],
   );
+
+  const getDistance = useCallback((event: GestureResponderEvent) => {
+    const touches = event.nativeEvent.touches;
+    if (touches.length < 2) return null;
+    const [a, b] = touches;
+    const dx = a.pageX - b.pageX;
+    const dy = a.pageY - b.pageY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (event: GestureResponderEvent) => {
+      if (!pinchZoomEnabled) return;
+      const distance = getDistance(event);
+      if (distance == null) return;
+      pinchStartDistanceRef.current = distance;
+      pinchStartScaleRef.current = zoomScale;
+    },
+    [pinchZoomEnabled, zoomScale, getDistance],
+  );
+
+  const handleTouchMove = useCallback(
+    (event: GestureResponderEvent) => {
+      if (!pinchZoomEnabled || pinchStartDistanceRef.current == null) return;
+      const distance = getDistance(event);
+      if (distance == null) return;
+      const nextScale = Math.max(
+        1,
+        Math.min(3, pinchStartScaleRef.current * (distance / pinchStartDistanceRef.current)),
+      );
+      onZoomScaleChange?.(Number(nextScale.toFixed(2)));
+    },
+    [pinchZoomEnabled, onZoomScaleChange, getDistance],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    pinchStartDistanceRef.current = null;
+  }, []);
 
   if (error) {
     return (
-      <View style={[styles.centered, styles.errorScreen, { width: screenWidth, height: screenHeight }]}>
+      <View className="flex-1 items-center justify-center bg-[#111] px-7" style={{ width: screenWidth, height: screenHeight }}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>无法打开</Text>
           <Text style={styles.errText}>{error}</Text>
@@ -256,10 +331,15 @@ export default function MobileFixedReader({
     );
   }
 
-  const listKey = `${bookEpoch}-${totalPages}-${navigationMode}`;
+  const listKey = `${bookEpoch}-${totalPages}-${navigationMode}-${zoomScale}-${brightness}`;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {totalPages > 0 && !loading ? (
         <>
           {navigationMode === "horizontal" ? (
@@ -276,6 +356,7 @@ export default function MobileFixedReader({
             />
           ) : (
             <FixedScrollView
+              key={listKey}
               ref={pagerRef}
               width={screenWidth}
               height={screenHeight}
@@ -287,23 +368,25 @@ export default function MobileFixedReader({
             />
           )}
 
-          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-            <Pressable
-              style={[styles.tapEdge, { left: 0, width: tapSideWidth }]}
-              onPress={() => {
-                if (currentPage > 0) goToPage(currentPage - 1);
-              }}
-            />
-            <Pressable
-              style={[styles.tapEdge, { right: 0, width: tapSideWidth }]}
-              onPress={() => {
-                if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-              }}
-            />
-          </View>
+          {navigationMode === "horizontal" && zoomScale <= 1.02 ? (
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              <Pressable
+                style={[styles.tapEdge, { left: 0, width: tapSideWidth }]}
+                onPress={() => {
+                  if (currentPage > 0) goToPage(currentPage - 1);
+                }}
+              />
+              <Pressable
+                style={[styles.tapEdge, { right: 0, width: tapSideWidth }]}
+                onPress={() => {
+                  if (currentPage < totalPages - 1) goToPage(currentPage + 1);
+                }}
+              />
+            </View>
+          ) : null}
         </>
       ) : (
-        <View style={[styles.centered, { width: screenWidth, height: screenHeight }]}>
+        <View className="flex-1 items-center justify-center bg-[#111]" style={{ width: screenWidth, height: screenHeight }}>
           <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
         </View>
       )}
@@ -315,15 +398,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#111",
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#111",
-  },
-  errorScreen: {
-    paddingHorizontal: 28,
   },
   errorCard: {
     maxWidth: 400,
@@ -356,6 +430,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
+  pageCanvas: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
   pageErrCard: {
     maxWidth: 320,
     paddingVertical: 16,
@@ -377,3 +456,4 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
 });
+

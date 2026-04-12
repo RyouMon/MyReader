@@ -1,24 +1,25 @@
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import Animated, {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-} from "react-native-reanimated";
+import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { resolveReadFormat } from "my-reader-tools/rendition/utils";
 
-import { Pressable, Text, View } from "@/tw";
+import { Animated, Pressable, Text, View } from "@/tw";
 import { useThemePalette } from "@/src/design/tokens";
+import {
+  ReaderBottomBar,
+  ReaderSettingsSheet,
+  ReaderTocSheet,
+  ReaderTopBar,
+} from "@/src/components/reader/chrome";
 import { readBookDetailFromMetadata, readBookFileBytes } from "@/src/data/calibre";
 import { downloadWebDavBookFileBytes } from "@/src/data/webdav";
 import { useLibraryStore } from "@/src/store/library-store";
 import { useAppStore } from "@/src/store/app-store";
 import type { WebDavDataSource } from "@/src/data/types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import type { ReadingLayout } from "@/src/store/app-store.types";
 
 /** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
@@ -61,7 +62,12 @@ export default function ReaderScreen() {
   const [toc, setToc] = useState<ReaderTocItem[]>([]);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [tocOpen, setTocOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [bookmarkActive, setBookmarkActive] = useState(false);
   const [gotoPageCmd, setGotoPageCmd] = useState<number | undefined>(undefined);
+  const settings = useAppStore((s) => s.settings);
+  const patchReflowableReaderSettings = useAppStore((s) => s.patchReflowableReaderSettings);
+  const patchFixedReaderSettings = useAppStore((s) => s.patchFixedReaderSettings);
 
   useEffect(() => {
     console.info("[mobile-reader] effect:start", {
@@ -272,14 +278,16 @@ export default function ReaderScreen() {
   const pageLabel = readerState
     ? `${readerState.currentPage + 1} / ${readerState.totalPages}`
     : "";
+  const reflowSettings = settings.reflowable;
+  const fixedSettings = settings.fixed;
 
   if (loadState.status === "loading") {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: "#111" }}>
+      <View className="flex-1 bg-[#111]">
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" />
+        <StatusBar hidden={false} barStyle="light-content" />
         <ActivityIndicator size="large" color="#fff" />
-        <Text className="mt-4 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+        <Text className="mt-4 text-sm text-white/60">
           {loadState.message}
         </Text>
       </View>
@@ -290,7 +298,7 @@ export default function ReaderScreen() {
     return (
       <View style={[styles.errorScreen, { backgroundColor: palette.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" />
+        <StatusBar hidden={false} barStyle="light-content" />
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>无法打开书籍</Text>
           <Text style={styles.errorBody}>{loadState.message}</Text>
@@ -305,10 +313,16 @@ export default function ReaderScreen() {
     );
   }
 
+
   const title = loadState.title;
   const fmtUpper = loadState.format.toUpperCase();
   const isReflowSurface = loadState.layoutMode === "reflowable";
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
+  const activeReadingLayout: ReadingLayout = isReflowSurface
+    ? reflowSettings.readingLayout
+    : fixedSettings.readingLayout;
+  const paginateContentInsetTop = insets.top + 64;
+  const paginateContentInsetBottom = insets.bottom + 116;
 
   if (__DEV__) {
     console.info("[mobile-reader] render:ready-screen", {
@@ -327,11 +341,19 @@ export default function ReaderScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: "#111" }}>
+    <View className="flex-1 bg-[#111]">
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar
+        hidden={!chromeVisible && !tocOpen && !settingsOpen}
+        barStyle="light-content"
+        translucent={false}
+        backgroundColor="#110D0A"
+      />
 
-      <Pressable style={StyleSheet.absoluteFill} onPress={toggleChrome}>
+      <Pressable
+        style={styles.readerSurface}
+        onPress={toggleChrome}
+      >
         {isReflowSurface ? (
           <ReflowableDOMReader
             bookBase64={loadState.bookBase64}
@@ -344,9 +366,15 @@ export default function ReaderScreen() {
             }}
             onRequestClose={handleRequestClose}
             gotoPageCommand={gotoPageCmd}
+            readingLayout={reflowSettings.readingLayout}
+            theme={reflowSettings.theme}
+            fontSize={reflowSettings.fontSize}
+            lineHeight={reflowSettings.lineHeight}
+            paddingX={reflowSettings.paddingX}
+            brightness={reflowSettings.brightness}
             dom={{
               style: { flex: 1 },
-              scrollEnabled: true,
+              scrollEnabled: reflowSettings.readingLayout === "scroll",
             }}
           />
         ) : isFixedSurface ? (
@@ -359,165 +387,77 @@ export default function ReaderScreen() {
             onRequestClose={handleRequestClose}
             gotoPageCommand={gotoPageCmd}
             fallback={domFallback}
+            readingLayout={fixedSettings.readingLayout}
+            navigationMode={fixedSettings.navigationMode}
+            theme={fixedSettings.theme}
+            brightness={fixedSettings.brightness}
+            zoomScale={fixedSettings.zoomScale}
+            onZoomScaleChange={(scale) => patchFixedReaderSettings({ zoomScale: scale })}
+            contentInsetTop={fixedSettings.readingLayout === "paginate" ? paginateContentInsetTop : 0}
+            contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
           />
         ) : null}
       </Pressable>
 
       {chromeVisible && (
         <>
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            style={[
-              styles.topBar,
-              { paddingTop: insets.top + 8 },
-            ]}
-            pointerEvents="box-none"
-          >
-            <View className="flex-row items-center gap-3 px-4" pointerEvents="auto">
-              <Pressable
-                className="h-10 w-10 items-center justify-center rounded-full"
-                style={{ backgroundColor: "rgba(0,0,0,0.35)" }}
-                onPress={handleBack}
-              >
-                <MaterialIcons name="arrow-back" size={20} color="#fff" />
-              </Pressable>
-              <View className="flex-1 px-2">
-                <Text
-                  className="text-sm"
-                  style={{ color: "#fff", fontWeight: "600" }}
-                  numberOfLines={1}
-                >
-                  {title}
-                </Text>
-                {readerState?.chapterTitle ? (
-                  <Text
-                    className="text-xs"
-                    style={{ color: "rgba(255,255,255,0.6)" }}
-                    numberOfLines={1}
-                  >
-                    {readerState.chapterTitle}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          </Animated.View>
+          <ReaderTopBar
+            insetsTop={insets.top}
+            title={title}
+            chapterTitle={readerState?.chapterTitle}
+            bookmarkActive={bookmarkActive}
+            onBack={handleBack}
+            onToggleBookmark={() => setBookmarkActive((value) => !value)}
+          />
 
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            style={[
-              styles.bottomBar,
-              { paddingBottom: Math.max(insets.bottom, 12) },
-            ]}
-            pointerEvents="box-none"
-          >
-            <View className="px-4" pointerEvents="auto">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  {pageLabel}
-                </Text>
-                <Text className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  {progressPercent}%
-                </Text>
-              </View>
-
-              <View className="mb-3 h-[2px] overflow-hidden rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
-                <View
-                  className="h-full rounded-full"
-                  style={{
-                    backgroundColor: palette.primary,
-                    width: `${progressPercent}%`,
-                  }}
-                />
-              </View>
-
-              <View className="flex-row gap-3">
-                <Pressable
-                  className="flex-1 h-11 flex-row items-center justify-center gap-2 rounded-2xl"
-                  style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  onPress={() => setTocOpen(true)}
-                >
-                  <MaterialIcons name="list" size={18} color="#fff" />
-                  <Text className="text-sm" style={{ color: "#fff", fontWeight: "600" }}>
-                    目录
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </Animated.View>
+          <ReaderBottomBar
+            insetsBottom={insets.bottom}
+            pageLabel={pageLabel}
+            progressPercent={progressPercent}
+            progressColor={palette.primary}
+            onOpenToc={() => setTocOpen(true)}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
         </>
       )}
 
+      {(tocOpen || settingsOpen) && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          className="absolute inset-0 z-30 bg-black/45"
+        >
+          <Pressable
+            className="absolute inset-0"
+            onPress={() => {
+              setTocOpen(false);
+              setSettingsOpen(false);
+            }}
+          />
+        </Animated.View>
+      )}
+
       {tocOpen && (
-        <>
-          <Animated.View
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(200)}
-            style={styles.scrim}
-          >
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setTocOpen(false)} />
-          </Animated.View>
+        <ReaderTocSheet
+          insetsBottom={insets.bottom}
+          toc={toc}
+          currentPage={readerState?.currentPage ?? null}
+          activeColor={palette.primary}
+          onSelectPage={handleTocSelect}
+        />
+      )}
 
-          <Animated.View
-            entering={SlideInDown.duration(280)}
-            exiting={SlideOutDown.duration(220)}
-            style={[styles.tocSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
-          >
-            <View className="mb-2 mt-3 h-[5px] w-11 self-center rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
-            <Text className="px-5 py-3 text-base" style={{ color: "#fff", fontWeight: "700" }}>
-              目录
-            </Text>
-            <View className="flex-1 px-4">
-              {toc.length > 0 ? (
-                <Animated.ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 16 }}
-                >
-                    {toc.map((item) => {
-                      const isActive = readerState
-                        ? item.pageIndex === readerState.currentPage
-                        : false;
-                      return (
-                        <Pressable
-                          key={item.id}
-
-                        className="mb-2 rounded-2xl px-4 py-3"
-                        style={{
-                          backgroundColor: isActive
-                            ? "rgba(201,135,78,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                          borderWidth: isActive ? 1 : 0,
-                          borderColor: isActive
-                            ? "rgba(201,135,78,0.3)"
-                            : "transparent",
-                        }}
-                        onPress={() => handleTocSelect(item.pageIndex)}
-                      >
-                        <Text
-                          className="text-sm"
-                          style={{
-                            color: isActive ? palette.primary : "rgba(255,255,255,0.8)",
-                            fontWeight: isActive ? "700" : "500",
-                          }}
-                          numberOfLines={2}
-                        >
-                          {item.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </Animated.ScrollView>
-              ) : (
-                <View className="flex-1 items-center justify-center">
-                  <Text className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    此书籍没有目录
-                  </Text>
-                </View>
-              )}
-            </View>
-          </Animated.View>
-        </>
+      {settingsOpen && (
+        <ReaderSettingsSheet
+          insetsBottom={insets.bottom}
+          isReflowSurface={isReflowSurface}
+          isFixedSurface={isFixedSurface}
+          activeReadingLayout={activeReadingLayout}
+          reflowSettings={reflowSettings}
+          fixedSettings={fixedSettings}
+          onPatchReflowableReaderSettings={patchReflowableReaderSettings}
+          onPatchFixedReaderSettings={patchFixedReaderSettings}
+        />
       )}
     </View>
   );
@@ -567,12 +507,12 @@ function DomReaderFallback({
   }, [format, title]);
 
   return (
-    <View className="flex-1 items-center justify-center px-6" style={{ backgroundColor: "#111" }}>
+    <View className="flex-1 items-center justify-center px-6 bg-[#111]">
       <ActivityIndicator size="large" color="#fff" />
-      <Text className="mt-4 text-sm" style={{ color: "rgba(255,255,255,0.72)" }}>
+      <Text className="mt-4 text-sm text-white/70">
         正在挂载阅读器…
       </Text>
-      <Text className="mt-2 text-center text-xs" style={{ color: "rgba(255,255,255,0.42)" }}>
+      <Text className="mt-2 text-center text-xs text-white/40">
         {format ? `format=${format}` : "format=unknown"}
         {title ? ` · ${title}` : ""}
       </Text>
@@ -581,6 +521,9 @@ function DomReaderFallback({
 }
 
 const styles = StyleSheet.create({
+  readerSurface: {
+    ...StyleSheet.absoluteFillObject,
+  },
   errorScreen: {
     flex: 1,
     width: "100%",
@@ -624,37 +567,5 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.92)",
     fontSize: 15,
     fontWeight: "600",
-  },
-  topBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-  },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingTop: 12,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    zIndex: 30,
-  },
-  tocSheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 40,
-    backgroundColor: "#1C1916",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "55%",
   },
 });

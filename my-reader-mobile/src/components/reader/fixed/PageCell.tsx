@@ -6,11 +6,12 @@ type PageCellProps = {
   loading?: boolean;
   width: number;
   height: number;
+  scale?: number;
 };
 
-export function PageCell({ uri, loading, width, height }: PageCellProps) {
+export function PageCell({ uri, loading, width, height, scale = 1 }: PageCellProps) {
   return (
-    <View style={[styles.wrap, { width, height }]}>
+    <View style={[styles.wrap, { width, height }]}> 
       {loading || !uri ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
@@ -18,7 +19,13 @@ export function PageCell({ uri, loading, width, height }: PageCellProps) {
       ) : (
         <Image
           source={{ uri }}
-          style={[styles.img, { width, height }]}
+          style={[
+            styles.img,
+            {
+              width: width * scale,
+              height: height * scale,
+            },
+          ]}
           contentFit="contain"
           transition={120}
           cachePolicy="memory-disk"
@@ -33,6 +40,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#111",
+    overflow: "hidden",
   },
   center: {
     ...StyleSheet.absoluteFillObject,
@@ -43,3 +51,4 @@ const styles = StyleSheet.create({
     backgroundColor: "#111",
   },
 });
+

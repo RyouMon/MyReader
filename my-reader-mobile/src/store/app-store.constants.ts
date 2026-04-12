@@ -15,6 +15,21 @@ export const BUILT_IN_LOCAL_SOURCE: LocalDataSource = {
 export const defaultSettings: ReaderSettings = {
   themeMode: "system",
   syncEnabled: true,
+  reflowable: {
+    theme: "paper",
+    fontSize: 18,
+    lineHeight: 1.85,
+    paddingX: 20,
+    readingLayout: "scroll",
+    brightness: 100,
+  },
+  fixed: {
+    theme: "dark",
+    readingLayout: "paginate",
+    navigationMode: "horizontal",
+    brightness: 100,
+    zoomScale: 1,
+  },
 };
 
 export function mergeDataSources(dataSources: DataSource[]) {

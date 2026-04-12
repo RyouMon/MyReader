@@ -14,7 +14,7 @@ const themeModeLabels: Record<ThemeMode, string> = { system: "跟随设备", lig
 export default function SettingsScreen() {
   const palette = useThemePalette();
   const { mode, setMode } = useTheme();
-  const { libraries, activeLibraryId, loadingLibraries, error } = useLibraryStore();
+  const { libraries, activeLibraryId } = useLibraryStore();
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
   const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
 

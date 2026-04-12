@@ -1,12 +1,26 @@
 "use dom";
 
 import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import type { ReadingLayout, ReaderTheme } from "@/src/store/app-store.types";
 
 console.info("[mobile-pdf-dom] module:loaded");
+
+const THEME_STYLES: Record<ReaderTheme, { background: string; foreground: string; muted: string }> = {
+  paper: { background: "#f5efe6", foreground: "#2f261f", muted: "#6c6258" },
+  light: { background: "#ffffff", foreground: "#222222", muted: "#6b7280" },
+  green: { background: "#e8f0e4", foreground: "#253325", muted: "#5f7161" },
+  dark: { background: "#111111", foreground: "rgba(255,255,255,0.92)", muted: "rgba(255,255,255,0.6)" },
+};
+
+type RenderedPage = {
+  key: string;
+  index: number;
+  imageUrl: string;
+};
 
 export default function FixedLayoutDOMReader({
   bookBase64,
@@ -17,6 +31,13 @@ export default function FixedLayoutDOMReader({
   onDomProbe,
   onRequestClose,
   gotoPageCommand,
+  readingLayout = "paginate",
+  theme = "dark",
+  brightness = 100,
+  zoomScale = 1,
+  onZoomScaleChange,
+  contentInsetTop = 0,
+  contentInsetBottom = 0,
   dom,
 }: {
   bookBase64: string | null;
@@ -30,6 +51,13 @@ export default function FixedLayoutDOMReader({
   }) => Promise<void>;
   onRequestClose: () => Promise<void>;
   gotoPageCommand?: number;
+  readingLayout?: ReadingLayout;
+  theme?: ReaderTheme;
+  brightness?: number;
+  zoomScale?: number;
+  onZoomScaleChange?: (scale: number) => void;
+  contentInsetTop?: number;
+  contentInsetBottom?: number;
   dom?: import("expo/dom").DOMProps;
 }) {
   void onRequestClose;
@@ -39,16 +67,19 @@ export default function FixedLayoutDOMReader({
   const onStateChangeRef = useRef(onStateChange);
   const onTocReadyRef = useRef(onTocReady);
   const onDomProbeRef = useRef(onDomProbe);
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  const pinchStartScaleRef = useRef(zoomScale);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
   onDomProbeRef.current = onDomProbe;
 
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [pages, setPages] = useState<RenderedPage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const readyRef = useRef(false);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void onDomProbeRef.current({
@@ -184,24 +215,18 @@ export default function FixedLayoutDOMReader({
         });
         await onTocReadyRef.current(toc);
 
-        const ch = (await reader.getChapter(reader.curChapter)) as ImageChapterData;
-        if (cancelled) return;
+        const pageImages: RenderedPage[] = [];
+        for (let index = 0; index < book.chapters.length; index += 1) {
+          const chapter = (await reader.getChapter(index)) as ImageChapterData;
+          if (cancelled) return;
+          pageImages.push({
+            key: `${chapter.title || "page"}-${index + 1}`,
+            index,
+            imageUrl: chapter.imageUrl,
+          });
+        }
 
-        console.info("[mobile-pdf-dom] init:first-chapter-ready", {
-          chapterIndex: reader.curChapter,
-          chapterType: ch?.type,
-          imageUrlPrefix: ch?.imageUrl?.slice(0, 64) ?? null,
-        });
-        await onDomProbeRef.current({
-          stage: "first-chapter-ready",
-          detail: {
-            chapterIndex: reader.curChapter,
-            chapterType: ch?.type,
-            hasImageUrl: Boolean(ch?.imageUrl),
-          },
-        });
-
-        setImageUrl(ch.imageUrl);
+        setPages(pageImages);
         setLoading(false);
         reportState(reader.curChapter, book.chapters.length, reader, null, false);
       } catch (e) {
@@ -262,12 +287,16 @@ export default function FixedLayoutDOMReader({
       if (index < 0 || index >= totalPages) return;
 
       reader.gotoChapter(index);
-      const ch = (await reader.getChapter(index)) as ImageChapterData;
       setCurrentPage(index);
-      setImageUrl(ch.imageUrl);
+      if (readingLayout === "scroll") {
+        scrollRootRef.current?.querySelector(`[data-page-index='${index}']`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
       reportState(index, totalPages, reader, null, false);
     },
-    [reportState, totalPages],
+    [reportState, totalPages, readingLayout],
   );
 
   useEffect(() => {
@@ -281,6 +310,85 @@ export default function FixedLayoutDOMReader({
     }
   }, [gotoPageCommand, totalPages, gotoPage]);
 
+  useEffect(() => {
+    if (readingLayout !== "scroll") return;
+    const root = scrollRootRef.current;
+    const reader = readerRef.current;
+    if (!root || !reader) return;
+
+    const onScroll = () => {
+      const items = Array.from(root.querySelectorAll<HTMLElement>("[data-page-index]"));
+      if (!items.length) return;
+      const center = root.scrollTop + root.clientHeight / 2;
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const item of items) {
+        const top = item.offsetTop;
+        const mid = top + item.offsetHeight / 2;
+        const distance = Math.abs(mid - center);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = Number(item.dataset.pageIndex ?? 0);
+        }
+      }
+      if (!Number.isNaN(nearestIndex) && nearestIndex !== currentPage) {
+        reader.gotoChapter(nearestIndex);
+        setCurrentPage(nearestIndex);
+        reportState(nearestIndex, totalPages, reader, null, false);
+      }
+    };
+
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => root.removeEventListener("scroll", onScroll);
+  }, [currentPage, readingLayout, reportState, totalPages]);
+
+  const themeStyle = useMemo(() => THEME_STYLES[theme], [theme]);
+
+  const getDistance = useCallback((event: TouchEvent) => {
+    if (event.touches.length < 2) return null;
+    const [a, b] = Array.from(event.touches);
+    const dx = a.clientX - b.clientX;
+    const dy = a.clientY - b.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }, []);
+
+  useEffect(() => {
+    const root = scrollRootRef.current;
+    if (!root) return;
+
+    const onTouchStart = (event: TouchEvent) => {
+      const distance = getDistance(event);
+      if (distance == null) return;
+      pinchStartDistanceRef.current = distance;
+      pinchStartScaleRef.current = zoomScale;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (pinchStartDistanceRef.current == null) return;
+      const distance = getDistance(event);
+      if (distance == null) return;
+      event.preventDefault();
+      const nextScale = Math.max(1, Math.min(3, pinchStartScaleRef.current * (distance / pinchStartDistanceRef.current)));
+      onZoomScaleChange?.(Number(nextScale.toFixed(2)));
+    };
+
+    const onTouchEnd = () => {
+      pinchStartDistanceRef.current = null;
+    };
+
+    root.addEventListener("touchstart", onTouchStart, { passive: true });
+    root.addEventListener("touchmove", onTouchMove, { passive: false });
+    root.addEventListener("touchend", onTouchEnd, { passive: true });
+    root.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      root.removeEventListener("touchstart", onTouchStart);
+      root.removeEventListener("touchmove", onTouchMove);
+      root.removeEventListener("touchend", onTouchEnd);
+      root.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [getDistance, onZoomScaleChange, zoomScale]);
+
   if (error) {
     return (
       <div style={styles.centered}>
@@ -293,20 +401,58 @@ export default function FixedLayoutDOMReader({
   }
 
   return (
-    <div style={styles.container}>
+    <div
+      ref={scrollRootRef}
+      style={{
+        ...styles.container,
+        background: themeStyle.background,
+        color: themeStyle.foreground,
+        filter: `brightness(${Math.max(0.2, brightness / 100)})`,
+        overflowY: readingLayout === "scroll" ? "auto" : "hidden",
+        justifyContent: readingLayout === "scroll" ? "flex-start" : "center",
+        paddingTop: readingLayout === "paginate" ? `${contentInsetTop}px` : 0,
+        paddingBottom: readingLayout === "paginate" ? `${contentInsetBottom}px` : 0,
+        boxSizing: "border-box",
+      }}
+    >
       {loading ? (
         <div style={styles.centered}>
-          <div style={styles.card}>正在加载 PDF…</div>
+          <div style={{ ...styles.card, color: themeStyle.foreground }}>正在加载 PDF…</div>
         </div>
-      ) : imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={`page-${currentPage + 1}`}
-          style={styles.image}
-        />
+      ) : pages.length > 0 ? (
+        readingLayout === "paginate" ? (
+          <div style={styles.paginateWrap}>
+            <img
+              src={pages[currentPage]?.imageUrl}
+              alt={`page-${currentPage + 1}`}
+              style={{
+                ...styles.image,
+                transform: `scale(${zoomScale})`,
+                transformOrigin: "center center",
+              }}
+            />
+          </div>
+        ) : (
+          <div style={styles.scrollList}>
+            {pages.map((page) => (
+              <div key={page.key} data-page-index={page.index} style={styles.scrollPage}>
+                <img
+                  src={page.imageUrl}
+                  alt={`page-${page.index + 1}`}
+                  style={{
+                    ...styles.image,
+                    transform: `scale(${zoomScale})`,
+                    transformOrigin: "center top",
+                  }}
+                />
+                <div style={{ ...styles.pageMeta, color: themeStyle.muted }}>第 {page.index + 1} 页</div>
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <div style={styles.centered}>
-          <div style={styles.card}>暂无可显示页面</div>
+          <div style={{ ...styles.card, color: themeStyle.foreground }}>暂无可显示页面</div>
         </div>
       )}
     </div>
@@ -319,9 +465,40 @@ const styles: Record<string, React.CSSProperties> = {
     height: "100%",
     display: "flex",
     alignItems: "center",
+    paddingTop: 72,
+    paddingBottom: 132,
+    boxSizing: "border-box",
+  },
+  paginateWrap: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
     justifyContent: "center",
-    background: "#111",
     overflow: "hidden",
+    paddingLeft: 12,
+    paddingRight: 12,
+    boxSizing: "border-box",
+  },
+  scrollList: {
+    width: "100%",
+    minHeight: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+    padding: "0 12px 0",
+    boxSizing: "border-box",
+  },
+  scrollPage: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  pageMeta: {
+    fontSize: 12,
   },
   centered: {
     width: "100%",
@@ -354,6 +531,6 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     height: "100%",
     objectFit: "contain",
-    background: "#111",
+    background: "transparent",
   },
 };

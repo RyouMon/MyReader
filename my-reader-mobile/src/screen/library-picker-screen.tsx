@@ -19,17 +19,6 @@ import {
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useLibraryStore } from "../store/library-store";
 
-function getLibraryIconName(index: number) {
-  const icons: (keyof typeof MaterialIcons.glyphMap)[] = [
-    "local-library",
-    "menu-book",
-    "library-books",
-    "collections-bookmark",
-  ];
-
-  return icons[index % icons.length] ?? "local-library";
-}
-
 export default function LibraryPickerScreen() {
   const palette = useThemePalette();
   const { libraries, activeLibraryId, loadingLibraries, setActiveLibrary } = useLibraryStore();
