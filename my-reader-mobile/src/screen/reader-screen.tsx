@@ -1,10 +1,5 @@
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  StatusBar,
-  StyleSheet,
-} from "react-native";
+import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import Animated, {
   FadeIn,
@@ -529,14 +524,6 @@ export default function ReaderScreen() {
 }
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
-  if (Platform.OS === "web") {
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
   const chunkSize = 0x8000;
   const chunks: string[] = [];
   for (let i = 0; i < bytes.length; i += chunkSize) {

@@ -38,10 +38,7 @@ export const Link = Object.assign(
   }
 ) as typeof RouterLink;
 
-export const useCSSVariable =
-  process.env.EXPO_OS !== "web"
-    ? useFunctionalVariable
-    : (variable: string) => `var(${variable})`;
+export const useCSSVariable = useFunctionalVariable;
 
 export type ViewProps = React.ComponentProps<typeof RNView> & {
   className?: string;

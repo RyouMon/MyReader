@@ -83,7 +83,6 @@ function DetailHero({ library, accent, isActive }: { library: MobileLibrary; acc
           name={{
             ios: "books.vertical.fill",
             android: "library_books",
-            web: "library_books",
           }}
           resizeMode="scaleAspectFit"
           size={80}

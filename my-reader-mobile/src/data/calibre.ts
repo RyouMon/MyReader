@@ -1,7 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import { Directory, File as FSFile, Paths } from "expo-file-system";
 import * as SQLite from "expo-sqlite";
-import { Platform } from "react-native";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
 
@@ -240,17 +239,14 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary> {
   let directory: PickedDirectoryLike | null = null;
   let metadataFile: FSFile | null = null;
 
-  if (Platform.OS !== "web") {
-    try {
-      directory = await Directory.pickDirectoryAsync();
-    } catch {
-      throw new Error("已取消选择书库");
-    }
-    metadataFile = getMetadataFileFromDirectory(directory);
+  try {
+    directory = await Directory.pickDirectoryAsync();
+  } catch {
+    throw new Error("已取消选择书库");
   }
+  metadataFile = getMetadataFileFromDirectory(directory);
 
-  const needsMetadataFilePicker =
-    Platform.OS === "web" || (directory !== null && !metadataFile);
+  const needsMetadataFilePicker = directory !== null && !metadataFile;
 
   if (needsMetadataFilePicker) {
     const fallback = await pickMetadataFileFallback();

@@ -21,10 +21,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "ryoumon.myreadermobile"
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+    "platforms": ["ios", "android"],
     "plugins": [
       "expo-router",
       [
@@ -41,8 +38,7 @@
       ],
       "expo-sqlite",
       "expo-font",
-      "expo-image",
-      "expo-web-browser"
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
