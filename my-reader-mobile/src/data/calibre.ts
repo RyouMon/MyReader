@@ -243,14 +243,16 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary> {
   if (Platform.OS !== "web") {
     try {
       directory = await Directory.pickDirectoryAsync();
-      metadataFile = getMetadataFileFromDirectory(directory);
     } catch {
-      directory = null;
-      metadataFile = null;
+      throw new Error("已取消选择书库");
     }
+    metadataFile = getMetadataFileFromDirectory(directory);
   }
 
-  if (!directory || !metadataFile) {
+  const needsMetadataFilePicker =
+    Platform.OS === "web" || (directory !== null && !metadataFile);
+
+  if (needsMetadataFilePicker) {
     const fallback = await pickMetadataFileFallback();
 
     if (!fallback) {
@@ -261,19 +263,21 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary> {
     metadataFile = fallback.metadataFile;
   }
 
-  if (!metadataFile) {
+  if (!metadataFile || directory === null) {
     throw new Error("所选目录中未找到 metadata.db，请选择 Calibre 书库根目录");
   }
 
+  const libraryRoot = directory;
+
   const id = createId();
-  const securityScopedBookmark = await createSecurityScopedBookmark(directory.uri);
+  const securityScopedBookmark = await createSecurityScopedBookmark(libraryRoot.uri);
   const cachedMetadataUri = copyMetadataToCache(metadataFile.uri, id);
   const bookCount = await readBookCountFromMetadata(cachedMetadataUri);
-  const resolvedPath = securityScopedBookmark?.resolvedUri ?? directory.uri;
+  const resolvedPath = securityScopedBookmark?.resolvedUri ?? libraryRoot.uri;
 
   return {
     id,
-    name: directory.name || new Directory(directory.uri).name || "未命名书库",
+    name: libraryRoot.name || new Directory(libraryRoot.uri).name || "未命名书库",
     path: resolvedPath,
     metadataUri: cachedMetadataUri,
     bookCount,
