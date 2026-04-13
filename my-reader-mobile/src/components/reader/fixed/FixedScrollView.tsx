@@ -4,8 +4,11 @@ import {
   type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewProps,
   View,
 } from "react-native";
+
+type ScrollTouchProps = Pick<ViewProps, "onTouchStart" | "onTouchEnd" | "onTouchCancel">;
 
 export type FixedScrollViewProps = {
   width: number;
@@ -15,7 +18,7 @@ export type FixedScrollViewProps = {
   pageIndex: number;
   onPageIndexChange: (index: number) => void;
   renderPage: (index: number) => React.ReactElement;
-};
+} & ScrollTouchProps;
 
 /**
  * Vertical paged scrolling (one page per viewport height).
@@ -31,6 +34,9 @@ export const FixedScrollView = forwardRef<FlatList<number>, FixedScrollViewProps
       pageIndex,
       onPageIndexChange,
       renderPage,
+      onTouchStart,
+      onTouchEnd,
+      onTouchCancel,
     },
     ref,
   ) {
@@ -100,6 +106,9 @@ export const FixedScrollView = forwardRef<FlatList<number>, FixedScrollViewProps
         removeClippedSubviews={false}
         onMomentumScrollEnd={onScrollEnd}
         onScrollToIndexFailed={onScrollToIndexFailed}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         style={{ width, height }}
       />
     );

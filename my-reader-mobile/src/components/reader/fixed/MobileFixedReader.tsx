@@ -1,6 +1,6 @@
 import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FlatList, GestureResponderEvent } from "react-native";
+import type { FlatList } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
@@ -10,6 +10,7 @@ import { FixedPagerView } from "./FixedPagerView";
 import { FixedScrollView } from "./FixedScrollView";
 import { PageCell } from "./PageCell";
 import { resolveImageUriForNative } from "./resolveDisplayUri";
+import { useFixedReaderGestures } from "./useFixedReaderGestures";
 
 export type MobileFixedNavigationMode = "horizontal" | "vertical";
 
@@ -30,15 +31,6 @@ type MobileFixedReaderProps = {
   contentInsetTop?: number;
   contentInsetBottom?: number;
 };
-
-type ReaderTouchSnapshot = {
-  x: number;
-  y: number;
-  timestampMs: number;
-};
-
-const TAP_MAX_DRIFT = 12;
-const TAP_MAX_DURATION_MS = 260;
 
 function FixedPageLoader({
   pageIndex,
@@ -142,13 +134,8 @@ export default function MobileFixedReader({
   const readyRef = useRef(false);
   const onStateChangeRef = useRef(onStateChange);
   const onTocReadyRef = useRef(onTocReady);
-  const pinchStartDistanceRef = useRef<number | null>(null);
-  const pinchStartScaleRef = useRef(zoomScale);
-  const readerTouchStartRef = useRef<ReaderTouchSnapshot | null>(null);
-  const onToggleChromeRef = useRef(onToggleChrome);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
-  onToggleChromeRef.current = onToggleChrome;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentPage, setCurrentPage] = useState(0);
@@ -277,8 +264,6 @@ export default function MobileFixedReader({
     [totalPages, reportState],
   );
 
-  const tapSideWidth = Math.max(48, screenWidth * 0.28);
-
   const renderPage = useCallback(
     (index: number) => (
       <FixedPageLoader
@@ -295,86 +280,17 @@ export default function MobileFixedReader({
     [screenWidth, screenHeight, zoomScale, brightness, navigationMode, contentInsetTop, contentInsetBottom],
   );
 
-  const getDistance = useCallback((event: GestureResponderEvent) => {
-    const touches = event.nativeEvent.touches;
-    if (touches.length < 2) return null;
-    const [a, b] = touches;
-    const dx = a.pageX - b.pageX;
-    const dy = a.pageY - b.pageY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }, []);
-
-  const handleTouchStart = useCallback(
-    (event: GestureResponderEvent) => {
-      if (event.nativeEvent.touches.length !== 1) {
-        readerTouchStartRef.current = null;
-      } else {
-        const touch = event.nativeEvent.touches[0];
-        readerTouchStartRef.current = {
-          x: touch.pageX,
-          y: touch.pageY,
-          timestampMs: Date.now(),
-        };
-      }
-      if (!pinchZoomEnabled) return;
-      const distance = getDistance(event);
-      if (distance == null) return;
-      pinchStartDistanceRef.current = distance;
-      pinchStartScaleRef.current = zoomScale;
-    },
-    [pinchZoomEnabled, zoomScale, getDistance],
-  );
-
-  const handleTouchMove = useCallback(
-    (event: GestureResponderEvent) => {
-      if (!pinchZoomEnabled || pinchStartDistanceRef.current == null) return;
-      const distance = getDistance(event);
-      if (distance == null) return;
-      const nextScale = Math.max(
-        1,
-        Math.min(3, pinchStartScaleRef.current * (distance / pinchStartDistanceRef.current)),
-      );
-      onZoomScaleChange?.(Number(nextScale.toFixed(2)));
-    },
-    [pinchZoomEnabled, onZoomScaleChange, getDistance],
-  );
-
-  const handleTouchEnd = useCallback((event: GestureResponderEvent) => {
-    const start = readerTouchStartRef.current;
-    readerTouchStartRef.current = null;
-    pinchStartDistanceRef.current = null;
-    if (!start) return;
-    const changedTouches = event.nativeEvent.changedTouches;
-    const currentTouch = changedTouches.length > 0 ? changedTouches[0] : null;
-    if (!currentTouch) return;
-
-    const dx = currentTouch.pageX - start.x;
-    const dy = currentTouch.pageY - start.y;
-    const durationMs = Date.now() - start.timestampMs;
-    const isTapGesture =
-      Math.abs(dx) <= TAP_MAX_DRIFT &&
-      Math.abs(dy) <= TAP_MAX_DRIFT &&
-      durationMs <= TAP_MAX_DURATION_MS;
-    if (!isTapGesture) return;
-
-    if (navigationMode === "horizontal" && zoomScale <= 1.02) {
-      if (start.x <= tapSideWidth) {
-        if (currentPage > 0) goToPage(currentPage - 1);
-        return;
-      }
-      if (start.x >= screenWidth - tapSideWidth) {
-        if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-        return;
-      }
-    }
-
-    onToggleChromeRef.current?.();
-  }, [currentPage, goToPage, navigationMode, screenWidth, tapSideWidth, totalPages, zoomScale]);
-
-  const handleTouchCancel = useCallback(() => {
-    readerTouchStartRef.current = null;
-    pinchStartDistanceRef.current = null;
-  }, []);
+  const { pinchPanHandlers, listTouchHandlers } = useFixedReaderGestures({
+    pinchZoomEnabled,
+    zoomScale,
+    onZoomScaleChange,
+    navigationMode,
+    screenWidth,
+    currentPage,
+    totalPages,
+    goToPage,
+    onToggleChrome,
+  });
 
   if (error) {
     return (
@@ -387,18 +303,12 @@ export default function MobileFixedReader({
     );
   }
 
-  const listKey = `${bookEpoch}-${totalPages}-${navigationMode}-${zoomScale}-${brightness}`;
+  const listKey = `${bookEpoch}-${totalPages}-${navigationMode}-${brightness}`;
 
   return (
-    <View
-      style={styles.container}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
-    >
+    <View style={styles.container}>
       {totalPages > 0 && !loading ? (
-        <>
+        <View style={{ flex: 1 }} {...pinchPanHandlers}>
           {navigationMode === "horizontal" ? (
             <FixedPagerView
               key={listKey}
@@ -410,6 +320,9 @@ export default function MobileFixedReader({
               pageIndex={currentPage}
               onPageIndexChange={onPagerIndexChange}
               renderPage={renderPage}
+              onTouchStart={listTouchHandlers.onTouchStart}
+              onTouchEnd={listTouchHandlers.onTouchEnd}
+              onTouchCancel={listTouchHandlers.onTouchCancel}
             />
           ) : (
             <FixedScrollView
@@ -422,9 +335,12 @@ export default function MobileFixedReader({
               pageIndex={currentPage}
               onPageIndexChange={onPagerIndexChange}
               renderPage={renderPage}
+              onTouchStart={listTouchHandlers.onTouchStart}
+              onTouchEnd={listTouchHandlers.onTouchEnd}
+              onTouchCancel={listTouchHandlers.onTouchCancel}
             />
           )}
-        </>
+        </View>
       ) : (
         <View className="flex-1 items-center justify-center bg-[#111]" style={{ width: screenWidth, height: screenHeight }}>
           <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />

@@ -4,8 +4,11 @@ import {
   type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type ViewProps,
   View,
 } from "react-native";
+
+type PagerTouchProps = Pick<ViewProps, "onTouchStart" | "onTouchEnd" | "onTouchCancel">;
 
 export type FixedPagerViewProps = {
   width: number;
@@ -15,7 +18,7 @@ export type FixedPagerViewProps = {
   pageIndex: number;
   onPageIndexChange: (index: number) => void;
   renderPage: (index: number) => React.ReactElement;
-};
+} & PagerTouchProps;
 
 export const FixedPagerView = forwardRef<FlatList<number>, FixedPagerViewProps>(
   function FixedPagerView(
@@ -27,6 +30,9 @@ export const FixedPagerView = forwardRef<FlatList<number>, FixedPagerViewProps>(
       pageIndex,
       onPageIndexChange,
       renderPage,
+      onTouchStart,
+      onTouchEnd,
+      onTouchCancel,
     },
     ref,
   ) {
@@ -97,6 +103,9 @@ export const FixedPagerView = forwardRef<FlatList<number>, FixedPagerViewProps>(
         removeClippedSubviews={false}
         onMomentumScrollEnd={onScrollEnd}
         onScrollToIndexFailed={onScrollToIndexFailed}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         style={{ width, height }}
       />
     );
