@@ -7,7 +7,9 @@ export function scopeEpubCss(css: string): string {
   return css
     .replace(/\bhtml\b/g, ".reader-epub-scope")
     .replace(/\bbody\b/g, ".reader-epub-scope")
-} /**
+}
+
+/**
  * Prefer `requested` when it matches a file on the book and is readable;
  * otherwise fall back to priority order.
  */

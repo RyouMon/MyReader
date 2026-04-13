@@ -1,4 +1,4 @@
-import type { UseReaderReturn } from "@/hooks/reader/useReader"
+import type { UseReaderReturn } from "my-reader-tools/hooks/useReader"
 
 export interface ReaderSurfaceProps {
   bookTitle: string

@@ -346,7 +346,9 @@ export function ReflowableReader({ bookTitle, reader }: ReaderSurfaceProps) {
                 scrollChapters.find((c) => c.index === curChapter),
               )
       }
-      scrollScrollContainerToBookAnchor(root, anchor)
+      if (anchor) {
+        scrollScrollContainerToBookAnchor(root, anchor)
+      }
     })
     return () => window.cancelAnimationFrame(t)
   }, [

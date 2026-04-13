@@ -254,17 +254,13 @@ export async function createWebDavLibraryFromPath(
   }
 }
 
-/**
- * Downloads a book file from a WebDAV-backed Calibre library and returns raw bytes.
- *
- * Resolves the remote path from the SQLite metadata, then HTTP-GETs the file.
- */
-export async function downloadWebDavBookFileBytes(
+export async function downloadWebDavBookFile(
   library: MobileLibrary,
   source: WebDavDataSource,
   calibreBookId: number,
-  format: string
-): Promise<Uint8Array> {
+  format: string,
+  localName?: string
+): Promise<File> {
   const metadataFile = new File(library.metadataUri);
   const metadataBytes = await metadataFile.bytes();
   const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
@@ -282,11 +278,29 @@ export async function downloadWebDavBookFileBytes(
     const fileName = `${row.name}.${format.toLowerCase()}`;
     const remotePath = `${library.sourcePath ?? library.path}/${row.path}/${fileName}`;
 
-    const response = await requestWebDav(source, remotePath);
-    return new Uint8Array(await response.arrayBuffer());
+    return downloadToCache(
+      source,
+      remotePath,
+      localName ?? `webdav-book-${source.id}-${calibreBookId}-${Date.now()}-${fileName}`
+    );
   } finally {
     await db.closeAsync();
   }
+}
+
+/**
+ * Downloads a book file from a WebDAV-backed Calibre library and returns raw bytes.
+ *
+ * Resolves the remote path from the SQLite metadata, then HTTP-GETs the file.
+ */
+export async function downloadWebDavBookFileBytes(
+  library: MobileLibrary,
+  source: WebDavDataSource,
+  calibreBookId: number,
+  format: string
+): Promise<Uint8Array> {
+  const file = await downloadWebDavBookFile(library, source, calibreBookId, format);
+  return file.bytes();
 }
 
 export async function readBooksFromWebDavLibrary(

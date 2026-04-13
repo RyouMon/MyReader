@@ -12,9 +12,9 @@ import {
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { readBookDetailFromMetadata, readBookFileBytes } from "@/src/data/calibre";
+import { readBookDetailFromMetadata, readBookFileBytes, resolveBookFile } from "@/src/data/calibre";
 import type { WebDavDataSource } from "@/src/data/types";
-import { downloadWebDavBookFileBytes } from "@/src/data/webdav";
+import { downloadWebDavBookFile, downloadWebDavBookFileBytes } from "@/src/data/webdav";
 import { useThemePalette } from "@/src/design/tokens";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
@@ -101,8 +101,12 @@ type LoadState =
   | { status: "error"; message: string }
   | {
       status: "ready";
-      bookBase64: string;
-      bookBuffer: Uint8Array;
+      bookBase64: string | null;
+      bookBuffer: Uint8Array | null;
+      bookArchiveUri: string | null;
+      bookArchiveFingerprint: string | null;
+      bookArchiveOwned: boolean;
+      bookId: number;
       format: string;
       title: string;
       initialPage: number;
@@ -224,26 +228,40 @@ export default function ReaderScreen() {
           message: webDavSource ? "正在从 WebDAV 下载书籍…" : "正在加载书籍文件…",
         });
 
-        const bytes = webDavSource
-          ? await downloadWebDavBookFileBytes(currentLibrary, webDavSource, calibreId, fmt)
-          : await readBookFileBytes(currentLibrary, calibreId, fmt);
+        const detailLayoutMode =
+          fmtUpper === "EPUB" ? "reflowable" : fmtUpper === "PDF" || fmtUpper === "CBZ" ? "fixedLayout" : "unknown";
+
+        const needsNativeComicPath = fmtUpper === "CBZ";
+        const localBookFile = !webDavSource && needsNativeComicPath
+          ? await resolveBookFile(currentLibrary, calibreId, fmt)
+          : null;
+        const webDavBookFile = webDavSource && needsNativeComicPath
+          ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+          : null;
+
+        const bytes = needsNativeComicPath
+          ? null
+          : webDavSource
+            ? await downloadWebDavBookFileBytes(currentLibrary, webDavSource, calibreId, fmt)
+            : await readBookFileBytes(currentLibrary, calibreId, fmt);
         if (cancelled) return;
 
-        console.info("[mobile-reader] load:file-bytes-ready", {
+        console.info("[mobile-reader] load:file-ready", {
           calibreId,
           format: fmtUpper,
-          byteLength: bytes.byteLength,
+          byteLength: bytes?.byteLength ?? null,
+          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
           sourceType: webDavSource ? "webdav" : "local",
         });
 
-        const detailLayoutMode =
-          fmtUpper === "EPUB" ? "reflowable" : fmtUpper === "PDF" || fmtUpper === "CBZ" ? "fixedLayout" : "unknown";
-        const base64 = uint8ArrayToBase64(bytes);
+        const base64 = bytes ? uint8ArrayToBase64(bytes) : null;
 
-        console.info("[mobile-reader] load:base64-ready", {
+        console.info("[mobile-reader] load:reader-input-ready", {
           calibreId,
           format: fmtUpper,
-          base64Length: base64.length,
+          hasBase64: Boolean(base64),
+          base64Length: base64?.length ?? 0,
+          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
           layoutMode: detailLayoutMode,
           renderer:
             detailLayoutMode === "reflowable"
@@ -257,6 +275,11 @@ export default function ReaderScreen() {
           status: "ready",
           bookBase64: base64,
           bookBuffer: bytes,
+          bookArchiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
+          bookArchiveFingerprint:
+            localBookFile?.uri ?? webDavBookFile?.uri ?? `${calibreId}-${fmtUpper}-${bytes?.byteLength ?? 0}`,
+          bookArchiveOwned: Boolean(webDavBookFile),
+          bookId: calibreId,
           format: fmt,
           title: detail.title,
           initialPage: INITIAL_READER_PAGE,
@@ -450,7 +473,12 @@ export default function ReaderScreen() {
           />
         ) : isFixedSurface ? (
           <FixedReaderSurface
-            bookBase64={loadState.bookBase64}
+            archiveUri={loadState.bookArchiveUri}
+            archiveFingerprint={loadState.bookArchiveFingerprint}
+            archiveOwned={loadState.bookArchiveOwned}
+            bookBase64={loadState.bookBase64 ?? undefined}
+            bookBytes={loadState.bookBuffer ?? undefined}
+            bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}
             onStateChange={handleStateChange}

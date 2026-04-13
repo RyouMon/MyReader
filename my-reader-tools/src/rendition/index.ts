@@ -14,6 +14,10 @@ export {
   findPageIndexForReadingAnchor,
 } from "../layout-engines/reflow"
 
+export { buildComicManifest, isComicImagePath } from "./parsers/comicManifest"
+
+export type { ComicManifest, ComicPageEntry, ComicSpineItem } from "./parsers/comicManifest"
+
 export type {
   BookMetadata,
   BookParser,

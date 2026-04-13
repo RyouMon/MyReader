@@ -7,11 +7,16 @@ import type {
 } from "@/src/store/app-store.types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
-const MobileFixedReader = lazy(async () => import("./MobileFixedReader"));
+const NativeComicReader = lazy(async () => import("./NativeComicReader"));
 const FixedLayoutDOMReader = lazy(async () => import("./FixedLayoutDOMReader"));
 
 export type FixedReaderSurfaceProps = {
-  bookBase64: string;
+  archiveUri?: string | null;
+  archiveFingerprint?: string | null;
+  archiveOwned?: boolean;
+  bookBase64?: string;
+  bookBytes?: Uint8Array;
+  bookId?: number;
   format: string;
   initialPage?: number;
   onStateChange: (state: ReaderState) => Promise<void>;
@@ -39,7 +44,12 @@ function isCbzFormat(format: string): boolean {
 }
 
 export default function FixedReaderSurface({
+  archiveUri,
+  archiveFingerprint,
+  archiveOwned,
   bookBase64,
+  bookBytes,
+  bookId,
   format,
   initialPage,
   onStateChange,
@@ -75,8 +85,12 @@ export default function FixedReaderSurface({
   if (isCbzFormat(format)) {
     return (
       <Suspense fallback={domFallback}>
-        <MobileFixedReader
-          bookBase64={bookBase64}
+        <NativeComicReader
+          archiveUri={archiveUri ?? null}
+          archiveFingerprint={archiveFingerprint ?? null}
+          archiveOwned={archiveOwned ?? false}
+          bookBytes={bookBytes ?? null}
+          bookId={bookId ?? 0}
           format={format}
           initialPage={initialPage}
           onStateChange={onStateChange}
