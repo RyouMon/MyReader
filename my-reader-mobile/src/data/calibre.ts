@@ -1,5 +1,5 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
-import { Alert } from "react-native";
+import { Platform, Alert } from "react-native";
 import * as SQLite from "expo-sqlite";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
@@ -408,11 +408,11 @@ export async function readBookFileBytes(
   return bookFile.bytes();
 }
 
-export async function resolveBookFile(
+async function lookupBookFileLocation(
   library: MobileLibrary,
   calibreBookId: number,
   format: string
-): Promise<FSFile> {
+): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
   const metadataFile = new FSFile(library.metadataUri);
   const metadataBytes = await metadataFile.bytes();
   const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
@@ -427,46 +427,147 @@ export async function resolveBookFile(
       throw new Error(`格式 ${format} 在书库中未找到 (bookId=${calibreBookId})`);
     }
 
-    const segments = row.path.split("/").filter(Boolean);
-    const fileName = `${row.name}.${format.toLowerCase()}`;
-
-    const buildBookFile = (rootUri: string) =>
-      new FSFile(new Directory(rootUri), ...segments, fileName);
-
-    if (library.securityScopedBookmark) {
-      const { result: bookFile, refreshedLibrary } = await withSecurityScopedLibraryAccess(
-        library,
-        async (resolvedPath) => buildBookFile(resolvedPath)
-      );
-
-      const effectiveLibrary = refreshedLibrary ?? library;
-      if (!bookFile.exists) {
-        throw new Error(
-          `书籍文件不存在: ${fileName}\n` +
-            `完整路径: ${bookFile.uri}\n` +
-            `书库路径: ${effectiveLibrary.path}\n` +
-            `书内路径: ${row.path}`
-        );
-      }
-
-      return bookFile;
-    }
-
-    const bookFile = buildBookFile(library.path);
-
-    if (!bookFile.exists) {
-      throw new Error(
-        `书籍文件不存在: ${fileName}\n` +
-          `完整路径: ${bookFile.uri}\n` +
-          `书库路径: ${library.path}\n` +
-          `书内路径: ${row.path}`
-      );
-    }
-
-    return bookFile;
+    return {
+      rowPath: row.path,
+      fileName: `${row.name}.${format.toLowerCase()}`,
+      segments: row.path.split("/").filter(Boolean),
+    };
   } finally {
     await db.closeAsync();
   }
+}
+
+function createBookFile(rootUri: string, segments: string[], fileName: string) {
+  return new FSFile(new Directory(rootUri), ...segments, fileName);
+}
+
+function assertBookFileExists(
+  bookFile: FSFile,
+  libraryPath: string,
+  rowPath: string,
+  fileName: string
+) {
+  if (!bookFile.exists) {
+    throw new Error(
+      `书籍文件不存在: ${fileName}\n` +
+        `完整路径: ${bookFile.uri}\n` +
+        `书库路径: ${libraryPath}\n` +
+        `书内路径: ${rowPath}`
+    );
+  }
+}
+
+function describeFileForLog(file: FSFile) {
+  return {
+    uri: file.uri,
+    exists: file.exists,
+    size: file.size ?? null,
+    name: file.name ?? null,
+    extension: file.extension ?? null,
+    md5: file.md5 ?? null,
+  };
+}
+
+export async function materializeBookFileToCache(
+  library: MobileLibrary,
+  calibreBookId: number,
+  format: string,
+  cachePrefix = "local-book"
+): Promise<FSFile> {
+  const { rowPath, fileName, segments } = await lookupBookFileLocation(library, calibreBookId, format);
+  const cacheDir = new Directory(Paths.cache, "book-files");
+  if (!cacheDir.exists) {
+    cacheDir.create({ idempotent: true, intermediates: true });
+  }
+
+  const ext = `.${format.toLowerCase()}`;
+  const rand = Math.random().toString(36).slice(2, 10);
+  const cacheName = `${cachePrefix}-${library.id}-${calibreBookId}-${Date.now()}-${rand}${ext}`;
+  const cachedFile = new FSFile(cacheDir, cacheName);
+  if (cachedFile.exists) {
+    cachedFile.delete();
+  }
+  cachedFile.create({ overwrite: true, intermediates: true });
+
+  console.info("[mobile-reader] calibre:materialize-cache:start", {
+    libraryId: library.id,
+    calibreBookId,
+    format: format.toUpperCase(),
+    cachePrefix,
+    sourceType: library.sourceType ?? "local",
+    hasSecurityScopedBookmark: Boolean(library.securityScopedBookmark),
+    cacheFile: describeFileForLog(cachedFile),
+    rowPath,
+    segments,
+  });
+
+  if (Platform.OS === "ios" && library.securityScopedBookmark) {
+    const { result: sourceBytes } = await withSecurityScopedLibraryAccess(library, async (resolvedPath) => {
+      const sourceFile = createBookFile(resolvedPath, segments, fileName);
+      assertBookFileExists(sourceFile, resolvedPath, rowPath, fileName);
+      console.info("[mobile-reader] calibre:materialize-cache:source-ios", {
+        libraryId: library.id,
+        calibreBookId,
+        resolvedPath,
+        sourceFile: describeFileForLog(sourceFile),
+      });
+      return sourceFile.bytes();
+    });
+
+    console.info("[mobile-reader] calibre:materialize-cache:bytes-ios", {
+      libraryId: library.id,
+      calibreBookId,
+      byteLength: sourceBytes.byteLength,
+      cacheFileBeforeWrite: describeFileForLog(cachedFile),
+    });
+
+    cachedFile.write(sourceBytes);
+
+    console.info("[mobile-reader] calibre:materialize-cache:done-ios", {
+      libraryId: library.id,
+      calibreBookId,
+      cacheFile: describeFileForLog(cachedFile),
+    });
+    return cachedFile;
+  }
+
+  const sourceFile = createBookFile(library.path, segments, fileName);
+  assertBookFileExists(sourceFile, library.path, rowPath, fileName);
+  console.info("[mobile-reader] calibre:materialize-cache:source-local", {
+    libraryId: library.id,
+    calibreBookId,
+    sourceFile: describeFileForLog(sourceFile),
+  });
+  sourceFile.copy(cachedFile);
+  console.info("[mobile-reader] calibre:materialize-cache:done-local", {
+    libraryId: library.id,
+    calibreBookId,
+    cacheFile: describeFileForLog(cachedFile),
+  });
+  return cachedFile;
+}
+
+export async function resolveBookFile(
+  library: MobileLibrary,
+  calibreBookId: number,
+  format: string
+): Promise<FSFile> {
+  const { rowPath, fileName, segments } = await lookupBookFileLocation(library, calibreBookId, format);
+
+  if (library.securityScopedBookmark) {
+    const { result: bookFile, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+      library,
+      async (resolvedPath) => createBookFile(resolvedPath, segments, fileName)
+    );
+
+    const effectiveLibrary = refreshedLibrary ?? library;
+    assertBookFileExists(bookFile, effectiveLibrary.path, rowPath, fileName);
+    return bookFile;
+  }
+
+  const bookFile = createBookFile(library.path, segments, fileName);
+  assertBookFileExists(bookFile, library.path, rowPath, fileName);
+  return bookFile;
 }
 
 export async function readBooksFromLibrary(library: MobileLibrary): Promise<BookItem[]> {

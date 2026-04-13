@@ -278,11 +278,12 @@ export async function downloadWebDavBookFile(
     const fileName = `${row.name}.${format.toLowerCase()}`;
     const remotePath = `${library.sourcePath ?? library.path}/${row.path}/${fileName}`;
 
-    return downloadToCache(
-      source,
-      remotePath,
-      localName ?? `webdav-book-${source.id}-${calibreBookId}-${Date.now()}-${fileName}`
-    );
+    const rand = Math.random().toString(36).slice(2, 10);
+    const ext = `.${format.toLowerCase()}`;
+    const safeLocal =
+      localName ?? `webdav-book-${source.id}-${calibreBookId}-${Date.now()}-${rand}${ext}`;
+
+    return downloadToCache(source, remotePath, safeLocal);
   } finally {
     await db.closeAsync();
   }

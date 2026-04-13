@@ -97,7 +97,7 @@ export const FixedScrollView = forwardRef<FlatList<number>, FixedScrollViewProps
         windowSize={5}
         maxToRenderPerBatch={3}
         initialNumToRender={1}
-        removeClippedSubviews
+        removeClippedSubviews={false}
         onMomentumScrollEnd={onScrollEnd}
         onScrollToIndexFailed={onScrollToIndexFailed}
         style={{ width, height }}

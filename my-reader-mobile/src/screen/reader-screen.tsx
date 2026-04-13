@@ -12,7 +12,7 @@ import {
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { readBookDetailFromMetadata, readBookFileBytes, resolveBookFile } from "@/src/data/calibre";
+import { readBookDetailFromMetadata, materializeBookFileToCache, readBookFileBytes } from "@/src/data/calibre";
 import type { WebDavDataSource } from "@/src/data/types";
 import { downloadWebDavBookFile, downloadWebDavBookFileBytes } from "@/src/data/webdav";
 import { useThemePalette } from "@/src/design/tokens";
@@ -233,7 +233,7 @@ export default function ReaderScreen() {
 
         const needsNativeComicPath = fmtUpper === "CBZ";
         const localBookFile = !webDavSource && needsNativeComicPath
-          ? await resolveBookFile(currentLibrary, calibreId, fmt)
+          ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
           : null;
         const webDavBookFile = webDavSource && needsNativeComicPath
           ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
@@ -271,14 +271,18 @@ export default function ReaderScreen() {
                 : "native-fixed",
         });
 
+        const archiveFile = localBookFile ?? webDavBookFile;
+        const bookArchiveFingerprint = archiveFile
+          ? `${calibreId}-${fmtUpper}-${archiveFile.md5 ?? `sz${archiveFile.size ?? 0}`}`
+          : `${calibreId}-${fmtUpper}-${bytes?.byteLength ?? 0}`;
+
         setLoadState({
           status: "ready",
           bookBase64: base64,
           bookBuffer: bytes,
           bookArchiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
-          bookArchiveFingerprint:
-            localBookFile?.uri ?? webDavBookFile?.uri ?? `${calibreId}-${fmtUpper}-${bytes?.byteLength ?? 0}`,
-          bookArchiveOwned: Boolean(webDavBookFile),
+          bookArchiveFingerprint,
+          bookArchiveOwned: Boolean(localBookFile) || Boolean(webDavBookFile),
           bookId: calibreId,
           format: fmt,
           title: detail.title,

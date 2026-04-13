@@ -89,6 +89,11 @@ export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
   }
 }
 
+/**
+ * Runs a short-lived operation while iOS security-scoped access is active.
+ * Do not return a path/URI here for deferred use by other native APIs; copy or read
+ * the target into app-owned storage inside the callback instead.
+ */
 export async function withSecurityScopedLibraryAccess<T>(
   library: MobileLibrary,
   callback: (resolvedPath: string) => Promise<T> | T

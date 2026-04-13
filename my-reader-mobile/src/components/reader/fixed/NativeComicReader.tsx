@@ -175,6 +175,17 @@ export default function NativeComicReader({
           throw new Error("缺少漫画文件指纹，无法准备 CBZ 文档");
         }
 
+        console.info("[mobile-reader] cbz:init:start", {
+          bookId,
+          format,
+          hasArchiveUri: Boolean(archiveUri),
+          archiveUri,
+          archiveOwned,
+          fingerprint,
+          hasBookBytes: Boolean(bookBytes),
+          bookBytesLength: bookBytes?.byteLength ?? null,
+        });
+
         const doc = await prepareCbzDocument({
           bookId,
           format,
@@ -205,6 +216,17 @@ export default function NativeComicReader({
         setCurrentPage(nextPage);
         setBookEpoch((epoch) => epoch + 1);
 
+        console.info("[mobile-reader] cbz:init:document-ready", {
+          bookId,
+          format,
+          cacheKey: doc.cacheKey,
+          archiveUri: doc.archiveUri,
+          extractionUri: doc.extractionUri,
+          pageCount: doc.pageUris.length,
+          firstPageUri: doc.pageUris[0] ?? null,
+          ownsArchiveFile: doc.ownsArchiveFile,
+        });
+
         const toc = flattenFixedToc(doc.manifest.toc, n);
         await onTocReadyRef.current(toc);
 
@@ -213,6 +235,20 @@ export default function NativeComicReader({
       } catch (e) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
+        console.error("[mobile-reader] cbz:init:failed", {
+          bookId,
+          format,
+          hasArchiveUri: Boolean(archiveUri),
+          archiveUri,
+          archiveOwned,
+          fingerprint,
+          hasBookBytes: Boolean(bookBytes),
+          bookBytesLength: bookBytes?.byteLength ?? null,
+          error: e,
+          errorMessage: msg,
+          errorName: e instanceof Error ? e.name : null,
+          errorCause: e instanceof Error ? e.cause : null,
+        });
         setError(msg);
         setLoading(false);
         readyRef.current = false;
