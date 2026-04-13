@@ -2,17 +2,26 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import type { BookDetail } from "my-reader-tools/types/book";
+import { SymbolView } from "expo-symbols";
 import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/rendition/utils";
+import type { BookDetail } from "my-reader-tools/types/book";
+import { Platform, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Image, Pressable, ScrollView, Text, View } from "@/tw";
 
-import { EmptyState, ProgressBar, Sheet, SheetOption } from "../components";
+import {
+  EmptyState,
+  HeaderToolbar,
+  ProgressBar,
+  Sheet,
+  SheetOption,
+  type HeaderToolbarAction
+} from "../components";
 import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
-import { buildWebDavBookCoverUri } from "../data/webdav";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
+import { buildWebDavBookCoverUri } from "../data/webdav";
 import { useAppStore } from "../store/app-store";
 import { useLibraryStore } from "../store/library-store";
 
@@ -199,6 +208,62 @@ export default function BookDetailScreen() {
     return m;
   }, [detail]);
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/(tabs)/library");
+  }, []);
+
+  const handleShare = useCallback(() => {
+    if (!detail) return;
+    const lines = [detail.title, detail.authors.filter(Boolean).join(", ") || detail.authorSort].filter(
+      (line): line is string => Boolean(line)
+    );
+    void Share.share({
+      title: detail.title,
+      message: lines.join("\n"),
+    });
+  }, [detail]);
+
+  const leftToolbar = useMemo<HeaderToolbarAction[]>(
+    () => [
+      {
+        label: "返回",
+        onPress: handleBack,
+        icon:
+          Platform.OS === "ios" ? (
+            <SymbolView name="chevron.left" size={18} tintColor={palette.text} />
+          ) : (
+            <MaterialIcons name="arrow-back" size={22} color={palette.text} />
+          ),
+        iosSfSymbol: "chevron.left",
+        iconOnly: true,
+      },
+    ],
+    [handleBack, palette.text]
+  );
+
+  const rightToolbar = useMemo<HeaderToolbarAction[]>(
+    () => [
+      {
+        label: "分享",
+        onPress: handleShare,
+        icon:
+          Platform.OS === "ios" ? (
+            <SymbolView name="square.and.arrow.up" size={18} tintColor={palette.text} />
+          ) : (
+            <MaterialIcons name="share" size={22} color={palette.text} />
+          ),
+        iosSfSymbol: "square.and.arrow.up",
+        color: palette.text,
+        iconOnly: true,
+      },
+    ],
+    [handleShare, palette.text]
+  );
+
   if (!id) {
     return (
       <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
@@ -255,17 +320,9 @@ export default function BookDetailScreen() {
       <Stack.Screen
         options={{
           title: book.title,
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-10 min-w-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-            >
-              <MaterialIcons name="ios-share" size={18} color={palette.textMuted} />
-            </Pressable>
-          ),
         }}
       />
+      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
