@@ -421,10 +421,7 @@ export default function ReaderScreen() {
         translucent={false}
       />
 
-      <Pressable
-        style={styles.readerSurface}
-        onPress={toggleChrome}
-      >
+      <View style={styles.readerSurface}>
         {isReflowSurface ? (
           <ReflowableDOMReader
             bookBase64={loadState.bookBase64}
@@ -436,6 +433,7 @@ export default function ReaderScreen() {
               console.info("[mobile-reader] dom-probe", event);
             }}
             onRequestClose={handleRequestClose}
+            onToggleChrome={toggleChrome}
             gotoPageCommand={gotoPageCmd}
             readingLayout={reflowSettings.readingLayout}
             theme={reflowSettings.theme}
@@ -458,6 +456,7 @@ export default function ReaderScreen() {
             onStateChange={handleStateChange}
             onTocReady={handleTocReady}
             onRequestClose={handleRequestClose}
+            onToggleChrome={toggleChrome}
             gotoPageCommand={gotoPageCmd}
             fallback={domFallback}
             readingLayout={fixedSettings.readingLayout}
@@ -470,7 +469,7 @@ export default function ReaderScreen() {
             contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
           />
         ) : null}
-      </Pressable>
+      </View>
 
       {chromeVisible && (
         <>

@@ -17,6 +17,7 @@ export type FixedReaderSurfaceProps = {
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
   onRequestClose: () => Promise<void>;
+  onToggleChrome?: () => void;
   gotoPageCommand?: number;
   fallback: React.ReactNode;
   readingLayout?: ReadingLayout;
@@ -44,6 +45,7 @@ export default function FixedReaderSurface({
   onStateChange,
   onTocReady,
   onRequestClose,
+  onToggleChrome,
   gotoPageCommand,
   fallback,
   readingLayout = "paginate",
@@ -80,6 +82,7 @@ export default function FixedReaderSurface({
           onStateChange={onStateChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
+          onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
           navigationMode={navigationMode === "horizontal" ? "horizontal" : "vertical"}
           brightness={brightness}
@@ -104,6 +107,7 @@ export default function FixedReaderSurface({
           onTocReady={onTocReady}
           onDomProbe={handleDomProbe}
           onRequestClose={onRequestClose}
+          onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
           readingLayout={readingLayout}
           theme={theme}

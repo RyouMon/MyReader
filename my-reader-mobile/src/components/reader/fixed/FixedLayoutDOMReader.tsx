@@ -1,7 +1,7 @@
 "use dom";
 
 import { BookReader, type ImageChapterData } from "my-reader-tools/rendition";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type TouchEvent as ReactTouchEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
@@ -22,6 +22,15 @@ type RenderedPage = {
   imageUrl: string;
 };
 
+type ReaderTouchSnapshot = {
+  x: number;
+  y: number;
+  timestampMs: number;
+};
+
+const TAP_MAX_DRIFT = 12;
+const TAP_MAX_DURATION_MS = 260;
+
 export default function FixedLayoutDOMReader({
   bookBase64,
   format,
@@ -30,6 +39,7 @@ export default function FixedLayoutDOMReader({
   onTocReady,
   onDomProbe,
   onRequestClose,
+  onToggleChrome,
   gotoPageCommand,
   readingLayout = "paginate",
   theme = "dark",
@@ -50,6 +60,7 @@ export default function FixedLayoutDOMReader({
     detail?: Record<string, unknown> | null;
   }) => Promise<void>;
   onRequestClose: () => Promise<void>;
+  onToggleChrome?: () => void;
   gotoPageCommand?: number;
   readingLayout?: ReadingLayout;
   theme?: ReaderTheme;
@@ -69,9 +80,12 @@ export default function FixedLayoutDOMReader({
   const onDomProbeRef = useRef(onDomProbe);
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartScaleRef = useRef(zoomScale);
+  const readerTouchStartRef = useRef<ReaderTouchSnapshot | null>(null);
+  const onToggleChromeRef = useRef(onToggleChrome);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
   onDomProbeRef.current = onDomProbe;
+  onToggleChromeRef.current = onToggleChrome;
 
   const [pages, setPages] = useState<RenderedPage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -352,6 +366,41 @@ export default function FixedLayoutDOMReader({
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
 
+  const handleReaderTouchStart = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      readerTouchStartRef.current = null;
+      return;
+    }
+    readerTouchStartRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      timestampMs: Date.now(),
+    };
+  }, []);
+
+  const handleReaderTouchEnd = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = readerTouchStartRef.current;
+    readerTouchStartRef.current = null;
+    if (!start || event.changedTouches.length !== 1) return;
+    if (pinchStartDistanceRef.current != null) return;
+
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const durationMs = Date.now() - start.timestampMs;
+    const isTapGesture =
+      Math.abs(dx) <= TAP_MAX_DRIFT &&
+      Math.abs(dy) <= TAP_MAX_DRIFT &&
+      durationMs <= TAP_MAX_DURATION_MS;
+    if (!isTapGesture) return;
+
+    onToggleChromeRef.current?.();
+  }, []);
+
+  const handleReaderTouchCancel = useCallback(() => {
+    readerTouchStartRef.current = null;
+  }, []);
+
   useEffect(() => {
     const root = scrollRootRef.current;
     if (!root) return;
@@ -403,6 +452,9 @@ export default function FixedLayoutDOMReader({
   return (
     <div
       ref={scrollRootRef}
+      onTouchStart={handleReaderTouchStart}
+      onTouchEnd={handleReaderTouchEnd}
+      onTouchCancel={handleReaderTouchCancel}
       style={{
         ...styles.container,
         background: themeStyle.background,

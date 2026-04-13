@@ -5,7 +5,6 @@ import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "
 
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { Pressable } from "@/tw";
 
 import { FixedPagerView } from "./FixedPagerView";
 import { FixedScrollView } from "./FixedScrollView";
@@ -21,6 +20,7 @@ type MobileFixedReaderProps = {
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
   onRequestClose: () => Promise<void>;
+  onToggleChrome?: () => void;
   gotoPageCommand?: number;
   navigationMode?: MobileFixedNavigationMode;
   zoomScale?: number;
@@ -30,6 +30,15 @@ type MobileFixedReaderProps = {
   contentInsetTop?: number;
   contentInsetBottom?: number;
 };
+
+type ReaderTouchSnapshot = {
+  x: number;
+  y: number;
+  timestampMs: number;
+};
+
+const TAP_MAX_DRIFT = 12;
+const TAP_MAX_DURATION_MS = 260;
 
 function FixedPageLoader({
   pageIndex,
@@ -118,6 +127,7 @@ export default function MobileFixedReader({
   onStateChange,
   onTocReady,
   onRequestClose: _onRequestClose,
+  onToggleChrome,
   gotoPageCommand,
   navigationMode = "horizontal",
   zoomScale = 1,
@@ -134,8 +144,11 @@ export default function MobileFixedReader({
   const onTocReadyRef = useRef(onTocReady);
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartScaleRef = useRef(zoomScale);
+  const readerTouchStartRef = useRef<ReaderTouchSnapshot | null>(null);
+  const onToggleChromeRef = useRef(onToggleChrome);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
+  onToggleChromeRef.current = onToggleChrome;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentPage, setCurrentPage] = useState(0);
@@ -293,6 +306,16 @@ export default function MobileFixedReader({
 
   const handleTouchStart = useCallback(
     (event: GestureResponderEvent) => {
+      if (event.nativeEvent.touches.length !== 1) {
+        readerTouchStartRef.current = null;
+      } else {
+        const touch = event.nativeEvent.touches[0];
+        readerTouchStartRef.current = {
+          x: touch.pageX,
+          y: touch.pageY,
+          timestampMs: Date.now(),
+        };
+      }
       if (!pinchZoomEnabled) return;
       const distance = getDistance(event);
       if (distance == null) return;
@@ -316,7 +339,40 @@ export default function MobileFixedReader({
     [pinchZoomEnabled, onZoomScaleChange, getDistance],
   );
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((event: GestureResponderEvent) => {
+    const start = readerTouchStartRef.current;
+    readerTouchStartRef.current = null;
+    pinchStartDistanceRef.current = null;
+    if (!start) return;
+    const changedTouches = event.nativeEvent.changedTouches;
+    const currentTouch = changedTouches.length > 0 ? changedTouches[0] : null;
+    if (!currentTouch) return;
+
+    const dx = currentTouch.pageX - start.x;
+    const dy = currentTouch.pageY - start.y;
+    const durationMs = Date.now() - start.timestampMs;
+    const isTapGesture =
+      Math.abs(dx) <= TAP_MAX_DRIFT &&
+      Math.abs(dy) <= TAP_MAX_DRIFT &&
+      durationMs <= TAP_MAX_DURATION_MS;
+    if (!isTapGesture) return;
+
+    if (navigationMode === "horizontal" && zoomScale <= 1.02) {
+      if (start.x <= tapSideWidth) {
+        if (currentPage > 0) goToPage(currentPage - 1);
+        return;
+      }
+      if (start.x >= screenWidth - tapSideWidth) {
+        if (currentPage < totalPages - 1) goToPage(currentPage + 1);
+        return;
+      }
+    }
+
+    onToggleChromeRef.current?.();
+  }, [currentPage, goToPage, navigationMode, screenWidth, tapSideWidth, totalPages, zoomScale]);
+
+  const handleTouchCancel = useCallback(() => {
+    readerTouchStartRef.current = null;
     pinchStartDistanceRef.current = null;
   }, []);
 
@@ -339,6 +395,7 @@ export default function MobileFixedReader({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       {totalPages > 0 && !loading ? (
         <>
@@ -367,23 +424,6 @@ export default function MobileFixedReader({
               renderPage={renderPage}
             />
           )}
-
-          {navigationMode === "horizontal" && zoomScale <= 1.02 ? (
-            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-              <Pressable
-                style={[styles.tapEdge, { left: 0, width: tapSideWidth }]}
-                onPress={() => {
-                  if (currentPage > 0) goToPage(currentPage - 1);
-                }}
-              />
-              <Pressable
-                style={[styles.tapEdge, { right: 0, width: tapSideWidth }]}
-                onPress={() => {
-                  if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-                }}
-              />
-            </View>
-          ) : null}
         </>
       ) : (
         <View className="flex-1 items-center justify-center bg-[#111]" style={{ width: screenWidth, height: screenHeight }}>

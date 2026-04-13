@@ -50,6 +50,10 @@ const DOM_PROBE_INITIAL_PAGE_FALLBACK = 0;
 const PAGINATE_MIN_SWIPE_DISTANCE = 48;
 /** 分页手势允许的最大纵向偏移。 */
 const PAGINATE_MAX_VERTICAL_DRIFT = 72;
+/** 判定点击手势允许的最大位移。 */
+const TAP_MAX_DRIFT = 12;
+/** 判定点击手势允许的最长按压时长（毫秒）。 */
+const TAP_MAX_DURATION_MS = 260;
 /** 阅读进度百分比换算基数。 */
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 /** 加载态提示内边距。 */
@@ -78,6 +82,7 @@ type ReflowableDOMReaderProps = {
     detail?: Record<string, unknown> | null;
   }) => Promise<void>;
   onRequestClose: () => Promise<void>;
+  onToggleChrome?: () => void;
   gotoPageCommand?: number;
   readingLayout?: ReadingLayout;
   theme?: ReaderTheme;
@@ -98,6 +103,12 @@ type RenderedChapter = {
   bodyHtml: string;
   cssText: string;
   text: string;
+};
+
+type ReaderTouchSnapshot = {
+  x: number;
+  y: number;
+  timestampMs: number;
 };
 
 function base64ToArrayBuffer(b64: string): ArrayBuffer | null {
@@ -350,6 +361,7 @@ export default function ReflowableDOMReader({
   onTocReady,
   onDomProbe,
   onRequestClose,
+  onToggleChrome,
   gotoPageCommand,
   readingLayout = "scroll",
   theme = "paper",
@@ -370,9 +382,11 @@ export default function ReflowableDOMReader({
   const onStateChangeRef = useRef(onStateChange);
   const onTocReadyRef = useRef(onTocReady);
   const onDomProbeRef = useRef(onDomProbe);
+  const onToggleChromeRef = useRef(onToggleChrome);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
   onDomProbeRef.current = onDomProbe;
+  onToggleChromeRef.current = onToggleChrome;
 
   const readerLoadingRef = useRef(false);
   const readerErrorRef = useRef<string | null>(null);
@@ -383,7 +397,7 @@ export default function ReflowableDOMReader({
     chapterTitle: "",
   });
 
-  const paginateTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const readerTouchStartRef = useRef<ReaderTouchSnapshot | null>(null);
   const renderPaginatedContentRef = useRef<
     (
       paginationResult: TextChapterPaginationResult | null,
@@ -621,30 +635,41 @@ export default function ReflowableDOMReader({
     void gotoChapter(gotoPageCommand);
   }, [gotoPageCommand, gotoChapter, totalChapters]);
 
-  const handlePaginateTouchStart = useCallback(
-    (e: TouchEvent<HTMLDivElement>) => {
-      if (readingLayout !== "paginate") return;
-      if (e.touches.length !== 1) return;
-      paginateTouchStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
-    },
-    [readingLayout],
-  );
+  const handleReaderTouchStart = useCallback((e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) {
+      readerTouchStartRef.current = null;
+      return;
+    }
+    readerTouchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      timestampMs: Date.now(),
+    };
+  }, []);
 
-  const handlePaginateTouchEnd = useCallback(
+  const handleReaderTouchEnd = useCallback(
     (e: TouchEvent<HTMLDivElement>) => {
-      if (readingLayout !== "paginate") return;
-      const start = paginateTouchStartRef.current;
-      paginateTouchStartRef.current = null;
+      const start = readerTouchStartRef.current;
+      readerTouchStartRef.current = null;
       if (!start || e.changedTouches.length !== 1) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - start.x;
-      const dy = t.clientY - start.y;
-      const minSwipe = PAGINATE_MIN_SWIPE_DISTANCE;
-      if (Math.abs(dx) < minSwipe) return;
-      if (Math.abs(dy) > PAGINATE_MAX_VERTICAL_DRIFT && Math.abs(dy) > Math.abs(dx)) return;
+
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const durationMs = Date.now() - start.timestampMs;
+      const isTapGesture =
+        absDx <= TAP_MAX_DRIFT && absDy <= TAP_MAX_DRIFT && durationMs <= TAP_MAX_DURATION_MS;
+
+      if (isTapGesture) {
+        onToggleChromeRef.current?.();
+        return;
+      }
+
+      if (readingLayout !== "paginate") return;
+      if (absDx < PAGINATE_MIN_SWIPE_DISTANCE) return;
+      if (absDy > PAGINATE_MAX_VERTICAL_DRIFT && absDy > absDx) return;
       if (totalChapters <= 0 || !readerReady) return;
 
       void (async () => {
@@ -659,8 +684,8 @@ export default function ReflowableDOMReader({
     [readingLayout, totalChapters, readerReady, gotoNextPage, gotoPrevPage],
   );
 
-  const handlePaginateTouchCancel = useCallback(() => {
-    paginateTouchStartRef.current = null;
+  const handleReaderTouchCancel = useCallback(() => {
+    readerTouchStartRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -773,7 +798,13 @@ export default function ReflowableDOMReader({
       {scopedCss ? <style>{scopedCss}</style> : null}
       <div id="reflow-measure-host" ref={measureHostRef} />
       {readingLayout === "scroll" ? (
-        <div id="reflow-scroll-root" ref={scrollRootRef}>
+        <div
+          id="reflow-scroll-root"
+          ref={scrollRootRef}
+          onTouchStart={handleReaderTouchStart}
+          onTouchEnd={handleReaderTouchEnd}
+          onTouchCancel={handleReaderTouchCancel}
+        >
           <div className="reader-host">
             {displayError ? (
               <div style={styles.errorCard}>
@@ -799,9 +830,9 @@ export default function ReflowableDOMReader({
       ) : (
         <div
           id="reflow-paginate-root"
-          onTouchStart={handlePaginateTouchStart}
-          onTouchEnd={handlePaginateTouchEnd}
-          onTouchCancel={handlePaginateTouchCancel}
+          onTouchStart={handleReaderTouchStart}
+          onTouchEnd={handleReaderTouchEnd}
+          onTouchCancel={handleReaderTouchCancel}
         >
           <div className="paginate-frame">
             {displayError ? (
