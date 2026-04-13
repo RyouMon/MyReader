@@ -12,10 +12,15 @@
     "./layout-engines/*": "./src/layout-engines/*",
     "./progress/*": "./src/progress/*",
     "./foliate-js/*": "./src/foliate-js/*",
-    "./types/book": "./src/types/book.ts"
+    "./types/book": "./src/types/book.ts",
+    "./hooks/useReader": "./src/hooks/useReader.ts",
+    "./index": "./src/index.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",
     "pdfjs-dist": "^5.5.207"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0"
   }
 }

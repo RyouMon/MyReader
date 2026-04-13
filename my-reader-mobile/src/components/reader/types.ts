@@ -6,6 +6,8 @@ export type ReaderState = {
   chapterTitle: string;
   loading: boolean;
   error: string | null;
+  canGoPrev?: boolean;
+  canGoNext?: boolean;
 };
 
 export type ReaderTocItem = {

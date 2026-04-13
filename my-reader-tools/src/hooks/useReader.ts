@@ -66,7 +66,7 @@ export interface UseReaderReturn {
   gotoPageInChapter: (totalPages: number, pageOffset: number) => void
   layout: (
     config: LayoutConfig,
-    measureHost: HTMLDivElement,
+    measureHost: HTMLDivElement | null | undefined,
   ) => Promise<TextChapterPaginationResult | undefined>
   /**
    * Scroll mode does not invoke `layout(measureHost)`; call once when the
@@ -337,10 +337,13 @@ export function useBookReader({
   )
 
   const layout = useCallback(
-    async (config: LayoutConfig, measureHost: HTMLDivElement) => {
+    async (
+      config: LayoutConfig,
+      measureHost: HTMLDivElement | null | undefined,
+    ) => {
       const core = coreRef.current
       if (!core?.ready) return undefined
-      const result = await core.layout(config, measureHost)
+      const result = await core.layout(config, measureHost ?? undefined)
       if (!mountedRef.current || coreRef.current !== core || !core.ready) {
         return undefined
       }
@@ -453,7 +456,7 @@ export function useBookReader({
       if (chapterIndex < 0 || chapterIndex >= core.totalChapters) return
       core.gotoChapter(chapterIndex)
       syncNavigationState(core)
-      void core.getChapter(chapterIndex).then((ch) => {
+      void core.getChapter(chapterIndex).then((ch: ChapterData | null) => {
         if (!mountedRef.current || coreRef.current !== core) return
         setChapter(ch)
       })

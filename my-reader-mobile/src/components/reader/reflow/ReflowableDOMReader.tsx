@@ -1,7 +1,23 @@
 "use dom";
 
-import { BookReader, type TextChapterData } from "my-reader-tools/rendition";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  renderTextChapterPage,
+  type LayoutConfig,
+  type TextChapterData,
+  type TextChapterPaginationResult,
+} from "my-reader-tools/rendition";
+import { useBookReader } from "my-reader-tools/hooks/useReader";
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
+import {
+  type CSSProperties,
+  type TouchEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { flattenReflowToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
@@ -26,6 +42,10 @@ type ReflowableDOMReaderProps = {
   lineHeight?: number;
   paddingX?: number;
   brightness?: number;
+  /** 分页模式正文区上边缘留白（与顶栏占位一致）。 */
+  contentInsetTop?: number;
+  /** 分页模式正文区下边缘留白（与底栏占位一致）。 */
+  contentInsetBottom?: number;
   dom?: import("expo/dom").DOMProps;
 };
 
@@ -34,12 +54,22 @@ type RenderedChapter = {
   title: string;
   bodyHtml: string;
   cssText: string;
+  text: string;
 };
 
-type PaginatedPage = {
-  key: string;
-  html: string;
-};
+function base64ToArrayBuffer(b64: string): ArrayBuffer | null {
+  try {
+    const binaryStr = atob(b64);
+    const len = binaryStr.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return bytes.buffer;
+  } catch {
+    return null;
+  }
+}
 
 function getThemeVars(theme: ReaderTheme) {
   const themeMap: Record<ReaderTheme, { bg: string; text: string; muted: string; link: string }> = {
@@ -78,8 +108,11 @@ function buildBaseReaderCss(
   lineHeight: number,
   paddingX: number,
   brightness: number,
+  paginateInsetTop: number,
+  paginateInsetBottom: number,
 ) {
   const selected = getThemeVars(theme);
+  const paginateVerticalReserve = paginateInsetTop + paginateInsetBottom;
 
   return `
     :root {
@@ -114,12 +147,27 @@ function buildBaseReaderCss(
     #reflow-paginate-root {
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
+      overscroll-behavior: none;
       box-sizing: border-box;
-      padding: 72px ${paddingX}px 132px;
+      padding: ${paginateInsetTop}px ${paddingX}px ${paginateInsetBottom}px;
       display: flex;
+      flex-direction: row;
       align-items: stretch;
       justify-content: center;
+    }
+
+    #reflow-measure-host {
+      position: fixed;
+      left: -200vw;
+      top: 0;
+      width: calc(100vw - ${paddingX * 2}px);
+      height: calc(100dvh - ${paginateVerticalReserve}px);
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0;
+      box-sizing: border-box;
     }
 
     .reader-host {
@@ -129,6 +177,7 @@ function buildBaseReaderCss(
     }
 
     .reader-title {
+      flex-shrink: 0;
       color: var(--reader-muted);
       font-size: 13px;
       margin: 0 0 16px;
@@ -157,63 +206,105 @@ function buildBaseReaderCss(
     .paginate-frame {
       width: min(100%, 820px);
       height: 100%;
+      min-height: 0;
       overflow: hidden;
       margin: 0 auto;
-    }
-
-    .paginate-scroll {
-      width: 100%;
-      height: 100%;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scroll-snap-type: x mandatory;
       display: flex;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      flex-direction: column;
+      align-items: stretch;
     }
 
-    .paginate-scroll::-webkit-scrollbar {
-      display: none;
+    .paginate-shell {
+      flex: 1 1 0;
+      min-height: 0;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
     }
 
     .paginate-page {
-      min-width: 100%;
+      width: 100%;
       height: 100%;
-      scroll-snap-align: start;
-      overflow-y: auto;
-      padding-right: 2px;
+      overflow: hidden;
+      overscroll-behavior: none;
       box-sizing: border-box;
     }
   `;
 }
 
-function splitHtmlIntoPages(html: string): PaginatedPage[] {
-  const rawSections = html
-    .split(/(?=<h[1-6][\s>])|(?=<p[\s>])|(?=<div[\s>])|(?=<section[\s>])|(?=<blockquote[\s>])/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
+/**
+ * 分页模式传入 `paginateViewport`（正文列实际宽高）；滚动模式传 `null` 使用整窗尺寸。
+ */
+function createLayoutConfig(
+  fontSize: number,
+  lineHeight: number,
+  paddingX: number,
+  paginateViewport: { width: number; height: number } | null,
+): LayoutConfig {
+  const winW = typeof window !== "undefined" ? window.innerWidth : 0;
+  const winH = typeof window !== "undefined" ? window.innerHeight : 0;
+  const viewPortWidth = paginateViewport ? paginateViewport.width : winW;
+  const viewPortHeight = paginateViewport ? paginateViewport.height : winH;
 
-  const segments = rawSections.length > 0 ? rawSections : [html];
-  const pages: PaginatedPage[] = [];
-  let bucket = "";
-  let charCount = 0;
+  return {
+    fontFamily: '"Noto Sans SC", system-ui, sans-serif',
+    fontSize,
+    viewPortHeight,
+    viewPortWidth,
+    paddingX,
+    lineHeight,
+    doubleColumn: false,
+  };
+}
 
-  segments.forEach((segment, index) => {
-    const plainLength = segment.replace(/<[^>]+>/g, "").trim().length;
-    if (bucket && charCount + plainLength > 900) {
-      pages.push({ key: `page-${pages.length + 1}`, html: bucket });
-      bucket = "";
-      charCount = 0;
-    }
-    bucket += segment;
-    charCount += plainLength;
+function getPaginatedPageCount(pagination: TextChapterPaginationResult | null) {
+  if (!pagination) {
+    return 1;
+  }
 
-    if (index === segments.length - 1 && bucket) {
-      pages.push({ key: `page-${pages.length + 1}`, html: bucket });
-    }
-  });
+  return pagination.mode === "sliced"
+    ? Math.max(1, pagination.pageCount || pagination.pages.length)
+    : 1;
+}
 
-  return pages.length > 0 ? pages : [{ key: "page-1", html }];
+function loadRenderedChapter(data: TextChapterData, indexOverride?: number): RenderedChapter {
+  return {
+    index: indexOverride ?? data.index,
+    title: data.title,
+    bodyHtml: data.bodyHtml,
+    cssText: data.cssText,
+    text: data.text,
+  };
+}
+
+function getPaginatedNavigationState(
+  readerCurChapter: number,
+  totalChapters: number,
+  pageCount: number,
+  rawPageIndex: number,
+) {
+  const currentPageIndex = Math.max(0, Math.min(pageCount - 1, rawPageIndex));
+  const isFirstPageInChapter = currentPageIndex <= 0;
+  const isLastPageInChapter = currentPageIndex >= Math.max(0, pageCount - 1);
+
+  return {
+    currentPageIndex,
+    canGoPrev: !(readerCurChapter <= 0 && isFirstPageInChapter),
+    canGoNext: !(readerCurChapter >= Math.max(0, totalChapters - 1) && isLastPageInChapter),
+  };
+}
+
+function toTextChapterData(chapter: RenderedChapter): TextChapterData {
+  return {
+    type: "text",
+    index: chapter.index,
+    title: chapter.title,
+    href: "",
+    bodyHtml: chapter.bodyHtml,
+    cssText: chapter.cssText,
+    text: chapter.text,
+  };
 }
 
 export default function ReflowableDOMReader({
@@ -231,240 +322,440 @@ export default function ReflowableDOMReader({
   lineHeight = 1.85,
   paddingX = 20,
   brightness = 100,
+  contentInsetTop = 72,
+  contentInsetBottom = 132,
   dom,
 }: ReflowableDOMReaderProps) {
   void onRequestClose;
   void dom;
 
-  const readerRef = useRef<BookReader | null>(null);
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const paginateScrollRef = useRef<HTMLDivElement | null>(null);
-  const readyRef = useRef(false);
+  const measureHostRef = useRef<HTMLDivElement | null>(null);
   const onStateChangeRef = useRef(onStateChange);
   const onTocReadyRef = useRef(onTocReady);
   const onDomProbeRef = useRef(onDomProbe);
   onStateChangeRef.current = onStateChange;
   onTocReadyRef.current = onTocReady;
   onDomProbeRef.current = onDomProbe;
-  const [chapter, setChapter] = useState<RenderedChapter | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [currentChapter, setCurrentChapter] = useState(0);
-  const [totalChapters, setTotalChapters] = useState(0);
-  const [paginatePages, setPaginatePages] = useState<PaginatedPage[]>([]);
 
-  const reportState = useCallback(
-    (chapterIndex: number, total: number, reader: BookReader, err: string | null, isLoading: boolean, progressOverride?: number) => {
-      const progress = reader.getProgress();
-      onStateChangeRef.current({
-        ready: readyRef.current,
-        currentPage: chapterIndex,
-        totalPages: total,
-        progress: progressOverride ?? Math.round(progress.fraction * 100),
-        chapterTitle: progress.chapterTitle,
-        loading: isLoading,
-        error: err,
-      });
+  const readerLoadingRef = useRef(false);
+  const readerErrorRef = useRef<string | null>(null);
+  const scrollSnapRef = useRef({
+    curChapter: 0,
+    totalChapters: 0,
+    ready: false,
+    chapterTitle: "",
+  });
+
+  const paginateTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const renderPaginatedContentRef = useRef<
+    (
+      paginationResult: TextChapterPaginationResult | null,
+      renderedChapter: RenderedChapter | null,
+      pageIndexOverride?: number,
+    ) => void
+  >(() => {});
+
+  const [pagination, setPagination] = useState<TextChapterPaginationResult | null>(null);
+  const [layoutError, setLayoutError] = useState<string | null>(null);
+
+  const buffer = useMemo((): ArrayBuffer | null => {
+    if (!bookBase64) return null;
+    return base64ToArrayBuffer(bookBase64);
+  }, [bookBase64]);
+
+  const initialOpenAnchor = useMemo((): BookAnchor | null => {
+    if (initialPage != null && initialPage > 0) {
+      return { chapterIndex: initialPage };
+    }
+    return null;
+  }, [initialPage]);
+
+  const {
+    ready: readerReady,
+    error: readerError,
+    loading: readerLoading,
+    toc,
+    totalChapters,
+    curChapter,
+    chapter: coreChapter,
+    curPageIndex,
+    gotoChapter,
+    gotoNextPage,
+    gotoPrevPage,
+    layout: runLayout,
+    notifyInitialViewCommitted,
+    progress: readerProgress,
+  } = useBookReader({
+    buffer,
+    format: format || "",
+    initialOpenAnchor,
+  });
+
+  readerLoadingRef.current = readerLoading;
+  readerErrorRef.current = readerError;
+  scrollSnapRef.current = {
+    curChapter,
+    totalChapters,
+    ready: readerReady,
+    chapterTitle: readerProgress.chapterTitle,
+  };
+
+  const renderedChapter = useMemo((): RenderedChapter | null => {
+    if (!coreChapter || coreChapter.type !== "text") return null;
+    return loadRenderedChapter(coreChapter, curChapter);
+  }, [coreChapter, curChapter]);
+
+  const displayError = readerError ?? layoutError;
+
+  const renderPaginatedContent = useCallback(
+    (
+      paginationResult: TextChapterPaginationResult | null,
+      chapter: RenderedChapter | null,
+      pageIndexOverride?: number,
+    ) => {
+      const host = paginateScrollRef.current;
+      if (!host || !chapter || !paginationResult) {
+        return;
+      }
+
+      const pageEl = host.querySelector<HTMLElement>(".paginate-page .reader-body-content");
+      if (!pageEl) {
+        return;
+      }
+
+      const chapterData = toTextChapterData(chapter);
+      const pageCount = getPaginatedPageCount(paginationResult);
+      const pageIndex =
+        pageIndexOverride ?? Math.max(0, Math.min(pageCount - 1, curPageIndex));
+
+      renderTextChapterPage(
+        pageEl,
+        chapterData,
+        paginationResult.mode,
+        paginationResult.pages,
+        pageIndex,
+        paginationResult.sourceRoot,
+        paginationResult.texts,
+      );
     },
-    []
+    [curPageIndex],
   );
-
-  const renderChapter = useCallback(async (index: number) => {
-    const reader = readerRef.current;
-    if (!reader || !readyRef.current) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      reader.gotoChapter(index);
-      const loaded = (await reader.getChapter(index)) as TextChapterData;
-      setChapter({
-        index,
-        title: loaded.title,
-        bodyHtml: loaded.bodyHtml,
-        cssText: loaded.cssText,
-      });
-      setPaginatePages(splitHtmlIntoPages(loaded.bodyHtml));
-      setCurrentChapter(index);
-      setLoading(false);
-      reportState(index, reader.totalChapters, reader, null, false);
-      requestAnimationFrame(() => {
-        if (readingLayout === "paginate") {
-          paginateScrollRef.current?.scrollTo({ left: 0, behavior: "auto" });
-          return;
-        }
-        scrollRootRef.current?.scrollTo({ top: 0, behavior: "auto" });
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      setLoading(false);
-      reportState(index, reader.totalChapters, reader, msg, false);
-    }
-  }, [reportState, readingLayout]);
+  renderPaginatedContentRef.current = renderPaginatedContent;
 
   useEffect(() => {
-    const encodedBook = bookBase64;
-    if (!encodedBook || !format) return;
-
-    let cancelled = false;
-    const reader = new BookReader();
-    readerRef.current = reader;
+    if (!bookBase64 || !format) return;
     void onDomProbeRef.current({
       stage: "reflow-init-start",
       detail: {
         format,
         initialPage: initialPage ?? 0,
-        base64Length: encodedBook.length,
+        base64Length: bookBase64.length,
       },
     });
+  }, [bookBase64, format, initialPage]);
 
-    async function init() {
-      try {
-        setLoading(true);
-        setError(null);
+  useEffect(() => {
+    if (!toc.length) return;
+    void onTocReadyRef.current(flattenReflowToc(toc));
+  }, [toc]);
 
-        const encodedBook = bookBase64;
-        const binaryStr = atob(encodedBook!);
-        const len = binaryStr.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
+  useEffect(() => {
+    if (!readerReady || !totalChapters) return;
+    void onDomProbeRef.current({
+      stage: "reflow-reader-ready",
+      detail: {
+        chapterCount: totalChapters,
+        tocCount: toc.length,
+        initialIndex: curChapter,
+      },
+    });
+  }, [readerReady, totalChapters, toc.length, curChapter]);
+
+  useEffect(() => {
+    if (!readerError) return;
+    void onDomProbeRef.current({
+      stage: "reflow-init-failed",
+      detail: { message: readerError },
+    });
+  }, [readerError]);
+
+  useLayoutEffect(() => {
+    if (readingLayout !== "paginate") return;
+    if (!coreChapter || coreChapter.type !== "text") return;
+    if (totalChapters <= 0) return;
+    const host = measureHostRef.current;
+    const shell = paginateScrollRef.current;
+    if (!host || !shell) return;
+
+    let cancelled = false;
+    let layoutGeneration = 0;
+
+    const measureAndLayout = () => {
+      const w = Math.round(shell.clientWidth);
+      const h = Math.round(shell.clientHeight);
+      if (w <= 0 || h <= 0) return;
+      const renderedNow = loadRenderedChapter(coreChapter, curChapter);
+      const gen = ++layoutGeneration;
+      void (async () => {
+        try {
+          setLayoutError(null);
+          const config = createLayoutConfig(fontSize, lineHeight, paddingX, { width: w, height: h });
+          const nextPagination = (await runLayout(config, host)) ?? null;
+          if (cancelled || gen !== layoutGeneration) return;
+          setPagination(nextPagination);
+          const pageCount = getPaginatedPageCount(nextPagination);
+          const pageIndex = Math.max(0, Math.min(pageCount - 1, curPageIndex));
+
+          requestAnimationFrame(() => {
+            if (cancelled || gen !== layoutGeneration) return;
+            renderPaginatedContentRef.current(nextPagination, renderedNow, pageIndex);
+          });
+        } catch (e) {
+          if (cancelled || gen !== layoutGeneration) return;
+          setLayoutError(e instanceof Error ? e.message : String(e));
         }
+      })();
+    };
 
-        const book = await reader.init(bytes.buffer as ArrayBuffer, format, {
-          initialOpenAnchor:
-            initialPage != null && initialPage > 0
-              ? { chapterIndex: initialPage }
-              : undefined,
-        });
+    measureAndLayout();
+    const ro = new ResizeObserver(() => measureAndLayout());
+    ro.observe(shell);
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
+  }, [
+    readingLayout,
+    coreChapter,
+    curChapter,
+    curPageIndex,
+    totalChapters,
+    fontSize,
+    lineHeight,
+    paddingX,
+    runLayout,
+    renderedChapter,
+    contentInsetTop,
+    contentInsetBottom,
+  ]);
+
+  useLayoutEffect(() => {
+    if (readingLayout !== "scroll") return;
+    if (!coreChapter || coreChapter.type !== "text") return;
+    if (totalChapters <= 0) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        setLayoutError(null);
+        const config = createLayoutConfig(fontSize, lineHeight, paddingX, null);
+        await runLayout(config, null);
         if (cancelled) return;
-
-        readyRef.current = true;
-        setTotalChapters(book.chapters.length);
-
-        const toc = flattenReflowToc(book.toc);
-        await onTocReadyRef.current(toc);
-
-        const initialIndex = Math.max(0, Math.min(reader.curChapter, Math.max(0, book.chapters.length - 1)));
-        await renderChapter(initialIndex);
-
-        void onDomProbeRef.current({
-          stage: "reflow-reader-ready",
-          detail: {
-            chapterCount: book.chapters.length,
-            tocCount: toc.length,
-            initialIndex,
-          },
+        notifyInitialViewCommitted();
+        setPagination(null);
+        requestAnimationFrame(() => {
+          scrollRootRef.current?.scrollTo({ top: 0, behavior: "auto" });
         });
       } catch (e) {
         if (cancelled) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        setError(msg);
-        setLoading(false);
-        await onStateChangeRef.current({
-          ready: false,
-          currentPage: 0,
-          totalPages: 0,
-          progress: 0,
-          chapterTitle: "",
-          loading: false,
-          error: msg,
-        });
-        void onDomProbeRef.current({
-          stage: "reflow-init-failed",
-          detail: { message: msg },
-        });
+        setLayoutError(e instanceof Error ? e.message : String(e));
       }
-    }
-
-    void init();
+    })();
 
     return () => {
       cancelled = true;
-      reader.destroy();
-      readerRef.current = null;
-      readyRef.current = false;
     };
-  }, [bookBase64, format, initialPage, renderChapter]);
+  }, [
+    readingLayout,
+    coreChapter,
+    curChapter,
+    totalChapters,
+    fontSize,
+    lineHeight,
+    paddingX,
+    runLayout,
+    notifyInitialViewCommitted,
+  ]);
 
   useEffect(() => {
-    if (gotoPageCommand == null || gotoPageCommand < 0 || !readyRef.current) {
-      return;
+    if (gotoPageCommand == null || gotoPageCommand < 0) return;
+    if (totalChapters <= 0) return;
+    void gotoChapter(gotoPageCommand);
+  }, [gotoPageCommand, gotoChapter, totalChapters]);
+
+  const handlePaginateTouchStart = useCallback(
+    (e: TouchEvent<HTMLDivElement>) => {
+      if (readingLayout !== "paginate") return;
+      if (e.touches.length !== 1) return;
+      paginateTouchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    },
+    [readingLayout],
+  );
+
+  const handlePaginateTouchEnd = useCallback(
+    (e: TouchEvent<HTMLDivElement>) => {
+      if (readingLayout !== "paginate") return;
+      const start = paginateTouchStartRef.current;
+      paginateTouchStartRef.current = null;
+      if (!start || e.changedTouches.length !== 1) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      const minSwipe = 48;
+      if (Math.abs(dx) < minSwipe) return;
+      if (Math.abs(dy) > 72 && Math.abs(dy) > Math.abs(dx)) return;
+      if (totalChapters <= 0 || !readerReady) return;
+
+      void (async () => {
+        try {
+          if (dx < 0) await gotoNextPage();
+          else await gotoPrevPage();
+        } catch (err) {
+          setLayoutError(err instanceof Error ? err.message : String(err));
+        }
+      })();
+    },
+    [readingLayout, totalChapters, readerReady, gotoNextPage, gotoPrevPage],
+  );
+
+  const handlePaginateTouchCancel = useCallback(() => {
+    paginateTouchStartRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const err = displayError;
+    const loading = readerLoading;
+
+    if (readingLayout === "paginate") {
+      const pageCount = Math.max(1, getPaginatedPageCount(pagination));
+      const nav = getPaginatedNavigationState(curChapter, totalChapters, pageCount, curPageIndex);
+      void onStateChangeRef.current({
+        ready: readerReady,
+        currentPage: nav.currentPageIndex,
+        totalPages: pageCount,
+        progress: Math.round(readerProgress.fraction * 100),
+        chapterTitle: readerProgress.chapterTitle,
+        loading,
+        error: err,
+        canGoPrev: nav.canGoPrev,
+        canGoNext: nav.canGoNext,
+      });
+    } else {
+      void onStateChangeRef.current({
+        ready: readerReady,
+        currentPage: curChapter,
+        totalPages: Math.max(1, totalChapters),
+        progress: Math.round(readerProgress.fraction * 100),
+        chapterTitle: readerProgress.chapterTitle,
+        loading,
+        error: err,
+        canGoPrev: curChapter > 0,
+        canGoNext: curChapter < Math.max(0, totalChapters - 1),
+      });
     }
-    void renderChapter(gotoPageCommand);
-  }, [gotoPageCommand, renderChapter]);
+  }, [
+    readerReady,
+    curChapter,
+    curPageIndex,
+    totalChapters,
+    readerLoading,
+    displayError,
+    readerProgress,
+    readingLayout,
+    pagination,
+  ]);
 
   useEffect(() => {
+    if (readingLayout !== "scroll") return;
     const root = scrollRootRef.current;
-    const reader = readerRef.current;
-    if (!root || !reader) {
-      return;
-    }
+    if (!root) return;
 
     const onScroll = () => {
+      const snap = scrollSnapRef.current;
       const maxScroll = Math.max(1, root.scrollHeight - root.clientHeight);
       const fraction = Math.max(0, Math.min(1, root.scrollTop / maxScroll));
-      const base = totalChapters > 0 ? currentChapter / totalChapters : 0;
-      const whole = totalChapters > 0 ? (currentChapter + fraction) / totalChapters : fraction;
+      const base = snap.totalChapters > 0 ? snap.curChapter / snap.totalChapters : 0;
+      const whole =
+        snap.totalChapters > 0 ? (snap.curChapter + fraction) / snap.totalChapters : fraction;
       const percent = Math.round(Math.max(base, whole) * 100);
-      reportState(currentChapter, Math.max(1, totalChapters), reader, null, false, percent);
+      void onStateChangeRef.current({
+        ready: snap.ready,
+        currentPage: snap.curChapter,
+        totalPages: Math.max(1, snap.totalChapters),
+        progress: percent,
+        chapterTitle: snap.chapterTitle,
+        loading: readerLoadingRef.current,
+        error: readerErrorRef.current,
+        canGoPrev: snap.curChapter > 0,
+        canGoNext: snap.curChapter < Math.max(0, snap.totalChapters - 1),
+      });
     };
 
     root.addEventListener("scroll", onScroll, { passive: true });
     return () => root.removeEventListener("scroll", onScroll);
-  }, [currentChapter, reportState, totalChapters]);
+  }, [readingLayout, curChapter, totalChapters, readerReady, readerProgress.chapterTitle]);
 
   const scopedCss = useMemo(() => {
-    if (!chapter?.cssText) return "";
-    return chapter.cssText;
-  }, [chapter?.cssText]);
+    if (!renderedChapter?.cssText) return "";
+    return renderedChapter.cssText;
+  }, [renderedChapter?.cssText]);
 
   const baseCss = useMemo(
-    () => buildBaseReaderCss(theme, fontSize, lineHeight, paddingX, brightness),
-    [theme, fontSize, lineHeight, paddingX, brightness],
+    () =>
+      buildBaseReaderCss(
+        theme,
+        fontSize,
+        lineHeight,
+        paddingX,
+        brightness,
+        contentInsetTop,
+        contentInsetBottom,
+      ),
+    [theme, fontSize, lineHeight, paddingX, brightness, contentInsetTop, contentInsetBottom],
   );
 
   useEffect(() => {
-    if (readingLayout !== "paginate") return;
-    const root = paginateScrollRef.current;
-    const reader = readerRef.current;
-    if (!root || !reader) return;
+    if (readingLayout !== "paginate" || !renderedChapter || !pagination) {
+      return;
+    }
 
-    const onScroll = () => {
-      const pageWidth = Math.max(1, root.clientWidth);
-      const index = Math.max(0, Math.min(paginatePages.length - 1, Math.round(root.scrollLeft / pageWidth)));
-      const percent = totalChapters > 0
-        ? Math.round(((currentChapter + index / Math.max(1, paginatePages.length)) / totalChapters) * 100)
-        : 0;
-      reportState(currentChapter, Math.max(1, totalChapters), reader, null, false, percent);
-    };
+    const id = requestAnimationFrame(() => {
+      renderPaginatedContent(pagination, renderedChapter);
+    });
 
-    root.addEventListener("scroll", onScroll, { passive: true });
-    return () => root.removeEventListener("scroll", onScroll);
-  }, [currentChapter, paginatePages.length, readingLayout, reportState, totalChapters]);
+    return () => cancelAnimationFrame(id);
+  }, [renderedChapter, pagination, readingLayout, renderPaginatedContent]);
 
   return (
     <>
       <style>{baseCss}</style>
       {scopedCss ? <style>{scopedCss}</style> : null}
+      <div id="reflow-measure-host" ref={measureHostRef} />
       {readingLayout === "scroll" ? (
         <div id="reflow-scroll-root" ref={scrollRootRef}>
           <div className="reader-host">
-            {error ? (
+            {displayError ? (
               <div style={styles.errorCard}>
                 <p style={styles.errorTitle}>无法打开 EPUB</p>
-                <p style={styles.errorText}>{error}</p>
+                <p style={styles.errorText}>{displayError}</p>
               </div>
-            ) : loading && !chapter ? (
+            ) : readerLoading && !renderedChapter ? (
               <div style={styles.loading}>正在加载章节…</div>
-            ) : chapter ? (
+            ) : renderedChapter ? (
               <>
-                <p className="reader-title">{chapter.title}</p>
-                <div className="reader-body-content" ref={(node) => {
-                  if (node) node.innerHTML = chapter.bodyHtml;
-                }} />
+                <p className="reader-title">{renderedChapter.title}</p>
+                <div
+                  className="reader-body-content"
+                  ref={(node) => {
+                    if (node) node.innerHTML = renderedChapter.bodyHtml;
+                  }}
+                />
               </>
             ) : (
               <div style={styles.loading}>暂无内容</div>
@@ -472,29 +763,27 @@ export default function ReflowableDOMReader({
           </div>
         </div>
       ) : (
-        <div id="reflow-paginate-root">
+        <div
+          id="reflow-paginate-root"
+          onTouchStart={handlePaginateTouchStart}
+          onTouchEnd={handlePaginateTouchEnd}
+          onTouchCancel={handlePaginateTouchCancel}
+        >
           <div className="paginate-frame">
-            {error ? (
+            {displayError ? (
               <div style={styles.errorCard}>
                 <p style={styles.errorTitle}>无法打开 EPUB</p>
-                <p style={styles.errorText}>{error}</p>
+                <p style={styles.errorText}>{displayError}</p>
               </div>
-            ) : loading && !chapter ? (
+            ) : readerLoading && !renderedChapter ? (
               <div style={styles.loading}>正在加载章节…</div>
-            ) : chapter ? (
+            ) : renderedChapter ? (
               <>
-                <p className="reader-title">{chapter.title}</p>
-                <div className="paginate-scroll" ref={paginateScrollRef}>
-                  {paginatePages.map((page) => (
-                    <div key={page.key} className="paginate-page">
-                      <div
-                        className="reader-body-content"
-                        ref={(node) => {
-                          if (node) node.innerHTML = page.html;
-                        }}
-                      />
-                    </div>
-                  ))}
+                <p className="reader-title">{renderedChapter.title}</p>
+                <div className="paginate-shell" ref={paginateScrollRef}>
+                  <div className="paginate-page">
+                    <div className="reader-body-content" />
+                  </div>
                 </div>
               </>
             ) : (
@@ -507,7 +796,7 @@ export default function ReflowableDOMReader({
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   loading: {
     color: "rgba(255,255,255,0.72)",
     textAlign: "center",

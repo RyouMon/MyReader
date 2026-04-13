@@ -1,21 +1,23 @@
-import { useNavigate } from "@tanstack/react-router"
-import { invoke, isTauri } from "@tauri-apps/api/core"
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import { useCallback, useEffect, useMemo, useState } from "react"
-
 import { FixedLayoutReader } from "@/components/reader/fixed-layout/FixedLayoutReader"
 import { ReflowableReader } from "@/components/reader/reflowable/ReflowableReader"
-import { useLibrary } from "@/stores/libraryStore"
 import {
   type ReadingProgressDto,
   useReadingProgressSync,
 } from "@/hooks/reader/useReadingProgressSync"
-import { useBookReader } from "@/hooks/reader/useReader"
-import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import { buildBookFileUrl, resolveReadFormat } from "my-reader-tools/rendition/utils"
+import { useLibrary } from "@/stores/libraryStore"
+import { useNavigate } from "@tanstack/react-router"
+import { invoke, isTauri } from "@tauri-apps/api/core"
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { useBookReader } from "my-reader-tools/hooks/useReader"
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
+import {
+  buildBookFileUrl,
+  resolveReadFormat,
+} from "my-reader-tools/rendition/utils"
 import type { BookDetail } from "my-reader-tools/types/book"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 export type ReadBookPageProps = {
   bookId: string
@@ -23,7 +25,7 @@ export type ReadBookPageProps = {
 }
 
 /**
- * ç?¬ç«?é??è¯»çª?å£ï¼?å? è½½ä¹¦ç±æ??ä»¶ã?é©±å?¨ useBookReaderï¼?å¹¶å?¨å?ºå®?ç??å¼ä¸?æµå¼é??è¯»å?¨ä¹?é?´å??æ¢ã??
+ * ï¿½?ï¿½ï¿½?ï¿½??è¯»ï¿½?å£ï¿½?ï¿½?ï¿½è½½ä¹¦ç±ï¿½??ä»¶ï¿½?ï¿½é©±ï¿½?ï¿½ useBookReaderï¿½?å¹¶ï¿½?ï¿½ï¿½?ï¿½ï¿½?ï¿½??å¼ï¿½?æµå¼ï¿½??è¯»ï¿½?ï¿½ï¿½?ï¿½?ï¿½ï¿½??æ¢ï¿½??
  */
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
@@ -31,7 +33,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
-  /** ä¸?é??è¯»è¿?åº¦ä¸?å¹¶å°±ç»ªå?å?äº¤ç»? `useBookReader`ï¼?é¿å?å??æ¸²æ??ç¬¬ 1 ç« å?ç»­è¯»è·³è½¬ */
+  /** ï¿½?ï¿½??è¯»ï¿½?åº¦ï¿½?å¹¶å°±ç»ªï¿½?ï¿½?ï¿½äº¤ï¿½? `useBookReader`ï¿½?é¿ï¿½?ï¿½ï¿½??æ¸²ï¿½??ç¬¬ 1 ç« ï¿½?ï¿½ç»­è¯»è·³è½¬ */
   const [bookPayload, setBookPayload] = useState<{
     buffer: ArrayBuffer
     initialOpenAnchor: BookAnchor | null
@@ -77,7 +79,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no active library, book id: "${bookId}"`,
           )
-          setFetchError("æ?ªé??æ?©ä¹¦åº?ï¼?è¯·å??å?¨ä¸»çª?å£é??æ?©ä¹¦åº?å?å?é??è¯»")
+          setFetchError("ï¿½?ï¿½ï¿½??ï¿½?ï¿½ä¹¦ï¿½?ï¿½?è¯·ï¿½??ï¿½?ï¿½ä¸»ï¿½?å£ï¿½??ï¿½?ï¿½ä¹¦ï¿½?ï¿½?ï¿½?ï¿½ï¿½??è¯»")
         }
         return
       }
@@ -105,7 +107,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no supported format, book id: "${bookId}", formats: "${detail.formats.join(", ")}"`,
           )
-          setFetchError("è¯¥ä¹¦ç±æ²¡æ??å¯é??è¯»ç??æ ¼å¼ï¼?é??è¦ EPUBã?CBZ æ?? PDFï¼?")
+          setFetchError("è¯¥ä¹¦ç±æ²¡ï¿½??å¯ï¿½??è¯»ï¿½??æ ¼å¼ï¿½?ï¿½??è¦ EPUBï¿½?ï¿½CBZ ï¿½?? PDFï¿½?")
           return
         }
         setFormat(fmt)
@@ -125,7 +127,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to fetch book file. url: "${url}", http status: ${resp.status}`,
           )
-          setFetchError(`æ? æ³?å? è½½ä¹¦ç±æ??ä»¶: HTTP ${resp.status}`)
+          setFetchError(`ï¿½?ï¿½ï¿½?ï¿½?ï¿½è½½ä¹¦ç±ï¿½??ä»¶: HTTP ${resp.status}`)
           return
         }
         if (cancelled) return
@@ -186,21 +188,21 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [navigate, bookId])
 
   if (mainHandoff) {
-    return <ReadBookLoading message="æ­£å?¨æ??å¼?é??è¯»çª?å£â?¦" />
+    return <ReadBookLoading message="æ­£ï¿½?ï¿½ï¿½??ï¿½?ï¿½??è¯»ï¿½?å£ï¿½?ï¿½" />
   }
 
   if (fetchError || reader.error) {
     return (
       <ReadBookError
         message={fetchError ?? reader.error ?? ""}
-        actionLabel={isTauri() ? "å?³é?­çª?å£" : "è¿?å??ä¹¦ç±è¯¦æ??"}
+        actionLabel={isTauri() ? "ï¿½?ï¿½ï¿½?ï¿½ï¿½?å£" : "ï¿½?ï¿½??ä¹¦ç±è¯¦ï¿½??"}
         onAction={handleErrorClose}
       />
     )
   }
 
   if (!reader.chapter) {
-    return <ReadBookLoading message="æ­£å?¨å? è½½ä¹¦ç±å??å®¹â?¦" />
+    return <ReadBookLoading message="æ­£ï¿½?ï¿½ï¿½?ï¿½è½½ä¹¦ç±ï¿½??å®¹ï¿½?ï¿½" />
   }
 
   if (reader.layoutMode === "fixedLayout") {
@@ -211,7 +213,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 }
 
 /**
- * å?¨å±å±?ä¸­å? è½½æ?ï¼?ä¸?é??è¯»å?¨å?¥å£å?¶å®?å ä½ä¸?è?´ï¼?è??æ?¯ã?è¾¹è·ã?å­?å·ï¼?ã??
+ * ï¿½?ï¿½å±ï¿½?ä¸­ï¿½?ï¿½è½½ï¿½?ï¿½ï¿½?ï¿½?ï¿½??è¯»ï¿½?ï¿½ï¿½?ï¿½å£ï¿½?ï¿½ï¿½?å ä½ï¿½?ï¿½?ï¿½ï¿½?ï¿½??ï¿½?ï¿½ï¿½?ï¿½è¾¹è·ï¿½?ï¿½ï¿½?å·ï¿½?ï¿½??
  */
 function ReadBookLoading({ message }: { message: string }) {
   return (
@@ -232,7 +234,7 @@ function ReadBookLoading({ message }: { message: string }) {
 }
 
 /**
- * æ??ä»¶æ??è§£æ?å¤±è´¥æ?¶ç??å?¨å±é??è¯¯æ?ã??
+ * ï¿½??ä»¶ï¿½??è§£ï¿½?ï¿½å¤±è´¥ï¿½?ï¿½ï¿½??ï¿½?ï¿½å±ï¿½??è¯¯ï¿½?ï¿½ï¿½??
  */
 function ReadBookError({
   message,
@@ -245,7 +247,7 @@ function ReadBookError({
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-background px-4 text-center">
-      <p className="font-medium text-destructive">å? è½½å¤±è´¥</p>
+      <p className="font-medium text-destructive">ï¿½?ï¿½è½½å¤±è´¥</p>
       <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <button
         type="button"

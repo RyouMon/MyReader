@@ -1,25 +1,25 @@
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { resolveReadFormat } from "my-reader-tools/rendition/utils";
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
-import { router, Stack, useLocalSearchParams } from "expo-router";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { resolveReadFormat } from "my-reader-tools/rendition/utils";
 
-import { Animated, Pressable, Text, View } from "@/tw";
-import { useThemePalette } from "@/src/design/tokens";
 import {
   ReaderBottomBar,
   ReaderSettingsSheet,
   ReaderTocSheet,
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
-import { readBookDetailFromMetadata, readBookFileBytes } from "@/src/data/calibre";
-import { downloadWebDavBookFileBytes } from "@/src/data/webdav";
-import { useLibraryStore } from "@/src/store/library-store";
-import { useAppStore } from "@/src/store/app-store";
-import type { WebDavDataSource } from "@/src/data/types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import { readBookDetailFromMetadata, readBookFileBytes } from "@/src/data/calibre";
+import type { WebDavDataSource } from "@/src/data/types";
+import { downloadWebDavBookFileBytes } from "@/src/data/webdav";
+import { useThemePalette } from "@/src/design/tokens";
+import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
+import { useLibraryStore } from "@/src/store/library-store";
+import { Animated, Pressable, Text, View } from "@/tw";
 
 /** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
@@ -37,6 +37,7 @@ type LoadState =
       initialPage: number;
       layoutMode: "fixedLayout" | "reflowable" | "unknown";
     };
+
 
 export default function ReaderScreen() {
   const { id, format: formatParam } = useLocalSearchParams<{
@@ -345,9 +346,8 @@ export default function ReaderScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         hidden={!chromeVisible && !tocOpen && !settingsOpen}
-        barStyle="light-content"
+        barStyle="dark-content"
         translucent={false}
-        backgroundColor="#110D0A"
       />
 
       <Pressable
@@ -372,6 +372,8 @@ export default function ReaderScreen() {
             lineHeight={reflowSettings.lineHeight}
             paddingX={reflowSettings.paddingX}
             brightness={reflowSettings.brightness}
+            contentInsetTop={paginateContentInsetTop}
+            contentInsetBottom={paginateContentInsetBottom}
             dom={{
               style: { flex: 1 },
               scrollEnabled: reflowSettings.readingLayout === "scroll",
