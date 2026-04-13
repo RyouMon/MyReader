@@ -25,6 +25,77 @@ import { Animated, Pressable, Text, View } from "@/tw";
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
 const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
 
+/** 初始阅读位置（从第 0 章/页开始）。 */
+const INITIAL_READER_PAGE = 0;
+/** 目录日志预览条目数，避免一次性输出过多日志。 */
+const TOC_LOG_PREVIEW_COUNT = 5;
+/** TOC 跳转命令复位延迟，确保命令被消费后再清空。 */
+const TOC_GOTO_RESET_DELAY_MS = 100;
+/** 遮罩层入场动画时长（毫秒）。 */
+const OVERLAY_FADE_IN_DURATION_MS = 200;
+/** 遮罩层退场动画时长（毫秒）。 */
+const OVERLAY_FADE_OUT_DURATION_MS = 200;
+/** 分页模式顶部额外留白（在安全区基础上叠加）。 */
+const PAGINATE_CONTENT_INSET_TOP = 32;
+/** 分页模式底部额外留白（在安全区基础上叠加）。 */
+const PAGINATE_CONTENT_INSET_BOTTOM = 32;
+/** Base64 编码分块大小，防止一次性展开过大字符串。 */
+const BASE64_CHUNK_SIZE = 0x8000;
+/** 错误卡片水平内边距。 */
+const ERROR_SCREEN_HORIZONTAL_PADDING = 28;
+/** 错误卡片最大宽度。 */
+const ERROR_CARD_MAX_WIDTH = 400;
+/** 错误卡片垂直内边距。 */
+const ERROR_CARD_VERTICAL_PADDING = 28;
+/** 错误卡片水平内边距。 */
+const ERROR_CARD_HORIZONTAL_PADDING = 22;
+/** 错误卡片圆角。 */
+const ERROR_CARD_BORDER_RADIUS = 20;
+/** 错误标题字号。 */
+const ERROR_TITLE_FONT_SIZE = 18;
+/** 错误标题底部间距。 */
+const ERROR_TITLE_MARGIN_BOTTOM = 12;
+/** 错误正文字号。 */
+const ERROR_BODY_FONT_SIZE = 15;
+/** 错误正文行高。 */
+const ERROR_BODY_LINE_HEIGHT = 22;
+/** 错误返回按钮顶部间距。 */
+const ERROR_BACK_BUTTON_MARGIN_TOP = 22;
+/** 错误返回按钮垂直内边距。 */
+const ERROR_BACK_BUTTON_VERTICAL_PADDING = 12;
+/** 错误返回按钮水平内边距。 */
+const ERROR_BACK_BUTTON_HORIZONTAL_PADDING = 28;
+/** 错误返回按钮圆角（胶囊形）。 */
+const ERROR_BACK_BUTTON_BORDER_RADIUS = 999;
+/** 错误返回按钮边框宽度。 */
+const ERROR_BACK_BUTTON_BORDER_WIDTH = 1;
+/** 错误返回按钮文字字号。 */
+const ERROR_BACK_BUTTON_TEXT_SIZE = 15;
+/** 阅读器页面背景色。 */
+const READER_SCREEN_BACKGROUND_COLOR = "#111";
+/** 加载指示器颜色。 */
+const LOADING_INDICATOR_COLOR = "#fff";
+/** 弹层遮罩背景色。 */
+const OVERLAY_MASK_BACKGROUND_COLOR = "rgba(0,0,0,0.45)";
+/** 错误返回按钮边框颜色。 */
+const ERROR_BACK_BUTTON_BORDER_COLOR = "rgba(255,255,255,0.2)";
+/** 错误卡片背景色。 */
+const ERROR_CARD_BACKGROUND_COLOR = "rgba(255,255,255,0.08)";
+/** 错误卡片边框颜色。 */
+const ERROR_CARD_BORDER_COLOR = "rgba(255,255,255,0.12)";
+/** 错误标题文字颜色。 */
+const ERROR_TITLE_TEXT_COLOR = "rgba(255,255,255,0.96)";
+/** 错误正文文字颜色。 */
+const ERROR_BODY_TEXT_COLOR = "rgba(255,255,255,0.78)";
+/** 错误返回按钮背景色。 */
+const ERROR_BACK_BUTTON_BACKGROUND_COLOR = "rgba(255,255,255,0.06)";
+/** 错误返回按钮文字颜色。 */
+const ERROR_BACK_BUTTON_TEXT_COLOR = "rgba(255,255,255,0.92)";
+/** DOM 回退态主文案颜色。 */
+const DOM_FALLBACK_PRIMARY_TEXT_COLOR = "rgba(255,255,255,0.7)";
+/** DOM 回退态次文案颜色。 */
+const DOM_FALLBACK_SECONDARY_TEXT_COLOR = "rgba(255,255,255,0.4)";
+
 type LoadState =
   | { status: "loading"; message: string }
   | { status: "error"; message: string }
@@ -188,7 +259,7 @@ export default function ReaderScreen() {
           bookBuffer: bytes,
           format: fmt,
           title: detail.title,
-          initialPage: 0,
+          initialPage: INITIAL_READER_PAGE,
           layoutMode: detailLayoutMode,
         });
 
@@ -196,7 +267,7 @@ export default function ReaderScreen() {
           calibreId,
           format: fmtUpper,
           title: detail.title,
-          initialPage: 0,
+          initialPage: INITIAL_READER_PAGE,
           layoutMode: detailLayoutMode,
         });
       } catch (e) {
@@ -229,7 +300,7 @@ export default function ReaderScreen() {
   const handleTocReady = useCallback(async (items: ReaderTocItem[]) => {
     console.info("[mobile-reader] toc-ready", {
       count: items.length,
-      firstItems: items.slice(0, 5),
+      firstItems: items.slice(0, TOC_LOG_PREVIEW_COUNT),
     });
     setToc(items);
   }, []);
@@ -262,7 +333,7 @@ export default function ReaderScreen() {
     console.info("[mobile-reader] toc-select", { pageIndex });
     setGotoPageCmd(pageIndex);
     setTocOpen(false);
-    setTimeout(() => setGotoPageCmd(undefined), 100);
+    setTimeout(() => setGotoPageCmd(undefined), TOC_GOTO_RESET_DELAY_MS);
   }, []);
 
   const domFallback = useMemo(
@@ -284,10 +355,10 @@ export default function ReaderScreen() {
 
   if (loadState.status === "loading") {
     return (
-      <View className="flex-1 bg-[#111]">
+      <View className="flex-1" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar hidden={false} barStyle="light-content" />
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         <Text className="mt-4 text-sm text-white/60">
           {loadState.message}
         </Text>
@@ -304,7 +375,7 @@ export default function ReaderScreen() {
           <Text style={styles.errorTitle}>无法打开书籍</Text>
           <Text style={styles.errorBody}>{loadState.message}</Text>
           <Pressable
-            style={[styles.errorBackBtn, { borderColor: "rgba(255,255,255,0.2)" }]}
+            style={[styles.errorBackBtn, { borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }]}
             onPress={handleBack}
           >
             <Text style={styles.errorBackBtnText}>返回</Text>
@@ -322,8 +393,8 @@ export default function ReaderScreen() {
   const activeReadingLayout: ReadingLayout = isReflowSurface
     ? reflowSettings.readingLayout
     : fixedSettings.readingLayout;
-  const paginateContentInsetTop = insets.top + 64;
-  const paginateContentInsetBottom = insets.bottom + 116;
+  const paginateContentInsetBottom = insets.bottom + PAGINATE_CONTENT_INSET_BOTTOM;
+  const paginateContentInsetTop = insets.top + PAGINATE_CONTENT_INSET_TOP;
 
   if (__DEV__) {
     console.info("[mobile-reader] render:ready-screen", {
@@ -342,7 +413,7 @@ export default function ReaderScreen() {
   }
 
   return (
-    <View className="flex-1 bg-[#111]">
+    <View className="flex-1" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         hidden={!chromeVisible && !tocOpen && !settingsOpen}
@@ -425,9 +496,10 @@ export default function ReaderScreen() {
 
       {(tocOpen || settingsOpen) && (
         <Animated.View
-          entering={FadeIn.duration(200)}
-          exiting={FadeOut.duration(200)}
-          className="absolute inset-0 z-30 bg-black/45"
+          entering={FadeIn.duration(OVERLAY_FADE_IN_DURATION_MS)}
+          exiting={FadeOut.duration(OVERLAY_FADE_OUT_DURATION_MS)}
+          className="absolute inset-0 z-30"
+          style={{ backgroundColor: OVERLAY_MASK_BACKGROUND_COLOR }}
         >
           <Pressable
             className="absolute inset-0"
@@ -466,7 +538,7 @@ export default function ReaderScreen() {
 }
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
-  const chunkSize = 0x8000;
+  const chunkSize = BASE64_CHUNK_SIZE;
   const chunks: string[] = [];
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const slice = bytes.subarray(i, i + chunkSize);
@@ -509,12 +581,15 @@ function DomReaderFallback({
   }, [format, title]);
 
   return (
-    <View className="flex-1 items-center justify-center px-6 bg-[#111]">
-      <ActivityIndicator size="large" color="#fff" />
-      <Text className="mt-4 text-sm text-white/70">
+    <View
+      className="flex-1 items-center justify-center px-6"
+      style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+    >
+      <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
+      <Text className="mt-4 text-sm" style={{ color: DOM_FALLBACK_PRIMARY_TEXT_COLOR }}>
         正在挂载阅读器…
       </Text>
-      <Text className="mt-2 text-center text-xs text-white/40">
+      <Text className="mt-2 text-center text-xs" style={{ color: DOM_FALLBACK_SECONDARY_TEXT_COLOR }}>
         {format ? `format=${format}` : "format=unknown"}
         {title ? ` · ${title}` : ""}
       </Text>
@@ -531,43 +606,43 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: ERROR_SCREEN_HORIZONTAL_PADDING,
   },
   errorCard: {
-    maxWidth: 400,
+    maxWidth: ERROR_CARD_MAX_WIDTH,
     width: "100%",
     alignItems: "center",
-    paddingVertical: 28,
-    paddingHorizontal: 22,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: ERROR_CARD_VERTICAL_PADDING,
+    paddingHorizontal: ERROR_CARD_HORIZONTAL_PADDING,
+    borderRadius: ERROR_CARD_BORDER_RADIUS,
+    backgroundColor: ERROR_CARD_BACKGROUND_COLOR,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: ERROR_CARD_BORDER_COLOR,
   },
   errorTitle: {
-    color: "rgba(255,255,255,0.96)",
-    fontSize: 18,
+    color: ERROR_TITLE_TEXT_COLOR,
+    fontSize: ERROR_TITLE_FONT_SIZE,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: ERROR_TITLE_MARGIN_BOTTOM,
   },
   errorBody: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 15,
-    lineHeight: 22,
+    color: ERROR_BODY_TEXT_COLOR,
+    fontSize: ERROR_BODY_FONT_SIZE,
+    lineHeight: ERROR_BODY_LINE_HEIGHT,
     textAlign: "center",
   },
   errorBackBtn: {
-    marginTop: 22,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 999,
-    borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    marginTop: ERROR_BACK_BUTTON_MARGIN_TOP,
+    paddingVertical: ERROR_BACK_BUTTON_VERTICAL_PADDING,
+    paddingHorizontal: ERROR_BACK_BUTTON_HORIZONTAL_PADDING,
+    borderRadius: ERROR_BACK_BUTTON_BORDER_RADIUS,
+    borderWidth: ERROR_BACK_BUTTON_BORDER_WIDTH,
+    backgroundColor: ERROR_BACK_BUTTON_BACKGROUND_COLOR,
   },
   errorBackBtnText: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 15,
+    color: ERROR_BACK_BUTTON_TEXT_COLOR,
+    fontSize: ERROR_BACK_BUTTON_TEXT_SIZE,
     fontWeight: "600",
   },
 });

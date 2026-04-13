@@ -24,6 +24,49 @@ import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 import type { ReadingLayout, ReaderTheme } from "@/src/store/app-store.types";
 
+/** 默认字体大小。 */
+const DEFAULT_FONT_SIZE = 18;
+/** 默认行高倍率。 */
+const DEFAULT_LINE_HEIGHT = 1.85;
+/** 默认左右内边距。 */
+const DEFAULT_PADDING_X = 20;
+/** 默认亮度百分比。 */
+const DEFAULT_BRIGHTNESS = 100;
+/** 默认分页模式顶部留白。 */
+const DEFAULT_CONTENT_INSET_TOP = 72;
+/** 默认分页模式底部留白。 */
+const DEFAULT_CONTENT_INSET_BOTTOM = 132;
+/** 亮度下限，避免正文过暗不可读。 */
+const MIN_BRIGHTNESS_RATIO = 0.2;
+/** 亮度百分比换算基数。 */
+const BRIGHTNESS_PERCENT_BASE = 100;
+/** 阅读正文最大列宽。 */
+const READER_CONTENT_MAX_WIDTH = 820;
+/** 测量宿主向左偏移距离（vw）。 */
+const MEASURE_HOST_LEFT_OFFSET_VW = -200;
+/** DOM 事件里初始页缺省值。 */
+const DOM_PROBE_INITIAL_PAGE_FALLBACK = 0;
+/** 分页手势最小横向滑动距离。 */
+const PAGINATE_MIN_SWIPE_DISTANCE = 48;
+/** 分页手势允许的最大纵向偏移。 */
+const PAGINATE_MAX_VERTICAL_DRIFT = 72;
+/** 阅读进度百分比换算基数。 */
+const PROGRESS_PERCENT_MULTIPLIER = 100;
+/** 加载态提示内边距。 */
+const LOADING_PADDING = "24px 0";
+/** 错误卡片圆角。 */
+const ERROR_CARD_BORDER_RADIUS = 16;
+/** 错误卡片内边距。 */
+const ERROR_CARD_PADDING = 20;
+/** 错误标题与正文间距。 */
+const ERROR_TITLE_MARGIN_BOTTOM = 12;
+/** 错误标题字号。 */
+const ERROR_TITLE_FONT_SIZE = 18;
+/** 错误标题字重。 */
+const ERROR_TITLE_FONT_WEIGHT = 700;
+/** 错误正文行高。 */
+const ERROR_TEXT_LINE_HEIGHT = 1.6;
+
 type ReflowableDOMReaderProps = {
   bookBase64: string | null;
   format: string;
@@ -132,7 +175,7 @@ function buildBaseReaderCss(
       height: 100%;
       overflow: hidden;
       font-family: "Noto Sans SC", system-ui, sans-serif;
-      filter: brightness(${Math.max(0.2, brightness / 100)});
+      filter: brightness(${Math.max(MIN_BRIGHTNESS_RATIO, brightness / BRIGHTNESS_PERCENT_BASE)});
     }
 
     #reflow-scroll-root {
@@ -160,7 +203,7 @@ function buildBaseReaderCss(
 
     #reflow-measure-host {
       position: fixed;
-      left: -200vw;
+      left: ${MEASURE_HOST_LEFT_OFFSET_VW}vw;
       top: 0;
       width: calc(100vw - ${paddingX * 2}px);
       height: calc(100dvh - ${paginateVerticalReserve}px);
@@ -171,17 +214,9 @@ function buildBaseReaderCss(
     }
 
     .reader-host {
-      max-width: 820px;
+      max-width: ${READER_CONTENT_MAX_WIDTH}px;
       margin: 0 auto;
       width: 100%;
-    }
-
-    .reader-title {
-      flex-shrink: 0;
-      color: var(--reader-muted);
-      font-size: 13px;
-      margin: 0 0 16px;
-      text-align: center;
     }
 
     .reader-body-content {
@@ -204,7 +239,7 @@ function buildBaseReaderCss(
     }
 
     .paginate-frame {
-      width: min(100%, 820px);
+      width: min(100%, ${READER_CONTENT_MAX_WIDTH}px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
@@ -318,12 +353,12 @@ export default function ReflowableDOMReader({
   gotoPageCommand,
   readingLayout = "scroll",
   theme = "paper",
-  fontSize = 18,
-  lineHeight = 1.85,
-  paddingX = 20,
-  brightness = 100,
-  contentInsetTop = 72,
-  contentInsetBottom = 132,
+  fontSize = DEFAULT_FONT_SIZE,
+  lineHeight = DEFAULT_LINE_HEIGHT,
+  paddingX = DEFAULT_PADDING_X,
+  brightness = DEFAULT_BRIGHTNESS,
+  contentInsetTop = DEFAULT_CONTENT_INSET_TOP,
+  contentInsetBottom = DEFAULT_CONTENT_INSET_BOTTOM,
   dom,
 }: ReflowableDOMReaderProps) {
   void onRequestClose;
@@ -450,7 +485,7 @@ export default function ReflowableDOMReader({
       stage: "reflow-init-start",
       detail: {
         format,
-        initialPage: initialPage ?? 0,
+        initialPage: initialPage ?? DOM_PROBE_INITIAL_PAGE_FALLBACK,
         base64Length: bookBase64.length,
       },
     });
@@ -607,9 +642,9 @@ export default function ReflowableDOMReader({
       const t = e.changedTouches[0];
       const dx = t.clientX - start.x;
       const dy = t.clientY - start.y;
-      const minSwipe = 48;
+      const minSwipe = PAGINATE_MIN_SWIPE_DISTANCE;
       if (Math.abs(dx) < minSwipe) return;
-      if (Math.abs(dy) > 72 && Math.abs(dy) > Math.abs(dx)) return;
+      if (Math.abs(dy) > PAGINATE_MAX_VERTICAL_DRIFT && Math.abs(dy) > Math.abs(dx)) return;
       if (totalChapters <= 0 || !readerReady) return;
 
       void (async () => {
@@ -639,7 +674,7 @@ export default function ReflowableDOMReader({
         ready: readerReady,
         currentPage: nav.currentPageIndex,
         totalPages: pageCount,
-        progress: Math.round(readerProgress.fraction * 100),
+        progress: Math.round(readerProgress.fraction * PROGRESS_PERCENT_MULTIPLIER),
         chapterTitle: readerProgress.chapterTitle,
         loading,
         error: err,
@@ -651,7 +686,7 @@ export default function ReflowableDOMReader({
         ready: readerReady,
         currentPage: curChapter,
         totalPages: Math.max(1, totalChapters),
-        progress: Math.round(readerProgress.fraction * 100),
+        progress: Math.round(readerProgress.fraction * PROGRESS_PERCENT_MULTIPLIER),
         chapterTitle: readerProgress.chapterTitle,
         loading,
         error: err,
@@ -683,7 +718,7 @@ export default function ReflowableDOMReader({
       const base = snap.totalChapters > 0 ? snap.curChapter / snap.totalChapters : 0;
       const whole =
         snap.totalChapters > 0 ? (snap.curChapter + fraction) / snap.totalChapters : fraction;
-      const percent = Math.round(Math.max(base, whole) * 100);
+      const percent = Math.round(Math.max(base, whole) * PROGRESS_PERCENT_MULTIPLIER);
       void onStateChangeRef.current({
         ready: snap.ready,
         currentPage: snap.curChapter,
@@ -749,7 +784,6 @@ export default function ReflowableDOMReader({
               <div style={styles.loading}>正在加载章节…</div>
             ) : renderedChapter ? (
               <>
-                <p className="reader-title">{renderedChapter.title}</p>
                 <div
                   className="reader-body-content"
                   ref={(node) => {
@@ -779,7 +813,6 @@ export default function ReflowableDOMReader({
               <div style={styles.loading}>正在加载章节…</div>
             ) : renderedChapter ? (
               <>
-                <p className="reader-title">{renderedChapter.title}</p>
                 <div className="paginate-shell" ref={paginateScrollRef}>
                   <div className="paginate-page">
                     <div className="reader-body-content" />
@@ -800,25 +833,25 @@ const styles: Record<string, CSSProperties> = {
   loading: {
     color: "rgba(255,255,255,0.72)",
     textAlign: "center",
-    padding: "24px 0",
+    padding: LOADING_PADDING,
   },
   errorCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: ERROR_CARD_BORDER_RADIUS,
+    padding: ERROR_CARD_PADDING,
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.12)",
   },
   errorTitle: {
-    margin: "0 0 12px",
+    margin: `0 0 ${ERROR_TITLE_MARGIN_BOTTOM}px`,
     color: "rgba(255,255,255,0.96)",
-    fontSize: 18,
-    fontWeight: 700,
+    fontSize: ERROR_TITLE_FONT_SIZE,
+    fontWeight: ERROR_TITLE_FONT_WEIGHT,
     textAlign: "center",
   },
   errorText: {
     margin: 0,
     color: "rgba(255,255,255,0.72)",
-    lineHeight: 1.6,
+    lineHeight: ERROR_TEXT_LINE_HEIGHT,
     textAlign: "center",
     whiteSpace: "pre-wrap",
   },
