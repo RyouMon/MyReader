@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/rendition/utils";
+import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
 import type { BookDetail } from "my-reader-tools/types/book";
 import { Platform, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

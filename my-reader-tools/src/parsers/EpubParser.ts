@@ -10,17 +10,17 @@ import {
   normalizeChapterPath,
   resolveChapterRelativePath,
   stripChapterHrefHash,
-} from "../internalTextLink"
+} from "../utils/internalTextLink"
 import type {
-  BookSource,
   BookMetadata,
+  BookSource,
   ChapterInfo,
   IParser,
   ParsedBook,
   TextChapterData,
   TocItem,
 } from "../types"
-import { fetchBinary, fetchText, resolveRelativePath } from "./pathIO"
+import { fetchBinary, fetchText, resolveRelativePath } from "../utils/pathIO"
 
 /**
  * EPUB parser implemented on top of `foliate-js/epub.js`.
@@ -270,9 +270,7 @@ export class EpubParser implements IParser {
       if (css) parts.push(css)
       style.remove()
     }
-    for (const link of Array.from(
-      doc.querySelectorAll('link[rel="stylesheet"]'),
-    )) {
+    for (const link of Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))) {
       const href = link.getAttribute("href")
       if (!href) continue
       const cssPath = resolveChapterRelativePath(chapterDir, href)

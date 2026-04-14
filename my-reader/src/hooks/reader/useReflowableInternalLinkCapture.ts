@@ -1,6 +1,8 @@
 import { useEffect, type RefObject } from "react"
-import { isNonBookSchemeHref } from "my-reader-tools/rendition/internalTextLink"
-import { findHtmlFragmentElement } from "my-reader-tools/rendition/utils"
+import {
+  findHtmlFragmentElement,
+  isNonBookSchemeHref,
+} from "my-reader-tools/utils"
 
 export type UseReflowableInternalLinkCaptureOptions = {
   readerRootRef: RefObject<HTMLElement | null>

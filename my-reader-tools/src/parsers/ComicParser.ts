@@ -1,12 +1,12 @@
-import { buildComicManifest } from "./comicManifest"
 import type {
   BookSource,
-  IParser,
   ChapterInfo,
   ImageChapterData,
+  IParser,
   ParsedBook,
 } from "../types"
-import { resolveRelativePath, toFetchableUrl } from "./pathIO"
+import { buildComicManifest } from "../utils/comicManifest"
+import { resolveRelativePath, toFetchableUrl } from "../utils/pathIO"
 
 /**
  * Parser for CBZ (Comic Book ZIP) archives.

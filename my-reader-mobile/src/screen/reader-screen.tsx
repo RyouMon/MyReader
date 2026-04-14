@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
-import { resolveReadFormat } from "my-reader-tools/rendition/utils";
+import { resolveReadFormat } from "my-reader-tools/utils";
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";

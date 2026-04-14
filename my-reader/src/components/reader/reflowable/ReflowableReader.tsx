@@ -17,7 +17,7 @@ import {
   fallbackBookAnchorFromFraction,
   scrollScrollContainerToBookAnchor,
 } from "my-reader-tools/progress/reflowViewportAnchor"
-import type { TextChapterData, TocItem } from "my-reader-tools/rendition"
+import type { TextChapterData, TocItem } from "my-reader-tools/types"
 import type { ReaderSurfaceProps, TocEntry } from "../types"
 import { ReflowableBottomBar } from "./ReflowableBottomBar"
 import { ReflowableContent } from "./ReflowableContent"

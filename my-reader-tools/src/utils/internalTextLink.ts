@@ -1,4 +1,4 @@
-import type { ChapterInfo, ResolvedInternalTextLink } from "./types"
+import type { ChapterInfo, ResolvedInternalTextLink } from "../types"
 
 /**
  * `http:`, `mailto:`, `//example.com/...`, etc. — not in-book relative paths.

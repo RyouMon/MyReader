@@ -1,15 +1,15 @@
 import type { PDFDocumentProxy } from "pdfjs-dist"
 
 import type {
-  BookSource,
   BookMetadata,
+  BookSource,
   ChapterInfo,
   ImageChapterData,
   IParser,
   ParsedBook,
   TocItem,
 } from "../types"
-import { fetchBinary } from "./pathIO"
+import { fetchBinary } from "../utils/pathIO"
 
 const RENDER_SCALE = 2
 
@@ -94,15 +94,12 @@ export class PdfParser implements IParser {
     })
 
     const numPages = this.pdfDoc.numPages
-    const chapters: ChapterInfo[] = Array.from(
-      { length: numPages },
-      (_, i) => ({
-        index: i,
-        title: `Page ${i + 1}`,
-        href: `page${i}`,
-        contentWeight: 1,
-      }),
-    )
+    const chapters: ChapterInfo[] = Array.from({ length: numPages }, (_, i) => ({
+      index: i,
+      title: `Page ${i + 1}`,
+      href: `page${i}`,
+      contentWeight: 1,
+    }))
 
     const metadata = await this.extractMetadata()
     const toc = await this.extractOutline()
@@ -187,7 +184,9 @@ export class PdfParser implements IParser {
   /**
    * Reads PDF bytes from file path/URL and returns an isolated ArrayBuffer.
    */
-  private async readBufferFromFilePath(filePath?: string): Promise<ArrayBuffer | null> {
+  private async readBufferFromFilePath(
+    filePath?: string,
+  ): Promise<ArrayBuffer | null> {
     if (!filePath) return null
     const bytes = await fetchBinary(filePath)
     const out = new ArrayBuffer(bytes.byteLength)

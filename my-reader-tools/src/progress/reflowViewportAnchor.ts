@@ -1,5 +1,5 @@
 ﻿import { fillRangeStartFromBoundary } from "../layout-engines/reflow"
-import type { TextChapterData } from "../rendition/types"
+import type { TextChapterData } from "../types"
 
 import type { BookAnchor } from "./BookAnchor"
 import { readingBoundaryFromRootUtf16Offset } from "./epubBookAnchor"

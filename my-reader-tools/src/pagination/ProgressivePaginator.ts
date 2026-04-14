@@ -109,14 +109,14 @@ export {
   layoutTextChapterAtMeasureHost,
   DomReflowEngine,
   defaultDomReflowEngine,
-} from "../../layout-engines/reflow/DomReflowEngine"
+} from "../layout-engines/reflow/DomReflowEngine"
 export {
   renderTextChapterPage,
   READER_TYPOGRAPHY_OVERRIDE_CSS,
-} from "../../layout-engines/reflow/DomSliceRenderer"
+} from "../layout-engines/reflow/DomSliceRenderer"
 export {
   readingAnchorForElement,
   fillRangeStartFromBoundary,
   readingAnchorForRangeStart,
   findPageIndexForReadingAnchor,
-} from "../../layout-engines/reflow/DomBoundaryMapper"
+} from "../layout-engines/reflow/DomBoundaryMapper"

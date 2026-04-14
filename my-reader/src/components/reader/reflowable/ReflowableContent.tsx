@@ -2,13 +2,13 @@
 
 import { cn } from "@/lib/utils"
 import { fillRangeStartFromBoundary } from "my-reader-tools/layout-engines/reflow"
+import { BookReader } from "my-reader-tools/reader-core"
 import type {
   LayoutConfig,
   RangeBoundary,
   TextChapterData,
   TextChapterPaginationResult,
-} from "my-reader-tools/rendition"
-import { BookReader } from "my-reader-tools/rendition"
+} from "my-reader-tools/types"
 import {
   type CSSProperties,
   useEffect,

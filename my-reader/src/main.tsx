@@ -1,7 +1,7 @@
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
-import { configurePdfJsWorker } from "my-reader-tools/rendition"
+import { configurePdfJsWorker } from "my-reader-tools/parsers"
 
 import { routeTree } from "./routeTree.gen"
 import { installForwardConsoleToLog } from "./forward-console-to-log"

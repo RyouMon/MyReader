@@ -6,8 +6,8 @@ import type {
   ReaderTypographyConfig,
   TextChapterData,
   TextChapterPaginationResult,
-} from "../../rendition/types"
-import { scopeEpubCss } from "../../rendition/utils"
+} from "../../types"
+import { scopeEpubCss } from "../../utils/reader"
 import {
   createRootEndBoundary,
   serializeLocationAsBoundary,

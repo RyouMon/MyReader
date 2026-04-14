@@ -1,4 +1,4 @@
-import type { ChapterInfo, ReaderProgress } from "../rendition/types"
+import type { ChapterInfo, ReaderProgress } from "../types"
 
 function spineWeightsForChapters(chapters: ChapterInfo[]): number[] {
   const raw = chapters.map((chapter) => {

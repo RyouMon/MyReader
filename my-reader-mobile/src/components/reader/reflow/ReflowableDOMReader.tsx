@@ -1,11 +1,11 @@
 "use dom";
 
-import {
-  renderTextChapterPage,
-  type LayoutConfig,
-  type TextChapterData,
-  type TextChapterPaginationResult,
-} from "my-reader-tools/rendition";
+import { renderTextChapterPage } from "my-reader-tools/layout-engines/reflow";
+import type {
+  LayoutConfig,
+  TextChapterData,
+  TextChapterPaginationResult,
+} from "my-reader-tools/types";
 import { useBookReader } from "my-reader-tools/hooks/useReader";
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
 import {

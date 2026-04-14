@@ -14,7 +14,7 @@ import { useBookReader } from "my-reader-tools/hooks/useReader"
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import {
   resolveReadFormat,
-} from "my-reader-tools/rendition/utils"
+} from "my-reader-tools/utils"
 import type { BookDetail } from "my-reader-tools/types/book"
 import { useCallback, useEffect, useMemo, useState } from "react"
 

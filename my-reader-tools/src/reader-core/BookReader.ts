@@ -6,7 +6,7 @@ import {
   buildTextChapterBookAnchorAtBoundary,
   epubReadingBoundaryFromChapterCharOffset,
 } from "../progress/epubBookAnchor"
-import { genericResolveInternalTextLink } from "./internalTextLink"
+import { genericResolveInternalTextLink } from "../utils/internalTextLink"
 import {
   defaultDomReflowEngine,
   findPageIndexForReadingAnchor,
@@ -16,9 +16,9 @@ import {
   PAGINATION_DOUBLE_COLUMN_GAP_PX,
   ProgressivePaginator,
   renderTextChapterPage,
-} from "./pagination/ProgressivePaginator"
+} from "../pagination/ProgressivePaginator"
 import type { FixedViewportState } from "../layout-engines/fixed/types"
-import { ReaderSession } from "../reader-core/ReaderSession"
+import { ReaderSession } from "./ReaderSession"
 import type {
   BookSource,
   BookMetadata,
@@ -36,8 +36,8 @@ import type {
   TextChapterData,
   TextChapterPaginationResult,
   TocItem,
-} from "./types"
-import { findHtmlFragmentElement } from "./utils"
+} from "../types"
+import { findHtmlFragmentElement } from "../utils/reader"
 
 /** 列页切片数 → 双栏下的跨页（屏）数。 */
 function textSpreadCountFromColumns(columnPageCount: number): number {
@@ -237,8 +237,8 @@ export class BookReader {
       anchor.charOffset != null &&
       Number.isFinite(anchor.charOffset)
     ) {
-        const ch = await this.getChapter(chIdx)
-        if (ch.type === "text") {
+      const ch = await this.getChapter(chIdx)
+      if (ch.type === "text") {
         const boundary = epubReadingBoundaryFromChapterCharOffset(
           ch,
           anchor.charOffset,
@@ -1119,5 +1119,4 @@ export class BookReader {
     }
     this.invalidatePageDescriptorCaches()
   }
-
 }

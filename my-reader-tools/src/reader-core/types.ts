@@ -5,7 +5,7 @@ import type {
   ParsedBook,
   ReaderProgress,
   TocItem,
-} from "../rendition/types"
+} from "../types"
 
 export interface OpenBookRequest {
   source: BookSource

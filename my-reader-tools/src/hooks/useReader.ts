@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import type { FixedViewportState } from "my-reader-tools/layout-engines/fixed"
-import { BookReader } from "my-reader-tools/rendition"
+import { BookReader } from "my-reader-tools/reader-core"
 import type {
   BookSource,
   ChapterData,
@@ -12,7 +12,7 @@ import type {
   ReaderProgress,
   TextChapterPaginationResult,
   TocItem,
-} from "my-reader-tools/rendition"
+} from "my-reader-tools/types"
 
 export interface UseReaderOptions {
   /** Path-first book source (`filePath` / `extractedDirPath` / `extractedEntries`). */

@@ -1,15 +1,15 @@
 import { FixedLayoutEngine } from "../layout-engines/fixed/FixedLayoutEngine"
 import type { FixedViewportState } from "../layout-engines/fixed/types"
 import type { BookAnchor } from "../progress/BookAnchor"
-import { ComicParser } from "../rendition/parsers/ComicParser"
-import { EpubParser } from "../rendition/parsers/EpubParser"
-import { PdfParser } from "../rendition/parsers/PdfParser"
+import { ComicParser } from "../parsers/ComicParser"
+import { EpubParser } from "../parsers/EpubParser"
+import { PdfParser } from "../parsers/PdfParser"
 import type {
   ChapterData,
   IParser,
   ParsedBook,
   ReaderProgress,
-} from "../rendition/types"
+} from "../types"
 import { NavigationController } from "./NavigationController"
 import { ProgressController } from "./ProgressController"
 import { ResourceCache } from "./ResourceCache"

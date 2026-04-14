@@ -13,7 +13,6 @@ export function scopeEpubCss(css: string): string {
  * Prefer `requested` when it matches a file on the book and is readable;
  * otherwise fall back to priority order.
  */
-
 export function resolveReadFormat(
   formats: string[],
   requested: string | undefined,
@@ -25,8 +24,9 @@ export function resolveReadFormat(
     }
   }
   return pickReadableFormat(formats)
-} /** Whether a single format string is supported by the in-app reader. */
+}
 
+/** Whether a single format string is supported by the in-app reader. */
 export function isReadableInAppFormat(format: string): boolean {
   return pickReadableFormat([format]) !== null
 }

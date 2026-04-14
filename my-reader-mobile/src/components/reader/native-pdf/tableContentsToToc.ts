@@ -1,4 +1,4 @@
-import type { TocItem } from "my-reader-tools/rendition/types";
+import type { TocItem } from "my-reader-tools/types";
 
 /**
  * 与 `react-native-pdf` 的 `TableContent` 结构对齐的最小形状（不依赖 RN 包）。

@@ -1,4 +1,4 @@
-import type { DomPageSlice, RangeBoundary } from "../../rendition/types"
+import type { DomPageSlice, RangeBoundary } from "../../types"
 
 /** 与分页器内部 {@link serializeLocationAsBoundary} 一致的位置描述。 */
 export interface DomPaginationSourceLocation {

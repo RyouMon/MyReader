@@ -6,7 +6,7 @@ import type {
   TextChapterData,
   TextChapterPaginationResult,
   IPaginator,
-} from "../../rendition/types"
+} from "../../types"
 
 export type ReflowLayoutResult = TextChapterPaginationResult
 

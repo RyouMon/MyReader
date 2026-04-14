@@ -14,7 +14,7 @@ import { useReaderKeyboardNavigation } from "@/hooks/reader/useReaderKeyboardNav
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import type { ImageChapterData, TocItem } from "my-reader-tools/rendition"
+import type { ImageChapterData, TocItem } from "my-reader-tools/types"
 import type {
   FixedLayoutSettings,
   FixedLayoutTocEntry,

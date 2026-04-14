@@ -1,4 +1,4 @@
-import type { ImageChapterData } from "../../rendition/types"
+import type { ImageChapterData } from "../../types"
 import { LruResourceCache } from "../../reader-core/ResourceCache"
 import type { FixedPageResource, FixedViewportState } from "./types"
 

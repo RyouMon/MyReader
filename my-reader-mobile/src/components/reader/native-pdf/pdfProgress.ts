@@ -1,5 +1,5 @@
 import { ProgressController } from "my-reader-tools/reader-core";
-import type { ChapterInfo } from "my-reader-tools/rendition/types";
+import type { ChapterInfo } from "my-reader-tools/types";
 
 const controller = new ProgressController();
 

@@ -1,5 +1,5 @@
-import type { DomPageSlice, TextChapterData } from "../../rendition/types"
-import { scopeEpubCss } from "../../rendition/utils"
+import type { DomPageSlice, TextChapterData } from "../../types"
+import { scopeEpubCss } from "../../utils/reader"
 import { applyRangeBoundary } from "./DomBoundaryMapper"
 
 export const READER_TYPOGRAPHY_OVERRIDE_CSS = `

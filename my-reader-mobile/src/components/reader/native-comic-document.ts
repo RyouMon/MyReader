@@ -1,7 +1,7 @@
 import { Directory, File } from "expo-file-system";
 import { Platform } from "react-native";
 import { unzip } from "react-native-zip-archive";
-import { buildComicManifest, type ComicManifest } from "my-reader-tools/rendition";
+import { buildComicManifest, type ComicManifest } from "my-reader-tools/utils";
 import { READER_EXTRACTED_CACHE_DIR, ensureReaderCacheDirectories } from "@/src/data/cache";
 
 const CBZ_CACHE_ROOT = new Directory(READER_EXTRACTED_CACHE_DIR, "comic");

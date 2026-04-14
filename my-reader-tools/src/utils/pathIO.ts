@@ -25,7 +25,10 @@ export function toFetchableUrl(pathOrUrl: string): string {
 /**
  * Resolves a relative path against a directory path/URL.
  */
-export function resolveRelativePath(baseDirPathOrUrl: string, relativePath: string): string {
+export function resolveRelativePath(
+  baseDirPathOrUrl: string,
+  relativePath: string,
+): string {
   const baseUrl = toFetchableUrl(baseDirPathOrUrl).replace(/\/?$/, "/")
   return new URL(relativePath, baseUrl).toString()
 }

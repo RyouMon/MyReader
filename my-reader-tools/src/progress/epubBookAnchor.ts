@@ -2,7 +2,7 @@ import {
   fillRangeStartFromBoundary,
   readingAnchorForRangeStart,
 } from "../layout-engines/reflow"
-import type { RangeBoundary, TextChapterData } from "../rendition/types"
+import type { RangeBoundary, TextChapterData } from "../types"
 
 import type { BookAnchor } from "./BookAnchor"
 
