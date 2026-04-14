@@ -1,10 +1,13 @@
 use std::fs;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::UNIX_EPOCH;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use log::{error, info};
 use tauri::{AppHandle, Manager, State};
+use zip::ZipArchive;
 
 use crate::calibre;
 use crate::error::AppError;
@@ -16,6 +19,143 @@ use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::reading_progress;
 
 pub type AppState = Mutex<AppConfig>;
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreparedBookSource {
+    pub format: String,
+    pub file_path: String,
+    pub extracted_dir_path: Option<String>,
+    pub extracted_entries: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheUsageDto {
+    pub total_bytes: u64,
+    pub max_bytes: u64,
+}
+
+fn sanitize_key_part(input: &str) -> String {
+    input
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect()
+}
+
+fn reader_cache_root() -> PathBuf {
+    std::env::temp_dir().join("myreader")
+}
+
+fn reader_cache_extracted_root() -> PathBuf {
+    reader_cache_root().join("extracted")
+}
+
+fn ensure_reader_cache_dirs() -> Result<(), AppError> {
+    fs::create_dir_all(reader_cache_extracted_root())?;
+    Ok(())
+}
+
+fn build_archive_cache_key(library_id: &str, book_id: i64, format: &str) -> String {
+    format!(
+        "{}-{}-{}",
+        sanitize_key_part(library_id),
+        book_id,
+        sanitize_key_part(&format.to_lowercase())
+    )
+}
+
+fn extract_zip_to_dir(zip_path: &PathBuf, output_dir: &PathBuf) -> Result<Vec<String>, AppError> {
+    let file = fs::File::open(zip_path)?;
+    let mut archive = ZipArchive::new(file).map_err(|e| AppError::Config(e.to_string()))?;
+    let mut extracted_entries: Vec<String> = Vec::new();
+
+    for i in 0..archive.len() {
+        let mut entry = archive
+            .by_index(i)
+            .map_err(|e| AppError::Config(e.to_string()))?;
+        let Some(enclosed) = entry.enclosed_name() else {
+            continue;
+        };
+        let rel_path = enclosed.to_string_lossy().replace('\\', "/");
+        let out_path = output_dir.join(enclosed);
+        if entry.is_dir() {
+            fs::create_dir_all(&out_path)?;
+            continue;
+        }
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut out_file = fs::File::create(&out_path)?;
+        let mut bytes = Vec::new();
+        entry
+            .read_to_end(&mut bytes)
+            .map_err(|e| AppError::Config(e.to_string()))?;
+        out_file.write_all(&bytes)?;
+        extracted_entries.push(rel_path);
+    }
+
+    Ok(extracted_entries)
+}
+
+fn clear_library_cache_files(library_id: &str) -> Result<(), AppError> {
+    let root = reader_cache_extracted_root();
+    if !root.exists() {
+        return Ok(());
+    }
+    let prefix = format!("{}-", sanitize_key_part(library_id));
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|x| x.to_str()) else {
+            continue;
+        };
+        if !name.starts_with(&prefix) {
+            continue;
+        }
+        if path.is_dir() {
+            fs::remove_dir_all(path)?;
+        } else {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
+}
+
+fn collect_cache_files_sorted_oldest() -> Result<Vec<(PathBuf, u64, u128)>, AppError> {
+    let mut out: Vec<(PathBuf, u64, u128)> = Vec::new();
+    let root = reader_cache_root();
+    if !root.exists() {
+        return Ok(out);
+    }
+    let mut stack = vec![root];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let meta = entry.metadata()?;
+            if meta.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let modified = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_millis())
+                .unwrap_or(0);
+            out.push((path, meta.len(), modified));
+        }
+    }
+    out.sort_by_key(|(_, _, modified)| *modified);
+    Ok(out)
+}
 
 fn config_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     info!("Start to resolve config file path.");
@@ -146,6 +286,13 @@ pub fn add_library(
         }
         save_config(&app, &config)?;
 
+        if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
+            error!(
+                "Failed to extend asset protocol scope after adding library. error: {}",
+                e
+            );
+        }
+
         Ok(LibraryInfo {
             id,
             name: lib_name,
@@ -176,6 +323,7 @@ pub fn remove_library(
         let mut config = state.lock().unwrap();
         let before_count = config.libraries.len();
         config.libraries.retain(|lib| lib.id != id);
+        clear_library_cache_files(&id)?;
 
         if config.active_library_id.as_ref() == Some(&id) {
             config.active_library_id = config.libraries.first().map(|lib| lib.id.clone());
@@ -193,6 +341,122 @@ pub fn remove_library(
     }
 
     result.map(|_| ())
+}
+
+#[tauri::command]
+pub fn prepare_book_source(
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+    format: String,
+) -> Result<PreparedBookSource, AppError> {
+    info!(
+        "Start to prepare book source. library id: {:?}, book id: {}, format: \"{}\"",
+        library_id, book_id, format
+    );
+    let result = (|| {
+        ensure_reader_cache_dirs()?;
+        let config = state.lock().unwrap();
+        let lib_id = library_id
+            .clone()
+            .or_else(|| config.active_library_id.clone())
+            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+        let lib = config
+            .libraries
+            .iter()
+            .find(|lib| lib.id == lib_id)
+            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+        let conn =
+            calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
+        let file_path = calibre::get_book_file_path(&lib.path, &conn, book_id, &format)
+            .map_err(|e| AppError::Database(e.to_string()))?
+            .ok_or_else(|| AppError::NotFound(format!("书籍 {} 未找到格式 {}", book_id, format)))?;
+        let format_upper = format.to_uppercase();
+        if format_upper == "EPUB" || format_upper == "CBZ" {
+            let cache_key = build_archive_cache_key(&lib.id, book_id, &format_upper);
+            let extracted_dir = reader_cache_extracted_root().join(cache_key);
+            if extracted_dir.exists() {
+                fs::remove_dir_all(&extracted_dir)?;
+            }
+            fs::create_dir_all(&extracted_dir)?;
+            let entries = extract_zip_to_dir(&file_path, &extracted_dir)?;
+            return Ok(PreparedBookSource {
+                format: format_upper,
+                file_path: file_path.to_string_lossy().to_string(),
+                extracted_dir_path: Some(extracted_dir.to_string_lossy().to_string()),
+                extracted_entries: entries,
+            });
+        }
+        Ok(PreparedBookSource {
+            format: format_upper,
+            file_path: file_path.to_string_lossy().to_string(),
+            extracted_dir_path: None,
+            extracted_entries: Vec::new(),
+        })
+    })();
+    match &result {
+        Ok(source) => info!(
+            "Success to prepare book source. format: \"{}\", has extracted dir: {}, entries: {}",
+            source.format,
+            source.extracted_dir_path.is_some(),
+            source.extracted_entries.len()
+        ),
+        Err(err) => error!(
+            "Failed to prepare book source. library id: {:?}, book id: {}, format: \"{}\", error: {err}",
+            library_id, book_id, format
+        ),
+    }
+    result
+}
+
+#[tauri::command]
+pub fn get_cache_usage(state: State<'_, AppState>) -> Result<CacheUsageDto, AppError> {
+    let max_mb = {
+        let config = state.lock().unwrap();
+        config.reader_ui.cache.max_cache_size_mb
+    };
+    let files = collect_cache_files_sorted_oldest()?;
+    let total_bytes = files.iter().map(|(_, size, _)| *size).sum::<u64>();
+    Ok(CacheUsageDto {
+        total_bytes,
+        max_bytes: (max_mb.max(0) as u64) * 1024 * 1024,
+    })
+}
+
+#[tauri::command]
+pub fn clear_cache() -> Result<(), AppError> {
+    let root = reader_cache_root();
+    if root.exists() {
+        fs::remove_dir_all(&root)?;
+    }
+    ensure_reader_cache_dirs()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn enforce_cache_limit(state: State<'_, AppState>) -> Result<(), AppError> {
+    let max_bytes = {
+        let config = state.lock().unwrap();
+        (config.reader_ui.cache.max_cache_size_mb.max(0) as u64) * 1024 * 1024
+    };
+    if max_bytes == 0 {
+        return clear_cache();
+    }
+    let files = collect_cache_files_sorted_oldest()?;
+    let mut total_bytes = files.iter().map(|(_, size, _)| *size).sum::<u64>();
+    if total_bytes <= max_bytes {
+        return Ok(());
+    }
+    for (path, size, _) in files {
+        if total_bytes <= max_bytes {
+            break;
+        }
+        if path.exists() {
+            fs::remove_file(&path)?;
+            total_bytes = total_bytes.saturating_sub(size);
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]

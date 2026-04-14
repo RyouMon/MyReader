@@ -3,8 +3,14 @@ import { useMemo, useState } from "react";
 
 import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
+import {
+  clearAllReaderCaches,
+  enforceReaderCacheLimit,
+  getReaderCacheUsageSummary,
+} from "@/src/data/cache";
 
 import { Screen, SectionCard, SectionHeading, SettingsRow, Sheet, SheetOption } from "../components";
+import { useAppStore } from "../store/app-store";
 import { useLibraryStore } from "../store/library-store";
 
 const themeModes = ["跟随设备", "浅色", "深色"];
@@ -15,7 +21,14 @@ export default function SettingsScreen() {
   const palette = useThemePalette();
   const { mode, setMode } = useTheme();
   const { libraries, activeLibraryId } = useLibraryStore();
+  const cacheSettings = useAppStore((s) => s.settings.cache);
+  const patchCacheSettings = useAppStore((s) => s.patchCacheSettings);
   const [themeSheetOpen, setThemeSheetOpen] = useState(false);
+  const [cacheLimitSheetOpen, setCacheLimitSheetOpen] = useState(false);
+  const [cacheUsageLabel, setCacheUsageLabel] = useState(() => {
+    const usage = getReaderCacheUsageSummary();
+    return `${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`;
+  });
   const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
 
   return (
@@ -46,7 +59,22 @@ export default function SettingsScreen() {
           <SectionCard>
             <SettingsRow title="深色模式" detail={themeMode} onPress={() => setThemeSheetOpen(true)} />
             <SettingsRow title="同步阅读进度" detail="在已连接设备间保留最近位置" />
-            <SettingsRow title="阅读器样式" detail="字体、字号、页边距" isLast />
+            <SettingsRow title="阅读器样式" detail="字体、字号、页边距" />
+            <SettingsRow
+              title="缓存最大容量"
+              detail={`${cacheSettings.maxCacheSizeMB} MB`}
+              onPress={() => setCacheLimitSheetOpen(true)}
+            />
+            <SettingsRow
+              title="全部清理缓存"
+              detail={`当前占用 ${cacheUsageLabel}`}
+              onPress={() => {
+                clearAllReaderCaches();
+                const usage = getReaderCacheUsageSummary();
+                setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
+              }}
+              isLast
+            />
           </SectionCard>
         </View>
         <View className="gap-3">
@@ -75,6 +103,29 @@ export default function SettingsScreen() {
                 onPress={() => {
                   setMode(themeModeMap[nextMode]);
                   setThemeSheetOpen(false);
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      </Sheet>
+      <Sheet open={cacheLimitSheetOpen} onClose={() => setCacheLimitSheetOpen(false)}>
+        <View className="gap-2">
+          <Text className="px-1 text-xs font-semibold uppercase tracking-[0.4px]" style={{ color: palette.textMuted }}>
+            缓存最大容量
+          </Text>
+          <View className="gap-1">
+            {[512, 1024, 2048, 4096, 8192].map((size) => (
+              <SheetOption
+                key={size}
+                label={`${size} MB`}
+                active={cacheSettings.maxCacheSizeMB === size}
+                onPress={() => {
+                  patchCacheSettings({ maxCacheSizeMB: size });
+                  enforceReaderCacheLimit(size);
+                  const usage = getReaderCacheUsageSummary();
+                  setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
+                  setCacheLimitSheetOpen(false);
                 }}
               />
             ))}

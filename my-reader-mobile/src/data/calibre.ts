@@ -9,6 +9,10 @@ import {
   withSecurityScopedLibraryAccess,
 } from "./security-scoped-bookmarks";
 import type { BookItem, MobileLibrary } from "./types";
+import {
+  READER_LOCAL_COPY_CACHE_DIR,
+  ensureReaderCacheDirectories,
+} from "./cache";
 
 type PickedDirectoryLike = {
   uri: string;
@@ -475,10 +479,8 @@ export async function materializeBookFileToCache(
   cachePrefix = "local-book"
 ): Promise<FSFile> {
   const { rowPath, fileName, segments } = await lookupBookFileLocation(library, calibreBookId, format);
-  const cacheDir = new Directory(Paths.cache, "book-files");
-  if (!cacheDir.exists) {
-    cacheDir.create({ idempotent: true, intermediates: true });
-  }
+  ensureReaderCacheDirectories();
+  const cacheDir = READER_LOCAL_COPY_CACHE_DIR;
 
   const ext = `.${format.toLowerCase()}`;
   const rand = Math.random().toString(36).slice(2, 10);
@@ -545,6 +547,21 @@ export async function materializeBookFileToCache(
     cacheFile: describeFileForLog(cachedFile),
   });
   return cachedFile;
+}
+
+/**
+ * Removes cached local-copy files related to a library.
+ */
+export function clearLocalCopyCacheByLibrary(libraryId: string): void {
+  ensureReaderCacheDirectories();
+  if (!READER_LOCAL_COPY_CACHE_DIR.exists) return;
+  const prefix = `-${libraryId}-`;
+  for (const entry of READER_LOCAL_COPY_CACHE_DIR.list()) {
+    if (!(entry instanceof FSFile)) continue;
+    if (entry.name?.includes(prefix)) {
+      entry.delete();
+    }
+  }
 }
 
 export async function resolveBookFile(

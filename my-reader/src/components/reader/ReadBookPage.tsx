@@ -7,13 +7,12 @@ import {
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { useLibrary } from "@/stores/libraryStore"
 import { useNavigate } from "@tanstack/react-router"
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useBookReader } from "my-reader-tools/hooks/useReader"
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import {
-  buildBookFileUrl,
   resolveReadFormat,
 } from "my-reader-tools/rendition/utils"
 import type { BookDetail } from "my-reader-tools/types/book"
@@ -35,7 +34,11 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const [format, setFormat] = useState("")
   /** �?�??读�?度�?并就绪�?�?�交�? `useBookReader`�?避�?��??渲�??第 1 章�?�续读跳转 */
   const [bookPayload, setBookPayload] = useState<{
-    buffer: ArrayBuffer
+    source: {
+      filePath: string
+      extractedDirPath?: string
+      extractedEntries?: string[]
+    }
     initialOpenAnchor: BookAnchor | null
   } | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -112,7 +115,6 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         }
         setFormat(fmt)
 
-        const url = buildBookFileUrl(activeLibraryId, Number(bookId), fmt)
         const progressP: Promise<ReadingProgressDto | null> =
           isTauri() && activeLibraryId
             ? invoke<ReadingProgressDto | null>("get_reading_progress", {
@@ -122,28 +124,34 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
               }).catch(() => null)
             : Promise.resolve(null)
 
-        const resp = await fetch(url)
-        if (!resp.ok) {
-          console.error(
-            `Failed to fetch book file. url: "${url}", http status: ${resp.status}`,
-          )
-          setFetchError(`�?��?�?�载书籍�??件: HTTP ${resp.status}`)
-          return
-        }
-        if (cancelled) return
-
-        const [row, arrayBuffer] = await Promise.all([
+        const [row, preparedSource] = await Promise.all([
           progressP,
-          resp.arrayBuffer(),
+          invoke<{
+            format: string
+            filePath: string
+            extractedDirPath: string | null
+            extractedEntries: string[]
+          }>("prepare_book_source", {
+            libraryId: activeLibraryId,
+            bookId: Number(bookId),
+            format: fmt,
+          }),
         ])
         if (cancelled) return
 
+        const source = {
+          filePath: convertFileSrc(preparedSource.filePath),
+          extractedDirPath: preparedSource.extractedDirPath
+            ? convertFileSrc(preparedSource.extractedDirPath)
+            : undefined,
+          extractedEntries: preparedSource.extractedEntries ?? [],
+        }
         setBookPayload({
-          buffer: arrayBuffer,
+          source,
           initialOpenAnchor: row?.anchor ?? null,
         })
         console.info(
-          `Success to load book file for reading. format: "${fmt}", bytes: ${arrayBuffer.byteLength}, has initial anchor: ${Boolean(row?.anchor)}`,
+          `Success to prepare book file source for reading. format: "${fmt}", extracted entries: ${source.extractedEntries.length}, has initial anchor: ${Boolean(row?.anchor)}`,
         )
       } catch (e) {
         if (!cancelled) {
@@ -163,7 +171,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])
 
   const reader = useBookReader({
-    buffer: bookPayload?.buffer ?? null,
+    source: bookPayload?.source ?? null,
     format,
     initialOpenAnchor: bookPayload?.initialOpenAnchor ?? null,
   })

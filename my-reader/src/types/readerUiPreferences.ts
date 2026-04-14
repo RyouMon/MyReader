@@ -11,4 +11,8 @@ export interface ReaderUiPreferencesPayload {
       ttsSpeed: number
     }
   }
+  cache: {
+    maxCacheSizeMB: number
+    autoCleanupOnLaunch: boolean
+  }
 }

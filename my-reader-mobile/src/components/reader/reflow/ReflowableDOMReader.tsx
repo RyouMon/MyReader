@@ -72,7 +72,7 @@ const ERROR_TITLE_FONT_WEIGHT = 700;
 const ERROR_TEXT_LINE_HEIGHT = 1.6;
 
 type ReflowableDOMReaderProps = {
-  bookBase64: string | null;
+  extractedDirPath: string | null;
   format: string;
   initialPage?: number;
   onStateChange: (state: ReaderState) => Promise<void>;
@@ -94,6 +94,11 @@ type ReflowableDOMReaderProps = {
   contentInsetTop?: number;
   /** 分页模式正文区下边缘留白（与底栏占位一致）。 */
   contentInsetBottom?: number;
+  /**
+   * 原生侧用 expo-file-system 读取本地 `file:` URL，返回 Base64（供 DOM 桥接序列化）。
+   * EPUB 解压目录在 WebView 内无法用 fetch/XHR 读 `file:` 时必须提供。
+   */
+  readBinaryFromFileUrl?: (url: string) => Promise<string>;
   dom?: import("expo/dom").DOMProps;
 };
 
@@ -111,7 +116,7 @@ type ReaderTouchSnapshot = {
   timestampMs: number;
 };
 
-function base64ToArrayBuffer(b64: string): ArrayBuffer | null {
+function base64ToUint8Array(b64: string): Uint8Array {
   try {
     const binaryStr = atob(b64);
     const len = binaryStr.length;
@@ -119,9 +124,9 @@ function base64ToArrayBuffer(b64: string): ArrayBuffer | null {
     for (let i = 0; i < len; i++) {
       bytes[i] = binaryStr.charCodeAt(i);
     }
-    return bytes.buffer;
+    return bytes;
   } catch {
-    return null;
+    throw new Error("Invalid base64 from native file reader");
   }
 }
 
@@ -354,7 +359,7 @@ function toTextChapterData(chapter: RenderedChapter): TextChapterData {
 }
 
 export default function ReflowableDOMReader({
-  bookBase64,
+  extractedDirPath,
   format,
   initialPage,
   onStateChange,
@@ -371,6 +376,7 @@ export default function ReflowableDOMReader({
   brightness = DEFAULT_BRIGHTNESS,
   contentInsetTop = DEFAULT_CONTENT_INSET_TOP,
   contentInsetBottom = DEFAULT_CONTENT_INSET_BOTTOM,
+  readBinaryFromFileUrl,
   dom,
 }: ReflowableDOMReaderProps) {
   void onRequestClose;
@@ -409,10 +415,23 @@ export default function ReflowableDOMReader({
   const [pagination, setPagination] = useState<TextChapterPaginationResult | null>(null);
   const [layoutError, setLayoutError] = useState<string | null>(null);
 
-  const buffer = useMemo((): ArrayBuffer | null => {
-    if (!bookBase64) return null;
-    return base64ToArrayBuffer(bookBase64);
-  }, [bookBase64]);
+  useLayoutEffect(() => {
+    if (!readBinaryFromFileUrl) {
+      return;
+    }
+    window.__myReaderToolsReadBinary = async (url: string) => {
+      const b64 = await readBinaryFromFileUrl(url);
+      return base64ToUint8Array(b64);
+    };
+    return () => {
+      delete window.__myReaderToolsReadBinary;
+    };
+  }, [readBinaryFromFileUrl]);
+
+  const source = useMemo(() => {
+    if (!extractedDirPath) return null;
+    return { extractedDirPath };
+  }, [extractedDirPath]);
 
   const initialOpenAnchor = useMemo((): BookAnchor | null => {
     if (initialPage != null && initialPage > 0) {
@@ -437,7 +456,7 @@ export default function ReflowableDOMReader({
     notifyInitialViewCommitted,
     progress: readerProgress,
   } = useBookReader({
-    buffer,
+    source,
     format: format || "",
     initialOpenAnchor,
   });
@@ -494,16 +513,16 @@ export default function ReflowableDOMReader({
   renderPaginatedContentRef.current = renderPaginatedContent;
 
   useEffect(() => {
-    if (!bookBase64 || !format) return;
+    if (!extractedDirPath || !format) return;
     void onDomProbeRef.current({
       stage: "reflow-init-start",
       detail: {
         format,
         initialPage: initialPage ?? DOM_PROBE_INITIAL_PAGE_FALLBACK,
-        base64Length: bookBase64.length,
+        extractedDirPath,
       },
     });
-  }, [bookBase64, format, initialPage]);
+  }, [extractedDirPath, format, initialPage]);
 
   useEffect(() => {
     if (!toc.length) return;
@@ -887,3 +906,9 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: "pre-wrap",
   },
 };
+
+declare global {
+  interface Window {
+    __myReaderToolsReadBinary?: (url: string) => Promise<Uint8Array>;
+  }
+}

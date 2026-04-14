@@ -15,8 +15,6 @@ export type FixedReaderSurfaceProps = {
   archiveUri?: string | null;
   archiveFingerprint?: string | null;
   archiveOwned?: boolean;
-  /** @deprecated PDF 使用 {@link pdfLocalUri}，不再传 base64 */
-  bookBase64?: string;
   bookBytes?: Uint8Array;
   bookId?: number;
   format: string;

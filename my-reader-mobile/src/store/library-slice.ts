@@ -1,11 +1,13 @@
 import { Alert } from "react-native";
 
 import {
+  clearLocalCopyCacheByLibrary,
   ensureLibraryMetadataCached,
   pickCalibreLibrary,
   readBookCountFromLibrary,
   readBooksFromLibrary,
 } from "../data/calibre";
+import { clearAllReaderCaches } from "../data/cache";
 import type { MobileLibrary, WebDavDataSource } from "../data/types";
 import { readBooksFromWebDavLibrary } from "../data/webdav";
 
@@ -177,6 +179,8 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
       activeLibraryId: nextActiveLibraryId,
       error: null,
     });
+    clearLocalCopyCacheByLibrary(id);
+    clearAllReaderCaches();
 
     await get().refreshBooks();
   },

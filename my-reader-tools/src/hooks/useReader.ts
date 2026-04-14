@@ -4,6 +4,7 @@ import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
 import type { FixedViewportState } from "my-reader-tools/layout-engines/fixed"
 import { BookReader } from "my-reader-tools/rendition"
 import type {
+  BookSource,
   ChapterData,
   LayoutConfig,
   LayoutMode,
@@ -14,12 +15,12 @@ import type {
 } from "my-reader-tools/rendition"
 
 export interface UseReaderOptions {
-  /** Raw book file bytes — pass `null` while still loading. */
-  buffer: ArrayBuffer | null
+  /** Path-first book source (`filePath` / `extractedDirPath` / `extractedEntries`). */
+  source?: BookSource | null
   /** Book format, e.g. `"EPUB"`, `"CBZ"`, `"PDF"`. */
   format: string
   /**
-   * 首次 `init` 时应用的锚点（与 `buffer` 同批传入），首屏 layout 即对应该位置。
+   * 首次 `init` 时应用的锚点，首屏 layout 即对应该位置。
    * `null` 表示无已存进度，从第 1 章开头打开。
    */
   initialOpenAnchor?: BookAnchor | null
@@ -139,7 +140,7 @@ export interface UseReaderReturn {
  * headless reader instance and exposes reactive state + actions.
  */
 export function useBookReader({
-  buffer,
+  source = null,
   format,
   initialOpenAnchor = null,
 }: UseReaderOptions): UseReaderReturn {
@@ -199,7 +200,8 @@ export function useBookReader({
   }, [])
 
   useEffect(() => {
-    if (!buffer) return
+    if (!source) return
+    const sourceForInit: BookSource = source
 
     const core = new BookReader()
     coreRef.current = core
@@ -210,7 +212,7 @@ export function useBookReader({
         setLoading(true)
         setError(null)
 
-        const book = await core.init(buffer!, format, {
+        const book = await core.init(sourceForInit, format, {
           initialOpenAnchor: initialOpenAnchor ?? undefined,
         })
         if (cancelled) return
@@ -252,7 +254,7 @@ export function useBookReader({
         fraction: 0,
       })
     }
-  }, [buffer, format, initialOpenAnchor, syncNavigationState])
+  }, [source, format, initialOpenAnchor, syncNavigationState])
 
   const gotoChapter = useCallback(
     async (index: number) => {

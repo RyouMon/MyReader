@@ -1,5 +1,3 @@
-import { unzipSync } from "fflate"
-
 import {
   EPUB,
   type EpubBookShape,
@@ -14,6 +12,7 @@ import {
   stripChapterHrefHash,
 } from "../internalTextLink"
 import type {
+  BookSource,
   BookMetadata,
   ChapterInfo,
   IParser,
@@ -21,12 +20,13 @@ import type {
   TextChapterData,
   TocItem,
 } from "../types"
+import { fetchBinary, fetchText, resolveRelativePath } from "./pathIO"
 
 /**
  * EPUB parser implemented on top of `foliate-js/epub.js`.
  */
 export class EpubParser implements IParser {
-  private files = new Map<string, Uint8Array>()
+  private extractedDirPath: string | null = null
   private foliateBook: EpubBookShape | null = null
   private chapterIndex: ChapterInfo[] = []
   private chapterCache = new Map<number, TextChapterData>()
@@ -37,15 +37,20 @@ export class EpubParser implements IParser {
   /**
    * Parses EPUB archive and builds metadata/toc/chapter descriptors.
    */
-  async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
+  async parse(source: BookSource): Promise<ParsedBook> {
     this.resetState()
-    this.files = toFileMap(unzipSync(new Uint8Array(buffer)))
+    if (!source.extractedDirPath) {
+      throw new Error(
+        "EPUB parser requires `extractedDirPath`. Please use native unzip before opening.",
+      )
+    }
+    this.extractedDirPath = source.extractedDirPath
 
     const foliate = new EPUB({
       loadText: async (uri: string) => this.readTextFile(uri),
       loadBlob: async (uri: string) =>
-        this.readBinaryFile(uri) ?? new Uint8Array(),
-      getSize: (uri: string) => this.readBinaryFile(uri)?.byteLength ?? 0,
+        (await this.readBinaryFile(uri)) ?? new Uint8Array(),
+      getSize: () => 0,
       sha1: async (data: ArrayBuffer) => computeSha1Hex(data),
     })
     await foliate.init()
@@ -112,8 +117,8 @@ export class EpubParser implements IParser {
 
     const doc = await section.createDocument()
     const chapterDir = chapterPathDirname(info.href)
-    const cssText = this.collectCss(doc, chapterDir)
-    this.resolveImages(doc, chapterDir)
+    const cssText = await this.collectCss(doc, chapterDir)
+    await this.resolveImages(doc, chapterDir)
     const bodyPlain = doc.body?.textContent ?? ""
     const text = bodyPlain.trim()
     const bodyHtml = doc.body?.innerHTML || ""
@@ -151,7 +156,7 @@ export class EpubParser implements IParser {
   }
 
   private resetState(): void {
-    this.files.clear()
+    this.extractedDirPath = null
     this.foliateBook = null
     this.chapterIndex = []
     this.chapterCache.clear()
@@ -159,18 +164,31 @@ export class EpubParser implements IParser {
     this.titleByHref.clear()
   }
 
-  private readTextFile(uri: string): string {
-    const data = this.readBinaryFile(uri)
-    if (!data) return ""
-    return new TextDecoder("utf-8").decode(data)
+  private async readTextFile(uri: string): Promise<string> {
+    if (!this.extractedDirPath) return ""
+    const path = resolveRelativePath(this.extractedDirPath, normalizeChapterPath(uri))
+    try {
+      return await fetchText(path)
+    } catch {
+      return ""
+    }
   }
 
-  private readBinaryFile(uri: string): Uint8Array | null {
-    const hit = this.files.get(normalizeChapterPath(uri))
-    if (hit) return hit
-    const decoded = decodeURIComponent(uri)
-    if (decoded !== uri)
-      return this.files.get(normalizeChapterPath(decoded)) ?? null
+  private async readBinaryFile(uri: string): Promise<Uint8Array | null> {
+    if (!this.extractedDirPath) return null
+    const normalized = normalizeChapterPath(uri)
+    const candidates =
+      decodeURIComponent(uri) !== uri
+        ? [normalized, normalizeChapterPath(decodeURIComponent(uri))]
+        : [normalized]
+    for (const candidate of candidates) {
+      const path = resolveRelativePath(this.extractedDirPath, candidate)
+      try {
+        return await fetchBinary(path)
+      } catch {
+        // continue probing
+      }
+    }
     return null
   }
 
@@ -245,10 +263,10 @@ export class EpubParser implements IParser {
     return -1
   }
 
-  private collectCss(doc: Document, chapterDir: string): string {
+  private async collectCss(doc: Document, chapterDir: string): Promise<string> {
     const parts: string[] = []
     for (const style of Array.from(doc.querySelectorAll("style"))) {
-      const css = this.resolveCssUrls(style.textContent || "", chapterDir)
+      const css = await this.resolveCssUrls(style.textContent || "", chapterDir)
       if (css) parts.push(css)
       style.remove()
     }
@@ -258,10 +276,10 @@ export class EpubParser implements IParser {
       const href = link.getAttribute("href")
       if (!href) continue
       const cssPath = resolveChapterRelativePath(chapterDir, href)
-      const cssData = this.readBinaryFile(cssPath)
+      const cssData = await this.readBinaryFile(cssPath)
       if (cssData) {
         const cssDir = chapterPathDirname(cssPath)
-        const css = this.resolveCssUrls(
+        const css = await this.resolveCssUrls(
           new TextDecoder("utf-8").decode(cssData),
           cssDir,
         )
@@ -272,11 +290,11 @@ export class EpubParser implements IParser {
     return parts.join("\n")
   }
 
-  private resolveImages(doc: Document, chapterDir: string): void {
+  private async resolveImages(doc: Document, chapterDir: string): Promise<void> {
     for (const img of Array.from(doc.querySelectorAll("img"))) {
       const src = img.getAttribute("src")
       if (!src || isExternalUrl(src)) continue
-      const blobUrl = this.resourceBlobUrl(
+      const blobUrl = await this.resourceBlobUrl(
         resolveChapterRelativePath(chapterDir, src),
       )
       if (blobUrl) img.setAttribute("src", blobUrl)
@@ -286,7 +304,7 @@ export class EpubParser implements IParser {
         svgImage.getAttributeNS("http://www.w3.org/1999/xlink", "href") ||
         svgImage.getAttribute("href")
       if (!href || isExternalUrl(href)) continue
-      const blobUrl = this.resourceBlobUrl(
+      const blobUrl = await this.resourceBlobUrl(
         resolveChapterRelativePath(chapterDir, href),
       )
       if (blobUrl) {
@@ -296,24 +314,27 @@ export class EpubParser implements IParser {
     }
   }
 
-  private resolveCssUrls(css: string, baseDir: string): string {
-    return css.replace(
-      /url\(\s*['"]?([^'")]+)['"]?\s*\)/g,
-      (match, url: string) => {
-        if (isExternalUrl(url)) return match
-        const resolved = this.resourceBlobUrl(
-          resolveChapterRelativePath(baseDir, url),
-        )
-        return resolved ? `url('${resolved}')` : match
-      },
-    )
+  private async resolveCssUrls(css: string, baseDir: string): Promise<string> {
+    const matches = Array.from(css.matchAll(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g))
+    if (matches.length === 0) return css
+    let out = css
+    for (const match of matches) {
+      const raw = match[1]
+      if (!raw || isExternalUrl(raw)) continue
+      const resolved = await this.resourceBlobUrl(
+        resolveChapterRelativePath(baseDir, raw),
+      )
+      if (!resolved) continue
+      out = out.replace(match[0], `url('${resolved}')`)
+    }
+    return out
   }
 
-  private resourceBlobUrl(path: string): string | null {
+  private async resourceBlobUrl(path: string): Promise<string | null> {
     const normalized = normalizeChapterPath(path)
     if (this.resourceCache.has(normalized))
       return this.resourceCache.get(normalized)!
-    const data = this.readBinaryFile(normalized)
+    const data = await this.readBinaryFile(normalized)
     if (!data) return null
     const url = URL.createObjectURL(
       new Blob([data.slice().buffer], { type: guessMediaType(normalized) }),
@@ -383,19 +404,6 @@ export class EpubParser implements IParser {
     if (typeof idx !== "number" || idx < 0) return null
     return { chapterIndex: idx, fragmentId: fragment }
   }
-}
-
-/**
- * Converts ZIP entry object to normalized path map.
- */
-function toFileMap(
-  entries: Record<string, Uint8Array>,
-): Map<string, Uint8Array> {
-  const out = new Map<string, Uint8Array>()
-  for (const [path, data] of Object.entries(entries)) {
-    out.set(normalizeChapterPath(path), data)
-  }
-  return out
 }
 
 /**

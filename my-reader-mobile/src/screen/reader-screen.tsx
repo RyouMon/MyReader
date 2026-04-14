@@ -1,4 +1,5 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { resolveReadFormat } from "my-reader-tools/rendition/utils";
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
@@ -12,9 +13,11 @@ import {
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { readBookDetailFromMetadata, materializeBookFileToCache, readBookFileBytes } from "@/src/data/calibre";
+import { readBookDetailFromMetadata, materializeBookFileToCache } from "@/src/data/calibre";
+import { extractEpubToCache } from "@/src/data/native-epub-cache";
+import { enforceReaderCacheLimit } from "@/src/data/cache";
 import type { WebDavDataSource } from "@/src/data/types";
-import { downloadWebDavBookFile, downloadWebDavBookFileBytes } from "@/src/data/webdav";
+import { downloadWebDavBookFile } from "@/src/data/webdav";
 import { useThemePalette } from "@/src/design/tokens";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
@@ -39,8 +42,6 @@ const OVERLAY_FADE_OUT_DURATION_MS = 200;
 const PAGINATE_CONTENT_INSET_TOP = 32;
 /** 分页模式底部额外留白（在安全区基础上叠加）。 */
 const PAGINATE_CONTENT_INSET_BOTTOM = 32;
-/** Base64 编码分块大小，防止一次性展开过大字符串。 */
-const BASE64_CHUNK_SIZE = 0x8000;
 /** 错误卡片水平内边距。 */
 const ERROR_SCREEN_HORIZONTAL_PADDING = 28;
 /** 错误卡片最大宽度。 */
@@ -101,8 +102,7 @@ type LoadState =
   | { status: "error"; message: string }
   | {
       status: "ready";
-      bookBase64: string | null;
-      bookBuffer: Uint8Array | null;
+      extractedEpubDirUri: string | null;
       /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
       pdfLocalUri: string | null;
       bookArchiveUri: string | null;
@@ -173,6 +173,7 @@ export default function ReaderScreen() {
 
     async function load() {
       try {
+        enforceReaderCacheLimit(settings.cache.maxCacheSizeMB);
         console.info("[mobile-reader] load:start", {
           id,
           formatParam,
@@ -235,10 +236,19 @@ export default function ReaderScreen() {
 
         const needsNativeComicPath = fmtUpper === "CBZ";
         const needsPdfNativePath = fmtUpper === "PDF";
+        const needsEpubExtract = fmtUpper === "EPUB";
 
         const localBookFile = !webDavSource && needsNativeComicPath
           ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
           : null;
+        const localEpubFile =
+          needsEpubExtract && !webDavSource
+            ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-epub")
+            : null;
+        const webDavEpubFile =
+          needsEpubExtract && webDavSource
+            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+            : null;
         const webDavBookFile = webDavSource && needsNativeComicPath
           ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
           : null;
@@ -249,28 +259,30 @@ export default function ReaderScreen() {
             : await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-pdf")
           : null;
 
-        const bytes = needsNativeComicPath || needsPdfNativePath
-          ? null
-          : webDavSource
-            ? await downloadWebDavBookFileBytes(currentLibrary, webDavSource, calibreId, fmt)
-            : await readBookFileBytes(currentLibrary, calibreId, fmt);
+        const epubArchiveFile = localEpubFile ?? webDavEpubFile;
+
+        const extractedEpub =
+          epubArchiveFile && needsEpubExtract
+            ? await extractEpubToCache({
+                bookId: calibreId,
+                format: fmtUpper,
+                archiveUri: epubArchiveFile.uri,
+                fingerprint: epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`,
+              })
+            : null;
         if (cancelled) return;
 
         console.info("[mobile-reader] load:file-ready", {
           calibreId,
           format: fmtUpper,
-          byteLength: bytes?.byteLength ?? null,
           archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
+          extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
           sourceType: webDavSource ? "webdav" : "local",
         });
-
-        const base64 = bytes ? uint8ArrayToBase64(bytes) : null;
 
         console.info("[mobile-reader] load:reader-input-ready", {
           calibreId,
           format: fmtUpper,
-          hasBase64: Boolean(base64),
-          base64Length: base64?.length ?? 0,
           archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
           layoutMode: detailLayoutMode,
           renderer:
@@ -286,12 +298,13 @@ export default function ReaderScreen() {
           : (localBookFile ?? webDavBookFile);
         const bookArchiveFingerprint = archiveFile
           ? `${calibreId}-${fmtUpper}-${archiveFile.md5 ?? `sz${archiveFile.size ?? 0}`}`
-          : `${calibreId}-${fmtUpper}-${bytes?.byteLength ?? 0}`;
+          : epubArchiveFile
+            ? `${calibreId}-${fmtUpper}-${epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`}`
+            : `${calibreId}-${fmtUpper}-nohash`;
 
         setLoadState({
           status: "ready",
-          bookBase64: base64,
-          bookBuffer: bytes,
+          extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
           pdfLocalUri: needsPdfNativePath && pdfLocalFile ? pdfLocalFile.uri : null,
           bookArchiveUri: archiveFile?.uri ?? null,
           bookArchiveFingerprint,
@@ -330,7 +343,7 @@ export default function ReaderScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, activeLibrary, formatParam, webDavSource]);
+  }, [id, activeLibrary, formatParam, webDavSource, settings.cache.maxCacheSizeMB]);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
     console.info("[mobile-reader] state-change", state);
@@ -349,6 +362,17 @@ export default function ReaderScreen() {
     if (router.canGoBack()) {
       router.back();
     }
+  }, []);
+
+  /** DOM 阅读器内 `fetch(file:)` 不可用，经 Expo DOM 桥接用原生读文件（返回 Base64）。 */
+  const readBinaryFromFileUrl = useCallback(async (url: string): Promise<string> => {
+    const raw = url.trim();
+    const uri = raw.startsWith("file:")
+      ? raw
+      : raw.startsWith("/")
+        ? `file://${raw}`
+        : `file:///${raw.replace(/\\/g, "/")}`;
+    return readAsStringAsync(uri, { encoding: EncodingType.Base64 });
   }, []);
 
   const handleBack = useCallback(() => {
@@ -464,7 +488,7 @@ export default function ReaderScreen() {
       <View style={styles.readerSurface}>
         {isReflowSurface ? (
           <ReflowableDOMReader
-            bookBase64={loadState.bookBase64}
+            extractedDirPath={loadState.extractedEpubDirUri}
             format={loadState.format}
             initialPage={loadState.initialPage}
             onStateChange={handleStateChange}
@@ -483,6 +507,9 @@ export default function ReaderScreen() {
             brightness={reflowSettings.brightness}
             contentInsetTop={paginateContentInsetTop}
             contentInsetBottom={paginateContentInsetBottom}
+            readBinaryFromFileUrl={
+              loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
+            }
             dom={{
               style: { flex: 1 },
               scrollEnabled: reflowSettings.readingLayout === "scroll",
@@ -493,7 +520,6 @@ export default function ReaderScreen() {
             archiveUri={loadState.bookArchiveUri}
             archiveFingerprint={loadState.bookArchiveFingerprint}
             archiveOwned={loadState.bookArchiveOwned}
-            bookBytes={loadState.bookBuffer ?? undefined}
             pdfLocalUri={loadState.pdfLocalUri}
             bookId={loadState.bookId}
             format={loadState.format}
@@ -579,35 +605,6 @@ export default function ReaderScreen() {
       )}
     </View>
   );
-}
-
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  const chunkSize = BASE64_CHUNK_SIZE;
-  const chunks: string[] = [];
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const slice = bytes.subarray(i, i + chunkSize);
-    chunks.push(String.fromCharCode.apply(null, slice as unknown as number[]));
-  }
-  const binary = chunks.join("");
-
-  if (typeof globalThis.btoa === "function") {
-    return globalThis.btoa(binary);
-  }
-
-  const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  let result = "";
-  const len = binary.length;
-  for (let i = 0; i < len; i += 3) {
-    const b1 = binary.charCodeAt(i);
-    const b2 = i + 1 < len ? binary.charCodeAt(i + 1) : 0;
-    const b3 = i + 2 < len ? binary.charCodeAt(i + 2) : 0;
-
-    result += base64Chars[(b1 >> 2) & 0x3f];
-    result += base64Chars[((b1 << 4) | (b2 >> 4)) & 0x3f];
-    result += i + 1 < len ? base64Chars[((b2 << 2) | (b3 >> 6)) & 0x3f] : "=";
-    result += i + 2 < len ? base64Chars[b3 & 0x3f] : "=";
-  }
-  return result;
 }
 
 function DomReaderFallback({

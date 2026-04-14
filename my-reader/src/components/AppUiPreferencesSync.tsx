@@ -31,6 +31,9 @@ export function AppUiPreferencesSync() {
         )
         if (cancelled) return
         hydrateReaderPreferences(prefs)
+        if (prefs.cache?.autoCleanupOnLaunch) {
+          await invoke("enforce_cache_limit")
+        }
         console.info(
           `Success to load reader UI preferences. version: ${prefs.version}`,
         )

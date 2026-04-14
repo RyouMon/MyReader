@@ -151,10 +151,12 @@ pub struct ReaderUiPreferences {
     pub fixed_layout: FixedLayoutSettingsDto,
     #[serde(default, alias = "reflow")]
     pub reflowable: ReflowableReaderPreferencesDto,
+    #[serde(default)]
+    pub cache: CachePreferencesDto,
 }
 
 fn default_version() -> u32 {
-    1
+    2
 }
 
 impl Default for ReaderUiPreferences {
@@ -163,6 +165,33 @@ impl Default for ReaderUiPreferences {
             version: default_version(),
             fixed_layout: FixedLayoutSettingsDto::default(),
             reflowable: ReflowableReaderPreferencesDto::default(),
+            cache: CachePreferencesDto::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CachePreferencesDto {
+    #[serde(default = "default_max_cache_size_mb")]
+    pub max_cache_size_mb: i64,
+    #[serde(default = "default_auto_cleanup_on_launch")]
+    pub auto_cleanup_on_launch: bool,
+}
+
+fn default_max_cache_size_mb() -> i64 {
+    2048
+}
+
+fn default_auto_cleanup_on_launch() -> bool {
+    true
+}
+
+impl Default for CachePreferencesDto {
+    fn default() -> Self {
+        Self {
+            max_cache_size_mb: default_max_cache_size_mb(),
+            auto_cleanup_on_launch: default_auto_cleanup_on_launch(),
         }
     }
 }

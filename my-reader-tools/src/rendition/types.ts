@@ -143,6 +143,19 @@ export interface ParsedBook {
   layoutMode: LayoutMode
 }
 
+/**
+ * Unified reader input source.
+ *
+ * - `filePath`: original book file path/URL (e.g. PDF read via pathIO).
+ * - `extractedDirPath`: native extracted directory root for ZIP-based formats (EPUB).
+ * - `extractedEntries`: optional extracted relative file list (used by CBZ manifest build).
+ */
+export interface BookSource {
+  filePath?: string
+  extractedDirPath?: string
+  extractedEntries?: string[]
+}
+
 /** Progress snapshot. */
 export interface ReaderProgress {
   chapterIndex: number
@@ -163,7 +176,7 @@ export interface ResolvedInternalTextLink {
 
 /** Format-specific parser contract. */
 export interface IParser {
-  parse(buffer: ArrayBuffer): Promise<ParsedBook>
+  parse(source: BookSource): Promise<ParsedBook>
   getChapter(index: number): Promise<ChapterData>
   destroy(): void
   /**

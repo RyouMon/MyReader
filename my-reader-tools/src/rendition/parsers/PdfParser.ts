@@ -1,6 +1,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist"
 
 import type {
+  BookSource,
   BookMetadata,
   ChapterInfo,
   ImageChapterData,
@@ -8,6 +9,7 @@ import type {
   ParsedBook,
   TocItem,
 } from "../types"
+import { fetchBinary } from "./pathIO"
 
 const RENDER_SCALE = 2
 
@@ -73,8 +75,12 @@ export class PdfParser implements IParser {
   private pdfDoc: PDFDocumentProxy | null = null
   private blobUrls: string[] = []
 
-  async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
+  async parse(source: BookSource): Promise<ParsedBook> {
     const pdfjs = await ensureWorker()
+    const buffer = await this.readBufferFromFilePath(source.filePath)
+    if (!buffer) {
+      throw new Error("PDF parser requires a readable `filePath` input source")
+    }
 
     console.info("[pdf-parser] parse:start", {
       byteLength: buffer.byteLength,
@@ -176,6 +182,17 @@ export class PdfParser implements IParser {
     this.blobUrls = []
     this.pdfDoc?.destroy()
     this.pdfDoc = null
+  }
+
+  /**
+   * Reads PDF bytes from file path/URL and returns an isolated ArrayBuffer.
+   */
+  private async readBufferFromFilePath(filePath?: string): Promise<ArrayBuffer | null> {
+    if (!filePath) return null
+    const bytes = await fetchBinary(filePath)
+    const out = new ArrayBuffer(bytes.byteLength)
+    new Uint8Array(out).set(bytes)
+    return out
   }
 
   private async extractMetadata(): Promise<BookMetadata> {

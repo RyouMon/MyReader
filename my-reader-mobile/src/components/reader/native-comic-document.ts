@@ -1,9 +1,10 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { Directory, File } from "expo-file-system";
 import { Platform } from "react-native";
 import { unzip } from "react-native-zip-archive";
 import { buildComicManifest, type ComicManifest } from "my-reader-tools/rendition";
+import { READER_EXTRACTED_CACHE_DIR, ensureReaderCacheDirectories } from "@/src/data/cache";
 
-const CBZ_CACHE_ROOT = new Directory(Paths.cache, "comic-reader");
+const CBZ_CACHE_ROOT = new Directory(READER_EXTRACTED_CACHE_DIR, "comic");
 const CBZ_ARCHIVE_DIR = new Directory(CBZ_CACHE_ROOT, "archives");
 const CBZ_EXTRACT_DIR = new Directory(CBZ_CACHE_ROOT, "extracted");
 
@@ -181,6 +182,7 @@ export async function prepareCbzDocument(input: {
   format: string;
   source: NativeComicSource;
 }): Promise<NativeComicDocument> {
+  ensureReaderCacheDirectories();
   ensureDir(CBZ_CACHE_ROOT);
   ensureDir(CBZ_EXTRACT_DIR);
 

@@ -15,6 +15,9 @@ export const BUILT_IN_LOCAL_SOURCE: LocalDataSource = {
 export const defaultSettings: ReaderSettings = {
   themeMode: "system",
   syncEnabled: true,
+  cache: {
+    maxCacheSizeMB: 2048,
+  },
   reflowable: {
     theme: "paper",
     fontSize: 18,

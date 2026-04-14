@@ -1,5 +1,6 @@
 import type { BookAnchor } from "../progress/BookAnchor"
 import type {
+  BookSource,
   LayoutMode,
   ParsedBook,
   ReaderProgress,
@@ -7,7 +8,7 @@ import type {
 } from "../rendition/types"
 
 export interface OpenBookRequest {
-  buffer: ArrayBuffer
+  source: BookSource
   format: string
   initialOpenAnchor?: BookAnchor | null
 }

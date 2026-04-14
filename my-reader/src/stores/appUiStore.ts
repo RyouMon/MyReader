@@ -17,6 +17,11 @@ export interface ReflowablePreferencesSlice {
   }
 }
 
+export interface CachePreferencesSlice {
+  maxCacheSizeMB: number
+  autoCleanupOnLaunch: boolean
+}
+
 const DEFAULT_REFLOWABLE: ReflowablePreferencesSlice = {
   settings: DEFAULT_SETTINGS,
   tts: { ttsConfigId: "default", ttsSpeed: 1 },
@@ -31,9 +36,10 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
     persistTimer = null
     const s = get()
     const payload: ReaderUiPreferencesPayload = {
-      version: 1,
+      version: 2,
       fixedLayout: s.fixedLayout,
       reflowable: s.reflowable,
+      cache: s.cache,
     }
     console.info(
       `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
@@ -52,6 +58,7 @@ export interface AppUiState {
   readerPreferencesHydrated: boolean
   fixedLayout: FixedLayoutSettings
   reflowable: ReflowablePreferencesSlice
+  cache: CachePreferencesSlice
   patchFixedLayout: (
     patch:
       | Partial<FixedLayoutSettings>
@@ -61,6 +68,7 @@ export interface AppUiState {
   patchReflowableTts: (
     patch: Partial<ReflowablePreferencesSlice["tts"]>,
   ) => void
+  patchCacheSettings: (patch: Partial<CachePreferencesSlice>) => void
   hydrateReaderPreferences: (data: ReaderUiPreferencesPayload) => void
   markReaderPreferencesHydrated: () => void
 }
@@ -71,6 +79,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   reflowable: {
     settings: { ...DEFAULT_REFLOWABLE.settings },
     tts: { ...DEFAULT_REFLOWABLE.tts },
+  },
+  cache: {
+    maxCacheSizeMB: 2048,
+    autoCleanupOnLaunch: true,
   },
   patchFixedLayout: (patch) => {
     set((state) => ({
@@ -99,12 +111,25 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
     }))
     schedulePersistReaderPreferences(get)
   },
+  patchCacheSettings: (patch) => {
+    set((state) => ({
+      cache: {
+        ...state.cache,
+        ...patch,
+      },
+    }))
+    schedulePersistReaderPreferences(get)
+  },
   hydrateReaderPreferences: (data) => {
     set({
       fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS, ...data.fixedLayout },
       reflowable: {
         settings: { ...DEFAULT_SETTINGS, ...data.reflowable.settings },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },
+      },
+      cache: {
+        maxCacheSizeMB: data.cache?.maxCacheSizeMB ?? 2048,
+        autoCleanupOnLaunch: data.cache?.autoCleanupOnLaunch ?? true,
       },
     })
   },

@@ -1,3 +1,4 @@
+mod asset_scope;
 mod calibre;
 mod commands;
 mod error;
@@ -72,6 +73,12 @@ pub fn run() {
                 config.active_library_id
             );
             *app.state::<AppState>().lock().unwrap() = config;
+            if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
+                error!(
+                    "Failed to extend asset protocol scope for reader file access. error: {}",
+                    e
+                );
+            }
             info!("Success to initialize application.");
             Ok(())
         })
@@ -218,6 +225,10 @@ pub fn run() {
             commands::get_book_cover,
             commands::get_reader_ui_preferences,
             commands::set_reader_ui_preferences,
+            commands::prepare_book_source,
+            commands::get_cache_usage,
+            commands::clear_cache,
+            commands::enforce_cache_limit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

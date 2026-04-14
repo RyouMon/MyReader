@@ -61,7 +61,8 @@ export class ReaderSession {
   async open(input: OpenBookRequest): Promise<OpenBookResult> {
     console.info("[reader-session] open:start", {
       format: input.format,
-      byteLength: input.buffer.byteLength,
+      filePath: input.source.filePath ?? null,
+      extractedDirPath: input.source.extractedDirPath ?? null,
       initialOpenAnchor: input.initialOpenAnchor ?? null,
     })
     this.close()
@@ -71,7 +72,7 @@ export class ReaderSession {
       format: input.format,
       parser: this.parserInstance.constructor.name,
     })
-    this.parsedBook = await this.parserInstance.parse(input.buffer)
+    this.parsedBook = await this.parserInstance.parse(input.source)
     this.readyState = true
 
     console.info("[reader-session] open:parsed", {

@@ -21,6 +21,7 @@ export type { ComicManifest, ComicPageEntry, ComicSpineItem } from "./parsers/co
 export type {
   BookMetadata,
   BookParser,
+  BookSource,
   ChapterData,
   ChapterInfo,
   LayoutMode,

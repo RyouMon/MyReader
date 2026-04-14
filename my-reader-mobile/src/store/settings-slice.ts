@@ -6,6 +6,7 @@ type SettingsSlice = Pick<
   | "settings"
   | "setThemeMode"
   | "setSyncEnabled"
+  | "patchCacheSettings"
   | "patchReflowableReaderSettings"
   | "patchFixedReaderSettings"
 >;
@@ -17,6 +18,17 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
   setSyncEnabled(enabled) {
     set((state) => ({ settings: { ...state.settings, syncEnabled: enabled } }));
+  },
+  patchCacheSettings(patch) {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        cache: {
+          ...state.settings.cache,
+          ...patch,
+        },
+      },
+    }));
   },
   patchReflowableReaderSettings(patch) {
     set((state) => ({

@@ -20,6 +20,7 @@ import {
 import type { FixedViewportState } from "../layout-engines/fixed/types"
 import { ReaderSession } from "../reader-core/ReaderSession"
 import type {
+  BookSource,
   BookMetadata,
   ChapterData,
   ChapterInfo,
@@ -194,21 +195,22 @@ export class BookReader {
   }
 
   /**
-   * Parse the book buffer and prepare for reading.
+   * Open the book from a path-based {@link BookSource} and prepare for reading.
    * 若提供 `initialOpenAnchor`，首章与首屏 layout 即对应该锚点（避免先渲染第 1 章再跳转）。
    */
   async init(
-    buffer: ArrayBuffer,
+    source: BookSource,
     format: string,
     options?: { initialOpenAnchor?: BookAnchor | null },
   ): Promise<ParsedBook> {
     console.info("[book-reader] init:start", {
       format,
-      byteLength: buffer.byteLength,
+      filePath: source.filePath ?? null,
+      extractedDirPath: source.extractedDirPath ?? null,
       initialOpenAnchor: options?.initialOpenAnchor ?? null,
     })
     const { book } = await this.session.open({
-      buffer,
+      source,
       format,
       initialOpenAnchor: options?.initialOpenAnchor ?? null,
     })

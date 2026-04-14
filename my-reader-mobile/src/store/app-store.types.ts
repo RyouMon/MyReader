@@ -27,6 +27,9 @@ export type FixedReaderSettings = {
 export type ReaderSettings = {
   themeMode: ThemeMode;
   syncEnabled: boolean;
+  cache: {
+    maxCacheSizeMB: number;
+  };
   reflowable: ReflowableReaderSettings;
   fixed: FixedReaderSettings;
 };
@@ -48,6 +51,7 @@ export type AppState = PersistedAppState & {
   initialize: () => Promise<void>;
   setThemeMode: (mode: ThemeMode) => void;
   setSyncEnabled: (enabled: boolean) => void;
+  patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
   patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
   patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
   clearError: () => void;

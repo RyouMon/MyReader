@@ -15,7 +15,8 @@ import { useFixedReaderGestures } from "./useFixedReaderGestures";
 export type MobileFixedNavigationMode = "horizontal" | "vertical";
 
 type MobileFixedReaderProps = {
-  bookBase64: string | null;
+  /** Local `file:` URI or path readable by my-reader-tools `pathIO` (e.g. PDF/CBZ file). */
+  bookFilePath: string | null;
   format: string;
   initialPage?: number;
   onStateChange: (state: ReaderState) => Promise<void>;
@@ -113,7 +114,7 @@ function FixedPageLoader({
 }
 
 export default function MobileFixedReader({
-  bookBase64,
+  bookFilePath,
   format,
   initialPage = 0,
   onStateChange,
@@ -161,32 +162,27 @@ export default function MobileFixedReader({
   );
 
   useEffect(() => {
-    if (!bookBase64 || !format) return;
+    if (!bookFilePath || !format) return;
 
     let cancelled = false;
     const reader = new BookReader();
     readerRef.current = reader;
 
     async function init() {
-      const raw = bookBase64;
-      if (!raw) return;
       try {
         setLoading(true);
         setError(null);
 
-        const binaryStr = globalThis.atob(raw);
-        const len = binaryStr.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const book = await reader.init(bytes.buffer as ArrayBuffer, format, {
-          initialOpenAnchor:
-            initialPage != null && initialPage > 0
-              ? { chapterIndex: initialPage }
-              : undefined,
-        });
+        const book = await reader.init(
+          { filePath: bookFilePath },
+          format,
+          {
+            initialOpenAnchor:
+              initialPage != null && initialPage > 0
+                ? { chapterIndex: initialPage }
+                : undefined,
+          },
+        );
         if (cancelled) return;
 
         readyRef.current = true;
@@ -226,7 +222,7 @@ export default function MobileFixedReader({
       readerRef.current = null;
       readyRef.current = false;
     };
-  }, [bookBase64, format, initialPage, reportState]);
+  }, [bookFilePath, format, initialPage, reportState]);
 
   const goToPage = useCallback(
     (index: number) => {
