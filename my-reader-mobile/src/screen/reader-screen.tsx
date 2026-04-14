@@ -21,7 +21,7 @@ import type { ReadingLayout } from "@/src/store/app-store.types";
 import { useLibraryStore } from "@/src/store/library-store";
 import { Animated, Pressable, Text, View } from "@/tw";
 
-/** 按格式懒加载，避免打开 PDF（expo/dom）时仍执行原生侧的 BookReader，进而误拉 Epub/foliate 等 DOM 依赖。 */
+/** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
 const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
 
@@ -103,6 +103,8 @@ type LoadState =
       status: "ready";
       bookBase64: string | null;
       bookBuffer: Uint8Array | null;
+      /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
+      pdfLocalUri: string | null;
       bookArchiveUri: string | null;
       bookArchiveFingerprint: string | null;
       bookArchiveOwned: boolean;
@@ -232,6 +234,8 @@ export default function ReaderScreen() {
           fmtUpper === "EPUB" ? "reflowable" : fmtUpper === "PDF" || fmtUpper === "CBZ" ? "fixedLayout" : "unknown";
 
         const needsNativeComicPath = fmtUpper === "CBZ";
+        const needsPdfNativePath = fmtUpper === "PDF";
+
         const localBookFile = !webDavSource && needsNativeComicPath
           ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
           : null;
@@ -239,7 +243,13 @@ export default function ReaderScreen() {
           ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
           : null;
 
-        const bytes = needsNativeComicPath
+        const pdfLocalFile = needsPdfNativePath
+          ? webDavSource
+            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+            : await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-pdf")
+          : null;
+
+        const bytes = needsNativeComicPath || needsPdfNativePath
           ? null
           : webDavSource
             ? await downloadWebDavBookFileBytes(currentLibrary, webDavSource, calibreId, fmt)
@@ -267,11 +277,13 @@ export default function ReaderScreen() {
             detailLayoutMode === "reflowable"
               ? "native-reflow-webview"
               : fmtUpper === "PDF"
-                ? "dom"
+                ? "native-pdf"
                 : "native-fixed",
         });
 
-        const archiveFile = localBookFile ?? webDavBookFile;
+        const archiveFile = needsPdfNativePath
+          ? pdfLocalFile
+          : (localBookFile ?? webDavBookFile);
         const bookArchiveFingerprint = archiveFile
           ? `${calibreId}-${fmtUpper}-${archiveFile.md5 ?? `sz${archiveFile.size ?? 0}`}`
           : `${calibreId}-${fmtUpper}-${bytes?.byteLength ?? 0}`;
@@ -280,9 +292,10 @@ export default function ReaderScreen() {
           status: "ready",
           bookBase64: base64,
           bookBuffer: bytes,
-          bookArchiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
+          pdfLocalUri: needsPdfNativePath && pdfLocalFile ? pdfLocalFile.uri : null,
+          bookArchiveUri: archiveFile?.uri ?? null,
           bookArchiveFingerprint,
-          bookArchiveOwned: Boolean(localBookFile) || Boolean(webDavBookFile),
+          bookArchiveOwned: Boolean(localBookFile) || Boolean(webDavBookFile) || Boolean(needsPdfNativePath && pdfLocalFile),
           bookId: calibreId,
           format: fmt,
           title: detail.title,
@@ -480,8 +493,8 @@ export default function ReaderScreen() {
             archiveUri={loadState.bookArchiveUri}
             archiveFingerprint={loadState.bookArchiveFingerprint}
             archiveOwned={loadState.bookArchiveOwned}
-            bookBase64={loadState.bookBase64 ?? undefined}
             bookBytes={loadState.bookBuffer ?? undefined}
+            pdfLocalUri={loadState.pdfLocalUri}
             bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}

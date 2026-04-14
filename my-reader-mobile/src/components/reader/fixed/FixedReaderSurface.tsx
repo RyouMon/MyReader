@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo } from "react";
 
 import type {
   FixedNavigationMode,
@@ -7,17 +7,21 @@ import type {
 } from "@/src/store/app-store.types";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
+import NativePdfReader from "./NativePdfReader";
+
 const NativeComicReader = lazy(async () => import("./NativeComicReader"));
-const FixedLayoutDOMReader = lazy(async () => import("./FixedLayoutDOMReader"));
 
 export type FixedReaderSurfaceProps = {
   archiveUri?: string | null;
   archiveFingerprint?: string | null;
   archiveOwned?: boolean;
+  /** @deprecated PDF 使用 {@link pdfLocalUri}，不再传 base64 */
   bookBase64?: string;
   bookBytes?: Uint8Array;
   bookId?: number;
   format: string;
+  /** 原生 PDF：`react-native-pdf` 使用的稳定本地 `file://` URI */
+  pdfLocalUri?: string | null;
   initialPage?: number;
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
@@ -47,10 +51,10 @@ export default function FixedReaderSurface({
   archiveUri,
   archiveFingerprint,
   archiveOwned,
-  bookBase64,
   bookBytes,
   bookId,
   format,
+  pdfLocalUri,
   initialPage,
   onStateChange,
   onTocReady,
@@ -67,20 +71,7 @@ export default function FixedReaderSurface({
   contentInsetTop = 0,
   contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
-  const [domProbeEvents, setDomProbeEvents] = useState<string[]>([]);
-
   const domFallback = useMemo(() => fallback, [fallback]);
-
-  const handleDomProbe = async (event: {
-    stage: string;
-    detail?: Record<string, unknown> | null;
-  }) => {
-    console.info("[fixed-reader-surface] dom-probe", event);
-    setDomProbeEvents((prev) => {
-      const next = [...prev, `${event.stage}:${JSON.stringify(event.detail ?? {})}`];
-      return next.slice(-20);
-    });
-  };
 
   if (isCbzFormat(format)) {
     return (
@@ -111,35 +102,31 @@ export default function FixedReaderSurface({
   }
 
   if (isPdfFormat(format)) {
+    if (!pdfLocalUri) {
+      console.error("[fixed-reader-surface] pdf-missing-local-uri", { format });
+      return null;
+    }
     return (
-      <Suspense fallback={domFallback}>
-        <FixedLayoutDOMReader
-          bookBase64={bookBase64}
-          format={format}
-          initialPage={initialPage}
-          onStateChange={onStateChange}
-          onTocReady={onTocReady}
-          onDomProbe={handleDomProbe}
-          onRequestClose={onRequestClose}
-          onToggleChrome={onToggleChrome}
-          gotoPageCommand={gotoPageCommand}
-          readingLayout={readingLayout}
-          theme={theme}
-          brightness={brightness}
-          zoomScale={zoomScale}
-          onZoomScaleChange={onZoomScaleChange}
-          dom={{
-            style: { flex: 1 },
-            scrollEnabled: readingLayout === "scroll",
-          }}
-        />
-      </Suspense>
+      <NativePdfReader
+        pdfLocalUri={pdfLocalUri}
+        initialPage={initialPage}
+        onStateChange={onStateChange}
+        onTocReady={onTocReady}
+        onRequestClose={onRequestClose}
+        onToggleChrome={onToggleChrome}
+        gotoPageCommand={gotoPageCommand}
+        readingLayout={readingLayout}
+        navigationMode={navigationMode}
+        theme={theme}
+        brightness={brightness}
+        zoomScale={zoomScale}
+        onZoomScaleChange={onZoomScaleChange}
+        contentInsetTop={contentInsetTop}
+        contentInsetBottom={contentInsetBottom}
+      />
     );
   }
 
-  console.warn("[fixed-reader-surface] unsupported-fixed-format", {
-    format,
-    domProbeEventsCount: domProbeEvents.length,
-  });
+  console.warn("[fixed-reader-surface] unsupported-fixed-format", { format });
   return null;
 }
