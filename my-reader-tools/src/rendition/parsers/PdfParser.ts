@@ -1,9 +1,4 @@
-import {
-  getDocument,
-  GlobalWorkerOptions,
-  version as pdfjsVersion,
-  type PDFDocumentProxy,
-} from "pdfjs-dist"
+import type { PDFDocumentProxy } from "pdfjs-dist"
 
 import type {
   BookMetadata,
@@ -21,6 +16,8 @@ type PdfWorkerOverride = {
 }
 
 const pdfWorkerOverride: PdfWorkerOverride = {}
+type PdfJsModule = typeof import("pdfjs-dist")
+let cachedPdfJsModule: Promise<PdfJsModule> | null = null
 
 export function configurePdfJsWorker(options: PdfWorkerOverride): void {
   pdfWorkerOverride.workerSrc = options.workerSrc
@@ -29,52 +26,40 @@ export function configurePdfJsWorker(options: PdfWorkerOverride): void {
 /** 与 package.json 中 pdfjs-dist 版本一致 */
 let workerConfigured = false
 
+/** 延迟加载 pdf.js，避免在未使用 PDF 时提前拉入依赖。 */
+async function loadPdfJsModule(): Promise<PdfJsModule> {
+  if (!cachedPdfJsModule) {
+    cachedPdfJsModule = import("pdfjs-dist")
+  }
+  return cachedPdfJsModule
+}
+
 /**
- * - 宿主应用可通过 `configurePdfJsWorker()` 注入最适合当前 bundler 的 worker URL。
- * - **Vite（桌面 my-reader）**：在应用侧用 `?url` 导入并注入，避免 shared package 里静态引用
- *   `?url` 导致 Metro 无法解析。
- * - **Metro / Expo（my-reader-mobile）**：继续使用 CDN worker。
- * - **兜底**：未注入时按运行时环境选择，避免白屏。
+ * 宿主应用可通过 `configurePdfJsWorker()` 注入最适合当前 bundler 的 worker URL。
+ * 未注入时默认使用与当前 pdfjs 版本匹配的 CDN worker。
  */
-function resolvePdfWorkerSrc(): string {
+function resolvePdfWorkerSrc(pdfjsVersion: string): string {
   if (pdfWorkerOverride.workerSrc && pdfWorkerOverride.workerSrc.length > 0) {
     return pdfWorkerOverride.workerSrc
   }
-  if (shouldUseCdnPdfWorker()) {
-    return cdnPdfWorkerSrc()
-  }
-  return cdnPdfWorkerSrc()
+  return cdnPdfWorkerSrc(pdfjsVersion)
 }
 
-function cdnPdfWorkerSrc(): string {
+function cdnPdfWorkerSrc(pdfjsVersion: string): string {
   return `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`
 }
 
-function isExpoMetroRuntime(): boolean {
-  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } })
-    .process
-  return Boolean(proc?.env?.EXPO_OS)
-}
-
-/**
- * Metro 不认 `?url`；部分 expo/dom WebView 里 `process.env.EXPO_OS` 可能未注入，再检测 `globalThis.expo`。
- * 成立则走 CDN worker（需联网）。桌面 Vite 仍用相对 URL 以支持离线。
- */
-function shouldUseCdnPdfWorker(): boolean {
-  if (isExpoMetroRuntime()) return true
-  const g = globalThis as { expo?: unknown }
-  return g.expo != null
-}
-
-function ensureWorker() {
-  if (workerConfigured) return
-  GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc()
+/** 初始化 pdf.js worker，并返回已加载模块。 */
+async function ensureWorker(): Promise<PdfJsModule> {
+  const pdfjs = await loadPdfJsModule()
+  if (workerConfigured) return pdfjs
+  pdfjs.GlobalWorkerOptions.workerSrc = resolvePdfWorkerSrc(pdfjs.version)
   console.info("[pdf-parser] worker-configured", {
-    workerSrc: GlobalWorkerOptions.workerSrc,
-    useCdnWorker: shouldUseCdnPdfWorker(),
-    pdfjsVersion,
+    workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
+    pdfjsVersion: pdfjs.version,
   })
   workerConfigured = true
+  return pdfjs
 }
 
 /**
@@ -89,14 +74,14 @@ export class PdfParser implements IParser {
   private blobUrls: string[] = []
 
   async parse(buffer: ArrayBuffer): Promise<ParsedBook> {
-    ensureWorker()
+    const pdfjs = await ensureWorker()
 
     console.info("[pdf-parser] parse:start", {
       byteLength: buffer.byteLength,
     })
 
     const data = new Uint8Array(buffer)
-    this.pdfDoc = await getDocument({ data }).promise
+    this.pdfDoc = await pdfjs.getDocument({ data }).promise
 
     console.info("[pdf-parser] parse:document-ready", {
       numPages: this.pdfDoc.numPages,
