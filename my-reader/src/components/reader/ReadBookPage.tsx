@@ -24,7 +24,7 @@ export type ReadBookPageProps = {
 }
 
 /**
- * �?��?�??读�?口�?�?�载书籍�??件�?�驱�?� useBookReader�?并�?��?��?�??式�?流式�??读�?��?�?��??换�??
+ * 阅读路由：加载书籍文件并驱动 useBookReader，按格式提供流式阅读与版式切换。
  */
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
@@ -32,7 +32,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
-  /** �?�??读�?度�?并就绪�?�?�交�? `useBookReader`�?避�?��??渲�??第 1 章�?�续读跳转 */
+  /** 阅读进度就绪后再交给 useBookReader，避免首屏渲染第 1 章与续读跳转冲突 */
   const [bookPayload, setBookPayload] = useState<{
     source: {
       filePath: string
@@ -82,7 +82,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no active library, book id: "${bookId}"`,
           )
-          setFetchError("�?��??�?�书�?�?请�??�?�主�?口�??�?�书�?�?�?��??读")
+          setFetchError("没有活动书库。请先在主窗口选择书库后再阅读")
         }
         return
       }
@@ -110,7 +110,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           console.error(
             `Failed to load book for reading. reason: no supported format, book id: "${bookId}", formats: "${detail.formats.join(", ")}"`,
           )
-          setFetchError("该书籍没�??可�??读�??格式�?�??要 EPUB�?�CBZ �?? PDF�?")
+          setFetchError("该书籍没有可阅读的格式。需要 EPUB、CBZ 或 PDF")
           return
         }
         setFormat(fmt)
@@ -196,21 +196,21 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [navigate, bookId])
 
   if (mainHandoff) {
-    return <ReadBookLoading message="正�?��??�?�??读�?口�?�" />
+    return <ReadBookLoading message="正在打开阅读窗口…" />
   }
 
   if (fetchError || reader.error) {
     return (
       <ReadBookError
         message={fetchError ?? reader.error ?? ""}
-        actionLabel={isTauri() ? "�?��?��?口" : "�?�??书籍详�??"}
+        actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
         onAction={handleErrorClose}
       />
     )
   }
 
   if (!reader.chapter) {
-    return <ReadBookLoading message="正�?��?�载书籍�??容�?�" />
+    return <ReadBookLoading message="正在加载书籍内容…" />
   }
 
   if (reader.layoutMode === "fixedLayout") {
@@ -221,7 +221,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 }
 
 /**
- * �?�屏�?中�?�载�?��?�?�??读�?��?�口�?��?占位�?�?��?�??�?��?�边距�?��?号�?�??
+ * 全屏居中加载态：阅读窗口打开前的占位，与阅读页边距、字号无关。
  */
 function ReadBookLoading({ message }: { message: string }) {
   return (
@@ -242,7 +242,7 @@ function ReadBookLoading({ message }: { message: string }) {
 }
 
 /**
- * �??件�??解�?�失败�?��??�?�屏�??误�?��??
+ * 书籍加载或解析失败时的全屏错误态。
  */
 function ReadBookError({
   message,
@@ -255,7 +255,7 @@ function ReadBookError({
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-background px-4 text-center">
-      <p className="font-medium text-destructive">�?�载失败</p>
+      <p className="font-medium text-destructive">加载失败</p>
       <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <button
         type="button"
