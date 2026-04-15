@@ -212,8 +212,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_libraries,
+            commands::list_data_sources,
+            commands::test_webdav_connection,
             commands::add_library,
+            commands::add_local_data_source,
+            commands::add_webdav_data_source,
             commands::remove_library,
+            commands::remove_data_source,
             commands::switch_library,
             commands::get_active_library_id,
             commands::get_books,

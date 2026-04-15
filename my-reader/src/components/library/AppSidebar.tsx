@@ -34,6 +34,9 @@ export type SidebarView = "all" | "recent" | "favorites"
 
 type LibMenuRect = { top: number; left: number; width: number }
 
+/**
+ * 应用主侧边栏，包含书库切换、筛选与设置入口。
+ */
 export default function AppSidebar() {
   const { libraries, activeLibrary, switchLibrary } = useLibrary()
   const location = useLocation()

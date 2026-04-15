@@ -2,18 +2,21 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, UNIX_EPOCH};
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use keyring::Error as KeyringError;
 use log::{error, info};
+use reqwest::Method;
 use tauri::{AppHandle, Manager, State};
 use zip::ZipArchive;
 
 use crate::calibre;
 use crate::error::AppError;
 use crate::models::{
-    AppConfig, BookAnchor, BookDetail, BookEntry, BookIdentifier, FormatSize, LibraryConfig,
-    LibraryInfo, PaginatedBooks, ReadingProgressDto,
+    AppConfig, BookAnchor, BookDetail, BookEntry, BookIdentifier, DataSourceConfig,
+    DataSourceDetail, DataSourceDto, FormatSize, LibraryConfig, LibraryInfo, PaginatedBooks,
+    ReadingProgressDto,
 };
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::reading_progress;
@@ -34,6 +37,33 @@ pub struct PreparedBookSource {
 pub struct CacheUsageDto {
     pub total_bytes: u64,
     pub max_bytes: u64,
+}
+
+const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
+
+/// 为指定数据源构造 WebDAV 密码在系统凭据库中的账户名。
+fn webdav_password_account(data_source_id: &str) -> String {
+    format!("webdav-password-{data_source_id}")
+}
+
+/// 将 WebDAV 密码保存到系统凭据库（覆盖更新）。
+fn save_webdav_password(account: &str, password: &str) -> Result<(), AppError> {
+    let entry = keyring::Entry::new(WEBDAV_KEYRING_SERVICE, account)
+        .map_err(|err| AppError::Config(format!("创建凭据项失败: {err}")))?;
+    entry
+        .set_password(password)
+        .map_err(|err| AppError::Config(format!("保存系统凭据失败: {err}")))?;
+    Ok(())
+}
+
+/// 从系统凭据库移除 WebDAV 密码；若不存在则忽略。
+fn delete_webdav_password(account: &str) -> Result<(), AppError> {
+    let entry = keyring::Entry::new(WEBDAV_KEYRING_SERVICE, account)
+        .map_err(|err| AppError::Config(format!("创建凭据项失败: {err}")))?;
+    match entry.delete_credential() {
+        Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
+        Err(err) => Err(AppError::Config(format!("删除系统凭据失败: {err}"))),
+    }
 }
 
 fn sanitize_key_part(input: &str) -> String {
@@ -230,6 +260,367 @@ pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, Ap
     match &result {
         Ok(infos) => info!("Success to list libraries. count: {}", infos.len()),
         Err(err) => error!("Failed to list libraries. error: {err}"),
+    }
+
+    result
+}
+
+/// 新建本地目录数据源时的入参。
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewLocalDataSourceInput {
+    pub name: String,
+    pub root_path: String,
+}
+
+/// 新建 WebDAV 数据源时的入参。
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewWebdavDataSourceInput {
+    pub name: String,
+    pub endpoint: String,
+    pub username: String,
+    pub password: String,
+    pub root_path: Option<String>,
+}
+
+/// 测试 WebDAV 连接时的入参。
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestWebdavConnectionInput {
+    pub endpoint: String,
+    pub username: String,
+    pub password: String,
+    pub root_path: Option<String>,
+}
+
+/// 将用户输入的根路径规整为以 `/` 开头的绝对路径。
+fn normalize_webdav_root_path(root_path: Option<&str>) -> String {
+    let trimmed = root_path.unwrap_or("/").trim();
+    if trimmed.is_empty() {
+        return "/".to_string();
+    }
+    if trimmed.starts_with('/') {
+        return trimmed.to_string();
+    }
+    format!("/{}", trimmed)
+}
+
+/// 根据 endpoint 与 rootPath 组装用于探活的 WebDAV URL。
+fn build_webdav_test_url(endpoint: &str, root_path: Option<&str>) -> Result<reqwest::Url, AppError> {
+    let mut url = reqwest::Url::parse(endpoint.trim())
+        .map_err(|err| AppError::Config(format!("WebDAV 地址格式错误: {err}")))?;
+    let normalized_root = normalize_webdav_root_path(root_path);
+    let mut base_path = url.path().trim_end_matches('/').to_string();
+    if base_path.is_empty() {
+        base_path = "/".to_string();
+    }
+    let final_path = if normalized_root == "/" {
+        base_path
+    } else if base_path == "/" {
+        normalized_root
+    } else {
+        format!("{base_path}{normalized_root}")
+    };
+    url.set_path(&final_path);
+    Ok(url)
+}
+
+#[tauri::command]
+/// 使用真实 WebDAV 请求进行连接测试，成功返回 `Ok(())`。
+pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<(), AppError> {
+    let endpoint = input.endpoint.trim();
+    let username = input.username.trim();
+    let password = input.password.trim();
+    let root_path = input.root_path.as_deref();
+    info!(
+        "Start to test WebDAV connection. endpoint: \"{}\", username: \"{}\"",
+        endpoint, username
+    );
+
+    let result = async {
+        if endpoint.is_empty() {
+            return Err(AppError::Config("WebDAV 地址不能为空".into()));
+        }
+        if username.is_empty() {
+            return Err(AppError::Config("WebDAV 用户名不能为空".into()));
+        }
+        if password.is_empty() {
+            return Err(AppError::Config("WebDAV 密码不能为空".into()));
+        }
+
+        let method =
+            Method::from_bytes(b"PROPFIND").map_err(|err| AppError::Config(err.to_string()))?;
+        let target_url = build_webdav_test_url(endpoint, root_path)?;
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|err| AppError::Config(format!("创建 HTTP 客户端失败: {err}")))?;
+
+        let response = client
+            .request(method, target_url.clone())
+            .header("Depth", "0")
+            .basic_auth(username, Some(password))
+            .send()
+            .await
+            .map_err(|err| {
+                if err.is_timeout() {
+                    return AppError::Config(format!(
+                        "连接超时：请求在 10 秒内未完成（{}）",
+                        target_url
+                    ));
+                }
+                if err.is_connect() {
+                    return AppError::Config(format!(
+                        "无法建立连接：请检查服务器地址、端口或网络连通性（{}）",
+                        target_url
+                    ));
+                }
+                AppError::Config(format!("连接失败：{err}（{target_url}）"))
+            })?;
+
+        let status = response.status();
+        if status == reqwest::StatusCode::OK || status == reqwest::StatusCode::MULTI_STATUS {
+            return Ok(());
+        }
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(AppError::Config(format!(
+                "连接失败：服务返回 401 Unauthorized，用户名或密码错误（{}）",
+                target_url
+            )));
+        }
+        if status == reqwest::StatusCode::FORBIDDEN {
+            return Err(AppError::Config(format!(
+                "连接失败：服务返回 403 Forbidden，当前账号无访问权限（{}）",
+                target_url
+            )));
+        }
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(AppError::Config(format!(
+                "连接失败：服务返回 404 Not Found，远程根路径不存在（{}）",
+                target_url
+            )));
+        }
+        Err(AppError::Config(format!(
+            "连接失败：服务返回状态码 {}（{}）",
+            status.as_u16(),
+            target_url
+        )))
+    }
+    .await;
+
+    match &result {
+        Ok(()) => info!(
+            "Success to test WebDAV connection. endpoint: \"{}\", username: \"{}\"",
+            endpoint, username
+        ),
+        Err(err) => error!(
+            "Failed to test WebDAV connection. endpoint: \"{}\", username: \"{}\", error: {err}",
+            endpoint, username
+        ),
+    }
+
+    result
+}
+
+#[tauri::command]
+/// 返回已配置的数据源列表（敏感字段会在 DTO 层做脱敏）。
+pub fn list_data_sources(
+    state: State<'_, AppState>,
+) -> Result<Vec<DataSourceDto>, AppError> {
+    info!("Start to list data sources.");
+    let result = (|| {
+        let config = state.lock().unwrap();
+        let sources = config
+            .data_sources
+            .iter()
+            .map(DataSourceDto::from)
+            .collect::<Vec<_>>();
+        Ok(sources)
+    })();
+
+    match &result {
+        Ok(sources) => info!("Success to list data sources. count: {}", sources.len()),
+        Err(err) => error!("Failed to list data sources. error: {err}"),
+    }
+
+    result
+}
+
+#[tauri::command]
+/// 新增本地目录类型数据源。
+pub fn add_local_data_source(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: NewLocalDataSourceInput,
+) -> Result<DataSourceDto, AppError> {
+    let name = input.name.trim();
+    let root_path = input.root_path.trim();
+    info!(
+        "Start to add local data source. name: \"{}\", root path: \"{}\"",
+        name, root_path
+    );
+    let result = (|| {
+        if name.is_empty() {
+            return Err(AppError::Config("数据源名称不能为空".into()));
+        }
+        if root_path.is_empty() {
+            return Err(AppError::Config("本地存储路径不能为空".into()));
+        }
+
+        let mut config = state.lock().unwrap();
+        if config.data_sources.iter().any(|source| match &source.detail {
+            DataSourceDetail::Local {
+                root_path: existing,
+            } => existing == root_path,
+            _ => false,
+        }) {
+            return Err(AppError::Config("该本地存储路径已存在".into()));
+        }
+
+        let source = DataSourceConfig {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Local {
+                root_path: root_path.to_string(),
+            },
+        };
+        let dto = DataSourceDto::from(&source);
+        config.data_sources.push(source);
+        save_config(&app, &config)?;
+        Ok(dto)
+    })();
+
+    match &result {
+        Ok(source) => info!(
+            "Success to add local data source. id: \"{}\", name: \"{}\"",
+            source.id, source.name
+        ),
+        Err(err) => error!("Failed to add local data source. error: {err}"),
+    }
+
+    result
+}
+
+#[tauri::command]
+/// 新增 WebDAV 类型数据源。
+pub fn add_webdav_data_source(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: NewWebdavDataSourceInput,
+) -> Result<DataSourceDto, AppError> {
+    let name = input.name.trim();
+    let endpoint = input.endpoint.trim();
+    let username = input.username.trim();
+    let password = input.password.trim();
+    let root_path = input.root_path.as_deref().map(str::trim);
+    info!(
+        "Start to add WebDAV data source. name: \"{}\", endpoint: \"{}\", username: \"{}\"",
+        name, endpoint, username
+    );
+    let result = (|| {
+        if name.is_empty() {
+            return Err(AppError::Config("数据源名称不能为空".into()));
+        }
+        if endpoint.is_empty() {
+            return Err(AppError::Config("WebDAV 地址不能为空".into()));
+        }
+        if username.is_empty() {
+            return Err(AppError::Config("WebDAV 用户名不能为空".into()));
+        }
+        if password.is_empty() {
+            return Err(AppError::Config("WebDAV 密码不能为空".into()));
+        }
+
+        let mut config = state.lock().unwrap();
+        if config.data_sources.iter().any(|source| match &source.detail {
+            DataSourceDetail::Webdav {
+                endpoint: existing_endpoint,
+                username: existing_username,
+                ..
+            } => existing_endpoint == endpoint && existing_username == username,
+            _ => false,
+        }) {
+            return Err(AppError::Config("该 WebDAV 连接已存在".into()));
+        }
+
+        let mut source = DataSourceConfig {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Webdav {
+                endpoint: endpoint.to_string(),
+                username: username.to_string(),
+                credential_account: None,
+                root_path: root_path
+                    .filter(|path| !path.is_empty())
+                    .map(ToString::to_string),
+            },
+        };
+        if let DataSourceDetail::Webdav {
+            credential_account, ..
+        } = &mut source.detail
+        {
+            let account = webdav_password_account(&source.id);
+            save_webdav_password(&account, password)?;
+            *credential_account = Some(account);
+        }
+        let dto = DataSourceDto::from(&source);
+        config.data_sources.push(source);
+        save_config(&app, &config)?;
+        Ok(dto)
+    })();
+
+    match &result {
+        Ok(source) => info!(
+            "Success to add WebDAV data source. id: \"{}\", name: \"{}\"",
+            source.id, source.name
+        ),
+        Err(err) => error!("Failed to add WebDAV data source. error: {err}"),
+    }
+
+    result
+}
+
+#[tauri::command]
+/// 删除指定数据源。
+pub fn remove_data_source(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
+    info!("Start to remove data source. id: \"{id}\"");
+    let result = (|| {
+        let mut config = state.lock().unwrap();
+        let mut webdav_accounts_to_delete = Vec::new();
+        for source in &config.data_sources {
+            if source.id != id {
+                continue;
+            }
+            if let DataSourceDetail::Webdav {
+                credential_account: Some(account),
+                ..
+            } = &source.detail
+            {
+                webdav_accounts_to_delete.push(account.clone());
+            }
+        }
+        let before = config.data_sources.len();
+        config.data_sources.retain(|source| source.id != id);
+        if before == config.data_sources.len() {
+            return Err(AppError::NotFound(format!("数据源 {} 不存在", id)));
+        }
+        for account in webdav_accounts_to_delete {
+            delete_webdav_password(&account)?;
+        }
+        save_config(&app, &config)?;
+        Ok(())
+    })();
+
+    match &result {
+        Ok(()) => info!("Success to remove data source. id: \"{id}\""),
+        Err(err) => error!("Failed to remove data source. id: \"{id}\", error: {err}"),
     }
 
     result

@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Database,
   FolderOpen,
   Info,
   type LucideIcon,
@@ -22,11 +23,15 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: "libraries", label: "书库管理", Icon: FolderOpen },
+  { key: "dataSources", label: "数据源管理", Icon: Database },
   { key: "appearance", label: "外观", Icon: Palette },
   { key: "reading", label: "阅读偏好", Icon: BookOpen },
   { key: "about", label: "关于", Icon: Info },
 ]
 
+/**
+ * 设置侧边导航。
+ */
 export default function SettingsNav({
   activeSection,
   onSectionChange,

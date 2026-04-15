@@ -1,1 +1,6 @@
-export type SettingsSection = "libraries" | "appearance" | "reading" | "about"
+export type SettingsSection =
+  | "libraries"
+  | "dataSources"
+  | "appearance"
+  | "reading"
+  | "about"

@@ -10,10 +10,16 @@ type CacheUsageDto = {
   maxBytes: number
 }
 
+/**
+ * 把字节值格式化为 MB，统一缓存显示单位。
+ */
 function formatMB(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+/**
+ * 阅读设置分区，聚焦缓存容量配置与缓存清理。
+ */
 export default function ReadingSection() {
   const cache = useAppUiStore((s) => s.cache)
   const patchCacheSettings = useAppUiStore((s) => s.patchCacheSettings)

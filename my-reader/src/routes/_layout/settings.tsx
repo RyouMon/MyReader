@@ -5,6 +5,7 @@ import type { SettingsSection } from "@/types/settings"
 import SettingsNav from "@/components/settings/SettingsNav"
 import AboutSection from "@/components/settings/sections/AboutSection"
 import AppearanceSection from "@/components/settings/sections/AppearanceSection"
+import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
 import ReadingSection from "@/components/settings/sections/ReadingSection"
 
@@ -25,6 +26,7 @@ function SettingsPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {activeSection === "libraries" && <LibrariesSection />}
+        {activeSection === "dataSources" && <DataSourcesSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "reading" && <ReadingSection />}
         {activeSection === "about" && <AboutSection />}
