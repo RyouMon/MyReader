@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "eas-build-post-install": "rm -rf node_modules/.cache",
     "postinstall": "patch-package",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

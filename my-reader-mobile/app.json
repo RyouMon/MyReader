@@ -39,7 +39,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.5"
+            "deploymentTarget": "15.5",
+            "buildReactNativeFromSource": true
           }
         }
       ],

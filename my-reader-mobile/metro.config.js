@@ -3,7 +3,9 @@ const { getDefaultConfig } = require("expo/metro-config");
 const { FileStore } = require("@expo/metro-config/build/file-store");
 const { withNativewind } = require("nativewind/metro");
 
-const projectRoot = __dirname;
+// 在 EAS local build 的临时目录中，`__dirname` 可能是 /var/... 而进程 cwd 是 /private/var/...；
+// 两者混用会让 Metro 生成越级相对路径，导致入口模块解析失败。
+const projectRoot = process.env.EXPO_PROJECT_ROOT ?? process.cwd();
 const config = getDefaultConfig(projectRoot);
 
 // 默认 Metro 缓存在系统临时目录（如 /var/.../T/metro-cache），会与 EAS 每次拷贝到新临时目录的路径

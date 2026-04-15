@@ -6,13 +6,22 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "ENTRY_FILE": "node_modules/expo-router/entry.js"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "ENTRY_FILE": "node_modules/expo-router/entry.js"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "ENTRY_FILE": "node_modules/expo-router/entry.js"
+      }
     }
   },
   "submit": {
