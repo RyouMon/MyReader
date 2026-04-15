@@ -54,7 +54,8 @@
     "react-native-zip-archive": "^7.1.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.2",
-    "zustand": "^5.0.10"
+    "zustand": "^5.0.10",
+    "pdfjs-dist": "^5.5.207"
   },
   "overrides": {
     "lightningcss": "1.30.1"

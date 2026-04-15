@@ -1,4 +1,4 @@
-import { ProgressController } from "my-reader-tools/reader-core";
+import { ProgressController } from "my-reader-tools/reader-core/ProgressController";
 import type { ChapterInfo } from "my-reader-tools/types";
 
 const controller = new ProgressController();
