@@ -14,6 +14,7 @@
     "./utils/*": "./src/utils/*",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*",
+    "./state/data-source": "./src/state/data-source.ts",
     "./layout-engines/reflow": "./src/layout-engines/reflow/index.ts",
     "./layout-engines/*": "./src/layout-engines/*",
     "./progress/*": "./src/progress/*",

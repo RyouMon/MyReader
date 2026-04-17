@@ -26,7 +26,7 @@ function TrailingLabel({
 
 export default function WebDavSourcesScreen() {
   const palette = useThemePalette();
-  const { dataSources, removeDataSource } = useDataSourceStore();
+  const { dataSources, deleteDataSource } = useDataSourceStore();
   const { libraries } = useLibraryStore();
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ export default function WebDavSourcesScreen() {
           void (async () => {
             try {
               setError(null);
-              await removeDataSource(id);
+              await deleteDataSource(id);
             } catch (caught) {
               setError(caught instanceof Error ? caught.message : "删除数据源失败。");
             }
@@ -77,7 +77,7 @@ export default function WebDavSourcesScreen() {
                 <SettingsRow
                   key={source.id}
                   title={source.name}
-                  detail={`${source.serverUrl}${source.basePath}${linkedLibraryCount > 0 ? ` · 已关联 ${linkedLibraryCount} 个书库` : ""}`}
+                  detail={`${source.endpoint}${source.rootPath ?? ""}${linkedLibraryCount > 0 ? ` · 已关联 ${linkedLibraryCount} 个书库` : ""}`}
                   trailing={<TrailingLabel text="删除" destructive />}
                   onPress={() => handleDelete(source.id, source.name)}
                   isLast={index === webdavSources.length - 1}

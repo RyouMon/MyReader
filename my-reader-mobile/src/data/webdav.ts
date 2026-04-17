@@ -91,7 +91,7 @@ function normalizeHrefPath(href: string) {
 }
 
 function buildUrl(source: WebDavDataSource, path = "") {
-  return `${normalizeBaseUrl(source.serverUrl)}${normalizeRemotePath(source.basePath)}${normalizeRemotePath(path)}`;
+  return `${normalizeBaseUrl(source.endpoint)}${normalizeRemotePath(source.rootPath ?? "")}${normalizeRemotePath(path)}`;
 }
 
 function buildAuthHeader(source: WebDavDataSource) {
@@ -120,7 +120,7 @@ function decodeXml(text: string) {
 
 function toRemoteEntryPath(source: WebDavDataSource, href: string, isDirectory: boolean) {
   const normalizedPath = normalizeHrefPath(href).replace(/\/+$/, isDirectory ? "/" : "");
-  const basePath = normalizeRemotePath(source.basePath);
+  const basePath = normalizeRemotePath(source.rootPath ?? "");
   const expectedPrefix = `${basePath}/`.replace(/\/+/g, "/");
 
   if (!normalizedPath) {

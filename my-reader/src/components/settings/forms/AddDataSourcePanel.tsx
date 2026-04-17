@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form"
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
 import { useState } from "react"
 import { z } from "zod"
@@ -23,10 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import type { NewWebdavDataSourceInput } from "@/types/dataSource"
+import { useDataSourceStore } from "@/stores/dataSourceStore"
+import type { DataSource } from "@/types/dataSource"
 
 const addWebdavSchema = z.object({
-  kind: z.literal("webdav"),
+  type: z.literal("webdav"),
   endpoint: z.string().trim().url("请输入合法的 WebDAV 地址"),
   port: z
     .string()
@@ -43,13 +44,15 @@ const addWebdavSchema = z.object({
 })
 
 interface AddDataSourcePanelProps {
-  onAddWebdav: (input: NewWebdavDataSourceInput) => Promise<unknown>
+  onCreateDataSource: (datasource: DataSource) => Promise<unknown>
 }
 
 /**
  * 统一“添加数据源”入口按钮与表单面板，避免设置分区内的新增逻辑分散。
  */
-export function AddDataSourcePanel({ onAddWebdav }: AddDataSourcePanelProps) {
+export function AddDataSourcePanel({
+  onCreateDataSource,
+}: AddDataSourcePanelProps) {
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -64,11 +67,11 @@ export function AddDataSourcePanel({ onAddWebdav }: AddDataSourcePanelProps) {
     setTestFeedback(null)
   }
 
-  async function handleSubmitWebdav(input: NewWebdavDataSourceInput) {
+  async function handleSubmitWebdav(datasource: DataSource) {
     setSubmitting(true)
     clearMessages()
     try {
-      await onAddWebdav(input)
+      await onCreateDataSource(datasource)
       setAddPanelOpen(false)
     } catch (error) {
       setSubmitError(String(error))
@@ -102,7 +105,7 @@ export function AddDataSourcePanel({ onAddWebdav }: AddDataSourcePanelProps) {
             testing={testing}
             onSubmit={handleSubmitWebdav}
             onClearMessages={clearMessages}
-            onTestConnection={async (input) => {
+            onTestConnection={async (datasource) => {
               clearMessages()
               if (!isTauri()) {
                 setTestFeedback({
@@ -113,7 +116,9 @@ export function AddDataSourcePanel({ onAddWebdav }: AddDataSourcePanelProps) {
               }
               setTesting(true)
               try {
-                await invoke("test_webdav_connection", { input })
+                await useDataSourceStore
+                  .getState()
+                  .testDataSourceConnection(datasource)
                 setTestFeedback({
                   tone: "success",
                   message: "连接成功，可正常访问 WebDAV。",
@@ -150,14 +155,9 @@ export function AddDataSourcePanel({ onAddWebdav }: AddDataSourcePanelProps) {
 interface WebdavDataSourceFormProps {
   loading: boolean
   testing: boolean
-  onSubmit: (input: NewWebdavDataSourceInput) => Promise<unknown>
+  onSubmit: (datasource: DataSource) => Promise<unknown>
   onClearMessages: () => void
-  onTestConnection: (input: {
-    endpoint: string
-    username: string
-    password: string
-    rootPath?: string
-  }) => Promise<void>
+  onTestConnection: (datasource: DataSource) => Promise<void>
 }
 
 type WebdavFieldName = "endpoint" | "port" | "username" | "password" | "rootPath"
@@ -216,7 +216,7 @@ function WebdavDataSourceForm({
 
   const webdavForm = useForm({
     defaultValues: {
-      kind: "webdav" as const,
+      type: "webdav" as const,
       endpoint: "",
       port: "",
       username: "",
@@ -227,33 +227,34 @@ function WebdavDataSourceForm({
       onSubmit: addWebdavSchema,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit({
-        name: buildWebdavName(value.endpoint, value.port, value.rootPath),
-        endpoint: mergeEndpointWithPort(value.endpoint, value.port),
-        username: value.username.trim(),
-        password: value.password,
-        rootPath: value.rootPath.trim(),
-      })
+      await onSubmit(buildWebdavDataSourceFromForm(value))
       clearTestValidationErrors()
       webdavForm.reset()
     },
   })
 
-  function buildTestPayload(
+  function buildWebdavDataSourceFromForm(
     value: z.infer<typeof addWebdavSchema>,
-  ): {
-    endpoint: string
-    username: string
-    password: string
-    rootPath?: string
-  } {
-    const trimmedRootPath = value.rootPath.trim()
+  ): Extract<DataSource, { type: "webdav" }> {
+    const endpoint = mergeEndpointWithPort(value.endpoint, value.port)
+    const trimmedRoot = value.rootPath.trim()
     return {
-      endpoint: mergeEndpointWithPort(value.endpoint, value.port),
+      id: "",
+      type: "webdav",
+      name: buildWebdavName(value.endpoint, value.port, value.rootPath),
+      enabled: true,
+      endpoint,
       username: value.username.trim(),
       password: value.password,
-      ...(trimmedRootPath ? { rootPath: trimmedRootPath } : {}),
+      hasPassword: value.password.length > 0,
+      rootPath: trimmedRoot ? trimmedRoot : null,
     }
+  }
+
+  function buildTestPayload(
+    value: z.infer<typeof addWebdavSchema>,
+  ): Extract<DataSource, { type: "webdav" }> {
+    return buildWebdavDataSourceFromForm(value)
   }
 
   /**
@@ -299,7 +300,7 @@ function WebdavDataSourceForm({
       }}
     >
       <FieldGroup>
-        <webdavForm.Field name="kind">
+        <webdavForm.Field name="type">
           {(field) => (
             <Field>
               <FieldLabel htmlFor={field.name}>数据源类型</FieldLabel>

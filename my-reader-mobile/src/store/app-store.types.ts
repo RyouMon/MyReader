@@ -1,6 +1,8 @@
 import type { StateCreator } from "zustand";
 
-import type { BookItem, DataSource, MobileLibrary } from "../data/types";
+import type { DataSourceStore } from "my-reader-tools/store/data-source";
+
+import type { BookItem, MobileLibrary } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
 export type ReaderTheme = "light" | "paper" | "green" | "dark";
@@ -36,32 +38,42 @@ export type ReaderSettings = {
 
 export type PersistedAppState = {
   settings: ReaderSettings;
-  dataSources: DataSource[];
+  dataSources: DataSourceStore["dataSources"];
   libraries: MobileLibrary[];
   activeLibraryId: string | null;
 };
 
-export type AppState = PersistedAppState & {
-  books: BookItem[];
-  loadingLibraries: boolean;
-  loadingBooks: boolean;
-  error: string | null;
-  hasHydrated: boolean;
-  setHasHydrated: (value: boolean) => void;
-  initialize: () => Promise<void>;
-  setThemeMode: (mode: ThemeMode) => void;
-  setSyncEnabled: (enabled: boolean) => void;
-  patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
-  patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
-  patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
-  clearError: () => void;
-  addLibrary: () => Promise<boolean>;
-  addResolvedLibrary: (library: MobileLibrary) => Promise<boolean>;
-  removeLibrary: (id: string) => Promise<void>;
-  setActiveLibrary: (id: string) => Promise<void>;
-  addDataSource: (dataSource: DataSource) => Promise<void>;
-  removeDataSource: (id: string) => Promise<void>;
-  refreshBooks: () => Promise<void>;
-};
+type DataSourceActions = Pick<
+  DataSourceStore,
+  | "hydrateFromBackend"
+  | "refreshDataSources"
+  | "createDataSource"
+  | "updateDataSource"
+  | "deleteDataSource"
+  | "testDataSourceConnection"
+>;
+
+export type AppState = Omit<PersistedAppState, "dataSources"> &
+  Pick<DataSourceStore, "dataSources" | "loading" | "hydrated"> &
+  DataSourceActions & {
+    books: BookItem[];
+    loadingLibraries: boolean;
+    loadingBooks: boolean;
+    error: string | null;
+    hasHydrated: boolean;
+    setHasHydrated: (value: boolean) => void;
+    initialize: () => Promise<void>;
+    setThemeMode: (mode: ThemeMode) => void;
+    setSyncEnabled: (enabled: boolean) => void;
+    patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
+    patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
+    patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
+    clearError: () => void;
+    addLibrary: () => Promise<boolean>;
+    addResolvedLibrary: (library: MobileLibrary) => Promise<boolean>;
+    removeLibrary: (id: string) => Promise<void>;
+    setActiveLibrary: (id: string) => Promise<void>;
+    refreshBooks: () => Promise<void>;
+  };
 
 export type AppStateSlice<TSlice> = StateCreator<AppState, [], [], TSlice>;

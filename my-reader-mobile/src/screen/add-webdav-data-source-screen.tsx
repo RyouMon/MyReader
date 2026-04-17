@@ -1,20 +1,16 @@
 import { router } from "expo-router";
 import { useState } from "react";
 
+import type { DataSource } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TextInput, View } from "@/tw";
 
 import { Screen } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
-import { testWebDavConnection } from "../data/webdav";
-
-function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 export default function AddWebDavDataSourceScreen() {
   const palette = useThemePalette();
-  const { addDataSource } = useDataSourceStore();
+  const { createDataSource, testDataSourceConnection } = useDataSourceStore();
   const [name, setName] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [basePath, setBasePath] = useState("");
@@ -28,20 +24,27 @@ export default function AddWebDavDataSourceScreen() {
     setError(null);
 
     try {
-      const dataSource = {
-        id: createId(),
-        type: "webdav" as const,
-        name: name.trim() || "WebDAV 数据源",
-        serverUrl: serverUrl.trim(),
+      const trimmedName = name.trim() || "WebDAV 数据源";
+      const endpoint = serverUrl.trim();
+      const rootPath = basePath.trim() ? basePath.trim() : null;
+
+      const draft: DataSource = {
+        id: "",
+        type: "webdav",
+        name: trimmedName,
+        enabled: true,
+        endpoint,
         username: username.trim(),
         password,
-        basePath: basePath.trim(),
-        createdAt: Date.now(),
+        hasPassword: password.length > 0,
+        rootPath,
       };
 
-      await testWebDavConnection(dataSource);
-      await addDataSource(dataSource);
-      router.replace({ pathname: "/settings/add-library/webdav-browser", params: { dataSourceId: dataSource.id } });
+      await testDataSourceConnection(draft);
+
+      const created = await createDataSource(draft);
+
+      router.replace({ pathname: "/settings/add-library/webdav-browser", params: { dataSourceId: created.id } });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
     } finally {
@@ -78,7 +81,7 @@ export default function AddWebDavDataSourceScreen() {
           style={{ backgroundColor: palette.primary }}
         >
           <Text className="text-[15px]" style={{ color: palette.primaryForeground, fontWeight: "700" }}>
-            {saving ? "连接中..." : "保存并浏览"}
+            {saving ? "保存中…" : "保存并继续"}
           </Text>
         </Pressable>
       </View>

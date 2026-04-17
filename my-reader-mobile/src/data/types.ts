@@ -1,3 +1,9 @@
+import type {
+  DataSource,
+  DataSourceLocal,
+  DataSourceWebdav,
+} from "my-reader-tools/store/data-source";
+
 export type BookItem = {
   id: string;
   calibreId?: number;
@@ -19,26 +25,10 @@ export type SecurityScopedBookmark = {
   stale: boolean;
 };
 
-export type LocalDataSource = {
-  id: string;
-  type: "local";
-  name: string;
-  rootUri?: string;
-  createdAt: number;
-};
+export type { DataSource, DataSourceLocal, DataSourceWebdav };
 
-export type WebDavDataSource = {
-  id: string;
-  type: "webdav";
-  name: string;
-  serverUrl: string;
-  username: string;
-  password: string;
-  basePath: string;
-  createdAt: number;
-};
-
-export type DataSource = LocalDataSource | WebDavDataSource;
+/** WebDAV API 层：要求已配置密码 */
+export type WebDavDataSource = DataSourceWebdav & { password: string };
 
 export type MobileLibrary = {
   id: string;

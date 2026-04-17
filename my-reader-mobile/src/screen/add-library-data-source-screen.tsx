@@ -45,7 +45,7 @@ export default function AddLibraryDataSourceScreen() {
                 >
                 <SettingsRow
                   title={source.name}
-                  detail={`${source.serverUrl}${source.basePath}`}
+                  detail={`${source.endpoint}${source.rootPath ?? ""}`}
                   isLast={index === dataSources.length - 1}
                 />
               </Link>

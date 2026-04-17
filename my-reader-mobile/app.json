@@ -8,6 +8,9 @@
     "scheme": "myreadermobile",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "supportsTablet": true,
       "bundleIdentifier": "ryoumon.myreadermobile",
       "infoPlist": {

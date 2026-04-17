@@ -47,7 +47,7 @@ function getLibraryTypeLabel(_library: MobileLibrary) {
 
 function getSourcePathDetail(library: MobileLibrary, dataSource?: DataSource | null) {
   if (library.sourceType === "webdav" && dataSource?.type === "webdav") {
-    return `${dataSource.serverUrl}${library.sourcePath ?? dataSource.basePath}`;
+    return `${dataSource.endpoint}${library.sourcePath ?? (dataSource.rootPath ?? "")}`;
   }
 
   return library.path;

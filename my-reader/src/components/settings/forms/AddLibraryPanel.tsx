@@ -103,7 +103,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
 
   async function handleBrowse(selectedDataSource?: DataSource) {
     if (!selectedDataSource) return
-    if (selectedDataSource.kind !== "local") return
+    if (selectedDataSource.type !== "local") return
     try {
       const selected = await open({
         directory: true,
@@ -153,7 +153,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                     adding ||
                     loadingDataSources ||
                     !selectedDataSource ||
-                    selectedDataSource.kind !== "local"
+                    selectedDataSource.type !== "local"
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>数据源</FieldLabel>
@@ -184,7 +184,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      {selectedDataSource?.kind === "webdav" && (
+                      {selectedDataSource?.type === "webdav" && (
                         <p className="text-xs text-muted-foreground">
                           当前选中 WebDAV，暂不支持目录浏览。
                         </p>

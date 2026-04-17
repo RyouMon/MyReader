@@ -1,14 +1,17 @@
-import type { DataSource, LocalDataSource } from "../data/types";
+import type { DataSourceLocal } from "my-reader-tools/store/data-source";
+import type { DataSource } from "../data/types";
+import { stripSensitiveDataSources } from "./secure-credential-store";
 
 import type { ReaderSettings } from "./app-store.types";
 
 export const BUILT_IN_LOCAL_SOURCE_ID = "device-local";
 export const STORE_NAME = "myreader-mobile-app-state";
 
-export const BUILT_IN_LOCAL_SOURCE: LocalDataSource = {
+export const BUILT_IN_LOCAL_SOURCE: DataSourceLocal = {
   id: BUILT_IN_LOCAL_SOURCE_ID,
   type: "local",
   name: "手机",
+  enabled: true,
   createdAt: 0,
 };
 
@@ -41,5 +44,7 @@ export function mergeDataSources(dataSources: DataSource[]) {
 }
 
 export function persistableDataSources(dataSources: DataSource[]) {
-  return dataSources.filter((source) => source.id !== BUILT_IN_LOCAL_SOURCE_ID);
+  return stripSensitiveDataSources(
+    dataSources.filter((source) => source.id !== BUILT_IN_LOCAL_SOURCE_ID)
+  );
 }

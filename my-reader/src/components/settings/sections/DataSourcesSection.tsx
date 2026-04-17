@@ -1,6 +1,3 @@
-import { Trash2, Unplug } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
-
 import { AppRow } from "@/components/common/AppRow"
 import {
   GroupList,
@@ -10,7 +7,9 @@ import {
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "@/types/dataSource"
+import { Trash2, Unplug } from "lucide-react"
+import type { DataSource } from "my-reader-tools/store/data-source"
+import { useEffect, useMemo, useState } from "react"
 
 /**
  * 在设置页提供数据源增删管理，帮助后续同步层复用统一连接配置。
@@ -20,8 +19,8 @@ export default function DataSourcesSection() {
   const loading = useDataSourceStore((s) => s.loading)
   const hydrated = useDataSourceStore((s) => s.hydrated)
   const hydrateFromBackend = useDataSourceStore((s) => s.hydrateFromBackend)
-  const addWebdavDataSource = useDataSourceStore((s) => s.addWebdavDataSource)
-  const removeDataSource = useDataSourceStore((s) => s.removeDataSource)
+  const createDataSource = useDataSourceStore((s) => s.createDataSource)
+  const deleteDataSource = useDataSourceStore((s) => s.deleteDataSource)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -39,7 +38,7 @@ export default function DataSourcesSection() {
       setPendingDeleteId(null)
       setRemovingId(id)
       try {
-        await removeDataSource(id)
+        await deleteDataSource(id)
       } finally {
         setRemovingId(null)
       }
@@ -90,7 +89,7 @@ export default function DataSourcesSection() {
           </GroupList>
         </section>
 
-        <AddDataSourcePanel onAddWebdav={addWebdavDataSource} />
+        <AddDataSourcePanel onCreateDataSource={createDataSource} />
       </div>
     </div>
   )
@@ -112,9 +111,9 @@ function DataSourceCard({
   isRemoving,
   onDelete,
 }: DataSourceCardProps) {
-  const rowIcon = source.kind === "local" ? "hardDrive" : "database"
+  const rowIcon = source.type === "local" ? "hardDrive" : "database"
   const secondaryText =
-    source.kind === "local"
+    source.type === "local"
       ? source.rootPath?.trim() || "当前设备本地文件系统"
       : `${source.endpoint} · ${source.username}`
 
@@ -134,7 +133,7 @@ function DataSourceCard({
         tail={
           <div className="flex items-center gap-2">
             <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              {source.kind}
+              {source.type}
             </span>
             {source.readonly && (
               <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">

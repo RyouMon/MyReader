@@ -8,6 +8,7 @@ import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
 import type { WebDavDataSource } from "../data/types";
 import { useDataSourceStore } from "../store/data-source-store";
 import { useLibraryStore } from "../store/library-store";
+import { readWebDavPassword } from "../store/secure-credential-store";
 import { createWebDavLibraryFromPath, listWebDavDirectory } from "../data/webdav";
 
 type BrowserEntry = {
@@ -21,18 +22,49 @@ export default function WebDavBrowserScreen() {
   const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
   const { dataSources } = useDataSourceStore();
   const { addResolvedLibrary } = useLibraryStore();
-  const source = useMemo<WebDavDataSource | null>(() => {
-    const candidate = dataSources.find(
-      (item) => item.id === dataSourceId && item.type === "webdav"
-    );
-
-    return candidate?.type === "webdav" ? candidate : null;
-  }, [dataSourceId, dataSources]);
+  const candidate = useMemo(
+    () =>
+      dataSources.find(
+        (item) => item.id === dataSourceId && item.type === "webdav"
+      ) ?? null,
+    [dataSourceId, dataSources]
+  );
+  const [source, setSource] = useState<WebDavDataSource | null>(null);
   const [currentPath, setCurrentPath] = useState("");
   const [entries, setEntries] = useState<BrowserEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function resolveSource() {
+      if (active) {
+        setSource(null);
+      }
+      if (!candidate || candidate.type !== "webdav") {
+        return;
+      }
+
+      const password = candidate.password ?? (await readWebDavPassword(candidate.id)) ?? "";
+      if (!password) {
+        if (active) {
+          setSource(null);
+        }
+        return;
+      }
+
+      if (active) {
+        setSource({ ...candidate, password });
+      }
+    }
+
+    void resolveSource();
+    return () => {
+      active = false;
+    };
+  }, [candidate]);
 
   useEffect(() => {
     let active = true;
