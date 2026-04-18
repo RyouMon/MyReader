@@ -12,8 +12,8 @@ import {
 } from "../data/calibre";
 import type { MobileLibrary, WebDavDataSource } from "../data/types";
 import { readBooksFromWebDavLibrary } from "../data/webdav";
+import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import {
-  BUILT_IN_LOCAL_SOURCE_ID,
   defaultSettings,
   mergeDataSources,
   persistableDataSources,
@@ -169,7 +169,7 @@ const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
 
       const nextLibrary: MobileLibrary = {
         ...picked,
-        dataSourceId: BUILT_IN_LOCAL_SOURCE_ID,
+        dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
         sourceType: "local",
       };
 

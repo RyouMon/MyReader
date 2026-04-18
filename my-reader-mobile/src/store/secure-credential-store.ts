@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import type { DataSource, DataSourceWebdav } from "../data/types";
 
 const WEB_DAV_PASSWORD_KEY_PREFIX = "myreader:webdav:password:";
-  
+
 /**
  * 为指定 WebDAV 数据源生成凭证键。
  */
@@ -56,11 +56,6 @@ export async function hydrateDataSourcesFromSecureCredentials(
   const hydrated: DataSource[] = [];
 
   for (const source of dataSources) {
-    if (source.type !== "webdav") {
-      hydrated.push(source);
-      continue;
-    }
-
     const securePassword = await readWebDavPassword(source.id);
     const withPassword: DataSourceWebdav = {
       ...source,
@@ -78,10 +73,6 @@ export async function hydrateDataSourcesFromSecureCredentials(
  */
 export function stripSensitiveDataSources(dataSources: DataSource[]): DataSource[] {
   return dataSources.map((source) => {
-    if (source.type !== "webdav") {
-      return source;
-    }
-
     const { password, ...rest } = source;
     return {
       ...rest,

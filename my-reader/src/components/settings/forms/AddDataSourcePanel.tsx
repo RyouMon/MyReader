@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "@/types/dataSource"
+import type { DataSource } from "my-reader-tools/store/data-source"
 
 const addWebdavSchema = z.object({
   type: z.literal("webdav"),
@@ -235,7 +235,7 @@ function WebdavDataSourceForm({
 
   function buildWebdavDataSourceFromForm(
     value: z.infer<typeof addWebdavSchema>,
-  ): Extract<DataSource, { type: "webdav" }> {
+  ): DataSource {
     const endpoint = mergeEndpointWithPort(value.endpoint, value.port)
     const trimmedRoot = value.rootPath.trim()
     return {
@@ -253,7 +253,7 @@ function WebdavDataSourceForm({
 
   function buildTestPayload(
     value: z.infer<typeof addWebdavSchema>,
-  ): Extract<DataSource, { type: "webdav" }> {
+  ): DataSource {
     return buildWebdavDataSourceFromForm(value)
   }
 

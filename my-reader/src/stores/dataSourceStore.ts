@@ -1,8 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
-import type {
-  DataSource,
-  DataSourceStore,
-} from "my-reader-tools/store/data-source"
+import type { DataSource, DataSourceStore } from "my-reader-tools/store/data-source"
 import { create } from "zustand"
 
 function isRuntimeAvailable(): boolean {
@@ -11,23 +8,12 @@ function isRuntimeAvailable(): boolean {
 
 function mapDataSourceFromBackendJson(
   raw: Record<string, unknown>,
-): DataSource {
+): DataSource | null {
   const kind = raw.kind as string
   const base = {
     id: raw.id as string,
     name: raw.name as string,
     enabled: Boolean(raw.enabled),
-  }
-
-  if (kind === "local") {
-    return {
-      ...base,
-      type: "local",
-      readonly: raw.readonly as boolean | undefined,
-      rootPath: raw.rootPath as string | null | undefined,
-      rootUri: raw.rootUri as string | null | undefined,
-      createdAt: raw.createdAt as number | undefined,
-    }
   }
 
   if (kind === "webdav") {
@@ -44,22 +30,18 @@ function mapDataSourceFromBackendJson(
     }
   }
 
+  if (kind === "local") {
+    return null
+  }
+
   throw new Error(`未知的数据源 kind: ${String(kind)}`)
 }
 
 async function fetchDataSources(): Promise<DataSource[]> {
   const rows = await invoke<Record<string, unknown>[]>("list_data_sources")
-  return rows.map((row) => mapDataSourceFromBackendJson(row))
-}
-
-async function createLocalDataSource(input: {
-  name: string
-  rootPath: string
-}): Promise<DataSource> {
-  const raw = await invoke<Record<string, unknown>>("add_local_data_source", {
-    input,
-  })
-  return mapDataSourceFromBackendJson(raw)
+  return rows
+    .map((row) => mapDataSourceFromBackendJson(row))
+    .filter((row): row is DataSource => row !== null)
 }
 
 async function createWebdavDataSource(input: {
@@ -72,7 +54,7 @@ async function createWebdavDataSource(input: {
   const raw = await invoke<Record<string, unknown>>("add_webdav_data_source", {
     input,
   })
-  return mapDataSourceFromBackendJson(raw)
+  return mapDataSourceFromBackendJson(raw) as DataSource
 }
 
 async function removeDataSource(id: string): Promise<void> {
@@ -88,20 +70,6 @@ async function testWebdavConnection(input: {
   await invoke("test_webdav_connection", { input })
 }
 
-const BUILTIN_LOCAL_SOURCE: DataSource = {
-  id: "builtin-local-storage",
-  type: "local",
-  name: "本地存储",
-  enabled: true,
-  readonly: true,
-  rootPath: "当前设备本地文件系统",
-}
-
-function withBuiltinLocalSource(rows: DataSource[]): DataSource[] {
-  const webdavRows = rows.filter((row) => row.type !== "local")
-  return [BUILTIN_LOCAL_SOURCE, ...webdavRows]
-}
-
 export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
   dataSources: [],
   loading: true,
@@ -110,7 +78,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
   refreshDataSources: async (_id: string) => {
     if (!isRuntimeAvailable()) return
     const rows = await fetchDataSources()
-    set({ dataSources: withBuiltinLocalSource(rows) })
+    set({ dataSources: rows })
   },
 
   hydrateFromBackend: async () => {
@@ -121,7 +89,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
     set({ loading: true })
     try {
       const rows = await fetchDataSources()
-      set({ dataSources: withBuiltinLocalSource(rows) })
+      set({ dataSources: rows })
     } finally {
       set({ loading: false, hydrated: true })
     }
@@ -131,21 +99,13 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
     if (!isRuntimeAvailable()) {
       throw new Error("当前环境不支持创建数据源")
     }
-    let created: DataSource
-    if (datasource.type === "local") {
-      created = await createLocalDataSource({
-        name: datasource.name,
-        rootPath: datasource.rootPath ?? "",
-      })
-    } else {
-      created = await createWebdavDataSource({
-        name: datasource.name,
-        endpoint: datasource.endpoint,
-        username: datasource.username,
-        password: datasource.password ?? "",
-        rootPath: datasource.rootPath ?? undefined,
-      })
-    }
+    const created = await createWebdavDataSource({
+      name: datasource.name,
+      endpoint: datasource.endpoint,
+      username: datasource.username,
+      password: datasource.password ?? "",
+      rootPath: datasource.rootPath ?? undefined,
+    })
     await get().refreshDataSources(created.id)
     return created
   },
@@ -155,15 +115,11 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
   },
 
   deleteDataSource: async (id) => {
-    if (id === BUILTIN_LOCAL_SOURCE.id) return
     await removeDataSource(id)
     await get().refreshDataSources(id)
   },
 
   testDataSourceConnection: async (datasource: DataSource) => {
-    if (datasource.type !== "webdav") {
-      return
-    }
     await testWebdavConnection({
       endpoint: datasource.endpoint,
       username: datasource.username,

@@ -11,6 +11,7 @@ export { SearchField } from "./search-field";
 export { SecondaryButton } from "./secondary-button";
 export { SectionCard } from "./section-card";
 export { SectionHeading } from "./section-heading";
-export { Sheet, SheetOption } from "./sheet";
 export { SettingsRow } from "./settings-row";
 export { SettingsSwitch } from "./settings-switch";
+export { Sheet, SheetOption } from "./sheet";
+
