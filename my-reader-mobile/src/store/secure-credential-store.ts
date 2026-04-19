@@ -2,8 +2,8 @@ import * as SecureStore from "expo-secure-store";
 
 import type { DataSource, DataSourceWebdav } from "../data/types";
 
-const WEB_DAV_PASSWORD_KEY_PREFIX = "myreader:webdav:password:";
-  
+const WEB_DAV_PASSWORD_KEY_PREFIX = "ryoumon.myreader.webdav.password.";
+
 /**
  * 为指定 WebDAV 数据源生成凭证键。
  */
