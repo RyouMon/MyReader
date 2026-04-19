@@ -25,14 +25,14 @@ export function EmptyState({
     >
       <Text
         selectable
-        className="text-[20px] leading-7"
+        className="text-xl leading-7"
         style={{ color: palette.text, fontWeight: "700" }}
       >
         {title}
       </Text>
       <Text
         selectable
-        className="text-center text-sm leading-6"
+        className="text-center text-base leading-6"
         style={{ color: palette.textMuted }}
       >
         {detail}

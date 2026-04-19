@@ -1,23 +1,19 @@
 import { Link, router } from "expo-router";
 
-import { useThemePalette } from "@/src/design/tokens";
-import { Text, View } from "@/tw";
+import { View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow } from "../components";
+import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
 import { useLibraryStore } from "../store/library-store";
 
 export default function AddLibraryDataSourceScreen() {
-  const palette = useThemePalette();
   const { addLibrary } = useLibraryStore();
   const { dataSources } = useDataSourceStore();
 
   return (
     <Screen>
       <View className="gap-3">
-        <Text className="px-1 text-xs font-semibold uppercase tracking-[0.4px]" style={{ color: palette.textMuted }}>
-          已有数据源
-        </Text>
+        <SettingsSectionLabel>已有数据源</SettingsSectionLabel>
         <SectionCard>
           {dataSources.map((source, index) => {
             const isLocal = source.type === "local";
@@ -55,9 +51,7 @@ export default function AddLibraryDataSourceScreen() {
       </View>
 
       <View className="gap-3">
-        <Text className="px-1 text-xs font-semibold uppercase tracking-[0.4px]" style={{ color: palette.textMuted }}>
-          添加数据源
-        </Text>
+        <SettingsSectionLabel>添加数据源</SettingsSectionLabel>
         <SectionCard>
           <Link href="/settings/add-library/webdav" asChild>
             <SettingsRow title="WebDAV" detail="通过 WebDAV 浏览远程文件并选择 Calibre 书库" isLast />

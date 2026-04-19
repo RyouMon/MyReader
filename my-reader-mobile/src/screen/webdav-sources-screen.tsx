@@ -6,7 +6,7 @@ import { Alert } from "react-native";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
+import { EmptyState, PrimaryButton, Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
 import { useLibraryStore } from "../store/library-store";
 
@@ -59,15 +59,13 @@ export default function WebDavSourcesScreen() {
   return (
     <Screen>
       <View className="gap-3">
-        <Text className="px-1 text-xs font-semibold uppercase tracking-[0.4px]" style={{ color: palette.textMuted }}>
-          已添加的数据源
-        </Text>
+        <SettingsSectionLabel>已添加的数据源</SettingsSectionLabel>
 
         {webdavSources.length === 0 ? (
           <EmptyState
             title="还没有 WebDAV 数据源"
             detail="添加一个 WebDAV 连接后，就可以浏览远程目录并选择 Calibre 书库。"
-            action={<Text className="text-sm font-semibold" style={{ color: palette.primary }} onPress={handleAdd}>立即添加</Text>}
+            action={<PrimaryButton title="立即添加" onPress={handleAdd} />}
           />
         ) : (
           <SectionCard>
@@ -95,9 +93,7 @@ export default function WebDavSourcesScreen() {
       ) : null}
 
       <View className="gap-3">
-        <Text className="px-1 text-xs font-semibold uppercase tracking-[0.4px]" style={{ color: palette.textMuted }}>
-          添加数据源
-        </Text>
+        <SettingsSectionLabel>添加数据源</SettingsSectionLabel>
         <SectionCard>
           <Link href="/settings/add-library/webdav" asChild>
             <SettingsRow title="添加 WebDAV 数据源" detail="填写服务器地址、账号和路径后即可浏览远程目录。" trailing={<TrailingLabel text="添加" emphasize />} isLast />
