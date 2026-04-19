@@ -1,13 +1,13 @@
 import { Link } from "expo-router";
 import { useMemo, useState } from "react";
 
-import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
-import { Text, View } from "@/tw";
 import {
   clearAllReaderCaches,
   enforceReaderCacheLimit,
   getReaderCacheUsageSummary,
 } from "@/src/data/cache";
+import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens";
+import { Text, View } from "@/tw";
 
 import { Screen, SectionCard, SectionHeading, SettingsRow, Sheet, SheetOption } from "../components";
 import { useAppStore } from "../store/app-store";
@@ -83,7 +83,7 @@ export default function SettingsScreen() {
             <Link href="/settings/add-library" asChild>
               <SettingsRow title="手机" detail="默认数据源，无需配置，不能删除" />
             </Link>
-            <Link href="/settings/webdav-sources" asChild>
+            <Link href="/webdav" asChild>
               <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" isLast />
             </Link>
           </SectionCard>

@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
 import type { BookDetail } from "my-reader-tools/types/book";
+import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
 import { Platform, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,12 +12,12 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Image, Pressable, ScrollView, Text, View } from "@/tw";
 
 import {
-  EmptyState,
-  HeaderToolbar,
-  ProgressBar,
-  Sheet,
-  SheetOption,
-  type HeaderToolbarAction
+    EmptyState,
+    HeaderToolbar,
+    ProgressBar,
+    Sheet,
+    SheetOption,
+    type HeaderToolbarAction
 } from "../components";
 import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
@@ -213,7 +213,7 @@ export default function BookDetailScreen() {
       router.back();
       return;
     }
-    router.replace("/(tabs)/library");
+    router.replace("/library");
   }, []);
 
   const handleShare = useCallback(() => {

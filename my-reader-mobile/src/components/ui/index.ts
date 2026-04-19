@@ -9,6 +9,7 @@ export { PageHeader } from "./page-header";
 export { PrimaryButton } from "./primary-button";
 export { ProgressBar } from "./progress-bar";
 export { RoundIconButton } from "./round-icon-button";
+export { ScreenAndroidFabPrimary, ScreenAndroidSecondaryBottomStart } from "./screen-android-edge-actions";
 export { Screen } from "./screen";
 export { SearchField } from "./search-field";
 export { SecondaryButton } from "./secondary-button";

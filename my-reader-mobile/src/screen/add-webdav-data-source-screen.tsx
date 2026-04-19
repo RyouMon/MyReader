@@ -1,6 +1,7 @@
 import { useForm, useStore } from "@tanstack/react-form";
-import { router } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useState } from "react";
+import { Platform } from "react-native";
 import { z } from "zod";
 
 import type { DataSource } from "@/src/data/types";
@@ -11,9 +12,9 @@ import {
   FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS,
   FormFieldSwitch,
   FormLabeledFieldRow,
-  PrimaryButton,
   Screen,
-  SecondaryButton,
+  ScreenAndroidFabPrimary,
+  ScreenAndroidSecondaryBottomStart,
 } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
 
@@ -192,7 +193,7 @@ export default function AddWebDavDataSourceScreen() {
       const draft = buildDraft(form.store.state.values);
       await testDataSourceConnection(draft);
       const created = await createDataSource(draft);
-      router.replace({ pathname: "/settings/add-library/webdav-browser", params: { dataSourceId: created.id } });
+      router.replace({ pathname: "/webdav/browser", params: { dataSourceId: created.id } });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
     } finally {
@@ -201,167 +202,189 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   const inputClassName = `${FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS} border-0 bg-transparent py-1 text-[15px]`;
+  const busy = saving || testing;
 
   return (
-    <Screen>
-      <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
-        <form.Field name="serverUrl">
-          {(field) => (
-            <View className="gap-1">
-              <FormLabeledFieldRow label="服务器地址">
-                <TextInput
-                  value={field.state.value}
-                  onChangeText={(t) => {
-                    field.handleChange(t);
-                  }}
-                  placeholder="dav.example.com"
-                  placeholderTextColor={palette.textMuted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  underlineColorAndroid="transparent"
-                  className={inputClassName}
-                  style={{ color: palette.text }}
-                />
-              </FormLabeledFieldRow>
-              {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                  {field.state.meta.errors.map(String).join("，")}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </form.Field>
+    <>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="bottom">
+          <Stack.Toolbar.Button tintColor={palette.primary} disabled={busy} onPress={() => void handleTest()}>
+            <Stack.Toolbar.Icon sf="antenna.radiowaves.left.and.right" />
+          </Stack.Toolbar.Button>
+          <Stack.Toolbar.Spacer />
+          <Stack.Toolbar.Button tintColor={palette.primary} disabled={busy} onPress={() => void handleSave()}>
+            <Stack.Toolbar.Icon sf="checkmark" />
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      ) : null}
 
-        <form.Field name="port">
-          {(field) => (
-            <View className="gap-1">
-              <FormLabeledFieldRow label="端口号">
-                <TextInput
-                  value={field.state.value}
-                  onChangeText={(t) => {
-                    field.handleChange(t);
-                  }}
-                  placeholder={useSsl ? "443" : "80"}
-                  placeholderTextColor={palette.textMuted}
-                  keyboardType="number-pad"
-                  underlineColorAndroid="transparent"
-                  className={inputClassName}
-                  style={{ color: palette.text }}
-                />
-              </FormLabeledFieldRow>
-              {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                  {field.state.meta.errors.map(String).join("，")}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </form.Field>
+      <View className="flex-1" style={{ backgroundColor: palette.background }}>
+        <Screen contentContainerClassName="pb-32">
+          <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
+            <form.Field name="serverUrl">
+              {(field) => (
+                <View className="gap-1">
+                  <FormLabeledFieldRow label="服务器地址">
+                    <TextInput
+                      value={field.state.value}
+                      onChangeText={(t) => {
+                        field.handleChange(t);
+                      }}
+                      placeholder="dav.example.com"
+                      placeholderTextColor={palette.textMuted}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      underlineColorAndroid="transparent"
+                      className={inputClassName}
+                      style={{ color: palette.text }}
+                    />
+                  </FormLabeledFieldRow>
+                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
+                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
+                      {field.state.meta.errors.map(String).join("，")}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </form.Field>
 
-        <form.Field name="basePath">
-          {(field) => (
-            <View className="gap-1">
-              <FormLabeledFieldRow label="基础路径">
-                <TextInput
-                  value={field.state.value}
-                  onChangeText={(t) => {
-                    field.handleChange(t);
-                  }}
-                  placeholder="/"
-                  placeholderTextColor={palette.textMuted}
-                  underlineColorAndroid="transparent"
-                  className={inputClassName}
-                  style={{ color: palette.text }}
-                />
-              </FormLabeledFieldRow>
-              {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                  {field.state.meta.errors.map(String).join("，")}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </form.Field>
+            <form.Field name="port">
+              {(field) => (
+                <View className="gap-1">
+                  <FormLabeledFieldRow label="端口号">
+                    <TextInput
+                      value={field.state.value}
+                      onChangeText={(t) => {
+                        field.handleChange(t);
+                      }}
+                      placeholder={useSsl ? "443" : "80"}
+                      placeholderTextColor={palette.textMuted}
+                      keyboardType="number-pad"
+                      underlineColorAndroid="transparent"
+                      className={inputClassName}
+                      style={{ color: palette.text }}
+                    />
+                  </FormLabeledFieldRow>
+                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
+                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
+                      {field.state.meta.errors.map(String).join("，")}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </form.Field>
 
-        <form.Field name="username">
-          {(field) => (
-            <View className="gap-1">
-              <FormLabeledFieldRow label="用户名">
-                <TextInput
-                  value={field.state.value}
-                  onChangeText={(t) => {
-                    field.handleChange(t);
-                  }}
-                  placeholder="reader"
-                  placeholderTextColor={palette.textMuted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  underlineColorAndroid="transparent"
-                  className={inputClassName}
-                  style={{ color: palette.text }}
-                />
-              </FormLabeledFieldRow>
-              {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                  {field.state.meta.errors.map(String).join("，")}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </form.Field>
+            <form.Field name="basePath">
+              {(field) => (
+                <View className="gap-1">
+                  <FormLabeledFieldRow label="基础路径">
+                    <TextInput
+                      value={field.state.value}
+                      onChangeText={(t) => {
+                        field.handleChange(t);
+                      }}
+                      placeholder="/"
+                      placeholderTextColor={palette.textMuted}
+                      underlineColorAndroid="transparent"
+                      className={inputClassName}
+                      style={{ color: palette.text }}
+                    />
+                  </FormLabeledFieldRow>
+                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
+                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
+                      {field.state.meta.errors.map(String).join("，")}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </form.Field>
 
-        <form.Field name="password">
-          {(field) => (
-            <View className="gap-1">
-              <FormLabeledFieldRow label="密码">
-                <TextInput
-                  value={field.state.value}
-                  onChangeText={(t) => {
-                    field.handleChange(t);
-                  }}
-                  placeholder="••••••••"
-                  placeholderTextColor={palette.textMuted}
-                  secureTextEntry
-                  underlineColorAndroid="transparent"
-                  className={inputClassName}
-                  style={{ color: palette.text }}
-                />
-              </FormLabeledFieldRow>
-              {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                  {field.state.meta.errors.map(String).join("，")}
-                </Text>
-              ) : null}
-            </View>
-          )}
-        </form.Field>
+            <form.Field name="username">
+              {(field) => (
+                <View className="gap-1">
+                  <FormLabeledFieldRow label="用户名">
+                    <TextInput
+                      value={field.state.value}
+                      onChangeText={(t) => {
+                        field.handleChange(t);
+                      }}
+                      placeholder="reader"
+                      placeholderTextColor={palette.textMuted}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      underlineColorAndroid="transparent"
+                      className={inputClassName}
+                      style={{ color: palette.text }}
+                    />
+                  </FormLabeledFieldRow>
+                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
+                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
+                      {field.state.meta.errors.map(String).join("，")}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </form.Field>
 
-        <form.Field name="useSsl">
-          {(field) => (
-            <FormLabeledFieldRow label="使用 SSL">
-              <FormFieldSwitch value={field.state.value} onValueChange={(next) => field.handleChange(next)} />
-            </FormLabeledFieldRow>
-          )}
-        </form.Field>
+            <form.Field name="password">
+              {(field) => (
+                <View className="gap-1">
+                  <FormLabeledFieldRow label="密码">
+                    <TextInput
+                      value={field.state.value}
+                      onChangeText={(t) => {
+                        field.handleChange(t);
+                      }}
+                      placeholder="••••••••"
+                      placeholderTextColor={palette.textMuted}
+                      secureTextEntry
+                      underlineColorAndroid="transparent"
+                      className={inputClassName}
+                      style={{ color: palette.text }}
+                    />
+                  </FormLabeledFieldRow>
+                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
+                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
+                      {field.state.meta.errors.map(String).join("，")}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            </form.Field>
 
-        {error ? (
-          <Text className="text-sm leading-6" style={{ color: palette.error }}>{error}</Text>
-        ) : null}
-        {testOk && !error ? (
-          <Text className="text-sm leading-6" style={{ color: palette.success }}>连接成功</Text>
-        ) : null}
+            <form.Field name="useSsl">
+              {(field) => (
+                <FormLabeledFieldRow label="使用 SSL">
+                  <FormFieldSwitch value={field.state.value} onValueChange={(next) => field.handleChange(next)} />
+                </FormLabeledFieldRow>
+              )}
+            </form.Field>
 
-        <View className="flex-row gap-2">
-          <SecondaryButton
-            title={testing ? "测试中…" : "测试连接"}
-            onPress={saving || testing ? undefined : () => void handleTest()}
-          />
-          <PrimaryButton
-            title={saving ? "保存中…" : "保存并继续"}
-            onPress={saving || testing ? undefined : () => void handleSave()}
-          />
-        </View>
+            {error ? (
+              <Text className="text-sm leading-6" style={{ color: palette.error }}>
+                {error}
+              </Text>
+            ) : null}
+            {testOk && !error ? (
+              <Text className="text-sm leading-6" style={{ color: palette.success }}>
+                连接成功
+              </Text>
+            ) : null}
+          </View>
+        </Screen>
+
+        <ScreenAndroidSecondaryBottomStart
+          label={testing ? "测试中…" : "测试连接"}
+          onPress={() => void handleTest()}
+          disabled={busy}
+        />
+        <ScreenAndroidFabPrimary
+          icon="check"
+          accessibilityLabel="保存并继续"
+          onPress={() => void handleSave()}
+          disabled={busy}
+        />
       </View>
-    </Screen>
+    </>
   );
 }
