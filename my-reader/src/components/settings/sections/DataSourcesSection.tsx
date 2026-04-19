@@ -1,10 +1,12 @@
 import { AppRow } from "@/components/common/AppRow"
 import {
   GroupList,
-  GroupListEmpty,
-  GroupListItem,
+  GroupListItem
 } from "@/components/common/GroupList"
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
+import {
+  LOCAL_LIBRARY_DATA_SOURCE_NAME,
+} from "@/constants/local-library-data-source"
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
 import { Trash2, Unplug } from "lucide-react"
@@ -50,8 +52,7 @@ export default function DataSourcesSection() {
 
   const listHint = useMemo(() => {
     if (loading) return "数据源加载中…"
-    if (dataSources.length > 0) return `已配置 ${dataSources.length} 个数据源`
-    return "还没有配置数据源"
+    return `${dataSources.length+1} 个已添加连接`
   }, [dataSources.length, loading])
 
   return (
@@ -73,9 +74,8 @@ export default function DataSourcesSection() {
           </div>
 
           <GroupList>
-            {dataSources.length === 0 && !loading ? (
-              <GroupListEmpty>暂无数据源，请先在下方添加</GroupListEmpty>
-            ) : (
+            <LocalStorageStaticRow />
+            {dataSources.length === 0 && !loading ? null : (
               dataSources.map((source) => (
                 <DataSourceCard
                   key={source.id}
@@ -95,6 +95,34 @@ export default function DataSourcesSection() {
   )
 }
 
+function LocalStorageStaticRow() {
+  return (
+    <GroupListItem className="bg-card transition-[opacity,transform,background-color] hover:bg-muted/40">
+      <AppRow
+        icon="hardDrive"
+        body={LOCAL_LIBRARY_DATA_SOURCE_NAME}
+        detail="当前设备本地文件系统"
+        detailClassName="font-mono"
+        tail={
+          <div className="flex items-center gap-2">
+            <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
+              本机
+            </span>
+            <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+              内置
+            </span>
+          </div>
+        }
+        actions={
+          <div className="flex size-[30px] items-center justify-center rounded-[7px] text-muted-foreground">
+            <Unplug className="size-3.5" />
+          </div>
+        }
+      />
+    </GroupListItem>
+  )
+}
+
 interface DataSourceCardProps {
   source: DataSource
   isPendingDelete: boolean
@@ -111,11 +139,8 @@ function DataSourceCard({
   isRemoving,
   onDelete,
 }: DataSourceCardProps) {
-  const rowIcon = source.type === "local" ? "hardDrive" : "database"
-  const secondaryText =
-    source.type === "local"
-      ? source.rootPath?.trim() || "当前设备本地文件系统"
-      : `${source.endpoint} · ${source.username}`
+  const rowIcon = "database"
+  const secondaryText = `${source.endpoint} · ${source.username}`
 
   return (
     <GroupListItem
@@ -133,7 +158,7 @@ function DataSourceCard({
         tail={
           <div className="flex items-center gap-2">
             <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              {source.type}
+              webdav
             </span>
             {source.readonly && (
               <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">

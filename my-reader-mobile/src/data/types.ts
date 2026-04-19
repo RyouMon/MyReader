@@ -1,8 +1,4 @@
-import type {
-  DataSource,
-  DataSourceLocal,
-  DataSourceWebdav,
-} from "my-reader-tools/store/data-source";
+import type { DataSource, DataSourceWebdav } from "my-reader-tools/store/data-source";
 
 export type BookItem = {
   id: string;
@@ -25,7 +21,7 @@ export type SecurityScopedBookmark = {
   stale: boolean;
 };
 
-export type { DataSource, DataSourceLocal, DataSourceWebdav };
+export type { DataSource, DataSourceWebdav };
 
 /** WebDAV API 层：要求已配置密码 */
 export type WebDavDataSource = DataSourceWebdav & { password: string };

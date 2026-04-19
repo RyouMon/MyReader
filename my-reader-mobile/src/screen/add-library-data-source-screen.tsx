@@ -1,5 +1,6 @@
 import { Link, router } from "expo-router";
 
+import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
 import { View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "../components";
@@ -15,38 +16,32 @@ export default function AddLibraryDataSourceScreen() {
       <View className="gap-3">
         <SettingsSectionLabel>已有数据源</SettingsSectionLabel>
         <SectionCard>
-          {dataSources.map((source, index) => {
-            const isLocal = source.type === "local";
-
-            return isLocal ? (
+          <SettingsRow
+            title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
+            detail="直接从本机存储中选择书库"
+            onPress={() => {
+              void (async () => {
+                const added = await addLibrary();
+                if (added) {
+                  router.dismissTo("/settings");
+                }
+              })();
+            }}
+            isLast={dataSources.length === 0}
+          />
+          {dataSources.map((source, index) => (
+            <Link
+              key={source.id}
+              href={{ pathname: "/webdav/browser", params: { dataSourceId: source.id } }}
+              asChild
+            >
               <SettingsRow
-                key={source.id}
                 title={source.name}
-                detail="直接从手机中选择 Calibre 书库，不需要配置。"
-                onPress={() => {
-                  void (async () => {
-                    const added = await addLibrary();
-                    if (added) {
-                      router.dismissTo("/settings");
-                    }
-                  })();
-                }}
+                detail={`${source.endpoint}${source.rootPath ?? ""}`}
                 isLast={index === dataSources.length - 1}
               />
-            ) : (
-                <Link
-                  key={source.id}
-                  href={{ pathname: "/webdav/browser", params: { dataSourceId: source.id } }}
-                  asChild
-                >
-                <SettingsRow
-                  title={source.name}
-                  detail={`${source.endpoint}${source.rootPath ?? ""}`}
-                  isLast={index === dataSources.length - 1}
-                />
-              </Link>
-            );
-          })}
+            </Link>
+          ))}
         </SectionCard>
       </View>
 

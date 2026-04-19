@@ -1,6 +1,6 @@
 import { useForm } from "@tanstack/react-form"
-import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
+import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
 
@@ -17,14 +17,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import {
+  LOCAL_LIBRARY_DATA_SOURCE_ID,
+  LOCAL_LIBRARY_DATA_SOURCE_NAME,
+} from "@/constants/local-library-data-source"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "@/types/dataSource"
+import type { DataSource } from "my-reader-tools/store/data-source"
 
 const addLibrarySchema = z.object({
   dataSourceId: z.string().trim().min(1, "请先选择数据源"),
   path: z.string().trim().min(1, "请输入书库路径"),
 })
-const BUILTIN_LOCAL_SOURCE_ID = "builtin-local-storage"
 
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
@@ -43,7 +46,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
   const [adding, setAdding] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const pathInputRef = useRef<HTMLInputElement>(null)
-  const availableDataSources = dataSources.filter((row) => row.enabled)
+  const availableWebdavSources = dataSources.filter((row) => row.enabled)
 
   useEffect(() => {
     if (hydrated) return
@@ -52,7 +55,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
 
   const addLibraryForm = useForm({
     defaultValues: {
-      dataSourceId: BUILTIN_LOCAL_SOURCE_ID,
+      dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
       path: "",
     },
     validators: {
@@ -75,7 +78,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
   function handleOpenPanel() {
     setAddPanelOpen(true)
     setSubmitError(null)
-    addLibraryForm.setFieldValue("dataSourceId", BUILTIN_LOCAL_SOURCE_ID)
+    addLibraryForm.setFieldValue("dataSourceId", LOCAL_LIBRARY_DATA_SOURCE_ID)
     setTimeout(() => pathInputRef.current?.focus(), 50)
   }
 
@@ -85,25 +88,14 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
     addLibraryForm.reset()
   }
 
-  useEffect(() => {
-    const hasLocalSource = availableDataSources.some(
-      (row) => row.id === BUILTIN_LOCAL_SOURCE_ID,
-    )
-    if (!hasLocalSource) return
-    if (addLibraryForm.state.values.dataSourceId) return
-    addLibraryForm.setFieldValue("dataSourceId", BUILTIN_LOCAL_SOURCE_ID)
-  }, [availableDataSources, addLibraryForm])
-
-  function resolveSelectedDataSource(
+  function resolveSelectedWebdavSource(
     id: string,
     rows: DataSource[],
   ): DataSource | undefined {
     return rows.find((row) => row.id === id)
   }
 
-  async function handleBrowse(selectedDataSource?: DataSource) {
-    if (!selectedDataSource) return
-    if (selectedDataSource.type !== "local") return
+  async function openLocalDirectoryPicker() {
     try {
       const selected = await open({
         directory: true,
@@ -143,17 +135,15 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
             <FieldGroup>
               <addLibraryForm.Field name="dataSourceId">
                 {(field) => {
-                  const selectedDataSource = resolveSelectedDataSource(
+                  const isLocalPick = field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
+                  const selectedWebdav = resolveSelectedWebdavSource(
                     field.state.value,
-                    availableDataSources,
+                    availableWebdavSources,
                   )
                   const isInvalid =
                     field.state.meta.isTouched && !field.state.meta.isValid
                   const browseDisabled =
-                    adding ||
-                    loadingDataSources ||
-                    !selectedDataSource ||
-                    selectedDataSource.type !== "local"
+                    adding || loadingDataSources || !isLocalPick
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>数据源</FieldLabel>
@@ -176,7 +166,10 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {availableDataSources.map((source) => (
+                            <SelectItem value={LOCAL_LIBRARY_DATA_SOURCE_ID}>
+                              {LOCAL_LIBRARY_DATA_SOURCE_NAME}
+                            </SelectItem>
+                            {availableWebdavSources.map((source) => (
                               <SelectItem key={source.id} value={source.id}>
                                 {source.name}
                               </SelectItem>
@@ -184,7 +177,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                           </SelectGroup>
                         </SelectContent>
                       </Select>
-                      {selectedDataSource?.type === "webdav" && (
+                      {selectedWebdav && (
                         <p className="text-xs text-muted-foreground">
                           当前选中 WebDAV，暂不支持目录浏览。
                         </p>
@@ -221,7 +214,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                                   variant="secondary"
                                   size="sm"
                                   className="shrink-0 gap-1.5"
-                                  onClick={() => void handleBrowse(selectedDataSource)}
+                                  onClick={() => void openLocalDirectoryPicker()}
                                   disabled={browseDisabled}
                                 >
                                   <FolderSearch className="size-[13px]" />

@@ -1,17 +1,7 @@
 /**
- * 跨端数据源：单一 `DataSource` 模型与统一 Store 操作（增删改查、刷新、测试 WebDAV）。
+ * 跨端数据源：统一 Store 中的类型为已配置连接（当前为 WebDAV）。
+ * 本机存储仅在各端 UI 中静态展示，不写入此模型。
  */
-
-export type DataSourceLocal = {
-  id: string
-  type: "local"
-  name: string
-  enabled: boolean
-  readonly?: boolean
-  rootPath?: string | null
-  rootUri?: string | null
-  createdAt?: number
-}
 
 export type DataSourceWebdav = {
   id: string
@@ -27,7 +17,7 @@ export type DataSourceWebdav = {
   createdAt?: number
 }
 
-export type DataSource = DataSourceLocal | DataSourceWebdav
+export type DataSource = DataSourceWebdav
 
 /**
  * 数据源 Store

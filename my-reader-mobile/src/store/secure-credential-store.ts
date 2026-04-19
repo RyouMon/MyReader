@@ -56,11 +56,6 @@ export async function hydrateDataSourcesFromSecureCredentials(
   const hydrated: DataSource[] = [];
 
   for (const source of dataSources) {
-    if (source.type !== "webdav") {
-      hydrated.push(source);
-      continue;
-    }
-
     const securePassword = await readWebDavPassword(source.id);
     const withPassword: DataSourceWebdav = {
       ...source,
@@ -78,10 +73,6 @@ export async function hydrateDataSourcesFromSecureCredentials(
  */
 export function stripSensitiveDataSources(dataSources: DataSource[]): DataSource[] {
   return dataSources.map((source) => {
-    if (source.type !== "webdav") {
-      return source;
-    }
-
     const { password, ...rest } = source;
     return {
       ...rest,
