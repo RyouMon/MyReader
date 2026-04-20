@@ -1,10 +1,10 @@
 mod asset_scope;
 mod calibre;
-mod commands;
+pub mod commands;
 mod error;
-mod models;
+pub mod models;
 mod reader_ui_prefs;
-mod reading_progress;
+pub mod reading_progress;
 mod storage_paths;
 
 use std::sync::Mutex;

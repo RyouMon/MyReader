@@ -26,6 +26,6 @@
     }
   },
   "include": ["src", "./node_modules/my-reader-tools/src/types/foliate-epub.d.ts"],
-  "exclude": ["src/**/*.test.ts", "src/test/**"],
+  "exclude": ["tests/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

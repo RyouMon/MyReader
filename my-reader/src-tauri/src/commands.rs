@@ -295,7 +295,7 @@ pub struct TestWebdavConnectionInput {
 }
 
 /// 将用户输入的根路径规整为以 `/` 开头的绝对路径。
-fn normalize_webdav_root_path(root_path: Option<&str>) -> String {
+pub fn normalize_webdav_root_path(root_path: Option<&str>) -> String {
     let trimmed = root_path.unwrap_or("/").trim();
     if trimmed.is_empty() {
         return "/".to_string();
@@ -307,7 +307,10 @@ fn normalize_webdav_root_path(root_path: Option<&str>) -> String {
 }
 
 /// 根据 endpoint 与 rootPath 组装用于探活的 WebDAV URL。
-fn build_webdav_test_url(endpoint: &str, root_path: Option<&str>) -> Result<reqwest::Url, AppError> {
+pub fn build_webdav_test_url(
+    endpoint: &str,
+    root_path: Option<&str>,
+) -> Result<reqwest::Url, AppError> {
     let mut url = reqwest::Url::parse(endpoint.trim())
         .map_err(|err| AppError::Config(format!("WebDAV 地址格式错误: {err}")))?;
     let normalized_root = normalize_webdav_root_path(root_path);
@@ -324,42 +327,6 @@ fn build_webdav_test_url(endpoint: &str, root_path: Option<&str>) -> Result<reqw
     };
     url.set_path(&final_path);
     Ok(url)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{build_webdav_test_url, normalize_webdav_root_path};
-
-    /// 根路径为空时应回退到 `/`。
-    #[test]
-    fn normalize_webdav_root_path_falls_back_to_root() {
-        assert_eq!(normalize_webdav_root_path(None), "/");
-        assert_eq!(normalize_webdav_root_path(Some("")), "/");
-        assert_eq!(normalize_webdav_root_path(Some("   ")), "/");
-    }
-
-    /// 未以 `/` 开头的路径应自动补齐前缀，避免拼接后变成相对路径。
-    #[test]
-    fn normalize_webdav_root_path_adds_leading_slash() {
-        assert_eq!(normalize_webdav_root_path(Some("books")), "/books");
-        assert_eq!(normalize_webdav_root_path(Some("nested/path")), "/nested/path");
-    }
-
-    /// endpoint 自带 path 且 rootPath 为 `/` 时应保持原始 endpoint path。
-    #[test]
-    fn build_webdav_test_url_keeps_endpoint_path_for_root() {
-        let url = build_webdav_test_url("https://example.com/webdav/", Some("/"))
-            .expect("expected valid test url");
-        assert_eq!(url.as_str(), "https://example.com/webdav");
-    }
-
-    /// endpoint 与 rootPath 都有路径时应正确拼接为一个绝对路径。
-    #[test]
-    fn build_webdav_test_url_joins_endpoint_and_root_path() {
-        let url = build_webdav_test_url("https://example.com/base", Some("books"))
-            .expect("expected valid test url");
-        assert_eq!(url.as_str(), "https://example.com/base/books");
-    }
 }
 
 #[tauri::command]

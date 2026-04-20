@@ -35,3 +35,11 @@ zip = "2"
 keyring = "3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
+[[test]]
+name = "commands_webdav"
+path = "tests/commands_webdav.rs"
+
+[[test]]
+name = "reading_progress"
+path = "tests/reading_progress.rs"
+
