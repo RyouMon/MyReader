@@ -22,9 +22,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "my-reader-tools/*": ["../my-reader-tools/src/*"]
+      "my-reader-tools/*": ["./node_modules/my-reader-tools/src/*"]
     }
   },
-  "include": ["src", "../my-reader-tools/src/types/foliate-epub.d.ts"],
+  "include": ["src", "./node_modules/my-reader-tools/src/types/foliate-epub.d.ts"],
+  "exclude": ["src/**/*.test.ts", "src/test/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
