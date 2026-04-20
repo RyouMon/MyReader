@@ -10,7 +10,21 @@
 - Tauri dev app in `my-reader/`: `npm run tauri dev`
 - Frontend production build in `my-reader/`: `npm run build`
 - Tauri production build in `my-reader/`: `npm run tauri build`
-- There are currently no repo-defined `lint`, `test`, or `typecheck` scripts. `npm run build` is the main verification step because it runs `tsc && vite build`.
+- Desktop automated tests live under `my-reader/` (Vitest unit, `cargo test`, WebdriverIO E2E); see **Desktop testing (`my-reader`)** below. There is no root-level `lint` or `typecheck` script; `npm run build` still runs `tsc && vite build` as the main compile check.
+
+## Desktop testing (`my-reader`)
+All commands assume `cd my-reader` unless noted.
+
+| Layer | Command | Notes |
+| --- | --- | --- |
+| Full suite | `npm test` | Runs `test:unit` then `test:e2e`. |
+| Frontend unit | `npm run test:unit` | Vitest, `jsdom`; files in `tests/**/*.test.ts`, setup in `tests/setup.ts`. |
+| Frontend unit (watch) | `npm run test:unit:watch` | Same as above in watch mode. |
+| Rust | `cargo test` | Run from `src-tauri/`; integration tests in `src-tauri/tests/` (`commands_webdav`, `reading_progress`). |
+| E2E | `npm run test:e2e` | WebdriverIO in `webdriver/webdriverio/`; starts `vite preview` + Edge WebDriver per `wdio.conf.js` (Windows-oriented; needs Microsoft Edge and a downloadable `msedgedriver.exe` — see that config). |
+| E2E build only | `npm run build:frontend:e2e` | `vite build` without `tsc`, used by the E2E pipeline when a full `npm run build` is not required. |
+
+Layout: application source in `my-reader/src/` and `my-reader/src-tauri/src/`; tests in `my-reader/tests/` (frontend), `my-reader/src-tauri/tests/` (Rust), `my-reader/webdriver/webdriverio/` (E2E).
 
 ## Architecture
 - Frontend entrypoint: `my-reader/src/main.tsx`
@@ -449,7 +463,7 @@ Rust stable ≥ 1.85 is required (the `time-core` crate needs `edition2024` supp
 - Frontend-only dev server: `cd my-reader && npm run dev` (serves on `localhost:1420`)
 - Full Tauri desktop app: `cd my-reader && npm run tauri dev` (first run compiles ~570 Rust crates, takes ~90s)
 - Build verification: `cd my-reader && npm run build` (runs `tsc && vite build`)
-- No lint/test/typecheck scripts exist; `npm run build` is the main CI-style check.
+- Automated tests: `cd my-reader && npm test` (unit + E2E); see **Desktop testing (`my-reader`)** at the top of this file. There is no separate repo-wide `lint` or `typecheck` script beyond `npm run build`.
 
 ### Testing with a Calibre library
 The app requires a Calibre library directory containing `metadata.db`. For local testing, create a minimal one with `sqlite3` or Python's `sqlite3` module containing at least the `books`, `authors`, `books_authors_link`, `data`, and `tags` tables. Add the directory via Settings → 书库管理 → 添加书库.
