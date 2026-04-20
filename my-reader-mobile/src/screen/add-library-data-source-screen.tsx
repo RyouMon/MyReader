@@ -32,7 +32,7 @@ export default function AddLibraryDataSourceScreen() {
           {dataSources.map((source, index) => (
             <Link
               key={source.id}
-              href={{ pathname: "/webdav/browser", params: { dataSourceId: source.id } }}
+              href={{ pathname: "/settings/webdav/browser", params: { dataSourceId: source.id } }}
               asChild
             >
               <SettingsRow
@@ -48,7 +48,7 @@ export default function AddLibraryDataSourceScreen() {
       <View className="gap-3">
         <SettingsSectionLabel>添加数据源</SettingsSectionLabel>
         <SectionCard>
-          <Link href="/webdav/add" asChild>
+          <Link href="/settings/webdav/add" asChild>
             <SettingsRow title="WebDAV" detail="通过 WebDAV 浏览远程文件并选择 Calibre 书库" isLast />
           </Link>
         </SectionCard>
