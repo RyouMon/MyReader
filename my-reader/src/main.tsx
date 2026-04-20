@@ -1,7 +1,7 @@
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
-import { configurePdfJsWorker } from "my-reader-tools/parsers"
+import { configurePdfJsWorker } from "my-reader-tools/parsers/PdfParser"
 
 import { routeTree } from "./routeTree.gen"
 import { installForwardConsoleToLog } from "./forward-console-to-log"
@@ -9,7 +9,7 @@ import "./index.css"
 
 async function configureDesktopPdfWorker() {
   try {
-    const workerModule = await import("../../my-reader-tools/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url")
+    const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
     configurePdfJsWorker({ workerSrc: workerModule.default })
   } catch (error) {
     console.warn("[pdf-parser] desktop worker init failed, falling back to runtime default", error)

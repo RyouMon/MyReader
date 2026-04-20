@@ -10,7 +10,11 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "my-reader-tools": path.resolve(__dirname, "../my-reader-tools/src"),
+      "my-reader-tools": path.resolve(
+        __dirname,
+        "./node_modules/my-reader-tools/src",
+      ),
+      "pdfjs-dist": path.resolve(__dirname, "./node_modules/pdfjs-dist"),
     },
   },
   plugins: [
