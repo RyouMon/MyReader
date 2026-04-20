@@ -87,6 +87,11 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/tests/**/*-test.ts",
+      "<rootDir>/tests/**/*-test.tsx",
+      "**/?(*.)+(spec|test).[tj]s?(x)"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
       "^my-reader-tools/(.*)$": "<rootDir>/../my-reader-tools/src/$1",
