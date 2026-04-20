@@ -109,7 +109,7 @@ export default function WebDavDataSourceDetailScreen() {
       return;
     }
 
-    router.replace("/webdav");
+    router.replace("/settings/webdav");
   }
 
   function confirmDelete() {

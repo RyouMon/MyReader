@@ -83,7 +83,7 @@ export default function SettingsScreen() {
             <Link href="/settings/add-library" asChild>
               <SettingsRow title="手机" detail="默认数据源，无需配置，不能删除" />
             </Link>
-            <Link href="/webdav" asChild>
+            <Link href="/settings/webdav" asChild>
               <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" isLast />
             </Link>
           </SectionCard>

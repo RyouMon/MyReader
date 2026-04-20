@@ -49,7 +49,6 @@ function RootNavigator() {
             gestureEnabled: false,
           }}
         />
-        <Stack.Screen name="webdav" />
       </Stack>
     </NavigationThemeProvider>
   );

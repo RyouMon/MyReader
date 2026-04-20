@@ -20,7 +20,7 @@ import {
   STORE_NAME,
 } from "./app-store.constants";
 import type { AppState, AppStateSlice, PersistedAppState } from "./app-store.types";
-import { createDataSourceSlice } from "./data-source-store";
+import { createDataSourceSlice } from "./data-source-slice";
 import { createExpoJsonStorage } from "./json-storage";
 import { readWebDavPassword } from "./secure-credential-store";
 
