@@ -17,6 +17,18 @@
         "ENTRY_FILE": "node_modules/expo-router/entry.js"
       }
     },
+    "e2e-test": {
+      "withoutCredentials": true,
+      "env": {
+        "ENTRY_FILE": "node_modules/expo-router/entry.js"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {

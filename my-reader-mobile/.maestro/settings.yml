@@ -1,0 +1,6 @@
+appId: ryoumon.myreadermobile
+---
+- launchApp
+- tapOn: "设置"
+- assertVisible: "书库"
+- assertVisible: "阅读偏好"
