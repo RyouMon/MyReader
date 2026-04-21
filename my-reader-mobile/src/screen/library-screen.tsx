@@ -35,7 +35,7 @@ type LibraryScreenProps = {
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();
-  const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, addLibrary, error } =
+  const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, error } =
     useLibraryStore();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(sortOptions[0]);
@@ -120,7 +120,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
     {
       label: "添加书库",
-      onPress: () => void addLibrary(),
+      onPress: () => router.push("/settings/add-library"),
       icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
       iosSfSymbol: "plus",
     },
@@ -135,7 +135,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     },
     {
       label: "添加书库",
-      onPress: () => void addLibrary(),
+      onPress: () => router.push("/settings/add-library"),
       icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
       iosSfSymbol: "plus",
     },
@@ -214,7 +214,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           <EmptyState
             title="还没有添加书库"
             detail="先添加一个 Calibre 书库，之后即可在书库标签中浏览图书。"
-            action={<PrimaryButton title="添加书库" onPress={() => void addLibrary()} />}
+            action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
           />
         </Screen>
       </>

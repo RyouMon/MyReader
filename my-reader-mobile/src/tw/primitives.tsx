@@ -10,6 +10,7 @@ import {
   Pressable as RNPressable,
   ScrollView as RNScrollView,
   TouchableHighlight as RNTouchableHighlight,
+  TouchableOpacity as RNTouchableOpacity,
   TextInput as RNTextInput,
   StyleSheet,
 } from "react-native";
@@ -129,3 +130,13 @@ export const TouchableHighlight = (
   return cssElement(XXTouchableHighlight, props, { className: "style" });
 };
 TouchableHighlight.displayName = "CSS(TouchableHighlight)";
+
+/** Maps `className` to `style` for TouchableOpacity. */
+export const TouchableOpacity = (
+  props: React.ComponentProps<typeof RNTouchableOpacity> & {
+    className?: string;
+  }
+) => {
+  return cssElement(RNTouchableOpacity, props, { className: "style" });
+};
+TouchableOpacity.displayName = "CSS(TouchableOpacity)";

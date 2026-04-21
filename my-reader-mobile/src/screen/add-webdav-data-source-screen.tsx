@@ -1,7 +1,7 @@
 import { useForm, useStore } from "@tanstack/react-form";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { useState } from "react";
-import { Platform } from "react-native";
 import { z } from "zod";
 
 import type { DataSource } from "@/src/data/types";
@@ -12,9 +12,9 @@ import {
   FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS,
   FormFieldSwitch,
   FormLabeledFieldRow,
+  HeaderToolbar,
   Screen,
-  ScreenAndroidFabPrimary,
-  ScreenAndroidSecondaryBottomStart,
+  type HeaderToolbarAction,
 } from "../components";
 import { useDataSourceStore } from "../store/data-source-store";
 
@@ -164,6 +164,9 @@ export default function AddWebDavDataSourceScreen() {
   const useSsl = useStore(form.store, (s) => s.values.useSsl);
 
   async function handleTest() {
+    if (saving || testing) {
+      return;
+    }
     setTesting(true);
     setError(null);
     setTestOk(false);
@@ -182,6 +185,9 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   async function handleSave() {
+    if (saving || testing) {
+      return;
+    }
     setSaving(true);
     setError(null);
     setTestOk(false);
@@ -192,8 +198,12 @@ export default function AddWebDavDataSourceScreen() {
       }
       const draft = buildDraft(form.store.state.values);
       await testDataSourceConnection(draft);
-      const created = await createDataSource(draft);
-      router.replace({ pathname: "/settings/webdav/browser", params: { dataSourceId: created.id } });
+      await createDataSource(draft);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/settings/webdav");
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
     } finally {
@@ -202,24 +212,31 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   const inputClassName = `${FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS} border-0 bg-transparent py-1 text-[15px]`;
-  const busy = saving || testing;
+  const rightToolbar: HeaderToolbarAction[] = [
+    {
+      label: testing ? "测试中" : "测试连接",
+      onPress: () => void handleTest(),
+      icon: <MaterialIcons name="network-check" size={18} color={palette.primary} />,
+      iosSfSymbol: "antenna.radiowaves.left.and.right",
+      iconOnly: true,
+      color: palette.primary,
+    },
+    {
+      label: saving ? "完成中" : "完成",
+      onPress: () => void handleSave(),
+      icon: <MaterialIcons name="check" size={18} color={palette.primary} />,
+      iosSfSymbol: "checkmark",
+      iconOnly: true,
+      color: palette.primary,
+    },
+  ];
 
   return (
     <>
-      {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="bottom">
-          <Stack.Toolbar.Button tintColor={palette.primary} disabled={busy} onPress={() => void handleTest()}>
-            <Stack.Toolbar.Icon sf="antenna.radiowaves.left.and.right" />
-          </Stack.Toolbar.Button>
-          <Stack.Toolbar.Spacer />
-          <Stack.Toolbar.Button tintColor={palette.primary} disabled={busy} onPress={() => void handleSave()}>
-            <Stack.Toolbar.Icon sf="checkmark" />
-          </Stack.Toolbar.Button>
-        </Stack.Toolbar>
-      ) : null}
+      <HeaderToolbar right={rightToolbar} />
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <Screen contentContainerClassName="pb-32">
+        <Screen contentContainerClassName="pb-10">
           <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
             <form.Field name="serverUrl">
               {(field) => (
@@ -372,18 +389,6 @@ export default function AddWebDavDataSourceScreen() {
             ) : null}
           </View>
         </Screen>
-
-        <ScreenAndroidSecondaryBottomStart
-          label={testing ? "测试中…" : "测试连接"}
-          onPress={() => void handleTest()}
-          disabled={busy}
-        />
-        <ScreenAndroidFabPrimary
-          icon="check"
-          accessibilityLabel="保存并继续"
-          onPress={() => void handleSave()}
-          disabled={busy}
-        />
       </View>
     </>
   );

@@ -8,7 +8,7 @@ import { useLibraryStore } from "../store/library-store";
 
 export default function HomeScreen() {
   const palette = useThemePalette();
-  const { activeLibrary, books, addLibrary, loadingBooks } = useLibraryStore();
+  const { activeLibrary, books, loadingBooks } = useLibraryStore();
 
   const currentBook = books[0];
   const recentBooks = books.slice(0, 5);
@@ -27,7 +27,7 @@ export default function HomeScreen() {
         <EmptyState
           title="还没有添加书库"
           detail="在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"
-          action={<PrimaryButton title="添加书库" onPress={addLibrary} />}
+          action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
         />
       ) : currentBook ? (
         <>
