@@ -193,7 +193,10 @@ export default function AddWebDavDataSourceScreen() {
       const draft = buildDraft(form.store.state.values);
       await testDataSourceConnection(draft);
       const created = await createDataSource(draft);
-      router.replace({ pathname: "/settings/webdav/browser", params: { dataSourceId: created.id } });
+      router.replace({
+        pathname: "/settings/webdav/browser",
+        params: { dataSourceId: created.id, currentPath: "/" },
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
     } finally {

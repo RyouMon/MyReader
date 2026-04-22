@@ -1,5 +1,7 @@
-import { router, useLocalSearchParams } from "expo-router";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { Alert, Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text } from "@/tw";
@@ -17,9 +19,31 @@ type BrowserEntry = {
   isDirectory: boolean;
 };
 
+/**
+ * 规范化路由中的目录参数，根目录统一表示为 "/"。
+ */
+function normalizeCurrentPath(path: string | undefined) {
+  const normalized = (path ?? "").trim();
+  if (!normalized || normalized === "/") {
+    return "/";
+  }
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+/**
+ * 判断错误是否由目录下缺少 metadata.db 导致。
+ */
+function isMissingMetadataDbError(error: unknown) {
+  return error instanceof Error && /404/.test(error.message);
+}
+
 export default function WebDavBrowserScreen() {
   const palette = useThemePalette();
-  const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
+  const { dataSourceId, currentPath: currentPathParam } = useLocalSearchParams<{
+    dataSourceId?: string;
+    currentPath?: string;
+  }>();
+  const currentPath = useMemo(() => normalizeCurrentPath(currentPathParam), [currentPathParam]);
   const { dataSources } = useDataSourceStore();
   const { addResolvedLibrary } = useLibraryStore();
   const candidate = useMemo(
@@ -30,7 +54,6 @@ export default function WebDavBrowserScreen() {
     [dataSourceId, dataSources]
   );
   const [source, setSource] = useState<WebDavDataSource | null>(null);
-  const [currentPath, setCurrentPath] = useState("");
   const [entries, setEntries] = useState<BrowserEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +101,9 @@ export default function WebDavBrowserScreen() {
       setError(null);
 
       try {
-        const items = await listWebDavDirectory(source, currentPath);
+        const items = await listWebDavDirectory(source, currentPath === "/" ? "" : currentPath);
         if (active) {
-          setEntries(items);
+          setEntries(items.filter((item) => item.isDirectory));
         }
       } catch (caught) {
         if (active) {
@@ -115,10 +138,30 @@ export default function WebDavBrowserScreen() {
         router.dismissTo("/settings");
       }
     } catch (caught) {
+      if (isMissingMetadataDbError(caught)) {
+        Alert.alert("目录不可用", "当前目录不是有效书库，未找到 metadata.db。");
+        return;
+      }
       setError(caught instanceof Error ? caught.message : "当前目录不是有效的 Calibre 书库。");
     } finally {
       setSaving(false);
     }
+  }
+
+  /**
+   * 进入子目录时入栈一个同路由页面，返回按钮即可回退到父目录。
+   */
+  function handleOpenDirectory(path: string) {
+    if (!source) {
+      return;
+    }
+    router.push({
+      pathname: "/settings/webdav/browser",
+      params: {
+        dataSourceId: source.id,
+        currentPath: normalizeCurrentPath(path),
+      },
+    });
   }
 
   if (!source) {
@@ -131,48 +174,53 @@ export default function WebDavBrowserScreen() {
 
   return (
     <Screen>
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="right">
+          <Stack.Toolbar.Button
+            tintColor={palette.primary}
+            disabled={saving}
+            onPress={() => void handleChooseCurrentPath()}
+          >
+            <Stack.Toolbar.Icon sf="checkmark" />
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      ) : (
+        <Stack.Screen
+          options={{
+            headerRight: () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={saving ? "正在验证目录" : "选择当前目录为书库"}
+                className="min-h-10 min-w-10 items-center justify-center"
+                disabled={saving}
+                onPress={() => void handleChooseCurrentPath()}
+                style={{ opacity: saving ? 0.45 : 1 }}
+              >
+                <MaterialIcons name="check" size={22} color={palette.primary} />
+              </Pressable>
+            ),
+          }}
+        />
+      )}
+
       <Text className="px-1 text-sm leading-6" style={{ color: palette.textMuted }}>
-        当前路径：{currentPath || "/"}
+        当前路径：{currentPath}
       </Text>
-
-      <Pressable
-        accessibilityRole="button"
-        className="min-h-12 items-center justify-center rounded-full px-4"
-        onPress={() => void handleChooseCurrentPath()}
-        style={{ backgroundColor: palette.primary }}
-      >
-        <Text className="text-[15px]" style={{ color: palette.primaryForeground, fontWeight: "700" }}>
-          {saving ? "验证中..." : "选择当前目录为书库"}
-        </Text>
-      </Pressable>
-
-      {currentPath ? (
-        <Pressable
-          accessibilityRole="button"
-          className="min-h-12 items-center justify-center rounded-full px-4"
-          onPress={() => setCurrentPath(currentPath.split("/").slice(0, -1).join("/") || "")}
-          style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-        >
-          <Text className="text-[15px]" style={{ color: palette.text, fontWeight: "700" }}>
-            返回上级目录
-          </Text>
-        </Pressable>
-      ) : null}
 
       {loading ? (
         <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" />
       ) : error ? (
         <EmptyState title="读取失败" detail={error} />
       ) : entries.length === 0 ? (
-        <EmptyState title="当前目录为空" detail="当前目录下没有文件或子目录。" />
+        <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" />
       ) : (
         <SectionCard>
           {entries.map((entry, index) => (
             <SettingsRow
               key={entry.href}
               title={entry.name}
-              detail={entry.isDirectory ? entry.href || "/" : `文件 · ${entry.href}`}
-              onPress={entry.isDirectory ? () => setCurrentPath(entry.href) : undefined}
+              detail={entry.href || "/"}
+              onPress={() => handleOpenDirectory(entry.href)}
               isLast={index === entries.length - 1}
             />
           ))}

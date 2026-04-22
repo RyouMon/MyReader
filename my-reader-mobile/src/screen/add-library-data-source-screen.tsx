@@ -32,7 +32,10 @@ export default function AddLibraryDataSourceScreen() {
           {dataSources.map((source, index) => (
             <Link
               key={source.id}
-              href={{ pathname: "/settings/webdav/browser", params: { dataSourceId: source.id } }}
+              href={{
+                pathname: "/settings/webdav/browser",
+                params: { dataSourceId: source.id, currentPath: "/" },
+              }}
               asChild
             >
               <SettingsRow
