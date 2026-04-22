@@ -1,6 +1,6 @@
-import { useForm, useStore } from "@tanstack/react-form";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Stack, router } from "expo-router";
+import { useForm, useStore } from "@tanstack/react-form";
+import { router } from "expo-router";
 import { useState } from "react";
 import { z } from "zod";
 
