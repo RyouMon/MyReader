@@ -9,7 +9,7 @@ export const FONT_DISPLAY = "serif" as const;
 export const FONT_UI = "system" as const;
 export const FONT_MONO = "monospace" as const;
 
-/** Text size scale (matches DESIGN.tokens.json platform.mobile) */
+/** Text size scale (matches shared token source after sync) */
 export const TEXT_SIZE = {
   xs: 12,
   sm: 13,
@@ -41,7 +41,7 @@ export const LETTER_SPACING = {
   widest: 1.2,
 } as const;
 
-/** Border radius scale (matches DESIGN.tokens.json rounded) */
+/** Border radius scale (matches shared token source after sync) */
 export const RADIUS = {
   xs: 2,
   sm: 4,

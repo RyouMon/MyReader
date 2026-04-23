@@ -68,18 +68,19 @@ type ThemeContextValue = {
 
 const APP_BORDER = {
   light: {
-    subtle: "rgba(28,23,20,0.06)",
-    default: "rgba(28,23,20,0.10)",
-    strong: "rgba(28,23,20,0.18)",
-    active: "rgba(196,98,45,0.22)",
-    error: "rgba(181,58,47,0.18)",
+    subtle: "rgba(28, 23, 20, 0.06)",
+    default: "rgba(28, 23, 20, 0.10)",
+    strong: "rgba(28, 23, 20, 0.18)",
+    active: "rgba(196, 98, 45, 0.22)",
+    error: "rgba(181, 58, 47, 0.18)",
   },
   dark: {
-    subtle: "rgba(240,235,225,0.08)",
-    default: "rgba(240,235,225,0.12)",
-    strong: "rgba(240,235,225,0.18)",
-    active: "rgba(212,112,58,0.22)",
-    error: "rgba(207,106,106,0.20)",
+    subtle: "rgba(240, 235, 225, 0.08)",
+    default: "rgba(240, 235, 225, 0.12)",
+    strong: "rgba(240, 235, 225, 0.18)",
+    active: "rgba(212, 112, 58, 0.22)",
+    error: "rgba(207, 106, 106, 0.20)",
+
   },
 } as const;
 
@@ -128,8 +129,8 @@ const darkPaletteBase = {
   textGhost: "#5A5048",
   textOnDark: "#1C1714",
   primary: "#D4703A",
-  primaryStrong: "#C4622D",
-  primaryForeground: "#1C1814",
+  primaryStrong: "#B05523",
+  primaryForeground: "#1C1714",
   accentSoft: "#3A2218",
   accentMuted: "#5A3020",
   border: APP_BORDER.dark.default,

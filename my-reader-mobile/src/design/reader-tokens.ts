@@ -47,7 +47,7 @@ export type ReaderThemeName = keyof typeof READER_THEMES;
 
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
-  active: "rgba(212,112,58,0.22)",
+  active: "rgba(212, 112, 58, 0.22)",
   error: "rgba(255,255,255,0.08)",
 } as const;
 
@@ -135,9 +135,7 @@ export function chromeThemeCardStyle(active: boolean): {
   borderColor: string;
 } {
   return {
-    backgroundColor: active
-      ? "rgba(212,112,58,0.10)"
-      : "rgba(255,255,255,0.05)",
+    backgroundColor: active ? "rgba(212,112,58,0.10)" : "rgba(255,255,255,0.05)",
     borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
   };
 }

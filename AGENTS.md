@@ -58,9 +58,9 @@ Layout: application source in `my-reader/src/` and `my-reader/src-tauri/src/`; t
 
 ## Design System
 - Always read `DESIGN.md` before making shared visual decisions.
-- For mobile UI work, follow `DESIGN.mobile.md`.
-- For desktop UI work, follow `DESIGN.desktop.md`.
-- Shared brand rules are defined in `DESIGN.md`, platform docs only override spacing/motion/interaction details per platform.
+- Shared brand rules live in `DESIGN.md`.
+- Canonical design tokens live in `.agents/skills/myreader-design-system/colors_and_type.css`.
+- Run `node scripts/sync-design-tokens.mjs` after token changes to sync desktop/mobile implementations.
 
 
 When asked to design UI & frontend interface

@@ -27,11 +27,11 @@ colors:
   warning-soft: "#E8C87A"
   danger: "#B53A2F"
   danger-soft: "#DFA8A4"
-  border-subtle: "rgba(28,23,20,0.06)"
-  border: "rgba(28,23,20,0.10)"
-  border-strong: "rgba(28,23,20,0.18)"
-  border-active: "rgba(196,98,45,0.22)"
-  border-error: "rgba(181,58,47,0.18)"
+  border-subtle: "rgba(28, 23, 20, 0.06)"
+  border: "rgba(28, 23, 20, 0.10)"
+  border-strong: "rgba(28, 23, 20, 0.18)"
+  border-active: "rgba(196, 98, 45, 0.22)"
+  border-error: "rgba(181, 58, 47, 0.18)"
 typography:
   display:
     fontFamily: "Noto Serif SC, Lora, Georgia, serif"
@@ -155,13 +155,13 @@ states recovery-oriented, never alarming.
 ### Platform layers
 - **Shared** (this file): aesthetic direction, brand tone, semantic colors,
   typography roles, accessibility floor.
-- **`DESIGN.desktop.md`**: pointer/keyboard density, hover-driven interaction,
+- **`my-reader/src/design-tokens.css`**: pointer/keyboard density, hover-driven interaction,
   multi-pane layout specifics.
-- **`DESIGN.mobile.md`**: touch-first spacing, gesture, safe-area handling.
+- **`my-reader-mobile/src/design/tokens.tsx`**: touch-first spacing, gesture, safe-area handling.
 - Platform docs may extend but **never redefine** shared semantic values.
 
 ### Code sources of truth
-- `DESIGN.tokens.json` — machine-readable canonical token values.
+- `.agents/skills/myreader-design-system/colors_and_type.css` — machine-readable canonical token values.
 - `my-reader/src/design-tokens.css` — desktop CSS implementation.
 - `my-reader/src/index.css` — Tailwind v4 `@theme inline` mapping.
 - `my-reader-mobile/src/design/tokens.tsx` — mobile JS palette.
@@ -199,7 +199,7 @@ hierarchy, three surface tiers for depth. Semantic feedback colors for status.
 
 ### Dark mode
 Activated via `.dark` class (desktop) or system `colorScheme` (mobile).
-Dark values live in `DESIGN.tokens.json` `themes.dark`. The accent shifts
+Dark values are defined in `.agents/skills/myreader-design-system/colors_and_type.css` under `[data-theme="dark"]`. The accent shifts
 slightly warmer to `#D4703A` for better visibility on dark surfaces.
 
 ---

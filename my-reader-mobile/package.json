@@ -5,6 +5,7 @@
   "scripts": {
     "eas-build-post-install": "rm -rf node_modules/.cache",
     "postinstall": "patch-package",
+    "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

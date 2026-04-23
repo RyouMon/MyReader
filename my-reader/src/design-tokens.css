@@ -1,7 +1,7 @@
 /*
  * MyReader design-tokens.css
- * Implements DESIGN.tokens.json for the desktop app.
- * Values aligned with .designsystem/colors_and_type.css.
+ * Synced from .agents/skills/myreader-design-system/colors_and_type.css.
+ * Values aligned with .agents/skills/myreader-design-system/colors_and_type.css.
  *
  * Layer structure:
  *   1. Canonical semantic tokens  (--ink-*, --accent-*, --surface-*, etc.)
@@ -44,8 +44,8 @@
   --overlay-strong: rgba(28,23,20,0.50);
 
   /* Border helpers (prefer Tailwind border-border; these for CSS-only contexts) */
-  --border-color:        rgba(28,23,20,0.08);
-  --border-color-strong: rgba(28,23,20,0.18);
+  --border-color:        rgba(28, 23, 20, 0.10);
+  --border-color-strong: rgba(28, 23, 20, 0.18);
   --border-color-accent: var(--accent-muted);
   --border-color-focus:  var(--accent);
 
@@ -115,8 +115,8 @@
   --ink-4:        #5A5048;
   --ink-inverse:  #1C1714;
   --accent:       #D4703A;
-  --accent-hover: #C4622D;
-  --accent-press: #B05523;
+  --accent-hover:#B05523;
+  --accent-press:#9A4A1E;
   --accent-soft:  #3A2218;
   --accent-muted: #5A3020;
   --success:      #55A884;
@@ -128,8 +128,8 @@
   --overlay:      rgba(0,0,0,0.38);
   --overlay-strong: rgba(0,0,0,0.65);
 
-  --border-color:        rgba(240,235,225,0.08);
-  --border-color-strong: rgba(240,235,225,0.18);
+  --border-color:        rgba(240, 235, 225, 0.12);
+  --border-color-strong: rgba(240, 235, 225, 0.18);
 
   --shadow-card:  0 1px 3px rgba(0,0,0,0.30), 0 4px 12px rgba(0,0,0,0.25);
   --shadow-cover: 2px 4px 16px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.30);
