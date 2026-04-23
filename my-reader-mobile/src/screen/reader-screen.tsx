@@ -1,3 +1,4 @@
+import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { resolveReadFormat } from "my-reader-tools/utils";
@@ -73,29 +74,29 @@ const ERROR_BACK_BUTTON_BORDER_WIDTH = 1;
 /** 错误返回按钮文字字号。 */
 const ERROR_BACK_BUTTON_TEXT_SIZE = 15;
 /** 阅读器页面背景色。 */
-const READER_SCREEN_BACKGROUND_COLOR = "#111";
+const READER_SCREEN_BACKGROUND_COLOR = READER_FIXED.canvasBg;
 /** 加载指示器颜色。 */
-const LOADING_INDICATOR_COLOR = "#fff";
+const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator;
 /** 弹层遮罩背景色。 */
-const OVERLAY_MASK_BACKGROUND_COLOR = "rgba(0,0,0,0.45)";
+const OVERLAY_MASK_BACKGROUND_COLOR = READER_CHROME.scrim;
 /** 错误返回按钮边框颜色。 */
-const ERROR_BACK_BUTTON_BORDER_COLOR = "rgba(255,255,255,0.2)";
+const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border;
 /** 错误卡片背景色。 */
-const ERROR_CARD_BACKGROUND_COLOR = "rgba(255,255,255,0.08)";
+const ERROR_CARD_BACKGROUND_COLOR = READER_CHROME.errorCardBg;
 /** 错误卡片边框颜色。 */
-const ERROR_CARD_BORDER_COLOR = "rgba(255,255,255,0.12)";
+const ERROR_CARD_BORDER_COLOR = READER_CHROME.errorCardBorder;
 /** 错误标题文字颜色。 */
-const ERROR_TITLE_TEXT_COLOR = "rgba(255,255,255,0.96)";
+const ERROR_TITLE_TEXT_COLOR = READER_CHROME.textStrong;
 /** 错误正文文字颜色。 */
-const ERROR_BODY_TEXT_COLOR = "rgba(255,255,255,0.78)";
+const ERROR_BODY_TEXT_COLOR = READER_CHROME.textSecondary;
 /** 错误返回按钮背景色。 */
-const ERROR_BACK_BUTTON_BACKGROUND_COLOR = "rgba(255,255,255,0.06)";
+const ERROR_BACK_BUTTON_BACKGROUND_COLOR = READER_CHROME.surfaceIdle;
 /** 错误返回按钮文字颜色。 */
-const ERROR_BACK_BUTTON_TEXT_COLOR = "rgba(255,255,255,0.92)";
+const ERROR_BACK_BUTTON_TEXT_COLOR = READER_CHROME.textStrong;
 /** DOM 回退态主文案颜色。 */
-const DOM_FALLBACK_PRIMARY_TEXT_COLOR = "rgba(255,255,255,0.7)";
+const DOM_FALLBACK_PRIMARY_TEXT_COLOR = READER_CHROME.loadingIndicator;
 /** DOM 回退态次文案颜色。 */
-const DOM_FALLBACK_SECONDARY_TEXT_COLOR = "rgba(255,255,255,0.4)";
+const DOM_FALLBACK_SECONDARY_TEXT_COLOR = READER_CHROME.textMuted;
 
 type LoadState =
   | { status: "loading"; message: string }

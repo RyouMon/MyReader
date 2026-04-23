@@ -1,6 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 
+import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Animated, Pressable, Text, View } from "@/tw";
 
 export type ReaderBottomBarProps = {
@@ -27,17 +28,29 @@ export function ReaderBottomBar({
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
-      className="absolute bottom-0 left-0 right-0 z-20 min-h-[106px] border-t border-white/[0.08] bg-[rgba(24,19,15,0.78)] px-3.5 pt-3"
-      style={{ paddingBottom: Math.max(insetsBottom, 12) }}
+      className="absolute bottom-0 left-0 right-0 z-20 min-h-[106px] px-3.5 pt-3"
+      style={{
+        backgroundColor: READER_CHROME.surfaceAlpha,
+        borderTopWidth: 1,
+        borderTopColor: READER_CHROME.border,
+        paddingBottom: Math.max(insetsBottom, 12),
+      }}
       pointerEvents="box-none"
     >
       <View pointerEvents="auto">
         <View className="mb-2 flex-row items-center justify-between">
-          <Text className="text-xs text-white/50">{pageLabel}</Text>
-          <Text className="text-xs text-white/50">{progressPercent}%</Text>
+          <Text className="text-xs" style={{ color: READER_CHROME.textMuted }}>
+            {pageLabel}
+          </Text>
+          <Text className="text-xs" style={{ color: READER_CHROME.textMuted }}>
+            {progressPercent}%
+          </Text>
         </View>
 
-        <View className="mb-3 h-[2px] overflow-hidden rounded-full bg-white/15">
+        <View
+          className="mb-3 h-[2px] overflow-hidden rounded-full"
+          style={{ backgroundColor: READER_CHROME.surfaceIdle }}
+        >
           <View
             className="h-full rounded-full"
             style={{
@@ -49,18 +62,38 @@ export function ReaderBottomBar({
 
         <View className="flex-row gap-3">
           <Pressable
-            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-white/10"
+            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-2xl"
+            style={{ backgroundColor: READER_CHROME.surfaceIdle }}
             onPress={onOpenToc}
           >
-            <MaterialIcons name="list" size={18} color="#fff" />
-            <Text className="text-sm font-semibold text-white">目录</Text>
+            <MaterialIcons
+              name="list"
+              size={18}
+              color={READER_CHROME.textIdle}
+            />
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: READER_CHROME.textIdle }}
+            >
+              目录
+            </Text>
           </Pressable>
           <Pressable
-            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-white/10"
+            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-2xl"
+            style={{ backgroundColor: READER_CHROME.surfaceIdle }}
             onPress={onOpenSettings}
           >
-            <MaterialIcons name="text-fields" size={18} color="#fff" />
-            <Text className="text-sm font-semibold text-white">Aa</Text>
+            <MaterialIcons
+              name="text-fields"
+              size={18}
+              color={READER_CHROME.textIdle}
+            />
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: READER_CHROME.textIdle }}
+            >
+              Aa
+            </Text>
           </Pressable>
         </View>
       </View>

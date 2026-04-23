@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
+
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
@@ -68,7 +70,7 @@ function ComicPageLoader({
   insetBottom: number;
 }) {
   return (
-    <View style={{ width, height, backgroundColor: "#111" }}>
+    <View style={{ width, height, backgroundColor: READER_FIXED.canvasBg }}>
       <View
         style={[
           styles.pageCanvas,
@@ -335,7 +337,7 @@ export default function NativeComicReader({
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#111] px-7" style={{ width: screenWidth, height: screenHeight }}>
+      <View className="flex-1 items-center justify-center px-7" style={{ width: screenWidth, height: screenHeight, backgroundColor: READER_FIXED.canvasBg }}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>无法打开</Text>
           <Text style={styles.errText}>{error}</Text>
@@ -381,8 +383,11 @@ export default function NativeComicReader({
           )}
         </View>
       ) : (
-        <View className="flex-1 items-center justify-center bg-[#111]" style={{ width: screenWidth, height: screenHeight }}>
-          <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+        <View
+          className="flex-1 items-center justify-center"
+          style={{ width: screenWidth, height: screenHeight, backgroundColor: READER_FIXED.canvasBg }}
+        >
+          <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
         </View>
       )}
     </View>
@@ -392,7 +397,7 @@ export default function NativeComicReader({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111",
+    backgroundColor: READER_FIXED.canvasBg,
   },
   errorCard: {
     maxWidth: 400,
@@ -400,20 +405,20 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     paddingHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: READER_CHROME.errorCardBg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: READER_CHROME.errorCardBorder,
     alignItems: "center",
   },
   errorTitle: {
-    color: "rgba(255,255,255,0.96)",
+    color: READER_CHROME.textStrong,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 10,
     textAlign: "center",
   },
   errText: {
-    color: "rgba(255,255,255,0.78)",
+    color: READER_CHROME.textSecondary,
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center",

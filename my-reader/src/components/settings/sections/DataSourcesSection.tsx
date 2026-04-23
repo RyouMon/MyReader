@@ -114,7 +114,7 @@ function LocalStorageStaticRow() {
           </div>
         }
         actions={
-          <div className="flex size-[30px] items-center justify-center rounded-[7px] text-muted-foreground">
+          <div className="flex size-[30px] items-center justify-center rounded-md text-muted-foreground">
             <Unplug className="size-3.5" />
           </div>
         }
@@ -174,7 +174,7 @@ function DataSourceCard({
         }
         actions={
           source.readonly ? (
-            <div className="flex size-[30px] items-center justify-center rounded-[7px] text-muted-foreground">
+            <div className="flex size-[30px] items-center justify-center rounded-md text-muted-foreground">
               <Unplug className="size-3.5" />
             </div>
           ) : (
@@ -182,7 +182,7 @@ function DataSourceCard({
               type="button"
               onClick={() => void onDelete(source.id)}
               className={cn(
-                "flex size-[30px] items-center justify-center rounded-[7px] border transition-colors",
+                "flex size-[30px] items-center justify-center rounded-md border transition-colors",
                 isPendingDelete
                   ? "border-destructive/30 bg-destructive/10 text-destructive"
                   : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",

@@ -8,66 +8,130 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* ── Radius ── */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
+  /* ── Semantic colors ── */
+  --color-bg:             var(--bg);
+  --color-bg-subtle:      var(--bg-subtle);
+  --color-surface:        var(--surface);
+  --color-surface-2:      var(--surface-2);
+  --color-surface-3:      var(--surface-3);
+  --color-ink-1:          var(--ink-1);
+  --color-ink-2:          var(--ink-2);
+  --color-ink-3:          var(--ink-3);
+  --color-ink-4:          var(--ink-4);
+  --color-ink-inverse:    var(--ink-inverse);
+  --color-accent:         var(--accent);
+  --color-accent-hover:   var(--accent-hover);
+  --color-accent-soft:    var(--accent-soft);
+  --color-accent-muted:   var(--accent-muted);
+  --color-success:        var(--success);
+  --color-success-soft:   var(--success-soft);
+  --color-warning:        var(--warning);
+  --color-warning-soft:   var(--warning-soft);
+  --color-danger:         var(--danger);
+  --color-danger-soft:    var(--danger-soft);
+  --color-overlay:        var(--overlay);
+  --color-overlay-strong: var(--overlay-strong);
+
+  /* shadcn / Tailwind bridge (keep for component library compatibility) */
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
+  --color-primary:            var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  --color-secondary:          var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-ring:               var(--ring);
+  --color-sidebar:            var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary:    var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent:     var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-settings-nav: var(--settings-nav);
-  --color-progress: var(--progress);
-  --color-progress-track: var(--progress-track);
+  --color-sidebar-border:     var(--sidebar-border);
+  --color-sidebar-ring:       var(--sidebar-ring);
+  --color-settings-nav:       var(--settings-nav);
+  --color-progress:           var(--progress);
+  --color-progress-track:     var(--progress-track);
 
-  --font-sans: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
-  --font-serif: "Noto Serif SC", "Lora", serif;
-  --font-mono: "JetBrains Mono", monospace;
-
-  /* Reader chrome — cascade from [data-reader-theme] / comic mode in reader.css */
-  --color-reader-bg: var(--reader-bg);
-  --color-reader-fg: var(--reader-fg);
-  --color-reader-chrome-bg: var(--reader-chrome-bg);
-  --color-reader-chrome-fg: var(--reader-chrome-fg);
+  /* Reader chrome tokens (defined per [data-reader-theme] in reader.css) */
+  --color-reader-bg:           var(--reader-bg);
+  --color-reader-fg:           var(--reader-fg);
+  --color-reader-chrome-bg:    var(--reader-chrome-bg);
+  --color-reader-chrome-fg:    var(--reader-chrome-fg);
   --color-reader-chrome-muted: var(--reader-chrome-muted);
   --color-reader-chrome-border: var(--reader-chrome-border);
   --color-reader-chrome-hover: var(--reader-chrome-hover);
   --color-reader-chrome-active: var(--reader-chrome-active);
-  --color-reader-panel-bg: var(--reader-panel-bg);
-  /* Fixed-layout viewport — set on [data-reader-mode="fixed-layout"] in reader.css */
-  --color-viewer-bg: var(--viewer-bg);
+  --color-reader-panel-bg:     var(--reader-panel-bg);
+  --color-viewer-bg:           var(--viewer-bg);
+
+  /* ── Fonts ── */
+  --font-sans:  "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", "Lora", serif;
+  --font-mono:  "JetBrains Mono", monospace;
+
+  /* ── Shadow utilities ── */
+  --shadow-card:  var(--shadow-card);
+  --shadow-cover: var(--shadow-cover);
+  --shadow-panel: var(--shadow-panel);
+  --shadow-modal: var(--shadow-modal);
 }
 
 @layer utilities {
-  .bg-library-indicator-on {
-    background-color: var(--success);
-  }
-  .bg-library-indicator-off {
-    background-color: var(--text-muted);
-  }
+  /* Library indicator dots */
+  .bg-library-indicator-on  { background-color: var(--success); }
+  .bg-library-indicator-off { background-color: var(--ink-3); }
+
+  /* Semantic overlay utilities (replace bg-black/50 etc.) */
+  .bg-overlay        { background-color: var(--overlay); }
+  .bg-overlay-strong { background-color: var(--overlay-strong); }
+
+  /* Elevation utilities */
+  .shadow-card  { box-shadow: var(--shadow-card); }
+  .shadow-cover { box-shadow: var(--shadow-cover); }
+  .shadow-panel { box-shadow: var(--shadow-panel); }
+  .shadow-modal { box-shadow: var(--shadow-modal); }
+
+  /* Status feedback backgrounds */
+  .bg-success-soft { background-color: var(--success-soft); }
+  .bg-warning-soft { background-color: var(--warning-soft); }
+  .bg-danger-soft  { background-color: var(--danger-soft); }
+  .text-success    { color: var(--success); }
+  .text-warning    { color: var(--warning); }
+  .text-danger     { color: var(--danger); }
+
+  /* Ink hierarchy utilities */
+  .text-ink-1       { color: var(--ink-1); }
+  .text-ink-2       { color: var(--ink-2); }
+  .text-ink-3       { color: var(--ink-3); }
+  .text-ink-4       { color: var(--ink-4); }
+  .text-ink-inverse { color: var(--ink-inverse); }
+
+  /* Accent tint utilities */
+  .bg-accent-soft  { background-color: var(--accent-soft); }
+  .bg-accent-muted { background-color: var(--accent-muted); }
+
+  /* Surface tier utilities */
+  .bg-surface-2 { background-color: var(--surface-2); }
+  .bg-surface-3 { background-color: var(--surface-3); }
 }
 
 @layer base {
@@ -82,119 +146,60 @@
     overflow: hidden;
     font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
   }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     font-family: "Noto Serif SC", "Lora", serif;
   }
-  button,
-  [role="button"] {
+  button, [role="button"] {
     cursor: pointer;
   }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--border-color-strong);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 
-/* Book card entrance animation */
+/* Book card entrance */
 @keyframes card-fade-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Settings library card entrance */
 @keyframes settings-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.settings-card-in {
-  animation: settings-card-in 250ms ease-out both;
-}
+.settings-card-in { animation: settings-card-in 250ms ease-out both; }
 
-/* Book detail page — cover entrance */
+/* Book detail — cover entrance */
 @keyframes detail-cover-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
 }
-.detail-cover-wrap {
-  animation: detail-cover-in 0.5s ease-out 0.1s both;
-}
+.detail-cover-wrap { animation: detail-cover-in 0.5s ease-out 0.1s both; }
 
-/* Book detail page — staggered meta entrance */
+/* Book detail — staggered meta entrance */
 @keyframes detail-meta-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-.detail-anim-1 {
-  animation: detail-meta-in 0.35s ease-out 0.15s both;
-}
-.detail-anim-2 {
-  animation: detail-meta-in 0.35s ease-out 0.21s both;
-}
-.detail-anim-3 {
-  animation: detail-meta-in 0.35s ease-out 0.27s both;
-}
-.detail-anim-4 {
-  animation: detail-meta-in 0.3s ease-out 0.33s both;
-}
-.detail-anim-5 {
-  animation: detail-meta-in 0.35s ease-out 0.36s both;
-}
-.detail-anim-6 {
-  animation: detail-meta-in 0.3s ease-out 0.4s both;
-}
-.detail-anim-7 {
-  animation: detail-meta-in 0.3s ease-out 0.44s both;
-}
-.detail-anim-8 {
-  animation: detail-meta-in 0.3s ease-out 0.48s both;
-}
+.detail-anim-1 { animation: detail-meta-in 0.35s ease-out 0.15s both; }
+.detail-anim-2 { animation: detail-meta-in 0.35s ease-out 0.21s both; }
+.detail-anim-3 { animation: detail-meta-in 0.35s ease-out 0.27s both; }
+.detail-anim-4 { animation: detail-meta-in 0.30s ease-out 0.33s both; }
+.detail-anim-5 { animation: detail-meta-in 0.35s ease-out 0.36s both; }
+.detail-anim-6 { animation: detail-meta-in 0.30s ease-out 0.40s both; }
+.detail-anim-7 { animation: detail-meta-in 0.30s ease-out 0.44s both; }
+.detail-anim-8 { animation: detail-meta-in 0.30s ease-out 0.48s both; }
 
-/* Book detail tags staggered entrance */
+/* Book detail — tag entrance */
 @keyframes detail-tag-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 .detail-tag {
   opacity: 0;
@@ -203,27 +208,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .detail-cover-wrap,
-  .detail-anim-1,
-  .detail-anim-2,
-  .detail-anim-3,
-  .detail-anim-4,
-  .detail-anim-5,
-  .detail-anim-6,
-  .detail-anim-7,
-  .detail-anim-8,
+  .detail-anim-1, .detail-anim-2, .detail-anim-3, .detail-anim-4,
+  .detail-anim-5, .detail-anim-6, .detail-anim-7, .detail-anim-8,
   .detail-tag {
     animation-duration: 0.01ms !important;
   }
 }
 
-/* Active sidebar item — left border indicator */
+/* Active sidebar item indicator */
 [data-sidebar="menu-button"][data-active="true"] {
-  background-color: color-mix(
-    in srgb,
-    var(--primary) 12%,
-    transparent
-  ) !important;
-  color: var(--primary) !important;
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+  color: var(--accent) !important;
   position: relative;
 }
 [data-sidebar="menu-button"][data-active="true"]::before {
@@ -234,6 +229,6 @@
   transform: translateY(-50%);
   width: 3px;
   height: 18px;
-  background: var(--primary);
+  background: var(--accent);
   border-radius: 0 3px 3px 0;
 }

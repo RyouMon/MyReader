@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:var(--font-ui); background:var(--bg); padding:20px; }
+.sec { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9C9089; margin:16px 0 8px; }
+.sec:first-child { margin-top:0; }
+.grid { display:flex; gap:6px; flex-wrap:wrap; }
+.token { background:var(--surface); border:var(--border); border-radius:6px; padding:8px; text-align:center; min-width:44px; }
+.bar { background:#C4622D; border-radius:2px; margin:0 auto 5px; height:5px; }
+.token-name { font-size:10px; font-weight:600; color:var(--ink-1); }
+.token-val  { font-family:var(--font-mono); font-size:9px; color:var(--ink-3); margin-top:1px; }
+</style>
+</head>
+<body>
+  <div class="sec">Spacing Scale — 4px base</div>
+  <div class="grid">
+    <div class="token"><div class="bar" style="width:4px"></div><div class="token-name">space-1</div><div class="token-val">4px</div></div>
+    <div class="token"><div class="bar" style="width:8px"></div><div class="token-name">space-2</div><div class="token-val">8px</div></div>
+    <div class="token"><div class="bar" style="width:12px"></div><div class="token-name">space-3</div><div class="token-val">12px</div></div>
+    <div class="token"><div class="bar" style="width:16px"></div><div class="token-name">space-4</div><div class="token-val">16px</div></div>
+    <div class="token"><div class="bar" style="width:20px"></div><div class="token-name">space-5</div><div class="token-val">20px</div></div>
+    <div class="token"><div class="bar" style="width:24px"></div><div class="token-name">space-6</div><div class="token-val">24px</div></div>
+    <div class="token"><div class="bar" style="width:32px"></div><div class="token-name">space-8</div><div class="token-val">32px</div></div>
+    <div class="token"><div class="bar" style="width:40px"></div><div class="token-name">space-10</div><div class="token-val">40px</div></div>
+    <div class="token"><div class="bar" style="width:48px"></div><div class="token-name">space-12</div><div class="token-val">48px</div></div>
+    <div class="token"><div class="bar" style="width:56px"></div><div class="token-name">space-16</div><div class="token-val">64px</div></div>
+    <div class="token"><div class="bar" style="width:60px"></div><div class="token-name">space-24</div><div class="token-val">96px</div></div>
+  </div>
+
+  <div class="sec">Corner Radii</div>
+  <div class="grid">
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:2px;margin:0 auto 5px"></div><div class="token-name">xs</div><div class="token-val">2px</div></div>
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:4px;margin:0 auto 5px"></div><div class="token-name">sm</div><div class="token-val">4px · tag</div></div>
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:8px;margin:0 auto 5px"></div><div class="token-name">md</div><div class="token-val">8px · btn</div></div>
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:12px;margin:0 auto 5px"></div><div class="token-name">lg</div><div class="token-val">12px · card</div></div>
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:20px;margin:0 auto 5px"></div><div class="token-name">xl</div><div class="token-val">20px · sheet</div></div>
+    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:9999px;margin:0 auto 5px"></div><div class="token-name">full</div><div class="token-val">pill</div></div>
+  </div>
+
+  <div class="sec">Shadows</div>
+  <div class="grid">
+    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 1px 2px rgba(28,23,20,.06)"></div><div class="token-name">xs</div><div class="token-val">subtle</div></div>
+    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 1px 3px rgba(28,23,20,.08),0 4px 12px rgba(28,23,20,.06)"></div><div class="token-name">card</div><div class="token-val">panels</div></div>
+    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:2px 4px 16px rgba(28,23,20,.18)"></div><div class="token-name">cover</div><div class="token-val">book art</div></div>
+    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 2px 8px rgba(28,23,20,.10),0 12px 32px rgba(28,23,20,.08)"></div><div class="token-name">panel</div><div class="token-val">drawers</div></div>
+    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 4px 16px rgba(28,23,20,.12),0 24px 64px rgba(28,23,20,.14)"></div><div class="token-name">modal</div><div class="token-val">dialogs</div></div>
+  </div>
+</body>
+</html>

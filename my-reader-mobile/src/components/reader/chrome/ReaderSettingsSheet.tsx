@@ -1,5 +1,6 @@
 import { SlideInDown, SlideOutDown } from "react-native-reanimated";
 
+import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Animated, AnimatedScrollView, Text, View } from "@/tw";
 import type { FixedReaderSettings, ReadingLayout, ReflowableReaderSettings } from "@/src/store/app-store.types";
 
@@ -43,8 +44,11 @@ export function ReaderSettingsSheet({
     <Animated.View
       entering={SlideInDown.duration(280)}
       exiting={SlideOutDown.duration(220)}
-      className="absolute bottom-0 left-0 right-0 z-40 max-h-[72%] rounded-t-[26px] border-t border-white/[0.08] bg-[#1C1916]"
+      className="absolute bottom-0 left-0 right-0 z-40 max-h-[72%] rounded-t-[26px]"
       style={{
+        backgroundColor: READER_CHROME.surface,
+        borderTopWidth: 1,
+        borderTopColor: READER_CHROME.border,
         paddingBottom: Math.max(insetsBottom, 16),
         elevation: 18,
         shadowColor: "#000",
@@ -53,8 +57,16 @@ export function ReaderSettingsSheet({
         shadowOffset: { width: 0, height: -8 },
       }}
     >
-      <View className="mb-2 mt-3 h-[5px] w-11 self-center rounded-full bg-white/20" />
-      <Text className="px-5 py-3 text-base font-bold text-white">阅读设置</Text>
+      <View
+        className="mb-2 mt-3 h-[5px] w-11 self-center rounded-full"
+        style={{ backgroundColor: READER_CHROME.surfaceIdle }}
+      />
+      <Text
+        className="px-5 py-3 text-base font-bold"
+        style={{ color: READER_CHROME.textIdle }}
+      >
+        阅读设置
+      </Text>
       <AnimatedScrollView
         className="px-4"
         showsVerticalScrollIndicator={false}

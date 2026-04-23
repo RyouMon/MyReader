@@ -1,6 +1,8 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 
+import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
+
 type PageCellProps = {
   uri: string | null;
   loading?: boolean;
@@ -11,10 +13,10 @@ type PageCellProps = {
 
 export function PageCell({ uri, loading, width, height, scale = 1 }: PageCellProps) {
   return (
-    <View style={[styles.wrap, { width, height }]}> 
+    <View style={[styles.wrap, { width, height }]}>
       {loading || !uri ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+          <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
         </View>
       ) : (
         <Image
@@ -39,7 +41,7 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#111",
+    backgroundColor: READER_FIXED.canvasBg,
     overflow: "hidden",
   },
   center: {
@@ -48,7 +50,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   img: {
-    backgroundColor: "#111",
+    backgroundColor: READER_FIXED.canvasBg,
   },
 });
-

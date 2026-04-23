@@ -59,8 +59,8 @@ const BookCard = memo(function BookCard({
         className="relative aspect-[2/3] w-full overflow-hidden rounded-lg"
         style={{
           boxShadow: hovered
-            ? "0 12px 28px rgba(59,47,47,0.15), 0 4px 10px rgba(59,47,47,0.08)"
-            : "0 2px 8px rgba(59,47,47,0.10), 0 1px 3px rgba(59,47,47,0.06)",
+            ? "var(--shadow-cover)"
+            : "var(--shadow-card)",
           transform: hovered ? "translateY(-6px)" : "translateY(0)",
           transition:
             "transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s cubic-bezier(0.4,0,0.2,1)",
@@ -84,13 +84,13 @@ const BookCard = memo(function BookCard({
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.15))",
+                  "linear-gradient(180deg, transparent 60%, var(--cover-scrim-rest))",
               }}
             />
-            <span className="relative z-10 text-base font-semibold leading-[1.4] text-white font-serif [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
+            <span className="relative z-10 text-base font-semibold leading-[1.4] text-ink-inverse font-serif [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>
-            <span className="relative z-10 mt-1.5 text-[11px] text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
+            <span className="relative z-10 mt-1.5 text-[11px] text-ink-inverse/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
               {displayAuthor.length > 12
                 ? `${displayAuthor.slice(0, 11)}…`
                 : displayAuthor}
@@ -102,7 +102,7 @@ const BookCard = memo(function BookCard({
         {primaryFormat && (
           <Badge
             variant="secondary"
-            className="absolute bottom-2 left-2 z-10 rounded-sm border-0 bg-black/40 px-1.5 py-0 text-[10px] uppercase tracking-wide text-white/85 backdrop-blur-sm"
+            className="absolute bottom-2 left-2 z-10 rounded-sm border-0 bg-overlay px-1.5 py-0 text-[10px] uppercase tracking-wide text-ink-inverse/85 backdrop-blur-sm"
           >
             {primaryFormat}
           </Badge>
@@ -111,7 +111,7 @@ const BookCard = memo(function BookCard({
         {/* Hover overlay */}
         <div
           className={cn(
-            "absolute inset-0 z-20 flex items-center justify-center gap-3 bg-black/45 transition-opacity duration-200 ease-out",
+            "absolute inset-0 z-20 flex items-center justify-center gap-3 bg-overlay-strong transition-opacity duration-200 ease-out",
             hovered ? "opacity-100" : "opacity-0",
           )}
         >
@@ -119,7 +119,7 @@ const BookCard = memo(function BookCard({
             variant="secondary"
             size="icon-sm"
             title="阅读"
-            className="size-9 rounded-full bg-white/90 text-foreground hover:bg-white"
+            className="size-9 rounded-full bg-surface/90 text-foreground hover:bg-surface"
             style={{
               transform: hovered ? "scale(1)" : "scale(0.8)",
               transition:
@@ -136,7 +136,7 @@ const BookCard = memo(function BookCard({
             variant="secondary"
             size="icon-sm"
             title="更多"
-            className="size-9 rounded-full bg-white/90 text-foreground hover:bg-white"
+            className="size-9 rounded-full bg-surface/90 text-foreground hover:bg-surface"
             style={{
               transform: hovered ? "scale(1)" : "scale(0.8)",
               transition:

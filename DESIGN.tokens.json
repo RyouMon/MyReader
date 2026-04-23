@@ -1,58 +1,194 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "MyReader semantic design tokens",
-  "description": "Platform-agnostic semantic token source of truth for shared desktop and mobile design semantics.",
+  "description": "Platform-agnostic semantic token source of truth. Aligned with .designsystem/colors_and_type.css. Desktop/mobile may extend but never redefine shared semantic values.",
   "themes": {
     "light": {
       "color": {
-        "bg": "#F7F3EC",
-        "surface": "#FFFDF8",
-        "text": "#3B322B",
-        "text-muted": "#7D6F64",
-        "primary": "#A86A3A",
-        "primary-strong": "#8D542B",
-        "border": "#E6DDD1",
-        "success": "#2F8F68",
-        "warning": "#B27A2A",
-        "error": "#B64A4A"
+        "bg":           "#F7F3EC",
+        "bg-subtle":    "#F0EBE1",
+        "surface":      "#FFFFFF",
+        "surface-2":    "#F5F1EA",
+        "surface-3":    "#EDE8DF",
+        "ink-1":        "#1C1714",
+        "ink-2":        "#5C5349",
+        "ink-3":        "#9C9089",
+        "ink-4":        "#C4B8AE",
+        "ink-inverse":  "#FAF6F0",
+        "accent":       "#C4622D",
+        "accent-hover": "#B05523",
+        "accent-press": "#9A4A1E",
+        "accent-soft":  "#F5E8DF",
+        "accent-muted": "#E8C9B5",
+        "success":      "#3A7D5A",
+        "success-soft": "#C2DDD0",
+        "warning":      "#C4922D",
+        "warning-soft": "#E8C87A",
+        "danger":       "#B53A2F",
+        "danger-soft":  "#DFA8A4",
+        "overlay":      "rgba(28,23,20,0.22)",
+        "overlay-strong": "rgba(28,23,20,0.50)",
+        "border-subtle": "rgba(28,23,20,0.06)",
+        "border":        "rgba(28,23,20,0.10)",
+        "border-strong": "rgba(28,23,20,0.18)",
+        "border-active": "rgba(196,98,45,0.22)",
+        "border-error":  "rgba(181,58,47,0.18)"
       }
     },
     "dark": {
       "color": {
-        "bg": "#1C1916",
-        "surface": "#25211D",
-        "text": "#EEE7DD",
-        "text-muted": "#B8AB9D",
-        "primary": "#C9874E",
-        "primary-strong": "#D89E6D",
-        "border": "#3A332D",
-        "success": "#55A884",
-        "warning": "#CF9A4F",
-        "error": "#CF6A6A"
+        "bg":           "#1C1814",
+        "bg-subtle":    "#22201B",
+        "surface":      "#26211D",
+        "surface-2":    "#2F2923",
+        "surface-3":    "#382F27",
+        "ink-1":        "#F0EBE1",
+        "ink-2":        "#B8AFA6",
+        "ink-3":        "#7A7068",
+        "ink-4":        "#5A5048",
+        "ink-inverse":  "#1C1714",
+        "accent":       "#D4703A",
+        "accent-hover": "#C4622D",
+        "accent-press": "#B05523",
+        "accent-soft":  "#3A2218",
+        "accent-muted": "#5A3020",
+        "success":      "#55A884",
+        "success-soft": "#1E3D2E",
+        "warning":      "#CF9A4F",
+        "warning-soft": "#3A2E12",
+        "danger":       "#CF6A6A",
+        "danger-soft":  "#3D1E1E",
+        "overlay":      "rgba(0,0,0,0.38)",
+        "overlay-strong": "rgba(0,0,0,0.65)",
+        "border-subtle": "rgba(240,235,225,0.08)",
+        "border":        "rgba(240,235,225,0.12)",
+        "border-strong": "rgba(240,235,225,0.18)",
+        "border-active": "rgba(212,112,58,0.22)",
+        "border-error":  "rgba(207,106,106,0.20)"
       }
     }
   },
   "typography": {
-    "display": ["Noto Serif SC", "Lora", "serif"],
-    "body": ["Noto Sans SC", "DM Sans", "system-ui", "sans-serif"],
-    "mono": ["JetBrains Mono", "monospace"]
+    "display": {
+      "family": ["Noto Serif SC", "Lora", "Georgia", "serif"],
+      "comment": "Book titles, hero headings"
+    },
+    "body": {
+      "family": ["Noto Sans SC", "DM Sans", "PingFang SC", "system-ui", "sans-serif"],
+      "comment": "UI labels, body text, controls"
+    },
+    "reading": {
+      "family": ["Merriweather", "Noto Serif SC", "Georgia", "serif"],
+      "comment": "In-reader long-form content"
+    },
+    "mono": {
+      "family": ["JetBrains Mono", "Fira Code", "monospace"],
+      "comment": "Code, data, metadata"
+    },
+    "scale": {
+      "xs":   "0.75rem",
+      "sm":   "0.875rem",
+      "base": "1rem",
+      "md":   "1.125rem",
+      "lg":   "1.25rem",
+      "xl":   "1.5rem",
+      "2xl":  "1.875rem",
+      "3xl":  "2.25rem",
+      "4xl":  "3rem"
+    },
+    "leading": {
+      "tight":   1.25,
+      "snug":    1.4,
+      "normal":  1.6,
+      "relaxed": 1.75,
+      "loose":   1.9
+    },
+    "tracking": {
+      "tight":   "-0.02em",
+      "normal":  "0",
+      "wide":    "0.03em",
+      "wider":   "0.06em",
+      "widest":  "0.12em"
+    }
   },
-  "shape": {
-    "radius": {
-      "sm": "minor controls and chips",
-      "md": "cards and list groups",
-      "lg": "hero and grouped containers"
+  "spacing": {
+    "1":  "4px",
+    "2":  "8px",
+    "3":  "12px",
+    "4":  "16px",
+    "5":  "20px",
+    "6":  "24px",
+    "8":  "32px",
+    "10": "40px",
+    "12": "48px",
+    "16": "64px",
+    "24": "96px"
+  },
+  "rounded": {
+    "xs":   "2px",
+    "sm":   "4px",
+    "md":   "8px",
+    "lg":   "12px",
+    "xl":   "20px",
+    "full": "9999px"
+  },
+  "elevation": {
+    "xs":    "0 1px 2px rgba(28,23,20,0.06)",
+    "card":  "0 1px 3px rgba(28,23,20,0.08), 0 4px 12px rgba(28,23,20,0.06)",
+    "cover": "2px 4px 16px rgba(28,23,20,0.18), 0 1px 3px rgba(28,23,20,0.12)",
+    "panel": "0 2px 8px rgba(28,23,20,0.10), 0 12px 32px rgba(28,23,20,0.08)",
+    "modal": "0 4px 16px rgba(28,23,20,0.12), 0 24px 64px rgba(28,23,20,0.14)"
+  },
+  "animation": {
+    "ease-standard": "cubic-bezier(0.25, 0.1, 0.25, 1)",
+    "ease-spring":   "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    "ease-in":       "cubic-bezier(0.4, 0, 1, 1)",
+    "ease-out":      "cubic-bezier(0, 0, 0.2, 1)",
+    "dur-micro":     "120ms",
+    "dur-fast":      "200ms",
+    "dur-normal":    "340ms",
+    "dur-slow":      "500ms"
+  },
+  "platform": {
+    "desktop": {
+      "text-base":       "0.875rem",
+      "text-sm":         "0.75rem",
+      "text-xs":         "0.6875rem",
+      "reading-size":    "1.0625rem",
+      "reading-leading": 1.78,
+      "btn-h":           "32px",
+      "input-h":         "32px",
+      "row-h":           "36px",
+      "icon-sm":         "14px",
+      "icon-md":         "16px",
+      "sidebar-w":       "220px",
+      "cover-grid":      "110px"
+    },
+    "mobile": {
+      "text-base":       "1rem",
+      "text-sm":         "0.875rem",
+      "text-xs":         "0.75rem",
+      "reading-size":    "1.125rem",
+      "reading-leading": 1.9,
+      "touch-min":       "44px",
+      "btn-h":           "48px",
+      "input-h":         "48px",
+      "row-h":           "60px",
+      "tab-h":           "56px",
+      "icon-sm":         "18px",
+      "icon-md":         "22px",
+      "icon-lg":         "26px"
     }
   },
   "semantics": {
-    "primary-action": "warm primary color with highest visual prominence",
+    "primary-action": "accent color — highest visual prominence",
     "secondary-action": "low emphasis but clear affordance",
-    "destructive-action": "explicit error hue and confirmation flow",
-    "reading-progress": "glanceable and visually subordinate to reading content"
-  },
-  "platforms": {
-    "shared": "All semantic colors, typography roles, and shared component meaning come from this file.",
-    "desktop": "Desktop docs may map these tokens into denser layouts and pointer-first interaction patterns.",
-    "mobile": "Mobile docs may map these tokens into touch-first layouts and safe-area aware patterns, but may not redefine the shared semantic values."
+    "destructive-action": "danger hue with confirmation flow",
+    "border-subtle": "hairline separators and low-emphasis dividers",
+    "border-default": "default card/control border color",
+    "border-active": "selected/active outline color",
+    "border-error": "error state outline color",
+    "reading-progress": "glanceable, never compete with text content",
+    "reader-chrome": "recede visually in reading mode — never dominate content"
   }
 }

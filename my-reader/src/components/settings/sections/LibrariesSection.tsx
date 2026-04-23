@@ -144,7 +144,7 @@ function LibraryCard({
             onClick={() => onDeleteClick(lib.id)}
             title="删除书库"
             className={cn(
-              "size-[30px] rounded-[7px] border flex items-center justify-center transition-colors",
+              "size-[30px] rounded-md border flex items-center justify-center transition-colors",
               isPendingDelete
                 ? "border-destructive/30 bg-destructive/10 text-destructive"
                 : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",

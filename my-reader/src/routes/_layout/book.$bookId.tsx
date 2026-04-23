@@ -302,7 +302,7 @@ function BookDetailPage() {
         className={cn(
           "detail-toolbar flex shrink-0 items-center gap-3 border-b bg-background px-7 py-3 transition-all duration-150 z-5",
           toolbarScrolled
-            ? "border-border shadow-[0_1px_4px_rgba(59,47,47,0.05)]"
+            ? "border-border shadow-xs"
             : "border-transparent",
         )}
       >
@@ -360,7 +360,7 @@ function BookDetailPage() {
           <div className="detail-hero mb-8 flex gap-9">
             {/* Cover */}
             <div className="detail-cover-wrap w-[220px] shrink-0">
-              <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(59,47,47,0.12),0_4px_8px_rgba(59,47,47,0.06)]">
+              <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-cover">
                 {coverSrc ? (
                   <img
                     src={coverSrc}
@@ -377,13 +377,13 @@ function BookDetailPage() {
                       className="pointer-events-none absolute inset-0"
                       style={{
                         background:
-                          "linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.18))",
+                          "linear-gradient(180deg, transparent 55%, var(--cover-scrim-rest))",
                       }}
                     />
-                    <span className="relative z-10 font-serif text-2xl leading-[1.35] font-bold text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.3)]">
+                    <span className="relative z-10 font-serif text-2xl leading-[1.35] font-bold text-ink-inverse [text-shadow:0_2px_6px_rgba(0,0,0,0.3)]">
                       {book.title}
                     </span>
-                    <span className="relative z-10 mt-2 text-[13px] text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.2)]">
+                    <span className="relative z-10 mt-2 text-[13px] text-ink-inverse/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.2)]">
                       {displayAuthors}
                     </span>
                   </div>
@@ -396,7 +396,7 @@ function BookDetailPage() {
                   <Badge
                     key={fmt}
                     variant="outline"
-                    className="rounded-[5px] border-white/10 bg-black/40 px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm"
+                    className="rounded-sm border-ink-inverse/10 bg-overlay px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-ink-inverse/90 backdrop-blur-sm"
                   >
                     {fmt}
                   </Badge>
@@ -868,7 +868,7 @@ function RelatedBookCard({
       onClick={onClick}
       className="group/related w-[120px] shrink-0 text-left"
     >
-      <div className="aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-[0_2px_8px_rgba(59,47,47,0.10),0_1px_3px_rgba(59,47,47,0.06)] transition-all duration-200 group-hover/related:-translate-y-[3px]">
+      <div className="aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-card transition-all duration-200 group-hover/related:-translate-y-[3px]">
         {coverSrc ? (
           <img
             src={coverSrc}
@@ -885,7 +885,7 @@ function RelatedBookCard({
             className="flex size-full flex-col items-center justify-center px-2 py-3 text-center"
             style={{ background: generateCoverGradient(book.title) }}
           >
-            <span className="font-serif text-[13px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
+            <span className="font-serif text-[13px] font-semibold text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>
           </div>

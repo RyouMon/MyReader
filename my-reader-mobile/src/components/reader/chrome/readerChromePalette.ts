@@ -1,69 +1,81 @@
-import type { TextStyle, ViewStyle } from "react-native";
-
-/** 与阅读器 chrome 琥珀强调一致（书签、选中分段等） */
-export const READER_CHROME_ACCENT_HEX = "#C9874E";
-
-const ACCENT_SURFACE_SEGMENT = "rgba(201,135,78,0.15)";
-const ACCENT_SURFACE_THEME = "rgba(201,135,78,0.13)";
-const ACCENT_BORDER = "rgba(201,135,78,0.32)";
-const ACCENT_BORDER_TOC = "rgba(201,135,78,0.3)";
-const NEUTRAL_SURFACE_06 = "rgba(255,255,255,0.06)";
-const NEUTRAL_SURFACE_05 = "rgba(255,255,255,0.05)";
-const BORDER_IDLE = "rgba(255,255,255,0.06)";
-const TOC_LABEL_MUTED = "rgba(255,255,255,0.8)";
-const TOP_BAR_ICON_IDLE = "#F4EEE6";
-
 /**
- * 设置面板内「分段」控件（阅读方式、翻页方向）的背景与描边。
+ * Reader chrome palette — thin re-export from the canonical reader-tokens.
+ * Kept for backward compatibility with existing imports.
  */
-export function chromeSegmentSurfaceStyle(
-  active: boolean
-): Pick<ViewStyle, "backgroundColor" | "borderColor"> {
+import {
+  READER_CHROME,
+  chromeBookmarkIconColor,
+  chromeSegmentStyle,
+  chromeThemeCardStyle,
+  chromeTocRowStyle,
+  chromeTocLabelStyle,
+} from "@/src/design/reader-tokens";
+
+export {
+  READER_CHROME,
+  chromeBookmarkIconColor,
+  chromeSegmentStyle,
+  chromeThemeCardStyle,
+  chromeTocRowStyle,
+  chromeTocLabelStyle,
+};
+
+/** @deprecated Use READER_CHROME.accent directly. */
+export const READER_CHROME_ACCENT_HEX = READER_CHROME.accent;
+
+/** @deprecated Use chromeSegmentStyle(active) from reader-tokens. */
+export function chromeSegmentSurfaceStyle(active: boolean): {
+  backgroundColor: string;
+  borderColor: string;
+} {
   return {
-    backgroundColor: active ? ACCENT_SURFACE_SEGMENT : NEUTRAL_SURFACE_06,
-    borderColor: active ? ACCENT_BORDER : BORDER_IDLE,
+    backgroundColor: active
+      ? READER_CHROME.surfaceActive
+      : READER_CHROME.surfaceIdle,
+    borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
   };
 }
 
-/**
- * 设置面板内主题色卡可选态的背景与描边。
- */
-export function chromeThemeCardSurfaceStyle(
-  active: boolean
-): Pick<ViewStyle, "backgroundColor" | "borderColor"> {
+/** @deprecated Use chromeThemeCardStyle(active) from reader-tokens. */
+export function chromeThemeCardSurfaceStyle(active: boolean): {
+  backgroundColor: string;
+  borderColor: string;
+} {
   return {
-    backgroundColor: active ? ACCENT_SURFACE_THEME : NEUTRAL_SURFACE_05,
-    borderColor: active ? ACCENT_BORDER : BORDER_IDLE,
+    backgroundColor: active
+      ? "rgba(212,112,58,0.13)"
+      : "rgba(255,255,255,0.05)",
+    borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
   };
 }
 
-/**
- * 目录列表每一项容器的背景与边框。
- */
-export function chromeTocRowContainerStyle(active: boolean): ViewStyle {
+/** @deprecated Use chromeTocRowStyle(active) from reader-tokens. */
+export function chromeTocRowContainerStyle(active: boolean): {
+  backgroundColor: string;
+  borderWidth: number;
+  borderColor: string;
+} {
   return {
-    backgroundColor: active ? ACCENT_SURFACE_SEGMENT : NEUTRAL_SURFACE_06,
+    backgroundColor: active
+      ? READER_CHROME.surfaceActive
+      : READER_CHROME.surfaceIdle,
     borderWidth: active ? 1 : 0,
-    borderColor: active ? ACCENT_BORDER_TOC : "transparent",
+    borderColor: active ? "rgba(212,112,58,0.30)" : "transparent",
   };
 }
 
-/**
- * 目录列表项主行文字颜色与字重。
- */
+/** @deprecated Use chromeTocLabelStyle(active, accentColor) from reader-tokens. */
 export function chromeTocRowLabelStyle(
   active: boolean,
   activeTextColor: string
-): Pick<TextStyle, "color" | "fontWeight"> {
+): { color: string; fontWeight: "700" | "500" } {
   return {
-    color: active ? activeTextColor : TOC_LABEL_MUTED,
+    color: active ? activeTextColor : "rgba(255,255,255,0.80)",
     fontWeight: active ? "700" : "500",
   };
 }
 
-/**
- * 顶栏书签图标颜色（激活时为强调色，否则为默认奶油色）。
- */
+/** @deprecated Use chromeBookmarkIconColor(active) from reader-tokens. */
 export function chromeTopBarBookmarkIconColor(bookmarkActive: boolean): string {
-  return bookmarkActive ? READER_CHROME_ACCENT_HEX : TOP_BAR_ICON_IDLE;
+  return chromeBookmarkIconColor(bookmarkActive);
 }

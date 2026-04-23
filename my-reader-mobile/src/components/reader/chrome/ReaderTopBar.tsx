@@ -1,9 +1,8 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 
+import { READER_CHROME, chromeBookmarkIconColor } from "@/src/design/reader-tokens";
 import { Animated, Pressable, Text, View } from "@/tw";
-
-import { chromeTopBarBookmarkIconColor } from "./readerChromePalette";
 
 export type ReaderTopBarProps = {
   insetsTop: number;
@@ -34,35 +33,52 @@ export function ReaderTopBar({
       pointerEvents="box-none"
     >
       <View
-        className="mx-0 min-h-[52px] flex-row items-center gap-2 bg-[#110D0A] px-2.5 pb-1 pt-1.5"
+        className="mx-0 min-h-[52px] flex-row items-center gap-2 px-2.5 pb-1 pt-1.5"
+        style={{ backgroundColor: READER_CHROME.surface }}
         pointerEvents="auto"
       >
         <Pressable
-          className="h-11 w-11 items-center justify-center rounded-full bg-[rgba(17,13,10,0.42)]"
+          className="h-11 w-11 items-center justify-center rounded-full"
+          style={{ backgroundColor: READER_CHROME.surfaceIdle }}
           onPress={onBack}
         >
-          <MaterialIcons name="arrow-back-ios-new" size={18} color="#F4EEE6" />
+          <MaterialIcons
+            name="arrow-back-ios-new"
+            size={18}
+            color={READER_CHROME.textIdle}
+          />
         </Pressable>
         <View className="flex-1 items-center justify-center px-2">
-          <Text className="text-sm font-semibold text-[#F4EEE6]" numberOfLines={1}>
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: READER_CHROME.textIdle }}
+            numberOfLines={1}
+          >
             {title}
           </Text>
           {chapterTitle ? (
-            <Text className="mt-0.5 text-xs text-[rgba(244,238,230,0.56)]" numberOfLines={1}>
+            <Text
+              className="mt-0.5 text-xs"
+              style={{ color: READER_CHROME.textMuted }}
+              numberOfLines={1}
+            >
               {chapterTitle}
             </Text>
           ) : null}
         </View>
         <Pressable
-          className={`h-11 w-11 items-center justify-center rounded-full ${
-            bookmarkActive ? "bg-[rgba(201,135,78,0.14)]" : "bg-[rgba(17,13,10,0.42)]"
-          }`}
+          className="h-11 w-11 items-center justify-center rounded-full"
+          style={{
+            backgroundColor: bookmarkActive
+              ? READER_CHROME.surfaceActive
+              : READER_CHROME.surfaceIdle,
+          }}
           onPress={onToggleBookmark}
         >
           <MaterialIcons
             name={bookmarkActive ? "bookmark" : "bookmark-border"}
             size={20}
-            color={chromeTopBarBookmarkIconColor(bookmarkActive)}
+            color={chromeBookmarkIconColor(bookmarkActive)}
           />
         </Pressable>
       </View>

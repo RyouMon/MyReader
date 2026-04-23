@@ -19,7 +19,7 @@ export function StatusNotice({
 }: StatusNoticeProps) {
   const icon =
     tone === "success" ? (
-      <CheckCircle2 className="mt-[1px] size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+      <CheckCircle2 className="mt-[1px] size-3.5 shrink-0 text-success" />
     ) : tone === "error" ? (
       <AlertCircle className="mt-[1px] size-3.5 shrink-0 text-destructive" />
     ) : (
@@ -28,7 +28,7 @@ export function StatusNotice({
 
   const toneClassName =
     tone === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10"
+      ? "border-success/30 bg-success-soft"
       : tone === "error"
         ? "border-destructive/30 bg-destructive/10"
         : "border-primary/20 bg-primary/5"
@@ -36,7 +36,7 @@ export function StatusNotice({
   return (
     <div
       className={cn(
-        "flex gap-2.5 rounded-[9px] border p-3 text-[12.5px] leading-relaxed",
+        "flex gap-2.5 rounded-md border p-3 text-[12.5px] leading-relaxed",
         toneClassName,
         className,
       )}

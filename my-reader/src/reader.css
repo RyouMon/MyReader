@@ -167,7 +167,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--reader-chrome-active);
-  border: 2px solid white;
+  border: 2px solid var(--reader-chrome-bg);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   cursor: pointer;
 }
@@ -188,7 +188,7 @@
   height: 14px;
   border-radius: 50%;
   background: var(--reader-chrome-active);
-  border: 2px solid white;
+  border: 2px solid var(--reader-chrome-bg);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   cursor: pointer;
 }
@@ -222,7 +222,7 @@
   height: 14px;
   border-radius: 50%;
   background: var(--reader-chrome-active);
-  border: 2px solid white;
+  border: 2px solid var(--reader-chrome-bg);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   transition: transform 0.12s;
 }

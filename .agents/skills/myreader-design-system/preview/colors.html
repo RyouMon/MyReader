@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:var(--font-ui); background:#2A2520; padding:20px; }
+
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+/* Each column */
+.col-light {
+  background:#F7F3EC;
+  border-radius:12px;
+  padding:16px;
+  --pv-border-subtle: rgba(28,23,20,0.06);
+  --pv-border-default: rgba(28,23,20,0.10);
+  --pv-border-strong: rgba(28,23,20,0.18);
+  --pv-border-active: rgba(196,98,45,0.22);
+  --pv-border-error: rgba(181,58,47,0.18);
+}
+.col-dark  {
+  background:#1C1814;
+  border-radius:12px;
+  padding:16px;
+  --pv-border-subtle: rgba(240,235,225,0.08);
+  --pv-border-default: rgba(240,235,225,0.12);
+  --pv-border-strong: rgba(240,235,225,0.18);
+  --pv-border-active: rgba(212,112,58,0.22);
+  --pv-border-error: rgba(207,106,106,0.20);
+}
+
+.col-header { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; }
+.col-light .col-header { color:#9C9089; border-bottom:1px solid var(--pv-border-default); }
+.col-dark  .col-header { color:#7A7068; border-bottom:1px solid var(--pv-border-subtle); }
+
+/* Section label */
+.sec { font-size:9px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; margin:12px 0 6px; }
+.col-light .sec { color:#C4B8AE; }
+.col-dark  .sec { color:#5A5048; }
+
+/* Swatch row */
+.swatches { display:flex; gap:5px; flex-wrap:wrap; }
+.sw { flex:1; min-width:40px; }
+.sw-block { height:44px; border-radius:6px; }
+.sw-name { font-size:9px; font-weight:600; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sw-hex  { font-family:var(--font-mono); font-size:9px; margin-top:1px; }
+.col-light .sw-name { color:#1C1714; }
+.col-light .sw-hex  { color:#9C9089; }
+.col-dark  .sw-name { color:#F0EBE1; }
+.col-dark  .sw-hex  { color:#7A7068; }
+
+/* Semantic pair rows */
+.sem-row { display:flex; gap:5px; margin-bottom:5px; }
+.sem-chip { flex:1; border-radius:6px; padding:6px 7px; display:flex; flex-direction:column; gap:2px; }
+.sem-label { font-size:9px; font-weight:600; }
+.sem-hex   { font-family:var(--font-mono); font-size:8px; opacity:.7; }
+
+/* Border semantic preview */
+.border-grid { display:grid; grid-template-columns:1fr; gap:5px; }
+.border-chip {
+  border-radius:6px;
+  padding:6px 8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  background:rgba(255,255,255,.36);
+  border:2px solid var(--chip-border, var(--pv-border-default));
+}
+.col-dark .border-chip { background:rgba(255,255,255,.03); }
+.border-meta { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.border-name { font-size:9px; font-weight:600; white-space:nowrap; }
+.border-val { font-family:var(--font-mono); font-size:8px; opacity:.78; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.col-light .border-name { color:#1C1714; }
+.col-light .border-val  { color:#5C5349; }
+.col-dark  .border-name { color:#F0EBE1; }
+.col-dark  .border-val  { color:#B8AFA6; }
+</style>
+</head>
+<body>
+<div class="cols">
+
+  <!-- ══ LIGHT ══ -->
+  <div class="col-light">
+    <div class="col-header">☀ Light Mode</div>
+
+    <div class="sec">Background & Surface</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#F7F3EC;border:1px solid var(--pv-border-default)"></div><div class="sw-name">BG</div><div class="sw-hex">#F7F3EC</div></div>
+      <div class="sw"><div class="sw-block" style="background:#F0EBE1"></div><div class="sw-name">BG Subtle</div><div class="sw-hex">#F0EBE1</div></div>
+      <div class="sw"><div class="sw-block" style="background:#FFFFFF;border:1px solid var(--pv-border-default)"></div><div class="sw-name">Surface</div><div class="sw-hex">#FFFFFF</div></div>
+      <div class="sw"><div class="sw-block" style="background:#F5F1EA"></div><div class="sw-name">Surface 2</div><div class="sw-hex">#F5F1EA</div></div>
+      <div class="sw"><div class="sw-block" style="background:#EDE8DF"></div><div class="sw-name">Surface 3</div><div class="sw-hex">#EDE8DF</div></div>
+    </div>
+
+    <div class="sec">Ink</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#1C1714"></div><div class="sw-name">Ink 1</div><div class="sw-hex">#1C1714</div></div>
+      <div class="sw"><div class="sw-block" style="background:#5C5349"></div><div class="sw-name">Ink 2</div><div class="sw-hex">#5C5349</div></div>
+      <div class="sw"><div class="sw-block" style="background:#9C9089"></div><div class="sw-name">Ink 3</div><div class="sw-hex">#9C9089</div></div>
+      <div class="sw"><div class="sw-block" style="background:#C4B8AE"></div><div class="sw-name">Ink 4</div><div class="sw-hex">#C4B8AE</div></div>
+      <div class="sw"><div class="sw-block" style="background:#FAF6F0;border:1px solid var(--pv-border-default)"></div><div class="sw-name">Inverse</div><div class="sw-hex">#FAF6F0</div></div>
+    </div>
+
+    <div class="sec">Accent</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#C4622D"></div><div class="sw-name">Accent</div><div class="sw-hex">#C4622D</div></div>
+      <div class="sw"><div class="sw-block" style="background:#B05523"></div><div class="sw-name">Hover</div><div class="sw-hex">#B05523</div></div>
+      <div class="sw"><div class="sw-block" style="background:#9A4A1E"></div><div class="sw-name">Press</div><div class="sw-hex">#9A4A1E</div></div>
+      <div class="sw"><div class="sw-block" style="background:#F5E8DF"></div><div class="sw-name">Soft</div><div class="sw-hex">#F5E8DF</div></div>
+      <div class="sw"><div class="sw-block" style="background:#E8C9B5"></div><div class="sw-name">Muted</div><div class="sw-hex">#E8C9B5</div></div>
+    </div>
+
+    <div class="sec">Semantic</div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:#C2DDD0"><div class="sem-label" style="color:#2A5C40">Success</div><div class="sem-hex" style="color:#2A5C40">#3A7D5A / #C2DDD0</div></div>
+    </div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:#E8C87A"><div class="sem-label" style="color:#7A5010">Warning</div><div class="sem-hex" style="color:#7A5010">#C4922D / #E8C87A</div></div>
+    </div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:#DFA8A4"><div class="sem-label" style="color:#7A2820">Danger</div><div class="sem-hex" style="color:#7A2820">#B53A2F / #DFA8A4</div></div>
+    </div>
+
+    <div class="sec">Border (Semantic)</div>
+    <div class="border-grid">
+      <div class="border-chip" style="--chip-border:var(--pv-border-subtle)">
+        <div class="border-meta">
+          <div class="border-name">Border Subtle</div>
+          <div class="border-val">rgba(28,23,20,0.06)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-default)">
+        <div class="border-meta">
+          <div class="border-name">Border Default</div>
+          <div class="border-val">rgba(28,23,20,0.10)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-strong)">
+        <div class="border-meta">
+          <div class="border-name">Border Strong</div>
+          <div class="border-val">rgba(28,23,20,0.18)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-active)">
+        <div class="border-meta">
+          <div class="border-name">Border Active</div>
+          <div class="border-val">rgba(196,98,45,0.22)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-error)">
+        <div class="border-meta">
+          <div class="border-name">Border Error</div>
+          <div class="border-val">rgba(181,58,47,0.18)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">Sepia Mode</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#2C2418"></div><div class="sw-name">BG Sepia</div><div class="sw-hex">#2C2418</div></div>
+      <div class="sw"><div class="sw-block" style="background:#362C1E"></div><div class="sw-name">Surface</div><div class="sw-hex">#362C1E</div></div>
+      <div class="sw"><div class="sw-block" style="background:#E8D9BC"></div><div class="sw-name">Ink Sepia</div><div class="sw-hex">#E8D9BC</div></div>
+    </div>
+  </div>
+
+  <!-- ══ DARK ══ -->
+  <div class="col-dark">
+    <div class="col-header">🌙 Dark Mode</div>
+
+    <div class="sec">Background & Surface</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#1C1814"></div><div class="sw-name">BG</div><div class="sw-hex">#1C1814</div></div>
+      <div class="sw"><div class="sw-block" style="background:#22201B"></div><div class="sw-name">BG Subtle</div><div class="sw-hex">#22201B</div></div>
+      <div class="sw"><div class="sw-block" style="background:#26211D"></div><div class="sw-name">Surface</div><div class="sw-hex">#26211D</div></div>
+      <div class="sw"><div class="sw-block" style="background:#2F2923"></div><div class="sw-name">Surface 2</div><div class="sw-hex">#2F2923</div></div>
+      <div class="sw"><div class="sw-block" style="background:#382F27"></div><div class="sw-name">Surface 3</div><div class="sw-hex">#382F27</div></div>
+    </div>
+
+    <div class="sec">Ink</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#F0EBE1"></div><div class="sw-name">Ink 1</div><div class="sw-hex">#F0EBE1</div></div>
+      <div class="sw"><div class="sw-block" style="background:#B8AFA6"></div><div class="sw-name">Ink 2</div><div class="sw-hex">#B8AFA6</div></div>
+      <div class="sw"><div class="sw-block" style="background:#7A7068"></div><div class="sw-name">Ink 3</div><div class="sw-hex">#7A7068</div></div>
+      <div class="sw"><div class="sw-block" style="background:#5A5048"></div><div class="sw-name">Ink 4</div><div class="sw-hex">#5A5048</div></div>
+      <div class="sw"><div class="sw-block" style="background:#1C1714"></div><div class="sw-name">Inverse</div><div class="sw-hex">#1C1714</div></div>
+    </div>
+
+    <div class="sec">Accent</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#D4703A"></div><div class="sw-name">Accent</div><div class="sw-hex">#D4703A</div></div>
+      <div class="sw"><div class="sw-block" style="background:#C4622D"></div><div class="sw-name">Hover</div><div class="sw-hex">#C4622D</div></div>
+      <div class="sw"><div class="sw-block" style="background:#B05523"></div><div class="sw-name">Press</div><div class="sw-hex">#B05523</div></div>
+      <div class="sw"><div class="sw-block" style="background:#3A2218"></div><div class="sw-name">Soft</div><div class="sw-hex">#3A2218</div></div>
+      <div class="sw"><div class="sw-block" style="background:#5A3020"></div><div class="sw-name">Muted</div><div class="sw-hex">#5A3020</div></div>
+    </div>
+
+    <div class="sec">Semantic</div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:rgba(58,125,90,.2);border:1px solid rgba(58,125,90,.3)"><div class="sem-label" style="color:#6FC49A">Success</div><div class="sem-hex" style="color:#6FC49A">#3A7D5A / dark tint</div></div>
+    </div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:rgba(196,146,45,.15);border:1px solid rgba(196,146,45,.3)"><div class="sem-label" style="color:#E8B85A">Warning</div><div class="sem-hex" style="color:#E8B85A">#C4922D / dark tint</div></div>
+    </div>
+    <div class="sem-row">
+      <div class="sem-chip" style="background:rgba(181,58,47,.15);border:1px solid rgba(181,58,47,.3)"><div class="sem-label" style="color:#E07870">Danger</div><div class="sem-hex" style="color:#E07870">#B53A2F / dark tint</div></div>
+    </div>
+
+    <div class="sec">Border (Semantic)</div>
+    <div class="border-grid">
+      <div class="border-chip" style="--chip-border:var(--pv-border-subtle)">
+        <div class="border-meta">
+          <div class="border-name">Border Subtle</div>
+          <div class="border-val">rgba(240,235,225,0.08)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-default)">
+        <div class="border-meta">
+          <div class="border-name">Border Default</div>
+          <div class="border-val">rgba(240,235,225,0.12)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-strong)">
+        <div class="border-meta">
+          <div class="border-name">Border Strong</div>
+          <div class="border-val">rgba(240,235,225,0.18)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-active)">
+        <div class="border-meta">
+          <div class="border-name">Border Active</div>
+          <div class="border-val">rgba(212,112,58,0.22)</div>
+        </div>
+      </div>
+      <div class="border-chip" style="--chip-border:var(--pv-border-error)">
+        <div class="border-meta">
+          <div class="border-name">Border Error</div>
+          <div class="border-val">rgba(207,106,106,0.20)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">Sepia Mode</div>
+    <div class="swatches">
+      <div class="sw"><div class="sw-block" style="background:#2C2418"></div><div class="sw-name">BG Sepia</div><div class="sw-hex">#2C2418</div></div>
+      <div class="sw"><div class="sw-block" style="background:#362C1E"></div><div class="sw-name">Surface</div><div class="sw-hex">#362C1E</div></div>
+      <div class="sw"><div class="sw-block" style="background:#E8D9BC"></div><div class="sw-name">Ink Sepia</div><div class="sw-hex">#E8D9BC</div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

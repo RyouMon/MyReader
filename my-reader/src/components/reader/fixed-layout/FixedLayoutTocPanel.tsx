@@ -136,7 +136,7 @@ export function FixedLayoutTocPanel({
                     className="size-full object-cover"
                     draggable={false}
                   />
-                  <span className="absolute bottom-1 right-1 rounded bg-black/50 px-1.5 py-px font-mono text-[10px] text-white/60">
+                  <span className="absolute bottom-1 right-1 rounded bg-overlay-strong px-1.5 py-px font-mono text-[10px] text-ink-inverse/60">
                     {idx + 1}
                   </span>
                 </button>

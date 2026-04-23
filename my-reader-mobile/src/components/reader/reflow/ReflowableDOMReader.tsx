@@ -19,6 +19,7 @@ import {
   useState,
 } from "react";
 
+import { READER_THEMES } from "@/src/design/reader-tokens";
 import { flattenReflowToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
@@ -131,34 +132,8 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 function getThemeVars(theme: ReaderTheme) {
-  const themeMap: Record<ReaderTheme, { bg: string; text: string; muted: string; link: string }> = {
-    dark: {
-      bg: "#111111",
-      text: "rgba(255,255,255,0.92)",
-      muted: "rgba(255,255,255,0.64)",
-      link: "#d9a066",
-    },
-    paper: {
-      bg: "#f5efe6",
-      text: "#2f261f",
-      muted: "#6c6258",
-      link: "#9f5b2d",
-    },
-    light: {
-      bg: "#ffffff",
-      text: "#222222",
-      muted: "#6b7280",
-      link: "#9f5b2d",
-    },
-    green: {
-      bg: "#e8f0e4",
-      text: "#253325",
-      muted: "#5f7161",
-      link: "#577a45",
-    },
-  };
-
-  return themeMap[theme];
+  const t = READER_THEMES[theme];
+  return { bg: t.bg, text: t.fg, muted: t.muted, link: t.link };
 }
 
 function buildBaseReaderCss(
@@ -881,7 +856,7 @@ export default function ReflowableDOMReader({
 
 const styles: Record<string, CSSProperties> = {
   loading: {
-    color: "rgba(255,255,255,0.72)",
+    color: READER_THEMES.dark.muted,
     textAlign: "center",
     padding: LOADING_PADDING,
   },
@@ -893,14 +868,14 @@ const styles: Record<string, CSSProperties> = {
   },
   errorTitle: {
     margin: `0 0 ${ERROR_TITLE_MARGIN_BOTTOM}px`,
-    color: "rgba(255,255,255,0.96)",
+    color: READER_THEMES.dark.fg,
     fontSize: ERROR_TITLE_FONT_SIZE,
     fontWeight: ERROR_TITLE_FONT_WEIGHT,
     textAlign: "center",
   },
   errorText: {
     margin: 0,
-    color: "rgba(255,255,255,0.72)",
+    color: READER_THEMES.dark.muted,
     lineHeight: ERROR_TEXT_LINE_HEIGHT,
     textAlign: "center",
     whiteSpace: "pre-wrap",

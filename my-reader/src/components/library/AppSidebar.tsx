@@ -81,10 +81,10 @@ export default function AppSidebar() {
       <SidebarHeader className="gap-0 pt-3 pb-2 overflow-x-hidden">
         <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
           <div
-            className="font-serif flex size-9 shrink-0 items-center justify-center rounded-[10px] text-base font-bold text-white"
+            className="font-serif flex size-9 shrink-0 items-center justify-center rounded-lg text-base font-bold text-ink-inverse"
             style={{
               background:
-                "linear-gradient(135deg, var(--primary), var(--accent-foreground, #7a2e3b))",
+                "linear-gradient(135deg, var(--accent), var(--accent-hover))",
             }}
           >
             M

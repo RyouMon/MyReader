@@ -1,100 +1,178 @@
 /*
- * MyReader app token implementation.
- * Canonical semantic values live in ../DESIGN.tokens.json.
- * This file maps that shared source into app-consumable CSS variables.
+ * MyReader design-tokens.css
+ * Implements DESIGN.tokens.json for the desktop app.
+ * Values aligned with .designsystem/colors_and_type.css.
+ *
+ * Layer structure:
+ *   1. Canonical semantic tokens  (--ink-*, --accent-*, --surface-*, etc.)
+ *   2. shadcn/Tailwind bridge      (--background, --foreground, --primary, etc.)
+ *   3. Reader chrome tokens        (--reader-chrome-active, etc. — see reader.css)
  */
 
 :root {
-  --radius: 0.75rem;
+  /* ── Radius ── */
+  --radius:    0.75rem;   /* 12px — default card / container */
+  --radius-xs: 0.125rem;  /* 2px */
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1.25rem;   /* 20px */
 
-  /* Shared semantic tokens from DESIGN.tokens.json */
-  --bg: #f7f3ec;
-  --surface: #fffdf8;
-  --text: #3b322b;
-  --text-muted: #7d6f64;
-  --primary: #a86a3a;
-  --primary-strong: #8d542b;
-  --border: #e6ddd1;
-  --success: #2f8f68;
-  --warning: #b27a2a;
-  --error: #b64a4a;
+  /* ── Canonical color tokens (light) ── */
+  --bg:           #F7F3EC;
+  --bg-subtle:    #F0EBE1;
+  --surface:      #FFFFFF;
+  --surface-2:    #F5F1EA;
+  --surface-3:    #EDE8DF;
+  --ink-1:        #1C1714;
+  --ink-2:        #5C5349;
+  --ink-3:        #9C9089;
+  --ink-4:        #C4B8AE;
+  --ink-inverse:  #FAF6F0;
+  --accent:       #C4622D;
+  --accent-hover: #B05523;
+  --accent-press: #9A4A1E;
+  --accent-soft:  #F5E8DF;
+  --accent-muted: #E8C9B5;
+  --success:      #3A7D5A;
+  --success-soft: #C2DDD0;
+  --warning:      #C4922D;
+  --warning-soft: #E8C87A;
+  --danger:       #B53A2F;
+  --danger-soft:  #DFA8A4;
+  --overlay:      rgba(28,23,20,0.22);
+  --overlay-strong: rgba(28,23,20,0.50);
 
-  /* App token mapping consumed by shadcn/Tailwind utilities */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--surface);
-  --card-foreground: var(--text);
-  --popover: var(--surface);
-  --popover-foreground: var(--text);
-  --primary-foreground: #fffaf3;
-  --secondary: color-mix(in srgb, var(--surface) 60%, var(--bg));
-  --secondary-foreground: var(--text);
-  --muted: color-mix(in srgb, var(--surface) 35%, var(--bg));
-  --muted-foreground: var(--text-muted);
-  --accent: color-mix(in srgb, var(--primary) 8%, var(--surface));
-  --accent-foreground: var(--text);
-  --destructive: var(--error);
-  --input: color-mix(in srgb, var(--surface) 55%, var(--border));
-  --ring: var(--primary);
+  /* Border helpers (prefer Tailwind border-border; these for CSS-only contexts) */
+  --border-color:        rgba(28,23,20,0.08);
+  --border-color-strong: rgba(28,23,20,0.18);
+  --border-color-accent: var(--accent-muted);
+  --border-color-focus:  var(--accent);
 
-  --sidebar: color-mix(in srgb, var(--surface) 40%, var(--bg));
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: color-mix(in srgb, var(--primary) 10%, var(--surface));
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary);
+  /* Elevation / shadow */
+  --shadow-xs:    0 1px 2px rgba(28,23,20,0.06);
+  --shadow-card:  0 1px 3px rgba(28,23,20,0.08), 0 4px 12px rgba(28,23,20,0.06);
+  --shadow-cover: 2px 4px 16px rgba(28,23,20,0.18), 0 1px 3px rgba(28,23,20,0.12);
+  --shadow-panel: 0 2px 8px rgba(28,23,20,0.10), 0 12px 32px rgba(28,23,20,0.08);
+  --shadow-modal: 0 4px 16px rgba(28,23,20,0.12), 0 24px 64px rgba(28,23,20,0.14);
 
-  --progress: var(--primary);
-  --progress-track: color-mix(in srgb, var(--surface) 30%, var(--border));
+  /* Cover image scrim (on-image treatment — intentionally not a semantic surface) */
+  --cover-scrim-rest:  rgba(0,0,0,0.15);
+  --cover-scrim-hover: rgba(0,0,0,0.45);
 
-  /* Convenience aliases for page-level surfaces that should stay in-system. */
-  --settings-nav-bg: color-mix(in srgb, var(--surface) 24%, var(--bg));
-  --settings-nav: var(--settings-nav-bg);
+  /* Desktop interaction states */
+  --hover-bg:   rgba(28,23,20,0.05);
+  --active-bg:  rgba(196,98,45,0.08);
+  --focus-ring: 0 0 0 2px rgba(196,98,45,0.35);
+
+  /* ── shadcn / Tailwind bridge (do not use these as canonical values) ── */
+  --background:         var(--bg);
+  --foreground:         var(--ink-1);
+  --card:               var(--surface);
+  --card-foreground:    var(--ink-1);
+  --popover:            var(--surface);
+  --popover-foreground: var(--ink-1);
+  --primary:            var(--accent);
+  --primary-foreground: var(--ink-inverse);
+  --secondary:          var(--surface-2);
+  --secondary-foreground: var(--ink-1);
+  --muted:              color-mix(in srgb, var(--surface-2) 70%, var(--bg));
+  --muted-foreground:   var(--ink-2);
+  --accent-ui:          var(--accent-soft);
+  --accent-foreground:  var(--ink-1);
+  --destructive:        var(--danger);
+  --destructive-foreground: var(--ink-inverse);
+  --border:             var(--border-color);
+  --input:              color-mix(in srgb, var(--surface) 55%, var(--border-color));
+  --ring:               var(--accent);
+
+  --sidebar:                    color-mix(in srgb, var(--surface-2) 60%, var(--bg));
+  --sidebar-foreground:         var(--ink-1);
+  --sidebar-primary:            var(--accent);
+  --sidebar-primary-foreground: var(--ink-inverse);
+  --sidebar-accent:             var(--accent-soft);
+  --sidebar-accent-foreground:  var(--ink-1);
+  --sidebar-border:             var(--border-color);
+  --sidebar-ring:               var(--accent);
+
+  --progress:       var(--accent);
+  --progress-track: color-mix(in srgb, var(--surface) 30%, var(--border-color));
+
+  --settings-nav-bg: color-mix(in srgb, var(--surface-2) 50%, var(--bg));
+  --settings-nav:    var(--settings-nav-bg);
 }
 
 .dark {
-  --bg: #1c1916;
-  --surface: #25211d;
-  --text: #eee7dd;
-  --text-muted: #b8ab9d;
-  --primary: #c9874e;
-  --primary-strong: #d89e6d;
-  --border: #3a332d;
-  --success: #55a884;
-  --warning: #cf9a4f;
-  --error: #cf6a6a;
+  /* ── Canonical color tokens (dark) ── */
+  --bg:           #1C1814;
+  --bg-subtle:    #22201B;
+  --surface:      #26211D;
+  --surface-2:    #2F2923;
+  --surface-3:    #382F27;
+  --ink-1:        #F0EBE1;
+  --ink-2:        #B8AFA6;
+  --ink-3:        #7A7068;
+  --ink-4:        #5A5048;
+  --ink-inverse:  #1C1714;
+  --accent:       #D4703A;
+  --accent-hover: #C4622D;
+  --accent-press: #B05523;
+  --accent-soft:  #3A2218;
+  --accent-muted: #5A3020;
+  --success:      #55A884;
+  --success-soft: #1E3D2E;
+  --warning:      #CF9A4F;
+  --warning-soft: #3A2E12;
+  --danger:       #CF6A6A;
+  --danger-soft:  #3D1E1E;
+  --overlay:      rgba(0,0,0,0.38);
+  --overlay-strong: rgba(0,0,0,0.65);
 
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--surface);
-  --card-foreground: var(--text);
-  --popover: var(--surface);
-  --popover-foreground: var(--text);
-  --primary-foreground: #1c1916;
-  --secondary: color-mix(in srgb, var(--surface) 72%, black);
-  --secondary-foreground: var(--text);
-  --muted: color-mix(in srgb, var(--surface) 82%, black);
-  --muted-foreground: var(--text-muted);
-  --accent: color-mix(in srgb, var(--primary) 12%, var(--surface));
-  --accent-foreground: var(--text);
-  --destructive: var(--error);
-  --input: color-mix(in srgb, var(--surface) 84%, black);
-  --ring: var(--primary);
+  --border-color:        rgba(240,235,225,0.08);
+  --border-color-strong: rgba(240,235,225,0.18);
 
-  --sidebar: color-mix(in srgb, var(--surface) 80%, black);
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: color-mix(in srgb, var(--primary) 10%, var(--surface));
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--primary);
+  --shadow-card:  0 1px 3px rgba(0,0,0,0.30), 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-cover: 2px 4px 16px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.30);
+  --shadow-panel: 0 2px 8px rgba(0,0,0,0.35), 0 12px 32px rgba(0,0,0,0.28);
+  --shadow-modal: 0 4px 16px rgba(0,0,0,0.35), 0 24px 64px rgba(0,0,0,0.40);
 
-  --progress: var(--primary);
+  --hover-bg:   rgba(240,235,225,0.05);
+  --active-bg:  rgba(212,112,58,0.10);
+  --focus-ring: 0 0 0 2px rgba(212,112,58,0.40);
+
+  /* shadcn / Tailwind bridge */
+  --background:         var(--bg);
+  --foreground:         var(--ink-1);
+  --card:               var(--surface);
+  --card-foreground:    var(--ink-1);
+  --popover:            var(--surface);
+  --popover-foreground: var(--ink-1);
+  --primary:            var(--accent);
+  --primary-foreground: var(--ink-inverse);
+  --secondary:          var(--surface-2);
+  --secondary-foreground: var(--ink-1);
+  --muted:              color-mix(in srgb, var(--surface-2) 82%, black);
+  --muted-foreground:   var(--ink-2);
+  --accent-ui:          var(--accent-soft);
+  --accent-foreground:  var(--ink-1);
+  --destructive:        var(--danger);
+  --destructive-foreground: var(--ink-inverse);
+  --border:             var(--border-color);
+  --input:              color-mix(in srgb, var(--surface) 84%, black);
+  --ring:               var(--accent);
+
+  --sidebar:                    color-mix(in srgb, var(--surface-2) 80%, black);
+  --sidebar-foreground:         var(--ink-1);
+  --sidebar-primary:            var(--accent);
+  --sidebar-primary-foreground: var(--ink-inverse);
+  --sidebar-accent:             var(--accent-soft);
+  --sidebar-accent-foreground:  var(--ink-1);
+  --sidebar-border:             var(--border-color);
+  --sidebar-ring:               var(--accent);
+
+  --progress:       var(--accent);
   --progress-track: color-mix(in srgb, var(--surface) 70%, black);
 
-  --settings-nav-bg: color-mix(in srgb, var(--surface) 65%, black);
-  --settings-nav: var(--settings-nav-bg);
+  --settings-nav-bg: color-mix(in srgb, var(--surface-2) 65%, black);
+  --settings-nav:    var(--settings-nav-bg);
 }

@@ -96,7 +96,7 @@ function DetailHero({ library, accent, isActive }: { library: MobileLibrary; acc
           className="text-center text-[32px] leading-[38px]"
           style={{
             color: palette.text,
-            fontFamily: "serif",
+            fontFamily: undefined,
             fontWeight: "700",
             letterSpacing: -0.4,
           }}

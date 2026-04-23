@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:var(--font-ui); background:var(--bg); padding:20px 24px; }
+.platform-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; background:#F5E8DF; color:#C4622D; margin-bottom:14px; }
+.row { margin-bottom:12px; border-bottom:1px solid rgba(28,23,20,.07); padding-bottom:12px; }
+.row:last-child { border-bottom:none; margin-bottom:0; }
+.label { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9C9089; margin-bottom:5px; }
+.meta  { font-size:10px; color:#9C9089; margin-top:3px; font-family:var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="platform-badge">📱 Mobile</div>
+
+  <div class="row">
+    <div class="label">Display — Lora 600</div>
+    <div style="font-family:'Lora',serif;font-size:1.625rem;font-weight:600;line-height:1.25;letter-spacing:-0.01em;color:#1C1714">My Library · 我的书库</div>
+    <div class="meta">26px · screen hero, onboarding headings</div>
+  </div>
+  <div class="row">
+    <div class="label">H1 — Lora 600</div>
+    <div style="font-family:'Lora',serif;font-size:1.375rem;font-weight:600;line-height:1.3;color:#1C1714">书库 / Library</div>
+    <div class="meta">22px · screen titles</div>
+  </div>
+  <div class="row">
+    <div class="label">H2 — Lora 500</div>
+    <div style="font-family:'Lora',serif;font-size:1.125rem;font-weight:500;line-height:1.35;color:#1C1714">最近阅读 · Recently Read</div>
+    <div class="meta">18px · section headings within screens</div>
+  </div>
+  <div class="row">
+    <div class="label">UI Label — DM Sans 500</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;line-height:1.55;color:#1C1714">继续阅读 · 已同步 · Settings</div>
+    <div class="meta">16px · nav items, buttons, list rows</div>
+  </div>
+  <div class="row">
+    <div class="label">Body — DM Sans 400</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:0.875rem;line-height:1.55;color:#5C5349">Umberto Eco · EPUB · 上次同步：刚刚</div>
+    <div class="meta">14px · metadata, secondary text</div>
+  </div>
+  <div class="row">
+    <div class="label">Caption — DM Sans 400</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:0.75rem;line-height:1.5;color:#9C9089">62% · 第 234 页 · 已同步</div>
+    <div class="meta">12px · progress labels, timestamps</div>
+  </div>
+  <div class="row">
+    <div class="label">Eyebrow — DM Sans 500 caps</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#9C9089">Calibre Library</div>
+    <div class="meta">12px · section dividers, group labels</div>
+  </div>
+</body>
+</html>

@@ -16,7 +16,7 @@ export function ReaderPanelsBackdrop({ open, onClose }: ReaderPanelsBackdropProp
       className={cn(
         "absolute inset-0 z-55 transition-all duration-300",
         open
-          ? "pointer-events-auto bg-black/30"
+          ? "pointer-events-auto bg-overlay"
           : "pointer-events-none bg-transparent",
       )}
       onClick={onClose}

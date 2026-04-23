@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 
+import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import type {
@@ -30,12 +31,7 @@ import type {
 type PdfRefLike = { setPage(pageNumber: number): void };
 type PdfComponent = ComponentType<Record<string, unknown>>;
 
-const THEME_BACKGROUNDS: Record<ReaderTheme, string> = {
-  paper: "#f5efe6",
-  light: "#ffffff",
-  green: "#e8f0e4",
-  dark: "#111111",
-};
+const THEME_BACKGROUNDS: Record<ReaderTheme, string> = READER_FIXED.themeBg;
 
 const NATIVE_MODULE_HINT =
   "请使用包含 react-native-pdf / react-native-blob-util 的 Development Build：在项目根执行 npx expo prebuild 后 npx expo run:ios 或 npx expo run:android（勿使用 Expo Go）。";
@@ -330,13 +326,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.25)",
+    backgroundColor: READER_CHROME.scrim,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#111",
+    backgroundColor: READER_FIXED.canvasBg,
     paddingHorizontal: 28,
   },
   errorCard: {
@@ -345,20 +341,20 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     paddingHorizontal: 20,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: READER_CHROME.errorCardBg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.12)",
+    borderColor: READER_CHROME.errorCardBorder,
     alignItems: "center",
   },
   errorTitle: {
-    color: "rgba(255,255,255,0.96)",
+    color: READER_CHROME.textStrong,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 10,
     textAlign: "center",
   },
   errText: {
-    color: "rgba(255,255,255,0.78)",
+    color: READER_CHROME.textSecondary,
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center",
@@ -367,6 +363,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 13,
     lineHeight: 19,
-    color: "rgba(255,255,255,0.55)",
+    color: READER_CHROME.textMuted,
   },
 });
