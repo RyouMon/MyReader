@@ -5,7 +5,6 @@ use std::sync::Mutex;
 use std::time::{Duration, UNIX_EPOCH};
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use keyring::Error as KeyringError;
 use log::{error, info};
 use reqwest::Method;
 use tauri::{AppHandle, Manager, State};
@@ -20,6 +19,7 @@ use crate::models::{
 };
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::reading_progress;
+use crate::sync::credentials;
 
 pub type AppState = Mutex<AppConfig>;
 
@@ -37,33 +37,6 @@ pub struct PreparedBookSource {
 pub struct CacheUsageDto {
     pub total_bytes: u64,
     pub max_bytes: u64,
-}
-
-const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
-
-/// 为指定数据源构造 WebDAV 密码在系统凭据库中的账户名。
-fn webdav_password_account(data_source_id: &str) -> String {
-    format!("webdav-password-{data_source_id}")
-}
-
-/// 将 WebDAV 密码保存到系统凭据库（覆盖更新）。
-fn save_webdav_password(account: &str, password: &str) -> Result<(), AppError> {
-    let entry = keyring::Entry::new(WEBDAV_KEYRING_SERVICE, account)
-        .map_err(|err| AppError::Config(format!("创建凭据项失败: {err}")))?;
-    entry
-        .set_password(password)
-        .map_err(|err| AppError::Config(format!("保存系统凭据失败: {err}")))?;
-    Ok(())
-}
-
-/// 从系统凭据库移除 WebDAV 密码；若不存在则忽略。
-fn delete_webdav_password(account: &str) -> Result<(), AppError> {
-    let entry = keyring::Entry::new(WEBDAV_KEYRING_SERVICE, account)
-        .map_err(|err| AppError::Config(format!("创建凭据项失败: {err}")))?;
-    match entry.delete_credential() {
-        Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
-        Err(err) => Err(AppError::Config(format!("删除系统凭据失败: {err}"))),
-    }
 }
 
 fn sanitize_key_part(input: &str) -> String {
@@ -565,8 +538,8 @@ pub fn add_webdav_data_source(
             credential_account, ..
         } = &mut source.detail
         {
-            let account = webdav_password_account(&source.id);
-            save_webdav_password(&account, password)?;
+            let account = credentials::webdav_password_account(&source.id);
+            credentials::save_webdav_password(&account, password)?;
             *credential_account = Some(account);
         }
         let dto = DataSourceDto::from(&source);
@@ -615,7 +588,7 @@ pub fn remove_data_source(
             return Err(AppError::NotFound(format!("数据源 {} 不存在", id)));
         }
         for account in webdav_accounts_to_delete {
-            delete_webdav_password(&account)?;
+            credentials::delete_webdav_password(&account)?;
         }
         save_config(&app, &config)?;
         Ok(())

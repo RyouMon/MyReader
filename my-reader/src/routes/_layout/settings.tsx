@@ -8,6 +8,7 @@ import AppearanceSection from "@/components/settings/sections/AppearanceSection"
 import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
 import ReadingSection from "@/components/settings/sections/ReadingSection"
+import SyncSection from "@/components/settings/sections/SyncSection"
 
 export const Route = createFileRoute("/_layout/settings")({
   component: SettingsPage,
@@ -27,6 +28,7 @@ function SettingsPage() {
       <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {activeSection === "libraries" && <LibrariesSection />}
         {activeSection === "dataSources" && <DataSourcesSection />}
+        {activeSection === "sync" && <SyncSection />}
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "reading" && <ReadingSection />}
         {activeSection === "about" && <AboutSection />}

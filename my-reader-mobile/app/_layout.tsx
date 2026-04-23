@@ -8,7 +8,9 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
+import { getAppDatabase } from "@/src/data/sqlite";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
+import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme();
@@ -20,6 +22,20 @@ function RootNavigator() {
   useEffect(() => {
     setAlertStatusBarPreferredStyle(statusBarStyle);
   }, [statusBarStyle]);
+
+  /**
+   * Warm the persistent app database once so file_state/sync_meta schema
+   * exists before any sync flow is invoked.
+   */
+  useEffect(() => {
+    try {
+      getAppDatabase();
+    } catch (error) {
+      console.error("[MyReader] 初始化本地 SQLite 失败", error);
+    }
+  }, []);
+
+  useSyncLifecycle();
 
   const navigationTheme = colorScheme === "dark"
     ? {

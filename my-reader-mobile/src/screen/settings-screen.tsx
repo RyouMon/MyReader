@@ -82,7 +82,14 @@ export default function SettingsScreen() {
           <SectionCard>
             <SettingsRow title="本地存储" detail="默认数据源，无需配置" />
             <Link href="/settings/webdav" asChild>
-              <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" isLast />
+              <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" />
+            </Link>
+            <Link href="/settings/sync" asChild>
+              <SettingsRow
+                title="同步与下载"
+                detail="管理数据源连通性与 file_state 文件下载 / 释放 / 删除"
+                isLast
+              />
             </Link>
           </SectionCard>
         </View>

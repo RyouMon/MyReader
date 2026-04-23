@@ -59,7 +59,6 @@
           }
         }
       ],
-      "expo-sqlite",
       "expo-font",
       "expo-image"
     ],

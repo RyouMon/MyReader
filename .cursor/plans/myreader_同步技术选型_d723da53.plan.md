@@ -13,16 +13,16 @@ todos:
     status: completed
   - id: p1-desktop-ui
     content: 阶段 1：桌面前端下载按钮三态、释放空间、删除二次确认 UI
-    status: in_progress
+    status: completed
   - id: p2-op-sqlite-migrate
     content: 阶段 2：移动端从 expo-sqlite 迁到 op-sqlite 并加载 cr-sqlite 扩展（含 iOS pod 打包）
-    status: pending
+    status: completed
   - id: p2-mobile-backend
     content: 阶段 2：移动端 WebDAV/Local JS backend + Manifest + file_state + 下载/删除 UI 对齐桌面
-    status: pending
+    status: completed
   - id: p2-foreground-scheduler
     content: 阶段 2：前台触发的调度器（启动/进入前台/手动按钮）
-    status: pending
+    status: completed
   - id: p3-conflict-resume
     content: 阶段 3：冲突文件保留 UI、HTTP Range 断点续传、队列指数退避
     status: pending
@@ -266,6 +266,8 @@ interface SyncEngine {
 - 前台触发的调度器
 
 ### 阶段 3：增强（本期内可选）
+
+> 决策（2026-04-23）：阶段 3 暂缓，本轮不执行，后续按优先级单独排期。
 
 - 冲突文件 UI
 - 断点续传（HTTP Range 用于恢复未完成下载）

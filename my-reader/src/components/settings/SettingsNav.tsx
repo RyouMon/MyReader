@@ -5,6 +5,7 @@ import {
   Info,
   type LucideIcon,
   Palette,
+  RefreshCw,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -24,6 +25,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "libraries", label: "书库管理", Icon: FolderOpen },
   { key: "dataSources", label: "数据源管理", Icon: Database },
+  { key: "sync", label: "同步与下载", Icon: RefreshCw },
   { key: "appearance", label: "外观", Icon: Palette },
   { key: "reading", label: "阅读偏好", Icon: BookOpen },
   { key: "about", label: "关于", Icon: Info },

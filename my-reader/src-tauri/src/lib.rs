@@ -6,6 +6,7 @@ pub mod models;
 mod reader_ui_prefs;
 pub mod reading_progress;
 mod storage_paths;
+pub mod sync;
 
 use std::sync::Mutex;
 
@@ -234,6 +235,13 @@ pub fn run() {
             commands::get_cache_usage,
             commands::clear_cache,
             commands::enforce_cache_limit,
+            sync::commands::sync_list_backends,
+            sync::commands::sync_test_backend,
+            sync::commands::sync_list_file_states,
+            sync::commands::sync_download_file,
+            sync::commands::sync_evict_local_file,
+            sync::commands::sync_delete_file_everywhere,
+            sync::commands::sync_db_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

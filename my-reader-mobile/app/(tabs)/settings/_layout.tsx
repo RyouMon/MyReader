@@ -14,6 +14,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="webdav/[dataSourceId]" options={{ title: "数据源详情" }} />
       <Stack.Screen name="webdav/add" options={{ title: "添加 WebDAV 数据源" }} />
       <Stack.Screen name="webdav/browser" options={{ title: "选择 WebDAV 书库" }} />
+      <Stack.Screen name="sync/index" options={{ title: "同步与下载" }} />
     </Stack>
   );
 }

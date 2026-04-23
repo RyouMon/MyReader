@@ -1,6 +1,5 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
 import { Platform } from "react-native";
-import * as SQLite from "expo-sqlite";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
@@ -14,6 +13,7 @@ import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
 } from "./cache";
+import { openDatabaseFromUri } from "./sqlite";
 
 type PickedDirectoryLike = {
   uri: string;
@@ -305,15 +305,13 @@ export async function readBookCountFromLibrary(library: MobileLibrary) {
 }
 
 export async function readBookCountFromMetadata(metadataUri: string) {
-  const metadataFile = new FSFile(metadataUri);
-  const bytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(bytes);
+  const db = await openDatabaseFromUri(metadataUri);
 
   try {
     const row = await db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM books"
     );
-    return row?.count ?? 0;
+    return row ? Number(row.count) : 0;
   } finally {
     await db.closeAsync();
   }
@@ -323,9 +321,7 @@ export async function readBookDetailFromMetadata(
   library: MobileLibrary,
   calibreBookId: number
 ): Promise<BookDetail | null> {
-  const metadataFile = new FSFile(library.metadataUri);
-  const bytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(bytes);
+  const db = await openDatabaseFromUri(library.metadataUri);
 
   try {
     const row = await db.getFirstAsync<BookDetailRow>(BOOK_DETAIL_QUERY, calibreBookId);
@@ -418,9 +414,7 @@ async function lookupBookFileLocation(
   calibreBookId: number,
   format: string
 ): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
-  const metadataFile = new FSFile(library.metadataUri);
-  const metadataBytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
+  const db = await openDatabaseFromUri(library.metadataUri);
 
   try {
     const row = await db.getFirstAsync<{ path: string; name: string }>(
@@ -589,9 +583,7 @@ export async function resolveBookFile(
 }
 
 export async function readBooksFromLibrary(library: MobileLibrary): Promise<BookItem[]> {
-  const metadataFile = new FSFile(library.metadataUri);
-  const bytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(bytes);
+  const db = await openDatabaseFromUri(library.metadataUri);
 
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);

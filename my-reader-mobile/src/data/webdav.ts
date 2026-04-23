@@ -1,7 +1,7 @@
 import { File, Paths } from "expo-file-system";
-import * as SQLite from "expo-sqlite";
 
 import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
+import { openDatabaseFromUri } from "./sqlite";
 
 export function buildWebDavBookCoverUri(
   library: MobileLibrary,
@@ -233,8 +233,7 @@ export async function createWebDavLibraryFromPath(
     `webdav-${source.id}-${Date.now()}-metadata.db`
   );
 
-  const bytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(bytes);
+  const db = await openDatabaseFromUri(metadataFile.uri);
 
   try {
     const row = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM books");
@@ -243,7 +242,7 @@ export async function createWebDavLibraryFromPath(
       name: normalizedPath.split("/").filter(Boolean).at(-1) ?? source.name,
       path: normalizedPath,
       metadataUri: metadataFile.uri,
-      bookCount: row?.count ?? 0,
+      bookCount: row ? Number(row.count) : 0,
       addedAt: Date.now(),
       dataSourceId: source.id,
       sourceType: "webdav",
@@ -261,9 +260,7 @@ export async function downloadWebDavBookFile(
   format: string,
   localName?: string
 ): Promise<File> {
-  const metadataFile = new File(library.metadataUri);
-  const metadataBytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(metadataBytes);
+  const db = await openDatabaseFromUri(library.metadataUri);
 
   try {
     const row = await db.getFirstAsync<{ path: string; name: string }>(
@@ -308,9 +305,7 @@ export async function readBooksFromWebDavLibrary(
   library: MobileLibrary,
   source: WebDavDataSource
 ): Promise<BookItem[]> {
-  const metadataFile = new File(library.metadataUri);
-  const bytes = await metadataFile.bytes();
-  const db = await SQLite.deserializeDatabaseAsync(bytes);
+  const db = await openDatabaseFromUri(library.metadataUri);
 
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
