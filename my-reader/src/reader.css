@@ -547,6 +547,14 @@
     box-shadow: 0 -4px 16px oklch(0.35 0.04 55 / 0.08);
   }
 
+  .reader-chrome-elevated-btn {
+    box-shadow: var(--shadow-card);
+  }
+
+  .reader-chrome-panel-shadow-floating {
+    box-shadow: var(--shadow-panel);
+  }
+
   .reader-chrome-search-field {
     border-color: var(--reader-chrome-border);
     background: color-mix(in srgb, var(--reader-chrome-bg) 60%, transparent);

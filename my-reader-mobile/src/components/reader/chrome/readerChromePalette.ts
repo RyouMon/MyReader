@@ -43,8 +43,8 @@ export function chromeThemeCardSurfaceStyle(active: boolean): {
 } {
   return {
     backgroundColor: active
-      ? "rgba(212,112,58,0.13)"
-      : "rgba(255,255,255,0.05)",
+      ? READER_CHROME.surfaceActive
+      : READER_CHROME.surfaceIdle,
     borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
   };
 }
@@ -60,7 +60,7 @@ export function chromeTocRowContainerStyle(active: boolean): {
       ? READER_CHROME.surfaceActive
       : READER_CHROME.surfaceIdle,
     borderWidth: active ? 1 : 0,
-    borderColor: active ? "rgba(212,112,58,0.30)" : "transparent",
+    borderColor: active ? READER_CHROME.borderActive : "transparent",
   };
 }
 
@@ -70,7 +70,7 @@ export function chromeTocRowLabelStyle(
   activeTextColor: string
 ): { color: string; fontWeight: "700" | "500" } {
   return {
-    color: active ? activeTextColor : "rgba(255,255,255,0.80)",
+    color: active ? activeTextColor : READER_CHROME.textSecondary,
     fontWeight: active ? "700" : "500",
   };
 }

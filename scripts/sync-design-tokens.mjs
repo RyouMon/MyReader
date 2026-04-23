@@ -387,6 +387,7 @@ $3`
     ["warningSoft", "--warning-soft"],
     ["error", "--danger"],
     ["dangerSoft", "--danger-soft"],
+    ["shadowCard", "--shadow-card"],
   ];
 
   for (const [key, tokenName] of lightMapping) {
@@ -421,6 +422,7 @@ $3`
     ["primaryForeground", "--ink-inverse"],
     ["accentSoft", "--accent-soft"],
     ["accentMuted", "--accent-muted"],
+    ["shadowCard", "--shadow-card"],
   ];
 
   for (const [key, tokenName] of darkMapping) {

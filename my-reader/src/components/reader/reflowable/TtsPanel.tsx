@@ -80,7 +80,7 @@ export function TtsPanel({
         <button
           type="button"
           onClick={onTogglePlay}
-          className="flex size-12 items-center justify-center rounded-full border-none bg-reader-chrome-active text-reader-bg shadow-[0_2px_8px_oklch(0.35_0.04_55_/_0.15)] transition-all hover:brightness-110 active:scale-90"
+          className="reader-chrome-elevated-btn flex size-12 items-center justify-center rounded-full border-none bg-reader-chrome-active text-reader-bg transition-all hover:brightness-110 active:scale-90"
         >
           {playing ? (
             <Pause className="size-[22px]" />
@@ -133,7 +133,7 @@ export function TtsPanel({
           </button>
 
           {dropdownOpen && (
-            <div className="reader-chrome-panel-aside reader-dropdown-enter absolute bottom-[calc(100%+8px)] right-0 z-60 min-w-[220px] overflow-hidden rounded-[10px] border border-reader-chrome-border shadow-[0_8px_24px_oklch(0.35_0.04_55_/_0.12)]">
+            <div className="reader-chrome-panel-aside reader-chrome-panel-shadow-floating reader-dropdown-enter absolute bottom-[calc(100%+8px)] right-0 z-60 min-w-[220px] overflow-hidden rounded-[10px] border border-reader-chrome-border">
               {DEFAULT_TTS_CONFIGS.map((config) => (
                 <button
                   key={config.id}

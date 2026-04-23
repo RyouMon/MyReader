@@ -40,6 +40,8 @@ export type ThemePalette = {
 
   /* ── Border ── */
   border: string;
+  /** Elevation for card-like surfaces. */
+  shadowCard: string;
 
   /* ── Semantic feedback ── */
   success: string;
@@ -101,6 +103,7 @@ const lightPaletteBase = {
   accentSoft: "#F5E8DF",
   accentMuted: "#E8C9B5",
   border: APP_BORDER.light.default,
+  shadowCard: "0 1px 3px rgba(28, 23, 20, 0.08), 0 4px 12px rgba(28, 23, 20, 0.06)",
   success: "#3A7D5A",
   successSoft: "#C2DDD0",
   warning: "#C4922D",
@@ -134,6 +137,7 @@ const darkPaletteBase = {
   accentSoft: "#3A2218",
   accentMuted: "#5A3020",
   border: APP_BORDER.dark.default,
+  shadowCard: "0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.25)",
   success: "#55A884",
   successSoft: "#1E3D2E",
   warning: "#CF9A4F",

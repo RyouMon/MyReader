@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 
-import { READER_THEMES } from "@/src/design/reader-tokens";
+import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens";
 import { flattenReflowToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
@@ -863,8 +863,8 @@ const styles: Record<string, CSSProperties> = {
   errorCard: {
     borderRadius: ERROR_CARD_BORDER_RADIUS,
     padding: ERROR_CARD_PADDING,
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: READER_CHROME.errorCardBg,
+    border: `1px solid ${READER_CHROME.errorCardBorder}`,
   },
   errorTitle: {
     margin: `0 0 ${ERROR_TITLE_MARGIN_BOTTOM}px`,

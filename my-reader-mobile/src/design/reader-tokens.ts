@@ -135,7 +135,9 @@ export function chromeThemeCardStyle(active: boolean): {
   borderColor: string;
 } {
   return {
-    backgroundColor: active ? "rgba(212,112,58,0.10)" : "rgba(255,255,255,0.05)",
+    backgroundColor: active
+      ? READER_CHROME.surfaceActive
+      : READER_CHROME.surfaceIdle,
     borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
   };
 }
@@ -164,9 +166,7 @@ export function chromeTocLabelStyle(
   active: boolean
 ): { color: string; fontWeight: "700" | "500" } {
   return {
-    color: active
-      ? READER_CHROME.accent
-      : "rgba(255,255,255,0.80)",
+    color: active ? READER_CHROME.accent : READER_CHROME.textSecondary,
     fontWeight: active ? "700" : "500",
   };
 }

@@ -242,7 +242,7 @@ export default function NativePdfReader({
   if (!Pdf) {
     return (
       <View style={[styles.centered, { width: screenWidth, height: screenHeight }]}>
-        <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+        <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
         <Text style={[styles.errText, styles.hintText, { marginTop: 16 }]}>正在加载 PDF 引擎…</Text>
       </View>
     );
@@ -311,7 +311,7 @@ export default function NativePdfReader({
       />
       {loading ? (
         <View style={styles.loadingOverlay} pointerEvents="none">
-          <ActivityIndicator size="large" color="rgba(255,255,255,0.7)" />
+          <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
         </View>
       ) : null}
     </View>
