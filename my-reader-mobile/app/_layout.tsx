@@ -1,15 +1,25 @@
 import "@/src/polyfills/reader-engine-globals";
 import "../src/global.css";
 
+import { useEffect } from "react";
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme();
+  const statusBarStyle = colorScheme === "dark" ? "light" : "dark";
+
+  /**
+   * Keeps alert status bar restoration aligned with app theme mode.
+   */
+  useEffect(() => {
+    setAlertStatusBarPreferredStyle(statusBarStyle);
+  }, [statusBarStyle]);
 
   const navigationTheme = colorScheme === "dark"
     ? {
@@ -39,7 +49,7 @@ function RootNavigator() {
 
   return (
     <NavigationThemeProvider value={navigationTheme}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar style={statusBarStyle} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen

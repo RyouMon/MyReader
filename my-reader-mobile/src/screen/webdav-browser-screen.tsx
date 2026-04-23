@@ -1,8 +1,9 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text } from "@/tw";
 
@@ -139,7 +140,7 @@ export default function WebDavBrowserScreen() {
       }
     } catch (caught) {
       if (isMissingMetadataDbError(caught)) {
-        Alert.alert("目录不可用", "当前目录不是有效书库，未找到 metadata.db。");
+        showAlertWithStatusBarRestore("目录不可用", "当前目录不是有效书库，未找到 metadata.db。");
         return;
       }
       setError(caught instanceof Error ? caught.message : "当前目录不是有效的 Calibre 书库。");

@@ -3,8 +3,9 @@ import { useMemo } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import type { DataSourceWebdav } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -117,7 +118,7 @@ export default function WebDavDataSourceDetailScreen() {
       return;
     }
 
-    Alert.alert("删除 WebDAV 数据源", `确认删除“${webdavSource.name}”？`, [
+    showAlertWithStatusBarRestore("删除 WebDAV 数据源", `确认删除“${webdavSource.name}”？`, [
       { text: "取消", style: "cancel" },
       {
         text: "删除",
@@ -128,7 +129,7 @@ export default function WebDavDataSourceDetailScreen() {
               await deleteDataSource(webdavSource.id);
               handleBack();
             } catch (caught) {
-              Alert.alert(
+              showAlertWithStatusBarRestore(
                 "无法删除",
                 caught instanceof Error ? caught.message : "删除数据源失败。"
               );

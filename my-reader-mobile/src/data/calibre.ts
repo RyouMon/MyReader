@@ -1,8 +1,9 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import * as SQLite from "expo-sqlite";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
+import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 
 import {
   createSecurityScopedBookmark,
@@ -234,7 +235,7 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary | null> {
   metadataFile = getMetadataFileFromDirectory(directory);
 
   if (!metadataFile) {
-    Alert.alert(
+    showAlertWithStatusBarRestore(
       "未找到 metadata.db",
       "所选目录中未找到 Calibre 的 metadata.db。请选择书库根目录（该文件夹内应包含 metadata.db）。",
       [{ text: "知道了" }]

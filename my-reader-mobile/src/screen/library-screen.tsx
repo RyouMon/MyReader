@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { Alert, FlatList, Platform } from "react-native";
+import { FlatList, Platform } from "react-native";
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
 
 import {
@@ -100,7 +101,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   function openSortViewMenu() {
-    Alert.alert(
+    showAlertWithStatusBarRestore(
       "排序与视图",
       `当前排序：${sortBy}\n当前视图：${viewMode}`,
       [

@@ -3,8 +3,9 @@ import { useMemo } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import type { DataSource, MobileLibrary } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -144,7 +145,7 @@ export default function LibraryDetailScreen() {
       return;
     }
 
-    Alert.alert(
+    showAlertWithStatusBarRestore(
       "删除这个书库？",
       "将从应用中移除该书库，但原始书库文件仍保留在原位置，如不再需要请手工删除。",
       [

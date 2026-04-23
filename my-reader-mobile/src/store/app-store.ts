@@ -1,7 +1,7 @@
-import { Alert } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { clearAllReaderCaches } from "../data/cache";
 import {
   clearLocalCopyCacheByLibrary,
@@ -181,7 +181,7 @@ const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
             item.metadataUri === preparedLibrary.metadataUri || item.path === preparedLibrary.path
         )
       ) {
-        Alert.alert("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+        showAlertWithStatusBarRestore("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
         return false;
       }
 
@@ -211,7 +211,7 @@ const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
         (item) => item.metadataUri === prepared.metadataUri || item.path === prepared.path
       )
     ) {
-      Alert.alert("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+      showAlertWithStatusBarRestore("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
       return false;
     }
 
