@@ -3,16 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { FlatList, Platform } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { FlatList, Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
 
 import {
+  BookCard,
   EmptyState,
   FilterChip,
   HeaderToolbar,
-  LibraryGrid,
   PrimaryButton,
   RoundIconButton,
   Screen,
@@ -36,6 +37,11 @@ type LibraryScreenProps = {
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();
+  const { width } = useWindowDimensions();
+  const columns = width >= 768 ? 4 : 2;
+  const GRID_GAP = 12;
+  const GRID_PADDING_H = 16;
+  const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (columns - 1)) / columns;
   const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, error } =
     useLibraryStore();
   const [query, setQuery] = useState("");
@@ -265,6 +271,21 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
+  const listHeader = (
+    <View style={{ gap: 20, marginBottom: 8 }}>
+      <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
+      <FlatList
+        horizontal
+        data={libraryFilters}
+        keyExtractor={(item) => item}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+        renderItem={({ item }) => <FilterChip label={item} active={item === libraryFilters[0]} />}
+      />
+      <SectionHeading title="全部书籍" detail={`${visibleBooks.length} / ${books.length} 本`} />
+    </View>
+  );
+
   return (
     <>
       <Stack.Screen
@@ -292,28 +313,27 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           </Stack.Toolbar.Menu>
         </Stack.Toolbar>
       ) : null}
-      <Screen>
-        <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
-
-        <FlatList
-          horizontal
-          data={libraryFilters}
-          keyExtractor={(item) => item}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => <FilterChip label={item} active={item === libraryFilters[0]} />}
-        />
-
-        <SectionHeading title="全部书籍" detail={`${visibleBooks.length} / ${books.length} 本`} />
-
-        {loadingBooks ? (
-          <EmptyState title="正在读取书库" detail="正在解析 metadata.db 并读取图书列表。" />
-        ) : visibleBooks.length > 0 ? (
-          <LibraryGrid data={visibleBooks} onSelectBook={(book) => openBookDetail(book.id)} />
-        ) : (
-          <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
+      <FlashList
+        key={columns}
+        data={loadingBooks ? [] : visibleBooks}
+        numColumns={columns}
+        keyExtractor={(item) => item.id}
+        contentInsetAdjustmentBehavior="automatic"
+        style={{ flex: 1, backgroundColor: palette.background }}
+        contentContainerStyle={{ paddingHorizontal: GRID_PADDING_H, paddingTop: 16, paddingBottom: 40 }}
+        ItemSeparatorComponent={() => <View style={{ height: GRID_GAP }} />}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          loadingBooks
+            ? <EmptyState title="正在读取书库" detail="正在解析 metadata.db 并读取图书列表。" />
+            : <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
+        }
+        renderItem={({ item, index }) => (
+          <View style={{ paddingRight: (index + 1) % columns !== 0 ? GRID_GAP : 0 }}>
+            <BookCard book={item} width={cardWidth} onPress={() => openBookDetail(item.id)} />
+          </View>
         )}
-      </Screen>
+      />
     </>
   );
 }

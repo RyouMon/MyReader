@@ -1,8 +1,11 @@
-import { FlatList, useWindowDimensions } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { View, useWindowDimensions } from "react-native";
 
 import type { BookItem } from "@/src/data/types";
 
 import { BookCard } from "./book-card";
+
+const GAP = 12;
 
 export function LibraryGrid({
   data,
@@ -13,18 +16,21 @@ export function LibraryGrid({
 }) {
   const { width } = useWindowDimensions();
   const columns = width >= 768 ? 4 : 2;
-  const cardWidth = width >= 768 ? (width - 76) / 4 : (width - 44) / 2;
+  const cardWidth = (width - GAP * (columns - 1)) / columns;
 
   return (
-    <FlatList
+    <FlashList
       data={data}
       key={columns}
       keyExtractor={(item) => item.id}
       numColumns={columns}
       scrollEnabled={false}
-      columnWrapperStyle={{ gap: 12 }}
-      contentContainerStyle={{ gap: 12 }}
-      renderItem={({ item }) => <BookCard book={item} width={cardWidth} onPress={onSelectBook ? () => onSelectBook(item) : undefined} />}
+      ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
+      renderItem={({ item, index }) => (
+        <View style={{ paddingRight: (index + 1) % columns !== 0 ? GAP : 0 }}>
+          <BookCard book={item} width={cardWidth} onPress={onSelectBook ? () => onSelectBook(item) : undefined} />
+        </View>
+      )}
     />
   );
 }
