@@ -1,14 +1,46 @@
 import { Platform } from "react-native";
 
-import SecurityScopedBookmarksModule from "../../modules/my-module";
-
 import type { MobileLibrary } from "./types";
+import type { ResolveBookmarkResult } from "../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
 
 export type SecurityScopedAccessResult = {
   uri: string;
   stale: boolean;
 };
 
+type SecurityScopedBookmarksNativeModule = {
+  createBookmarkForDirectoryAsync: (uri: string) => Promise<{
+    bookmarkBase64: string;
+    resolvedUri: string;
+    stale: boolean;
+  }>;
+  resolveBookmarkAsync: (bookmarkBase64: string) => Promise<ResolveBookmarkResult>;
+  startAccessingBookmarkAsync: (bookmarkBase64: string) => Promise<ResolveBookmarkResult>;
+  stopAccessingBookmark: (uri: string) => void;
+};
+
+let cachedIOSModule: SecurityScopedBookmarksNativeModule | null | undefined;
+
+/**
+ * Loads the iOS native bookmark module only when it is actually needed.
+ */
+function getSecurityScopedBookmarksModule() {
+  if (Platform.OS !== "ios") {
+    return null;
+  }
+
+  if (cachedIOSModule === undefined) {
+    cachedIOSModule = (
+      require("../../modules/my-module") as { default: SecurityScopedBookmarksNativeModule }
+    ).default;
+  }
+
+  return cachedIOSModule;
+}
+
+/**
+ * Converts unknown native errors into stable log text for debugging.
+ */
 function stringifyNativeError(error: unknown) {
   if (error instanceof Error) {
     return `${error.name}: ${error.message}`;
@@ -21,11 +53,17 @@ function stringifyNativeError(error: unknown) {
   }
 }
 
+/**
+ * Detects whether the native error message matches a known pattern.
+ */
 function isNativeErrorMessage(error: unknown, pattern: RegExp) {
   const message = error instanceof Error ? error.message : String(error);
   return pattern.test(message);
 }
 
+/**
+ * Maps low-level bookmark native errors to user-facing Chinese messages.
+ */
 function mapBookmarkErrorToChinese(action: string, error: unknown) {
   if (isNativeErrorMessage(error, /Invalid URI/i)) {
     return `${action}失败：目录地址无效。`;
@@ -50,6 +88,9 @@ function mapBookmarkErrorToChinese(action: string, error: unknown) {
   return `${action}失败：iOS 文件授权处理出错，请重试。`;
 }
 
+/**
+ * Wraps native bookmark failures with localized error messages.
+ */
 function createBookmarkOperationError(action: string, error: unknown) {
   console.error(`[security-scoped-bookmarks] ${action} native error`, error);
   console.error(
@@ -62,20 +103,28 @@ function createBookmarkOperationError(action: string, error: unknown) {
   });
 }
 
+/**
+ * Creates a security-scoped bookmark for an iOS directory URI.
+ */
 export async function createSecurityScopedBookmark(uri: string) {
-  if (Platform.OS !== "ios") {
+  const securityScopedBookmarksModule = getSecurityScopedBookmarksModule();
+  if (!securityScopedBookmarksModule) {
     return null;
   }
 
   try {
-    return await SecurityScopedBookmarksModule.createBookmarkForDirectoryAsync(uri);
+    return await securityScopedBookmarksModule.createBookmarkForDirectoryAsync(uri);
   } catch (error) {
     throw createBookmarkOperationError("创建书库授权", error);
   }
 }
 
+/**
+ * Resolves a stored security-scoped bookmark back to a runtime URI.
+ */
 export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
-  if (Platform.OS !== "ios") {
+  const securityScopedBookmarksModule = getSecurityScopedBookmarksModule();
+  if (!securityScopedBookmarksModule) {
     return {
       uri: "",
       stale: false,
@@ -83,7 +132,7 @@ export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
   }
 
   try {
-    return await SecurityScopedBookmarksModule.resolveBookmarkAsync(bookmarkBase64);
+    return await securityScopedBookmarksModule.resolveBookmarkAsync(bookmarkBase64);
   } catch (error) {
     throw createBookmarkOperationError("恢复书库授权", error);
   }
@@ -98,9 +147,10 @@ export async function withSecurityScopedLibraryAccess<T>(
   library: MobileLibrary,
   callback: (resolvedPath: string) => Promise<T> | T
 ): Promise<{ result: T; refreshedLibrary?: MobileLibrary }> {
+  const securityScopedBookmarksModule = getSecurityScopedBookmarksModule();
   const bookmark = library.securityScopedBookmark;
 
-  if (Platform.OS !== "ios" || !bookmark) {
+  if (!securityScopedBookmarksModule || !bookmark) {
     return {
       result: await callback(library.path),
     };
@@ -109,7 +159,7 @@ export async function withSecurityScopedLibraryAccess<T>(
   let access: SecurityScopedAccessResult;
 
   try {
-    access = await SecurityScopedBookmarksModule.startAccessingBookmarkAsync(
+    access = await securityScopedBookmarksModule.startAccessingBookmarkAsync(
       bookmark.bookmarkBase64
     );
   } catch (error) {
@@ -139,6 +189,6 @@ export async function withSecurityScopedLibraryAccess<T>(
       refreshedLibrary,
     };
   } finally {
-    SecurityScopedBookmarksModule.stopAccessingBookmark(access.uri);
+    securityScopedBookmarksModule.stopAccessingBookmark(access.uri);
   }
 }
