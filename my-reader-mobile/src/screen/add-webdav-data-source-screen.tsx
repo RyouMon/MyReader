@@ -90,6 +90,7 @@ const addWebDavMobileSchema = z
   });
 
 type WebDavFormInput = z.input<typeof addWebDavMobileSchema>;
+const CONNECTION_TIMEOUT_MS = 10000;
 
 /**
  * 从 endpoint URL 推断数据源显示名称（通常为 hostname）。
@@ -133,6 +134,28 @@ function buildDraft(values: WebDavFormInput): DataSource {
   };
 }
 
+/**
+ * 为异步操作添加超时保护，避免网络请求长时间挂起导致 UI 卡死。
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export default function AddWebDavDataSourceScreen() {
   const palette = useThemePalette();
   const { createDataSource, testDataSourceConnection } = useDataSourceStore();
@@ -172,10 +195,12 @@ export default function AddWebDavDataSourceScreen() {
     setTestOk(false);
     try {
       await form.validateAllFields("submit");
-      if (!form.store.state.isValid) {
-        return;
-      }
-      await testDataSourceConnection(buildDraft(form.store.state.values));
+      const draft = buildDraft(form.store.state.values);
+      await withTimeout(
+        testDataSourceConnection(draft),
+        CONNECTION_TIMEOUT_MS,
+        "连接测试超时，请检查网络或服务器地址后重试。",
+      );
       setTestOk(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
@@ -193,11 +218,12 @@ export default function AddWebDavDataSourceScreen() {
     setTestOk(false);
     try {
       await form.validateAllFields("submit");
-      if (!form.store.state.isValid) {
-        return;
-      }
       const draft = buildDraft(form.store.state.values);
-      await testDataSourceConnection(draft);
+      await withTimeout(
+        testDataSourceConnection(draft),
+        CONNECTION_TIMEOUT_MS,
+        "连接测试超时，请检查网络或服务器地址后重试。",
+      );
       await createDataSource(draft);
       if (router.canGoBack()) {
         router.back();
