@@ -653,6 +653,8 @@ pub fn add_library(
         }
         save_config(&app, &config)?;
 
+        // Avoid deadlock: scope sync also reads AppState and must run after releasing this lock.
+        drop(config);
         if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
             error!(
                 "Failed to extend asset protocol scope after adding library. error: {}",
