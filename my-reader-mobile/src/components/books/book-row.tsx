@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
-import { Pressable, Text, View } from "@/tw";
+import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
 import { ProgressBar } from "../ui/progress-bar";
 import { BookCover, type BookProgressSnapshot } from "./book-cover";
@@ -45,63 +45,64 @@ export function BookRow({
   const isUnread = !hasProgress || (progress.percent ?? 0) <= 0;
 
   return (
-    <Pressable
+    <TouchableHighlight
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={`打开《${book.title}》`}
-      className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5"
       onPress={onPress}
-      style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}
+      underlayColor={palette.backgroundSecondary}
     >
-      <BookCover book={book} width={38} height={54} borderRadius={5} showTitle={false} />
-      <View className="min-w-0 flex-1">
-        <Text selectable className="text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
-          {book.title}
-        </Text>
-        <Text selectable className="mt-0.5 text-[13px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
-          {book.author}
-        </Text>
-        <View className="mt-0.5 flex-row flex-wrap items-center gap-1.5">
-          <Text
-            className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-            style={{
-              backgroundColor: isUnread ? palette.backgroundSecondary : "rgba(217,119,87,0.14)",
-              color: isUnread ? palette.textMuted : palette.primary,
-            }}
-          >
-            {getProgressLabel(progress)}
+      <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
+        <BookCover book={book} width={38} height={54} borderRadius={5} showTitle={false} />
+        <View className="min-w-0 flex-1">
+          <Text selectable className="text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
+            {book.title}
           </Text>
-          {hasProgress ? (
-            <Text className="text-xs" style={{ color: palette.textMuted }}>
-              {Math.round(progress.percent ?? 0)}%
+          <Text selectable className="mt-0.5 text-[13px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
+            {book.author}
+          </Text>
+          <View className="mt-0.5 flex-row flex-wrap items-center gap-1.5">
+            <Text
+              className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+              style={{
+                backgroundColor: isUnread ? palette.backgroundSecondary : "rgba(217,119,87,0.14)",
+                color: isUnread ? palette.textMuted : palette.primary,
+              }}
+            >
+              {getProgressLabel(progress)}
             </Text>
-          ) : null}
-          {progress?.syncedLabel ? (
-            <Text className="text-xs" style={{ color: palette.textMuted }}>
-              {progress.syncedLabel}
-            </Text>
+            {hasProgress ? (
+              <Text className="text-xs" style={{ color: palette.textMuted }}>
+                {Math.round(progress.percent ?? 0)}%
+              </Text>
+            ) : null}
+            {progress?.syncedLabel ? (
+              <Text className="text-xs" style={{ color: palette.textMuted }}>
+                {progress.syncedLabel}
+              </Text>
+            ) : null}
+          </View>
+          {typeof progressValue === "number" ? (
+            <View className="mt-1 w-14">
+              <ProgressBar progress={progressValue} />
+            </View>
           ) : null}
         </View>
-        {typeof progressValue === "number" ? (
-          <View className="mt-1 w-14">
-            <ProgressBar progress={progressValue} />
-          </View>
-        ) : null}
+        <View className="flex-row items-center gap-1">
+          {onMore ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`更多操作：${book.title}`}
+              className="h-11 w-11 items-center justify-center rounded-lg"
+              onPress={(event) => {
+                event.stopPropagation();
+                onMore();
+              }}
+            >
+              <MaterialIcons name="more-vert" size={22} color={palette.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
-      <View className="flex-row items-center gap-1">
-        {onMore ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`更多操作：${book.title}`}
-            className="h-11 w-11 items-center justify-center rounded-lg"
-            onPress={(event) => {
-              event.stopPropagation();
-              onMore();
-            }}
-          >
-            <MaterialIcons name="more-vert" size={22} color={palette.textMuted} />
-          </Pressable>
-        ) : null}
-      </View>
-    </Pressable>
+    </TouchableHighlight>
   );
 }
