@@ -35,7 +35,7 @@ export function BookCard({
       ) : (
         <View
           className="aspect-[2/3] w-full items-center justify-center rounded-[18px] px-4"
-          style={{ backgroundColor: palette.surfaceMuted }}
+          style={{ backgroundColor: palette.backgroundSecondary }}
         >
           <Text
             className="text-center text-sm leading-5"

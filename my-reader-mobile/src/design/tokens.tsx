@@ -9,54 +9,30 @@ import { useThemeModeSetting } from "../store/settings-store";
 export type ThemeMode = "system" | "light" | "dark";
 
 export type ThemePalette = {
-  /* ── Base surfaces ── */
   background: string;
+  backgroundSecondary: string;
   surface: string;
-  /** Slightly recessed — secondary panels, recessed rows. */
-  surfaceMuted: string;
-  /** surface-2 equivalent: in-panel row alternation, hover backgrounds. */
-  surface2: string;
-  /** surface-3 equivalent: pressed / selected state backgrounds. */
-  surface3: string;
-
-  /* ── Ink / text hierarchy ── */
   text: string;
   textMuted: string;
-  /** Tertiary — disabled, placeholder, decorative. */
-  textSubtle: string;
-  /** Ghost — faintest readable text. */
-  textGhost: string;
-  /** Text/icons on dark or accent surfaces. */
+  textOnPrimary: string;
   textOnDark: string;
-
-  /* ── Accent / primary ── */
   primary: string;
-  primaryStrong: string;
+  secondary: string;
   primaryForeground: string;
-  /** Tinted accent background for badges, selected rows. */
-  accentSoft: string;
-  /** Accent-tinted border or divider. */
-  accentMuted: string;
-
-  /* ── Border ── */
   border: string;
-  /** Elevation for card-like surfaces. */
-  shadowCard: string;
-
-  /* ── Semantic feedback ── */
+  borderStrong: string;
+  shadowSm: string;
+  shadowMd: string;
+  shadowLg: string;
   success: string;
   successSoft: string;
   warning: string;
   warningSoft: string;
-  /** Inline validation / failure messages (theme-tinted, not necessarily system red). */
   error: string;
+  danger: string;
   dangerSoft: string;
-  /** Delete / irreversible controls; maps to system Material error red on native. */
   destructive: ColorValue;
-  /** Text and icons on a solid `destructive` background. */
   onDestructive: ColorValue;
-
-  /* ── Overlay ── */
   overlay: string;
   overlayStrong: string;
 };
@@ -70,46 +46,38 @@ type ThemeContextValue = {
 
 const APP_BORDER = {
   light: {
-    subtle: "rgba(28, 23, 20, 0.06)",
     default: "rgba(28, 23, 20, 0.10)",
-    strong: "rgba(28, 23, 20, 0.18)",
-    active: "rgba(196, 98, 45, 0.22)",
-    error: "rgba(181, 58, 47, 0.18)",
+    strong: "rgba(28, 23, 20, 0.20)",
   },
   dark: {
-    subtle: "rgba(240, 235, 225, 0.08)",
-    default: "rgba(240, 235, 225, 0.12)",
-    strong: "rgba(240, 235, 225, 0.18)",
-    active: "rgba(212, 112, 58, 0.22)",
-    error: "rgba(207, 106, 106, 0.20)",
-
+    default: "rgba(240, 235, 225, 0.10)",
+    strong: "rgba(240, 235, 225, 0.20)",
   },
 } as const;
 
 const lightPaletteBase = {
   background: "#F7F3EC",
-  surface: "#FFFFFF",
-  surfaceMuted: "#F5F1EA",
-  surface2: "#F5F1EA",
-  surface3: "#EDE8DF",
+  backgroundSecondary: "#EDE8DF",
+  surface: "#EDE8DF",
   text: "#1C1714",
   textMuted: "#5C5349",
-  textSubtle: "#9C9089",
-  textGhost: "#C4B8AE",
+  textOnPrimary: "#FAF6F0",
   textOnDark: "#FAF6F0",
-  primary: "#C4622D",
-  primaryStrong: "#B05523",
+  primary: "#D97757",
+  secondary: "#A87E62",
   primaryForeground: "#FAF6F0",
-  accentSoft: "#F5E8DF",
-  accentMuted: "#E8C9B5",
   border: APP_BORDER.light.default,
-  shadowCard: "0 1px 3px rgba(28, 23, 20, 0.08), 0 4px 12px rgba(28, 23, 20, 0.06)",
+  borderStrong: APP_BORDER.light.strong,
+  shadowSm: "0 1px 3px rgba(28, 23, 20, 0.08)",
+  shadowMd: "0 2px 8px  rgba(28, 23, 20, 0.10), 0 8px 24px rgba(28, 23, 20, 0.07)",
+  shadowLg: "0 4px 16px rgba(28, 23, 20, 0.12), 0 24px 64px rgba(28, 23, 20, 0.14)",
   success: "#3A7D5A",
-  successSoft: "#C2DDD0",
+  successSoft: "rgba(58, 125, 90, 0.16)",
   warning: "#C4922D",
-  warningSoft: "#E8C87A",
+  warningSoft: "rgba(196, 146, 45, 0.16)",
   error: "#B53A2F",
-  dangerSoft: "#DFA8A4",
+  danger: "#B53A2F",
+  dangerSoft: "rgba(181, 58, 47, 0.14)",
   overlay: "rgba(28,23,20,0.22)",
   overlayStrong: "rgba(28,23,20,0.50)",
 } as const;
@@ -122,28 +90,27 @@ const lightPalette: ThemePalette = {
 
 const darkPaletteBase = {
   background: "#1C1814",
+  backgroundSecondary: "#26211D",
   surface: "#26211D",
-  surfaceMuted: "#2F2923",
-  surface2: "#2F2923",
-  surface3: "#382F27",
   text: "#F0EBE1",
   textMuted: "#B8AFA6",
-  textSubtle: "#7A7068",
-  textGhost: "#5A5048",
+  textOnPrimary: "#1C1714",
   textOnDark: "#1C1714",
-  primary: "#D4703A",
-  primaryStrong: "#B05523",
+  primary: "#C4602A",
+  secondary: "#B8895A",
   primaryForeground: "#1C1714",
-  accentSoft: "#3A2218",
-  accentMuted: "#5A3020",
   border: APP_BORDER.dark.default,
-  shadowCard: "0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.25)",
-  success: "#55A884",
-  successSoft: "#1E3D2E",
-  warning: "#CF9A4F",
-  warningSoft: "#3A2E12",
-  error: "#CF6A6A",
-  dangerSoft: "#3D1E1E",
+  borderStrong: APP_BORDER.dark.strong,
+  shadowSm: "0 1px 3px  rgba(0, 0, 0, 0.25)",
+  shadowMd: "0 2px 8px  rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.25)",
+  shadowLg: "0 4px 16px rgba(0, 0, 0, 0.40), 0 24px 64px rgba(0, 0, 0, 0.35)",
+  success: "#5AAD7E",
+  successSoft: "rgba(90, 173, 126, 0.18)",
+  warning: "#D4A844",
+  warningSoft: "rgba(212, 168, 68, 0.18)",
+  error: "#D46060",
+  danger: "#D46060",
+  dangerSoft: "rgba(212, 96, 96, 0.18)",
   overlay: "rgba(0,0,0,0.38)",
   overlayStrong: "rgba(0,0,0,0.65)",
 } as const;
@@ -154,10 +121,16 @@ const darkPalette: ThemePalette = {
   onDestructive: getSemanticOnDestructiveColor(),
 };
 
+/**
+ * Returns the platform palette for the active color scheme.
+ */
 export function getThemePalette(colorScheme: ColorSchemeName) {
   return colorScheme === "dark" ? darkPalette : lightPalette;
 }
 
+/**
+ * Resolves the persisted theme mode against the current system scheme.
+ */
 function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
   if (mode === "system") {
     return systemColorScheme ?? "light";
@@ -166,6 +139,9 @@ function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
   return mode;
 }
 
+/**
+ * Initializes app theme side effects for React Native surfaces.
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const initialize = useAppStore((state) => state.initialize);
   const hasHydrated = useAppStore((state) => state.hasHydrated);
@@ -190,6 +166,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return children;
 }
 
+/**
+ * Returns the current theme mode, resolved color scheme, and palette.
+ */
 export function useTheme() {
   const systemColorScheme = useColorScheme();
   const { mode, setThemeMode } = useThemeModeSetting();
@@ -207,6 +186,9 @@ export function useTheme() {
   );
 }
 
+/**
+ * Returns only the active semantic color palette.
+ */
 export function useThemePalette() {
   return useTheme().palette;
 }

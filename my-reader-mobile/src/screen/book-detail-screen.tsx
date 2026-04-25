@@ -335,7 +335,7 @@ export default function BookDetailScreen() {
             style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
           >
             <View className="w-full items-center gap-4">
-              <View className="w-[208px] overflow-hidden rounded-[26px]" style={{ backgroundColor: palette.primaryStrong }}>
+              <View className="w-[208px] overflow-hidden rounded-[26px]" style={{ backgroundColor: palette.secondary }}>
                 {coverUri ? (
                   <Image source={coverUri} className="aspect-[2/3] w-full" />
                 ) : (
@@ -488,7 +488,7 @@ export default function BookDetailScreen() {
                       <View className="flex-1 flex-row items-center gap-2">
                         <View
                           className="rounded-lg px-2 py-1"
-                          style={{ backgroundColor: palette.primaryStrong }}
+                          style={{ backgroundColor: palette.secondary }}
                         >
                           <Text className="text-[10px] font-bold" style={{ color: palette.primaryForeground }}>
                             {upper}

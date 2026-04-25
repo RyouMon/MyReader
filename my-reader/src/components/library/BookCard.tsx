@@ -59,8 +59,8 @@ const BookCard = memo(function BookCard({
         className="relative aspect-[2/3] w-full overflow-hidden rounded-lg"
         style={{
           boxShadow: hovered
-            ? "var(--shadow-cover)"
-            : "var(--shadow-card)",
+            ? "var(--shadow-md)"
+            : "var(--shadow-sm)",
           transform: hovered ? "translateY(-6px)" : "translateY(0)",
           transition:
             "transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s cubic-bezier(0.4,0,0.2,1)",
@@ -119,7 +119,7 @@ const BookCard = memo(function BookCard({
             variant="secondary"
             size="icon-sm"
             title="阅读"
-            className="size-9 rounded-full bg-surface/90 text-foreground hover:bg-surface"
+            className="size-9 rounded-full bg-bg-secondary/90 text-foreground hover:bg-bg-secondary"
             style={{
               transform: hovered ? "scale(1)" : "scale(0.8)",
               transition:
@@ -136,7 +136,7 @@ const BookCard = memo(function BookCard({
             variant="secondary"
             size="icon-sm"
             title="更多"
-            className="size-9 rounded-full bg-surface/90 text-foreground hover:bg-surface"
+            className="size-9 rounded-full bg-bg-secondary/90 text-foreground hover:bg-bg-secondary"
             style={{
               transform: hovered ? "scale(1)" : "scale(0.8)",
               transition:

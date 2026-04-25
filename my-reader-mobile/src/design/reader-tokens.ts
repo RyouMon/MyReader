@@ -21,13 +21,13 @@ export const READER_THEMES = {
     bg: "#F5EFE6",
     fg: "#2F261F",
     muted: "#6C6258",
-    link: "#C4622D",
+    link: "#D97757",
   },
   light: {
     bg: "#FFFFFF",
     fg: "#222222",
     muted: "#6B7280",
-    link: "#C4622D",
+    link: "#D97757",
   },
   green: {
     bg: "#E8F0E4",
@@ -39,7 +39,7 @@ export const READER_THEMES = {
     bg: "#111111",
     fg: "rgba(255,255,255,0.92)",
     muted: "rgba(255,255,255,0.64)",
-    link: "#D4703A",
+    link: "#C4602A",
   },
 } as const satisfies Record<string, ReaderThemeColors>;
 
@@ -47,14 +47,14 @@ export type ReaderThemeName = keyof typeof READER_THEMES;
 
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
-  active: "rgba(212, 112, 58, 0.22)",
+  active: "rgba(240, 235, 225, 0.20)",
   error: "rgba(255,255,255,0.08)",
 } as const;
 
 /** Chrome UI tokens — used for controls/chrome overlay. Always dark. */
 export const READER_CHROME = {
   /** Primary accent (bookmark, slider active, segment active). */
-  accent: "#D4703A",
+  accent: "#C4602A",
 
   /** Canvas/surface for chrome overlays. */
   surface: "#110D0A",
@@ -78,7 +78,7 @@ export const READER_CHROME = {
   /** Surface for inactive segments/cards. */
   surfaceIdle: "rgba(255,255,255,0.06)",
   /** Surface for active/selected items (accent tint). */
-  surfaceActive: "rgba(212,112,58,0.15)",
+  surfaceActive: "rgba(196, 96, 42, 0.12)",
 
   /** Loading indicator color. */
   loadingIndicator: "rgba(255,255,255,0.70)",

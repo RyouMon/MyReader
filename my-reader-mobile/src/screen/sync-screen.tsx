@@ -167,7 +167,7 @@ export default function SyncScreen() {
                 onPress={handleTest}
                 className="h-11 flex-row items-center justify-center rounded-full px-4"
                 style={{
-                  backgroundColor: palette.surfaceMuted,
+                  backgroundColor: palette.backgroundSecondary,
                   borderColor: palette.border,
                   borderWidth: 1,
                   columnGap: 8,

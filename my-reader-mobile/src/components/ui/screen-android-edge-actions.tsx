@@ -92,7 +92,7 @@ export function ScreenAndroidSecondaryBottomStart({
         className="min-h-11 justify-center rounded-full px-4 py-2"
         style={{
           opacity: disabled ? 0.45 : 1,
-          backgroundColor: palette.surfaceMuted,
+          backgroundColor: palette.backgroundSecondary,
           borderColor: palette.border,
           borderWidth: 1,
         }}

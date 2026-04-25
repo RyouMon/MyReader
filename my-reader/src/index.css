@@ -17,25 +17,15 @@
 
   /* ── Semantic colors ── */
   --color-bg:             var(--bg);
-  --color-bg-subtle:      var(--bg-subtle);
-  --color-surface:        var(--surface);
-  --color-surface-2:      var(--surface-2);
-  --color-surface-3:      var(--surface-3);
+  --color-bg-secondary:   var(--bg-secondary);
   --color-ink-1:          var(--ink-1);
   --color-ink-2:          var(--ink-2);
-  --color-ink-3:          var(--ink-3);
-  --color-ink-4:          var(--ink-4);
   --color-ink-inverse:    var(--ink-inverse);
-  --color-accent:         var(--accent);
-  --color-accent-hover:   var(--accent-hover);
-  --color-accent-soft:    var(--accent-soft);
-  --color-accent-muted:   var(--accent-muted);
+  --color-primary-token:  var(--primary);
+  --color-secondary-token: var(--secondary);
   --color-success:        var(--success);
-  --color-success-soft:   var(--success-soft);
   --color-warning:        var(--warning);
-  --color-warning-soft:   var(--warning-soft);
   --color-danger:         var(--danger);
-  --color-danger-soft:    var(--danger-soft);
   --color-overlay:        var(--overlay);
   --color-overlay-strong: var(--overlay-strong);
 
@@ -52,7 +42,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted:              var(--muted);
   --color-muted-foreground:   var(--muted-foreground);
-  --color-accent:             var(--accent);
+  --color-accent:             var(--accent-ui);
   --color-accent-foreground:  var(--accent-foreground);
   --color-destructive:        var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -89,16 +79,16 @@
   --font-mono:  "JetBrains Mono", monospace;
 
   /* ── Shadow utilities ── */
-  --shadow-card:  var(--shadow-card);
-  --shadow-cover: var(--shadow-cover);
-  --shadow-panel: var(--shadow-panel);
-  --shadow-modal: var(--shadow-modal);
+  --shadow-card:  var(--shadow-md);
+  --shadow-cover: var(--shadow-md);
+  --shadow-panel: var(--shadow-lg);
+  --shadow-modal: var(--shadow-lg);
 }
 
 @layer utilities {
   /* Library indicator dots */
   .bg-library-indicator-on  { background-color: var(--success); }
-  .bg-library-indicator-off { background-color: var(--ink-3); }
+  .bg-library-indicator-off { background-color: var(--ink-2); }
 
   /* Semantic overlay utilities (replace bg-black/50 etc.) */
   .bg-overlay        { background-color: var(--overlay); }
@@ -111,9 +101,9 @@
   .shadow-modal { box-shadow: var(--shadow-modal); }
 
   /* Status feedback backgrounds */
-  .bg-success-soft { background-color: var(--success-soft); }
-  .bg-warning-soft { background-color: var(--warning-soft); }
-  .bg-danger-soft  { background-color: var(--danger-soft); }
+  .bg-success-soft { background-color: color-mix(in srgb, var(--success) 16%, var(--bg)); }
+  .bg-warning-soft { background-color: color-mix(in srgb, var(--warning) 16%, var(--bg)); }
+  .bg-danger-soft  { background-color: color-mix(in srgb, var(--danger) 14%, var(--bg)); }
   .text-success    { color: var(--success); }
   .text-warning    { color: var(--warning); }
   .text-danger     { color: var(--danger); }
@@ -121,17 +111,11 @@
   /* Ink hierarchy utilities */
   .text-ink-1       { color: var(--ink-1); }
   .text-ink-2       { color: var(--ink-2); }
-  .text-ink-3       { color: var(--ink-3); }
-  .text-ink-4       { color: var(--ink-4); }
   .text-ink-inverse { color: var(--ink-inverse); }
 
-  /* Accent tint utilities */
-  .bg-accent-soft  { background-color: var(--accent-soft); }
-  .bg-accent-muted { background-color: var(--accent-muted); }
-
-  /* Surface tier utilities */
-  .bg-surface-2 { background-color: var(--surface-2); }
-  .bg-surface-3 { background-color: var(--surface-3); }
+  /* Primary tint utilities */
+  .bg-primary-soft { background-color: color-mix(in srgb, var(--primary) 12%, var(--bg)); }
+  .bg-bg-secondary { background-color: var(--bg-secondary); }
 }
 
 @layer base {
@@ -158,10 +142,10 @@
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color-strong);
+  background: var(--border-strong);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
 
 /* Book card entrance */
 @keyframes card-fade-in {
@@ -217,8 +201,8 @@
 
 /* Active sidebar item indicator */
 [data-sidebar="menu-button"][data-active="true"] {
-  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
-  color: var(--accent) !important;
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+  color: var(--primary) !important;
   position: relative;
 }
 [data-sidebar="menu-button"][data-active="true"]::before {
@@ -229,6 +213,6 @@
   transform: translateY(-50%);
   width: 3px;
   height: 18px;
-  background: var(--accent);
+  background: var(--primary);
   border-radius: 0 3px 3px 0;
 }

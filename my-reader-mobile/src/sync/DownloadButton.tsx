@@ -121,7 +121,7 @@ export function DownloadButton({
           disabled={busy !== null}
           busy={busy === "download"}
           textColor={palette.text}
-          backgroundColor={palette.surfaceMuted}
+          backgroundColor={palette.backgroundSecondary}
           borderColor={palette.border}
         />
       )}

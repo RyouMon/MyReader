@@ -151,9 +151,47 @@ function replaceObjectStringValue(source, objectName, key, value) {
   if (!keyRegex.test(blockBody)) {
     throw new Error(`Cannot find key "${key}" in object "${objectName}"`);
   }
-  const updatedBody = blockBody.replace(keyRegex, `$1"${value}"$2`);
+  const stringValue = value.replace(/\s*\r?\n\s*/g, " ");
+  const updatedBody = blockBody.replace(keyRegex, `$1"${stringValue}"$2`);
 
   return source.replace(objectRegex, `${match[1]}${updatedBody}${match[3]}`);
+}
+
+/**
+ * Replaces a JS object string value when the key exists.
+ * @param {string} source
+ * @param {string} objectName
+ * @param {string} key
+ * @param {string} value
+ * @returns {string}
+ */
+function replaceObjectStringValueIfPresent(source, objectName, key, value) {
+  try {
+    return replaceObjectStringValue(source, objectName, key, value);
+  } catch (error) {
+    if (String(error).includes(`Cannot find key "${key}"`)) {
+      return source;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Converts a hex token value into an rgba() string for React Native.
+ * @param {string} hex
+ * @param {number} alpha
+ * @returns {string}
+ */
+function rgbaFromHex(hex, alpha) {
+  const normalized = hex.trim().replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) {
+    return hex;
+  }
+
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 /**
@@ -181,6 +219,81 @@ function replaceCssVarInSelector(source, selector, token, value) {
   return source.replace(blockRegex, `${match[1]}${updatedBody}${match[3]}`);
 }
 
+const COLOR_PAIRS = [
+  ["primary", "--primary"],
+  ["secondary", "--secondary"],
+  ["bg", "--bg"],
+  ["bg-secondary", "--bg-secondary"],
+  ["ink-1", "--ink-1"],
+  ["ink-2", "--ink-2"],
+  ["ink-inverse", "--ink-inverse"],
+  ["success", "--success"],
+  ["warning", "--warning"],
+  ["danger", "--danger"],
+  ["border", "--border"],
+  ["border-strong", "--border-strong"],
+];
+
+const REQUIRED_TOKENS = [
+  ...COLOR_PAIRS.map(([, tokenName]) => tokenName),
+  "--space-xs",
+  "--space-sm",
+  "--space-md",
+  "--space-lg",
+  "--radius-sm",
+  "--radius-md",
+  "--radius-lg",
+  "--radius-full",
+  "--shadow-sm",
+  "--shadow-md",
+  "--shadow-lg",
+  "--ease-standard",
+  "--ease-spring",
+  "--ease-in",
+  "--ease-out",
+  "--dur-micro",
+  "--dur-fast",
+  "--dur-normal",
+  "--dur-slow",
+  "--z-base",
+  "--z-raised",
+  "--z-dropdown",
+  "--z-sticky",
+  "--z-overlay",
+  "--z-modal",
+  "--z-toast",
+  "--dt-btn-h",
+  "--dt-input-h",
+  "--dt-row-h",
+  "--dt-icon-sm",
+  "--dt-icon-md",
+  "--dt-sidebar-w",
+  "--dt-cover-grid",
+  "--mb-touch-min",
+  "--mb-btn-h",
+  "--mb-input-h",
+  "--mb-row-h",
+  "--mb-tab-h",
+  "--mb-icon-sm",
+  "--mb-icon-md",
+  "--mb-icon-lg",
+  "--mb-cover-grid",
+  "--mb-safe-bottom",
+];
+
+/**
+ * Ensures the source CSS contains every token needed by platform outputs.
+ * @param {Map<string, string>} rootVars
+ * @returns {void}
+ */
+function assertRequiredTokens(rootVars) {
+  for (const tokenName of REQUIRED_TOKENS) {
+    if (!rootVars.has(tokenName)) {
+      throw new Error(`Missing token in source CSS: ${tokenName}`);
+    }
+  }
+}
+
 /**
  * Updates the color frontmatter section in DESIGN.md from CSS tokens.
  * @param {string} designDoc
@@ -188,34 +301,7 @@ function replaceCssVarInSelector(source, selector, token, value) {
  * @returns {string}
  */
 function syncDesignFrontmatterColors(designDoc, rootVars) {
-  const colorPairs = [
-    ["bg", "--bg"],
-    ["bg-subtle", "--bg-subtle"],
-    ["surface", "--surface"],
-    ["surface-2", "--surface-2"],
-    ["surface-3", "--surface-3"],
-    ["ink-1", "--ink-1"],
-    ["ink-2", "--ink-2"],
-    ["ink-3", "--ink-3"],
-    ["ink-4", "--ink-4"],
-    ["ink-inverse", "--ink-inverse"],
-    ["accent", "--accent"],
-    ["accent-hover", "--accent-hover"],
-    ["accent-press", "--accent-press"],
-    ["accent-soft", "--accent-soft"],
-    ["accent-muted", "--accent-muted"],
-    ["success", "--success"],
-    ["success-soft", "--success-soft"],
-    ["warning", "--warning"],
-    ["warning-soft", "--warning-soft"],
-    ["danger", "--danger"],
-    ["danger-soft", "--danger-soft"],
-    ["border-subtle", "--border-subtle"],
-    ["border", "--border-default"],
-    ["border-strong", "--border-strong"],
-    ["border-active", "--border-active"],
-    ["border-error", "--border-error"],
-  ];
+  const colorPairs = COLOR_PAIRS;
 
   const colorLines = colorPairs.map(([name, tokenName]) => {
     const value = rootVars.get(tokenName);
@@ -226,7 +312,7 @@ function syncDesignFrontmatterColors(designDoc, rootVars) {
   });
 
   const replacement = `\ncolors:\n${colorLines.join("\n")}\ntypography:\n`;
-  const colorsSectionRegex = /\ncolors:\n[\s\S]*?\ntypography:\n/m;
+  const colorsSectionRegex = /\r?\ncolors:\r?\n[\s\S]*?\r?\ntypography:\r?\n/m;
   if (!colorsSectionRegex.test(designDoc)) {
     throw new Error("Cannot find frontmatter colors section in DESIGN.md");
   }
@@ -244,27 +330,29 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
   let output = desktopCss;
 
   const lightTokenNames = [
+    "--primary",
+    "--secondary",
     "--bg",
-    "--bg-subtle",
-    "--surface",
-    "--surface-2",
-    "--surface-3",
+    "--bg-secondary",
     "--ink-1",
     "--ink-2",
-    "--ink-3",
-    "--ink-4",
     "--ink-inverse",
-    "--accent",
-    "--accent-hover",
-    "--accent-press",
-    "--accent-soft",
-    "--accent-muted",
     "--success",
-    "--success-soft",
     "--warning",
-    "--warning-soft",
     "--danger",
-    "--danger-soft",
+    "--border",
+    "--border-strong",
+    "--space-xs",
+    "--space-sm",
+    "--space-md",
+    "--space-lg",
+    "--radius-sm",
+    "--radius-md",
+    "--radius-lg",
+    "--radius-full",
+    "--shadow-sm",
+    "--shadow-md",
+    "--shadow-lg",
   ];
 
   for (const tokenName of lightTokenNames) {
@@ -272,57 +360,28 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     output = replaceCssVarInSelector(output, ":root", tokenName, tokenValue);
   }
 
-  output = replaceCssVarInSelector(
-    output,
-    ":root",
-    "--border-color",
-    getTokenValue(rootVars, darkVars, "--border-default", "light")
-  );
-  output = replaceCssVarInSelector(
-    output,
-    ":root",
-    "--border-color-strong",
-    getTokenValue(rootVars, darkVars, "--border-strong", "light")
-  );
-
   const darkTokenNames = [
+    "--primary",
+    "--secondary",
     "--bg",
-    "--bg-subtle",
-    "--surface",
-    "--surface-2",
-    "--surface-3",
+    "--bg-secondary",
     "--ink-1",
     "--ink-2",
-    "--ink-3",
-    "--ink-4",
     "--ink-inverse",
-    "--accent",
-    "--accent-hover",
-    "--accent-press",
-    "--accent-soft",
-    "--accent-muted",
+    "--success",
+    "--warning",
+    "--danger",
+    "--border",
+    "--border-strong",
+    "--shadow-sm",
+    "--shadow-md",
+    "--shadow-lg",
   ];
 
   for (const tokenName of darkTokenNames) {
-    const sourceTokenName = `${tokenName}-dark`;
-    const rawTokenValue =
-      darkVars.get(tokenName) ?? rootVars.get(sourceTokenName) ?? rootVars.get(tokenName) ?? "";
-    const tokenValue = resolveCssVarReference(rawTokenValue, rootVars, darkVars, "dark");
+    const tokenValue = getTokenValue(rootVars, darkVars, tokenName, "dark");
     output = replaceCssVarInSelector(output, ".dark", tokenName, tokenValue);
   }
-
-  output = replaceCssVarInSelector(
-    output,
-    ".dark",
-    "--border-color",
-    getTokenValue(rootVars, darkVars, "--border-default", "dark")
-  );
-  output = replaceCssVarInSelector(
-    output,
-    ".dark",
-    "--border-color-strong",
-    getTokenValue(rootVars, darkVars, "--border-strong", "dark")
-  );
 
   return output;
 }
@@ -337,69 +396,77 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
 function syncMobileTokens(mobileTokens, rootVars, darkVars) {
   let output = mobileTokens;
 
-  const borderValueLight = getTokenValue(rootVars, darkVars, "--border-default", "light");
-  const borderValueDark = getTokenValue(rootVars, darkVars, "--border-default", "dark");
-  const borderSubtleLight = getTokenValue(rootVars, darkVars, "--border-subtle", "light");
-  const borderSubtleDark = getTokenValue(rootVars, darkVars, "--border-subtle", "dark");
+  const borderValueLight = getTokenValue(rootVars, darkVars, "--border", "light");
+  const borderValueDark = getTokenValue(rootVars, darkVars, "--border", "dark");
   const borderStrongLight = getTokenValue(rootVars, darkVars, "--border-strong", "light");
   const borderStrongDark = getTokenValue(rootVars, darkVars, "--border-strong", "dark");
-  const borderActiveLight = getTokenValue(rootVars, darkVars, "--border-active", "light");
-  const borderActiveDark = getTokenValue(rootVars, darkVars, "--border-active", "dark");
-  const borderErrorLight = getTokenValue(rootVars, darkVars, "--border-error", "light");
-  const borderErrorDark = getTokenValue(rootVars, darkVars, "--border-error", "dark");
 
   output = output.replace(
     /(const APP_BORDER = \{\n  light: \{)[\s\S]*?(  \},\n  dark: \{)[\s\S]*?(\n  \},\n\} as const;)/m,
     `$1
-    subtle: "${borderSubtleLight}",
     default: "${borderValueLight}",
     strong: "${borderStrongLight}",
-    active: "${borderActiveLight}",
-    error: "${borderErrorLight}",
 $2
-    subtle: "${borderSubtleDark}",
     default: "${borderValueDark}",
     strong: "${borderStrongDark}",
-    active: "${borderActiveDark}",
-    error: "${borderErrorDark}",
 $3`
   );
 
+  const dangerLight = getTokenValue(rootVars, darkVars, "--danger", "light");
+  const dangerDark = getTokenValue(rootVars, darkVars, "--danger", "dark");
+  const successLight = getTokenValue(rootVars, darkVars, "--success", "light");
+  const successDark = getTokenValue(rootVars, darkVars, "--success", "dark");
+  const warningLight = getTokenValue(rootVars, darkVars, "--warning", "light");
+  const warningDark = getTokenValue(rootVars, darkVars, "--warning", "dark");
+
   const lightMapping = [
     ["background", "--bg"],
-    ["surface", "--surface"],
-    ["surfaceMuted", "--surface-2"],
-    ["surface2", "--surface-2"],
-    ["surface3", "--surface-3"],
+    ["backgroundSecondary", "--bg-secondary"],
+    ["surface", "--bg-secondary"],
     ["text", "--ink-1"],
     ["textMuted", "--ink-2"],
-    ["textSubtle", "--ink-3"],
-    ["textGhost", "--ink-4"],
+    ["textOnPrimary", "--ink-inverse"],
     ["textOnDark", "--ink-inverse"],
-    ["primary", "--accent"],
-    ["primaryStrong", "--accent-hover"],
+    ["primary", "--primary"],
+    ["secondary", "--secondary"],
     ["primaryForeground", "--ink-inverse"],
-    ["accentSoft", "--accent-soft"],
-    ["accentMuted", "--accent-muted"],
     ["success", "--success"],
-    ["successSoft", "--success-soft"],
     ["warning", "--warning"],
-    ["warningSoft", "--warning-soft"],
     ["error", "--danger"],
-    ["dangerSoft", "--danger-soft"],
-    ["shadowCard", "--shadow-card"],
+    ["danger", "--danger"],
+    ["shadowSm", "--shadow-sm"],
+    ["shadowMd", "--shadow-md"],
+    ["shadowLg", "--shadow-lg"],
   ];
 
   for (const [key, tokenName] of lightMapping) {
-    output = replaceObjectStringValue(
+    output = replaceObjectStringValueIfPresent(
       output,
       "lightPaletteBase",
       key,
       getTokenValue(rootVars, darkVars, tokenName, "light")
     );
   }
-  output = replaceObjectStringValue(output, "lightPaletteBase", "overlay", "rgba(28,23,20,0.22)");
-  output = replaceObjectStringValue(
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "lightPaletteBase",
+    "successSoft",
+    rgbaFromHex(successLight, 0.16)
+  );
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "lightPaletteBase",
+    "warningSoft",
+    rgbaFromHex(warningLight, 0.16)
+  );
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "lightPaletteBase",
+    "dangerSoft",
+    rgbaFromHex(dangerLight, 0.14)
+  );
+  output = replaceObjectStringValueIfPresent(output, "lightPaletteBase", "overlay", "rgba(28,23,20,0.22)");
+  output = replaceObjectStringValueIfPresent(
     output,
     "lightPaletteBase",
     "overlayStrong",
@@ -408,33 +475,52 @@ $3`
 
   const darkMapping = [
     ["background", "--bg"],
-    ["surface", "--surface"],
-    ["surfaceMuted", "--surface-2"],
-    ["surface2", "--surface-2"],
-    ["surface3", "--surface-3"],
+    ["backgroundSecondary", "--bg-secondary"],
+    ["surface", "--bg-secondary"],
     ["text", "--ink-1"],
     ["textMuted", "--ink-2"],
-    ["textSubtle", "--ink-3"],
-    ["textGhost", "--ink-4"],
+    ["textOnPrimary", "--ink-inverse"],
     ["textOnDark", "--ink-inverse"],
-    ["primary", "--accent"],
-    ["primaryStrong", "--accent-hover"],
+    ["primary", "--primary"],
+    ["secondary", "--secondary"],
     ["primaryForeground", "--ink-inverse"],
-    ["accentSoft", "--accent-soft"],
-    ["accentMuted", "--accent-muted"],
-    ["shadowCard", "--shadow-card"],
+    ["success", "--success"],
+    ["warning", "--warning"],
+    ["error", "--danger"],
+    ["danger", "--danger"],
+    ["shadowSm", "--shadow-sm"],
+    ["shadowMd", "--shadow-md"],
+    ["shadowLg", "--shadow-lg"],
   ];
 
   for (const [key, tokenName] of darkMapping) {
-    output = replaceObjectStringValue(
+    output = replaceObjectStringValueIfPresent(
       output,
       "darkPaletteBase",
       key,
       getTokenValue(rootVars, darkVars, tokenName, "dark")
     );
   }
-  output = replaceObjectStringValue(output, "darkPaletteBase", "overlay", "rgba(0,0,0,0.38)");
-  output = replaceObjectStringValue(output, "darkPaletteBase", "overlayStrong", "rgba(0,0,0,0.65)");
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "darkPaletteBase",
+    "successSoft",
+    rgbaFromHex(successDark, 0.18)
+  );
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "darkPaletteBase",
+    "warningSoft",
+    rgbaFromHex(warningDark, 0.18)
+  );
+  output = replaceObjectStringValueIfPresent(
+    output,
+    "darkPaletteBase",
+    "dangerSoft",
+    rgbaFromHex(dangerDark, 0.18)
+  );
+  output = replaceObjectStringValueIfPresent(output, "darkPaletteBase", "overlay", "rgba(0,0,0,0.38)");
+  output = replaceObjectStringValueIfPresent(output, "darkPaletteBase", "overlayStrong", "rgba(0,0,0,0.65)");
 
   return output;
 }
@@ -449,29 +535,29 @@ $3`
 function syncReaderTokens(readerTokens, rootVars, darkVars) {
   let output = readerTokens;
 
-  const accentLight = getTokenValue(rootVars, darkVars, "--accent", "light");
-  const accentDark = getTokenValue(rootVars, darkVars, "--accent", "dark");
-  const borderActiveDark = getTokenValue(rootVars, darkVars, "--border-active", "dark");
+  const primaryLight = getTokenValue(rootVars, darkVars, "--primary", "light");
+  const primaryDark = getTokenValue(rootVars, darkVars, "--primary", "dark");
+  const borderStrongDark = getTokenValue(rootVars, darkVars, "--border-strong", "dark");
 
   output = output.replace(/link:\s*"[^"]*",\n/g, (line) => {
     if (line.includes("paper") || line.includes("light")) {
-      return `link: "${accentLight}",\n`;
+      return `link: "${primaryLight}",\n`;
     }
     return line;
   });
 
-  output = output.replace(/(paper:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${accentLight}"`);
-  output = output.replace(/(light:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${accentLight}"`);
-  output = output.replace(/(dark:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${accentDark}"`);
+  output = output.replace(/(paper:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${primaryLight}"`);
+  output = output.replace(/(light:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${primaryLight}"`);
+  output = output.replace(/(dark:\s*\{[\s\S]*?link:\s*)"[^"]*"/m, `$1"${primaryDark}"`);
 
-  output = output.replace(/accent:\s*"[^"]*",/, `accent: "${accentDark}",`);
+  output = output.replace(/accent:\s*"[^"]*",/, `accent: "${primaryDark}",`);
   output = output.replace(
-    /active:\s*"rgba\([^"]*\)",/,
-    `active: "${borderActiveDark}",`
+    /active:\s*"[^"]*",/,
+    `active: "${borderStrongDark}",`
   );
   output = output.replace(
     /backgroundColor:\s*active\s*\?\s*"rgba\([^"]*\)"\s*:\s*"rgba\([^"]*\)",/,
-    'backgroundColor: active ? "rgba(212,112,58,0.10)" : "rgba(255,255,255,0.05)",'
+    `backgroundColor: active ? "${rgbaFromHex(primaryDark, 0.12)}" : "rgba(255,255,255,0.05)",`
   );
 
   return output;
@@ -492,6 +578,7 @@ async function main() {
 
   const rootVars = parseCssVars(extractCssBlock(sourceCss, ":root"));
   const darkVars = parseCssVars(extractCssBlock(sourceCss, '[data-theme="dark"]'));
+  assertRequiredTokens(rootVars);
 
   const nextDesignDoc = syncDesignFrontmatterColors(designDoc, rootVars)
     .replace(/`DESIGN\.desktop\.md`/g, "`my-reader/src/design-tokens.css`")

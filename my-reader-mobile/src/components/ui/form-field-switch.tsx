@@ -24,7 +24,7 @@ export function FormFieldSwitch({
         onValueChange={onValueChange}
         trackColor={{ false: palette.border, true: palette.primary }}
         thumbColor={palette.surface}
-        ios_backgroundColor={palette.surfaceMuted}
+        ios_backgroundColor={palette.backgroundSecondary}
         style={{ transform: [{ scaleX: FORM_FIELD_SWITCH_SCALE }, { scaleY: FORM_FIELD_SWITCH_SCALE }] }}
       />
     </View>

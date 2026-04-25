@@ -9,9 +9,9 @@ export function SettingsSwitch({ value, onValueChange }: { value: boolean; onVal
     <Switch
       value={value}
       onValueChange={onValueChange}
-      trackColor={{ false: palette.surfaceMuted, true: palette.primary }}
+      trackColor={{ false: palette.backgroundSecondary, true: palette.primary }}
       thumbColor={palette.surface}
-      ios_backgroundColor={palette.surfaceMuted}
+      ios_backgroundColor={palette.backgroundSecondary}
     />
   );
 }

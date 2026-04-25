@@ -55,7 +55,7 @@ export function SheetOption({
       accessibilityRole="button"
       className="min-h-12 flex-row items-center justify-between rounded-2xl px-4"
       onPress={onPress}
-      style={{ backgroundColor: active ? palette.surfaceMuted : "transparent" }}
+      style={{ backgroundColor: active ? palette.backgroundSecondary : "transparent" }}
     >
       <Text className="text-[16px]" style={{ color: palette.text, fontWeight: active ? "700" : "600" }}>
         {label}

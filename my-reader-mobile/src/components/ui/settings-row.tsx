@@ -67,7 +67,7 @@ export function SettingsRow({
     return (
       <TouchableHighlight
         accessibilityRole="button"
-        underlayColor={palette.surfaceMuted}
+        underlayColor={palette.backgroundSecondary}
         onPress={onPress}
       >
         <View className={ROW_CLASS} style={borderStyle}>

@@ -548,11 +548,11 @@
   }
 
   .reader-chrome-elevated-btn {
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-md);
   }
 
   .reader-chrome-panel-shadow-floating {
-    box-shadow: var(--shadow-panel);
+    box-shadow: var(--shadow-lg);
   }
 
   .reader-chrome-search-field {

@@ -13,7 +13,7 @@ export function HeroCard({ children }: { children: ReactNode }) {
         backgroundColor: palette.surface,
         borderColor: palette.border,
         borderWidth: 1,
-        boxShadow: palette.shadowCard,
+        boxShadow: palette.shadowMd,
       }}
     >
       {children}

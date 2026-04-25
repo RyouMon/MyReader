@@ -84,7 +84,7 @@ export default function AppSidebar() {
             className="font-serif flex size-9 shrink-0 items-center justify-center rounded-lg text-base font-bold text-ink-inverse"
             style={{
               background:
-                "linear-gradient(135deg, var(--accent), var(--accent-hover))",
+                "linear-gradient(135deg, var(--primary), var(--secondary))",
             }}
           >
             M

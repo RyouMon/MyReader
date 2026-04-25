@@ -16,7 +16,7 @@ export function SecondaryButton({
       className="min-h-12 flex-1 items-center justify-center rounded-full px-4"
       onPress={onPress}
       style={{
-        backgroundColor: palette.surfaceMuted,
+        backgroundColor: palette.backgroundSecondary,
         borderColor: palette.border,
         borderWidth: 1,
       }}

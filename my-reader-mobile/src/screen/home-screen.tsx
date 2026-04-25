@@ -46,7 +46,7 @@ export default function HomeScreen() {
                     {currentBook.title}
                   </Text>
                 </View>
-                <View className="rounded-full px-3 py-2" style={{ backgroundColor: palette.surfaceMuted }}>
+                <View className="rounded-full px-3 py-2" style={{ backgroundColor: palette.backgroundSecondary }}>
                   <Text
                     className="text-sm font-semibold"
                     style={{ color: palette.primary, fontVariant: ["tabular-nums"] }}
@@ -60,7 +60,7 @@ export default function HomeScreen() {
                 {currentBook.coverUri ? (
                   <Image source={currentBook.coverUri} className="h-[168px] w-[112px] rounded-[18px]" />
                 ) : (
-                  <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.surfaceMuted }}>
+                  <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.backgroundSecondary }}>
                     <Text className="text-sm" style={{ color: palette.textMuted, fontWeight: "600" }}>
                       无封面
                     </Text>

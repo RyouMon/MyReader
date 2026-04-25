@@ -23,7 +23,7 @@ export function EmptyState({
         borderColor: palette.border,
       },
       iconHalo: {
-        backgroundColor: palette.surfaceMuted,
+        backgroundColor: palette.backgroundSecondary,
       },
       iconCore: {
         backgroundColor: palette.background,
