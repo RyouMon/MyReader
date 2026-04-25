@@ -6,48 +6,145 @@
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:var(--font-ui); background:var(--bg); padding:20px; }
-.sec { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9C9089; margin:16px 0 8px; }
+
+.sec { font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-2); margin:20px 0 10px; }
 .sec:first-child { margin-top:0; }
-.grid { display:flex; gap:6px; flex-wrap:wrap; }
-.token { background:var(--surface); border:var(--border); border-radius:6px; padding:8px; text-align:center; min-width:44px; }
-.bar { background:#C4622D; border-radius:2px; margin:0 auto 5px; height:5px; }
-.token-name { font-size:10px; font-weight:600; color:var(--ink-1); }
-.token-val  { font-family:var(--font-mono); font-size:9px; color:var(--ink-3); margin-top:1px; }
+
+/* ── Spacing ── */
+.space-grid { display:flex; flex-direction:column; gap:6px; }
+.space-row  { display:flex; align-items:center; gap:12px; }
+.space-bar-wrap { width:160px; display:flex; align-items:center; }
+.space-bar  { background:var(--primary); border-radius:2px; height:6px; }
+.space-meta { display:flex; gap:8px; align-items:baseline; }
+.space-name { font-size:11px; font-weight:600; color:var(--ink-1); width:72px; }
+.space-val  { font-family:var(--font-mono); font-size:10px; color:var(--ink-2); }
+.space-use  { font-size:10px; color:var(--ink-2); }
+
+/* ── Radius ── */
+.radius-grid { display:flex; gap:10px; flex-wrap:wrap; }
+.radius-card { background:var(--bg-secondary); border:1px solid var(--border); padding:12px 14px; text-align:center; min-width:72px; }
+.radius-box  { width:48px; height:32px; background:var(--primary); margin:0 auto 8px; }
+.r-name { font-size:10px; font-weight:600; color:var(--ink-1); }
+.r-val  { font-family:var(--font-mono); font-size:9px; color:var(--ink-2); margin-top:2px; }
+.r-use  { font-size:9px; color:var(--ink-2); margin-top:2px; }
+
+/* ── Shadow ── */
+.shadow-grid { display:flex; gap:14px; flex-wrap:wrap; }
+.shadow-card { background:var(--bg-secondary); padding:12px 14px; text-align:center; min-width:88px; border-radius:8px; }
+.shadow-box  { width:64px; height:36px; background:white; border-radius:6px; margin:0 auto 8px; }
+.sh-name { font-size:10px; font-weight:600; color:var(--ink-1); }
+.sh-val  { font-family:var(--font-mono); font-size:8px; color:var(--ink-2); margin-top:2px; line-height:1.5; }
+.sh-use  { font-size:9px; color:var(--ink-2); margin-top:3px; }
+
+/* ── Border ── */
+.border-grid { display:flex; gap:10px; flex-wrap:wrap; }
+.border-card { background:var(--bg-secondary); padding:10px 14px; min-width:120px; border-radius:6px; }
+.border-demo { height:28px; border-radius:4px; margin-bottom:7px; }
+.b-name { font-size:10px; font-weight:600; color:var(--ink-1); }
+.b-val  { font-family:var(--font-mono); font-size:8.5px; color:var(--ink-2); margin-top:2px; }
 </style>
 </head>
 <body>
-  <div class="sec">Spacing Scale — 4px base</div>
-  <div class="grid">
-    <div class="token"><div class="bar" style="width:4px"></div><div class="token-name">space-1</div><div class="token-val">4px</div></div>
-    <div class="token"><div class="bar" style="width:8px"></div><div class="token-name">space-2</div><div class="token-val">8px</div></div>
-    <div class="token"><div class="bar" style="width:12px"></div><div class="token-name">space-3</div><div class="token-val">12px</div></div>
-    <div class="token"><div class="bar" style="width:16px"></div><div class="token-name">space-4</div><div class="token-val">16px</div></div>
-    <div class="token"><div class="bar" style="width:20px"></div><div class="token-name">space-5</div><div class="token-val">20px</div></div>
-    <div class="token"><div class="bar" style="width:24px"></div><div class="token-name">space-6</div><div class="token-val">24px</div></div>
-    <div class="token"><div class="bar" style="width:32px"></div><div class="token-name">space-8</div><div class="token-val">32px</div></div>
-    <div class="token"><div class="bar" style="width:40px"></div><div class="token-name">space-10</div><div class="token-val">40px</div></div>
-    <div class="token"><div class="bar" style="width:48px"></div><div class="token-name">space-12</div><div class="token-val">48px</div></div>
-    <div class="token"><div class="bar" style="width:56px"></div><div class="token-name">space-16</div><div class="token-val">64px</div></div>
-    <div class="token"><div class="bar" style="width:60px"></div><div class="token-name">space-24</div><div class="token-val">96px</div></div>
+
+  <div class="sec">Spacing — 4px base · 4 steps</div>
+  <div class="space-grid">
+    <div class="space-row">
+      <div class="space-bar-wrap"><div class="space-bar" style="width:4px"></div></div>
+      <div class="space-meta">
+        <div class="space-name">--space-xs</div>
+        <div class="space-val">4px</div>
+        <div class="space-use">icon gap, tight padding</div>
+      </div>
+    </div>
+    <div class="space-row">
+      <div class="space-bar-wrap"><div class="space-bar" style="width:8px"></div></div>
+      <div class="space-meta">
+        <div class="space-name">--space-sm</div>
+        <div class="space-val">8px</div>
+        <div class="space-use">inner padding, chip spacing</div>
+      </div>
+    </div>
+    <div class="space-row">
+      <div class="space-bar-wrap"><div class="space-bar" style="width:16px"></div></div>
+      <div class="space-meta">
+        <div class="space-name">--space-md</div>
+        <div class="space-val">16px</div>
+        <div class="space-use">component padding, row gap</div>
+      </div>
+    </div>
+    <div class="space-row">
+      <div class="space-bar-wrap"><div class="space-bar" style="width:32px"></div></div>
+      <div class="space-meta">
+        <div class="space-name">--space-lg</div>
+        <div class="space-val">32px</div>
+        <div class="space-use">section gap, layout margin</div>
+      </div>
+    </div>
   </div>
 
-  <div class="sec">Corner Radii</div>
-  <div class="grid">
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:2px;margin:0 auto 5px"></div><div class="token-name">xs</div><div class="token-val">2px</div></div>
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:4px;margin:0 auto 5px"></div><div class="token-name">sm</div><div class="token-val">4px · tag</div></div>
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:8px;margin:0 auto 5px"></div><div class="token-name">md</div><div class="token-val">8px · btn</div></div>
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:12px;margin:0 auto 5px"></div><div class="token-name">lg</div><div class="token-val">12px · card</div></div>
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:20px;margin:0 auto 5px"></div><div class="token-name">xl</div><div class="token-val">20px · sheet</div></div>
-    <div class="token"><div style="width:32px;height:22px;background:#C4622D;border-radius:9999px;margin:0 auto 5px"></div><div class="token-name">full</div><div class="token-val">pill</div></div>
+  <div class="sec">Radius — 4 steps</div>
+  <div class="radius-grid">
+    <div class="radius-card" style="border-radius:4px">
+      <div class="radius-box" style="border-radius:4px"></div>
+      <div class="r-name">--radius-sm</div>
+      <div class="r-val">4px</div>
+      <div class="r-use">chips, tags</div>
+    </div>
+    <div class="radius-card" style="border-radius:4px">
+      <div class="radius-box" style="border-radius:8px"></div>
+      <div class="r-name">--radius-md</div>
+      <div class="r-val">8px</div>
+      <div class="r-use">buttons, inputs</div>
+    </div>
+    <div class="radius-card" style="border-radius:4px">
+      <div class="radius-box" style="border-radius:16px"></div>
+      <div class="r-name">--radius-lg</div>
+      <div class="r-val">16px</div>
+      <div class="r-use">cards, sheets</div>
+    </div>
+    <div class="radius-card" style="border-radius:4px">
+      <div class="radius-box" style="border-radius:9999px"></div>
+      <div class="r-name">--radius-full</div>
+      <div class="r-val">9999px</div>
+      <div class="r-use">pill, avatar</div>
+    </div>
   </div>
 
-  <div class="sec">Shadows</div>
-  <div class="grid">
-    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 1px 2px rgba(28,23,20,.06)"></div><div class="token-name">xs</div><div class="token-val">subtle</div></div>
-    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 1px 3px rgba(28,23,20,.08),0 4px 12px rgba(28,23,20,.06)"></div><div class="token-name">card</div><div class="token-val">panels</div></div>
-    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:2px 4px 16px rgba(28,23,20,.18)"></div><div class="token-name">cover</div><div class="token-val">book art</div></div>
-    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 2px 8px rgba(28,23,20,.10),0 12px 32px rgba(28,23,20,.08)"></div><div class="token-name">panel</div><div class="token-val">drawers</div></div>
-    <div class="token" style="min-width:72px"><div style="width:56px;height:30px;background:white;border-radius:8px;margin:0 auto 5px;box-shadow:0 4px 16px rgba(28,23,20,.12),0 24px 64px rgba(28,23,20,.14)"></div><div class="token-name">modal</div><div class="token-val">dialogs</div></div>
+  <div class="sec">Shadow — 3 levels</div>
+  <div class="shadow-grid">
+    <div class="shadow-card">
+      <div class="shadow-box" style="box-shadow:0 1px 3px rgba(28,23,20,.08)"></div>
+      <div class="sh-name">--shadow-sm</div>
+      <div class="sh-val">0 1px 3px ·08</div>
+      <div class="sh-use">inline elements</div>
+    </div>
+    <div class="shadow-card">
+      <div class="shadow-box" style="box-shadow:0 2px 8px rgba(28,23,20,.10),0 8px 24px rgba(28,23,20,.07)"></div>
+      <div class="sh-name">--shadow-md</div>
+      <div class="sh-val">0 2px 8px · 0 8px 24px</div>
+      <div class="sh-use">cards, panels</div>
+    </div>
+    <div class="shadow-card">
+      <div class="shadow-box" style="box-shadow:0 4px 16px rgba(28,23,20,.12),0 24px 64px rgba(28,23,20,.14)"></div>
+      <div class="sh-name">--shadow-lg</div>
+      <div class="sh-val">0 4px 16px · 0 24px 64px</div>
+      <div class="sh-use">modals, dialogs</div>
+    </div>
   </div>
+
+  <div class="sec">Border</div>
+  <div class="border-grid">
+    <div class="border-card">
+      <div class="border-demo" style="border:1px solid rgba(28,23,20,.10);background:var(--bg)"></div>
+      <div class="b-name">--border</div>
+      <div class="b-val">rgba(28,23,20, .10)</div>
+    </div>
+    <div class="border-card">
+      <div class="border-demo" style="border:1px solid rgba(28,23,20,.20);background:var(--bg)"></div>
+      <div class="b-name">--border-strong</div>
+      <div class="b-val">rgba(28,23,20, .20)</div>
+    </div>
+  </div>
+
 </body>
 </html>

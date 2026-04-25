@@ -56,8 +56,7 @@ Content-first means the reading surface is neutral — warm paper tone, no chrom
 - **Surface** `--surface`: `#FFFFFF` — cards, panels
 - **Surface 2** `--surface-2`: `#F0EBE1` — subtle in-page dividers, sidebars
 - **Ink 1** `--ink-1`: `#1C1714` — primary text, near-black with warmth
-- **Ink 2** `--ink-2`: `#5C5349` — secondary labels, metadata
-- **Ink 3** `--ink-3`: `#9C9089` — placeholders, disabled, captions
+- **Ink 2** `--ink-2`: `#5C5349` — weak emphasis: metadata, captions, labels, placeholders
 - **Accent** `--accent`: `#C4622D` — a warm terracotta/ochre; used for progress, active states, links
 - **Accent soft** `--accent-soft`: `#F5E8DF` — accent backgrounds, badges
 - **Danger** `--danger`: `#B53A2F`

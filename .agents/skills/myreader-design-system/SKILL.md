@@ -14,7 +14,7 @@ If the user invokes this skill without any other guidance, ask them what they wa
 
 **Accent:** `#C4622D` (terracotta) — progress bars, active states, links  
 **Background:** `#F7F3EC` (warm paper) · **Dark bg:** `#1C1814`  
-**Ink:** `#1C1714` primary · `#5C5349` secondary · `#9C9089` tertiary  
+**Ink:** `#1C1714` primary · `#5C5349` weak emphasis  
 **Display font:** Lora (serif) — book titles, headings  
 **UI font:** DM Sans — labels, navigation, metadata  
 **Reading font:** Merriweather — in-reader body text  
