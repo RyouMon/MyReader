@@ -14,12 +14,13 @@ import type { MobileLibrary, WebDavDataSource } from "../data/types";
 import { readBooksFromWebDavLibrary } from "../data/webdav";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import {
+  DEFAULT_LIBRARY_VIEW_MODE,
   defaultSettings,
   mergeDataSources,
   persistableDataSources,
   STORE_NAME,
 } from "./app-store.constants";
-import type { AppState, AppStateSlice, PersistedAppState } from "./app-store.types";
+import type { AppState, AppStateSlice, LibraryViewMode, PersistedAppState } from "./app-store.types";
 import { createDataSourceSlice } from "./data-source-slice";
 import { createExpoJsonStorage } from "./json-storage";
 import { readWebDavPassword } from "./secure-credential-store";
@@ -78,6 +79,20 @@ const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
     }));
   },
 });
+
+type ProgramStateSlice = Pick<AppState, "libraryViewMode" | "setLibraryViewMode">;
+
+const createProgramStateSlice: AppStateSlice<ProgramStateSlice> = (set) => ({
+  libraryViewMode: DEFAULT_LIBRARY_VIEW_MODE,
+  setLibraryViewMode(mode) {
+    set({ libraryViewMode: mode });
+  },
+});
+
+/** Returns whether a persisted value matches the current library view modes. */
+function isLibraryViewMode(value: unknown): value is LibraryViewMode {
+  return value === "grid" || value === "list";
+}
 
 function mergeLibraryUpdate(libraries: MobileLibrary[], updatedLibrary: MobileLibrary) {
   return libraries.map((library) =>
@@ -310,6 +325,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (...args) => ({
       ...createSettingsSlice(...args),
+      ...createProgramStateSlice(...args),
       ...createDataSourceSlice(...args),
       ...createLibrarySlice(...args),
     }),
@@ -321,6 +337,7 @@ export const useAppStore = create<AppState>()(
         dataSources: persistableDataSources(state.dataSources),
         libraries: state.libraries,
         activeLibraryId: state.activeLibraryId,
+        libraryViewMode: state.libraryViewMode,
       }),
       merge: (persistedState, currentState) => {
         const typedPersisted = (persistedState as Partial<PersistedAppState>) ?? {};
@@ -339,6 +356,9 @@ export const useAppStore = create<AppState>()(
             typeof typedPersisted.activeLibraryId === "string"
               ? typedPersisted.activeLibraryId
               : null,
+          libraryViewMode: isLibraryViewMode(typedPersisted.libraryViewMode)
+            ? typedPersisted.libraryViewMode
+            : DEFAULT_LIBRARY_VIEW_MODE,
         } as AppState;
       },
       onRehydrateStorage: () => (state) => {

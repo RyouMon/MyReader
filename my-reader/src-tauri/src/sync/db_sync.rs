@@ -56,8 +56,12 @@ pub trait SyncProvider {
     ) -> Result<usize, AppError>;
 
     /// 从 backend 拉取其他设备的变更并合并入本机；返回合并行数。
-    async fn pull(&self, conn: &Connection, op: &Operator, device_id: &str)
-        -> Result<usize, AppError>;
+    async fn pull(
+        &self,
+        conn: &Connection,
+        op: &Operator,
+        device_id: &str,
+    ) -> Result<usize, AppError>;
 }
 
 /// LWW（Last-Writer-Wins by `updated_at`）实现：适合单用户多设备。
@@ -115,7 +119,11 @@ impl LwwProvider {
         .map_err(|e| AppError::Database(e.to_string()))
     }
 
-    fn export_rows(conn: &Connection, spec: &TableSpec, since_ms: f64) -> Result<Vec<ChangeRow>, AppError> {
+    fn export_rows(
+        conn: &Connection,
+        spec: &TableSpec,
+        since_ms: f64,
+    ) -> Result<Vec<ChangeRow>, AppError> {
         let cols: Vec<&str> = spec
             .key_columns
             .iter()
@@ -155,7 +163,11 @@ impl LwwProvider {
         Ok(out)
     }
 
-    fn apply_row(conn: &Connection, spec: &TableSpec, change: &ChangeRow) -> Result<bool, AppError> {
+    fn apply_row(
+        conn: &Connection,
+        spec: &TableSpec,
+        change: &ChangeRow,
+    ) -> Result<bool, AppError> {
         // 只合并属于本 spec 的表
         if change.table != spec.name {
             return Ok(false);
@@ -177,14 +189,17 @@ impl LwwProvider {
         let key_params = spec
             .key_columns
             .iter()
-            .map(|col| change.key.get(*col).cloned().unwrap_or(serde_json::Value::Null))
+            .map(|col| {
+                change
+                    .key
+                    .get(*col)
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null)
+            })
             .collect::<Vec<_>>();
 
         let existing: Option<f64> = {
-            let sql = format!(
-                "SELECT updated_at FROM {} WHERE {}",
-                spec.name, key_clause
-            );
+            let sql = format!("SELECT updated_at FROM {} WHERE {}", spec.name, key_clause);
             let mut stmt = conn
                 .prepare(&sql)
                 .map_err(|e| AppError::Database(e.to_string()))?;
@@ -230,10 +245,22 @@ impl LwwProvider {
         );
         let mut params: Vec<serde_json::Value> = Vec::with_capacity(all_cols.len());
         for col in spec.key_columns {
-            params.push(change.key.get(*col).cloned().unwrap_or(serde_json::Value::Null));
+            params.push(
+                change
+                    .key
+                    .get(*col)
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            );
         }
         for col in spec.value_columns {
-            params.push(change.value.get(*col).cloned().unwrap_or(serde_json::Value::Null));
+            params.push(
+                change
+                    .value
+                    .get(*col)
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null),
+            );
         }
         conn.execute(
             &sql,
@@ -313,8 +340,8 @@ impl SyncProvider for LwwProvider {
 
         let mut payload = String::new();
         for row in &all {
-            let line = serde_json::to_string(row)
-                .map_err(|e| AppError::Serialize(e.to_string()))?;
+            let line =
+                serde_json::to_string(row).map_err(|e| AppError::Serialize(e.to_string()))?;
             payload.push_str(&line);
             payload.push('\n');
         }

@@ -8,6 +8,7 @@ import type { ThemeMode } from "../design/tokens";
 export type ReaderTheme = "light" | "paper" | "green" | "dark";
 export type ReadingLayout = "scroll" | "paginate";
 export type FixedNavigationMode = "horizontal" | "vertical";
+export type LibraryViewMode = "grid" | "list";
 
 export type ReflowableReaderSettings = {
   theme: ReaderTheme;
@@ -41,6 +42,7 @@ export type PersistedAppState = {
   dataSources: DataSourceStore["dataSources"];
   libraries: MobileLibrary[];
   activeLibraryId: string | null;
+  libraryViewMode: LibraryViewMode;
 };
 
 type DataSourceActions = Pick<
@@ -64,6 +66,7 @@ export type AppState = Omit<PersistedAppState, "dataSources"> &
     setHasHydrated: (value: boolean) => void;
     initialize: () => Promise<void>;
     setThemeMode: (mode: ThemeMode) => void;
+    setLibraryViewMode: (mode: LibraryViewMode) => void;
     setSyncEnabled: (enabled: boolean) => void;
     patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
     patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;

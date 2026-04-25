@@ -147,6 +147,8 @@ impl Default for ReflowableReaderPreferencesDto {
 pub struct ReaderUiPreferences {
     #[serde(default = "default_version")]
     pub version: u32,
+    #[serde(default = "default_library_view_mode")]
+    pub library_view_mode: String,
     #[serde(default)]
     pub fixed_layout: FixedLayoutSettingsDto,
     #[serde(default, alias = "reflow")]
@@ -156,13 +158,18 @@ pub struct ReaderUiPreferences {
 }
 
 fn default_version() -> u32 {
-    2
+    3
+}
+
+fn default_library_view_mode() -> String {
+    "grid".into()
 }
 
 impl Default for ReaderUiPreferences {
     fn default() -> Self {
         Self {
             version: default_version(),
+            library_view_mode: default_library_view_mode(),
             fixed_layout: FixedLayoutSettingsDto::default(),
             reflowable: ReflowableReaderPreferencesDto::default(),
             cache: CachePreferencesDto::default(),

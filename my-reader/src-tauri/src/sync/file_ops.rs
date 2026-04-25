@@ -87,9 +87,9 @@ pub async fn download(
     manifest: &Manifest,
     relative_path: &str,
 ) -> Result<DownloadOutcome, AppError> {
-    let entry = manifest.find(relative_path).ok_or_else(|| {
-        AppError::NotFound(format!("manifest 中未登记该路径: {relative_path}"))
-    })?;
+    let entry = manifest
+        .find(relative_path)
+        .ok_or_else(|| AppError::NotFound(format!("manifest 中未登记该路径: {relative_path}")))?;
 
     let target = resolve_local_path(library_root, relative_path)?;
     if target.exists() {

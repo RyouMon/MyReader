@@ -7,7 +7,10 @@ import {
   type FixedLayoutSettings,
   type ReaderSettings,
 } from "@/components/reader/types"
-import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
+import type {
+  LibraryViewMode,
+  ReaderUiPreferencesPayload,
+} from "@/types/readerUiPreferences"
 
 export interface ReflowablePreferencesSlice {
   settings: ReaderSettings
@@ -29,6 +32,11 @@ const DEFAULT_REFLOWABLE: ReflowablePreferencesSlice = {
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null
 
+/** Returns whether a value is a supported persisted library view mode. */
+function isLibraryViewMode(value: unknown): value is LibraryViewMode {
+  return value === "grid" || value === "list"
+}
+
 function schedulePersistReaderPreferences(get: () => AppUiState) {
   if (!isTauri() || !get().readerPreferencesHydrated) return
   if (persistTimer) clearTimeout(persistTimer)
@@ -36,7 +44,8 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
     persistTimer = null
     const s = get()
     const payload: ReaderUiPreferencesPayload = {
-      version: 2,
+      version: 3,
+      libraryViewMode: s.libraryViewMode,
       fixedLayout: s.fixedLayout,
       reflowable: s.reflowable,
       cache: s.cache,
@@ -56,9 +65,11 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
 
 export interface AppUiState {
   readerPreferencesHydrated: boolean
+  libraryViewMode: LibraryViewMode
   fixedLayout: FixedLayoutSettings
   reflowable: ReflowablePreferencesSlice
   cache: CachePreferencesSlice
+  setLibraryViewMode: (mode: LibraryViewMode) => void
   patchFixedLayout: (
     patch:
       | Partial<FixedLayoutSettings>
@@ -75,6 +86,7 @@ export interface AppUiState {
 
 export const useAppUiStore = create<AppUiState>()((set, get) => ({
   readerPreferencesHydrated: false,
+  libraryViewMode: "grid",
   fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS },
   reflowable: {
     settings: { ...DEFAULT_REFLOWABLE.settings },
@@ -83,6 +95,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   cache: {
     maxCacheSizeMB: 2048,
     autoCleanupOnLaunch: true,
+  },
+  setLibraryViewMode: (mode) => {
+    set({ libraryViewMode: mode })
+    schedulePersistReaderPreferences(get)
   },
   patchFixedLayout: (patch) => {
     set((state) => ({
@@ -122,6 +138,9 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   },
   hydrateReaderPreferences: (data) => {
     set({
+      libraryViewMode: isLibraryViewMode(data.libraryViewMode)
+        ? data.libraryViewMode
+        : "grid",
       fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS, ...data.fixedLayout },
       reflowable: {
         settings: { ...DEFAULT_SETTINGS, ...data.reflowable.settings },

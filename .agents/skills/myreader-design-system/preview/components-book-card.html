@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BookCard & BookRow — MyReader DS</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--ink-1);
+  padding: 32px 24px 80px;
+  min-height: 100vh;
+}
+
+/* ── Section headers ── */
+.section-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 40px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.platform-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pill-desktop { background: #F0EBE1; color: #5C5349; }
+.pill-mobile  { background: #F5E8DF; color: #C4622D; }
+
+/* ══════════════════════════════════════════════════════════
+   BOOK CARD
+═══════════════════════════════════════════════════════════ */
+.book-card {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.book-cover {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    2px 4px 16px rgba(28,23,20,.18),
+    0 1px 3px rgba(28,23,20,.12);
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+/* Cover inner: gradient bg + title text */
+.book-cover-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 10px;
+}
+.cover-title-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,.88);
+  text-align: center;
+  line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+
+/* Spine shadow */
+.book-spine {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 7px;
+  background: rgba(0,0,0,.22);
+  border-radius: 10px 0 0 10px;
+}
+
+/* Reading progress bar */
+.book-progress {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(255,255,255,.18);
+}
+.book-progress-fill {
+  height: 100%;
+  background: rgba(255,255,255,.72);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── Overlay action buttons ── */
+.book-actions {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+  pointer-events: none;
+}
+.book-actions-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.52) 0%,
+    rgba(0,0,0,.18) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+.btn-read {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-spring);
+}
+.btn-ctx {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    opacity var(--dur-fast) var(--ease-standard),
+    background var(--dur-micro) var(--ease-standard);
+}
+.btn-ctx:hover { background: rgba(255,255,255,.32); }
+
+/* ── Book info below cover ── */
+.book-info { margin-top: 8px; }
+.book-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-1);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-author {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.book-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+.book-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: #F5E8DF;
+  color: #C4622D;
+}
+
+/* ══ DESKTOP BookCard ══ */
+.book-card-dt {
+  width: var(--dt-cover-grid);
+}
+.book-card-dt .book-cover {
+  width: var(--dt-cover-grid);
+  height: 158px;
+}
+/* On hover: lift + show overlay */
+.book-card-dt:hover .book-cover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow:
+    3px 8px 24px rgba(28,23,20,.24),
+    0 2px 6px rgba(28,23,20,.14);
+}
+.book-card-dt:hover .book-actions-bg { opacity: 1; }
+.book-card-dt .book-actions {
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 8px 8px 0;
+}
+.book-card-dt .book-actions-bg {
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.24) 0%,
+    rgba(0,0,0,.08) 45%,
+    transparent 100%
+  );
+}
+.book-card-dt .btn-read {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid rgba(196,98,45,.8);
+  box-shadow: 0 2px 10px rgba(196,98,45,.45);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px) scale(.96);
+}
+.book-card-dt:hover .btn-read {
+  pointer-events: all;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.book-card-dt .btn-ctx {
+  position: relative;
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px) scale(.96);
+}
+.book-card-dt:hover .btn-ctx {
+  pointer-events: all;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ══ MOBILE BookCard ══ */
+.book-card-mb {
+  width: 106px;
+}
+.book-card-mb .book-cover {
+  width: 106px;
+  height: 152px;
+}
+/* Mobile: actions always visible */
+.book-card-mb .book-actions-bg { opacity: 1; }
+.book-card-mb .btn-read {
+  pointer-events: all;
+  opacity: 1;
+  transform: none;
+  padding: 6px 11px;
+  font-size: 11px;
+}
+.book-card-mb .btn-ctx {
+  top: 7px; right: 7px;
+  width: 28px; height: 28px;
+  pointer-events: all;
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOOK ROW
+═══════════════════════════════════════════════════════════ */
+.book-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-micro) var(--ease-standard);
+}
+.book-row:active { background: var(--bg-secondary); }
+
+.row-cover {
+  flex-shrink: 0;
+  border-radius: 5px;
+  background: #4A3728;
+  box-shadow: 1px 2px 6px rgba(28,23,20,.18);
+  overflow: hidden;
+  position: relative;
+}
+.row-cover-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 4px;
+}
+.row-spine {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: rgba(0,0,0,.22);
+  border-radius: 5px 0 0 5px;
+}
+
+.row-info { flex: 1; min-width: 0; }
+.row-title {
+  font-weight: 500;
+  color: var(--ink-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-author {
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+.row-badge {
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: #F5E8DF;
+  color: #C4622D;
+}
+.row-stat { color: var(--ink-2); }
+
+/* Action group right side */
+.row-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  color: var(--ink-2);
+  transition:
+    background var(--dur-micro) var(--ease-standard),
+    color var(--dur-micro) var(--ease-standard);
+}
+.icon-btn:hover { background: var(--bg-secondary); color: var(--ink-1); }
+.icon-btn.primary-icon { color: var(--primary); }
+.icon-btn.primary-icon:hover { background: #F5E8DF; }
+
+/* Progress bar inside row */
+.row-progress-track {
+  background: var(--border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.row-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  opacity: .6;
+}
+
+/* ══ DESKTOP BookRow ══ */
+.book-row-dt {
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  min-height: var(--dt-row-h);
+}
+.book-row-dt:hover { background: var(--bg-secondary); }
+.book-row-dt .row-cover {
+  width: 30px;
+  height: 42px;
+}
+.book-row-dt .row-title  { font-size: 13px; }
+.book-row-dt .row-author { font-size: 11px; margin-top: 1px; }
+.book-row-dt .row-badge  { font-size: 9px; }
+.book-row-dt .row-stat   { font-size: 10px; }
+.book-row-dt .row-actions { gap: 2px; }
+.book-row-dt .icon-btn {
+  width: 28px; height: 28px;
+}
+
+/* Progress track desktop */
+.book-row-dt .row-progress-track {
+  width: 48px; height: 3px;
+  margin-top: 4px;
+}
+
+/* ══ MOBILE BookRow ══ */
+.book-row-mb {
+  gap: 14px;
+  padding: 10px 16px;
+  min-height: var(--mb-row-h);
+  border-bottom: 1px solid var(--border);
+}
+.book-row-mb .row-cover {
+  width: 38px;
+  height: 54px;
+}
+.book-row-mb .row-title  { font-size: 15px; }
+.book-row-mb .row-author { font-size: 13px; margin-top: 1px; }
+.book-row-mb .row-badge  { font-size: 10px; }
+.book-row-mb .row-stat   { font-size: 12px; }
+.book-row-mb .row-actions { gap: 4px; }
+.book-row-mb .icon-btn {
+  width: var(--mb-touch-min);
+  height: var(--mb-touch-min);
+}
+
+/* Progress track mobile */
+.book-row-mb .row-progress-track {
+  width: 56px; height: 3px;
+  margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════════════════════ */
+.ctx-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid rgba(28,23,20,.10);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  min-width: 168px;
+  z-index: var(--z-dropdown);
+  display: none;
+  animation: menuIn var(--dur-fast) var(--ease-spring) both;
+}
+.ctx-menu.open { display: block; }
+@keyframes menuIn {
+  from { opacity: 0; transform: scale(.94) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background var(--dur-micro);
+}
+.ctx-item:hover { background: var(--bg-secondary); }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover { background: #F5E2E0; }
+.ctx-divider { height: 1px; background: var(--border); margin: 3px 4px; }
+.ctx-icon { color: var(--ink-2); flex-shrink: 0; }
+.ctx-item.danger .ctx-icon { color: var(--danger); }
+
+/* Mobile bottom sheet menu */
+.sheet-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.28);
+  z-index: var(--z-overlay);
+  display: none;
+  animation: fadeIn .2s ease both;
+}
+.sheet-overlay.open { display: block; }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+.bottom-sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 16px));
+  z-index: var(--z-modal);
+  display: none;
+  animation: sheetIn .28s var(--ease-spring) both;
+}
+.bottom-sheet.open { display: block; }
+@keyframes sheetIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: #C4B8AE;
+  border-radius: var(--radius-full);
+  margin: 0 auto 8px;
+}
+.sheet-book-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.sheet-cover {
+  width: 34px; height: 48px;
+  border-radius: 5px;
+  box-shadow: 1px 2px 6px rgba(28,23,20,.2);
+  flex-shrink: 0;
+}
+.sheet-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-1);
+  line-height: 1.3;
+}
+.sheet-author { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background var(--dur-micro);
+}
+.sheet-row:active { background: var(--bg-secondary); }
+.sheet-icon {
+  width: 38px; height: 38px;
+  background: #F5E8DF;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sheet-row-label { font-size: 15px; color: var(--ink-1); }
+.sheet-row.danger .sheet-icon { background: #F5E2E0; }
+.sheet-row.danger .sheet-row-label { color: var(--danger); }
+
+/* ── Layout helpers ── */
+.card-row    { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.row-list    { display: flex; flex-direction: column; }
+.demo-frame  { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.demo-frame-dt { width: 100%; max-width: 580px; }
+.demo-frame-mb { width: 375px; max-width: 100%; }
+.frame-bar {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.demo-pad { padding: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ══ DESKTOP: BookCard ══════════════════════════════════ -->
+<div class="section-header">
+  <span class="platform-pill pill-desktop">🖥 Desktop</span>
+  BookCard
+</div>
+
+<div class="card-row">
+  <!-- Card 1: Reading in progress -->
+  <div class="book-card book-card-dt" onclick="goDetail('rose')">
+    <div class="book-cover">
+      <div class="book-cover-inner" style="background:linear-gradient(148deg,#4A3728 0%,#2C1F16 100%)">
+        <div class="cover-title-text">The Name<br>of the Rose</div>
+      </div>
+      <div class="book-spine"></div>
+      <div class="book-progress"><div class="book-progress-fill" style="width:62%"></div></div>
+      <!-- Overlay -->
+      <div class="book-actions">
+        <div class="book-actions-bg"></div>
+        <button class="btn-read" onclick="readBook(event,'rose')" aria-label="继续阅读" title="继续阅读">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+        <button class="btn-ctx" onclick="openCtxDt(event,'rose')" aria-label="更多操作">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="book-info">
+      <div class="book-title">The Name of the Rose</div>
+      <div class="book-author">Umberto Eco</div>
+      <div class="book-meta"><span class="book-badge">62%</span></div>
+    </div>
+  </div>
+
+  <!-- Card 2: New / unstarted -->
+  <div class="book-card book-card-dt" onclick="goDetail('solitude')">
+    <div class="book-cover">
+      <div class="book-cover-inner" style="background:linear-gradient(148deg,#1A3A4A 0%,#0D2030 100%)">
+        <div class="cover-title-text">百年孤独</div>
+      </div>
+      <div class="book-spine"></div>
+      <div class="book-progress"><div class="book-progress-fill" style="width:28%"></div></div>
+      <div class="book-actions">
+        <div class="book-actions-bg"></div>
+        <button class="btn-read" onclick="readBook(event,'solitude')" aria-label="继续阅读" title="继续阅读">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+        <button class="btn-ctx" onclick="openCtxDt(event,'solitude')" aria-label="更多操作">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="book-info">
+      <div class="book-title">百年孤独</div>
+      <div class="book-author">加西亚·马尔克斯</div>
+      <div class="book-meta"><span class="book-badge">28%</span></div>
+    </div>
+  </div>
+
+  <!-- Card 3: Not started -->
+  <div class="book-card book-card-dt" onclick="goDetail('dune')">
+    <div class="book-cover">
+      <div class="book-cover-inner" style="background:linear-gradient(148deg,#5C4200 0%,#3A2800 100%)">
+        <div class="cover-title-text">Dune</div>
+      </div>
+      <div class="book-spine"></div>
+      <div class="book-actions">
+        <div class="book-actions-bg"></div>
+        <button class="btn-read" onclick="readBook(event,'dune')" aria-label="开始阅读" title="开始阅读">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+        <button class="btn-ctx" onclick="openCtxDt(event,'dune')" aria-label="更多操作">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="book-info">
+      <div class="book-title">Dune</div>
+      <div class="book-author">Frank Herbert</div>
+      <div class="book-meta"><span class="book-badge" style="background:#F0EBE1;color:#5C5349">未读</span></div>
+    </div>
+  </div>
+
+  <!-- Card 4: Finished -->
+  <div class="book-card book-card-dt" onclick="goDetail('cosmos')">
+    <div class="book-cover">
+      <div class="book-cover-inner" style="background:linear-gradient(148deg,#1E3A2A 0%,#0D2018 100%)">
+        <div class="cover-title-text">Cosmos</div>
+      </div>
+      <div class="book-spine"></div>
+      <div class="book-progress"><div class="book-progress-fill" style="width:100%"></div></div>
+      <div class="book-actions">
+        <div class="book-actions-bg"></div>
+        <button class="btn-read" onclick="readBook(event,'cosmos')" aria-label="再次阅读" title="再次阅读">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+        <button class="btn-ctx" onclick="openCtxDt(event,'cosmos')" aria-label="更多操作">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="book-info">
+      <div class="book-title">Cosmos</div>
+      <div class="book-author">Carl Sagan</div>
+      <div class="book-meta"><span class="book-badge" style="background:#E8F5ED;color:#3A7D5A">已读完</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DESKTOP: BookRow ════════════════════════════════════ -->
+<div class="section-header">
+  <span class="platform-pill pill-desktop">🖥 Desktop</span>
+  BookRow
+</div>
+
+<div class="demo-frame demo-frame-dt">
+  <div class="frame-bar">书库列表 · 自适应宽度</div>
+  <div class="demo-pad">
+    <div class="row-list">
+
+      <!-- Row 1 -->
+      <div class="book-row book-row-dt" onclick="goDetail('rose')">
+        <div class="row-cover" style="background:linear-gradient(135deg,#4A3728,#2C1F16)">
+          <div class="row-spine"></div>
+        </div>
+        <div class="row-info">
+          <div class="row-title">The Name of the Rose</div>
+          <div class="row-author">Umberto Eco</div>
+          <div class="row-meta">
+            <span class="row-badge">阅读中</span>
+            <span class="row-stat">62%</span>
+            <span class="row-stat">·</span>
+            <span class="row-stat">EPUB</span>
+          </div>
+          <div class="row-progress-track"><div class="row-progress-fill" style="width:62%"></div></div>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn primary-icon" onclick="readBook(event,'rose')" title="继续阅读" aria-label="继续阅读">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openCtxDt(event,'rose')" title="更多操作" aria-label="更多操作">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="book-row book-row-dt" onclick="goDetail('solitude')">
+        <div class="row-cover" style="background:linear-gradient(135deg,#1A3A4A,#0D2030)">
+          <div class="row-spine"></div>
+        </div>
+        <div class="row-info">
+          <div class="row-title">百年孤独</div>
+          <div class="row-author">加西亚·马尔克斯</div>
+          <div class="row-meta">
+            <span class="row-badge">阅读中</span>
+            <span class="row-stat">28%</span>
+            <span class="row-stat">·</span>
+            <span class="row-stat">3 天前同步</span>
+          </div>
+          <div class="row-progress-track"><div class="row-progress-fill" style="width:28%"></div></div>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn primary-icon" onclick="readBook(event,'solitude')" title="继续阅读" aria-label="继续阅读">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openCtxDt(event,'solitude')" title="更多操作" aria-label="更多操作">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="book-row book-row-dt" onclick="goDetail('dune')">
+        <div class="row-cover" style="background:linear-gradient(135deg,#5C4200,#3A2800)">
+          <div class="row-spine"></div>
+        </div>
+        <div class="row-info">
+          <div class="row-title">Dune</div>
+          <div class="row-author">Frank Herbert</div>
+          <div class="row-meta">
+            <span class="row-badge" style="background:#F0EBE1;color:#5C5349">未读</span>
+            <span class="row-stat">PDF</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn primary-icon" onclick="readBook(event,'dune')" title="开始阅读" aria-label="开始阅读">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openCtxDt(event,'dune')" title="更多操作" aria-label="更多操作">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 4 -->
+      <div class="book-row book-row-dt" onclick="goDetail('cosmos')">
+        <div class="row-cover" style="background:linear-gradient(135deg,#1E3A2A,#0D2018)">
+          <div class="row-spine"></div>
+        </div>
+        <div class="row-info">
+          <div class="row-title">Cosmos</div>
+          <div class="row-author">Carl Sagan</div>
+          <div class="row-meta">
+            <span class="row-badge" style="background:#E8F5ED;color:#3A7D5A">已读完</span>
+            <span class="row-stat">EPUB</span>
+          </div>
+          <div class="row-progress-track"><div class="row-progress-fill" style="width:100%;opacity:.35"></div></div>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="readBook(event,'cosmos')" title="再次阅读" aria-label="再次阅读">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <button class="icon-btn" onclick="openCtxDt(event,'cosmos')" title="更多操作" aria-label="更多操作">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ MOBILE: BookCard ════════════════════════════════════ -->
+<div class="section-header">
+  <span class="platform-pill pill-mobile">📱 Mobile</span>
+  BookCard
+</div>
+
+<div class="demo-frame demo-frame-mb">
+  <div class="frame-bar">书架网格 · 按钮常显</div>
+  <div class="demo-pad" style="display:flex;gap:14px;flex-wrap:wrap">
+
+    <!-- Mobile Card 1 -->
+    <div class="book-card book-card-mb" onclick="goDetail('rose')">
+      <div class="book-cover">
+        <div class="book-cover-inner" style="background:linear-gradient(148deg,#4A3728 0%,#2C1F16 100%)">
+          <div class="cover-title-text">The Name<br>of the Rose</div>
+        </div>
+        <div class="book-spine"></div>
+      </div>
+      <div class="book-info">
+        <div class="book-title">The Name of the Rose</div>
+        <div class="book-author">Umberto Eco</div>
+      </div>
+    </div>
+
+    <!-- Mobile Card 2 -->
+    <div class="book-card book-card-mb" onclick="goDetail('solitude')">
+      <div class="book-cover">
+        <div class="book-cover-inner" style="background:linear-gradient(148deg,#1A3A4A 0%,#0D2030 100%)">
+          <div class="cover-title-text">百年孤独</div>
+        </div>
+        <div class="book-spine"></div>
+      </div>
+      <div class="book-info">
+        <div class="book-title">百年孤独</div>
+        <div class="book-author">加西亚·马尔克斯</div>
+      </div>
+    </div>
+
+    <!-- Mobile Card 3: unread -->
+    <div class="book-card book-card-mb" onclick="goDetail('dune')">
+      <div class="book-cover">
+        <div class="book-cover-inner" style="background:linear-gradient(148deg,#5C4200 0%,#3A2800 100%)">
+          <div class="cover-title-text">Dune</div>
+        </div>
+        <div class="book-spine"></div>
+      </div>
+      <div class="book-info">
+        <div class="book-title">Dune</div>
+        <div class="book-author">Frank Herbert</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ MOBILE: BookRow ═════════════════════════════════════ -->
+<div class="section-header">
+  <span class="platform-pill pill-mobile">📱 Mobile</span>
+  BookRow
+</div>
+
+<div class="demo-frame demo-frame-mb">
+  <div class="frame-bar">书库列表 · 60px 触摸行高</div>
+  <div class="row-list">
+
+    <div class="book-row book-row-mb" onclick="goDetail('rose')">
+      <div class="row-cover" style="background:linear-gradient(135deg,#4A3728,#2C1F16)">
+        <div class="row-spine"></div>
+      </div>
+      <div class="row-info">
+        <div class="row-title">The Name of the Rose</div>
+        <div class="row-author">Umberto Eco</div>
+        <div class="row-meta">
+          <span class="row-badge">阅读中</span>
+          <span class="row-stat">62%</span>
+        </div>
+        <div class="row-progress-track"><div class="row-progress-fill" style="width:62%"></div></div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openCtxMb(event,'rose')" aria-label="更多操作">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="book-row book-row-mb" onclick="goDetail('solitude')">
+      <div class="row-cover" style="background:linear-gradient(135deg,#1A3A4A,#0D2030)">
+        <div class="row-spine"></div>
+      </div>
+      <div class="row-info">
+        <div class="row-title">百年孤独</div>
+        <div class="row-author">加西亚·马尔克斯</div>
+        <div class="row-meta">
+          <span class="row-badge">阅读中</span>
+          <span class="row-stat">28%</span>
+        </div>
+        <div class="row-progress-track"><div class="row-progress-fill" style="width:28%"></div></div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openCtxMb(event,'solitude')" aria-label="更多操作">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="book-row book-row-mb" onclick="goDetail('dune')">
+      <div class="row-cover" style="background:linear-gradient(135deg,#5C4200,#3A2800)">
+        <div class="row-spine"></div>
+      </div>
+      <div class="row-info">
+        <div class="row-title">Dune</div>
+        <div class="row-author">Frank Herbert</div>
+        <div class="row-meta">
+          <span class="row-badge" style="background:#F0EBE1;color:#5C5349">未读</span>
+          <span class="row-stat">PDF</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openCtxMb(event,'dune')" aria-label="更多操作">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="book-row book-row-mb" onclick="goDetail('cosmos')">
+      <div class="row-cover" style="background:linear-gradient(135deg,#1E3A2A,#0D2018)">
+        <div class="row-spine"></div>
+      </div>
+      <div class="row-info">
+        <div class="row-title">Cosmos</div>
+        <div class="row-author">Carl Sagan</div>
+        <div class="row-meta">
+          <span class="row-badge" style="background:#E8F5ED;color:#3A7D5A">已读完</span>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openCtxMb(event,'cosmos')" aria-label="更多操作">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ Desktop Context Menu ════════════════════════════════ -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxAction('read')">
+    <svg class="ctx-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    继续阅读
+  </div>
+  <div class="ctx-item" onclick="ctxAction('detail')">
+    <svg class="ctx-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    书籍详情
+  </div>
+  <div class="ctx-item" onclick="ctxAction('sync')">
+    <svg class="ctx-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+    立即同步
+  </div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" onclick="ctxAction('remove')">
+    <svg class="ctx-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    从书库移除
+  </div>
+</div>
+
+<!-- ══ Mobile Bottom Sheet ════════════════════════════════ -->
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeCtxMb()"></div>
+<div class="bottom-sheet" id="bottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-book-header">
+    <div class="sheet-cover" id="sheetCover" style="background:linear-gradient(135deg,#4A3728,#2C1F16)"></div>
+    <div>
+      <div class="sheet-title" id="sheetTitle">书名</div>
+      <div class="sheet-author" id="sheetAuthor">作者</div>
+    </div>
+  </div>
+  <div class="sheet-row" onclick="ctxAction('read'); closeCtxMb()">
+    <div class="sheet-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C4622D" stroke-width="1.6" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    </div>
+    <span class="sheet-row-label">继续阅读</span>
+  </div>
+  <div class="sheet-row" onclick="ctxAction('detail'); closeCtxMb()">
+    <div class="sheet-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C4622D" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="sheet-row-label">书籍详情</span>
+  </div>
+  <div class="sheet-row" onclick="ctxAction('sync'); closeCtxMb()">
+    <div class="sheet-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C4622D" stroke-width="1.6" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+    </div>
+    <span class="sheet-row-label">立即同步</span>
+  </div>
+  <div class="sheet-row danger" onclick="ctxAction('remove'); closeCtxMb()">
+    <div class="sheet-icon" style="background:#F5E2E0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B53A2F" stroke-width="1.6" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <span class="sheet-row-label">从书库移除</span>
+  </div>
+</div>
+
+
+<script>
+const BOOKS = {
+  rose:     { title: 'The Name of the Rose', author: 'Umberto Eco',       cover: 'linear-gradient(135deg,#4A3728,#2C1F16)' },
+  solitude: { title: '百年孤独',             author: '加西亚·马尔克斯',   cover: 'linear-gradient(135deg,#1A3A4A,#0D2030)' },
+  dune:     { title: 'Dune',                 author: 'Frank Herbert',       cover: 'linear-gradient(135deg,#5C4200,#3A2800)' },
+  cosmos:   { title: 'Cosmos',               author: 'Carl Sagan',          cover: 'linear-gradient(135deg,#1E3A2A,#0D2018)' },
+};
+
+let activeCtx = null;
+
+/* ── Desktop context menu ── */
+function openCtxDt(e, id) {
+  e.stopPropagation();
+  activeCtx = id;
+  const menu = document.getElementById('ctxMenu');
+  menu.classList.add('open');
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mw = 168, mh = 160;
+  let left = rect.right + 4;
+  let top  = rect.top;
+  if (left + mw > window.innerWidth)  left = rect.left - mw - 4;
+  if (top  + mh > window.innerHeight) top  = window.innerHeight - mh - 8;
+  menu.style.left = left + 'px';
+  menu.style.top  = top  + 'px';
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('ctxMenu').classList.remove('open');
+});
+
+/* ── Mobile bottom sheet ── */
+function openCtxMb(e, id) {
+  e.stopPropagation();
+  activeCtx = id;
+  const book = BOOKS[id];
+  document.getElementById('sheetTitle').textContent  = book.title;
+  document.getElementById('sheetAuthor').textContent = book.author;
+  document.getElementById('sheetCover').style.background = book.cover;
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.getElementById('bottomSheet').classList.add('open');
+}
+function closeCtxMb() {
+  document.getElementById('sheetOverlay').classList.remove('open');
+  document.getElementById('bottomSheet').classList.remove('open');
+}
+
+/* ── Actions ── */
+function readBook(e, id) {
+  e.stopPropagation();
+  const b = BOOKS[id];
+  flash(`📖 正在打开《${b.title}》…`);
+}
+function goDetail(id) {
+  const b = BOOKS[id];
+  flash(`🔍 进入《${b.title}》详情页`);
+}
+function ctxAction(action) {
+  if (!activeCtx) return;
+  const b = BOOKS[activeCtx];
+  const msgs = {
+    read:   `📖 继续阅读《${b.title}》`,
+    detail: `🔍 查看《${b.title}》详情`,
+    sync:   `🔄 正在同步《${b.title}》…`,
+    remove: `🗑 已从书库移除《${b.title}》`,
+  };
+  flash(msgs[action] || action);
+}
+
+/* ── Toast feedback ── */
+let toastTimer;
+function flash(msg) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    Object.assign(t.style, {
+      position:'fixed', bottom:'28px', left:'50%',
+      transform:'translateX(-50%)',
+      background:'#1C1714', color:'#FAF6F0',
+      fontSize:'13px', padding:'8px 16px',
+      borderRadius:'8px', zIndex:'9999',
+      boxShadow:'0 4px 16px rgba(0,0,0,.22)',
+      pointerEvents:'none',
+      transition:'opacity .2s',
+    });
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = '0', 2000);
+}
+</script>
+</body>
+</html>

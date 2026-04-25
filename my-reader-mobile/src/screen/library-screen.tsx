@@ -11,6 +11,7 @@ import { useThemePalette } from "@/src/design/tokens";
 
 import {
   BookCard,
+  BookRow,
   EmptyState,
   FilterChip,
   HeaderToolbar,
@@ -22,32 +23,45 @@ import {
   type HeaderToolbarAction,
 } from "../components";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useAppStore } from "../store/app-store";
+import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
 
 const libraryFilters = ["全部", "已加入"] as const;
 const sortOptions = ["书名", "作者", "最近添加"] as const;
-const viewOptions = ["网格视图"] as const;
+const viewOptions: { value: LibraryViewMode; label: string }[] = [
+  { value: "grid", label: "网格视图" },
+  { value: "list", label: "列表视图" },
+];
 
 type SortOption = (typeof sortOptions)[number];
-type ViewOption = (typeof viewOptions)[number];
 
 type LibraryScreenProps = {
   libraryId?: string;
 };
 
+/** Returns the display label for a persisted library view mode. */
+function getViewModeLabel(mode: LibraryViewMode) {
+  return viewOptions.find((option) => option.value === mode)?.label ?? "网格视图";
+}
+
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
-  const columns = width >= 768 ? 4 : 2;
+  const gridColumns = width >= 768 ? 4 : 2;
   const GRID_GAP = 12;
   const GRID_PADDING_H = 16;
-  const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (columns - 1)) / columns;
+  const GRID_HALF_GAP = GRID_GAP / 2;
+  const LIST_PADDING_H = GRID_PADDING_H;
+  const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
   const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, error } =
     useLibraryStore();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(sortOptions[0]);
-  const [viewMode, setViewMode] = useState<ViewOption>(viewOptions[0]);
+  const viewMode = useAppStore((state) => state.libraryViewMode);
+  const setViewMode = useAppStore((state) => state.setLibraryViewMode);
   const debouncedQuery = useDebouncedValue(query, 180);
+  const isGridView = viewMode === "grid";
 
   function openLibraryPicker() {
     router.push("/library/picker");
@@ -102,22 +116,22 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     setSortBy(option);
   }
 
-  function applyView(option: ViewOption) {
+  function applyView(option: LibraryViewMode) {
     setViewMode(option);
   }
 
   function openSortViewMenu() {
     showAlertWithStatusBarRestore(
       "排序与视图",
-      `当前排序：${sortBy}\n当前视图：${viewMode}`,
+      `当前排序：${sortBy}\n当前视图：${getViewModeLabel(viewMode)}`,
       [
         ...sortOptions.map((option) => ({
           text: `${sortBy === option ? "✓ " : ""}排序：${option}`,
           onPress: () => applySort(option),
         })),
         ...viewOptions.map((option) => ({
-          text: `${viewMode === option ? "✓ " : ""}视图：${option}`,
-          onPress: () => applyView(option),
+          text: `${viewMode === option.value ? "✓ " : ""}视图：${option.label}`,
+          onPress: () => applyView(option.value),
         })),
         { text: "关闭", style: "cancel" },
       ]
@@ -272,7 +286,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   const listHeader = (
-    <View style={{ gap: 20, marginBottom: 8 }}>
+    <View style={{ gap: 20, marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
       <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
       <FlatList
         horizontal
@@ -305,8 +319,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             ))}
             <Stack.Toolbar.Menu inline title="视图">
               {viewOptions.map((option) => (
-                <Stack.Toolbar.MenuAction key={`view-${option}`} isOn={viewMode === option} onPress={() => applyView(option)}>
-                  {option}
+                <Stack.Toolbar.MenuAction
+                  key={`view-${option.value}`}
+                  isOn={viewMode === option.value}
+                  onPress={() => applyView(option.value)}
+                >
+                  {option.label}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
@@ -314,25 +332,33 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         </Stack.Toolbar>
       ) : null}
       <FlashList
-        key={columns}
+        key={`${viewMode}-${gridColumns}`}
         data={loadingBooks ? [] : visibleBooks}
-        numColumns={columns}
+        numColumns={isGridView ? gridColumns : 1}
         keyExtractor={(item) => item.id}
         contentInsetAdjustmentBehavior="automatic"
         style={{ flex: 1, backgroundColor: palette.background }}
-        contentContainerStyle={{ paddingHorizontal: GRID_PADDING_H, paddingTop: 16, paddingBottom: 40 }}
-        ItemSeparatorComponent={() => <View style={{ height: GRID_GAP }} />}
+        contentContainerStyle={{
+          paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
+          paddingTop: 16,
+          paddingBottom: 40,
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: isGridView ? GRID_GAP : 0 }} />}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           loadingBooks
             ? <EmptyState title="正在读取书库" detail="正在解析 metadata.db 并读取图书列表。" />
             : <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
         }
-        renderItem={({ item, index }) => (
-          <View style={{ paddingRight: (index + 1) % columns !== 0 ? GRID_GAP : 0 }}>
-            <BookCard book={item} width={cardWidth} onPress={() => openBookDetail(item.id)} />
-          </View>
-        )}
+        renderItem={({ item, index }) =>
+          isGridView ? (
+            <View style={{ paddingHorizontal: GRID_HALF_GAP }}>
+              <BookCard book={item} width={cardWidth} onPress={() => openBookDetail(item.id)} />
+            </View>
+          ) : (
+            <BookRow book={item} onPress={() => openBookDetail(item.id)} horizontalPadding={LIST_PADDING_H} />
+          )
+        }
       />
     </>
   );

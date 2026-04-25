@@ -3,6 +3,7 @@ import { BookX, Loader2 } from "lucide-react"
 import { useState } from "react"
 import BookGrid from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
+import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibrary } from "@/stores/libraryStore"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
@@ -24,7 +25,8 @@ function LibraryPage() {
 
   const activeView = "all" as const
   const [searchQuery, setSearchQuery] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const viewMode = useAppUiStore((s) => s.libraryViewMode)
+  const setViewMode = useAppUiStore((s) => s.setLibraryViewMode)
   const [sortBy, setSortBy] = useState<SortOption>("recent")
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
@@ -109,6 +111,7 @@ function LibraryPage() {
           onRead={handleRead}
           ensureRange={ensureRange}
           header={gridHeader}
+          viewMode={viewMode}
         />
       )}
 

@@ -46,9 +46,7 @@ fn resolve_backend(state: &State<'_, AppState>, id: &str) -> Result<BackendKind,
 }
 
 #[tauri::command]
-pub fn sync_list_backends(
-    state: State<'_, AppState>,
-) -> Result<Vec<SyncBackendInfo>, AppError> {
+pub fn sync_list_backends(state: State<'_, AppState>) -> Result<Vec<SyncBackendInfo>, AppError> {
     info!("Start to list sync backends.");
     let config = state.lock().unwrap();
     let out = config
@@ -86,10 +84,7 @@ pub fn sync_list_backends(
 }
 
 #[tauri::command]
-pub async fn sync_test_backend(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), AppError> {
+pub async fn sync_test_backend(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
     info!("Start to test sync backend via OpenDAL. id: \"{id}\"");
     let kind = resolve_backend(&state, &id)?;
     let result = backend::test_backend(&kind).await;
@@ -221,9 +216,7 @@ pub async fn sync_evict_local_file(
     library_id: String,
     relative_path: String,
 ) -> Result<(), AppError> {
-    info!(
-        "Start to evict local file. library id: \"{library_id}\", path: \"{relative_path}\""
-    );
+    info!("Start to evict local file. library id: \"{library_id}\", path: \"{relative_path}\"");
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     file_ops::evict_local(&lib_path, &relative_path).await?;
 
@@ -321,9 +314,7 @@ pub async fn sync_db_now(
 
     let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
         let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
-        tauri::async_runtime::block_on(async {
-            provider.push(&conn, &op_push, &device_push).await
-        })
+        tauri::async_runtime::block_on(async { provider.push(&conn, &op_push, &device_push).await })
     })
     .await
     .map_err(|err| AppError::Config(format!("blocking push 任务失败: {err}")))??;

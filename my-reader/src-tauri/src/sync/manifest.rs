@@ -88,8 +88,8 @@ pub async fn load(op: &Operator, device: &str) -> Result<Manifest, AppError> {
 /// 将 manifest 写回 backend；会自动更新 `updated_at`。
 pub async fn save(op: &Operator, manifest: &mut Manifest) -> Result<(), AppError> {
     manifest.updated_at = now_ms();
-    let json = serde_json::to_vec_pretty(manifest)
-        .map_err(|err| AppError::Serialize(err.to_string()))?;
+    let json =
+        serde_json::to_vec_pretty(manifest).map_err(|err| AppError::Serialize(err.to_string()))?;
     op.write(MANIFEST_PATH, json)
         .await
         .map_err(|err| AppError::Config(format!("写入 manifest 失败: {err}")))?;

@@ -172,4 +172,3 @@ pub fn set_progress(
     );
     Ok(())
 }
-
