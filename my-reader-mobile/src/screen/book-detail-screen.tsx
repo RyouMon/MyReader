@@ -6,15 +6,8 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import type { BookDetail } from "my-reader-tools/types/book";
 import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
 import { Share, useWindowDimensions } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
 import { useTheme, type ThemePalette } from "@/src/design/tokens";
 import { FONT_DISPLAY, FONT_MONO, FONT_UI } from "@/src/design/typography";
@@ -25,6 +18,7 @@ import { HeaderToolbar, type HeaderToolbarAction } from "../components/ui/header
 import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
 import { buildWebDavBookCoverUri } from "../data/webdav";
+import { useDetailSwipePager } from "../hooks/use-detail-swipe-pager";
 import { useAppStore } from "../store/app-store";
 import { useLibraryStore } from "../store/library-store";
 
@@ -168,6 +162,23 @@ type BookDetailContentProps = {
   webDavSource: WebDavDataSource | null;
 };
 
+/** Pager page anchored to its book's stable index in `libraryOrderIds`. */
+function PagerSlot({
+  libraryIndex,
+  width,
+  children,
+}: {
+  libraryIndex: number;
+  width: number;
+  children: ReactNode;
+}) {
+  return (
+    <View style={{ position: "absolute", left: libraryIndex * width, top: 0, bottom: 0, width }}>
+      {children}
+    </View>
+  );
+}
+
 /**
  * Coordinates route-level behavior for regular pushes and library modal paging.
  */
@@ -184,7 +195,16 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   const [synopsisExpandedById, setSynopsisExpandedById] = useState<Record<string, boolean>>({});
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
-  const translateX = useSharedValue(0);
+  const [initialPageIndex] = useState(() => {
+    if (entryMode !== "library") return 0;
+    const initialId = id ?? null;
+    if (!initialId) return 0;
+    const orderForCalc =
+      bookDetailLibraryOrder?.libraryId === activeLibraryId
+        ? bookDetailLibraryOrder.bookIds
+        : books.map((b) => b.id);
+    return Math.max(0, orderForCalc.indexOf(initialId));
+  });
   const isLibraryEntry = entryMode === "library";
 
   const webDavSource = useMemo(() => {
@@ -408,82 +428,32 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
     });
   }, []);
 
-  const settleSwipe = useCallback(
-    (targetId: string) => {
-      setCurrentId(targetId);
-      router.setParams({ id: targetId });
-      translateX.set(0);
-    },
-    [translateX]
-  );
+  const handleSwipeCommit = useCallback((targetId: string) => {
+    setCurrentId(targetId);
+    router.setParams({ id: targetId });
+  }, []);
 
-  const pagerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -width + translateX.get() }],
-  }));
-
-  const horizontalPagerGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-14, 14])
-        .failOffsetY([-18, 18])
-        .onUpdate((event) => {
-          const movingToPrevious = event.translationX > 0;
-          const movingToNext = event.translationX < 0;
-          if ((movingToPrevious && previousId) || (movingToNext && nextId)) {
-            translateX.set(event.translationX);
-            return;
-          }
-          translateX.set(event.translationX * 0.28);
-        })
-        .onEnd((event) => {
-          const distanceThreshold = width * 0.28;
-          const velocityThreshold = 620;
-          const shouldMoveToPrevious =
-            Boolean(previousId) &&
-            (event.translationX > distanceThreshold || event.velocityX > velocityThreshold);
-          const shouldMoveToNext =
-            Boolean(nextId) &&
-            (event.translationX < -distanceThreshold || event.velocityX < -velocityThreshold);
-
-          if (shouldMoveToPrevious && previousId) {
-            translateX.set(
-              withTiming(width, { duration: 180 }, (finished) => {
-                if (finished) runOnJS(settleSwipe)(previousId);
-              })
-            );
-            return;
-          }
-          if (shouldMoveToNext && nextId) {
-            translateX.set(
-              withTiming(-width, { duration: 180 }, (finished) => {
-                if (finished) runOnJS(settleSwipe)(nextId);
-              })
-            );
-            return;
-          }
-
-          translateX.set(
-            withSpring(0, {
-              damping: 30,
-              stiffness: 180,
-              overshootClamping: true,
-            })
-          );
-        }),
-    [nextId, previousId, settleSwipe, translateX, width]
-  );
+  const { gesture: horizontalPagerGesture, animatedStyle: pagerAnimatedStyle } = useDetailSwipePager({
+    enabled: isLibraryEntry,
+    width,
+    currentIndex,
+    initialIndex: initialPageIndex,
+    previousId,
+    nextId,
+    onCommit: handleSwipeCommit,
+  });
 
   const renderDetailPage = useCallback(
     (bookId: string | null) => {
-      if (!bookId || !activeLibrary) {
-        return <View style={{ width }} />;
-      }
+      if (!bookId || !activeLibrary) return null;
+      const idx = libraryOrderIds.indexOf(bookId);
+      if (idx < 0) return null;
       const entry = detailCache[bookId];
       const selectedFormat =
         selectedFormatById[bookId] ??
         (entry?.detail ? pickReadableFormat(entry.detail.formats) : null);
       return (
-        <View key={bookId} className="flex-1" style={{ width }}>
+        <PagerSlot key={bookId} libraryIndex={idx} width={width}>
           <BookDetailContent
             activeLibrary={activeLibrary}
             bookId={bookId}
@@ -499,7 +469,7 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
             synopsisExpanded={Boolean(synopsisExpandedById[bookId])}
             webDavSource={webDavSource}
           />
-        </View>
+        </PagerSlot>
       );
     },
     [
@@ -509,6 +479,7 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
       getListBook,
       handleSelectFormat,
       handleToggleSynopsis,
+      libraryOrderIds,
       openReader,
       selectedFormatById,
       synopsisExpandedById,
@@ -574,7 +545,7 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
       <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
       <GestureDetector gesture={horizontalPagerGesture}>
         <Animated.View style={{ flex: 1, overflow: "hidden" }}>
-          <Animated.View style={[{ flex: 1, flexDirection: "row", width: width * 3 }, pagerAnimatedStyle]}>
+          <Animated.View style={[{ flex: 1 }, pagerAnimatedStyle]}>
             {renderDetailPage(previousId)}
             {renderDetailPage(currentId)}
             {renderDetailPage(nextId)}
