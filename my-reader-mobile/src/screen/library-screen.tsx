@@ -4,7 +4,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { FlashList } from "@shopify/flash-list";
-import { FlatList, Platform, View, useWindowDimensions } from "react-native";
+import { Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
@@ -295,14 +295,11 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const listHeader = (
     <View style={{ gap: 20, marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
       <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
-      <FlatList
-        horizontal
-        data={libraryFilters}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-        renderItem={({ item }) => <FilterChip label={item} active={item === libraryFilters[0]} />}
-      />
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {libraryFilters.map((item) => (
+          <FilterChip key={item} label={item} active={item === libraryFilters[0]} />
+        ))}
+      </View>
       <SectionHeading title="全部书籍" detail={`${visibleBooks.length} / ${books.length} 本`} />
     </View>
   );

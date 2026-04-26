@@ -77,6 +77,7 @@ function RootNavigator() {
         <Stack.Screen
           name="reader"
           options={{
+            presentation: "fullScreenModal",
             animation: "fade",
             gestureEnabled: false,
           }}
