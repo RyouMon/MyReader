@@ -1,5 +1,5 @@
 import BookDetailScreen from "@/src/screen/book-detail-screen";
 
 export default function BookDetailRoute() {
-  return <BookDetailScreen />;
+  return <BookDetailScreen entryMode="home" />;
 }

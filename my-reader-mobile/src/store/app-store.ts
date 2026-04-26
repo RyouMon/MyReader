@@ -80,10 +80,17 @@ const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
 });
 
-type ProgramStateSlice = Pick<AppState, "libraryViewMode" | "setLibraryViewMode">;
+type ProgramStateSlice = Pick<
+  AppState,
+  "bookDetailLibraryOrder" | "libraryViewMode" | "setBookDetailLibraryOrder" | "setLibraryViewMode"
+>;
 
 const createProgramStateSlice: AppStateSlice<ProgramStateSlice> = (set) => ({
+  bookDetailLibraryOrder: null,
   libraryViewMode: DEFAULT_LIBRARY_VIEW_MODE,
+  setBookDetailLibraryOrder(order) {
+    set({ bookDetailLibraryOrder: order });
+  },
   setLibraryViewMode(mode) {
     set({ libraryViewMode: mode });
   },

@@ -10,6 +10,11 @@ export type ReadingLayout = "scroll" | "paginate";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";
 
+export type BookDetailLibraryOrder = {
+  bookIds: string[];
+  libraryId: string;
+} | null;
+
 export type ReflowableReaderSettings = {
   theme: ReaderTheme;
   fontSize: number;
@@ -59,11 +64,13 @@ export type AppState = Omit<PersistedAppState, "dataSources"> &
   Pick<DataSourceStore, "dataSources" | "loading" | "hydrated"> &
   DataSourceActions & {
     books: BookItem[];
+    bookDetailLibraryOrder: BookDetailLibraryOrder;
     loadingLibraries: boolean;
     loadingBooks: boolean;
     error: string | null;
     hasHydrated: boolean;
     setHasHydrated: (value: boolean) => void;
+    setBookDetailLibraryOrder: (order: BookDetailLibraryOrder) => void;
     initialize: () => Promise<void>;
     setThemeMode: (mode: ThemeMode) => void;
     setLibraryViewMode: (mode: LibraryViewMode) => void;

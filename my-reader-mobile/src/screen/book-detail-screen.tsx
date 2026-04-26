@@ -1,24 +1,27 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Feather from "@expo/vector-icons/Feather";
+import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import type { BookDetail } from "my-reader-tools/types/book";
 import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
-import { Platform, Share } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Share, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
-import { useThemePalette } from "@/src/design/tokens";
-import { Image, Pressable, ScrollView, Text, View } from "@/tw";
+import { useTheme, type ThemePalette } from "@/src/design/tokens";
+import { FONT_DISPLAY, FONT_MONO, FONT_UI } from "@/src/design/typography";
+import { AnimatedScrollView, Image, Pressable, ScrollView, Text, View } from "@/tw";
 
-import {
-    EmptyState,
-    HeaderToolbar,
-    ProgressBar,
-    Sheet,
-    SheetOption,
-    type HeaderToolbarAction
-} from "../components";
+import { EmptyState, SectionCard, SettingsRow } from "../components";
+import { HeaderToolbar, type HeaderToolbarAction } from "../components/ui/header-toolbar";
 import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
 import { buildWebDavBookCoverUri } from "../data/webdav";
@@ -45,6 +48,9 @@ const FORMAT_LABELS: Record<string, string> = {
   FB2: "FictionBook",
 };
 
+/**
+ * Converts Calibre language codes into compact labels for the metadata line.
+ */
 function formatLanguage(code: string): string {
   const map: Record<string, string> = {
     zho: "中文",
@@ -60,12 +66,18 @@ function formatLanguage(code: string): string {
   return map[code] ?? code;
 }
 
+/**
+ * Keeps file sizes scannable inside the compact horizontal format cards.
+ */
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Normalizes Calibre dates that can contain sentinel or partial values.
+ */
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
   try {
@@ -81,6 +93,9 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
+/**
+ * Pulls the year out for the design's compact title metadata row.
+ */
 function extractYear(dateStr: string | null): string | null {
   if (!dateStr) return null;
   try {
@@ -93,6 +108,9 @@ function extractYear(dateStr: string | null): string | null {
   }
 }
 
+/**
+ * Removes Calibre HTML comments before rendering them as native text.
+ */
 function stripHtml(html: string): string {
   return html
     .replace(/<[^>]*>/g, " ")
@@ -105,6 +123,9 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+/**
+ * Resolves local and WebDAV cover sources through the same path as the library grid.
+ */
 function resolveCoverForDetail(
   library: MobileLibrary | null,
   detail: BookDetail,
@@ -119,28 +140,52 @@ function resolveCoverForDetail(
   return buildCoverUri(library, detail.path, detail.hasCover);
 }
 
-export default function BookDetailScreen() {
+type BookDetailEntryMode = "home" | "library";
+
+type BookDetailScreenProps = {
+  entryMode?: BookDetailEntryMode;
+};
+
+type DetailCacheEntry = {
+  detail: BookDetail | null;
+  error: string | null;
+  loading: boolean;
+};
+
+type BookDetailContentProps = {
+  activeLibrary: MobileLibrary;
+  bookId: string;
+  colors: DetailColors;
+  detail: BookDetail | null;
+  detailError: string | null;
+  listBook: BookItem | null;
+  loadingDetail: boolean;
+  onOpenReader: (bookId: string, format: string | null) => void;
+  onSelectFormat: (bookId: string, format: string | null) => void;
+  onToggleSynopsis: (bookId: string) => void;
+  selectedFormat: string | null;
+  synopsisExpanded: boolean;
+  webDavSource: WebDavDataSource | null;
+};
+
+/**
+ * Coordinates route-level behavior for regular pushes and library modal paging.
+ */
+export default function BookDetailScreen({ entryMode = "home" }: BookDetailScreenProps) {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const palette = useThemePalette();
-  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { colorScheme, palette } = useTheme();
   const { books, activeLibrary, activeLibraryId } = useLibraryStore();
   const dataSources = useAppStore((s) => s.dataSources);
-
-  const [detail, setDetail] = useState<BookDetail | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(true);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
-  const [formatSheetOpen, setFormatSheetOpen] = useState(false);
-  const [synopsisExpanded, setSynopsisExpanded] = useState(false);
-
-  const listBook = useMemo(() => (id ? books.find((item) => item.id === id) ?? null : null), [books, id]);
-
-  const calibreNumericId = useMemo(() => {
-    if (!id) return null;
-    const n = Number(id);
-    if (!Number.isFinite(n) || n <= 0) return null;
-    return Math.trunc(n);
-  }, [id]);
+  const bookDetailLibraryOrder = useAppStore((s) => s.bookDetailLibraryOrder);
+  const [currentId, setCurrentId] = useState<string | null>(id ?? null);
+  const [detailCache, setDetailCache] = useState<Record<string, DetailCacheEntry>>({});
+  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string | null>>({});
+  const [synopsisExpandedById, setSynopsisExpandedById] = useState<Record<string, boolean>>({});
+  const detailCacheRef = useRef(detailCache);
+  const loadingIdsRef = useRef(new Set<string>());
+  const translateX = useSharedValue(0);
+  const isLibraryEntry = entryMode === "library";
 
   const webDavSource = useMemo(() => {
     if (!activeLibrary || activeLibrary.sourceType !== "webdav") return null;
@@ -150,41 +195,424 @@ export default function BookDetailScreen() {
     return (found as WebDavDataSource | undefined) ?? null;
   }, [activeLibrary, dataSources]);
 
-  const loadDetail = useCallback(async () => {
-    if (!activeLibrary || calibreNumericId === null) {
-      setDetail(null);
-      setLoadingDetail(false);
-      setDetailError(!activeLibrary ? "未选择书库" : "无效的书籍 ID");
-      return;
+  useEffect(() => {
+    if (id && !isLibraryEntry) {
+      setCurrentId(id);
     }
-
-    setLoadingDetail(true);
-    setDetailError(null);
-
-    try {
-      const next = await readBookDetailFromMetadata(activeLibrary, calibreNumericId);
-      if (!next) {
-        setDetail(null);
-        setDetailError("在 metadata 中未找到该书");
-        return;
-      }
-      setDetail(next);
-      setSelectedFormat(pickReadableFormat(next.formats));
-    } catch (e) {
-      setDetail(null);
-      setDetailError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoadingDetail(false);
-    }
-  }, [activeLibrary, calibreNumericId]);
+  }, [id, isLibraryEntry]);
 
   useEffect(() => {
-    void loadDetail();
-  }, [loadDetail]);
+    if (id && isLibraryEntry && currentId === null) {
+      setCurrentId(id);
+    }
+  }, [currentId, id, isLibraryEntry]);
+
+  useEffect(() => {
+    setDetailCache({});
+    setSelectedFormatById({});
+    setSynopsisExpandedById({});
+    loadingIdsRef.current.clear();
+  }, [activeLibraryId]);
+
+  useEffect(() => {
+    detailCacheRef.current = detailCache;
+  }, [detailCache]);
+
+  const libraryOrderIds = useMemo(() => {
+    if (
+      isLibraryEntry &&
+      bookDetailLibraryOrder &&
+      bookDetailLibraryOrder.libraryId === activeLibraryId
+    ) {
+      return bookDetailLibraryOrder.bookIds;
+    }
+    return books.map((book) => book.id);
+  }, [activeLibraryId, bookDetailLibraryOrder, books, isLibraryEntry]);
+
+  const currentIndex = currentId ? libraryOrderIds.indexOf(currentId) : -1;
+  const previousId = isLibraryEntry && currentIndex > 0 ? libraryOrderIds[currentIndex - 1] : null;
+  const nextId =
+    isLibraryEntry && currentIndex >= 0 && currentIndex < libraryOrderIds.length - 1
+      ? libraryOrderIds[currentIndex + 1]
+      : null;
+
+  const windowIds = useMemo(
+    () =>
+      isLibraryEntry
+        ? [previousId, currentId, nextId].filter((item): item is string => Boolean(item))
+        : currentId
+          ? [currentId]
+          : [],
+    [currentId, isLibraryEntry, nextId, previousId]
+  );
+
+  useEffect(() => {
+    if (!activeLibrary) return;
+    let cancelled = false;
+
+    for (const bookId of windowIds) {
+      const cacheEntry = detailCacheRef.current[bookId];
+      if (cacheEntry || loadingIdsRef.current.has(bookId)) {
+        continue;
+      }
+
+      const numericId = Number(bookId);
+      if (!Number.isFinite(numericId) || numericId <= 0) {
+        setDetailCache((prev) => ({
+          ...prev,
+          [bookId]: {
+            detail: null,
+            error: "无效的书籍 ID",
+            loading: false,
+          },
+        }));
+        continue;
+      }
+
+      loadingIdsRef.current.add(bookId);
+      setDetailCache((prev) => ({
+        ...prev,
+        [bookId]: {
+          detail: null,
+          error: null,
+          loading: true,
+        },
+      }));
+
+      void readBookDetailFromMetadata(activeLibrary, Math.trunc(numericId))
+        .then((next) => {
+          if (cancelled) return;
+          setDetailCache((prev) => ({
+            ...prev,
+            [bookId]: {
+              detail: next,
+              error: next ? null : "在 metadata 中未找到该书",
+              loading: false,
+            },
+          }));
+          if (next) {
+            setSelectedFormatById((prev) =>
+              Object.prototype.hasOwnProperty.call(prev, bookId)
+                ? prev
+                : { ...prev, [bookId]: pickReadableFormat(next.formats) }
+            );
+          }
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setDetailCache((prev) => ({
+            ...prev,
+            [bookId]: {
+              detail: null,
+              error: e instanceof Error ? e.message : String(e),
+              loading: false,
+            },
+          }));
+        })
+        .finally(() => {
+          loadingIdsRef.current.delete(bookId);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLibrary, windowIds]);
+
+  const currentEntry = currentId ? detailCache[currentId] : undefined;
+  const currentDetail = currentEntry?.detail ?? null;
+
+  const handleShare = useCallback(() => {
+    if (!currentDetail) return;
+    const lines = [currentDetail.title, currentDetail.authors.filter(Boolean).join(", ") || currentDetail.authorSort].filter(
+      (line): line is string => Boolean(line)
+    );
+    void Share.share({
+      title: currentDetail.title,
+      message: lines.join("\n"),
+    });
+  }, [currentDetail]);
+
+  const handleGoBack = useCallback(() => {
+    router.back();
+  }, []);
+  const detailColors = useMemo(() => getDetailColors(palette, colorScheme), [palette, colorScheme]);
+  const noop = useCallback(() => {}, []);
+  const headerLeftActions = useMemo<HeaderToolbarAction[]>(
+    () => [
+      {
+        label: isLibraryEntry ? "关闭" : "返回",
+        onPress: handleGoBack,
+        icon: <Feather name={isLibraryEntry ? "x" : "arrow-left"} size={20} color={palette.text} />,
+        iosSfSymbol: isLibraryEntry ? "xmark" : "chevron.left",
+        iconOnly: true,
+        color: palette.text,
+      },
+    ],
+    [handleGoBack, isLibraryEntry, palette.text]
+  );
+  const headerRightActions = useMemo<HeaderToolbarAction[] | undefined>(() => {
+    if (!currentDetail) return undefined;
+    return [
+      {
+        label: "收藏",
+        onPress: noop,
+        icon: <Feather name="star" size={20} color={detailColors.muted} />,
+        iosSfSymbol: "star",
+        iconOnly: true,
+        color: detailColors.muted,
+      },
+      {
+        label: "分享",
+        onPress: handleShare,
+        icon: <Feather name="share-2" size={19} color={detailColors.muted} />,
+        iosSfSymbol: "square.and.arrow.up",
+        iconOnly: true,
+        color: detailColors.muted,
+      },
+    ];
+  }, [currentDetail, detailColors.muted, handleShare, noop]);
+  const screenOptions = useMemo<NativeStackNavigationOptions>(
+    () => ({
+      title: "书籍详情",
+      headerShown: true,
+      headerLargeTitle: false,
+      headerLargeTitleShadowVisible: false,
+      headerShadowVisible: false,
+      headerBackVisible: false,
+      headerBackButtonDisplayMode: "generic",
+      headerStyle: { backgroundColor: palette.background },
+      headerTintColor: palette.text,
+    }),
+    [palette.background, palette.text]
+  );
+
+  const getListBook = useCallback(
+    (bookId: string) => books.find((item) => item.id === bookId) ?? null,
+    [books]
+  );
+
+  const handleSelectFormat = useCallback((bookId: string, format: string | null) => {
+    setSelectedFormatById((prev) => ({ ...prev, [bookId]: format }));
+  }, []);
+
+  const handleToggleSynopsis = useCallback((bookId: string) => {
+    setSynopsisExpandedById((prev) => ({ ...prev, [bookId]: !prev[bookId] }));
+  }, []);
+
+  const openReader = useCallback((bookId: string, format: string | null) => {
+    if (!format) return;
+    router.push({
+      pathname: "/reader/[id]",
+      params: { id: bookId, format },
+    });
+  }, []);
+
+  const settleSwipe = useCallback(
+    (targetId: string) => {
+      setCurrentId(targetId);
+      router.setParams({ id: targetId });
+      translateX.set(0);
+    },
+    [translateX]
+  );
+
+  const pagerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -width + translateX.get() }],
+  }));
+
+  const horizontalPagerGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-14, 14])
+        .failOffsetY([-18, 18])
+        .onUpdate((event) => {
+          const movingToPrevious = event.translationX > 0;
+          const movingToNext = event.translationX < 0;
+          if ((movingToPrevious && previousId) || (movingToNext && nextId)) {
+            translateX.set(event.translationX);
+            return;
+          }
+          translateX.set(event.translationX * 0.28);
+        })
+        .onEnd((event) => {
+          const distanceThreshold = width * 0.28;
+          const velocityThreshold = 620;
+          const shouldMoveToPrevious =
+            Boolean(previousId) &&
+            (event.translationX > distanceThreshold || event.velocityX > velocityThreshold);
+          const shouldMoveToNext =
+            Boolean(nextId) &&
+            (event.translationX < -distanceThreshold || event.velocityX < -velocityThreshold);
+
+          if (shouldMoveToPrevious && previousId) {
+            translateX.set(
+              withTiming(width, { duration: 180 }, (finished) => {
+                if (finished) runOnJS(settleSwipe)(previousId);
+              })
+            );
+            return;
+          }
+          if (shouldMoveToNext && nextId) {
+            translateX.set(
+              withTiming(-width, { duration: 180 }, (finished) => {
+                if (finished) runOnJS(settleSwipe)(nextId);
+              })
+            );
+            return;
+          }
+
+          translateX.set(
+            withSpring(0, {
+              damping: 30,
+              stiffness: 180,
+              overshootClamping: true,
+            })
+          );
+        }),
+    [nextId, previousId, settleSwipe, translateX, width]
+  );
+
+  const renderDetailPage = useCallback(
+    (bookId: string | null) => {
+      if (!bookId || !activeLibrary) {
+        return <View style={{ width }} />;
+      }
+      const entry = detailCache[bookId];
+      const selectedFormat =
+        selectedFormatById[bookId] ??
+        (entry?.detail ? pickReadableFormat(entry.detail.formats) : null);
+      return (
+        <View key={bookId} className="flex-1" style={{ width }}>
+          <BookDetailContent
+            activeLibrary={activeLibrary}
+            bookId={bookId}
+            colors={detailColors}
+            detail={entry?.detail ?? null}
+            detailError={entry?.error ?? null}
+            listBook={getListBook(bookId)}
+            loadingDetail={entry?.loading ?? true}
+            onOpenReader={openReader}
+            onSelectFormat={handleSelectFormat}
+            onToggleSynopsis={handleToggleSynopsis}
+            selectedFormat={selectedFormat}
+            synopsisExpanded={Boolean(synopsisExpandedById[bookId])}
+            webDavSource={webDavSource}
+          />
+        </View>
+      );
+    },
+    [
+      activeLibrary,
+      detailCache,
+      detailColors,
+      getListBook,
+      handleSelectFormat,
+      handleToggleSynopsis,
+      openReader,
+      selectedFormatById,
+      synopsisExpandedById,
+      webDavSource,
+      width,
+    ]
+  );
+
+  if (!currentId) {
+    return (
+      <>
+        <Stack.Screen options={screenOptions} />
+        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+        <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
+          <EmptyState title="缺少书籍参数" detail="请从书库重新进入书籍详情。" />
+        </View>
+      </>
+    );
+  }
+
+  if (!activeLibraryId || !activeLibrary) {
+    return (
+      <>
+        <Stack.Screen options={screenOptions} />
+        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+        <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
+          <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" />
+        </View>
+      </>
+    );
+  }
+
+  if (!isLibraryEntry) {
+    return (
+      <View className="flex-1" style={{ backgroundColor: palette.background }}>
+        <Stack.Screen options={screenOptions} />
+        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+        <BookDetailContent
+          activeLibrary={activeLibrary}
+          bookId={currentId}
+          colors={detailColors}
+          detail={currentEntry?.detail ?? null}
+          detailError={currentEntry?.error ?? null}
+          listBook={getListBook(currentId)}
+          loadingDetail={currentEntry?.loading ?? true}
+          onOpenReader={openReader}
+          onSelectFormat={handleSelectFormat}
+          onToggleSynopsis={handleToggleSynopsis}
+          selectedFormat={
+            selectedFormatById[currentId] ??
+            (currentEntry?.detail ? pickReadableFormat(currentEntry.detail.formats) : null)
+          }
+          synopsisExpanded={Boolean(synopsisExpandedById[currentId])}
+          webDavSource={webDavSource}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 overflow-hidden" style={{ backgroundColor: palette.background }}>
+      <Stack.Screen options={screenOptions} />
+      <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+      <GestureDetector gesture={horizontalPagerGesture}>
+        <Animated.View style={{ flex: 1, overflow: "hidden" }}>
+          <Animated.View style={[{ flex: 1, flexDirection: "row", width: width * 3 }, pagerAnimatedStyle]}>
+            {renderDetailPage(previousId)}
+            {renderDetailPage(currentId)}
+            {renderDetailPage(nextId)}
+          </Animated.View>
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+/**
+ * Renders one detail page so the library pager can keep adjacent books mounted.
+ */
+function BookDetailContent({
+  activeLibrary,
+  bookId,
+  colors,
+  detail,
+  detailError,
+  listBook,
+  loadingDetail,
+  onOpenReader,
+  onSelectFormat,
+  onToggleSynopsis,
+  selectedFormat,
+  synopsisExpanded,
+  webDavSource,
+}: BookDetailContentProps) {
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.set(event.contentOffset.y);
+    },
+  });
 
   const coverUri = useMemo(
     () =>
-      detail && activeLibrary
+      detail
         ? resolveCoverForDetail(activeLibrary, detail, webDavSource, listBook?.coverUri)
         : listBook?.coverUri,
     [activeLibrary, detail, listBook?.coverUri, webDavSource]
@@ -208,82 +636,10 @@ export default function BookDetailScreen() {
     return m;
   }, [detail]);
 
-  const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace("/library");
-  }, []);
-
-  const handleShare = useCallback(() => {
-    if (!detail) return;
-    const lines = [detail.title, detail.authors.filter(Boolean).join(", ") || detail.authorSort].filter(
-      (line): line is string => Boolean(line)
-    );
-    void Share.share({
-      title: detail.title,
-      message: lines.join("\n"),
-    });
-  }, [detail]);
-
-  const leftToolbar = useMemo<HeaderToolbarAction[]>(
-    () => [
-      {
-        label: "返回",
-        onPress: handleBack,
-        icon:
-          Platform.OS === "ios" ? (
-            <SymbolView name="chevron.left" size={18} tintColor={palette.text} />
-          ) : (
-            <MaterialIcons name="arrow-back" size={22} color={palette.text} />
-          ),
-        iosSfSymbol: "chevron.left",
-        iconOnly: true,
-      },
-    ],
-    [handleBack, palette.text]
-  );
-
-  const rightToolbar = useMemo<HeaderToolbarAction[]>(
-    () => [
-      {
-        label: "分享",
-        onPress: handleShare,
-        icon:
-          Platform.OS === "ios" ? (
-            <SymbolView name="square.and.arrow.up" size={18} tintColor={palette.text} />
-          ) : (
-            <MaterialIcons name="share" size={22} color={palette.text} />
-          ),
-        iosSfSymbol: "square.and.arrow.up",
-        color: palette.text,
-        iconOnly: true,
-      },
-    ],
-    [handleShare, palette.text]
-  );
-
-  if (!id) {
-    return (
-      <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-        <EmptyState title="缺少书籍参数" detail="请从书库重新进入书籍详情。" />
-      </View>
-    );
-  }
-
-  if (!activeLibraryId || !activeLibrary) {
-    return (
-      <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-        <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" />
-      </View>
-    );
-  }
-
   if (loadingDetail) {
     return (
-      <View className="flex-1 items-center justify-center px-4" style={{ backgroundColor: palette.background }}>
-        <Text className="text-sm" style={{ color: palette.textMuted }}>
+      <View className="flex-1 items-center justify-center px-4" style={{ backgroundColor: colors.palette.background }}>
+        <Text className="text-sm" style={{ color: colors.palette.textMuted }}>
           加载书籍详情…
         </Text>
       </View>
@@ -292,7 +648,7 @@ export default function BookDetailScreen() {
 
   if (detailError || !detail) {
     return (
-      <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
+      <View className="flex-1 px-4 pt-4" style={{ backgroundColor: colors.palette.background }}>
         <EmptyState
           title="没有找到这本书"
           detail={detailError ?? "它可能已从当前书库移除，或页面参数已经失效。"}
@@ -311,401 +667,452 @@ export default function BookDetailScreen() {
       ? `${book.series} · 第 ${Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1)} 部`
       : book.series;
   const synopsisText = book.comment ? stripHtml(book.comment) : "";
+  const readableSelectedFormat = selectedFormat ?? pickReadableFormat(book.formats);
   const canReadInApp = readableFormats.length > 0;
-  const formatChoices =
-    readableFormats.length > 0 ? readableFormats : book.formats;
+  const metaLine = [year, book.publisher, langDisplay].filter(Boolean).join(" · ");
+  const bookInfoRows = [
+    { label: "排序作者", value: book.authorSort || "—" },
+    { label: "出版日期", value: formatDate(book.pubdate) },
+    { label: "语言", value: langDisplay || "—" },
+    { label: "库中路径", value: book.path || "—", mono: true },
+    { label: "添加时间", value: formatDate(book.timestamp) },
+    { label: "最后修改", value: formatDate(book.lastModified) },
+    ...(book.uuid
+      ? [
+          {
+            label: "UUID",
+            value: book.uuid,
+            mono: true,
+          },
+        ]
+      : []),
+  ];
+
+  const openReader = (format: string | null = readableSelectedFormat) => {
+    if (!canReadInApp || !format) return;
+    onOpenReader(bookId, format);
+  };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: palette.background }}>
-      <Stack.Screen
-        options={{
-          title: book.title,
-        }}
-      />
-      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
-      <ScrollView
-        className="flex-1"
-        contentInsetAdjustmentBehavior="never"
-        contentContainerClassName="px-4 pb-36"
-        style={{ backgroundColor: palette.background }}
-      >
-        <View className="gap-4 pt-2">
-          <View
-            className="items-center rounded-[32px] px-4 pb-5 pt-6"
-            style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-          >
-            <View className="w-full items-center gap-4">
-              <View className="w-[208px] overflow-hidden rounded-[26px]" style={{ backgroundColor: palette.secondary }}>
-                {coverUri ? (
-                  <Image source={coverUri} className="aspect-[2/3] w-full" />
-                ) : (
-                  <View className="aspect-[2/3] items-center justify-end px-6 py-5" style={{ backgroundColor: palette.primary }}>
-                    <Text
-                      className="text-center text-[22px] leading-8"
-                      style={{ color: palette.primaryForeground, fontWeight: "700" }}
-                    >
-                      {book.title}
-                    </Text>
-                    <Text className="mt-2 text-sm" style={{ color: palette.primaryForeground, opacity: 0.8 }}>
-                      {book.authors.join(", ") || book.authorSort}
-                    </Text>
-                  </View>
-                )}
-              </View>
+    <AnimatedScrollView
+      className="flex-1"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerClassName="pb-28"
+      onScroll={scrollHandler}
+      scrollEventThrottle={16}
+      style={{ backgroundColor: colors.palette.background }}
+    >
+      <View>
+        <HeroSection
+          book={book}
+          colors={colors}
+          coverUri={coverUri}
+          metaLine={metaLine}
+          ratingStars={ratingStars}
+          ratingValue={ratingValue}
+          seriesLabel={seriesLabel}
+        />
 
-              <View className="w-full gap-2">
-                <Text className="text-[30px] leading-[36px]" style={{ color: palette.text, fontWeight: "700" }}>
-                  {book.title}
-                </Text>
-                {seriesLabel ? (
-                  <Text className="text-[15px] leading-6" style={{ color: palette.textMuted }}>
-                    {seriesLabel}
-                  </Text>
-                ) : null}
-                <Text className="text-sm leading-6" style={{ color: palette.textMuted }}>
-                  {activeLibrary.name} · 共 {books.length} 本
-                </Text>
-                <View className="flex-row flex-wrap gap-x-3 gap-y-2">
-                  {book.authors.map((author) => (
-                    <Text key={author} className="text-base" style={{ color: palette.primary, fontWeight: "700" }}>
-                      {author}
-                    </Text>
-                  ))}
-                </View>
+        {book.formats.length > 0 ? (
+          <FormatSection
+            book={book}
+            colors={colors}
+            formatSizeMap={formatSizeMap}
+            onReadFormat={(format) => {
+              onSelectFormat(bookId, format);
+              openReader(format);
+            }}
+            progress={progress}
+            progressLabel={progressLabel}
+            readableFormats={readableFormats}
+            selectedFormat={readableSelectedFormat}
+          />
+        ) : null}
 
-                <View className="mt-1 flex-row flex-wrap gap-x-2 gap-y-2" style={{ alignItems: "center" }}>
-                  {year ? (
-                    <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                      {year}
-                    </Text>
-                  ) : null}
-                  {year && book.publisher ? (
-                    <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                      ·
-                    </Text>
-                  ) : null}
-                  {book.publisher ? (
-                    <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                      {book.publisher}
-                    </Text>
-                  ) : null}
-                  {(year || book.publisher) && langDisplay ? (
-                    <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                      ·
-                    </Text>
-                  ) : null}
-                  {langDisplay ? (
-                    <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                      {langDisplay}
-                    </Text>
-                  ) : null}
-                  {ratingValue ? (
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                        ·
-                      </Text>
-                      <View className="flex-row items-center gap-0.5">
-                        {[0, 1, 2, 3, 4].map((i) => (
-                          <MaterialIcons
-                            key={i}
-                            name={i < ratingStars ? "star" : "star-border"}
-                            size={14}
-                            color={i < ratingStars ? palette.primary : palette.textMuted}
-                          />
-                        ))}
-                      </View>
-                      <Text className="text-[13px]" style={{ color: palette.textMuted }}>
-                        {ratingValue}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
+        {synopsisText ? (
+          <SynopsisSection
+            colors={colors}
+            expanded={synopsisExpanded}
+            onToggle={() => onToggleSynopsis(bookId)}
+            text={synopsisText}
+          />
+        ) : null}
 
-                {book.tags.length > 0 ? (
-                  <View className="mt-2 flex-row flex-wrap gap-2">
-                    {book.tags.map((tag) => (
-                      <View
-                        key={tag}
-                        className="rounded-full px-3 py-1"
-                        style={{ backgroundColor: palette.background, borderColor: palette.border, borderWidth: 1 }}
-                      >
-                        <Text className="text-xs" style={{ color: palette.text }}>
-                          {tag}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </View>
+        <InfoRowSection colors={colors} items={bookInfoRows} title="详细信息" />
 
-          <View
-            className="gap-3 rounded-[24px] px-4 py-4"
-            style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-[13px]" style={{ color: palette.textMuted, fontWeight: "600" }}>
-                阅读进度
-              </Text>
-              <Text className="text-[13px]" style={{ color: palette.primary, fontWeight: "700" }}>
-                {progress > 0 ? progressLabel : "未开始"}
-              </Text>
-            </View>
-            <ProgressBar progress={progress} />
-          </View>
+        {book.identifiers.length > 0 ? <IdentifierSection book={book} colors={colors} /> : null}
+      </View>
+    </AnimatedScrollView>
+  );
+}
 
-          {synopsisText ? (
-            <MetaSection palette={palette} title="简介">
-              <Text
-                className="text-[14px] leading-[22px]"
-                style={{ color: palette.text }}
-                numberOfLines={synopsisExpanded ? undefined : 6}
-              >
-                {synopsisText}
-              </Text>
-              <Pressable accessibilityRole="button" className="mt-2 self-start" onPress={() => setSynopsisExpanded((v) => !v)}>
-                <Text className="text-sm" style={{ color: palette.primary, fontWeight: "600" }}>
-                  {synopsisExpanded ? "收起" : "展开全文"}
-                </Text>
-              </Pressable>
-            </MetaSection>
-          ) : null}
+type DetailColors = {
+  accent: string;
+  accentPressed: string;
+  accentText: string;
+  background: string;
+  border: string;
+  card: string;
+  disabledBg: string;
+  disabledText: string;
+  muted: string;
+  palette: ThemePalette;
+  progressTrack: string;
+  sectionBg: string;
+  success: string;
+  successBg: string;
+  tagBg: string;
+  tagText: string;
+  tertiary: string;
+  text: string;
+};
 
-          {book.formats.length > 0 ? (
-            <MetaSection palette={palette} title="文件格式">
-              <View className="gap-2">
-                {book.formats.map((fmt) => {
-                  const upper = fmt.toUpperCase();
-                  const size = formatSizeMap.get(upper) ?? 0;
-                  const readable = isReadableInAppFormat(fmt);
-                  return (
-                    <View
-                      key={fmt}
-                      className="flex-row items-center justify-between rounded-2xl px-3 py-3"
-                      style={{ backgroundColor: palette.background, borderColor: palette.border, borderWidth: 1 }}
-                    >
-                      <View className="flex-1 flex-row items-center gap-2">
-                        <View
-                          className="rounded-lg px-2 py-1"
-                          style={{ backgroundColor: palette.secondary }}
-                        >
-                          <Text className="text-[10px] font-bold" style={{ color: palette.primaryForeground }}>
-                            {upper}
-                          </Text>
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-sm" style={{ color: palette.text, fontWeight: "600" }}>
-                            {upper}
-                          </Text>
-                          <Text className="text-xs" style={{ color: palette.textMuted }}>
-                            {formatFileSize(size)}
-                            {FORMAT_LABELS[upper] ? ` · ${FORMAT_LABELS[upper]}` : ""}
-                            {readable ? "" : " · 应用内不支持"}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </MetaSection>
-          ) : null}
+type InfoCardItem = {
+  label: string;
+  mono?: boolean;
+  value: string;
+};
 
-          {book.identifiers.length > 0 ? (
-            <MetaSection palette={palette} title="标识符">
-              <View className="flex-row flex-wrap gap-2">
-                {book.identifiers.map((ident, idx) => (
-                  <View
-                    key={`${ident.idType}-${ident.value}-${idx}`}
-                    className="rounded-xl px-3 py-2"
-                    style={{ backgroundColor: palette.background, borderColor: palette.border, borderWidth: 1 }}
-                  >
-                    <Text className="text-[10px] font-semibold uppercase" style={{ color: palette.textMuted }}>
-                      {IDENTIFIER_LABELS[ident.idType] ?? ident.idType}
-                    </Text>
-                    <Text className="mt-0.5 font-mono text-xs" style={{ color: palette.text }}>
-                      {ident.value}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </MetaSection>
-          ) : null}
+/**
+ * Bridges the Pencil spec colors to the existing mobile theme tokens.
+ */
+function getDetailColors(palette: ThemePalette, colorScheme: string | null | undefined): DetailColors {
+  const isDark = colorScheme === "dark";
 
-          <MetaSection palette={palette} title="书库信息">
-            <View className="gap-2">
-              <InfoRow palette={palette} label="添加日期" value={formatDate(book.timestamp)} />
-              <InfoRow palette={palette} label="出版日期" value={formatDate(book.pubdate)} />
-              <InfoRow palette={palette} label="最后修改" value={formatDate(book.lastModified)} />
-              {book.uuid ? (
-                <InfoRow
-                  palette={palette}
-                  label="UUID"
-                  value={
-                    book.uuid.length > 16 ? `${book.uuid.slice(0, 8)}…${book.uuid.slice(-4)}` : book.uuid
-                  }
-                  mono
-                />
-              ) : null}
-              <InfoRow palette={palette} label="库中路径" value={book.path || "—"} mono />
-              <InfoRow palette={palette} label="排序作者" value={book.authorSort || "—"} />
-            </View>
-          </MetaSection>
-        </View>
-      </ScrollView>
+  return {
+    accent: isDark ? "#D4703A" : "#C4622D",
+    accentPressed: "#B05523",
+    accentText: isDark ? "#1C1714" : "#FAF6F0",
+    background: isDark ? "#1C1814" : "#F7F3EC",
+    border: isDark ? "rgba(240, 235, 225, 0.12)" : "rgba(28, 23, 20, 0.10)",
+    card: isDark ? "#26211D" : "#FFFFFF",
+    disabledBg: isDark ? "#2F2923" : "#F5F1EA",
+    disabledText: isDark ? "#B8AFA6" : "#5C5349",
+    muted: isDark ? "#B8AFA6" : "#5C5349",
+    palette,
+    progressTrack: isDark ? "#382F27" : "#EDE8DF",
+    sectionBg: isDark ? "#1C1814" : "#F7F3EC",
+    success: isDark ? "#55A884" : "#3A7D5A",
+    successBg: isDark ? "#1E3D2E" : "#C2DDD0",
+    tagBg: isDark ? "#5A3020" : "#E8C9B5",
+    tagText: isDark ? "#FAFAFA" : "#0A0A0A",
+    tertiary: isDark ? "#7A7068" : "#9C9089",
+    text: isDark ? "#F0EBE1" : "#1C1714",
+  };
+}
 
+/**
+ * Renders the compact cover-and-metadata hero from the Pencil screen.
+ */
+function HeroSection({
+  book,
+  colors,
+  coverUri,
+  metaLine,
+  ratingStars,
+  ratingValue,
+  seriesLabel,
+}: {
+  book: BookDetail;
+  colors: DetailColors;
+  coverUri?: BookItem["coverUri"];
+  metaLine: string;
+  ratingStars: number;
+  ratingValue: string | null;
+  seriesLabel: string | null;
+}) {
+  const authors = book.authors.filter(Boolean).join(", ") || book.authorSort;
+  const ratingLabel = ratingValue ? `${"★".repeat(ratingStars)}${"☆".repeat(5 - ratingStars)}  ${ratingValue}` : null;
+
+  return (
+    <View className="flex-row gap-4 px-4 pb-5 pt-4" style={{ backgroundColor: colors.sectionBg }}>
       <View
-        className="px-4 pt-3"
-        style={{
-          paddingBottom: Math.max(insets.bottom, 12),
-          backgroundColor: palette.background,
-          borderTopColor: palette.border,
-          borderTopWidth: 1,
-        }}
+        className="h-[188px] w-[128px] overflow-hidden rounded-xl"
+        style={{ backgroundColor: colors.accentPressed, borderColor: "rgba(0,0,0,0.13)", borderWidth: 1 }}
       >
-        <View className="flex-row gap-3">
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canReadInApp}
-            onPress={() => {
-              if (canReadInApp && selectedFormat) {
-                router.push({
-                  pathname: "/reader/[id]",
-                  params: { id, format: selectedFormat },
-                });
-              }
-            }}
-            className="min-h-14 flex-1 flex-row items-center justify-between rounded-[20px] px-4"
-            style={{
-              backgroundColor: canReadInApp ? palette.primary : palette.surface,
-              opacity: canReadInApp ? 1 : 0.55,
-            }}
-          >
-            <View className="flex-row items-center gap-3">
-              <MaterialIcons
-                name="menu-book"
-                size={20}
-                color={canReadInApp ? palette.primaryForeground : palette.textMuted}
-              />
-              <View>
-                <Text
-                  className="text-[16px]"
-                  style={{ color: canReadInApp ? palette.primaryForeground : palette.textMuted, fontWeight: "700" }}
-                >
-                  {progress > 0 ? `继续阅读 ${progressLabel}` : "开始阅读"}
-                </Text>
-                <Text
-                  className="text-xs"
-                  style={{ color: canReadInApp ? palette.primaryForeground : palette.textMuted, opacity: 0.82 }}
-                >
-                  {canReadInApp
-                    ? selectedFormat
-                      ? `格式 ${selectedFormat}`
-                      : "选择可读格式"
-                    : "暂无应用内可读格式"}
-                </Text>
-              </View>
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={22}
-              color={canReadInApp ? palette.primaryForeground : palette.textMuted}
-            />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canReadInApp && book.formats.length === 0}
-            className="min-h-14 min-w-[96px] flex-row items-center justify-center gap-1 rounded-[20px] px-4"
-            onPress={() => setFormatSheetOpen(true)}
-            style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-          >
-            <Text className="text-[15px]" style={{ color: palette.text, fontWeight: "700" }}>
-              {selectedFormat ?? (formatChoices[0] ? formatChoices[0].toUpperCase() : "格式")}
+        {coverUri ? (
+          <Image source={coverUri} className="h-full w-full object-cover" />
+        ) : (
+          <View className="h-full w-full justify-end px-3 py-4" style={{ backgroundColor: colors.accentPressed }}>
+            <Text
+              className="text-center text-[15px] leading-5"
+              numberOfLines={4}
+              style={{ color: "#FFFFFF", fontFamily: FONT_DISPLAY, fontWeight: "700", opacity: 0.88 }}
+            >
+              {book.title}
             </Text>
-            <MaterialIcons name="expand-more" size={18} color={palette.textMuted} />
-          </Pressable>
-        </View>
+          </View>
+        )}
       </View>
 
-      <Sheet open={formatSheetOpen} onClose={() => setFormatSheetOpen(false)}>
-        <Text
-          className="px-1 text-xs font-semibold uppercase tracking-[0.4px]"
-          style={{ color: palette.textMuted }}
-        >
-          {readableFormats.length > 0 ? "选择阅读格式" : "可用格式"}
+      <View className="flex-1 gap-3 py-1">
+        <Text className="text-xl leading-7" numberOfLines={3} style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "700" }}>
+          {book.title}
         </Text>
-        <View className="gap-2">
-          {formatChoices.map((format) => {
-            const upper = format.toUpperCase();
-            const readable = isReadableInAppFormat(format);
-            const size = formatSizeMap.get(upper) ?? 0;
-            return (
-              <SheetOption
-                key={upper}
-                label={`${upper} · ${formatFileSize(size)}${readable ? "" : "（不支持阅读）"}`}
-                active={selectedFormat === upper}
-                onPress={() => {
-                  setSelectedFormat(upper);
-                  setFormatSheetOpen(false);
-                }}
-              />
-            );
-          })}
-        </View>
-      </Sheet>
+        {seriesLabel ? (
+          <Text className="text-sm leading-5" numberOfLines={2} style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+            {seriesLabel}
+          </Text>
+        ) : null}
+        <Text className="text-base leading-6" numberOfLines={2} style={{ color: colors.accent, fontFamily: FONT_UI, fontWeight: "600" }}>
+          {authors}
+        </Text>
+        <View style={{ height: 1, backgroundColor: colors.border }} />
+        {metaLine ? (
+          <Text className="text-sm leading-5" numberOfLines={2} style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+            {metaLine}
+          </Text>
+        ) : null}
+        {ratingLabel ? (
+          <Text className="text-sm leading-5" style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "600" }}>
+            {ratingLabel}
+          </Text>
+        ) : null}
+        {book.tags.length > 0 ? (
+          <View className="flex-row flex-wrap gap-1">
+            {book.tags.slice(0, 4).map((tag) => (
+              <View key={tag} className="min-h-9 justify-center rounded-2xl px-[14px] py-[9px]" style={{ backgroundColor: colors.tagBg, borderColor: colors.border, borderWidth: 1 }}>
+                <Text className="text-[13px] leading-5" style={{ color: colors.tagText, fontFamily: FONT_UI, fontWeight: "600" }}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-function MetaSection({
-  title,
-  children,
-  palette,
+/**
+ * Displays available formats as the horizontal card rail used in the design.
+ */
+function FormatSection({
+  book,
+  colors,
+  formatSizeMap,
+  onReadFormat,
+  progress,
+  progressLabel,
+  readableFormats,
+  selectedFormat,
 }: {
-  title: string;
-  children: ReactNode;
-  palette: ReturnType<typeof useThemePalette>;
+  book: BookDetail;
+  colors: DetailColors;
+  formatSizeMap: Map<string, number>;
+  onReadFormat: (format: string) => void;
+  progress: number;
+  progressLabel: string;
+  readableFormats: string[];
+  selectedFormat: string | null;
 }) {
+  const readableFormatSet = new Set(readableFormats.map((format) => format.toUpperCase()));
+  const selectedFormatKey = selectedFormat?.toUpperCase() ?? null;
+
   return (
-    <View
-      className="gap-3 rounded-[24px] px-4 py-4"
-      style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}
-    >
-      <Text className="text-[18px]" style={{ color: palette.text, fontWeight: "700" }}>
-        {title}
+    <SectionFrame colors={colors}>
+      <SectionHeader colors={colors} detail={`${book.formats.length} 种格式`} title="文件格式" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
+        {book.formats.map((format) => {
+          const upper = format.toUpperCase();
+          return (
+            <FormatCard
+              key={upper}
+              colors={colors}
+              format={upper}
+              isReadable={readableFormatSet.has(upper)}
+              isSelected={selectedFormatKey === upper}
+              onRead={() => onReadFormat(upper)}
+              progress={progress}
+              progressLabel={progressLabel}
+              size={formatSizeMap.get(upper) ?? 0}
+            />
+          );
+        })}
+      </ScrollView>
+    </SectionFrame>
+  );
+}
+
+/**
+ * Renders one file format option without inventing download/cache state.
+ */
+function FormatCard({
+  colors,
+  format,
+  isReadable,
+  isSelected,
+  onRead,
+  progress,
+  progressLabel,
+  size,
+}: {
+  colors: DetailColors;
+  format: string;
+  isReadable: boolean;
+  isSelected: boolean;
+  onRead: () => void;
+  progress: number;
+  progressLabel: string;
+  size: number;
+}) {
+  const actionLabel = isReadable ? (progress > 0 ? "继续阅读" : "开始阅读") : "不支持阅读";
+
+  return (
+    <View className="w-[196px] gap-3 rounded-2xl p-4" style={{ backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }}>
+      <View className="flex-row items-center gap-2">
+        <Feather name={isReadable ? "file-text" : "file"} size={20} color={isReadable ? colors.accent : colors.tertiary} />
+        <Text className="flex-1 text-base leading-6" style={{ color: colors.text, fontFamily: FONT_UI, fontWeight: "700" }}>
+          {format}
+        </Text>
+        <View className="min-h-7 justify-center rounded-full px-3" style={{ backgroundColor: isReadable ? colors.successBg : colors.disabledBg }}>
+          <Text className="text-xs leading-4" style={{ color: isReadable ? colors.success : colors.disabledText, fontFamily: FONT_UI, fontWeight: "600" }}>
+            {isReadable ? (isSelected ? "当前" : "可阅读") : "不支持"}
+          </Text>
+        </View>
+      </View>
+      <Text className="text-[13px] leading-5" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+        {formatFileSize(size)}
+        {FORMAT_LABELS[format] ? ` · ${FORMAT_LABELS[format]}` : ""}
       </Text>
+      {isReadable ? (
+        <View className="flex-row items-center gap-2">
+          <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.progressTrack }}>
+            <View className="h-full rounded-full" style={{ backgroundColor: colors.accent, width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
+          </View>
+          <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+            {progress > 0 ? progressLabel : "0%"}
+          </Text>
+        </View>
+      ) : (
+        <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+          未开始阅读
+        </Text>
+      )}
+      <Pressable
+        accessibilityLabel={`${actionLabel} ${format}`}
+        accessibilityRole="button"
+        className="min-h-12 items-center justify-center rounded-2xl px-5 py-3"
+        disabled={!isReadable}
+        onPress={onRead}
+        style={{
+          backgroundColor: isReadable ? colors.accent : colors.card,
+          borderColor: isReadable ? colors.accent : colors.text,
+          borderWidth: isReadable ? 0 : 1,
+          opacity: isReadable ? 1 : 0.6,
+        }}
+      >
+        <Text className="text-sm leading-5" style={{ color: isReadable ? colors.accentText : colors.text, fontFamily: FONT_UI, fontWeight: "700" }}>
+          {actionLabel}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * Keeps section spacing and background identical across repeated blocks.
+ */
+function SectionFrame({ children, colors }: { children: ReactNode; colors: DetailColors }) {
+  return (
+    <View className="gap-[10px] px-4 pb-4" style={{ backgroundColor: colors.sectionBg }}>
       {children}
     </View>
   );
 }
 
-function InfoRow({
-  label,
-  value,
-  mono,
-  palette,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-  palette: ReturnType<typeof useThemePalette>;
-}) {
+/**
+ * Renders the section title line and optional count label.
+ */
+function SectionHeader({ colors, detail, title }: { colors: DetailColors; detail?: string; title: string }) {
   return (
-    <View
-      className="rounded-2xl px-3 py-3"
-      style={{ backgroundColor: palette.background, borderColor: palette.border, borderWidth: 1 }}
-    >
-      <Text className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: palette.textMuted }}>
-        {label}
+    <View className="flex-row items-center justify-between pb-[10px]" style={{ borderBottomColor: colors.border, borderBottomWidth: detail ? 0 : 1 }}>
+      <Text className="text-[16px] leading-6" style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "700" }}>
+        {title}
       </Text>
-      <Text
-        className={`mt-1 text-sm ${mono ? "font-mono" : ""}`}
-        style={{ color: palette.text, fontWeight: "600" }}
-      >
-        {value}
-      </Text>
+      {detail ? (
+        <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+          {detail}
+        </Text>
+      ) : null}
     </View>
   );
 }
+
+/**
+ * Renders Calibre comments as a native text synopsis with expansion.
+ */
+function SynopsisSection({
+  colors,
+  expanded,
+  onToggle,
+  text,
+}: {
+  colors: DetailColors;
+  expanded: boolean;
+  onToggle: () => void;
+  text: string;
+}) {
+  return (
+    <SectionFrame colors={colors}>
+      <SectionHeader colors={colors} title="简介" />
+      <Text className="text-[13px] leading-[22px]" numberOfLines={expanded ? undefined : 6} style={{ color: colors.muted, fontFamily: FONT_UI }}>
+        {text}
+      </Text>
+      <Pressable accessibilityRole="button" className="self-start" onPress={onToggle}>
+        <Text className="text-[13px] leading-5" style={{ color: colors.accent, fontFamily: FONT_UI, fontWeight: "500" }}>
+          {expanded ? "收起" : "展开全文"}
+        </Text>
+      </Pressable>
+    </SectionFrame>
+  );
+}
+
+/**
+ * Renders book metadata as one native row group for mobile scanning.
+ */
+function InfoRowSection({ colors, items, title }: { colors: DetailColors; items: InfoCardItem[]; title: string }) {
+  return (
+    <SectionFrame colors={colors}>
+      <SectionHeader colors={colors} title={title} />
+      <SectionCard>
+        {items.map((item, index) => (
+          <SettingsRow
+            key={`${item.label}-${item.value}`}
+            title={item.label}
+            detail={item.value}
+            isLast={index === items.length - 1}
+          />
+        ))}
+      </SectionCard>
+    </SectionFrame>
+  );
+}
+
+/**
+ * Keeps identifiers visible without competing with primary book metadata.
+ */
+function IdentifierSection({ book, colors }: { book: BookDetail; colors: DetailColors }) {
+  return (
+    <SectionFrame colors={colors}>
+      <SectionHeader colors={colors} title="标识符" />
+      <View className="flex-row flex-wrap gap-2">
+        {book.identifiers.map((ident, idx) => (
+          <View
+            key={`${ident.idType}-${ident.value}-${idx}`}
+            className="rounded-[10px] px-3 py-2"
+            style={{ backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }}
+          >
+            <Text className="text-[10px] uppercase leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI, fontWeight: "600" }}>
+              {IDENTIFIER_LABELS[ident.idType] ?? ident.idType}
+            </Text>
+            <Text className="mt-0.5 text-xs leading-4" style={{ color: colors.text, fontFamily: FONT_MONO }}>
+              {ident.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </SectionFrame>
+  );
+}
+

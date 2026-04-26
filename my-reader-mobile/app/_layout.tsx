@@ -1,10 +1,10 @@
 import "@/src/polyfills/reader-engine-globals";
 import "../src/global.css";
 
-import { useEffect } from "react";
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
@@ -68,6 +68,12 @@ function RootNavigator() {
       <StatusBar style={statusBarStyle} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="library-book"
+          options={{
+            presentation: "modal",
+          }}
+        />
         <Stack.Screen
           name="reader"
           options={{

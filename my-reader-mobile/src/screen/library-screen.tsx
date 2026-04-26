@@ -59,6 +59,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(sortOptions[0]);
   const viewMode = useAppStore((state) => state.libraryViewMode);
+  const setBookDetailLibraryOrder = useAppStore((state) => state.setBookDetailLibraryOrder);
   const setViewMode = useAppStore((state) => state.setLibraryViewMode);
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
@@ -109,7 +110,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }, [books, debouncedQuery, sortBy]);
 
   function openBookDetail(bookId: string) {
-    router.push({ pathname: "/book/[id]", params: { id: bookId } });
+    if (effectiveLibraryId) {
+      setBookDetailLibraryOrder({
+        libraryId: effectiveLibraryId,
+        bookIds: visibleBooks.map((book) => book.id),
+      });
+    }
+    router.push({ pathname: "/library-book/[id]", params: { id: bookId } });
   }
 
   function applySort(option: SortOption) {
