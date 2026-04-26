@@ -162,25 +162,25 @@ type BookDetailContentProps = {
   webDavSource: WebDavDataSource | null;
 };
 
-/** Pager page anchored to its book's stable index in `libraryOrderIds`. */
+/** Pager page anchored to its book's stable index in `detailOrderIds`. */
 function PagerSlot({
-  libraryIndex,
+  detailIndex,
   width,
   children,
 }: {
-  libraryIndex: number;
+  detailIndex: number;
   width: number;
   children: ReactNode;
 }) {
   return (
-    <View style={{ position: "absolute", left: libraryIndex * width, top: 0, bottom: 0, width }}>
+    <View style={{ position: "absolute", left: detailIndex * width, top: 0, bottom: 0, width }}>
       {children}
     </View>
   );
 }
 
 /**
- * Coordinates route-level behavior for regular pushes and library modal paging.
+ * Coordinates route-level behavior for modal detail paging.
  */
 export default function BookDetailScreen({ entryMode = "home" }: BookDetailScreenProps) {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -205,7 +205,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
         : books.map((b) => b.id);
     return Math.max(0, orderForCalc.indexOf(initialId));
   });
-  const isLibraryEntry = entryMode === "library";
 
   const webDavSource = useMemo(() => {
     if (!activeLibrary || activeLibrary.sourceType !== "webdav") return null;
@@ -216,16 +215,10 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   }, [activeLibrary, dataSources]);
 
   useEffect(() => {
-    if (id && !isLibraryEntry) {
+    if (id && currentId === null) {
       setCurrentId(id);
     }
-  }, [id, isLibraryEntry]);
-
-  useEffect(() => {
-    if (id && isLibraryEntry && currentId === null) {
-      setCurrentId(id);
-    }
-  }, [currentId, id, isLibraryEntry]);
+  }, [currentId, id]);
 
   useEffect(() => {
     setDetailCache({});
@@ -238,32 +231,29 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
     detailCacheRef.current = detailCache;
   }, [detailCache]);
 
-  const libraryOrderIds = useMemo(() => {
+  const detailOrderIds = useMemo(() => {
+    if (entryMode === "home") {
+      return currentId ? [currentId] : [];
+    }
     if (
-      isLibraryEntry &&
       bookDetailLibraryOrder &&
       bookDetailLibraryOrder.libraryId === activeLibraryId
     ) {
       return bookDetailLibraryOrder.bookIds;
     }
     return books.map((book) => book.id);
-  }, [activeLibraryId, bookDetailLibraryOrder, books, isLibraryEntry]);
+  }, [activeLibraryId, bookDetailLibraryOrder, books, currentId, entryMode]);
 
-  const currentIndex = currentId ? libraryOrderIds.indexOf(currentId) : -1;
-  const previousId = isLibraryEntry && currentIndex > 0 ? libraryOrderIds[currentIndex - 1] : null;
+  const currentIndex = currentId ? detailOrderIds.indexOf(currentId) : -1;
+  const previousId = currentIndex > 0 ? detailOrderIds[currentIndex - 1] : null;
   const nextId =
-    isLibraryEntry && currentIndex >= 0 && currentIndex < libraryOrderIds.length - 1
-      ? libraryOrderIds[currentIndex + 1]
+    currentIndex >= 0 && currentIndex < detailOrderIds.length - 1
+      ? detailOrderIds[currentIndex + 1]
       : null;
 
   const windowIds = useMemo(
-    () =>
-      isLibraryEntry
-        ? [previousId, currentId, nextId].filter((item): item is string => Boolean(item))
-        : currentId
-          ? [currentId]
-          : [],
-    [currentId, isLibraryEntry, nextId, previousId]
+    () => [previousId, currentId, nextId].filter((item): item is string => Boolean(item)),
+    [currentId, nextId, previousId]
   );
 
   useEffect(() => {
@@ -361,15 +351,15 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   const headerLeftActions = useMemo<HeaderToolbarAction[]>(
     () => [
       {
-        label: isLibraryEntry ? "关闭" : "返回",
+        label: "关闭",
         onPress: handleGoBack,
-        icon: <Feather name={isLibraryEntry ? "x" : "arrow-left"} size={20} color={palette.text} />,
-        iosSfSymbol: isLibraryEntry ? "xmark" : "chevron.left",
+        icon: <Feather name="x" size={20} color={palette.text} />,
+        iosSfSymbol: "xmark",
         iconOnly: true,
         color: palette.text,
       },
     ],
-    [handleGoBack, isLibraryEntry, palette.text]
+    [handleGoBack, palette.text]
   );
   const headerRightActions = useMemo<HeaderToolbarAction[] | undefined>(() => {
     if (!currentDetail) return undefined;
@@ -434,7 +424,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   }, []);
 
   const { gesture: horizontalPagerGesture, animatedStyle: pagerAnimatedStyle } = useDetailSwipePager({
-    enabled: isLibraryEntry,
     width,
     currentIndex,
     initialIndex: initialPageIndex,
@@ -446,14 +435,14 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   const renderDetailPage = useCallback(
     (bookId: string | null) => {
       if (!bookId || !activeLibrary) return null;
-      const idx = libraryOrderIds.indexOf(bookId);
+      const idx = detailOrderIds.indexOf(bookId);
       if (idx < 0) return null;
       const entry = detailCache[bookId];
       const selectedFormat =
         selectedFormatById[bookId] ??
         (entry?.detail ? pickReadableFormat(entry.detail.formats) : null);
       return (
-        <PagerSlot key={bookId} libraryIndex={idx} width={width}>
+        <PagerSlot key={bookId} detailIndex={idx} width={width}>
           <BookDetailContent
             activeLibrary={activeLibrary}
             bookId={bookId}
@@ -476,10 +465,10 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
       activeLibrary,
       detailCache,
       detailColors,
+      detailOrderIds,
       getListBook,
       handleSelectFormat,
       handleToggleSynopsis,
-      libraryOrderIds,
       openReader,
       selectedFormatById,
       synopsisExpandedById,
@@ -509,33 +498,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
           <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" />
         </View>
       </>
-    );
-  }
-
-  if (!isLibraryEntry) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <Stack.Screen options={screenOptions} />
-        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
-        <BookDetailContent
-          activeLibrary={activeLibrary}
-          bookId={currentId}
-          colors={detailColors}
-          detail={currentEntry?.detail ?? null}
-          detailError={currentEntry?.error ?? null}
-          listBook={getListBook(currentId)}
-          loadingDetail={currentEntry?.loading ?? true}
-          onOpenReader={openReader}
-          onSelectFormat={handleSelectFormat}
-          onToggleSynopsis={handleToggleSynopsis}
-          selectedFormat={
-            selectedFormatById[currentId] ??
-            (currentEntry?.detail ? pickReadableFormat(currentEntry.detail.formats) : null)
-          }
-          synopsisExpanded={Boolean(synopsisExpandedById[currentId])}
-          webDavSource={webDavSource}
-        />
-      </View>
     );
   }
 

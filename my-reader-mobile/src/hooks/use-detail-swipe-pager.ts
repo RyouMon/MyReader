@@ -1,10 +1,10 @@
 import { useLayoutEffect, useMemo } from "react";
 
 import { Gesture } from "react-native-gesture-handler";
-import { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 type UseDetailSwipePagerArgs = {
-  enabled: boolean;
   width: number;
   currentIndex: number;
   initialIndex: number;
@@ -14,7 +14,7 @@ type UseDetailSwipePagerArgs = {
 };
 
 /**
- * Drives the library-mode horizontal swipe pager.
+ * Drives the modal detail horizontal swipe pager.
  *
  * Anti-flicker contract — kept here together with `PagerSlot` so the moving
  * parts can be reasoned about as one unit:
@@ -29,22 +29,21 @@ type UseDetailSwipePagerArgs = {
  * sequences its updates so a swap is always atomic from the user's
  * perspective:
  *   1. A UI-thread `pageIndex` shared value tracks the current page's
- *      index in `libraryOrderIds`. Transform = `-pageIndex * width +
+ *      index in `detailOrderIds`. Transform = `-pageIndex * width +
  *      translateX`.
- *   2. Pages are rendered through `PagerSlot` at `left: libraryIndex *
+ *   2. Pages are rendered through `PagerSlot` at `left: detailIndex *
  *      width`, so a page's screen position depends only on its bookId and
  *      never on React's prev/current/next reordering.
  *   3. When the settle animation finishes, the worklet runs
  *      `pageIndex ±= 1; translateX = 0` atomically on the UI thread. The
  *      resulting transform is mathematically identical, so nothing
- *      visually moves. Only afterwards does `runOnJS(onCommit)` notify
+ *      visually moves. Only afterwards does `scheduleOnRN(onCommit, targetId)` notify
  *      React of the new currentId.
  *   4. `useLayoutEffect` resyncs `pageIndex` whenever React-side
  *      `currentIndex` diverges for any other reason (initial mount,
  *      external navigation, data load).
  */
 export function useDetailSwipePager({
-  enabled,
   width,
   currentIndex,
   initialIndex,
@@ -56,11 +55,11 @@ export function useDetailSwipePager({
   const pageIndex = useSharedValue(initialIndex);
 
   useLayoutEffect(() => {
-    if (!enabled || currentIndex < 0) return;
+    if (currentIndex < 0) return;
     if (pageIndex.value === currentIndex) return;
     pageIndex.value = currentIndex;
     translateX.value = 0;
-  }, [currentIndex, enabled, pageIndex, translateX]);
+  }, [currentIndex, pageIndex, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -pageIndex.get() * width + translateX.get() }],
@@ -96,7 +95,7 @@ export function useDetailSwipePager({
                 if (finished) {
                   pageIndex.value -= 1;
                   translateX.value = 0;
-                  runOnJS(onCommit)(previousId);
+                  scheduleOnRN(onCommit, previousId);
                 }
               })
             );
@@ -108,7 +107,7 @@ export function useDetailSwipePager({
                 if (finished) {
                   pageIndex.value += 1;
                   translateX.value = 0;
-                  runOnJS(onCommit)(nextId);
+                  scheduleOnRN(onCommit, nextId);
                 }
               })
             );

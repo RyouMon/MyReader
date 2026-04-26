@@ -69,6 +69,12 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="book"
+          options={{
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
           name="library-book"
           options={{
             presentation: "modal",
