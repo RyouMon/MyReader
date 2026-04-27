@@ -48,6 +48,9 @@ type BookFileStateMap = Record<string, BookDownloadStatus>;
 
 const defaultSortOption: SortOption = "最近添加";
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
+const GRID_MIN_CARD_WIDTH = 150;
+const GRID_MIN_COLUMNS = 2;
+const GRID_MAX_COLUMNS = 8;
 
 type LibraryScreenProps = {
   libraryId?: string;
@@ -61,6 +64,13 @@ function getViewModeLabel(mode: LibraryViewMode) {
 /** Returns the display label for the active download-state filter. */
 function getDownloadFilterLabel(option: DownloadFilterOption) {
   return downloadFilterOptions.find((item) => item.value === option)?.label ?? "全部";
+}
+
+/** Computes responsive grid columns so larger screens can show more books per row. */
+function getResponsiveGridColumns(containerWidth: number, gap: number, horizontalPadding: number): number {
+  const availableWidth = Math.max(0, containerWidth - horizontalPadding * 2);
+  const estimatedColumns = Math.floor((availableWidth + gap) / (GRID_MIN_CARD_WIDTH + gap));
+  return Math.max(GRID_MIN_COLUMNS, Math.min(GRID_MAX_COLUMNS, estimatedColumns || GRID_MIN_COLUMNS));
 }
 
 function pathBelongsToBook(relativePath: string, bookPath?: string): boolean {
@@ -86,9 +96,9 @@ function compareRecentlyAdded(left: BookItem, right: BookItem): number {
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
-  const gridColumns = width >= 768 ? 4 : 2;
   const GRID_GAP = 12;
   const GRID_PADDING_H = 16;
+  const gridColumns = getResponsiveGridColumns(width, GRID_GAP, GRID_PADDING_H);
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
