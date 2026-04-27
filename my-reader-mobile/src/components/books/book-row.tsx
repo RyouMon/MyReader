@@ -1,9 +1,12 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { SymbolView } from "expo-symbols";
+import { Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
+import { CircularProgress } from "../ui/circular-progress";
 import { ProgressBar } from "../ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 
@@ -32,6 +35,7 @@ export function BookRow({
   onMore,
   progress,
   downloadStatus,
+  downloadProgress,
   horizontalPadding = 16,
 }: {
   book: BookItem;
@@ -39,12 +43,16 @@ export function BookRow({
   onMore?: () => void;
   progress?: BookProgressSnapshot;
   downloadStatus?: BookDownloadStatus;
+  downloadProgress?: number;
   horizontalPadding?: number;
 }) {
   const palette = useThemePalette();
   const hasProgress = typeof progress?.percent === "number";
   const progressValue = hasProgress ? Math.max(0, Math.min(100, progress.percent ?? 0)) / 100 : undefined;
   const isUnread = !hasProgress || (progress.percent ?? 0) <= 0;
+
+  const showCloudIcon = downloadStatus === "notDownloaded";
+  const showProgressIndicator = downloadStatus === "downloading";
 
   return (
     <TouchableHighlight
@@ -56,7 +64,6 @@ export function BookRow({
       <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
         <BookCover
           book={book}
-          downloadStatus={downloadStatus}
           width={38}
           height={54}
           borderRadius={5}
@@ -89,6 +96,17 @@ export function BookRow({
                 {progress.syncedLabel}
               </Text>
             ) : null}
+            <View style={{ marginLeft: "auto" }}>
+              {showCloudIcon ? (
+                Platform.OS === "ios" ? (
+                  <SymbolView name="cloud" size={13} tintColor={palette.textMuted} />
+                ) : (
+                  <MaterialIcons name="cloud-off" size={13} color={palette.textMuted} />
+                )
+              ) : showProgressIndicator ? (
+                <CircularProgress progress={downloadProgress ?? 0} size={13} strokeWidth={1.5} color={palette.primary} />
+              ) : null}
+            </View>
           </View>
           {typeof progressValue === "number" ? (
             <View className="mt-1 w-14">

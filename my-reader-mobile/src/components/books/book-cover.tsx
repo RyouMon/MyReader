@@ -1,5 +1,3 @@
-import Feather from "@expo/vector-icons/Feather";
-
 import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
 import { Image, Text, View } from "@/tw";
@@ -29,28 +27,18 @@ export function getFallbackCoverColor(title: string) {
  */
 export function BookCover({
   book,
-  downloadStatus,
   width,
   height,
   borderRadius = 10,
   showTitle = true,
 }: {
   book: BookItem;
-  downloadStatus?: BookDownloadStatus;
   width: number;
   height: number;
   borderRadius?: number;
   showTitle?: boolean;
 }) {
   const palette = useThemePalette();
-  const statusIcon =
-    downloadStatus === "downloaded"
-      ? "check"
-      : downloadStatus === "downloading"
-        ? "download"
-        : downloadStatus === "notDownloaded"
-          ? "cloud"
-          : null;
 
   return (
     <View
@@ -78,24 +66,6 @@ export function BookCover({
           ) : null}
         </View>
       )}
-      <View className="absolute bottom-0 left-0 top-0 w-1.5" style={{ backgroundColor: "rgba(0,0,0,0.22)" }} />
-      {statusIcon ? (
-        <View
-          className="absolute bottom-1.5 right-1.5 h-7 w-7 items-center justify-center rounded-full"
-          style={{
-            backgroundColor:
-              downloadStatus === "downloaded"
-                ? palette.success
-                : downloadStatus === "downloading"
-                  ? palette.primary
-                  : "rgba(0,0,0,0.58)",
-            borderColor: "rgba(255,255,255,0.70)",
-            borderWidth: 1,
-          }}
-        >
-          <Feather color={palette.textOnPrimary} name={statusIcon} size={15} />
-        </View>
-      ) : null}
     </View>
   );
 }

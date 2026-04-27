@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

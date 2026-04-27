@@ -27,7 +27,7 @@ import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
-import { useDownloadStatusTasks } from "../sync/download-store";
+import { useDownloadStore } from "../sync/download-store";
 import { listFileStates, useFileStateRevision, type LocalState } from "../sync/file_state";
 
 const downloadFilterOptions = [
@@ -99,7 +99,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
   const [bookFileStates, setBookFileStates] = useState<BookFileStateMap>({});
   const fileStateRevision = useFileStateRevision();
-  const downloadTasks = useDownloadStatusTasks();
+  const { tasks: downloadTasks } = useDownloadStore();
   const viewMode = useAppStore((state) => state.libraryViewMode);
   const setBookDetailLibraryOrder = useAppStore((state) => state.setBookDetailLibraryOrder);
   const setViewMode = useAppStore((state) => state.setLibraryViewMode);
@@ -196,11 +196,24 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         pathBelongsToBook(task.relativePath, book.path),
       )?.id;
       if (bookId) {
-        next[bookId] = "downloading";
+        next[bookId] = task.progress >= 1 ? "downloaded" : "downloading";
       }
     }
     return next;
   }, [activeDownloadTasks, bookFileStates, books, completedDownloadTasks]);
+
+  const bookDownloadProgressById = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const task of activeDownloadTasks) {
+      const bookId = task.bookId ?? books.find((book) =>
+        pathBelongsToBook(task.relativePath, book.path),
+      )?.id;
+      if (bookId) {
+        next[bookId] = task.progress;
+      }
+    }
+    return next;
+  }, [activeDownloadTasks, books]);
 
   const visibleBooks = useMemo(() => {
     const needle = debouncedQuery.trim().toLowerCase();
@@ -504,6 +517,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               <BookCard
                 book={item}
                 downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
+                downloadProgress={bookDownloadProgressById[item.id]}
                 width={cardWidth}
                 onPress={() => openBookDetail(item.id)}
               />
@@ -512,6 +526,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             <BookRow
               book={item}
               downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
+              downloadProgress={bookDownloadProgressById[item.id]}
               onPress={() => openBookDetail(item.id)}
               horizontalPadding={LIST_PADDING_H}
             />

@@ -15,6 +15,7 @@ export { FormLabeledFieldRow } from "./form-labeled-field-row";
 export { HeaderToolbar, type HeaderToolbarAction, type HeaderToolbarProps } from "./header-toolbar";
 export { HeroCard } from "./hero-card";
 export { PageHeader } from "./page-header";
+export { CircularProgress } from "./circular-progress";
 export { ProgressBar } from "./progress-bar";
 export { ScreenAndroidFabPrimary, ScreenAndroidSecondaryBottomStart } from "./screen-android-edge-actions";
 export { Screen } from "./screen";
