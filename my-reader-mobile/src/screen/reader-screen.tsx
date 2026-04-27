@@ -19,6 +19,7 @@ import { extractEpubToCache } from "@/src/data/native-epub-cache";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
 import type { WebDavDataSource } from "@/src/data/types";
 import { downloadWebDavBookFile } from "@/src/data/webdav";
+import { resolveLibraryCacheDir } from "@/src/sync/backend";
 import { useThemePalette } from "@/src/design/tokens";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
@@ -239,6 +240,8 @@ export default function ReaderScreen() {
         const needsPdfNativePath = fmtUpper === "PDF";
         const needsEpubExtract = fmtUpper === "EPUB";
 
+        const syncCacheDirUri = webDavSource ? resolveLibraryCacheDir(currentLibrary.id) : undefined;
+
         const localBookFile = !webDavSource && needsNativeComicPath
           ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
           : null;
@@ -248,15 +251,15 @@ export default function ReaderScreen() {
             : null;
         const webDavEpubFile =
           needsEpubExtract && webDavSource
-            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
             : null;
         const webDavBookFile = webDavSource && needsNativeComicPath
-          ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+          ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
           : null;
 
         const pdfLocalFile = needsPdfNativePath
           ? webDavSource
-            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt)
+            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
             : await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-pdf")
           : null;
 

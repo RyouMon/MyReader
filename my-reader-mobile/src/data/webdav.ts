@@ -1,5 +1,7 @@
 import { File, Paths } from "expo-file-system";
 
+import { localFileUriFor } from "../sync/backend";
+
 import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
 import { openDatabaseFromUri } from "./sqlite";
 
@@ -258,7 +260,8 @@ export async function downloadWebDavBookFile(
   source: WebDavDataSource,
   calibreBookId: number,
   format: string,
-  localName?: string
+  localName?: string,
+  syncCacheDirUri?: string,
 ): Promise<File> {
   const db = await openDatabaseFromUri(library.metadataUri);
 
@@ -273,7 +276,16 @@ export async function downloadWebDavBookFile(
     }
 
     const fileName = `${row.name}.${format.toLowerCase()}`;
-    const remotePath = `${library.sourcePath ?? library.path}/${row.path}/${fileName}`;
+    const relativePath = `${row.path}/${fileName}`;
+
+    if (syncCacheDirUri) {
+      const cachedFile = new File(localFileUriFor(syncCacheDirUri, relativePath));
+      if (cachedFile.exists) {
+        return cachedFile;
+      }
+    }
+
+    const remotePath = `${library.sourcePath ?? library.path}/${relativePath}`;
 
     const rand = Math.random().toString(36).slice(2, 10);
     const ext = `.${format.toLowerCase()}`;

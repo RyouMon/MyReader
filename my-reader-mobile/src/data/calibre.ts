@@ -436,6 +436,26 @@ async function lookupBookFileLocation(
   }
 }
 
+export async function getBookFormatPaths(
+  library: MobileLibrary,
+  calibreBookId: number,
+): Promise<Array<{ format: string; relativePath: string }>> {
+  const db = await openDatabaseFromUri(library.metadataUri);
+  try {
+    const rows = await db.getAllAsync<{ fmt: string; path: string; name: string }>(
+      `SELECT UPPER(d.format) AS fmt, b.path, d.name
+       FROM books b JOIN data d ON d.book = b.id WHERE b.id = ?`,
+      [calibreBookId],
+    );
+    return rows.map((r) => ({
+      format: r.fmt,
+      relativePath: `${r.path}/${r.name}.${r.fmt.toLowerCase()}`,
+    }));
+  } finally {
+    await db.closeAsync();
+  }
+}
+
 function createBookFile(rootUri: string, segments: string[], fileName: string) {
   return new FSFile(new Directory(rootUri), ...segments, fileName);
 }

@@ -15,8 +15,10 @@ import { AnimatedScrollView, Image, Pressable, ScrollView, Text, View } from "@/
 
 import { Button, EmptyState, SectionCard, SettingsRow } from "../components";
 import { HeaderToolbar, type HeaderToolbarAction } from "../components/ui/header-toolbar";
-import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
+import { buildCoverUri, getBookFormatPaths, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
+import { getFileState, type LocalState } from "../sync/file_state";
+import { useSyncActions } from "../sync/useSyncActions";
 import { buildWebDavBookCoverUri } from "../data/webdav";
 import { useDetailSwipePager } from "../hooks/use-detail-swipe-pager";
 import { useAppStore } from "../store/app-store";
@@ -569,6 +571,45 @@ function BookDetailContent({
     return m;
   }, [detail]);
 
+  const [formatInfoMap, setFormatInfoMap] = useState<Record<string, FormatInfo>>({});
+  const [downloadingFormats, setDownloadingFormats] = useState<Set<string>>(new Set());
+  const syncActions = useSyncActions();
+
+  useEffect(() => {
+    if (!detail || activeLibrary.sourceType !== "webdav" || !activeLibrary.dataSourceId) {
+      setFormatInfoMap({});
+      return;
+    }
+    const scope = { dataSourceId: activeLibrary.dataSourceId, libraryId: activeLibrary.id };
+    void getBookFormatPaths(activeLibrary, detail.id).then(async (paths) => {
+      const map: Record<string, FormatInfo> = {};
+      for (const { format, relativePath } of paths) {
+        const row = await getFileState(scope, relativePath);
+        map[format] = { relativePath, localState: row?.localState ?? null };
+      }
+      setFormatInfoMap(map);
+    });
+  }, [detail?.id, activeLibrary.id, activeLibrary.sourceType, activeLibrary.dataSourceId]);
+
+  const handleDownloadFormat = useCallback(async (format: string) => {
+    const info = formatInfoMap[format];
+    if (!info) return;
+    setDownloadingFormats((prev) => new Set(prev).add(format));
+    try {
+      await syncActions.downloadFileDirect(activeLibrary.id, info.relativePath);
+      setFormatInfoMap((prev) => ({
+        ...prev,
+        [format]: { ...prev[format]!, localState: "present" },
+      }));
+    } finally {
+      setDownloadingFormats((prev) => {
+        const next = new Set(prev);
+        next.delete(format);
+        return next;
+      });
+    }
+  }, [formatInfoMap, activeLibrary.id, syncActions]);
+
   if (loadingDetail) {
     return (
       <View className="flex-1 items-center justify-center px-4" style={{ backgroundColor: colors.palette.background }}>
@@ -650,7 +691,11 @@ function BookDetailContent({
           <FormatSection
             book={book}
             colors={colors}
+            downloadingFormats={downloadingFormats}
+            formatInfoMap={formatInfoMap}
             formatSizeMap={formatSizeMap}
+            isNetworkSource={activeLibrary.sourceType === "webdav"}
+            onDownloadFormat={(format) => void handleDownloadFormat(format)}
             onReadFormat={(format) => {
               onSelectFormat(bookId, format);
               openReader(format);
@@ -817,13 +862,19 @@ function HeroSection({
   );
 }
 
+type FormatInfo = { relativePath: string; localState: LocalState | null };
+
 /**
  * Displays available formats as the horizontal card rail used in the design.
  */
 function FormatSection({
   book,
   colors,
+  downloadingFormats,
+  formatInfoMap,
   formatSizeMap,
+  isNetworkSource,
+  onDownloadFormat,
   onReadFormat,
   progress,
   progressLabel,
@@ -832,7 +883,11 @@ function FormatSection({
 }: {
   book: BookDetail;
   colors: DetailColors;
+  downloadingFormats: Set<string>;
+  formatInfoMap: Record<string, FormatInfo>;
   formatSizeMap: Map<string, number>;
+  isNetworkSource: boolean;
+  onDownloadFormat: (format: string) => void;
   onReadFormat: (format: string) => void;
   progress: number;
   progressLabel: string;
@@ -848,13 +903,18 @@ function FormatSection({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
         {book.formats.map((format) => {
           const upper = format.toUpperCase();
+          const formatInfo = formatInfoMap[upper];
           return (
             <FormatCard
               key={upper}
               colors={colors}
+              downloading={downloadingFormats.has(upper)}
+              fileLocalState={formatInfo?.localState ?? null}
               format={upper}
+              isNetworkSource={isNetworkSource}
               isReadable={readableFormatSet.has(upper)}
               isSelected={selectedFormatKey === upper}
+              onDownload={() => onDownloadFormat(upper)}
               onRead={() => onReadFormat(upper)}
               progress={progress}
               progressLabel={progressLabel}
@@ -868,28 +928,38 @@ function FormatSection({
 }
 
 /**
- * Renders one file format option without inventing download/cache state.
+ * Renders one file format option. Shows a download button for WebDAV libraries
+ * when the file hasn't been cached locally yet.
  */
 function FormatCard({
   colors,
+  downloading,
+  fileLocalState,
   format,
+  isNetworkSource,
   isReadable,
   isSelected,
+  onDownload,
   onRead,
   progress,
   progressLabel,
   size,
 }: {
   colors: DetailColors;
+  downloading: boolean;
+  fileLocalState: LocalState | null;
   format: string;
+  isNetworkSource: boolean;
   isReadable: boolean;
   isSelected: boolean;
+  onDownload: () => void;
   onRead: () => void;
   progress: number;
   progressLabel: string;
   size: number;
 }) {
-  const actionLabel = isReadable ? (progress > 0 ? "继续阅读" : "开始阅读") : "不支持阅读";
+  const showDownload = isReadable && isNetworkSource && fileLocalState !== "present";
+  const actionLabel = showDownload ? "下载" : isReadable ? (progress > 0 ? "继续阅读" : "开始阅读") : "不支持阅读";
 
   return (
     <View className="w-[196px] gap-3 rounded-2xl p-4" style={{ backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }}>
@@ -932,7 +1002,8 @@ function FormatCard({
           underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
         }}
         disabled={!isReadable}
-        onPress={onRead}
+        loading={downloading}
+        onPress={showDownload ? onDownload : onRead}
         size="lg"
         textStyle={{ fontFamily: FONT_UI }}
         title={actionLabel}

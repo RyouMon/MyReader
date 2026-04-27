@@ -6,6 +6,7 @@ import type { MobileLibrary } from "../data/types";
 import {
   deleteFileEverywhere,
   downloadFile,
+  downloadFileDirect,
   evictLocalFile,
   listBackedFiles,
   openSyncContext,
@@ -26,6 +27,7 @@ type SyncActions = {
   getTargetInfo: (libraryId: string) => Promise<SyncTargetInfo>;
   testBackend: (libraryId: string) => Promise<void>;
   downloadFile: (libraryId: string, relativePath: string) => Promise<void>;
+  downloadFileDirect: (libraryId: string, relativePath: string) => Promise<void>;
   evictLocal: (libraryId: string, relativePath: string) => Promise<void>;
   deleteEverywhere: (libraryId: string, relativePath: string) => Promise<void>;
   listFileStates: (libraryId: string, filter?: string) => Promise<FileStateRow[]>;
@@ -76,6 +78,10 @@ export function useSyncActions(): SyncActions {
       async downloadFile(libraryId, relativePath) {
         const ctx = await openSyncContext(findLibrary(libraryId), dataSources);
         await downloadFile(ctx, relativePath);
+      },
+      async downloadFileDirect(libraryId, relativePath) {
+        const ctx = await openSyncContext(findLibrary(libraryId), dataSources);
+        await downloadFileDirect(ctx, relativePath);
       },
       async evictLocal(libraryId, relativePath) {
         const ctx = await openSyncContext(findLibrary(libraryId), dataSources);

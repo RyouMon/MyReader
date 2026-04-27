@@ -92,6 +92,46 @@ export async function downloadFile(
   };
 }
 
+/**
+ * Download the remote file directly into the library cache dir without
+ * requiring a manifest entry. Computes blake3 from the downloaded bytes.
+ *
+ * Use this when the manifest may not yet contain the path (e.g. first-time
+ * download from the book-detail screen before any reconcile has run).
+ */
+export async function downloadFileDirect(
+  backend: SyncBackend,
+  libraryCacheDirUri: string,
+  relativePath: string,
+): Promise<DownloadOutcome> {
+  assertSafeRelative(relativePath);
+
+  const destUri = localFileUriFor(libraryCacheDirUri, relativePath);
+  const destFile = uriToFile(destUri);
+
+  if (destFile.exists) {
+    const existing = await destFile.bytes();
+    const hex = blake3Hex(existing);
+    return {
+      blake3: hex,
+      size: existing.byteLength,
+      mtimeMs: destFile.modificationTime ? destFile.modificationTime * 1000 : Date.now(),
+    };
+  }
+
+  ensureParentDirFor(destUri);
+  const bytes = await backend.readBytes(relativePath);
+  const hex = blake3Hex(bytes);
+  destFile.create({ intermediates: true, overwrite: true });
+  destFile.write(bytes);
+
+  return {
+    blake3: hex,
+    size: bytes.byteLength,
+    mtimeMs: destFile.modificationTime ? destFile.modificationTime * 1000 : Date.now(),
+  };
+}
+
 export function evictLocal(libraryCacheDirUri: string, relativePath: string): void {
   assertSafeRelative(relativePath);
   const file = uriToFile(localFileUriFor(libraryCacheDirUri, relativePath));

@@ -11,6 +11,7 @@ import {
 import {
   deleteEverywhere as fileOpsDeleteEverywhere,
   downloadFile as fileOpsDownload,
+  downloadFileDirect as fileOpsDownloadDirect,
   evictLocal as fileOpsEvictLocal,
 } from "./file_ops";
 import {
@@ -73,6 +74,27 @@ export async function downloadFile(
     },
   );
   return { entry, outcome };
+}
+
+/**
+ * Download a file directly into the sync cache without requiring a manifest
+ * entry. Intended for first-time downloads from book detail before reconcile.
+ */
+export async function downloadFileDirect(
+  ctx: SyncTargetContext,
+  relativePath: string,
+): Promise<void> {
+  const outcome = await fileOpsDownloadDirect(ctx.backend, ctx.libraryCacheDirUri, relativePath);
+  await upsertFileState(
+    { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
+    relativePath,
+    {
+      localState: "present",
+      localBlake3: outcome.blake3,
+      localSize: outcome.size,
+      localMtime: outcome.mtimeMs,
+    },
+  );
 }
 
 /** Flip a path back to `remote_only` (local file removed, manifest preserved). */
