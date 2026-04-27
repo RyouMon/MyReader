@@ -1,6 +1,13 @@
 import { Directory, File, Paths } from "expo-file-system";
+import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
 import type { WebDavDataSource } from "../data/types";
+import {
+  canonicalRelativePathSegments,
+  encodeUrlPathFromChunks,
+  localCachedFileUri,
+  parentDirectoryUriForFileUri,
+} from "../utils/io";
 
 export type BackendKind = "webdav" | "local-direct";
 
@@ -9,6 +16,17 @@ export type RemoteStat = {
   /** mtime in ms; may be 0 when backend does not expose a modification date. */
   mtimeMs: number;
   exists: boolean;
+};
+
+export type DownloadRequest = {
+  url: string;
+  headers?: Record<string, string>;
+};
+
+export type UploadRequest = {
+  url: string;
+  method: "PUT";
+  headers?: Record<string, string>;
 };
 
 /**
@@ -25,25 +43,9 @@ export interface SyncBackend {
   writeBytes(relativePath: string, bytes: Uint8Array): Promise<void>;
   deleteRemote(relativePath: string): Promise<void>;
   statRemote(relativePath: string): Promise<RemoteStat>;
-  /**
-   * Materialize the remote bytes into a local file. Default implementations
-   * just read+write, but WebDAV can override with a streaming fetch later.
-   */
-  downloadToLocalFile(relativePath: string, localFileUri: string): Promise<number>;
-}
-
-function normalizeRelative(path: string): string {
-  const trimmed = path.trim().replace(/\\/g, "/");
-  return trimmed.replace(/^\/+/, "").replace(/\/+$/, "");
-}
-
-function joinUrl(base: string, ...segments: string[]): string {
-  const baseClean = base.replace(/\/+$/, "");
-  const tail = segments
-    .map((s) => s.trim().replace(/^\/+/, "").replace(/\/+$/, ""))
-    .filter(Boolean)
-    .join("/");
-  return tail ? `${baseClean}/${tail}` : baseClean;
+  getDownloadRequest(relativePath: string): DownloadRequest | null;
+  getUploadRequest(relativePath: string): UploadRequest | null;
+  prepareUpload?(relativePath: string): Promise<void>;
 }
 
 function encodeBasicAuth(username: string, password: string): string {
@@ -51,13 +53,6 @@ function encodeBasicAuth(username: string, password: string): string {
     return globalThis.btoa(`${username}:${password}`);
   }
   throw new Error("当前环境不支持 Basic Auth 编码");
-}
-
-function encodePathSegments(path: string): string {
-  return path
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
 }
 
 // ---------------------------- WebDAV backend ----------------------------
@@ -78,10 +73,27 @@ class WebDavBackend implements SyncBackend {
   }
 
   private urlFor(relativePath: string): string {
-    const rel = normalizeRelative(relativePath);
-    const encoded = encodePathSegments(rel);
-    const root = joinUrl(this.source.endpoint, this.source.rootPath ?? "", this.libraryRootPath);
+    const encoded = encodeUrlPathFromChunks(this.source.rootPath ?? "", this.libraryRootPath, relativePath);
+    const root = this.source.endpoint.replace(/\/+$/, "");
     return encoded ? `${root.replace(/\/+$/, "")}/${encoded}` : root;
+  }
+
+  getDownloadRequest(relativePath: string): DownloadRequest {
+    return {
+      url: this.urlFor(relativePath),
+      headers: this.authHeader(),
+    };
+  }
+
+  getUploadRequest(relativePath: string): UploadRequest {
+    return {
+      url: this.urlFor(relativePath),
+      method: "PUT",
+      headers: {
+        ...this.authHeader(),
+        "Content-Type": "application/octet-stream",
+      },
+    };
   }
 
   async readBytes(relativePath: string): Promise<Uint8Array> {
@@ -96,7 +108,7 @@ class WebDavBackend implements SyncBackend {
   }
 
   async writeBytes(relativePath: string, bytes: Uint8Array): Promise<void> {
-    await this.ensureParentDirectories(relativePath);
+    await this.prepareUpload(relativePath);
     const response = await fetch(this.urlFor(relativePath), {
       method: "PUT",
       headers: {
@@ -108,6 +120,10 @@ class WebDavBackend implements SyncBackend {
     if (!response.ok) {
       throw new Error(`WebDAV PUT 失败: ${response.status} ${relativePath}`);
     }
+  }
+
+  async prepareUpload(relativePath: string): Promise<void> {
+    await this.ensureParentDirectories(relativePath);
   }
 
   async deleteRemote(relativePath: string): Promise<void> {
@@ -139,22 +155,12 @@ class WebDavBackend implements SyncBackend {
     return { size, mtimeMs, exists: true };
   }
 
-  async downloadToLocalFile(relativePath: string, localFileUri: string): Promise<number> {
-    const bytes = await this.readBytes(relativePath);
-    const file = new File(localFileUri);
-    if (file.exists) file.delete();
-    file.create({ intermediates: true, overwrite: true });
-    file.write(bytes);
-    return bytes.byteLength;
-  }
-
   /**
    * WebDAV servers return 409 for PUT into missing directories; MKCOL each
    * parent segment until reaching the target so uploads stay idempotent.
    */
   private async ensureParentDirectories(relativePath: string): Promise<void> {
-    const rel = normalizeRelative(relativePath);
-    const parts = rel.split("/").filter(Boolean);
+    const parts = canonicalRelativePathSegments(relativePath);
     if (parts.length <= 1) return;
     let cursor = "";
     for (let i = 0; i < parts.length - 1; i += 1) {
@@ -180,19 +186,15 @@ class LocalDirectBackend implements SyncBackend {
   constructor(private readonly libraryRootUri: string) {}
 
   private fileFor(relativePath: string): File {
-    const segments = normalizeRelative(relativePath).split("/").filter(Boolean);
-    return new File(new Directory(this.libraryRootUri), ...segments);
+    return new File(localCachedFileUri(this.libraryRootUri, relativePath));
   }
 
-  private ensureParent(relativePath: string): void {
-    const segments = normalizeRelative(relativePath).split("/").filter(Boolean);
-    if (segments.length <= 1) return;
-    const parent = new Directory(
-      new Directory(this.libraryRootUri),
-      ...segments.slice(0, -1),
-    );
+  private async ensureParentAsync(relativePath: string): Promise<void> {
+    const parentUri = parentDirectoryUriForFileUri(this.fileFor(relativePath).uri);
+    if (!parentUri) return;
+    const parent = new Directory(parentUri);
     if (!parent.exists) {
-      parent.create({ idempotent: true, intermediates: true });
+      await makeDirectoryAsync(parent.uri, { intermediates: true });
     }
   }
 
@@ -205,16 +207,16 @@ class LocalDirectBackend implements SyncBackend {
   }
 
   async writeBytes(relativePath: string, bytes: Uint8Array): Promise<void> {
-    this.ensureParent(relativePath);
+    await this.ensureParentAsync(relativePath);
     const file = this.fileFor(relativePath);
-    if (file.exists) file.delete();
+    if (file.exists) await deleteAsync(file.uri, { idempotent: true });
     file.create({ intermediates: true, overwrite: true });
     file.write(bytes);
   }
 
   async deleteRemote(relativePath: string): Promise<void> {
     const file = this.fileFor(relativePath);
-    if (file.exists) file.delete();
+    if (file.exists) await deleteAsync(file.uri, { idempotent: true });
   }
 
   async statRemote(relativePath: string): Promise<RemoteStat> {
@@ -227,16 +229,12 @@ class LocalDirectBackend implements SyncBackend {
     };
   }
 
-  async downloadToLocalFile(relativePath: string, localFileUri: string): Promise<number> {
-    const source = this.fileFor(relativePath);
-    if (!source.exists) {
-      throw new Error(`本地源文件不存在: ${relativePath}`);
-    }
-    const dest = new File(localFileUri);
-    if (dest.exists) dest.delete();
-    dest.create({ intermediates: true, overwrite: true });
-    source.copy(dest);
-    return dest.size ?? source.size ?? 0;
+  getDownloadRequest(_relativePath: string): DownloadRequest | null {
+    return null;
+  }
+
+  getUploadRequest(_relativePath: string): UploadRequest | null {
+    return null;
   }
 }
 
@@ -267,16 +265,11 @@ export function buildBackend(options: BackendBuildOptions): SyncBackend {
  * local file URI where a relative path should live for this backend.
  */
 export function localFileUriFor(libraryCacheDirUri: string, relativePath: string): string {
-  const rel = normalizeRelative(relativePath);
-  const encoded = rel
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  return `${libraryCacheDirUri.replace(/\/+$/, "")}/${encoded}`;
+  return localCachedFileUri(libraryCacheDirUri, relativePath);
 }
 
-export function resolveLibraryCacheDir(libraryId: string): string {
-  const dir = new Directory(Paths.document, "library-files-cache", libraryId);
+export function resolveLibraryBooksDir(libraryId: string): string {
+  const dir = new Directory(Paths.document, "book-downloads", libraryId);
   if (!dir.exists) {
     dir.create({ idempotent: true, intermediates: true });
   }

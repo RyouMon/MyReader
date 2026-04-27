@@ -1,9 +1,8 @@
 import { File, Paths } from "expo-file-system";
 
-import { localFileUriFor } from "../sync/backend";
-
 import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
 import { openDatabaseFromUri } from "./sqlite";
+import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
 
 export function buildWebDavBookCoverUri(
   library: MobileLibrary,
@@ -85,15 +84,21 @@ function normalizeHrefPath(href: string) {
     return "";
   }
 
+  let pathname = trimmed;
   try {
-    return decodeURIComponent(new URL(trimmed).pathname);
+    pathname = new URL(trimmed).pathname;
   } catch {
-    return decodeURIComponent(trimmed);
+    pathname = trimmed;
   }
+
+  const plain = canonicalRelativePath(pathname);
+  return plain ? `/${plain}` : "/";
 }
 
 function buildUrl(source: WebDavDataSource, path = "") {
-  return `${normalizeBaseUrl(source.endpoint)}${normalizeRemotePath(source.rootPath ?? "")}${normalizeRemotePath(path)}`;
+  const baseUrl = normalizeBaseUrl(source.endpoint);
+  const encodedPath = encodeUrlPathFromChunks(source.rootPath ?? "", path);
+  return encodedPath ? `${baseUrl}/${encodedPath}` : baseUrl;
 }
 
 function buildAuthHeader(source: WebDavDataSource) {
@@ -253,64 +258,6 @@ export async function createWebDavLibraryFromPath(
   } finally {
     await db.closeAsync();
   }
-}
-
-export async function downloadWebDavBookFile(
-  library: MobileLibrary,
-  source: WebDavDataSource,
-  calibreBookId: number,
-  format: string,
-  localName?: string,
-  syncCacheDirUri?: string,
-): Promise<File> {
-  const db = await openDatabaseFromUri(library.metadataUri);
-
-  try {
-    const row = await db.getFirstAsync<{ path: string; name: string }>(
-      "SELECT b.path, d.name FROM books b JOIN data d ON d.book = b.id WHERE b.id = ? AND UPPER(d.format) = ?",
-      [calibreBookId, format.toUpperCase()]
-    );
-
-    if (!row) {
-      throw new Error(`格式 ${format} 在书库中未找到 (bookId=${calibreBookId})`);
-    }
-
-    const fileName = `${row.name}.${format.toLowerCase()}`;
-    const relativePath = `${row.path}/${fileName}`;
-
-    if (syncCacheDirUri) {
-      const cachedFile = new File(localFileUriFor(syncCacheDirUri, relativePath));
-      if (cachedFile.exists) {
-        return cachedFile;
-      }
-    }
-
-    const remotePath = `${library.sourcePath ?? library.path}/${relativePath}`;
-
-    const rand = Math.random().toString(36).slice(2, 10);
-    const ext = `.${format.toLowerCase()}`;
-    const safeLocal =
-      localName ?? `webdav-book-${source.id}-${calibreBookId}-${Date.now()}-${rand}${ext}`;
-
-    return downloadToCache(source, remotePath, safeLocal);
-  } finally {
-    await db.closeAsync();
-  }
-}
-
-/**
- * Downloads a book file from a WebDAV-backed Calibre library and returns raw bytes.
- *
- * Resolves the remote path from the SQLite metadata, then HTTP-GETs the file.
- */
-export async function downloadWebDavBookFileBytes(
-  library: MobileLibrary,
-  source: WebDavDataSource,
-  calibreBookId: number,
-  format: string
-): Promise<Uint8Array> {
-  const file = await downloadWebDavBookFile(library, source, calibreBookId, format);
-  return file.bytes();
 }
 
 export async function readBooksFromWebDavLibrary(

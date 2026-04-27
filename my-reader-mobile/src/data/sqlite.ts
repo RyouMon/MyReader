@@ -1,6 +1,8 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
 import { open, type DB, type Scalar } from "@op-engineering/op-sqlite";
 
+import { fileUriToNativeDirAndName, toNativeFilesystemPath } from "../utils/io";
+
 const APP_DB_NAME = "myreader.sqlite";
 const APP_DB_DIR_NAME = "app-db";
 let appDbInstance: DB | null = null;
@@ -22,19 +24,6 @@ export type OpenedDatabase = {
   execAsync(sql: string): Promise<void>;
   closeAsync(): Promise<void>;
 };
-
-function uriToDirAndName(fileUri: string): { dir: string; name: string } {
-  const withoutScheme = fileUri.replace(/^file:\/\//, "");
-  const decoded = decodeURIComponent(withoutScheme);
-  const lastSlash = decoded.lastIndexOf("/");
-  if (lastSlash <= 0) {
-    throw new Error(`无法解析数据库路径: ${fileUri}`);
-  }
-  return {
-    dir: decoded.slice(0, lastSlash),
-    name: decoded.slice(lastSlash + 1),
-  };
-}
 
 function wrapConnection(db: DB): OpenedDatabase {
   return {
@@ -67,7 +56,7 @@ function wrapConnection(db: DB): OpenedDatabase {
  * an app session, so short-lived opens are fine for ad-hoc reads.
  */
 export async function openDatabaseFromUri(uri: string): Promise<OpenedDatabase> {
-  const { dir, name } = uriToDirAndName(uri);
+  const { dir, name } = fileUriToNativeDirAndName(uri);
   const db = open({ name, location: dir });
   return wrapConnection(db);
 }
@@ -77,7 +66,7 @@ function ensureAppDbDirectory(): string {
   if (!baseDir.exists) {
     baseDir.create({ idempotent: true, intermediates: true });
   }
-  return decodeURIComponent(baseDir.uri.replace(/^file:\/\//, "")).replace(/\/$/, "");
+  return toNativeFilesystemPath(baseDir.uri).replace(/\/$/, "");
 }
 
 /**

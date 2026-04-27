@@ -52,6 +52,7 @@ const APP_BORDER = {
   dark: {
     default: "rgba(240, 235, 225, 0.10)",
     strong: "rgba(240, 235, 225, 0.20)",
+
   },
 } as const;
 

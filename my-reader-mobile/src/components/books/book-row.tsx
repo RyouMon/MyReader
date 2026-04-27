@@ -5,7 +5,7 @@ import type { BookItem } from "@/src/data/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
 import { ProgressBar } from "../ui/progress-bar";
-import { BookCover, type BookProgressSnapshot } from "./book-cover";
+import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 
 /**
  * Returns the mobile row status label for an optional progress snapshot.
@@ -31,12 +31,14 @@ export function BookRow({
   onPress,
   onMore,
   progress,
+  downloadStatus,
   horizontalPadding = 16,
 }: {
   book: BookItem;
   onPress?: () => void;
   onMore?: () => void;
   progress?: BookProgressSnapshot;
+  downloadStatus?: BookDownloadStatus;
   horizontalPadding?: number;
 }) {
   const palette = useThemePalette();
@@ -52,7 +54,14 @@ export function BookRow({
       underlayColor={palette.backgroundSecondary}
     >
       <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
-        <BookCover book={book} width={38} height={54} borderRadius={5} showTitle={false} />
+        <BookCover
+          book={book}
+          downloadStatus={downloadStatus}
+          width={38}
+          height={54}
+          borderRadius={5}
+          showTitle={false}
+        />
         <View className="min-w-0 flex-1">
           <Text selectable className="text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
             {book.title}

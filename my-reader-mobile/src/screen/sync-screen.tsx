@@ -14,7 +14,7 @@ import {
   SheetOption,
 } from "../components";
 import { DownloadButton } from "../sync/DownloadButton";
-import type { FileStateRow } from "../sync/file_state";
+import { useFileStateRevision, type FileStateRow } from "../sync/file_state";
 import {
   runSync,
   useSyncSchedulerStatus,
@@ -43,6 +43,7 @@ export default function SyncScreen() {
   const [targetInfo, setTargetInfo] = useState<SyncTargetInfo | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResult>(null);
+  const fileStateRevision = useFileStateRevision();
   const [testing, setTesting] = useState(false);
   const [rows, setRows] = useState<FileStateRow[]>([]);
   const [rowsLoading, setRowsLoading] = useState(false);
@@ -97,7 +98,7 @@ export default function SyncScreen() {
     setTestResult(null);
     void refreshTarget(selectedLibraryId);
     void refreshRows(selectedLibraryId);
-  }, [refreshRows, refreshTarget, selectedLibraryId]);
+  }, [fileStateRevision, refreshRows, refreshTarget, selectedLibraryId]);
 
   const handleTest = useCallback(async () => {
     if (!selectedLibraryId) return;

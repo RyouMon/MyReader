@@ -26,6 +26,7 @@ import type {
   ReadingLayout,
   ReaderTheme,
 } from "@/src/store/app-store.types";
+import { isFileUri } from "@/src/utils/io";
 
 /** 避免顶层 `import "react-native-pdf"`：会在加载时初始化 blob-util 原生模块；未 prebuild 时会导致 NativeEventEmitter 崩溃并令 lazy 得到 undefined。 */
 type PdfRefLike = { setPage(pageNumber: number): void };
@@ -53,10 +54,6 @@ export type NativePdfReaderProps = {
   contentInsetTop?: number;
   contentInsetBottom?: number;
 };
-
-function isLocalFileUri(uri: string): boolean {
-  return uri.startsWith("file://") || uri.startsWith("file:");
-}
 
 export default function NativePdfReader({
   pdfLocalUri,
@@ -259,7 +256,7 @@ export default function NativePdfReader({
     );
   }
 
-  if (!isLocalFileUri(pdfLocalUri)) {
+  if (!isFileUri(pdfLocalUri)) {
     return (
       <View style={[styles.centered, { width: screenWidth, height: screenHeight }]}>
         <View style={styles.errorCard}>

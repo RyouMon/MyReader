@@ -1,4 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system";
+import { toNativeFilesystemPath } from "../utils/io";
 
 export const READER_CACHE_ROOT = new Directory(Paths.cache, "myreader");
 export const READER_EXTRACTED_CACHE_DIR = new Directory(READER_CACHE_ROOT, "extracted");
@@ -9,6 +10,8 @@ type CacheFileStat = {
   size: number;
   modifiedAtMs: number;
 };
+
+const EXTRACTED_ARCHIVE_METADATA_FILE = ".myreader-comic-cache.json";
 
 /**
  * Ensures reader cache directories exist.
@@ -36,6 +39,22 @@ function collectFilesRecursively(dir: Directory, out: File[]): void {
       continue;
     }
     out.push(entry);
+  }
+}
+
+/**
+ * Recursively collects extracted cache directories carrying archive metadata.
+ */
+function collectArchiveMetadataFiles(dir: Directory, out: File[]): void {
+  if (!dir.exists) return;
+  for (const entry of dir.list()) {
+    if (entry instanceof Directory) {
+      collectArchiveMetadataFiles(entry, out);
+      continue;
+    }
+    if (entry.name === EXTRACTED_ARCHIVE_METADATA_FILE) {
+      out.push(entry);
+    }
   }
 }
 
@@ -73,6 +92,34 @@ export function clearAllReaderCaches(): void {
     READER_LOCAL_COPY_CACHE_DIR.delete();
   }
   ensureReaderCacheDirectories();
+}
+
+/**
+ * Deletes extracted reader caches that were derived from a removed archive URI.
+ */
+export async function clearExtractedReaderCachesForArchiveUri(archiveUri: string): Promise<void> {
+  ensureReaderCacheDirectories();
+  const targetPath = toNativeFilesystemPath(archiveUri);
+  const metadataFiles: File[] = [];
+  collectArchiveMetadataFiles(READER_EXTRACTED_CACHE_DIR, metadataFiles);
+
+  for (const metadataFile of metadataFiles) {
+    try {
+      const metadata = JSON.parse(await metadataFile.text()) as { archiveUri?: unknown };
+      if (typeof metadata.archiveUri !== "string") {
+        continue;
+      }
+      if (toNativeFilesystemPath(metadata.archiveUri) !== targetPath) {
+        continue;
+      }
+      const cacheDir = metadataFile.parentDirectory;
+      if (cacheDir?.exists) {
+        cacheDir.delete();
+      }
+    } catch {
+      continue;
+    }
+  }
 }
 
 /**

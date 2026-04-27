@@ -5,7 +5,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
 import { ProgressBar } from "../ui/progress-bar";
-import { BookCover, type BookProgressSnapshot } from "./book-cover";
+import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 
 /**
  * Renders the mobile cover-first book card.
@@ -16,12 +16,14 @@ export function BookCard({
   onPress,
   onMore,
   progress,
+  downloadStatus,
 }: {
   book: BookItem;
   width: number;
   onPress?: () => void;
   onMore?: () => void;
   progress?: BookProgressSnapshot;
+  downloadStatus?: BookDownloadStatus;
 }) {
   const palette = useThemePalette();
   const coverHeight = Math.round(width * 1.43);
@@ -43,7 +45,13 @@ export function BookCard({
           style={{ borderRadius: 10, overflow: "hidden" }}
         >
           <View>
-            <BookCover book={book} width={width} height={coverHeight} borderRadius={10} />
+            <BookCover
+              book={book}
+              downloadStatus={downloadStatus}
+              width={width}
+              height={coverHeight}
+              borderRadius={10}
+            />
           </View>
         </TouchableHighlight>
         {onMore ? (

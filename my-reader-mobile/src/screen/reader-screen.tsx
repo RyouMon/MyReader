@@ -1,5 +1,6 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { File } from "expo-file-system";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { resolveReadFormat } from "my-reader-tools/utils";
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
@@ -14,16 +15,21 @@ import {
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { readBookDetailFromMetadata, materializeBookFileToCache } from "@/src/data/calibre";
+import {
+  getBookFormatPaths,
+  materializeBookFileToCache,
+  readBookDetailFromMetadata,
+} from "@/src/data/calibre";
 import { extractEpubToCache } from "@/src/data/native-epub-cache";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
-import type { WebDavDataSource } from "@/src/data/types";
-import { downloadWebDavBookFile } from "@/src/data/webdav";
-import { resolveLibraryCacheDir } from "@/src/sync/backend";
+import type { MobileLibrary, WebDavDataSource } from "@/src/data/types";
+import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
+import { getFileState, type LocalState } from "@/src/sync/file_state";
 import { useThemePalette } from "@/src/design/tokens";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
 import { useLibraryStore } from "@/src/store/library-store";
+import { toFileUri } from "@/src/utils/io";
 import { Animated, Pressable, Text, View } from "@/tw";
 
 /** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
@@ -98,6 +104,69 @@ const ERROR_BACK_BUTTON_TEXT_COLOR = READER_CHROME.textStrong;
 const DOM_FALLBACK_PRIMARY_TEXT_COLOR = READER_CHROME.loadingIndicator;
 /** DOM 回退态次文案颜色。 */
 const DOM_FALLBACK_SECONDARY_TEXT_COLOR = READER_CHROME.textMuted;
+
+/**
+ * 判断 `file_state` 是否表示可直接使用本地下载文件。
+ */
+function isDownloadedLocalState(state: LocalState | null | undefined): boolean {
+  return state === "present" || state === "local_only" || state === "dirty_push";
+}
+
+/**
+ * 在交给原生阅读器前校验容器文件签名。
+ */
+async function hasExpectedReaderSignature(file: File, format: string): Promise<boolean> {
+  if (!file.exists || (file.size ?? 0) <= 0) return false;
+  const upper = format.toUpperCase();
+  if (upper !== "EPUB" && upper !== "CBZ" && upper !== "PDF") return true;
+  const bytes = await readFileHeaderBytes(file, upper === "PDF" ? 4 : 2);
+
+  if (upper === "PDF") {
+    return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  }
+  return bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+}
+
+/**
+ * 仅读取文件头字节用于签名判断，避免大文件整包读入导致内存峰值过高。
+ */
+async function readFileHeaderBytes(file: File, byteCount: number): Promise<Uint8Array> {
+  const safeByteCount = Math.max(0, byteCount | 0);
+  if (safeByteCount === 0) return new Uint8Array();
+  const handle = file.open();
+  try {
+    return handle.readBytes(safeByteCount);
+  } finally {
+    handle.close();
+  }
+}
+
+/**
+ * 解析 WebDAV 已下载格式对应的本地缓存文件。
+ */
+async function resolveDownloadedWebDavBookFile(input: {
+  libraryId: string;
+  dataSourceId: string;
+  cacheDirUri: string;
+  library: MobileLibrary;
+  calibreBookId: number;
+  format: string;
+}): Promise<File | null> {
+  const paths = await getBookFormatPaths(input.library, input.calibreBookId);
+  const match = paths.find((path) => path.format.toUpperCase() === input.format.toUpperCase());
+  if (!match) return null;
+
+  const state = await getFileState(
+    { dataSourceId: input.dataSourceId, libraryId: input.libraryId },
+    match.relativePath,
+  );
+  if (!isDownloadedLocalState(state?.localState)) return null;
+
+  const file = new File(localFileUriFor(input.cacheDirUri, match.relativePath));
+  if (await hasExpectedReaderSignature(file, input.format)) return file;
+  if (file.exists) file.delete();
+  return null;
+}
 
 type LoadState =
   | { status: "loading"; message: string }
@@ -240,7 +309,18 @@ export default function ReaderScreen() {
         const needsPdfNativePath = fmtUpper === "PDF";
         const needsEpubExtract = fmtUpper === "EPUB";
 
-        const syncCacheDirUri = webDavSource ? resolveLibraryCacheDir(currentLibrary.id) : undefined;
+        const syncCacheDirUri = webDavSource ? resolveLibraryBooksDir(currentLibrary.id) : undefined;
+        const downloadedWebDavBookFile =
+          webDavSource && syncCacheDirUri && currentLibrary.dataSourceId
+            ? await resolveDownloadedWebDavBookFile({
+                libraryId: currentLibrary.id,
+                dataSourceId: currentLibrary.dataSourceId,
+                cacheDirUri: syncCacheDirUri,
+                library: currentLibrary,
+                calibreBookId: calibreId,
+                format: fmt,
+              })
+            : null;
 
         const localBookFile = !webDavSource && needsNativeComicPath
           ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
@@ -251,19 +331,27 @@ export default function ReaderScreen() {
             : null;
         const webDavEpubFile =
           needsEpubExtract && webDavSource
-            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
+            ? downloadedWebDavBookFile
             : null;
         const webDavBookFile = webDavSource && needsNativeComicPath
-          ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
+          ? downloadedWebDavBookFile
           : null;
 
         const pdfLocalFile = needsPdfNativePath
           ? webDavSource
-            ? await downloadWebDavBookFile(currentLibrary, webDavSource, calibreId, fmt, undefined, syncCacheDirUri)
+            ? downloadedWebDavBookFile
             : await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-pdf")
           : null;
 
         const epubArchiveFile = localEpubFile ?? webDavEpubFile;
+        const requiredWebDavFile = webDavSource && (needsEpubExtract || needsNativeComicPath || needsPdfNativePath);
+        if (requiredWebDavFile && !downloadedWebDavBookFile) {
+          setLoadState({
+            status: "error",
+            message: "请先在书籍详情中下载该格式，再打开阅读。",
+          });
+          return;
+        }
 
         const extractedEpub =
           epubArchiveFile && needsEpubExtract
@@ -279,7 +367,7 @@ export default function ReaderScreen() {
         console.info("[mobile-reader] load:file-ready", {
           calibreId,
           format: fmtUpper,
-          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
+          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
           extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
           sourceType: webDavSource ? "webdav" : "local",
         });
@@ -287,7 +375,7 @@ export default function ReaderScreen() {
         console.info("[mobile-reader] load:reader-input-ready", {
           calibreId,
           format: fmtUpper,
-          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? null,
+          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
           layoutMode: detailLayoutMode,
           renderer:
             detailLayoutMode === "reflowable"
@@ -305,6 +393,8 @@ export default function ReaderScreen() {
           : epubArchiveFile
             ? `${calibreId}-${fmtUpper}-${epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`}`
             : `${calibreId}-${fmtUpper}-nohash`;
+        const bookArchiveOwned =
+          Boolean(localBookFile) || Boolean(needsPdfNativePath && !webDavSource && pdfLocalFile);
 
         setLoadState({
           status: "ready",
@@ -312,7 +402,7 @@ export default function ReaderScreen() {
           pdfLocalUri: needsPdfNativePath && pdfLocalFile ? pdfLocalFile.uri : null,
           bookArchiveUri: archiveFile?.uri ?? null,
           bookArchiveFingerprint,
-          bookArchiveOwned: Boolean(localBookFile) || Boolean(webDavBookFile) || Boolean(needsPdfNativePath && pdfLocalFile),
+          bookArchiveOwned,
           bookId: calibreId,
           format: fmt,
           title: detail.title,
@@ -370,13 +460,7 @@ export default function ReaderScreen() {
 
   /** DOM 阅读器内 `fetch(file:)` 不可用，经 Expo DOM 桥接用原生读文件（返回 Base64）。 */
   const readBinaryFromFileUrl = useCallback(async (url: string): Promise<string> => {
-    const raw = url.trim();
-    const uri = raw.startsWith("file:")
-      ? raw
-      : raw.startsWith("/")
-        ? `file://${raw}`
-        : `file:///${raw.replace(/\\/g, "/")}`;
-    return readAsStringAsync(uri, { encoding: EncodingType.Base64 });
+    return readAsStringAsync(toFileUri(url), { encoding: EncodingType.Base64 });
   }, []);
 
   const handleBack = useCallback(() => {

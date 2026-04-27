@@ -2,6 +2,7 @@ import { Directory, File } from "expo-file-system";
 import { unzip } from "react-native-zip-archive";
 
 import { READER_EXTRACTED_CACHE_DIR, ensureReaderCacheDirectories } from "./cache";
+import { toFileUri, toNativeFilesystemPath } from "../utils/io";
 
 const EPUB_CACHE_ROOT = new Directory(READER_EXTRACTED_CACHE_DIR, "epub");
 const EPUB_ARCHIVE_DIR = new Directory(EPUB_CACHE_ROOT, "archives");
@@ -32,16 +33,6 @@ function createCacheKey(bookId: number, format: string, fingerprint: string): st
 }
 
 /**
- * Converts unzip return path to file URL.
- */
-function ensureFileUrl(pathOrUrl: string): string {
-  const normalized = pathOrUrl.replace(/\\/g, "/");
-  if (normalized.startsWith("file://")) return normalized;
-  if (normalized.startsWith("/")) return `file://${normalized}`;
-  return `file:///${normalized}`;
-}
-
-/**
  * Extracts EPUB archive using native unzip into managed cache directory.
  */
 export async function extractEpubToCache(input: {
@@ -69,9 +60,9 @@ export async function extractEpubToCache(input: {
   if (!archiveFile.exists) {
     throw new Error(`EPUB archive not found: ${input.archiveUri}`);
   }
-  const destination = await unzip(archiveFile.uri, extractionDir.uri);
+  const destination = await unzip(toNativeFilesystemPath(archiveFile.uri), toNativeFilesystemPath(extractionDir.uri));
   return {
     cacheKey,
-    extractionUri: ensureFileUrl(destination),
+    extractionUri: toFileUri(destination),
   };
 }

@@ -5,7 +5,7 @@ import type { NativeStackNavigationOptions } from "@react-navigation/native-stac
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import type { BookDetail } from "my-reader-tools/types/book";
 import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
-import { Share, useWindowDimensions } from "react-native";
+import { Alert, Share, useWindowDimensions } from "react-native";
 import { GestureDetector } from "react-native-gesture-handler";
 import Animated, { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
@@ -17,12 +17,19 @@ import { Button, EmptyState, SectionCard, SettingsRow } from "../components";
 import { HeaderToolbar, type HeaderToolbarAction } from "../components/ui/header-toolbar";
 import { buildCoverUri, getBookFormatPaths, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
-import { getFileState, type LocalState } from "../sync/file_state";
-import { useSyncActions } from "../sync/useSyncActions";
 import { buildWebDavBookCoverUri } from "../data/webdav";
 import { useDetailSwipePager } from "../hooks/use-detail-swipe-pager";
 import { useAppStore } from "../store/app-store";
 import { useLibraryStore } from "../store/library-store";
+import {
+  cancel,
+  enqueue,
+  useDownloadStatusTasks,
+  useDownloadTaskForBookFormat,
+  useDownloadTaskForPath,
+} from "../sync/download-store";
+import { getFileState, useFileStateRevision, type LocalState } from "../sync/file_state";
+import { useSyncActions } from "../sync/useSyncActions";
 
 const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
@@ -572,43 +579,207 @@ function BookDetailContent({
   }, [detail]);
 
   const [formatInfoMap, setFormatInfoMap] = useState<Record<string, FormatInfo>>({});
-  const [downloadingFormats, setDownloadingFormats] = useState<Set<string>>(new Set());
   const syncActions = useSyncActions();
+  const fileStateRevision = useFileStateRevision();
+  const downloadStatusTasks = useDownloadStatusTasks();
+  const alertedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
+  const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
+  const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!detail || activeLibrary.sourceType !== "webdav" || !activeLibrary.dataSourceId) {
+      console.info("Start to skip loading format file state because this library is not WebDAV-ready, params:", {
+        bookId,
+        libraryId: activeLibrary.id,
+        sourceType: activeLibrary.sourceType ?? "local",
+        hasDataSourceId: Boolean(activeLibrary.dataSourceId),
+      });
       setFormatInfoMap({});
       return;
     }
+    let cancelled = false;
     const scope = { dataSourceId: activeLibrary.dataSourceId, libraryId: activeLibrary.id };
-    void getBookFormatPaths(activeLibrary, detail.id).then(async (paths) => {
-      const map: Record<string, FormatInfo> = {};
-      for (const { format, relativePath } of paths) {
-        const row = await getFileState(scope, relativePath);
-        map[format] = { relativePath, localState: row?.localState ?? null };
-      }
-      setFormatInfoMap(map);
+    console.info("Start to load format file state for book detail, params:", {
+      bookId,
+      calibreBookId: detail.id,
+      libraryId: activeLibrary.id,
+      dataSourceId: activeLibrary.dataSourceId,
     });
-  }, [detail?.id, activeLibrary.id, activeLibrary.sourceType, activeLibrary.dataSourceId]);
+    void getBookFormatPaths(activeLibrary, detail.id)
+      .then(async (paths) => {
+        console.info("Success to resolve format paths for book detail:", {
+          bookId,
+          libraryId: activeLibrary.id,
+          formats: paths.map((item) => ({
+            format: item.format,
+            relativePath: item.relativePath,
+          })),
+        });
+        const map: Record<string, FormatInfo> = {};
+        for (const { format, relativePath } of paths) {
+          const row = await getFileState(scope, relativePath);
+          console.info("Success to read file state for book format:", {
+            bookId,
+            libraryId: activeLibrary.id,
+            format,
+            relativePath,
+            localState: row?.localState ?? null,
+            localSize: row?.localSize ?? null,
+          });
+          map[format] = { relativePath, localState: row?.localState ?? null };
+        }
+        if (cancelled) return;
+        setFormatInfoMap(map);
+        console.info("Success to load format file state for book detail:", {
+          bookId,
+          libraryId: activeLibrary.id,
+          formats: Object.keys(map),
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to load format file state for book detail:", {
+          bookId,
+          libraryId: activeLibrary.id,
+          error: err,
+        });
+        if (!cancelled) {
+          Alert.alert("读取文件状态失败", err instanceof Error ? err.message : String(err));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLibrary, bookId, detail, fileStateRevision]);
 
-  const handleDownloadFormat = useCallback(async (format: string) => {
+  useEffect(() => {
+    if (!detail) return;
+    const relevantTasks = downloadStatusTasks.filter(
+      (task) =>
+        task.libraryId === activeLibrary.id &&
+        (task.bookId === bookId ||
+          Object.values(formatInfoMap).some((info) => info.relativePath === task.relativePath)),
+    );
+
+    for (const task of relevantTasks) {
+      if (task.status === "error" && !alertedDownloadTaskIdsRef.current.has(task.id)) {
+        alertedDownloadTaskIdsRef.current.add(task.id);
+        console.error("Failed to download book format from task:", {
+          taskId: task.id,
+          bookId,
+          libraryId: activeLibrary.id,
+          format: task.format ?? null,
+          relativePath: task.relativePath,
+          error: task.error,
+        });
+        Alert.alert("下载失败", task.error ?? `文件下载失败：${task.relativePath}`);
+      }
+    }
+
+    const doneTasks = relevantTasks.filter(
+      (task) =>
+        task.status === "done" &&
+        !consumedDownloadTaskIdsRef.current.has(task.id) &&
+        !deletedLocalPathKeysRef.current.has(`${task.libraryId}\u0000${task.relativePath}`),
+    );
+    if (doneTasks.length === 0) return;
+
+    setFormatInfoMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const task of doneTasks) {
+        const format = task.format ?? Object.entries(prev).find(([, info]) => info.relativePath === task.relativePath)?.[0];
+        if (!format) continue;
+        consumedDownloadTaskIdsRef.current.add(task.id);
+        const current = next[format];
+        if (current?.localState === "present" && current.relativePath === task.relativePath) continue;
+        next[format] = {
+          relativePath: current?.relativePath ?? task.relativePath,
+          localState: "present",
+        };
+        changed = true;
+        console.info("Success to mark book format as downloaded after task finished:", {
+          taskId: task.id,
+          bookId,
+          libraryId: activeLibrary.id,
+          format,
+          relativePath: task.relativePath,
+        });
+      }
+      return changed ? next : prev;
+    });
+  }, [activeLibrary.id, bookId, detail, downloadStatusTasks, formatInfoMap]);
+
+  const handleDownloadFormat = useCallback((format: string) => {
+    const info = formatInfoMap[format];
+    if (!info || !detail) {
+      console.warn("Failed to start download because format path is missing:", {
+        bookId,
+        libraryId: activeLibrary.id,
+        format,
+        knownFormats: Object.keys(formatInfoMap),
+      });
+      Alert.alert("无法开始下载", `没有找到 ${format} 对应的文件路径`);
+      return;
+    }
+    const taskId = enqueue({
+      libraryId: activeLibrary.id,
+      bookId,
+      format,
+      relativePath: info.relativePath,
+      label: `${detail.title} · ${format}`,
+    });
+    deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}\u0000${info.relativePath}`);
+    console.info("Start to download book format from detail screen, params:", {
+      taskId,
+      bookId,
+      libraryId: activeLibrary.id,
+      format,
+      relativePath: info.relativePath,
+    });
+  }, [formatInfoMap, activeLibrary.id, bookId, detail]);
+
+  const handleDeleteFormat = useCallback(async (format: string) => {
     const info = formatInfoMap[format];
     if (!info) return;
-    setDownloadingFormats((prev) => new Set(prev).add(format));
+    deletedLocalPathKeysRef.current.add(`${activeLibrary.id}\u0000${info.relativePath}`);
+    for (const task of downloadStatusTasks) {
+      if (
+        task.libraryId === activeLibrary.id &&
+        task.relativePath === info.relativePath &&
+        task.status === "done"
+      ) {
+        consumedDownloadTaskIdsRef.current.add(task.id);
+      }
+    }
+    console.info("Start to remove downloaded book format from detail screen, params:", {
+      bookId,
+      libraryId: activeLibrary.id,
+      format,
+      relativePath: info.relativePath,
+    });
     try {
-      await syncActions.downloadFileDirect(activeLibrary.id, info.relativePath);
+      await syncActions.evictLocal(activeLibrary.id, info.relativePath);
       setFormatInfoMap((prev) => ({
         ...prev,
-        [format]: { ...prev[format]!, localState: "present" },
+        [format]: { ...prev[format]!, localState: "remote_only" },
       }));
-    } finally {
-      setDownloadingFormats((prev) => {
-        const next = new Set(prev);
-        next.delete(format);
-        return next;
+      console.info("Success to remove downloaded book format from detail screen:", {
+        bookId,
+        libraryId: activeLibrary.id,
+        format,
+        relativePath: info.relativePath,
       });
+    } catch (err) {
+      console.error("Failed to remove downloaded book format from detail screen:", {
+        bookId,
+        libraryId: activeLibrary.id,
+        format,
+        relativePath: info.relativePath,
+        error: err,
+      });
+      Alert.alert("删除本地文件失败", err instanceof Error ? err.message : String(err));
     }
-  }, [formatInfoMap, activeLibrary.id, syncActions]);
+  }, [formatInfoMap, downloadStatusTasks, activeLibrary.id, bookId, syncActions]);
 
   if (loadingDetail) {
     return (
@@ -691,11 +862,12 @@ function BookDetailContent({
           <FormatSection
             book={book}
             colors={colors}
-            downloadingFormats={downloadingFormats}
             formatInfoMap={formatInfoMap}
             formatSizeMap={formatSizeMap}
             isNetworkSource={activeLibrary.sourceType === "webdav"}
-            onDownloadFormat={(format) => void handleDownloadFormat(format)}
+            libraryId={activeLibrary.id}
+            onDeleteFormat={(format) => void handleDeleteFormat(format)}
+            onDownloadFormat={handleDownloadFormat}
             onReadFormat={(format) => {
               onSelectFormat(bookId, format);
               openReader(format);
@@ -870,10 +1042,11 @@ type FormatInfo = { relativePath: string; localState: LocalState | null };
 function FormatSection({
   book,
   colors,
-  downloadingFormats,
   formatInfoMap,
   formatSizeMap,
   isNetworkSource,
+  libraryId,
+  onDeleteFormat,
   onDownloadFormat,
   onReadFormat,
   progress,
@@ -883,10 +1056,11 @@ function FormatSection({
 }: {
   book: BookDetail;
   colors: DetailColors;
-  downloadingFormats: Set<string>;
   formatInfoMap: Record<string, FormatInfo>;
   formatSizeMap: Map<string, number>;
   isNetworkSource: boolean;
+  libraryId: string;
+  onDeleteFormat: (format: string) => void;
   onDownloadFormat: (format: string) => void;
   onReadFormat: (format: string) => void;
   progress: number;
@@ -908,16 +1082,19 @@ function FormatSection({
             <FormatCard
               key={upper}
               colors={colors}
-              downloading={downloadingFormats.has(upper)}
               fileLocalState={formatInfo?.localState ?? null}
+              bookId={String(book.id)}
               format={upper}
               isNetworkSource={isNetworkSource}
               isReadable={readableFormatSet.has(upper)}
               isSelected={selectedFormatKey === upper}
+              libraryId={libraryId}
+              onDelete={() => onDeleteFormat(upper)}
               onDownload={() => onDownloadFormat(upper)}
               onRead={() => onReadFormat(upper)}
               progress={progress}
               progressLabel={progressLabel}
+              relativePath={formatInfo?.relativePath}
               size={formatSizeMap.get(upper) ?? 0}
             />
           );
@@ -927,39 +1104,57 @@ function FormatSection({
   );
 }
 
-/**
- * Renders one file format option. Shows a download button for WebDAV libraries
- * when the file hasn't been cached locally yet.
- */
 function FormatCard({
+  bookId,
   colors,
-  downloading,
   fileLocalState,
   format,
   isNetworkSource,
   isReadable,
   isSelected,
+  libraryId,
+  onDelete,
   onDownload,
   onRead,
   progress,
   progressLabel,
+  relativePath,
   size,
 }: {
+  bookId: string;
   colors: DetailColors;
-  downloading: boolean;
   fileLocalState: LocalState | null;
   format: string;
   isNetworkSource: boolean;
   isReadable: boolean;
   isSelected: boolean;
+  libraryId: string;
+  onDelete: () => void;
   onDownload: () => void;
   onRead: () => void;
   progress: number;
   progressLabel: string;
+  relativePath: string | undefined;
   size: number;
 }) {
-  const showDownload = isReadable && isNetworkSource && fileLocalState !== "present";
-  const actionLabel = showDownload ? "下载" : isReadable ? (progress > 0 ? "继续阅读" : "开始阅读") : "不支持阅读";
+  const taskByPath = useDownloadTaskForPath(libraryId, relativePath ?? "");
+  const taskByFormat = useDownloadTaskForBookFormat(libraryId, bookId, format);
+  const candidateTask = taskByPath ?? taskByFormat;
+  const activeTask =
+    candidateTask?.status === "queued" ||
+    candidateTask?.status === "starting" ||
+    candidateTask?.status === "downloading"
+      ? candidateTask
+      : undefined;
+  const isDownloading =
+    activeTask?.status === "starting" ||
+    activeTask?.status === "downloading" ||
+    activeTask?.status === "queued";
+  const downloadProgress = activeTask?.progress ?? 0;
+  const effectiveLocalState = fileLocalState;
+  const isPresent = effectiveLocalState === "present";
+  const showDownload = isReadable && isNetworkSource && Boolean(relativePath) && !isPresent && !activeTask;
+  const readActionLabel = progress > 0 ? "继续阅读" : "开始阅读";
 
   return (
     <View className="w-[196px] gap-3 rounded-2xl p-4" style={{ backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }}>
@@ -978,7 +1173,23 @@ function FormatCard({
         {formatFileSize(size)}
         {FORMAT_LABELS[format] ? ` · ${FORMAT_LABELS[format]}` : ""}
       </Text>
-      {isReadable ? (
+
+      {isDownloading ? (
+        <View className="gap-1">
+          <View className="flex-row items-center gap-2">
+            <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.progressTrack }}>
+              <View className="h-full rounded-full" style={{ backgroundColor: colors.accent, width: `${Math.max(0, Math.min(downloadProgress, 1)) * 100}%` }} />
+            </View>
+            <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+              {activeTask?.status === "queued"
+                ? "排队中"
+                : activeTask?.status === "starting"
+                  ? "准备中"
+                  : `${Math.round(downloadProgress * 100)}%`}
+            </Text>
+          </View>
+        </View>
+      ) : isReadable ? (
         <View className="flex-row items-center gap-2">
           <View className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: colors.progressTrack }}>
             <View className="h-full rounded-full" style={{ backgroundColor: colors.accent, width: `${Math.max(0, Math.min(progress, 1)) * 100}%` }} />
@@ -992,23 +1203,81 @@ function FormatCard({
           未开始阅读
         </Text>
       )}
-      <Button
-        accessibilityLabel={`${actionLabel} ${format}`}
-        className="rounded-2xl"
-        colors={{
-          backgroundColor: isReadable ? colors.accent : colors.card,
-          borderColor: isReadable ? colors.accent : colors.text,
-          textColor: isReadable ? colors.accentText : colors.text,
-          underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
-        }}
-        disabled={!isReadable}
-        loading={downloading}
-        onPress={showDownload ? onDownload : onRead}
-        size="lg"
-        textStyle={{ fontFamily: FONT_UI }}
-        title={actionLabel}
-        variant={isReadable ? "primary" : "outline"}
-      />
+
+      {isDownloading ? (
+        <Pressable
+          accessibilityLabel={`取消下载 ${format}`}
+          accessibilityRole="button"
+          className="items-center rounded-2xl py-3"
+          onPress={() => activeTask && cancel(activeTask.id)}
+          style={{ backgroundColor: colors.disabledBg, borderColor: colors.border, borderWidth: 1 }}
+        >
+          <Text className="text-[15px]" style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "600" }}>
+            取消
+          </Text>
+        </Pressable>
+      ) : showDownload ? (
+        <Button
+          accessibilityLabel={`下载 ${format}`}
+          className="rounded-2xl"
+          colors={{
+            backgroundColor: colors.accent,
+            borderColor: colors.accent,
+            textColor: colors.accentText,
+            underlayColor: colors.accentPressed,
+          }}
+          onPress={onDownload}
+          size="lg"
+          textStyle={{ fontFamily: FONT_UI }}
+          title="下载"
+          variant="primary"
+        />
+      ) : isPresent ? (
+        <View className="gap-2">
+          <Button
+            accessibilityLabel={`${readActionLabel} ${format}`}
+            className="rounded-2xl"
+            colors={{
+              backgroundColor: isReadable ? colors.accent : colors.card,
+              borderColor: isReadable ? colors.accent : colors.text,
+              textColor: isReadable ? colors.accentText : colors.text,
+              underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
+            }}
+            onPress={onRead}
+            size="lg"
+            textStyle={{ fontFamily: FONT_UI }}
+            title={readActionLabel}
+            variant="primary"
+          />
+          <Pressable
+            accessibilityLabel={`删除本地文件 ${format}`}
+            accessibilityRole="button"
+            className="items-center py-1"
+            onPress={onDelete}
+          >
+            <Text className="text-[13px]" style={{ color: colors.muted, fontFamily: FONT_UI }}>
+              删除本地文件
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Button
+          accessibilityLabel={`${readActionLabel} ${format}`}
+          className="rounded-2xl"
+          colors={{
+            backgroundColor: isReadable ? colors.accent : colors.card,
+            borderColor: isReadable ? colors.accent : colors.text,
+            textColor: isReadable ? colors.accentText : colors.text,
+            underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
+          }}
+          disabled={!isReadable}
+          onPress={onRead}
+          size="lg"
+          textStyle={{ fontFamily: FONT_UI }}
+          title={isReadable ? readActionLabel : "不支持阅读"}
+          variant={isReadable ? "primary" : "outline"}
+        />
+      )}
     </View>
   );
 }

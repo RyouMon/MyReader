@@ -1,17 +1,21 @@
 import type { DataSource, MobileLibrary } from "../data/types";
 
-import { resolveLibraryCacheDir } from "./backend";
+import { resolveLibraryBooksDir } from "./backend";
 import { getOrCreateDeviceId } from "./device";
 import {
   deleteFileState,
   type FileStateRow,
   listFileStates,
   upsertFileState,
+  upsertFileStates,
 } from "./file_state";
 import {
   deleteEverywhere as fileOpsDeleteEverywhere,
   downloadFile as fileOpsDownload,
   downloadFileDirect as fileOpsDownloadDirect,
+  type BackgroundDownloadOptions,
+  type DownloadOutcome,
+  downloadFileDirectWithProgress as fileOpsDownloadDirectWithProgress,
   evictLocal as fileOpsEvictLocal,
 } from "./file_ops";
 import {
@@ -28,6 +32,12 @@ export type SyncTargetContext = ResolvedSyncTarget & {
   deviceId: string;
 };
 
+const RECONCILE_BATCH_SIZE = 100;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 /**
  * Lift a library + datasources into a self-contained sync context that owns
  * its backend, manifest, and cache directory. Cheap-enough to call per action;
@@ -37,15 +47,26 @@ export async function openSyncContext(
   library: MobileLibrary,
   dataSources: DataSource[],
 ): Promise<SyncTargetContext> {
+  console.info("Start to open sync context, params:", {
+    libraryId: library.id,
+    sourceType: library.sourceType ?? "local",
+    dataSourceId: library.dataSourceId ?? null,
+  });
   const deviceId = await getOrCreateDeviceId();
   const resolved = await resolveSyncTarget(library, dataSources);
   const manifest = await loadManifest(resolved.backend, deviceId);
+  console.info("Success to open sync context:", {
+    libraryId: resolved.libraryId,
+    dataSourceId: resolved.dataSourceId,
+    backendKind: resolved.backend.kind,
+    manifestEntries: manifest.entries.length,
+  });
   return { ...resolved, manifest, deviceId };
 }
 
 export type DownloadResult = {
   entry: ManifestEntry;
-  outcome: { blake3: string; size: number; mtimeMs: number };
+  outcome: DownloadOutcome;
 };
 
 /** Download + record `present` state so the UI button reflects reality. */
@@ -53,8 +74,17 @@ export async function downloadFile(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<DownloadResult> {
+  console.info("Start to download manifest-backed file, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+  });
   const entry = findEntry(ctx.manifest, relativePath);
   if (!entry) {
+    console.error("Failed to find manifest entry before download:", {
+      libraryId: ctx.libraryId,
+      relativePath,
+    });
     throw new Error(`manifest 中未登记该路径: ${relativePath}`);
   }
   const outcome = await fileOpsDownload(
@@ -63,6 +93,13 @@ export async function downloadFile(
     ctx.libraryCacheDirUri,
     relativePath,
   );
+  console.info("Start to save file state after manifest-backed download, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+    localState: "present",
+    size: outcome.size,
+  });
   await upsertFileState(
     { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
     relativePath,
@@ -73,6 +110,12 @@ export async function downloadFile(
       localMtime: outcome.mtimeMs,
     },
   );
+  console.info("Success to download manifest-backed file:", {
+    libraryId: ctx.libraryId,
+    relativePath,
+    size: outcome.size,
+    blake3: outcome.blake3,
+  });
   return { entry, outcome };
 }
 
@@ -84,7 +127,19 @@ export async function downloadFileDirect(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<void> {
+  console.info("Start to download file directly, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+  });
   const outcome = await fileOpsDownloadDirect(ctx.backend, ctx.libraryCacheDirUri, relativePath);
+  console.info("Start to save file state after direct download, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+    localState: "present",
+    size: outcome.size,
+  });
   await upsertFileState(
     { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
     relativePath,
@@ -95,6 +150,55 @@ export async function downloadFileDirect(
       localMtime: outcome.mtimeMs,
     },
   );
+  console.info("Success to download file directly:", {
+    libraryId: ctx.libraryId,
+    relativePath,
+    size: outcome.size,
+    blake3: outcome.blake3,
+  });
+}
+
+export async function downloadFileDirectWithProgress(
+  ctx: SyncTargetContext,
+  relativePath: string,
+  onProgress?: (received: number, total: number) => void,
+  options: BackgroundDownloadOptions = {},
+): Promise<void> {
+  console.info("Start to download file directly with progress, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+  });
+  const outcome = await fileOpsDownloadDirectWithProgress(
+    ctx.backend,
+    ctx.libraryCacheDirUri,
+    relativePath,
+    onProgress,
+    options,
+  );
+  console.info("Start to save file state after progress download, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+    localState: "present",
+    size: outcome.size,
+  });
+  await upsertFileState(
+    { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
+    relativePath,
+    {
+      localState: "present",
+      localBlake3: outcome.blake3,
+      localSize: outcome.size,
+      localMtime: outcome.mtimeMs,
+    },
+  );
+  console.info("Success to download file directly with progress:", {
+    libraryId: ctx.libraryId,
+    relativePath,
+    size: outcome.size,
+    blake3: outcome.blake3,
+  });
 }
 
 /** Flip a path back to `remote_only` (local file removed, manifest preserved). */
@@ -102,12 +206,21 @@ export async function evictLocalFile(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<void> {
-  fileOpsEvictLocal(ctx.libraryCacheDirUri, relativePath);
+  console.info("Start to remove local cached file, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+  });
+  await fileOpsEvictLocal(ctx.libraryCacheDirUri, relativePath);
   await upsertFileState(
     { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
     relativePath,
     { localState: "remote_only", localBlake3: null, localSize: null, localMtime: null },
   );
+  console.info("Success to remove local cached file:", {
+    libraryId: ctx.libraryId,
+    relativePath,
+  });
 }
 
 /** Delete everywhere: local + remote + manifest entry + file_state row. */
@@ -140,12 +253,18 @@ export async function reconcileFileStates(
   const scope = { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId };
   const existing = await listFileStates(scope);
   const existingByPath = new Map(existing.map((row) => [row.path, row]));
+  const inserts = ctx.manifest.entries
+    .filter((entry) => !existingByPath.has(entry.path))
+    .map((entry) => ({
+      path: entry.path,
+      patch: { localState: "remote_only" as const },
+    }));
 
-  for (const entry of ctx.manifest.entries) {
-    if (!existingByPath.has(entry.path)) {
-      await upsertFileState(scope, entry.path, { localState: "remote_only" });
-    }
+  for (let index = 0; index < inserts.length; index += RECONCILE_BATCH_SIZE) {
+    await upsertFileStates(scope, inserts.slice(index, index + RECONCILE_BATCH_SIZE));
+    await yieldToEventLoop();
   }
+
   for (const row of existing) {
     const stillInManifest = findEntry(ctx.manifest, row.path);
     if (!stillInManifest && row.localState === "remote_only") {
@@ -173,7 +292,7 @@ export async function listBackedFiles(
  * directory without touching network state.
  */
 export function getLibraryCacheDirUri(libraryId: string): string {
-  return resolveLibraryCacheDir(libraryId);
+  return resolveLibraryBooksDir(libraryId);
 }
 
 /** Persist an updated manifest after mutating entries in-place. */

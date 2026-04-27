@@ -5,6 +5,11 @@ import { Text, View } from "@/tw";
 
 import { Button } from "../components/ui/button";
 
+import {
+  enqueue,
+  useDownloadStatusTasks,
+  useDownloadTaskForPath,
+} from "./download-store";
 import type { FileStateRow } from "./file_state";
 import { useSyncActions } from "./useSyncActions";
 
@@ -37,11 +42,16 @@ export function DownloadButton({
 }: DownloadButtonProps) {
   const palette = useThemePalette();
   const actions = useSyncActions();
+  const downloadTask = useDownloadTaskForPath(libraryId, relativePath);
+  const downloadStatusTask = useDownloadStatusTasks().find(
+    (task) => task.libraryId === libraryId && task.relativePath === relativePath,
+  );
   const [state, setState] = useState<DownloadButtonState>(initialState);
   const [busy, setBusy] = useState<BusyKind>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const observedDownloadTaskIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setState(initialState);
@@ -60,20 +70,6 @@ export function DownloadButton({
     },
     [onStateChange],
   );
-
-  const handleDownload = useCallback(async () => {
-    if (busy) return;
-    setErrorMessage(null);
-    setBusy("download");
-    try {
-      await actions.downloadFile(libraryId, relativePath);
-      commit("present");
-    } catch (err) {
-      setErrorMessage(describeError(err));
-    } finally {
-      setBusy(null);
-    }
-  }, [actions, busy, commit, libraryId, relativePath]);
 
   const handleEvict = useCallback(async () => {
     if (busy) return;
@@ -112,15 +108,66 @@ export function DownloadButton({
   }, [actions, busy, commit, confirmDelete, libraryId, relativePath]);
 
   const isPresent = state === "present" || state === "dirty_push";
+  const isDownloadActive =
+    downloadTask?.status === "queued" ||
+    downloadTask?.status === "starting" ||
+    downloadTask?.status === "downloading";
+  const downloadLabel =
+    downloadTask?.status === "queued"
+      ? "排队中"
+      : downloadTask?.status === "starting"
+        ? "准备中"
+        : downloadTask?.status === "downloading"
+          ? "下载中"
+          : busy === "download"
+            ? "下载中"
+            : "下载";
+
+  useEffect(() => {
+    if (isDownloadActive && downloadTask) {
+      observedDownloadTaskIdRef.current = downloadTask.id;
+    }
+  }, [downloadTask, isDownloadActive]);
+
+  useEffect(() => {
+    if (!downloadStatusTask || downloadStatusTask.id !== observedDownloadTaskIdRef.current) return;
+    if (downloadStatusTask.status === "done" && state !== "present") {
+      observedDownloadTaskIdRef.current = null;
+      commit("present");
+      setBusy(null);
+      return;
+    }
+    if (downloadStatusTask.status === "error") {
+      observedDownloadTaskIdRef.current = null;
+      setErrorMessage(downloadStatusTask.error ?? `文件下载失败：${relativePath}`);
+      setBusy(null);
+      return;
+    }
+    if (downloadStatusTask.status === "cancelled") {
+      observedDownloadTaskIdRef.current = null;
+      setBusy(null);
+    }
+  }, [commit, downloadStatusTask, relativePath, state]);
+
+  const handleDownload = useCallback(() => {
+    if (busy || isDownloadActive) return;
+    setErrorMessage(null);
+    setBusy("download");
+    observedDownloadTaskIdRef.current = enqueue({
+      libraryId,
+      relativePath,
+      label: relativePath,
+    });
+  }, [busy, isDownloadActive, libraryId, relativePath]);
 
   return (
     <View className="flex-row items-center" style={{ columnGap: 8 }}>
       {!isLocalDirect && !isPresent && (
         <Pill
-          label={busy === "download" ? "下载中" : "下载"}
+          label={downloadLabel}
           onPress={handleDownload}
-          disabled={busy !== null}
-          busy={busy === "download"}
+          disabled={busy !== null || isDownloadActive}
+          busy={busy === "download" || isDownloadActive}
           textColor={palette.text}
           backgroundColor={palette.backgroundSecondary}
           borderColor={palette.border}

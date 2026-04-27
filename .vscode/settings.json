@@ -11,5 +11,6 @@
     },
     "rust-analyzer.linkedProjects": [
         "my-reader/src-tauri/Cargo.toml"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

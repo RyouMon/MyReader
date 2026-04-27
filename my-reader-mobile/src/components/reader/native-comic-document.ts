@@ -3,10 +3,13 @@ import { Platform } from "react-native";
 import { unzip } from "react-native-zip-archive";
 import { buildComicManifest, type ComicManifest } from "my-reader-tools/utils";
 import { READER_EXTRACTED_CACHE_DIR, ensureReaderCacheDirectories } from "@/src/data/cache";
+import { toFileUri, toNativeFilesystemPath } from "@/src/utils/io";
 
 const CBZ_CACHE_ROOT = new Directory(READER_EXTRACTED_CACHE_DIR, "comic");
 const CBZ_ARCHIVE_DIR = new Directory(CBZ_CACHE_ROOT, "archives");
 const CBZ_EXTRACT_DIR = new Directory(CBZ_CACHE_ROOT, "extracted");
+const CBZ_CACHE_METADATA_FILE = ".myreader-comic-cache.json";
+const CBZ_CACHE_METADATA_VERSION = 1;
 
 export type NativeComicDocument = {
   cacheKey: string;
@@ -37,29 +40,6 @@ function ensureDir(dir: Directory) {
   return dir;
 }
 
-function fileUriToAbsolutePath(input: string): string {
-  const n = input.replace(/\\/g, "/").trim();
-  if (!n.startsWith("file:")) {
-    return n;
-  }
-  try {
-    const pathname = new URL(n).pathname;
-    try {
-      return decodeURIComponent(pathname);
-    } catch {
-      return pathname;
-    }
-  } catch {
-    const stripped = n.replace(/^file:\/\//, "");
-    const path = stripped.startsWith("/") ? stripped : `/${stripped}`;
-    try {
-      return decodeURIComponent(path);
-    } catch {
-      return path;
-    }
-  }
-}
-
 function canonicalIosAbsolutePath(p: string): string {
   if (Platform.OS !== "ios") {
     return p;
@@ -71,8 +51,8 @@ function canonicalIosAbsolutePath(p: string): string {
 }
 
 function normalizeExtractedPath(rootUri: string, absolutePath: string) {
-  const root = canonicalIosAbsolutePath(fileUriToAbsolutePath(rootUri)).replace(/\/+$/, "");
-  const abs = canonicalIosAbsolutePath(fileUriToAbsolutePath(absolutePath));
+  const root = canonicalIosAbsolutePath(toNativeFilesystemPath(rootUri)).replace(/\/+$/, "");
+  const abs = canonicalIosAbsolutePath(toNativeFilesystemPath(absolutePath));
   const prefix = `${root}/`;
   if (abs.startsWith(prefix)) {
     return abs.slice(prefix.length);
@@ -80,16 +60,12 @@ function normalizeExtractedPath(rootUri: string, absolutePath: string) {
 
   return abs.split("/").slice(-1)[0] ?? abs;
 }
-
-function ensureFileUrl(pathOrUrl: string): string {
-  const p = pathOrUrl.replace(/\\/g, "/");
-  if (p.startsWith("file://")) {
-    return p;
-  }
-  if (p.startsWith("/")) {
-    return `file://${p}`;
-  }
-  return `file:///${p}`;
+/**
+ * Converts a file URI/path into the decoded native absolute path expected by
+ * `react-native-zip-archive` on iOS/Android.
+ */
+function toNativeZipPath(pathOrUrl: string): string {
+  return canonicalIosAbsolutePath(toNativeFilesystemPath(pathOrUrl));
 }
 
 function safeKeyPart(value: string) {
@@ -151,11 +127,33 @@ type ExtractedFileEntry = {
   fileUri: string;
 };
 
+type ExtractedComicPayload = {
+  extractionUri: string;
+  manifest: ComicManifest;
+  pageUris: string[];
+  relativePaths: string[];
+};
+
+type ExtractedComicCacheMetadata = {
+  version: typeof CBZ_CACHE_METADATA_VERSION;
+  cacheKey: string;
+  fingerprint: string;
+  archiveUri: string;
+  relativePaths: string[];
+  pageCount: number;
+};
+
+/**
+ * Recursively collects files under an extracted CBZ directory.
+ */
 async function collectExtractedEntries(dir: Directory, rootUri: string, bucket: ExtractedFileEntry[]) {
   const entries = dir.list();
   for (const entry of entries) {
     if (entry instanceof Directory) {
       await collectExtractedEntries(entry, rootUri, bucket);
+      continue;
+    }
+    if (entry.name === CBZ_CACHE_METADATA_FILE) {
       continue;
     }
     bucket.push({
@@ -165,11 +163,146 @@ async function collectExtractedEntries(dir: Directory, rootUri: string, bucket: 
   }
 }
 
+/**
+ * Builds the comic manifest and page URIs from an existing extraction directory.
+ */
+async function readExtractedComicPayload(extractionDir: Directory): Promise<ExtractedComicPayload | null> {
+  if (!extractionDir.exists) {
+    return null;
+  }
+
+  const extractionUri = extractionDir.uri;
+  const extractedEntries: ExtractedFileEntry[] = [];
+  await collectExtractedEntries(extractionDir, extractionUri, extractedEntries);
+
+  const relativePaths = extractedEntries.map((e) => e.relativePath);
+  const fileUriByRelativePath = new Map(
+    extractedEntries.map((e) => [e.relativePath.replace(/\\/g, "/"), e.fileUri] as const),
+  );
+  const manifest = buildComicManifest(relativePaths);
+  if (manifest.pages.length === 0) {
+    return null;
+  }
+
+  const pageUris = manifest.pages.map((page) => {
+    const direct = fileUriByRelativePath.get(page.path);
+    if (direct) {
+      return direct;
+    }
+    return new File(extractionDir, ...page.path.split("/")).uri;
+  });
+
+  return {
+    extractionUri,
+    manifest,
+    pageUris,
+    relativePaths,
+  };
+}
+
+/**
+ * Reads the extraction metadata used to validate persistent CBZ caches.
+ */
+async function readCacheMetadata(extractionDir: Directory): Promise<ExtractedComicCacheMetadata | null> {
+  const metadataFile = new File(extractionDir, CBZ_CACHE_METADATA_FILE);
+  if (!metadataFile.exists) {
+    return null;
+  }
+
+  try {
+    const value = JSON.parse(await metadataFile.text()) as Partial<ExtractedComicCacheMetadata>;
+    if (
+      value.version !== CBZ_CACHE_METADATA_VERSION ||
+      typeof value.cacheKey !== "string" ||
+      typeof value.fingerprint !== "string" ||
+      typeof value.archiveUri !== "string" ||
+      !Array.isArray(value.relativePaths) ||
+      typeof value.pageCount !== "number"
+    ) {
+      return null;
+    }
+    return {
+      version: CBZ_CACHE_METADATA_VERSION,
+      cacheKey: value.cacheKey,
+      fingerprint: value.fingerprint,
+      archiveUri: value.archiveUri,
+      relativePaths: value.relativePaths.filter((path): path is string => typeof path === "string"),
+      pageCount: value.pageCount,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stores extraction metadata after a successful unzip.
+ */
+function writeCacheMetadata(input: {
+  extractionDir: Directory;
+  cacheKey: string;
+  fingerprint: string;
+  archiveUri: string;
+  payload: ExtractedComicPayload;
+}): void {
+  const metadataFile = new File(input.extractionDir, CBZ_CACHE_METADATA_FILE);
+  metadataFile.create({ overwrite: true, intermediates: true });
+  metadataFile.write(
+    JSON.stringify({
+      version: CBZ_CACHE_METADATA_VERSION,
+      cacheKey: input.cacheKey,
+      fingerprint: input.fingerprint,
+      archiveUri: input.archiveUri,
+      relativePaths: input.payload.relativePaths,
+      pageCount: input.payload.pageUris.length,
+    } satisfies ExtractedComicCacheMetadata),
+  );
+}
+
+/**
+ * Returns a cache payload only when metadata and extracted files are complete.
+ */
+async function readCachedExtractedComicPayload(input: {
+  extractionDir: Directory;
+  cacheKey: string;
+  fingerprint: string;
+}): Promise<ExtractedComicPayload | null> {
+  const metadata = await readCacheMetadata(input.extractionDir);
+  if (
+    !metadata ||
+    metadata.cacheKey !== input.cacheKey ||
+    metadata.fingerprint !== input.fingerprint
+  ) {
+    return null;
+  }
+
+  const payload = await readExtractedComicPayload(input.extractionDir);
+  if (!payload || payload.pageUris.length !== metadata.pageCount) {
+    return null;
+  }
+
+  const extractedPathSet = new Set(payload.relativePaths);
+  if (!metadata.relativePaths.every((path) => extractedPathSet.has(path))) {
+    return null;
+  }
+
+  return payload;
+}
+
+/**
+ * Returns the deterministic archive cache file used when the source is bytes.
+ */
+function archiveFileForBytesCache(cacheKey: string): File {
+  return new File(CBZ_ARCHIVE_DIR, `${cacheKey}.cbz`);
+}
+
+/**
+ * Writes a byte-backed CBZ archive into the managed cache for native unzip.
+ */
 async function materializeArchiveFromBytes(cacheKey: string, bytes: Uint8Array) {
   ensureDir(CBZ_CACHE_ROOT);
   ensureDir(CBZ_ARCHIVE_DIR);
 
-  const archiveFile = new File(CBZ_ARCHIVE_DIR, `${cacheKey}.cbz`);
+  const archiveFile = archiveFileForBytesCache(cacheKey);
   if (!archiveFile.exists) {
     archiveFile.create({ overwrite: true, intermediates: true });
   }
@@ -177,6 +310,9 @@ async function materializeArchiveFromBytes(cacheKey: string, bytes: Uint8Array) 
   return archiveFile;
 }
 
+/**
+ * Prepares a CBZ document, reusing a valid extracted cache before unzipping.
+ */
 export async function prepareCbzDocument(input: {
   bookId: number;
   format: string;
@@ -188,13 +324,13 @@ export async function prepareCbzDocument(input: {
 
   const cacheKey = createCacheKey(input.bookId, input.format, input.source.fingerprint);
   const extractionDir = new Directory(CBZ_EXTRACT_DIR, cacheKey);
-
-  const archiveFile =
+  const ownsArchiveFile = input.source.type === "bytes" || Boolean(input.source.ownsArchiveFile);
+  const cachedArchiveFile =
     input.source.type === "bytes"
-      ? await materializeArchiveFromBytes(cacheKey, input.source.bytes)
+      ? archiveFileForBytesCache(cacheKey)
       : new File(input.source.archiveUri);
 
-  const archiveSnapshot = describeArchiveFile(archiveFile);
+  const archiveSnapshot = describeArchiveFile(cachedArchiveFile);
   const extractionSnapshot = describeDirectory(extractionDir);
 
   console.info("[mobile-reader] cbz:prepare:start", {
@@ -203,11 +339,40 @@ export async function prepareCbzDocument(input: {
     format: input.format,
     cacheKey,
     sourceType: input.source.type,
-    ownsArchiveFile: input.source.type === "bytes" || Boolean(input.source.ownsArchiveFile),
+    ownsArchiveFile,
     fingerprint: input.source.fingerprint,
     archiveFile: archiveSnapshot,
     extractionDir: extractionSnapshot,
   });
+
+  const cachedPayload = await readCachedExtractedComicPayload({
+    extractionDir,
+    cacheKey,
+    fingerprint: input.source.fingerprint,
+  });
+  if (cachedPayload) {
+    console.info("[mobile-reader] cbz:prepare:cache-hit", {
+      cacheKey,
+      extractionUri: cachedPayload.extractionUri,
+      extractedFileCount: cachedPayload.relativePaths.length,
+      pageCount: cachedPayload.pageUris.length,
+      firstFiles: cachedPayload.relativePaths.slice(0, 10),
+    });
+
+    return {
+      cacheKey,
+      archiveUri: cachedArchiveFile.uri,
+      extractionUri: cachedPayload.extractionUri,
+      manifest: cachedPayload.manifest,
+      pageUris: cachedPayload.pageUris,
+      ownsArchiveFile,
+    };
+  }
+
+  const archiveFile =
+    input.source.type === "bytes"
+      ? await materializeArchiveFromBytes(cacheKey, input.source.bytes)
+      : new File(input.source.archiveUri);
 
   ensureCleanDir(extractionDir);
 
@@ -222,8 +387,15 @@ export async function prepareCbzDocument(input: {
 
   let extractionUri: string;
   try {
-    const rawDest = await unzip(archiveFile.uri, extractionDir.uri);
-    extractionUri = ensureFileUrl(rawDest);
+    const archiveNativePath = toNativeZipPath(archiveFile.uri);
+    const extractionNativePath = toNativeZipPath(extractionDir.uri);
+    console.info("[mobile-reader] cbz:prepare:unzip-native-paths", {
+      cacheKey,
+      archiveNativePath,
+      extractionNativePath,
+    });
+    const rawDest = await unzip(archiveNativePath, extractionNativePath);
+    extractionUri = toFileUri(rawDest);
   } catch (error) {
     console.error("[mobile-reader] cbz:prepare:unzip-failed", {
       platform: Platform.OS,
@@ -248,56 +420,51 @@ export async function prepareCbzDocument(input: {
   });
 
   const extractedRoot = new Directory(extractionUri);
-  const extractedEntries: ExtractedFileEntry[] = [];
-  await collectExtractedEntries(extractedRoot, extractionUri, extractedEntries);
-
-  const relativePaths = extractedEntries.map((e) => e.relativePath);
-  const fileUriByRelativePath = new Map(
-    extractedEntries.map((e) => [e.relativePath.replace(/\\/g, "/"), e.fileUri] as const),
-  );
+  const payload = await readExtractedComicPayload(extractedRoot);
+  if (!payload) {
+    throw new Error("CBZ 解压后未找到可阅读的图片页面");
+  }
+  writeCacheMetadata({
+    extractionDir: extractedRoot,
+    cacheKey,
+    fingerprint: input.source.fingerprint,
+    archiveUri: archiveFile.uri,
+    payload,
+  });
 
   console.info("[mobile-reader] cbz:prepare:files-collected", {
     cacheKey,
-    extractedFileCount: relativePaths.length,
-    firstFiles: relativePaths.slice(0, 10),
-  });
-
-  const manifest = buildComicManifest(relativePaths);
-  const pageUris = manifest.pages.map((page) => {
-    const direct = fileUriByRelativePath.get(page.path);
-    if (direct) {
-      return direct;
-    }
-    return new File(extractedRoot, ...page.path.split("/")).uri;
+    extractedFileCount: payload.relativePaths.length,
+    firstFiles: payload.relativePaths.slice(0, 10),
   });
 
   console.info("[mobile-reader] cbz:prepare:manifest-ready", {
     cacheKey,
-    tocCount: manifest.toc.length,
-    pageCount: manifest.pages.length,
-    firstPageUri: pageUris[0] ?? null,
+    tocCount: payload.manifest.toc.length,
+    pageCount: payload.manifest.pages.length,
+    firstPageUri: payload.pageUris[0] ?? null,
   });
 
   return {
     cacheKey,
     archiveUri: archiveFile.uri,
-    extractionUri,
-    manifest,
-    pageUris,
-    ownsArchiveFile: input.source.type === "bytes" || Boolean(input.source.ownsArchiveFile),
+    extractionUri: payload.extractionUri,
+    manifest: payload.manifest,
+    pageUris: payload.pageUris,
+    ownsArchiveFile,
   };
 }
 
-export function disposeNativeComicDocument(doc: Pick<NativeComicDocument, "archiveUri" | "extractionUri" | "ownsArchiveFile">) {
+/**
+ * Releases transient CBZ resources while leaving extracted pages to cache policy.
+ */
+export function disposeNativeComicDocument(
+  doc: Pick<NativeComicDocument, "archiveUri" | "ownsArchiveFile">,
+) {
   if (doc.ownsArchiveFile) {
     const archiveFile = new File(doc.archiveUri);
     if (archiveFile.exists) {
       archiveFile.delete();
     }
-  }
-
-  const extractionDir = new Directory(doc.extractionUri);
-  if (extractionDir.exists) {
-    extractionDir.delete();
   }
 }
