@@ -116,8 +116,27 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
 
-  function openLibraryPicker() {
-    router.push("/library/picker");
+  /** Switches active library only when user selects a different one. */
+  function applyLibrarySelection(nextLibraryId: string) {
+    if (nextLibraryId === effectiveLibraryId) {
+      return;
+    }
+    void setActiveLibrary(nextLibraryId);
+  }
+
+  /** Opens a platform-neutral library picker menu without navigation. */
+  function openLibrarySwitchMenu() {
+    showAlertWithStatusBarRestore(
+      "切换书库",
+      `当前书库：${selectedLibrary?.name ?? "未选择"}`,
+      [
+        ...libraries.map((library) => ({
+          text: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
+          onPress: () => applyLibrarySelection(library.id),
+        })),
+        { text: "关闭", style: "cancel" },
+      ]
+    );
   }
 
   const effectiveLibraryId = libraryIdProp ?? activeLibraryId ?? undefined;
@@ -313,7 +332,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const unselectedLibraryToolbarRight: HeaderToolbarAction[] = [
     {
       label: "切换书库",
-      onPress: openLibraryPicker,
+      onPress: openLibrarySwitchMenu,
       icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
       iosSfSymbol: "arrow.left.arrow.right",
     },
@@ -328,7 +347,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const selectedLibraryToolbarLeft: HeaderToolbarAction[] = [
     {
       label: "切换书库",
-      onPress: openLibraryPicker,
+      onPress: openLibrarySwitchMenu,
       icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
       iosSfSymbol: "arrow.left.arrow.right",
       iconOnly: true,
@@ -438,7 +457,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             action={
               <RoundIconButton
                 label="切换书库"
-                onPress={openLibraryPicker}
+                onPress={openLibrarySwitchMenu}
                 icon={<MaterialIcons name="swap-horiz" size={22} color={palette.text} />}
               />
             }
@@ -466,7 +485,25 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           headerLargeTitle: true,
         }}
       />
-      <HeaderToolbar left={selectedLibraryToolbarLeft} right={Platform.OS === "ios" ? undefined : selectedLibraryToolbarRight} />
+      <HeaderToolbar
+        left={Platform.OS === "ios" ? undefined : selectedLibraryToolbarLeft}
+        right={Platform.OS === "ios" ? undefined : selectedLibraryToolbarRight}
+      />
+      {Platform.OS === "ios" ? (
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Menu icon="arrow.left.arrow.right">
+            {libraries.map((library) => (
+              <Stack.Toolbar.MenuAction
+                key={`library-${library.id}`}
+                isOn={effectiveLibraryId === library.id}
+                onPress={() => applyLibrarySelection(library.id)}
+              >
+                {library.name}
+              </Stack.Toolbar.MenuAction>
+            ))}
+          </Stack.Toolbar.Menu>
+        </Stack.Toolbar>
+      ) : null}
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Menu icon="line.3.horizontal.decrease.circle">
