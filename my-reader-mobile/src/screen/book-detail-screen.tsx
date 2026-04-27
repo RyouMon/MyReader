@@ -13,7 +13,7 @@ import { useTheme, type ThemePalette } from "@/src/design/tokens";
 import { FONT_DISPLAY, FONT_MONO, FONT_UI } from "@/src/design/typography";
 import { AnimatedScrollView, Image, Pressable, ScrollView, Text, View } from "@/tw";
 
-import { EmptyState, SectionCard, SettingsRow } from "../components";
+import { Button, EmptyState, SectionCard, SettingsRow } from "../components";
 import { HeaderToolbar, type HeaderToolbarAction } from "../components/ui/header-toolbar";
 import { buildCoverUri, readBookDetailFromMetadata } from "../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
@@ -922,23 +922,22 @@ function FormatCard({
           未开始阅读
         </Text>
       )}
-      <Pressable
+      <Button
         accessibilityLabel={`${actionLabel} ${format}`}
-        accessibilityRole="button"
-        className="min-h-12 items-center justify-center rounded-2xl px-5 py-3"
-        disabled={!isReadable}
-        onPress={onRead}
-        style={{
+        className="rounded-2xl"
+        colors={{
           backgroundColor: isReadable ? colors.accent : colors.card,
           borderColor: isReadable ? colors.accent : colors.text,
-          borderWidth: isReadable ? 0 : 1,
-          opacity: isReadable ? 1 : 0.6,
+          textColor: isReadable ? colors.accentText : colors.text,
+          underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
         }}
-      >
-        <Text className="text-sm leading-5" style={{ color: isReadable ? colors.accentText : colors.text, fontFamily: FONT_UI, fontWeight: "700" }}>
-          {actionLabel}
-        </Text>
-      </Pressable>
+        disabled={!isReadable}
+        onPress={onRead}
+        size="lg"
+        textStyle={{ fontFamily: FONT_UI }}
+        title={actionLabel}
+        variant={isReadable ? "primary" : "outline"}
+      />
     </View>
   );
 }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Platform } from "react-native";
+import { Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, ScrollView, Text, View } from "@/tw";
+import { ScrollView, Text, View } from "@/tw";
 
 import {
+  Button,
   Screen,
   SectionCard,
   SectionHeading,
@@ -161,29 +162,14 @@ export default function SyncScreen() {
           <SectionHeading title="连接测试" />
           <SectionCard>
             <View className="gap-3 p-4">
-              <Pressable
-                accessibilityRole="button"
+              <Button
                 disabled={testing || !selectedLibraryId}
+                loading={testing}
                 onPress={handleTest}
-                className="h-11 flex-row items-center justify-center rounded-full px-4"
-                style={{
-                  backgroundColor: palette.backgroundSecondary,
-                  borderColor: palette.border,
-                  borderWidth: 1,
-                  columnGap: 8,
-                  opacity: testing || !selectedLibraryId ? 0.6 : 1,
-                }}
-              >
-                {testing ? (
-                  <ActivityIndicator color={palette.text} size="small" />
-                ) : null}
-                <Text
-                  className="text-[14px]"
-                  style={{ color: palette.text, fontWeight: "700" }}
-                >
-                  {testing ? "测试中…" : "测试连通性"}
-                </Text>
-              </Pressable>
+                size="md"
+                title={testing ? "测试中…" : "测试连通性"}
+                variant="secondary"
+              />
 
               {testResult ? (
                 <Text
@@ -216,27 +202,14 @@ export default function SyncScreen() {
           />
           <SectionCard>
             <View className="gap-3 p-4">
-              <Pressable
-                accessibilityRole="button"
+              <Button
                 disabled={schedulerStatus.running}
+                loading={schedulerStatus.running}
                 onPress={handleRunAll}
-                className="h-11 flex-row items-center justify-center rounded-full px-4"
-                style={{
-                  backgroundColor: palette.primary,
-                  columnGap: 8,
-                  opacity: schedulerStatus.running ? 0.6 : 1,
-                }}
-              >
-                {schedulerStatus.running ? (
-                  <ActivityIndicator color={palette.primaryForeground} size="small" />
-                ) : null}
-                <Text
-                  className="text-[14px]"
-                  style={{ color: palette.primaryForeground, fontWeight: "700" }}
-                >
-                  {schedulerStatus.running ? "同步中…" : "立即同步全部书库"}
-                </Text>
-              </Pressable>
+                size="md"
+                title={schedulerStatus.running ? "同步中…" : "立即同步全部书库"}
+                variant="primary"
+              />
 
               {manualError ? (
                 <Text className="text-[12px]" style={{ color: palette.error }}>
@@ -300,29 +273,15 @@ export default function SyncScreen() {
           <SectionHeading title="文件状态" detail="manifest × 本地副本的当前三态" />
           <SectionCard>
             <View className="gap-2 px-4 pt-4">
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                className="self-start"
                 disabled={rowsLoading || !selectedLibraryId}
+                loading={rowsLoading}
                 onPress={handleReconcile}
-                className="h-9 flex-row items-center justify-center self-start rounded-full px-4"
-                style={{
-                  backgroundColor: "transparent",
-                  borderColor: palette.border,
-                  borderWidth: 1,
-                  columnGap: 6,
-                  opacity: rowsLoading || !selectedLibraryId ? 0.6 : 1,
-                }}
-              >
-                {rowsLoading ? (
-                  <ActivityIndicator color={palette.text} size="small" />
-                ) : null}
-                <Text
-                  className="text-[12px]"
-                  style={{ color: palette.text, fontWeight: "700" }}
-                >
-                  {rowsLoading ? "刷新中…" : "刷新"}
-                </Text>
-              </Pressable>
+                size="sm"
+                title={rowsLoading ? "刷新中…" : "刷新"}
+                variant="outline"
+              />
 
               {rowsError ? (
                 <Text

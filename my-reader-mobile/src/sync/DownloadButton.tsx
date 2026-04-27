@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, Text, View } from "@/tw";
+import { Text, View } from "@/tw";
+
+import { Button } from "../components/ui/button";
 
 import type { FileStateRow } from "./file_state";
 import { useSyncActions } from "./useSyncActions";
@@ -186,24 +187,22 @@ function Pill({
   borderColor,
 }: PillProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      className="flex-row items-center rounded-full px-3 py-1.5"
-      style={{
+    <Button
+      className="self-start"
+      colors={{
         backgroundColor,
         borderColor,
-        borderWidth: 1,
-        columnGap: 6,
-        opacity: disabled ? 0.6 : 1,
+        indicatorColor: textColor,
+        textColor,
+        underlayColor: backgroundColor,
       }}
-    >
-      {busy ? <ActivityIndicator color={textColor} size="small" /> : null}
-      <Text className="text-[12px]" style={{ color: textColor, fontWeight: "700" }}>
-        {label}
-      </Text>
-    </Pressable>
+      disabled={disabled}
+      loading={busy}
+      onPress={onPress}
+      size="sm"
+      title={label}
+      variant="outline"
+    />
   );
 }
 

@@ -4,7 +4,9 @@ import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, Text, View } from "@/tw";
+import { Pressable, View } from "@/tw";
+
+import { Button } from "./button";
 
 const FAB_SIZE = 56;
 
@@ -68,7 +70,6 @@ export function ScreenAndroidSecondaryBottomStart({
   onPress: () => void;
   disabled?: boolean;
 }) {
-  const palette = useThemePalette();
   const insets = useSafeAreaInsets();
 
   if (Platform.OS !== "android") {
@@ -85,22 +86,14 @@ export function ScreenAndroidSecondaryBottomStart({
         maxWidth: "52%",
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
+      <Button
+        className="self-start"
         disabled={disabled}
-        className="min-h-11 justify-center rounded-full px-4 py-2"
-        style={{
-          opacity: disabled ? 0.45 : 1,
-          backgroundColor: palette.backgroundSecondary,
-          borderColor: palette.border,
-          borderWidth: 1,
-        }}
-      >
-        <Text className="text-[14px] font-bold" style={{ color: palette.text }} numberOfLines={1}>
-          {label}
-        </Text>
-      </Pressable>
+        onPress={onPress}
+        size="md"
+        title={label}
+        variant="secondary"
+      />
     </View>
   );
 }
