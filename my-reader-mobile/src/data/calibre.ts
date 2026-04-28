@@ -305,6 +305,36 @@ export async function readBookCountFromLibrary(library: MobileLibrary) {
   };
 }
 
+/**
+ * Resolves a readable metadata.db URI and surfaces a user-facing recovery hint on failure.
+ */
+async function resolveMetadataUriForRead(library: MobileLibrary): Promise<string | null> {
+  if (library.sourceType === "webdav") {
+    const currentMetadata = new FSFile(library.metadataUri);
+    if (currentMetadata.exists) {
+      return currentMetadata.uri;
+    }
+
+    const fallbackMetadata = new FSFile(Paths.cache, `webdav-${library.id}-metadata.db`);
+    if (fallbackMetadata.exists) {
+      return fallbackMetadata.uri;
+    }
+    return library.metadataUri;
+  }
+
+  try {
+    const cachedLibrary = await ensureLibraryMetadataCached(library);
+    return cachedLibrary.metadataUri;
+  } catch {
+    showAlertWithStatusBarRestore(
+      "书库数据已损坏",
+      "无法恢复该书库的 metadata.db。请删除当前书库并重新添加后再试。",
+      [{ text: "知道了" }],
+    );
+    return null;
+  }
+}
+
 export async function readBookCountFromMetadata(metadataUri: string) {
   const db = await openDatabaseFromUri(metadataUri);
 
@@ -322,7 +352,11 @@ export async function readBookDetailFromMetadata(
   library: MobileLibrary,
   calibreBookId: number
 ): Promise<BookDetail | null> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    return null;
+  }
+  const db = await openDatabaseFromUri(metadataUri);
 
   try {
     const row = await db.getFirstAsync<BookDetailRow>(BOOK_DETAIL_QUERY, calibreBookId);
@@ -415,7 +449,11 @@ async function lookupBookFileLocation(
   calibreBookId: number,
   format: string
 ): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    throw new Error("metadata.db 不可用");
+  }
+  const db = await openDatabaseFromUri(metadataUri);
 
   try {
     const row = await db.getFirstAsync<{ path: string; name: string }>(
@@ -441,7 +479,11 @@ export async function getBookFormatPaths(
   library: MobileLibrary,
   calibreBookId: number,
 ): Promise<{ format: string; relativePath: string }[]> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    return [];
+  }
+  const db = await openDatabaseFromUri(metadataUri);
   try {
     const rows = await db.getAllAsync<{ fmt: string; path: string; name: string }>(
       `SELECT UPPER(d.format) AS fmt, b.path, d.name
@@ -463,7 +505,11 @@ export async function getBookFormatPaths(
 export async function getLibraryBookFormatPathMap(
   library: MobileLibrary,
 ): Promise<Record<string, string[]>> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    return {};
+  }
+  const db = await openDatabaseFromUri(metadataUri);
   try {
     const rows = await db.getAllAsync<{ book_id: number; fmt: string; path: string; name: string }>(
       `SELECT b.id AS book_id, UPPER(d.format) AS fmt, b.path, d.name
@@ -486,7 +532,11 @@ export async function getLibraryBookFormatPathMap(
 export async function getAllBookFormats(
   library: MobileLibrary,
 ): Promise<Record<string, string[]>> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    return {};
+  }
+  const db = await openDatabaseFromUri(metadataUri);
   try {
     const rows = await db.getAllAsync<{ book_id: number; fmt: string }>(
       `SELECT b.id AS book_id, UPPER(d.format) AS fmt
@@ -652,7 +702,11 @@ export async function resolveBookFile(
 }
 
 export async function readBooksFromLibrary(library: MobileLibrary): Promise<BookItem[]> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+  const metadataUri = await resolveMetadataUriForRead(library);
+  if (!metadataUri) {
+    return [];
+  }
+  const db = await openDatabaseFromUri(metadataUri);
 
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);

@@ -6,10 +6,12 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { NotifierWrapper } from "react-native-notifier";
 
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { getAppDatabase } from "@/src/data/sqlite";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
+import { initializeDownloadNotifications } from "@/src/notifications/download-notifications";
 import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
 
 function RootNavigator() {
@@ -36,6 +38,13 @@ function RootNavigator() {
   }, []);
 
   useSyncLifecycle();
+
+  /**
+   * Initializes local notification behavior used by download tasks.
+   */
+  useEffect(() => {
+    initializeDownloadNotifications();
+  }, []);
 
   const navigationTheme = colorScheme === "dark"
     ? {
@@ -87,7 +96,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <RootNavigator />
+        <NotifierWrapper>
+          <RootNavigator />
+        </NotifierWrapper>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

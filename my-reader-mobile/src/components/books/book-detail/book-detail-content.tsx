@@ -183,20 +183,24 @@ export function BookDetailContent({
   }, [activeLibrary.id, bookId, detail, downloadStatusTasks, formatInfoMap]);
 
   const handleDownloadFormat = useCallback(
-    (format: string) => {
+    async (format: string) => {
       const info = formatInfoMap[format];
       if (!info || !detail) {
         Alert.alert("无法开始下载", `没有找到 ${format} 对应的文件路径`);
         return;
       }
-      enqueue({
-        libraryId: activeLibrary.id,
-        bookId,
-        format,
-        relativePath: info.relativePath,
-        label: `${detail.title} · ${format}`,
-      });
-      deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
+      try {
+        await enqueue({
+          libraryId: activeLibrary.id,
+          bookId,
+          format,
+          relativePath: info.relativePath,
+          label: `${detail.title} · ${format}`,
+        });
+        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
+      } catch (err) {
+        Alert.alert("无法开始下载", err instanceof Error ? err.message : String(err));
+      }
     },
     [formatInfoMap, activeLibrary.id, bookId, detail]
   );

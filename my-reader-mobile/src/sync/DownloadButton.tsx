@@ -149,15 +149,20 @@ export function DownloadButton({
     }
   }, [commit, downloadStatusTask, relativePath, state]);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (busy || isDownloadActive) return;
     setErrorMessage(null);
     setBusy("download");
-    observedDownloadTaskIdRef.current = enqueue({
-      libraryId,
-      relativePath,
-      label: relativePath,
-    });
+    try {
+      observedDownloadTaskIdRef.current = await enqueue({
+        libraryId,
+        relativePath,
+        label: relativePath,
+      });
+    } catch (err) {
+      setErrorMessage(describeError(err));
+      setBusy(null);
+    }
   }, [busy, isDownloadActive, libraryId, relativePath]);
 
   return (

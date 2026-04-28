@@ -291,20 +291,27 @@ const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) => ({
                 throw new Error("当前 WebDAV 数据源缺少密码，请重新编辑数据源。");
               }
 
-              return readBooksFromWebDavLibrary(activeLibrary, {
+              const { books, metadataUri } = await readBooksFromWebDavLibrary(activeLibrary, {
                 ...source,
                 password,
               } as WebDavDataSource);
+              return { books, metadataUri };
             })()
-          : await readBooksFromLibrary(activeLibrary);
+          : { books: await readBooksFromLibrary(activeLibrary), metadataUri: activeLibrary.metadataUri };
 
       const { library: refreshedLibrary, bookCount } =
         activeLibrary.sourceType === "webdav"
-          ? { library: activeLibrary, bookCount: activeLibrary.bookCount }
+          ? {
+              library:
+                nextBooks.metadataUri === activeLibrary.metadataUri
+                  ? activeLibrary
+                  : { ...activeLibrary, metadataUri: nextBooks.metadataUri },
+              bookCount: activeLibrary.bookCount,
+            }
           : await readBookCountFromLibrary(activeLibrary);
 
       set((currentState) => ({
-        books: nextBooks,
+        books: nextBooks.books,
         loadingBooks: false,
         libraries: mergeLibraryUpdate(
           currentState.libraries,

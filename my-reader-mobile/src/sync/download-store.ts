@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 
+import { notifyDownloadState } from "../notifications/download-notifications";
 import { checkLibraryConnectivity, downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
 import {
   cancelNativeDownload,
@@ -65,6 +66,8 @@ const nativeStopHandlers = new Map<string, () => void>();
 const finalizingRecoveredTasks = new Map<string, Promise<void>>();
 const finalizedRecoveredTaskIds = new Set<string>();
 const alertedErrorTaskIds = new Set<string>();
+const notifiedDoneTaskIds = new Set<string>();
+const notifiedErrorTaskIds = new Set<string>();
 const lastProgressNotifications = new Map<
   string,
   { progress: number; received: number; timestamp: number; total: number }
@@ -113,11 +116,13 @@ function transitionTask(taskId: string, event: DownloadTaskEvent): void {
       if (task.status !== "cancelled") {
         patchTaskProgress(taskId, 1, 1, true);
         patchTask(taskId, { status: "done", progress: 1, error: null });
+        notifyTaskDoneOnce(task);
       }
       return;
     case "error":
       if (task.status !== "cancelled") {
         patchTask(taskId, { status: "error", error: event.error });
+        notifyTaskErrorOnce(task, event.error);
       }
       return;
     case "cancel":
@@ -126,6 +131,24 @@ function transitionTask(taskId: string, event: DownloadTaskEvent): void {
       }
       return;
   }
+}
+
+/**
+ * Emits one local notification when a task reaches completed state.
+ */
+function notifyTaskDoneOnce(task: DownloadTask): void {
+  if (notifiedDoneTaskIds.has(task.id)) return;
+  notifiedDoneTaskIds.add(task.id);
+  void notifyDownloadState("done", task.label);
+}
+
+/**
+ * Emits one local notification when a task reaches failed state.
+ */
+function notifyTaskErrorOnce(task: DownloadTask, error: string): void {
+  if (notifiedErrorTaskIds.has(task.id)) return;
+  notifiedErrorTaskIds.add(task.id);
+  void notifyDownloadState("error", task.label, error);
 }
 
 function subscribe(listener: Listener): () => void {
@@ -267,7 +290,7 @@ function patchTaskProgress(taskId: string, received: number, total: number, forc
   patchTask(taskId, { progress });
 }
 
-export function enqueue(opts: EnqueueOptions): string {
+export async function enqueue(opts: EnqueueOptions): Promise<string> {
   const alreadyActive = state.tasks.some(
     (t) =>
       t.libraryId === opts.libraryId &&
@@ -291,6 +314,8 @@ export function enqueue(opts: EnqueueOptions): string {
     return existingId;
   }
 
+  await checkLibraryConnectivity(opts.libraryId);
+
   const id = stableTaskId(opts.libraryId, opts.relativePath);
   const task: DownloadTask = {
     id,
@@ -312,6 +337,8 @@ export function enqueue(opts: EnqueueOptions): string {
   });
   setState({ tasks: [...state.tasks.filter((item) => item.id !== id), task] });
   alertedErrorTaskIds.delete(id);
+  notifiedDoneTaskIds.delete(id);
+  notifiedErrorTaskIds.delete(id);
   _runNext();
   return id;
 }
@@ -334,6 +361,8 @@ export function clearFinished(): void {
   for (const t of state.tasks) {
     if (t.status === "done" || t.status === "error" || t.status === "cancelled") {
       alertedErrorTaskIds.delete(t.id);
+      notifiedDoneTaskIds.delete(t.id);
+      notifiedErrorTaskIds.delete(t.id);
     }
   }
   setState({
@@ -361,6 +390,8 @@ export function dismissTasksForPath(libraryId: string, relativePath: string): vo
   if (task && !isActiveStatus(task.status)) {
     setState({ tasks: state.tasks.filter((t) => t.id !== id) });
     alertedErrorTaskIds.delete(id);
+    notifiedDoneTaskIds.delete(id);
+    notifiedErrorTaskIds.delete(id);
   }
 }
 
@@ -640,6 +671,8 @@ export const __downloadStoreTestApi = {
     finalizingRecoveredTasks.clear();
     finalizedRecoveredTaskIds.clear();
     alertedErrorTaskIds.clear();
+    notifiedDoneTaskIds.clear();
+    notifiedErrorTaskIds.clear();
     lastProgressNotifications.clear();
     listeners.clear();
   },

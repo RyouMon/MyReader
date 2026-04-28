@@ -9,7 +9,9 @@
       "Bash(npm install *)",
       "Bash(npx expo *)",
       "Bash(npx jest *)",
-      "Bash(npx biome *)"
+      "Bash(npx biome *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

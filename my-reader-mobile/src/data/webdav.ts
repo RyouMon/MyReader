@@ -3,6 +3,7 @@ import { File, Paths } from "expo-file-system";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
 import { openDatabaseFromUri } from "./sqlite";
 import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
+import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 
 export function buildWebDavBookCoverUri(
   library: MobileLibrary,
@@ -229,6 +230,36 @@ async function downloadToCache(source: WebDavDataSource, remotePath: string, loc
   return file;
 }
 
+/**
+ * Ensures WebDAV metadata.db exists in current sandbox cache, re-downloading when missing.
+ */
+async function ensureWebDavMetadataCached(
+  library: MobileLibrary,
+  source: WebDavDataSource,
+): Promise<string | null> {
+  const existingMetadata = new File(library.metadataUri);
+  if (existingMetadata.exists) {
+    return existingMetadata.uri;
+  }
+
+  try {
+    const remoteBase = normalizeRemotePath(library.sourcePath ?? library.path);
+    const metadataFile = await downloadToCache(
+      source,
+      `${remoteBase}/metadata.db`,
+      `webdav-${library.id}-metadata.db`,
+    );
+    return metadataFile.uri;
+  } catch {
+    showAlertWithStatusBarRestore(
+      "书库数据已损坏",
+      "无法恢复该书库的 metadata.db。请删除当前书库并重新添加后再试。",
+      [{ text: "知道了" }],
+    );
+    return null;
+  }
+}
+
 export async function createWebDavLibraryFromPath(
   source: WebDavDataSource,
   remoteLibraryPath: string
@@ -263,13 +294,22 @@ export async function createWebDavLibraryFromPath(
 export async function readBooksFromWebDavLibrary(
   library: MobileLibrary,
   source: WebDavDataSource
-): Promise<BookItem[]> {
-  const db = await openDatabaseFromUri(library.metadataUri);
+): Promise<{ books: BookItem[]; metadataUri: string }> {
+  const metadataUri = await ensureWebDavMetadataCached(library, source);
+  if (!metadataUri) {
+    return {
+      books: [],
+      metadataUri: library.metadataUri,
+    };
+  }
+  const db = await openDatabaseFromUri(metadataUri);
 
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
 
-    return rows.map((row) => {
+    return {
+      metadataUri,
+      books: rows.map((row) => {
       const authors = splitConcat(row.authors);
       const remoteCoverPath = row.path && (row.has_cover ?? 0) !== 0
         ? `${library.sourcePath ?? library.path}/${row.path}/cover.jpg`
@@ -291,7 +331,8 @@ export async function readBooksFromWebDavLibrary(
             }
           : undefined,
       } satisfies BookItem;
-    });
+      }),
+    };
   } finally {
     await db.closeAsync();
   }

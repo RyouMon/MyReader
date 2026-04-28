@@ -7,7 +7,6 @@ import {
   type DownloadTask as BackgroundDownloadTask,
   type UploadTask as BackgroundUploadTask,
 } from "@kesha-antonov/react-native-background-downloader";
-import { File } from "expo-file-system";
 
 import { toNativeFilesystemPath } from "../utils/io";
 
@@ -88,7 +87,6 @@ export type NativeUploadResult = {
   bytesTotal: number;
 };
 
-const NATIVE_DOWNLOAD_POLL_INTERVAL_MS = 1000;
 const NATIVE_DOWNLOAD_START_TIMEOUT_MS = 15000;
 
 const activeTasks = new Map<string, BackgroundDownloadTask>();
@@ -107,7 +105,7 @@ export function toNativeDestinationPath(fileUri: string): string {
 export const toNativeSourcePath = toNativeDestinationPath;
 
 /**
- * Starts one native background download and settles from either callbacks or polling.
+ * Starts one native background download and settles from callbacks.
  */
 export function startNativeDownload({
   relativePath,
@@ -138,14 +136,10 @@ export function startNativeDownload({
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
     let stalledTimer: ReturnType<typeof setTimeout> | null = null;
     let hasNativeBegin = false;
-    let isPolling = false;
     let lastDownloaded = 0;
-    let lastTotal = 0;
-    let missingPollCount = 0;
 
     function abort(): void {
       if (settled) return;
@@ -157,14 +151,7 @@ export function startNativeDownload({
     }
     nativeAbortHandlers.set(taskId, abort);
 
-    /**
-     * Cancels timers owned by this native task attempt.
-     */
     function clearTimers(): void {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
       if (startTimer) {
         clearTimeout(startTimer);
         startTimer = null;
@@ -175,18 +162,12 @@ export function startNativeDownload({
       }
     }
 
-    /**
-     * Releases native task references after a terminal event.
-     */
     function finishCleanup(): void {
       clearTimers();
       activeTasks.delete(taskId);
       nativeAbortHandlers.delete(taskId);
     }
 
-    /**
-     * Resolves the JS promise after native work has fully completed.
-     */
     function settleDone(bytesDownloaded: number, bytesTotal: number): void {
       if (settled) return;
       settled = true;
@@ -202,9 +183,6 @@ export function startNativeDownload({
       resolve({ bytesDownloaded, bytesTotal });
     }
 
-    /**
-     * Rejects with an AbortError name when the native layer reports cancellation.
-     */
     function settleError(error: string, errorCode: number): void {
       if (settled) return;
       settled = true;
@@ -222,9 +200,6 @@ export function startNativeDownload({
       reject(err);
     }
 
-    /**
-     * Detects transfers that began but no longer make progress.
-     */
     function resetStalledTimer(): void {
       if (stalledTimer) clearTimeout(stalledTimer);
       stalledTimer = setTimeout(() => {
@@ -232,9 +207,6 @@ export function startNativeDownload({
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4);
     }
 
-    /**
-     * Emits the first byte-transfer signal once for queue state transitions.
-     */
     function markNativeBegin(expectedBytes: number): void {
       if (hasNativeBegin) return;
       hasNativeBegin = true;
@@ -242,85 +214,15 @@ export function startNativeDownload({
       resetStalledTimer();
     }
 
-    /**
-     * Normalizes callback and polling progress into one monotonic stream.
-     */
     function updateNativeProgress(bytesDownloaded: number, bytesTotal: number): void {
       if (bytesDownloaded > 0 || bytesTotal > 0) {
         markNativeBegin(bytesTotal);
-      }
-      if (bytesTotal > 0) {
-        lastTotal = bytesTotal;
       }
       if (bytesDownloaded > lastDownloaded) {
         lastDownloaded = bytesDownloaded;
         resetStalledTimer();
       }
       onProgress?.(bytesDownloaded, bytesTotal);
-    }
-
-    /**
-     * Some native downloader implementations remove completed tasks before JS
-     * receives the done callback; trust a non-empty destination file in that case.
-     */
-    function settleFromDestinationIfPresent(): boolean {
-      const file = new File(destinationUri);
-      if (!file.exists) {
-        return false;
-      }
-      const size = file.size ?? 0;
-      // Use filesystem size when available; fall back to last known bytes so
-      // we don't fail when expo-file-system reports 0 for a freshly-written file.
-      const effectiveSize = size > 0 ? size : lastDownloaded;
-      settleDone(effectiveSize, lastTotal > 0 ? lastTotal : effectiveSize);
-      return true;
-    }
-
-    /**
-     * Polls native state so completion still arrives when JS callbacks are dropped.
-     */
-    function startNativeTaskPolling(): void {
-      pollTimer = setInterval(() => {
-        if (settled || isPolling) return;
-        isPolling = true;
-        void getExistingDownloadTasks()
-          .then((tasks) => {
-            const existingTask = tasks.find((item) => item.id === taskId);
-            if (settled) return;
-            if (!existingTask) {
-              missingPollCount += 1;
-              if (hasNativeBegin && missingPollCount >= 3) {
-                // If we already reached 100 %, the task most likely completed
-                // and the native layer simply removed it before the .done()
-                // callback reached JS. Give it more breathing room.
-                if (lastTotal > 0 && lastDownloaded >= lastTotal && missingPollCount < 15) {
-                  return;
-                }
-                if (settleFromDestinationIfPresent()) return;
-                settleError("原生下载任务已开始，但随后从系统下载队列消失。", 0);
-              }
-              return;
-            }
-
-            missingPollCount = 0;
-            if (existingTask.bytesDownloaded > 0 || existingTask.bytesTotal > 0) {
-              updateNativeProgress(existingTask.bytesDownloaded, existingTask.bytesTotal);
-            }
-            if (existingTask.state === "DONE") {
-              settleDone(existingTask.bytesDownloaded, existingTask.bytesTotal);
-            }
-          })
-          .catch((err) => {
-            console.warn("Failed to poll native download task:", {
-              taskId,
-              relativePath,
-              error: err,
-            });
-          })
-          .finally(() => {
-            isPolling = false;
-          });
-      }, NATIVE_DOWNLOAD_POLL_INTERVAL_MS);
     }
 
     task
@@ -345,7 +247,6 @@ export function startNativeDownload({
 
     try {
       task.start();
-      startNativeTaskPolling();
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return;
         settleError("原生下载任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生下载器配置。", 0);
@@ -390,14 +291,10 @@ export function startNativeUpload({
 
   return new Promise((resolve, reject) => {
     let settled = false;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
     let startTimer: ReturnType<typeof setTimeout> | null = null;
     let stalledTimer: ReturnType<typeof setTimeout> | null = null;
     let hasNativeBegin = false;
-    let isPolling = false;
     let lastUploaded = 0;
-    let lastTotal = 0;
-    let missingPollCount = 0;
 
     function abort(): void {
       if (settled) return;
@@ -410,10 +307,6 @@ export function startNativeUpload({
     nativeAbortHandlers.set(taskId, abort);
 
     function clearTimers(): void {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
       if (startTimer) {
         clearTimeout(startTimer);
         startTimer = null;
@@ -490,54 +383,11 @@ export function startNativeUpload({
       if (bytesUploaded > 0 || bytesTotal > 0) {
         markNativeBegin(bytesTotal);
       }
-      if (bytesTotal > 0) {
-        lastTotal = bytesTotal;
-      }
       if (bytesUploaded > lastUploaded) {
         lastUploaded = bytesUploaded;
         resetStalledTimer();
       }
       onProgress?.(bytesUploaded, bytesTotal);
-    }
-
-    function startNativeTaskPolling(): void {
-      pollTimer = setInterval(() => {
-        if (settled || isPolling) return;
-        isPolling = true;
-        void getExistingUploadTasks()
-          .then((tasks) => {
-            const existingTask = tasks.find((item) => item.id === taskId);
-            if (settled) return;
-            if (!existingTask) {
-              missingPollCount += 1;
-              if (hasNativeBegin && missingPollCount >= 3) {
-                if (lastTotal > 0 && lastUploaded >= lastTotal && missingPollCount < 15) {
-                  return;
-                }
-                settleError("原生上传任务已开始，但随后从系统上传队列消失。", 0);
-              }
-              return;
-            }
-
-            missingPollCount = 0;
-            if (existingTask.bytesUploaded > 0 || existingTask.bytesTotal > 0) {
-              updateNativeProgress(existingTask.bytesUploaded, existingTask.bytesTotal);
-            }
-            if (existingTask.state === "DONE") {
-              settleDone(200, "", existingTask.bytesUploaded, existingTask.bytesTotal);
-            }
-          })
-          .catch((err) => {
-            console.warn("Failed to poll native upload task:", {
-              taskId,
-              relativePath,
-              error: err,
-            });
-          })
-          .finally(() => {
-            isPolling = false;
-          });
-      }, NATIVE_DOWNLOAD_POLL_INTERVAL_MS);
     }
 
     task
@@ -562,7 +412,6 @@ export function startNativeUpload({
 
     try {
       task.start();
-      startNativeTaskPolling();
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return;
         settleError("原生上传任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生上传器配置。", 0);
