@@ -4,7 +4,6 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { FlashList } from "@shopify/flash-list";
-import { pickReadableFormat } from "my-reader-tools/utils";
 import { Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
@@ -52,6 +51,7 @@ type BookFileStateRowMap = Record<string, FileStateRow[]>;
 
 const defaultSortOption: SortOption = "最近添加";
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
+const readableFormatSet = new Set(["EPUB", "PDF", "CBZ"]);
 const GRID_MIN_CARD_WIDTH = 150;
 const GRID_MIN_COLUMNS = 2;
 const GRID_MAX_COLUMNS = 8;
@@ -81,6 +81,30 @@ function pathBelongsToBook(relativePath: string, bookPath?: string): boolean {
   if (!bookPath) return false;
   const normalizedBookPath = bookPath.replace(/^\/+/, "").replace(/\/+$/, "");
   return relativePath === normalizedBookPath || relativePath.startsWith(`${normalizedBookPath}/`);
+}
+
+function getFormatFromPath(path: string): string | undefined {
+  const match = path.match(/\.([A-Za-z0-9]+)$/);
+  return match?.[1]?.toUpperCase();
+}
+
+function isReadableFormat(format?: string): format is string {
+  return typeof format === "string" && readableFormatSet.has(format.toUpperCase());
+}
+
+function getReadableFormats(formats?: string[]): string[] {
+  return (formats ?? [])
+    .map((format) => format.toUpperCase())
+    .filter((format) => readableFormatSet.has(format))
+    .sort((left, right) => left.localeCompare(right, "en"));
+}
+
+function resolveEffectiveFormat(readableFormats: string[], selectedFormat?: string): string | undefined {
+  const normalizedSelected = selectedFormat?.toUpperCase();
+  if (normalizedSelected && readableFormats.includes(normalizedSelected)) {
+    return normalizedSelected;
+  }
+  return readableFormats[0];
 }
 
 /** Compares newest Calibre additions first, falling back to id for older rows without timestamps. */
@@ -258,38 +282,79 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   );
 
   const bookDownloadStatusById = useMemo(() => {
-    const next: BookFileStateMap = { ...bookFileStates };
-    for (const task of completedDownloadTasks) {
-      const bookId = task.bookId ?? books.find((book) =>
-        pathBelongsToBook(task.relativePath, book.path),
-      )?.id;
-      if (bookId) {
-        next[bookId] = "downloaded";
+    const next: BookFileStateMap = books.reduce<BookFileStateMap>((mapped, book) => {
+      if (selectedLibrary?.sourceType !== "webdav") {
+        mapped[book.id] = bookFileStates[book.id] ?? "downloaded";
+        return mapped;
       }
+      const formats = (bookFormatsById[book.id] ?? []).map((format) => format.toUpperCase());
+      const readableFormats = formats.filter((format) => readableFormatSet.has(format));
+      const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
+      const rows = bookFileStateRows[book.id] ?? [];
+      const isDownloadedByEffectiveFormat = rows.some((row) => {
+        if (!downloadedStates.has(row.localState)) return false;
+        const rowFormat = getFormatFromPath(row.path);
+        return effectiveFormat ? rowFormat === effectiveFormat : false;
+      });
+      mapped[book.id] = isDownloadedByEffectiveFormat ? "downloaded" : "notDownloaded";
+      return mapped;
+    }, {});
+
+    for (const task of completedDownloadTasks) {
+      const book = books.find((candidate) =>
+        (task.bookId && candidate.id === task.bookId) ||
+        pathBelongsToBook(task.relativePath, candidate.path),
+      );
+      if (!book) continue;
+      const formats = (bookFormatsById[book.id] ?? []).map((format) => format.toUpperCase());
+      const readableFormats = formats.filter((format) => readableFormatSet.has(format));
+      const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
+      const taskFormat = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
+      if (!effectiveFormat || taskFormat !== effectiveFormat) continue;
+      next[book.id] = "downloaded";
     }
     for (const task of activeDownloadTasks) {
-      const bookId = task.bookId ?? books.find((book) =>
-        pathBelongsToBook(task.relativePath, book.path),
-      )?.id;
-      if (bookId) {
-        next[bookId] = task.progress >= 1 ? "downloaded" : "downloading";
-      }
+      const book = books.find((candidate) =>
+        (task.bookId && candidate.id === task.bookId) ||
+        pathBelongsToBook(task.relativePath, candidate.path),
+      );
+      if (!book) continue;
+      const formats = (bookFormatsById[book.id] ?? []).map((format) => format.toUpperCase());
+      const readableFormats = formats.filter((format) => readableFormatSet.has(format));
+      const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
+      const taskFormat = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
+      if (!effectiveFormat || taskFormat !== effectiveFormat) continue;
+      next[book.id] = task.progress >= 1 ? "downloaded" : "downloading";
     }
     return next;
-  }, [activeDownloadTasks, bookFileStates, books, completedDownloadTasks]);
+  }, [
+    activeDownloadTasks,
+    bookFileStateRows,
+    bookFileStates,
+    bookFormatsById,
+    books,
+    completedDownloadTasks,
+    selectedLibrary?.sourceType,
+    selectedFormatById,
+  ]);
 
   const bookDownloadProgressById = useMemo(() => {
     const next: Record<string, number> = {};
     for (const task of activeDownloadTasks) {
-      const bookId = task.bookId ?? books.find((book) =>
-        pathBelongsToBook(task.relativePath, book.path),
-      )?.id;
-      if (bookId) {
-        next[bookId] = task.progress;
-      }
+      const book = books.find((candidate) =>
+        (task.bookId && candidate.id === task.bookId) ||
+        pathBelongsToBook(task.relativePath, candidate.path),
+      );
+      if (!book) continue;
+      const formats = (bookFormatsById[book.id] ?? []).map((format) => format.toUpperCase());
+      const readableFormats = formats.filter((format) => readableFormatSet.has(format));
+      const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
+      const taskFormat = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
+      if (!effectiveFormat || taskFormat !== effectiveFormat) continue;
+      next[book.id] = task.progress;
     }
     return next;
-  }, [activeDownloadTasks, books]);
+  }, [activeDownloadTasks, bookFormatsById, books, selectedFormatById]);
 
   const visibleBooks = useMemo(() => {
     const needle = debouncedQuery.trim().toLowerCase();
@@ -330,9 +395,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     const status = bookDownloadStatusById[book.id] ?? "notDownloaded";
 
     if (selectedLibrary?.sourceType !== "webdav" || status === "downloaded") {
-      const defaultFormat = selectedFormatById[book.id];
-      if (defaultFormat) {
-        router.push({ pathname: "/reader/[id]", params: { id: book.id, format: defaultFormat } });
+      const effectiveFormat = resolveEffectiveFormat(
+        getReadableFormats(bookFormatsById[book.id]),
+        selectedFormatById[book.id],
+      );
+      if (effectiveFormat) {
+        router.push({ pathname: "/reader/[id]", params: { id: book.id, format: effectiveFormat } });
       } else {
         router.push({ pathname: "/reader/[id]", params: { id: book.id } });
       }
@@ -344,7 +412,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
     try {
       const paths = await getBookFormatPaths(selectedLibrary, calibreId);
-      const format = pickReadableFormat(paths.map((p) => p.format));
+      const format = resolveEffectiveFormat(
+        getReadableFormats(paths.map((path) => path.format)),
+        selectedFormatById[book.id],
+      );
       if (!format) {
         showAlertWithStatusBarRestore("无法阅读", "该书没有可阅读的格式");
         return;
@@ -370,9 +441,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
     try {
       const paths = await getBookFormatPaths(selectedLibrary, calibreId);
-      const readableFormats = paths
-        .map((p) => p.format.toUpperCase())
-        .filter((f) => ["EPUB", "PDF", "CBZ"].includes(f));
+      const readableFormats = getReadableFormats(paths.map((path) => path.format));
 
       if (readableFormats.length === 0) {
         showAlertWithStatusBarRestore("无可读格式", "该书没有可阅读的格式");
@@ -385,23 +454,15 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       }
 
       const current = selectedFormatById[book.id];
+      const effectiveFormat = resolveEffectiveFormat(readableFormats, current);
       showAlertWithStatusBarRestore(
         "设置默认阅读格式",
-        `当前默认：${current ?? "自动"}`,
+        `当前默认：${effectiveFormat ?? "-"}`,
         [
           ...readableFormats.map((fmt) => ({
-            text: `${current === fmt ? "✓ " : ""}${fmt}`,
+            text: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
             onPress: () => setSelectedFormatById((prev) => ({ ...prev, [book.id]: fmt })),
           })),
-          {
-            text: "自动",
-            onPress: () =>
-              setSelectedFormatById((prev) => {
-                const next = { ...prev };
-                delete next[book.id];
-                return next;
-              }),
-          },
           { text: "取消", style: "cancel" },
         ],
       );
@@ -421,26 +482,25 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       { id: "detail", title: "图书详情" },
     ];
 
-    const readableFormats = formats?.filter((f) => ["EPUB", "PDF", "CBZ"].includes(f)) ?? [];
+    const readableFormats = getReadableFormats(formats);
+    const effectiveFormat = resolveEffectiveFormat(readableFormats, currentFormat);
     const formatSubactions: import("@react-native-menu/menu").MenuAction[] = [];
     if (readableFormats.length > 0) {
-      formatSubactions.push({
-        id: "setDefaultFormat:auto",
-        title: `${currentFormat ? "" : "✓ "}自动`,
-      });
       for (const fmt of readableFormats) {
         formatSubactions.push({
           id: `setDefaultFormat:${fmt}`,
-          title: `${currentFormat === fmt ? "✓ " : ""}${fmt}`,
+          title: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
         });
       }
     }
 
-    actions.push({
-      id: "setDefaultFormat",
-      title: `默认阅读格式：${currentFormat ?? "自动"}`,
-      subactions: formatSubactions.length > 0 ? formatSubactions : undefined,
-    });
+    if (readableFormats.length > 1) {
+      actions.push({
+        id: "setDefaultFormat",
+        title: `默认阅读格式：${effectiveFormat ?? "-"}`,
+        subactions: formatSubactions.length > 0 ? formatSubactions : undefined,
+      });
+    }
 
     if (selectedLibrary?.sourceType === "webdav" && downloadStatus === "downloaded") {
       actions.push({
