@@ -57,7 +57,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   const [currentId, setCurrentId] = useState<string | null>(id ?? null);
   const [detailCache, setDetailCache] = useState<Record<string, DetailCacheEntry>>({});
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string | null>>({});
-  const [synopsisExpandedById, setSynopsisExpandedById] = useState<Record<string, boolean>>({});
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
   const [initialPageIndex] = useState(() => {
@@ -88,7 +87,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
   useEffect(() => {
     setDetailCache({});
     setSelectedFormatById({});
-    setSynopsisExpandedById({});
     loadingIdsRef.current.clear();
   }, [activeLibraryId]);
 
@@ -273,10 +271,6 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
     setSelectedFormatById((prev) => ({ ...prev, [bookId]: format }));
   }, []);
 
-  const handleToggleSynopsis = useCallback((bookId: string) => {
-    setSynopsisExpandedById((prev) => ({ ...prev, [bookId]: !prev[bookId] }));
-  }, []);
-
   const openReader = useCallback((bookId: string, format: string | null) => {
     if (!format) return;
     router.push({
@@ -320,9 +314,7 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
             loadingDetail={entry?.loading ?? true}
             onOpenReader={openReader}
             onSelectFormat={handleSelectFormat}
-            onToggleSynopsis={handleToggleSynopsis}
             selectedFormat={selectedFormat}
-            synopsisExpanded={Boolean(synopsisExpandedById[bookId])}
             webDavSource={webDavSource}
           />
         </PagerSlot>
@@ -335,10 +327,8 @@ export default function BookDetailScreen({ entryMode = "home" }: BookDetailScree
       detailOrderIds,
       getListBook,
       handleSelectFormat,
-      handleToggleSynopsis,
       openReader,
       selectedFormatById,
-      synopsisExpandedById,
       webDavSource,
       width,
     ]

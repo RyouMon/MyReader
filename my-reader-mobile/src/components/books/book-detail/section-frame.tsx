@@ -6,7 +6,7 @@ import type { DetailColors } from "./types";
 
 export function SectionFrame({ children, colors }: { children: ReactNode; colors: DetailColors }) {
   return (
-    <View className="gap-[10px] px-4 pb-4" style={{ backgroundColor: colors.sectionBg }}>
+    <View className="gap-4 px-4 py-5" style={{ borderTopColor: colors.border, borderTopWidth: 1 }}>
       {children}
     </View>
   );
@@ -22,13 +22,10 @@ export function SectionHeader({
   title: string;
 }) {
   return (
-    <View
-      className="flex-row items-center justify-between pb-[10px]"
-      style={{ borderBottomColor: colors.border, borderBottomWidth: detail ? 0 : 1 }}
-    >
+    <View className="flex-row items-center justify-between">
       <Text
-        className="text-[16px] leading-6"
-        style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "700" }}
+        className="text-lg leading-7"
+        style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "600" }}
       >
         {title}
       </Text>

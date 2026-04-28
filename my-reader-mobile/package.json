@@ -8,7 +8,7 @@
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
+    "android": "expo run:android --device",
     "ios": "expo run:ios --device",
     "lint": "expo lint",
     "test": "jest --watch",

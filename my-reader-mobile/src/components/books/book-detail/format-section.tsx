@@ -16,36 +16,36 @@ import { SectionFrame, SectionHeader } from "./section-frame";
 type FormatSectionProps = {
   book: BookDetail;
   colors: DetailColors;
+  defaultFormat: string | null;
   formatInfoMap: Record<string, { relativePath: string; localState: import("../../../sync/file_state").LocalState | null }>;
   formatSizeMap: Map<string, number>;
   isNetworkSource: boolean;
   libraryId: string;
   onDeleteFormat: (format: string) => void;
   onDownloadFormat: (format: string) => void;
-  onReadFormat: (format: string) => void;
+  onSetDefaultFormat: (format: string) => void;
   progress: number;
   progressLabel: string;
   readableFormats: string[];
-  selectedFormat: string | null;
 };
 
 export function FormatSection({
   book,
   colors,
+  defaultFormat,
   formatInfoMap,
   formatSizeMap,
   isNetworkSource,
   libraryId,
   onDeleteFormat,
   onDownloadFormat,
-  onReadFormat,
+  onSetDefaultFormat,
   progress,
   progressLabel,
   readableFormats,
-  selectedFormat,
 }: FormatSectionProps) {
   const readableFormatSet = new Set(readableFormats.map((format) => format.toUpperCase()));
-  const selectedFormatKey = selectedFormat?.toUpperCase() ?? null;
+  const defaultFormatKey = defaultFormat?.toUpperCase() ?? null;
 
   return (
     <SectionFrame colors={colors}>
@@ -57,17 +57,17 @@ export function FormatSection({
           return (
             <FormatCard
               key={upper}
-              colors={colors}
-              fileLocalState={formatInfo?.localState ?? null}
               bookId={String(book.id)}
+              colors={colors}
+              defaultFormatKey={defaultFormatKey}
+              fileLocalState={formatInfo?.localState ?? null}
               format={upper}
               isNetworkSource={isNetworkSource}
               isReadable={readableFormatSet.has(upper)}
-              isSelected={selectedFormatKey === upper}
               libraryId={libraryId}
               onDelete={() => onDeleteFormat(upper)}
               onDownload={() => onDownloadFormat(upper)}
-              onRead={() => onReadFormat(upper)}
+              onSetDefault={() => onSetDefaultFormat(upper)}
               progress={progress}
               progressLabel={progressLabel}
               relativePath={formatInfo?.relativePath}
@@ -83,15 +83,15 @@ export function FormatSection({
 function FormatCard({
   bookId,
   colors,
+  defaultFormatKey,
   fileLocalState,
   format,
   isNetworkSource,
   isReadable,
-  isSelected,
   libraryId,
   onDelete,
   onDownload,
-  onRead,
+  onSetDefault,
   progress,
   progressLabel,
   relativePath,
@@ -99,15 +99,15 @@ function FormatCard({
 }: {
   bookId: string;
   colors: DetailColors;
+  defaultFormatKey: string | null;
   fileLocalState: import("../../../sync/file_state").LocalState | null;
   format: string;
   isNetworkSource: boolean;
   isReadable: boolean;
-  isSelected: boolean;
   libraryId: string;
   onDelete: () => void;
   onDownload: () => void;
-  onRead: () => void;
+  onSetDefault: () => void;
   progress: number;
   progressLabel: string;
   relativePath: string | undefined;
@@ -129,12 +129,14 @@ function FormatCard({
   const downloadProgress = activeTask?.progress ?? 0;
   const isPresent = fileLocalState === "present";
   const showDownload = isReadable && isNetworkSource && Boolean(relativePath) && !isPresent && !activeTask;
-  const readActionLabel = progress > 0 ? "继续阅读" : "开始阅读";
+  const isDefault = defaultFormatKey === format;
 
   return (
-    <View
-      className="w-[196px] gap-3 rounded-2xl p-4"
-      style={{ backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }}
+    <Pressable
+      accessibilityRole="button"
+      className="w-[196px] gap-3 rounded-2xl border p-4"
+      onPress={onSetDefault}
+      style={{ borderColor: colors.border }}
     >
       <View className="flex-row items-center gap-2">
         <Feather
@@ -144,27 +146,27 @@ function FormatCard({
         />
         <Text
           className="flex-1 text-base leading-6"
-          style={{ color: colors.text, fontFamily: FONT_UI, fontWeight: "700" }}
+          style={{ color: colors.text, fontFamily: FONT_UI, fontWeight: "600" }}
         >
           {format}
         </Text>
         <View
-          className="min-h-7 justify-center rounded-full px-3"
-          style={{ backgroundColor: isReadable ? colors.successBg : colors.disabledBg }}
+          className="min-h-7 justify-center rounded-full border px-3"
+          style={{ borderColor: isReadable ? colors.success : colors.border }}
         >
           <Text
             className="text-xs leading-4"
             style={{
-              color: isReadable ? colors.success : colors.disabledText,
+              color: isReadable ? colors.success : colors.tertiary,
               fontFamily: FONT_UI,
               fontWeight: "600",
             }}
           >
-            {isReadable ? (isSelected ? "当前" : "可阅读") : "不支持"}
+            {isReadable ? (isDefault ? "默认" : "可阅读") : "不支持"}
           </Text>
         </View>
       </View>
-      <Text className="text-[13px] leading-5" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+      <Text className="text-sm leading-5" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
         {formatFileSize(size)}
         {FORMAT_LABELS[format] ? ` · ${FORMAT_LABELS[format]}` : ""}
       </Text>
@@ -224,79 +226,66 @@ function FormatCard({
         <Pressable
           accessibilityLabel={`取消下载 ${format}`}
           accessibilityRole="button"
-          className="items-center rounded-2xl py-3"
-          onPress={() => activeTask && cancel(activeTask.id)}
-          style={{ backgroundColor: colors.disabledBg, borderColor: colors.border, borderWidth: 1 }}
+          className="items-center rounded-xl border py-3"
+          onPress={(e) => {
+            e.stopPropagation();
+            activeTask && cancel(activeTask.id);
+          }}
+          style={{ borderColor: colors.border }}
         >
           <Text
-            className="text-[15px]"
-            style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "600" }}
+            className="text-base"
+            style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "500" }}
           >
             取消
           </Text>
         </Pressable>
       ) : showDownload ? (
-        <Button
-          accessibilityLabel={`下载 ${format}`}
-          className="rounded-2xl"
-          colors={{
-            backgroundColor: colors.accent,
-            borderColor: colors.accent,
-            textColor: colors.accentText,
-            underlayColor: colors.accentPressed,
+        <Pressable
+          accessibilityRole="button"
+          onPress={(e) => {
+            e.stopPropagation();
+            onDownload();
           }}
-          onPress={onDownload}
-          size="lg"
-          textStyle={{ fontFamily: FONT_UI }}
-          title="下载"
-          variant="primary"
-        />
-      ) : isPresent ? (
-        <View className="gap-2">
+        >
           <Button
-            accessibilityLabel={`${readActionLabel} ${format}`}
-            className="rounded-2xl"
+            accessibilityLabel={`下载 ${format}`}
+            className="rounded-xl"
             colors={{
-              backgroundColor: isReadable ? colors.accent : colors.card,
-              borderColor: isReadable ? colors.accent : colors.text,
-              textColor: isReadable ? colors.accentText : colors.text,
-              underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
+              backgroundColor: colors.accent,
+              borderColor: colors.accent,
+              textColor: colors.accentText,
+              underlayColor: colors.accentPressed,
             }}
-            onPress={onRead}
+            onPress={onDownload}
             size="lg"
             textStyle={{ fontFamily: FONT_UI }}
-            title={readActionLabel}
+            title="下载"
             variant="primary"
           />
-          <Pressable
-            accessibilityLabel={`删除本地文件 ${format}`}
-            accessibilityRole="button"
-            className="items-center py-1"
-            onPress={onDelete}
-          >
-            <Text className="text-[13px]" style={{ color: colors.muted, fontFamily: FONT_UI }}>
-              删除本地文件
-            </Text>
-          </Pressable>
-        </View>
-      ) : (
-        <Button
-          accessibilityLabel={`${readActionLabel} ${format}`}
-          className="rounded-2xl"
-          colors={{
-            backgroundColor: isReadable ? colors.accent : colors.card,
-            borderColor: isReadable ? colors.accent : colors.text,
-            textColor: isReadable ? colors.accentText : colors.text,
-            underlayColor: isReadable ? colors.accentPressed : colors.disabledBg,
+        </Pressable>
+      ) : isPresent ? (
+        <Pressable
+          accessibilityLabel={`删除本地文件 ${format}`}
+          accessibilityRole="button"
+          className="items-center rounded-xl border py-3"
+          onPress={(e) => {
+            e.stopPropagation();
+            onDelete();
           }}
-          disabled={!isReadable}
-          onPress={onRead}
-          size="lg"
-          textStyle={{ fontFamily: FONT_UI }}
-          title={isReadable ? readActionLabel : "不支持阅读"}
-          variant={isReadable ? "primary" : "outline"}
-        />
+          style={{ borderColor: colors.border }}
+        >
+          <Text className="text-sm" style={{ color: colors.muted, fontFamily: FONT_UI }}>
+            删除本地文件
+          </Text>
+        </Pressable>
+      ) : (
+        <View className="items-center rounded-xl border py-3" style={{ borderColor: colors.border }}>
+          <Text className="text-sm" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
+            未下载
+          </Text>
+        </View>
       )}
-    </View>
+    </Pressable>
   );
 }
