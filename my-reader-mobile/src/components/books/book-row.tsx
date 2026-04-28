@@ -1,9 +1,10 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
-import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
+import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
 import { CircularProgress } from "../ui/circular-progress";
@@ -33,6 +34,11 @@ export function BookRow({
   book,
   onPress,
   onMore,
+  menuActions,
+  onMenuAction,
+  onMenuOpen,
+  onMenuClose,
+  isAnyMenuOpen,
   progress,
   downloadStatus,
   downloadProgress,
@@ -41,6 +47,11 @@ export function BookRow({
   book: BookItem;
   onPress?: () => void;
   onMore?: () => void;
+  menuActions?: MenuAction[];
+  onMenuAction?: (actionId: string) => void;
+  onMenuOpen?: () => void;
+  onMenuClose?: () => void;
+  isAnyMenuOpen?: boolean;
   progress?: BookProgressSnapshot;
   downloadStatus?: BookDownloadStatus;
   downloadProgress?: number;
@@ -53,12 +64,50 @@ export function BookRow({
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
+  const hasMenu = (menuActions && menuActions.length > 0 && onMenuAction) || onMore;
+
+  const moreButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`更多操作：${book.title}`}
+      className="h-8 w-8 items-center justify-center"
+      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+      onPress={(event) => {
+        event.stopPropagation();
+        onMore?.();
+      }}
+    >
+      {Platform.OS === "ios" ? (
+        <SymbolView name="ellipsis" size={13} tintColor={palette.textMuted} />
+      ) : (
+        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
+      )}
+    </Pressable>
+  );
+
+  const menuTrigger = (
+    <View
+      accessibilityRole="button"
+      accessibilityLabel={`更多操作：${book.title}`}
+      className="h-8 w-8 items-center justify-center"
+      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+    >
+      {Platform.OS === "ios" ? (
+        <SymbolView name="ellipsis" size={13} tintColor={palette.textMuted} />
+      ) : (
+        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
+      )}
+    </View>
+  );
 
   return (
     <TouchableHighlight
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={`打开《${book.title}》`}
-      onPress={onPress}
+      onPress={() => {
+        if (isAnyMenuOpen) return;
+        onPress?.();
+      }}
       underlayColor={palette.backgroundSecondary}
     >
       <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
@@ -96,15 +145,34 @@ export function BookRow({
                 {progress.syncedLabel}
               </Text>
             ) : null}
-            <View style={{ marginLeft: "auto" }}>
+            <View className="ml-auto flex-row items-center">
               {showCloudIcon ? (
                 Platform.OS === "ios" ? (
-                  <SymbolView name="cloud" size={13} tintColor={palette.textMuted} />
+                  <SymbolView name="cloud.fill" size={13} tintColor={palette.textMuted} />
                 ) : (
-                  <MaterialIcons name="cloud-off" size={13} color={palette.textMuted} />
+                  <MaterialIcons name="cloud" size={13} color={palette.textMuted} />
                 )
               ) : showProgressIndicator ? (
                 <CircularProgress progress={downloadProgress ?? 0} size={13} strokeWidth={1.5} color={palette.primary} />
+              ) : null}
+              {hasMenu ? (
+                menuActions && onMenuAction ? (
+                  <View onStartShouldSetResponder={() => true}>
+                    <MenuView
+                      actions={menuActions}
+                      isAnchoredToRight={Platform.OS === "android"}
+                      onOpenMenu={onMenuOpen}
+                      onCloseMenu={onMenuClose}
+                      onPressAction={({ nativeEvent }) => {
+                        onMenuAction(nativeEvent.event);
+                      }}
+                    >
+                      {menuTrigger}
+                    </MenuView>
+                  </View>
+                ) : (
+                  moreButton
+                )
               ) : null}
             </View>
           </View>
@@ -112,21 +180,6 @@ export function BookRow({
             <View className="mt-1 w-14">
               <ProgressBar progress={progressValue} />
             </View>
-          ) : null}
-        </View>
-        <View className="flex-row items-center gap-1">
-          {onMore ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`更多操作：${book.title}`}
-              className="h-11 w-11 items-center justify-center rounded-lg"
-              onPress={(event) => {
-                event.stopPropagation();
-                onMore();
-              }}
-            >
-              <MaterialIcons name="more-vert" size={22} color={palette.textMuted} />
-            </Pressable>
           ) : null}
         </View>
       </View>

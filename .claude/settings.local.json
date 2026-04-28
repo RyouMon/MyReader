@@ -4,7 +4,9 @@
       "Bash(npx tsc *)",
       "Bash(xargs ls *)",
       "Bash(npx eslint *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npm ls *)",
+      "Bash(npm install *)"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
@@ -18,6 +19,11 @@ export function BookCard({
   width,
   onPress,
   onMore,
+  menuActions,
+  onMenuAction,
+  onMenuOpen,
+  onMenuClose,
+  isAnyMenuOpen,
   progress,
   downloadStatus,
   downloadProgress,
@@ -26,6 +32,11 @@ export function BookCard({
   width: number;
   onPress?: () => void;
   onMore?: () => void;
+  menuActions?: MenuAction[];
+  onMenuAction?: (actionId: string) => void;
+  onMenuOpen?: () => void;
+  onMenuClose?: () => void;
+  isAnyMenuOpen?: boolean;
   progress?: BookProgressSnapshot;
   downloadStatus?: BookDownloadStatus;
   downloadProgress?: number;
@@ -36,6 +47,41 @@ export function BookCard({
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
+  const hasMenu = (menuActions && menuActions.length > 0 && onMenuAction) || onMore;
+
+  const moreButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`更多操作：${book.title}`}
+      className="h-8 w-8 items-center justify-center"
+      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+      onPress={(event) => {
+        event.stopPropagation();
+        onMore?.();
+      }}
+    >
+      {Platform.OS === "ios" ? (
+        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
+      ) : (
+        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
+      )}
+    </Pressable>
+  );
+
+  const menuTrigger = (
+    <View
+      accessibilityRole="button"
+      accessibilityLabel={`更多操作：${book.title}`}
+      className="h-8 w-8 items-center justify-center"
+      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+    >
+      {Platform.OS === "ios" ? (
+        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
+      ) : (
+        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
+      )}
+    </View>
+  );
 
   return (
     <View
@@ -47,7 +93,10 @@ export function BookCard({
         <TouchableHighlight
           accessibilityRole={onPress ? "button" : undefined}
           accessibilityLabel={`打开《${book.title}》`}
-          onPress={onPress}
+          onPress={() => {
+            if (isAnyMenuOpen) return;
+            onPress?.();
+          }}
           activeOpacity={0.78}
           underlayColor={palette.backgroundSecondary}
           style={{ borderRadius: 10, overflow: "hidden" }}
@@ -61,20 +110,6 @@ export function BookCard({
             />
           </View>
         </TouchableHighlight>
-        {onMore ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`更多操作：${book.title}`}
-            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full"
-            onPress={(event) => {
-              event.stopPropagation();
-              onMore();
-            }}
-            style={{ backgroundColor: "rgba(255,255,255,0.20)", borderColor: "rgba(255,255,255,0.28)", borderWidth: 1 }}
-          >
-            <MaterialIcons name="more-vert" size={18} color={palette.textOnPrimary} />
-          </Pressable>
-        ) : null}
       </View>
       <Text selectable className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={2}>
         {book.title}
@@ -83,15 +118,34 @@ export function BookCard({
         <Text selectable className="flex-1 text-sm leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
           {book.author}
         </Text>
-        {showCloudIcon ? (
-          Platform.OS === "ios" ? (
-            <SymbolView name="cloud" size={14} tintColor={palette.textMuted} />
-          ) : (
-            <MaterialIcons name="cloud-off" size={14} color={palette.textMuted} />
-          )
-        ) : showProgressIndicator ? (
-          <CircularProgress progress={downloadProgress ?? 0} size={14} strokeWidth={1.5} color={palette.primary} />
-        ) : null}
+        <View className="flex-row items-center">
+          {showCloudIcon ? (
+            Platform.OS === "ios" ? (
+              <SymbolView name="cloud.fill" size={14} tintColor={palette.textMuted} />
+            ) : (
+              <MaterialIcons name="cloud" size={14} color={palette.textMuted} />
+            )
+          ) : showProgressIndicator ? (
+            <CircularProgress progress={downloadProgress ?? 0} size={14} strokeWidth={1.5} color={palette.primary} />
+          ) : null}
+          {hasMenu ? (
+            menuActions && onMenuAction ? (
+              <MenuView
+                actions={menuActions}
+                isAnchoredToRight={Platform.OS === "android"}
+                onOpenMenu={onMenuOpen}
+                onCloseMenu={onMenuClose}
+                onPressAction={({ nativeEvent }) => {
+                  onMenuAction(nativeEvent.event);
+                }}
+              >
+                {menuTrigger}
+              </MenuView>
+            ) : (
+              moreButton
+            )
+          ) : null}
+        </View>
       </View>
       {typeof progressValue === "number" ? (
         <View className="mt-2">

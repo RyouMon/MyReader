@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { FlashList } from "@shopify/flash-list";
+import { pickReadableFormat } from "my-reader-tools/utils";
 import { Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
@@ -22,13 +23,15 @@ import {
   SectionHeading,
   type HeaderToolbarAction,
 } from "../components";
+import { getAllBookFormats, getBookFormatPaths } from "../data/calibre";
 import type { BookItem } from "../data/types";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
-import { useDownloadStore } from "../sync/download-store";
-import { listFileStates, useFileStateRevision, type LocalState } from "../sync/file_state";
+import { enqueue as enqueueDownload, useDownloadStore } from "../sync/download-store";
+import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
+import { useSyncActions } from "../sync/useSyncActions";
 
 const downloadFilterOptions = [
   { value: "all", label: "全部" },
@@ -45,6 +48,7 @@ const viewOptions: { value: LibraryViewMode; label: string }[] = [
 type DownloadFilterOption = (typeof downloadFilterOptions)[number]["value"];
 type SortOption = (typeof sortOptions)[number];
 type BookFileStateMap = Record<string, BookDownloadStatus>;
+type BookFileStateRowMap = Record<string, FileStateRow[]>;
 
 const defaultSortOption: SortOption = "最近添加";
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
@@ -108,12 +112,33 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
   const [bookFileStates, setBookFileStates] = useState<BookFileStateMap>({});
+  const [bookFileStateRows, setBookFileStateRows] = useState<BookFileStateRowMap>({});
+  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
+  const [bookFormatsById, setBookFormatsById] = useState<Record<string, string[]>>({});
   const fileStateRevision = useFileStateRevision();
   const { tasks: downloadTasks } = useDownloadStore();
   const viewMode = useAppStore((state) => state.libraryViewMode);
   const setViewMode = useAppStore((state) => state.setLibraryViewMode);
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
+  const syncActions = useSyncActions();
+  const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
+  const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleMenuOpen(bookId: string) {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+    setOpenMenuBookId(bookId);
+  }
+
+  function handleMenuClose() {
+    menuCloseTimerRef.current = setTimeout(() => {
+      setOpenMenuBookId(null);
+      menuCloseTimerRef.current = null;
+    }, 120);
+  }
 
   /** Switches active library only when user selects a different one. */
   function applyLibrarySelection(nextLibraryId: string) {
@@ -156,6 +181,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   useEffect(() => {
     if (!selectedLibrary) {
       setBookFileStates({});
+      setBookFileStateRows({});
       return;
     }
 
@@ -166,6 +192,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           return mapped;
         }, {}),
       );
+      setBookFileStateRows({});
       return;
     }
 
@@ -184,12 +211,33 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           return mapped;
         }, {}),
       );
+      setBookFileStateRows(
+        books.reduce<BookFileStateRowMap>((mapped, book) => {
+          mapped[book.id] = rows.filter((row) => pathBelongsToBook(row.path, book.path));
+          return mapped;
+        }, {}),
+      );
     });
 
     return () => {
       cancelled = true;
     };
   }, [books, fileStateRevision, selectedLibrary]);
+
+  useEffect(() => {
+    if (!selectedLibrary) {
+      setBookFormatsById({});
+      return;
+    }
+    let cancelled = false;
+    void getAllBookFormats(selectedLibrary).then((formats) => {
+      if (cancelled) return;
+      setBookFormatsById(formats);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [books, selectedLibrary]);
 
   const activeDownloadTasks = useMemo(
     () =>
@@ -275,8 +323,188 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     });
   }, [books, bookDownloadStatusById, debouncedQuery, downloadFilter, sortBy]);
 
-  function openBookDetail(bookId: string) {
-    router.push({ pathname: "/library-book/[id]", params: { id: bookId } });
+  async function handleBookPress(book: BookItem, fromMenu = false) {
+    if (openMenuBookId && !fromMenu) {
+      return;
+    }
+    const status = bookDownloadStatusById[book.id] ?? "notDownloaded";
+
+    if (selectedLibrary?.sourceType !== "webdav" || status === "downloaded") {
+      const defaultFormat = selectedFormatById[book.id];
+      if (defaultFormat) {
+        router.push({ pathname: "/reader/[id]", params: { id: book.id, format: defaultFormat } });
+      } else {
+        router.push({ pathname: "/reader/[id]", params: { id: book.id } });
+      }
+      return;
+    }
+
+    const calibreId = Number(book.id);
+    if (!Number.isFinite(calibreId) || calibreId <= 0) return;
+
+    try {
+      const paths = await getBookFormatPaths(selectedLibrary, calibreId);
+      const format = pickReadableFormat(paths.map((p) => p.format));
+      if (!format) {
+        showAlertWithStatusBarRestore("无法阅读", "该书没有可阅读的格式");
+        return;
+      }
+      const match = paths.find((p) => p.format.toUpperCase() === format.toUpperCase());
+      if (!match) return;
+
+      enqueueDownload({
+        libraryId: selectedLibrary.id,
+        bookId: book.id,
+        format,
+        relativePath: match.relativePath,
+        label: `${book.title} · ${format}`,
+      });
+    } catch (e) {
+      showAlertWithStatusBarRestore("下载失败", e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleSetDefaultFormat(book: BookItem) {
+    const calibreId = Number(book.id);
+    if (!Number.isFinite(calibreId) || calibreId <= 0 || !selectedLibrary) return;
+
+    try {
+      const paths = await getBookFormatPaths(selectedLibrary, calibreId);
+      const readableFormats = paths
+        .map((p) => p.format.toUpperCase())
+        .filter((f) => ["EPUB", "PDF", "CBZ"].includes(f));
+
+      if (readableFormats.length === 0) {
+        showAlertWithStatusBarRestore("无可读格式", "该书没有可阅读的格式");
+        return;
+      }
+      if (readableFormats.length === 1) {
+        setSelectedFormatById((prev) => ({ ...prev, [book.id]: readableFormats[0] }));
+        showAlertWithStatusBarRestore("已设置默认格式", readableFormats[0]);
+        return;
+      }
+
+      const current = selectedFormatById[book.id];
+      showAlertWithStatusBarRestore(
+        "设置默认阅读格式",
+        `当前默认：${current ?? "自动"}`,
+        [
+          ...readableFormats.map((fmt) => ({
+            text: `${current === fmt ? "✓ " : ""}${fmt}`,
+            onPress: () => setSelectedFormatById((prev) => ({ ...prev, [book.id]: fmt })),
+          })),
+          {
+            text: "自动",
+            onPress: () =>
+              setSelectedFormatById((prev) => {
+                const next = { ...prev };
+                delete next[book.id];
+                return next;
+              }),
+          },
+          { text: "取消", style: "cancel" },
+        ],
+      );
+    } catch (e) {
+      showAlertWithStatusBarRestore("读取格式失败", e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function buildBookMenuActions(
+    book: BookItem,
+    downloadStatus: BookDownloadStatus,
+    formats: string[] | undefined,
+    currentFormat: string | undefined,
+  ): import("@react-native-menu/menu").MenuAction[] {
+    const actions: import("@react-native-menu/menu").MenuAction[] = [
+      { id: "read", title: "阅读" },
+      { id: "detail", title: "图书详情" },
+    ];
+
+    const readableFormats = formats?.filter((f) => ["EPUB", "PDF", "CBZ"].includes(f)) ?? [];
+    const formatSubactions: import("@react-native-menu/menu").MenuAction[] = [];
+    if (readableFormats.length > 0) {
+      formatSubactions.push({
+        id: "setDefaultFormat:auto",
+        title: `${currentFormat ? "" : "✓ "}自动`,
+      });
+      for (const fmt of readableFormats) {
+        formatSubactions.push({
+          id: `setDefaultFormat:${fmt}`,
+          title: `${currentFormat === fmt ? "✓ " : ""}${fmt}`,
+        });
+      }
+    }
+
+    actions.push({
+      id: "setDefaultFormat",
+      title: `默认阅读格式：${currentFormat ?? "自动"}`,
+      subactions: formatSubactions.length > 0 ? formatSubactions : undefined,
+    });
+
+    if (selectedLibrary?.sourceType === "webdav" && downloadStatus === "downloaded") {
+      actions.push({
+        id: "deleteDownload",
+        title: "删除下载文件",
+        attributes: { destructive: true },
+      });
+    }
+    return actions;
+  }
+
+  function handleBookMenuAction(book: BookItem, actionId: string) {
+    if (actionId === "read") {
+      void handleBookPress(book, true);
+      return;
+    }
+    if (actionId === "detail") {
+      router.push({ pathname: "/library-book/[id]", params: { id: book.id } });
+      return;
+    }
+    if (actionId.startsWith("setDefaultFormat:")) {
+      const format = actionId.slice("setDefaultFormat:".length);
+      if (format === "auto") {
+        setSelectedFormatById((prev) => {
+          const next = { ...prev };
+          delete next[book.id];
+          return next;
+        });
+      } else {
+        setSelectedFormatById((prev) => ({ ...prev, [book.id]: format }));
+      }
+      return;
+    }
+    if (actionId === "setDefaultFormat") {
+      void handleSetDefaultFormat(book);
+      return;
+    }
+    if (actionId === "deleteDownload") {
+      const rows = bookFileStateRows[book.id] ?? [];
+      const downloadedRows = rows.filter((row) => downloadedStates.has(row.localState));
+      if (downloadedRows.length === 0) return;
+      showAlertWithStatusBarRestore(
+        "删除下载文件",
+        `确定要删除《${book.title}》的本地下载文件吗？`,
+        [
+          { text: "取消", style: "cancel" },
+          {
+            text: "删除",
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                try {
+                  for (const row of downloadedRows) {
+                    await syncActions.evictLocal(selectedLibrary!.id, row.path);
+                  }
+                } catch (err) {
+                  showAlertWithStatusBarRestore("删除失败", err instanceof Error ? err.message : String(err));
+                }
+              })();
+            },
+          },
+        ],
+      );
+    }
   }
 
   function applySort(option: SortOption) {
@@ -559,7 +787,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                 downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
                 downloadProgress={bookDownloadProgressById[item.id]}
                 width={cardWidth}
-                onPress={() => openBookDetail(item.id)}
+                isAnyMenuOpen={openMenuBookId !== null}
+                onPress={() => void handleBookPress(item)}
+                menuActions={buildBookMenuActions(item, bookDownloadStatusById[item.id] ?? "notDownloaded", bookFormatsById[item.id], selectedFormatById[item.id])}
+                onMenuAction={(actionId) => handleBookMenuAction(item, actionId)}
+                onMenuOpen={() => handleMenuOpen(item.id)}
+                onMenuClose={handleMenuClose}
               />
             </View>
           ) : (
@@ -567,7 +800,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               book={item}
               downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
               downloadProgress={bookDownloadProgressById[item.id]}
-              onPress={() => openBookDetail(item.id)}
+              isAnyMenuOpen={openMenuBookId !== null}
+              onPress={() => void handleBookPress(item)}
+              menuActions={buildBookMenuActions(item, bookDownloadStatusById[item.id] ?? "notDownloaded", bookFormatsById[item.id], selectedFormatById[item.id])}
+              onMenuAction={(actionId) => handleBookMenuAction(item, actionId)}
+              onMenuOpen={() => handleMenuOpen(item.id)}
+              onMenuClose={handleMenuClose}
               horizontalPadding={LIST_PADDING_H}
             />
           )

@@ -480,6 +480,31 @@ export async function getLibraryBookFormatPathMap(
   }
 }
 
+/**
+ * Returns all readable formats keyed by Calibre book id.
+ */
+export async function getAllBookFormats(
+  library: MobileLibrary,
+): Promise<Record<string, string[]>> {
+  const db = await openDatabaseFromUri(library.metadataUri);
+  try {
+    const rows = await db.getAllAsync<{ book_id: number; fmt: string }>(
+      `SELECT b.id AS book_id, UPPER(d.format) AS fmt
+       FROM books b JOIN data d ON d.book = b.id`,
+    );
+    return rows.reduce<Record<string, string[]>>((mapped, row) => {
+      const bookId = String(row.book_id);
+      mapped[bookId] = mapped[bookId] ?? [];
+      if (!mapped[bookId].includes(row.fmt)) {
+        mapped[bookId].push(row.fmt);
+      }
+      return mapped;
+    }, {});
+  } finally {
+    await db.closeAsync();
+  }
+}
+
 function createBookFile(rootUri: string, segments: string[], fileName: string) {
   return new FSFile(localCachedFileUri(rootUri, [...segments, fileName].join("/")));
 }
