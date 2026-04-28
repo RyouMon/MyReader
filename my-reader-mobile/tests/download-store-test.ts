@@ -11,6 +11,7 @@ import {
 import { finalizeRecoveredDownload } from "../src/sync/download-service";
 
 jest.mock("../src/sync/download-service", () => ({
+  checkLibraryConnectivity: jest.fn(() => Promise.resolve()),
   downloadLibraryFile: jest.fn(() => Promise.resolve({ blake3: null, size: 1, mtimeMs: 1 })),
   finalizeRecoveredDownload: jest.fn(() => Promise.resolve({ blake3: null, size: 100, mtimeMs: 1 })),
 }));

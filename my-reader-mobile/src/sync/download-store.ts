@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-import { downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
+import { checkLibraryConnectivity, downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
 import {
   cancelNativeDownload,
   completeNativeDownload,
@@ -64,6 +64,7 @@ let initializingExistingTasks: Promise<void> | null = null;
 const nativeStopHandlers = new Map<string, () => void>();
 const finalizingRecoveredTasks = new Map<string, Promise<void>>();
 const finalizedRecoveredTaskIds = new Set<string>();
+const alertedErrorTaskIds = new Set<string>();
 const lastProgressNotifications = new Map<
   string,
   { progress: number; received: number; timestamp: number; total: number }
@@ -310,6 +311,7 @@ export function enqueue(opts: EnqueueOptions): string {
     relativePath: task.relativePath,
   });
   setState({ tasks: [...state.tasks.filter((item) => item.id !== id), task] });
+  alertedErrorTaskIds.delete(id);
   _runNext();
   return id;
 }
@@ -329,11 +331,37 @@ export function cancel(taskId: string): void {
 }
 
 export function clearFinished(): void {
+  for (const t of state.tasks) {
+    if (t.status === "done" || t.status === "error" || t.status === "cancelled") {
+      alertedErrorTaskIds.delete(t.id);
+    }
+  }
   setState({
     tasks: state.tasks.filter(
       (t) => t.status !== "done" && t.status !== "error" && t.status !== "cancelled",
     ),
   });
+}
+
+export function isTaskErrorAlerted(taskId: string): boolean {
+  return alertedErrorTaskIds.has(taskId);
+}
+
+export function markTaskErrorAlerted(taskId: string): void {
+  alertedErrorTaskIds.add(taskId);
+}
+
+/**
+ * Removes finished tasks for a specific library path so that stale completions
+ * do not override fresh evictions in UI derivation.
+ */
+export function dismissTasksForPath(libraryId: string, relativePath: string): void {
+  const id = stableTaskId(libraryId, relativePath);
+  const task = state.tasks.find((t) => t.id === id);
+  if (task && !isActiveStatus(task.status)) {
+    setState({ tasks: state.tasks.filter((t) => t.id !== id) });
+    alertedErrorTaskIds.delete(id);
+  }
 }
 
 function _runNext(): void {
@@ -369,6 +397,11 @@ async function _startTask(taskId: string): Promise<void> {
     const current = state.tasks.find((t) => t.id === taskId);
     if (!current || current.status === "cancelled") return;
 
+    await checkLibraryConnectivity(task.libraryId);
+
+    const afterCheck = state.tasks.find((t) => t.id === taskId);
+    if (!afterCheck || afterCheck.status === "cancelled") return;
+
     await downloadLibraryFile({
       libraryId: task.libraryId,
       relativePath: task.relativePath,
@@ -399,6 +432,7 @@ async function _startTask(taskId: string): Promise<void> {
     if (state.tasks.find((t) => t.id === taskId)?.status === "cancelled") {
       return;
     }
+    cancelNativeDownload(taskId);
     const isAbort =
       err instanceof Error &&
       (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
@@ -605,6 +639,7 @@ export const __downloadStoreTestApi = {
     nativeStopHandlers.clear();
     finalizingRecoveredTasks.clear();
     finalizedRecoveredTaskIds.clear();
+    alertedErrorTaskIds.clear();
     lastProgressNotifications.clear();
     listeners.clear();
   },

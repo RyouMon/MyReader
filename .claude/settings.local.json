@@ -6,7 +6,10 @@
       "Bash(npx eslint *)",
       "Bash(npm run *)",
       "Bash(npm ls *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx expo *)",
+      "Bash(npx jest *)",
+      "Bash(npx biome *)"
     ]
   }
 }

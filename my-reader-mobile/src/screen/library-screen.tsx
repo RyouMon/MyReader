@@ -29,7 +29,7 @@ import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
-import { enqueue as enqueueDownload, useDownloadStore } from "../sync/download-store";
+import { dismissTasksForPath, enqueue as enqueueDownload, useDownloadStore } from "../sync/download-store";
 import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
 import { useSyncActions } from "../sync/useSyncActions";
 
@@ -495,6 +495,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                 try {
                   for (const row of downloadedRows) {
                     await syncActions.evictLocal(selectedLibrary!.id, row.path);
+                    dismissTasksForPath(selectedLibrary!.id, row.path);
                   }
                 } catch (err) {
                   showAlertWithStatusBarRestore("删除失败", err instanceof Error ? err.message : String(err));

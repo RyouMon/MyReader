@@ -323,15 +323,21 @@ export async function downloadFileDirectWithProgress(
     relativePath,
     destUri,
   });
-  const bytesDownloaded = await downloadWithBackgroundTask(backend, relativePath, destUri, onProgress, options);
-  const written = uriToFile(destUri);
-  const outcome = outcomeFromNativeDownload(written, bytesDownloaded, relativePath);
-  console.info("Success to finish native download to local cache:", {
-    relativePath,
-    destUri,
-    size: outcome.size,
-  });
-  return outcome;
+  try {
+    const bytesDownloaded = await downloadWithBackgroundTask(backend, relativePath, destUri, onProgress, options);
+    const written = uriToFile(destUri);
+    const outcome = outcomeFromNativeDownload(written, bytesDownloaded, relativePath);
+    console.info("Success to finish native download to local cache:", {
+      relativePath,
+      destUri,
+      size: outcome.size,
+    });
+    return outcome;
+  } catch (err) {
+    const partial = uriToFile(destUri);
+    await deleteFileIfExists(partial);
+    throw err;
+  }
 }
 
 export async function evictLocal(libraryCacheDirUri: string, relativePath: string): Promise<void> {

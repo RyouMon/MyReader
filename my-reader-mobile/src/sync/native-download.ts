@@ -94,6 +94,9 @@ const NATIVE_DOWNLOAD_START_TIMEOUT_MS = 15000;
 const activeTasks = new Map<string, BackgroundDownloadTask>();
 const activeUploadTasks = new Map<string, BackgroundUploadTask>();
 
+/** Abort handlers registered by in-flight startNativeDownload / startNativeUpload promises. */
+const nativeAbortHandlers = new Map<string, () => void>();
+
 /**
  * Converts Expo file URIs into the filesystem paths expected by the native downloader.
  */
@@ -141,7 +144,18 @@ export function startNativeDownload({
     let hasNativeBegin = false;
     let isPolling = false;
     let lastDownloaded = 0;
+    let lastTotal = 0;
     let missingPollCount = 0;
+
+    function abort(): void {
+      if (settled) return;
+      settled = true;
+      finishCleanup();
+      const err = new Error("下载已取消");
+      err.name = "AbortError";
+      reject(err);
+    }
+    nativeAbortHandlers.set(taskId, abort);
 
     /**
      * Cancels timers owned by this native task attempt.
@@ -167,6 +181,7 @@ export function startNativeDownload({
     function finishCleanup(): void {
       clearTimers();
       activeTasks.delete(taskId);
+      nativeAbortHandlers.delete(taskId);
     }
 
     /**
@@ -234,6 +249,9 @@ export function startNativeDownload({
       if (bytesDownloaded > 0 || bytesTotal > 0) {
         markNativeBegin(bytesTotal);
       }
+      if (bytesTotal > 0) {
+        lastTotal = bytesTotal;
+      }
       if (bytesDownloaded > lastDownloaded) {
         lastDownloaded = bytesDownloaded;
         resetStalledTimer();
@@ -247,11 +265,14 @@ export function startNativeDownload({
      */
     function settleFromDestinationIfPresent(): boolean {
       const file = new File(destinationUri);
-      const size = file.exists ? (file.size ?? 0) : 0;
-      if (size <= 0) {
+      if (!file.exists) {
         return false;
       }
-      settleDone(size, size);
+      const size = file.size ?? 0;
+      // Use filesystem size when available; fall back to last known bytes so
+      // we don't fail when expo-file-system reports 0 for a freshly-written file.
+      const effectiveSize = size > 0 ? size : lastDownloaded;
+      settleDone(effectiveSize, lastTotal > 0 ? lastTotal : effectiveSize);
       return true;
     }
 
@@ -269,6 +290,12 @@ export function startNativeDownload({
             if (!existingTask) {
               missingPollCount += 1;
               if (hasNativeBegin && missingPollCount >= 3) {
+                // If we already reached 100 %, the task most likely completed
+                // and the native layer simply removed it before the .done()
+                // callback reached JS. Give it more breathing room.
+                if (lastTotal > 0 && lastDownloaded >= lastTotal && missingPollCount < 15) {
+                  return;
+                }
                 if (settleFromDestinationIfPresent()) return;
                 settleError("原生下载任务已开始，但随后从系统下载队列消失。", 0);
               }
@@ -369,7 +396,18 @@ export function startNativeUpload({
     let hasNativeBegin = false;
     let isPolling = false;
     let lastUploaded = 0;
+    let lastTotal = 0;
     let missingPollCount = 0;
+
+    function abort(): void {
+      if (settled) return;
+      settled = true;
+      finishCleanup();
+      const err = new Error("上传已取消");
+      err.name = "AbortError";
+      reject(err);
+    }
+    nativeAbortHandlers.set(taskId, abort);
 
     function clearTimers(): void {
       if (pollTimer) {
@@ -389,6 +427,7 @@ export function startNativeUpload({
     function finishCleanup(): void {
       clearTimers();
       activeUploadTasks.delete(taskId);
+      nativeAbortHandlers.delete(taskId);
     }
 
     function settleDone(
@@ -451,6 +490,9 @@ export function startNativeUpload({
       if (bytesUploaded > 0 || bytesTotal > 0) {
         markNativeBegin(bytesTotal);
       }
+      if (bytesTotal > 0) {
+        lastTotal = bytesTotal;
+      }
       if (bytesUploaded > lastUploaded) {
         lastUploaded = bytesUploaded;
         resetStalledTimer();
@@ -469,6 +511,9 @@ export function startNativeUpload({
             if (!existingTask) {
               missingPollCount += 1;
               if (hasNativeBegin && missingPollCount >= 3) {
+                if (lastTotal > 0 && lastUploaded >= lastTotal && missingPollCount < 15) {
+                  return;
+                }
                 settleError("原生上传任务已开始，但随后从系统上传队列消失。", 0);
               }
               return;
@@ -589,10 +634,12 @@ export async function recoverNativeUploads(): Promise<RecoveredNativeUpload[]> {
  * Stops a known native task without touching the JS queue state.
  */
 export function cancelNativeDownload(taskId: string): void {
+  nativeAbortHandlers.get(taskId)?.();
   void activeTasks.get(taskId)?.stop();
 }
 
 export function cancelNativeUpload(taskId: string): void {
+  nativeAbortHandlers.get(taskId)?.();
   void activeUploadTasks.get(taskId)?.stop();
 }
 

@@ -6,14 +6,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
 import { AnimatedScrollView, Text, View } from "../../../tw";
-import { Button } from "../../ui";
+import { Button, EmptyState } from "../../ui";
 import { FONT_UI } from "../../../design/typography";
 import { getBookFormatPaths } from "../../../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../../../data/types";
 import { getFileState, useFileStateRevision, type LocalState } from "../../../sync/file_state";
 import { useSyncActions } from "../../../sync/useSyncActions";
 import {
+  dismissTasksForPath,
   enqueue,
+  isTaskErrorAlerted,
+  markTaskErrorAlerted,
   useDownloadStatusTasks,
 } from "../../../sync/download-store";
 import {
@@ -24,7 +27,6 @@ import {
   resolveCoverForDetail,
 } from "../../../utils/book-detail";
 import type { BookDetail } from "my-reader-tools/types/book";
-import { EmptyState } from "../../ui";
 import type { DetailColors, InfoCardItem } from "./types";
 import { HeroSection } from "./hero-section";
 import { FormatSection } from "./format-section";
@@ -97,7 +99,6 @@ export function BookDetailContent({
   const syncActions = useSyncActions();
   const fileStateRevision = useFileStateRevision();
   const downloadStatusTasks = useDownloadStatusTasks();
-  const alertedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
   const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
   const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
 
@@ -135,13 +136,20 @@ export function BookDetailContent({
       (task) =>
         task.libraryId === activeLibrary.id &&
         (task.bookId === bookId ||
-          Object.values(formatInfoMap).some((info) => info.relativePath === task.relativePath))
+          Object.values(formatInfoMap).some((info) => info.relativePath === task.relativePath)),
     );
 
     for (const task of relevantTasks) {
-      if (task.status === "error" && !alertedDownloadTaskIdsRef.current.has(task.id)) {
-        alertedDownloadTaskIdsRef.current.add(task.id);
+      if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
+        markTaskErrorAlerted(task.id);
         Alert.alert("下载失败", task.error ?? `文件下载失败：${task.relativePath}`);
+      }
+    }
+
+    for (const id of Array.from(consumedDownloadTaskIdsRef.current)) {
+      const task = relevantTasks.find((t) => t.id === id);
+      if (!task || task.status !== "done") {
+        consumedDownloadTaskIdsRef.current.delete(id);
       }
     }
 
@@ -149,7 +157,7 @@ export function BookDetailContent({
       (task) =>
         task.status === "done" &&
         !consumedDownloadTaskIdsRef.current.has(task.id) &&
-        !deletedLocalPathKeysRef.current.has(`${task.libraryId}${task.relativePath}`)
+        !deletedLocalPathKeysRef.current.has(`${task.libraryId}${task.relativePath}`),
     );
     if (doneTasks.length === 0) return;
 
@@ -209,6 +217,7 @@ export function BookDetailContent({
       }
       try {
         await syncActions.evictLocal(activeLibrary.id, info.relativePath);
+        dismissTasksForPath(activeLibrary.id, info.relativePath);
         setFormatInfoMap((prev) => ({
           ...prev,
           [format]: { ...prev[format]!, localState: "remote_only" },
