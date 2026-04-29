@@ -108,6 +108,15 @@ function resolveEffectiveFormat(readableFormats: string[], selectedFormat?: stri
   return readableFormats[0];
 }
 
+/** Resolves the target format for a download action from a menu action id. */
+function resolveDownloadTargetFormat(actionId: string): string | undefined {
+  if (actionId === "download") return undefined;
+  if (actionId.startsWith("download:")) {
+    return actionId.slice("download:".length).toUpperCase();
+  }
+  return undefined;
+}
+
 /** Compares newest Calibre additions first, falling back to id for older rows without timestamps. */
 function compareRecentlyAdded(left: BookItem, right: BookItem): number {
   const byTimestamp = (right.timestamp ?? "").localeCompare(left.timestamp ?? "");
@@ -473,6 +482,38 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     }
   }
 
+  /** Enqueues a download task for the selected book format. */
+  async function handleDownloadBook(book: BookItem, targetFormat?: string) {
+    const calibreId = Number(book.id);
+    if (!Number.isFinite(calibreId) || calibreId <= 0 || !selectedLibrary || selectedLibrary.sourceType !== "webdav") return;
+
+    try {
+      const paths = await getBookFormatPaths(selectedLibrary, calibreId);
+      const readableFormats = getReadableFormats(paths.map((path) => path.format));
+      const normalizedTarget = targetFormat?.toUpperCase();
+      const format = normalizedTarget
+        ? readableFormats.find((item) => item === normalizedTarget)
+        : resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
+      if (!format) {
+        showAlertWithStatusBarRestore("无法下载", "该书没有可下载的可读格式");
+        return;
+      }
+      const match = paths.find((p) => p.format.toUpperCase() === format);
+      if (!match) return;
+
+      await enqueueDownload({
+        libraryId: selectedLibrary.id,
+        bookId: book.id,
+        format,
+        relativePath: match.relativePath,
+        label: `${book.title} · ${format}`,
+      });
+    } catch (e) {
+      const { title, message } = describeDownloadError(e);
+      showAlertWithStatusBarRestore(title, message);
+    }
+  }
+
   function buildBookMenuActions(
     book: BookItem,
     downloadStatus: BookDownloadStatus,
@@ -480,12 +521,28 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     currentFormat: string | undefined,
   ): import("@react-native-menu/menu").MenuAction[] {
     const actions: import("@react-native-menu/menu").MenuAction[] = [
-      { id: "read", title: "阅读" },
       { id: "detail", title: "图书详情" },
     ];
 
     const readableFormats = getReadableFormats(formats);
     const effectiveFormat = resolveEffectiveFormat(readableFormats, currentFormat);
+    if (selectedLibrary?.sourceType === "webdav" && downloadStatus !== "downloaded") {
+      if (readableFormats.length === 1) {
+        actions.push({
+          id: `download:${readableFormats[0]}`,
+          title: `下载（${readableFormats[0]}）`,
+        });
+      } else if (readableFormats.length > 1) {
+        actions.push({
+          id: "download",
+          title: "下载",
+          subactions: readableFormats.map((fmt) => ({
+            id: `download:${fmt}`,
+            title: fmt,
+          })),
+        });
+      }
+    }
     const formatSubactions: import("@react-native-menu/menu").MenuAction[] = [];
     if (readableFormats.length > 0) {
       for (const fmt of readableFormats) {
@@ -515,8 +572,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   function handleBookMenuAction(book: BookItem, actionId: string) {
-    if (actionId === "read") {
-      void handleBookPress(book, true);
+    if (actionId === "download" || actionId.startsWith("download:")) {
+      const targetFormat = resolveDownloadTargetFormat(actionId);
+      void handleDownloadBook(book, targetFormat);
       return;
     }
     if (actionId === "detail") {
