@@ -1,9 +1,44 @@
 import { useEffect, useRef } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, Appearance, type AppStateStatus } from "react-native";
+import { Notifier } from "react-native-notifier";
 
 import { useAppStore } from "../store/app-store";
+import { getThemePalette } from "../design/tokens";
+import { SyncConfigError } from "../errors";
 
 import { runSync } from "./scheduler";
+
+function notifySyncConfigError(message: string): void {
+  const themeMode = useAppStore.getState().settings.themeMode;
+  const scheme = (themeMode === "system" ? Appearance.getColorScheme() : themeMode) ?? "light";
+  const palette = getThemePalette(scheme);
+
+  Notifier.showNotification({
+    title: "同步配置有误",
+    description: message,
+    duration: 6000,
+    hideOnPress: true,
+    componentProps: {
+      containerStyle: {
+        backgroundColor: palette.surface,
+        borderColor: palette.border,
+        borderWidth: 1,
+        borderLeftColor: palette.error,
+        borderLeftWidth: 3,
+      },
+      titleStyle: { fontWeight: "700", color: palette.text },
+      descriptionStyle: { opacity: 0.9, color: palette.textMuted },
+    },
+  });
+}
+
+function handleSyncError(err: unknown, trigger: string): void {
+  if (err instanceof SyncConfigError) {
+    notifySyncConfigError(err.message);
+  } else {
+    console.warn(`[MyReader] ${trigger} sync failed`, err);
+  }
+}
 
 /**
  * Wire the foreground-triggered sync scheduler to app lifecycle events.
@@ -22,9 +57,7 @@ export function useSyncLifecycle(): void {
   useEffect(() => {
     if (!hasHydrated || hasRunStartup.current) return;
     hasRunStartup.current = true;
-    void runSync("startup").catch((err) => {
-      console.warn("[MyReader] startup sync failed", err);
-    });
+    void runSync("startup").catch((err) => handleSyncError(err, "startup"));
   }, [hasHydrated]);
 
   useEffect(() => {
@@ -32,9 +65,7 @@ export function useSyncLifecycle(): void {
       const prev = lastStateRef.current;
       lastStateRef.current = next;
       if (prev !== "active" && next === "active" && hasRunStartup.current) {
-        void runSync("foreground").catch((err) => {
-          console.warn("[MyReader] foreground sync failed", err);
-        });
+        void runSync("foreground").catch((err) => handleSyncError(err, "foreground"));
       }
     });
     return () => subscription.remove();

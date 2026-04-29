@@ -2,6 +2,7 @@ import { File } from "expo-file-system";
 
 import type { MobileLibrary } from "../data/types";
 import { useAppStore } from "../store/app-store";
+import { AppInvariantError, DataIntegrityError, NetworkError } from "../errors";
 
 import { localFileUriFor } from "./backend";
 import { openSyncContext, type SyncTargetContext } from "./actions";
@@ -28,7 +29,7 @@ export type LibraryDownloadRequest = {
 export async function openDownloadContextForLibrary(libraryId: string): Promise<SyncTargetContext> {
   const { libraries, dataSources } = useAppStore.getState();
   const library = libraries.find((item: MobileLibrary) => item.id === libraryId);
-  if (!library) throw new Error(`未找到书库: ${libraryId}`);
+  if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
   return openSyncContext(library, dataSources);
 }
 
@@ -39,14 +40,21 @@ export async function openDownloadContextForLibrary(libraryId: string): Promise<
 export async function checkLibraryConnectivity(libraryId: string): Promise<void> {
   const { libraries, dataSources } = useAppStore.getState();
   const library = libraries.find((item: MobileLibrary) => item.id === libraryId);
-  if (!library) throw new Error(`未找到书库: ${libraryId}`);
+  if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
   if (library.sourceType !== "webdav") return;
 
   const resolved = await resolveSyncTarget(library, dataSources);
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error("连接数据源超时（2秒），请检查网络或 WebDAV 配置")), 2000);
+  // 用单一包裹 promise 把 statRemote 回调和 clearTimeout 统一管理，
+  // 避免独立 timeout promise 在 Hermes 的 unhandled-rejection 检测中被误报。
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new NetworkError("连接数据源超时（2秒），请检查网络或 WebDAV 配置"));
+    }, 2000);
+    resolved.backend.statRemote(".").then(
+      () => { clearTimeout(timeoutId); resolve(); },
+      (err: unknown) => { clearTimeout(timeoutId); reject(err); },
+    );
   });
-  await Promise.race([resolved.backend.statRemote("."), timeout]);
 }
 
 /**
@@ -130,7 +138,7 @@ export async function commitDownloadOutcome(
 function readCachedDownloadOutcome(ctx: SyncTargetContext, relativePath: string): DownloadOutcome {
   const file = new File(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
   if (!file.exists) {
-    throw new Error(`原生下载已完成，但缓存文件不存在: ${relativePath}`);
+    throw new DataIntegrityError(`原生下载已完成，但缓存文件不存在: ${relativePath}`);
   }
   return {
     blake3: null,

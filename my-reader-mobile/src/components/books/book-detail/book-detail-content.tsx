@@ -10,6 +10,7 @@ import { Button, EmptyState } from "../../ui";
 import { FONT_UI } from "../../../design/typography";
 import { getBookFormatPaths } from "../../../data/calibre";
 import type { BookItem, MobileLibrary, WebDavDataSource } from "../../../data/types";
+import { describeDownloadError } from "../../../errors";
 import { getFileState, useFileStateRevision, type LocalState } from "../../../sync/file_state";
 import { useSyncActions } from "../../../sync/useSyncActions";
 import {
@@ -142,7 +143,8 @@ export function BookDetailContent({
     for (const task of relevantTasks) {
       if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
         markTaskErrorAlerted(task.id);
-        Alert.alert("下载失败", task.error ?? `文件下载失败：${task.relativePath}`);
+        const { title, message } = describeDownloadError(task.error ?? `文件下载失败：${task.relativePath}`);
+        Alert.alert(title, message);
       }
     }
 
@@ -199,7 +201,8 @@ export function BookDetailContent({
         });
         deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
       } catch (err) {
-        Alert.alert("无法开始下载", err instanceof Error ? err.message : String(err));
+        const { title, message } = describeDownloadError(err);
+        Alert.alert(title, message);
       }
     },
     [formatInfoMap, activeLibrary.id, bookId, detail]
@@ -219,14 +222,21 @@ export function BookDetailContent({
           consumedDownloadTaskIdsRef.current.add(task.id);
         }
       }
+      // Optimistic update: hide the delete button immediately.
+      setFormatInfoMap((prev) => ({
+        ...prev,
+        [format]: { ...prev[format]!, localState: "remote_only" },
+      }));
       try {
         await syncActions.evictLocal(activeLibrary.id, info.relativePath);
         dismissTasksForPath(activeLibrary.id, info.relativePath);
+      } catch (err) {
+        // Roll back the optimistic update.
         setFormatInfoMap((prev) => ({
           ...prev,
-          [format]: { ...prev[format]!, localState: "remote_only" },
+          [format]: { ...prev[format]!, localState: "present" },
         }));
-      } catch (err) {
+        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
         Alert.alert("删除本地文件失败", err instanceof Error ? err.message : String(err));
       }
     },

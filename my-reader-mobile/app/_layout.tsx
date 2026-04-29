@@ -11,6 +11,8 @@ import { NotifierWrapper } from "react-native-notifier";
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { getAppDatabase } from "@/src/data/sqlite";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
+import { ErrorBoundary } from "@/src/components/error-boundary";
+import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { initializeDownloadNotifications } from "@/src/notifications/download-notifications";
 import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
 
@@ -93,12 +95,18 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  // RN 运行时在首次渲染前已就绪，此处调用是最早的安全时机。
+  // setupGlobalErrorHandler 内部有幂等保护，重渲染不会重复注册。
+  setupGlobalErrorHandler();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <NotifierWrapper>
-          <RootNavigator />
-        </NotifierWrapper>
+        <ErrorBoundary>
+          <NotifierWrapper>
+            <RootNavigator />
+          </NotifierWrapper>
+        </ErrorBoundary>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

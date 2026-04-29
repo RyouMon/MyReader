@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 import { notifyDownloadState } from "../notifications/download-notifications";
+import { SyncConfigError } from "../errors";
 import { checkLibraryConnectivity, downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
 import {
   cancelNativeDownload,
@@ -407,7 +408,9 @@ function _runNext(): void {
     });
   }
   for (let i = 0; i < Math.min(slots, queued.length); i++) {
-    void _startTask(queued[i]!.id);
+    _startTask(queued[i]!.id).catch((err) => {
+      console.error("[DownloadStore] _startTask 意外抛出（try-catch 外）:", err);
+    });
   }
 }
 
@@ -467,10 +470,12 @@ async function _startTask(taskId: string): Promise<void> {
     const isAbort =
       err instanceof Error &&
       (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
+    const isConfigError = err instanceof SyncConfigError;
     console.error("Failed to finish download task:", {
       taskId,
       relativePath: task.relativePath,
       isAbort,
+      isConfigError,
       error: err,
     });
     if (isAbort) {
@@ -577,7 +582,8 @@ async function initializeExistingDownloadTasks(): Promise<void> {
       }
       initializedExistingTasks = true;
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("[DownloadStore] 恢复下载任务失败:", err);
       initializedExistingTasks = true;
     })
     .finally(() => {

@@ -2,16 +2,18 @@ import { useCallback, useMemo } from "react";
 
 import { useAppStore } from "../store/app-store";
 import type { MobileLibrary } from "../data/types";
+import { AppInvariantError } from "../errors";
 
 import {
   deleteFileEverywhere,
   downloadFile,
   downloadFileDirect,
-  evictLocalFile,
+  evictLocalFileOfflineSafe,
   listBackedFiles,
   openSyncContext,
   reconcileFileStates,
 } from "./actions";
+import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import type { FileStateRow } from "./file_state";
 
 export type SyncTargetInfo = {
@@ -48,7 +50,7 @@ export function useSyncActions(): SyncActions {
   const findLibrary = useCallback(
     (libraryId: string): MobileLibrary => {
       const library = libraries.find((item) => item.id === libraryId);
-      if (!library) throw new Error(`未找到书库: ${libraryId}`);
+      if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
       return library;
     },
     [libraries],
@@ -84,8 +86,9 @@ export function useSyncActions(): SyncActions {
         await downloadFileDirect(ctx, relativePath);
       },
       async evictLocal(libraryId, relativePath) {
-        const ctx = await openSyncContext(findLibrary(libraryId), dataSources);
-        await evictLocalFile(ctx, relativePath);
+        const library = findLibrary(libraryId);
+        const dataSourceId = library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID;
+        await evictLocalFileOfflineSafe(libraryId, dataSourceId, relativePath);
       },
       async deleteEverywhere(libraryId, relativePath) {
         const ctx = await openSyncContext(findLibrary(libraryId), dataSources);

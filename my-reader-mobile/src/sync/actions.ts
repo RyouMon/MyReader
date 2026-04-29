@@ -1,4 +1,5 @@
 import type { DataSource, MobileLibrary } from "../data/types";
+import { AppInvariantError } from "../errors";
 
 import { resolveLibraryBooksDir } from "./backend";
 import { getOrCreateDeviceId } from "./device";
@@ -85,7 +86,7 @@ export async function downloadFile(
       libraryId: ctx.libraryId,
       relativePath,
     });
-    throw new Error(`manifest 中未登记该路径: ${relativePath}`);
+    throw new AppInvariantError(`manifest 中未登记该路径: ${relativePath}`);
   }
   const outcome = await fileOpsDownload(
     ctx.backend,
@@ -221,6 +222,24 @@ export async function evictLocalFile(
     libraryId: ctx.libraryId,
     relativePath,
   });
+}
+
+/**
+ * Offline-safe variant: evict local file without loading the manifest or
+ * touching the backend. Only modifies local filesystem and SQLite file_state.
+ */
+export async function evictLocalFileOfflineSafe(
+  libraryId: string,
+  dataSourceId: string,
+  relativePath: string,
+): Promise<void> {
+  const libraryCacheDirUri = resolveLibraryBooksDir(libraryId);
+  await fileOpsEvictLocal(libraryCacheDirUri, relativePath);
+  await upsertFileState(
+    { dataSourceId, libraryId },
+    relativePath,
+    { localState: "remote_only", localBlake3: null, localSize: null, localMtime: null },
+  );
 }
 
 /** Delete everywhere: local + remote + manifest entry + file_state row. */

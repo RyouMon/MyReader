@@ -28,6 +28,7 @@ import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
+import { describeDownloadError } from "../errors";
 import { dismissTasksForPath, enqueue as enqueueDownload, useDownloadStore } from "../sync/download-store";
 import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
 import { useSyncActions } from "../sync/useSyncActions";
@@ -423,7 +424,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       const match = paths.find((p) => p.format.toUpperCase() === format.toUpperCase());
       if (!match) return;
 
-      enqueueDownload({
+      await enqueueDownload({
         libraryId: selectedLibrary.id,
         bookId: book.id,
         format,
@@ -431,7 +432,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         label: `${book.title} · ${format}`,
       });
     } catch (e) {
-      showAlertWithStatusBarRestore("下载失败", e instanceof Error ? e.message : String(e));
+      const { title, message } = describeDownloadError(e);
+      showAlertWithStatusBarRestore(title, message);
     }
   }
 
