@@ -1,13 +1,16 @@
-import { useRef, useState } from "react"
-import { Trash2 } from "lucide-react"
-
 import { AppRow } from "@/components/common/AppRow"
-import { GroupList, GroupListEmpty, GroupListItem } from "@/components/common/GroupList"
+import {
+  GroupList,
+  GroupListEmpty,
+  GroupListItem,
+} from "@/components/common/GroupList"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
 import { useLibrary } from "@/stores/libraryStore"
-import type { LibraryInfo } from "my-reader-tools/types/book"
+import { Trash2 } from "lucide-react"
+import type { Library } from "my-reader-tools/store/library"
+import { useRef, useState } from "react"
 
 /**
  * 书库设置分区，负责展示、添加与删除书库引用。
@@ -76,7 +79,8 @@ export default function LibrariesSection() {
           <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
             metadata.db
           </code>{" "}
-          的 Calibre 书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。
+          的 Calibre
+          书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。
         </StatusNotice>
       </div>
     </div>
@@ -84,7 +88,7 @@ export default function LibrariesSection() {
 }
 
 interface LibraryCardProps {
-  lib: LibraryInfo
+  lib: Library
   index: number
   isActive: boolean
   isPendingDelete: boolean
@@ -134,7 +138,9 @@ function LibraryCard({
                 再次点击确认删除
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground">{lib.bookCount} 本</span>
+              <span className="text-xs text-muted-foreground">
+                {lib.bookCount} 本
+              </span>
             )}
           </div>
         }

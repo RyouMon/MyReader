@@ -9,7 +9,7 @@ import { AnimatedScrollView, Text, View } from "../../../tw";
 import { Button, EmptyState } from "../../ui";
 import { FONT_UI } from "../../../design/typography";
 import { getBookFormatPaths } from "../../../data/calibre";
-import type { BookItem, MobileLibrary, WebDavDataSource } from "../../../data/types";
+import type { BookItem, Library, WebDavDataSource } from "../../../data/types";
 import { describeDownloadError } from "../../../errors";
 import { getFileState, useFileStateRevision, type LocalState } from "../../../sync/file_state";
 import { useSyncActions } from "../../../sync/useSyncActions";
@@ -37,7 +37,7 @@ import { InfoRowSection } from "./info-row-section";
 type FormatInfo = { relativePath: string; localState: LocalState | null };
 
 type BookDetailContentProps = {
-  activeLibrary: MobileLibrary;
+  activeLibrary: Library;
   bookId: string;
   colors: DetailColors;
   detail: BookDetail | null;

@@ -22,7 +22,7 @@ export default function AddLibraryDataSourceScreen() {
             onPress={() => {
               void (async () => {
                 const added = await addLibrary();
-                if (added) {
+                if (added != null) {
                   router.dismissTo("/settings");
                 }
               })();

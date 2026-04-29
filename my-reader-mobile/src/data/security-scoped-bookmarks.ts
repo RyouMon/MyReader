@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 
-import type { MobileLibrary } from "./types";
+import type { Library } from "./types";
 import type { ResolveBookmarkResult } from "../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
 
 export type SecurityScopedAccessResult = {
@@ -144,9 +144,9 @@ export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
  * the target into app-owned storage inside the callback instead.
  */
 export async function withSecurityScopedLibraryAccess<T>(
-  library: MobileLibrary,
+  library: Library,
   callback: (resolvedPath: string) => Promise<T> | T
-): Promise<{ result: T; refreshedLibrary?: MobileLibrary }> {
+): Promise<{ result: T; refreshedLibrary?: Library }> {
   const securityScopedBookmarksModule = getSecurityScopedBookmarksModule();
   const bookmark = library.securityScopedBookmark;
 
@@ -166,7 +166,7 @@ export async function withSecurityScopedLibraryAccess<T>(
     throw createBookmarkOperationError("访问书库目录", error);
   }
 
-  let refreshedLibrary: MobileLibrary | undefined;
+  let refreshedLibrary: Library | undefined;
 
   try {
     if (access.stale) {

@@ -2,31 +2,25 @@ import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 
-import type { LibraryInfo } from "my-reader-tools/types/book"
+import type { Library, LibraryStore } from "my-reader-tools/store/library"
 
-interface LibraryStoreState {
-  libraries: LibraryInfo[]
-  activeLibraryId: string | null
-  loading: boolean
-  hydrated: boolean
-  hydrateFromBackend: () => Promise<void>
-  refreshLibraries: () => Promise<void>
-  addLibrary: (path: string, name?: string) => Promise<LibraryInfo>
-  removeLibrary: (id: string) => Promise<void>
-  switchLibrary: (id: string) => Promise<void>
-}
-
-export const useLibraryStore = create<LibraryStoreState>()((set, get) => ({
+export const useLibraryStore = create<LibraryStore>()((set, get) => ({
   libraries: [],
   activeLibraryId: null,
   loading: true,
   hydrated: false,
+  books: [],
+  loadingBooks: false,
+  error: null,
+  setHydrated(value: boolean) {
+    set({ hydrated: value })
+  },
 
   refreshLibraries: async () => {
     if (!isTauri()) return
     console.info("Start to refresh library list.")
     try {
-      const libs = await invoke<LibraryInfo[]>("list_libraries")
+      const libs = await invoke<Library[]>("list_libraries")
       set({ libraries: libs })
       console.info(
         `Success to refresh library list. count: ${libs.length}`,
@@ -47,7 +41,7 @@ export const useLibraryStore = create<LibraryStoreState>()((set, get) => ({
     console.info("Start to hydrate library state from backend.")
     set({ loading: true })
     try {
-      const libs = await invoke<LibraryInfo[]>("list_libraries")
+      const libs = await invoke<Library[]>("list_libraries")
       const id = await invoke<string | null>("get_active_library_id")
       set({ libraries: libs, activeLibraryId: id })
       console.info(
@@ -65,7 +59,7 @@ export const useLibraryStore = create<LibraryStoreState>()((set, get) => ({
       `Start to add library. path: "${path}", requested name: "${name ?? ""}"`,
     )
     try {
-      const info = await invoke<LibraryInfo>("add_library", { path, name })
+      const info = await invoke<Library>("add_library", { path, name })
       await get().refreshLibraries()
       const newId = await invoke<string | null>("get_active_library_id")
       if (newId) set({ activeLibraryId: newId })
@@ -108,6 +102,13 @@ export const useLibraryStore = create<LibraryStoreState>()((set, get) => ({
       console.error(`Failed to switch active library. id: "${id}", error:`, e)
       throw e
     }
+  },
+  async refreshBooks() {},
+  async addResolvedLibrary() {
+    return false
+  },
+  clearError() {
+    set({ error: null })
   },
 }))
 

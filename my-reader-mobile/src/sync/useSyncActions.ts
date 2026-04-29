@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { useAppStore } from "../store/app-store";
-import type { MobileLibrary } from "../data/types";
+import type { Library } from "../data/types";
 import { AppInvariantError } from "../errors";
 
 import {
@@ -48,7 +48,7 @@ export function useSyncActions(): SyncActions {
   const dataSources = useAppStore((state) => state.dataSources);
 
   const findLibrary = useCallback(
-    (libraryId: string): MobileLibrary => {
+    (libraryId: string): Library => {
       const library = libraries.find((item) => item.id === libraryId);
       if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
       return library;

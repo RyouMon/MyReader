@@ -1,4 +1,4 @@
-import type { DataSource, MobileLibrary } from "../data/types";
+import type { DataSource, Library } from "../data/types";
 import { AppInvariantError } from "../errors";
 
 import { resolveLibraryBooksDir } from "./backend";
@@ -45,7 +45,7 @@ function yieldToEventLoop(): Promise<void> {
  * callers that need batch work can pass the returned context to every step.
  */
 export async function openSyncContext(
-  library: MobileLibrary,
+  library: Library,
   dataSources: DataSource[],
 ): Promise<SyncTargetContext> {
   console.info("Start to open sync context, params:", {

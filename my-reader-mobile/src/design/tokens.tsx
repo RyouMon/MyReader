@@ -144,18 +144,18 @@ function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
  * Initializes app theme side effects for React Native surfaces.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const initialize = useAppStore((state) => state.initialize);
-  const hasHydrated = useAppStore((state) => state.hasHydrated);
+  const hydrateFromBackend = useAppStore((state) => state.hydrateFromBackend);
+  const hydrated = useAppStore((state) => state.hydrated);
   const systemColorScheme = useColorScheme();
   const { mode } = useThemeModeSetting();
 
   useEffect(() => {
-    if (!hasHydrated) {
+    if (!hydrated) {
       return;
     }
 
-    void initialize();
-  }, [hasHydrated, initialize]);
+    void hydrateFromBackend();
+  }, [hydrated, hydrateFromBackend]);
 
   const colorScheme = resolveThemeMode(mode, systemColorScheme);
   const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);

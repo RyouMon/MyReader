@@ -8,7 +8,7 @@ import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
 } from "./security-scoped-bookmarks";
-import type { BookItem, MobileLibrary } from "./types";
+import type { BookItem, Library } from "./types";
 import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
@@ -173,7 +173,7 @@ function copyMetadataToCache(sourceUri: string, libraryId: string) {
   return destination.uri;
 }
 
-async function refreshCachedMetadataFromDirectory(library: MobileLibrary, directoryUri: string) {
+async function refreshCachedMetadataFromDirectory(library: Library, directoryUri: string) {
   const metadataFile = getMetadataFileFromDirectory({ uri: directoryUri });
 
   if (!metadataFile) {
@@ -183,12 +183,12 @@ async function refreshCachedMetadataFromDirectory(library: MobileLibrary, direct
   return copyMetadataToCache(metadataFile.uri, library.id);
 }
 
-function getLibraryRootUri(library: MobileLibrary, resolvedPath?: string) {
+function getLibraryRootUri(library: Library, resolvedPath?: string) {
   return resolvedPath ?? library.securityScopedBookmark?.resolvedUri ?? library.path;
 }
 
 export function buildCoverUri(
-  library: MobileLibrary,
+  library: Library,
   bookPath: string | null,
   hasCover: boolean,
   resolvedPath?: string
@@ -217,7 +217,7 @@ function getMetadataFileFromDirectory(directory: PickedDirectoryLike) {
   return metadata instanceof FSFile ? metadata : null;
 }
 
-export async function pickCalibreLibrary(): Promise<MobileLibrary | null> {
+export async function pickCalibreLibrary(): Promise<Library | null> {
   let directory: PickedDirectoryLike | null = null;
   let metadataFile: FSFile | null = null;
 
@@ -263,7 +263,7 @@ export async function pickCalibreLibrary(): Promise<MobileLibrary | null> {
   };
 }
 
-export async function ensureLibraryMetadataCached(library: MobileLibrary): Promise<MobileLibrary> {
+export async function ensureLibraryMetadataCached(library: Library): Promise<Library> {
   if (library.sourceType === "webdav") {
     return library;
   }
@@ -280,11 +280,11 @@ export async function ensureLibraryMetadataCached(library: MobileLibrary): Promi
     };
   }
 
-  if (isCachedMetadataUri(library.metadataUri)) {
+  if (isCachedMetadataUri(library.metadataUri!)) {
     return library;
   }
 
-  const cachedMetadataUri = copyMetadataToCache(library.metadataUri, library.id);
+  const cachedMetadataUri = copyMetadataToCache(library.metadataUri!, library.id);
 
   return {
     ...library,
@@ -292,9 +292,9 @@ export async function ensureLibraryMetadataCached(library: MobileLibrary): Promi
   };
 }
 
-export async function readBookCountFromLibrary(library: MobileLibrary) {
+export async function readBookCountFromLibrary(library: Library) {
   const nextLibrary = await ensureLibraryMetadataCached(library);
-  const bookCount = await readBookCountFromMetadata(nextLibrary.metadataUri);
+  const bookCount = await readBookCountFromMetadata(nextLibrary.metadataUri!);
 
   return {
     library: {
@@ -308,9 +308,9 @@ export async function readBookCountFromLibrary(library: MobileLibrary) {
 /**
  * Resolves a readable metadata.db URI and surfaces a user-facing recovery hint on failure.
  */
-async function resolveMetadataUriForRead(library: MobileLibrary): Promise<string | null> {
+async function resolveMetadataUriForRead(library: Library): Promise<string | null> {
   if (library.sourceType === "webdav") {
-    const currentMetadata = new FSFile(library.metadataUri);
+    const currentMetadata = new FSFile(library.metadataUri!);
     if (currentMetadata.exists) {
       return currentMetadata.uri;
     }
@@ -319,12 +319,12 @@ async function resolveMetadataUriForRead(library: MobileLibrary): Promise<string
     if (fallbackMetadata.exists) {
       return fallbackMetadata.uri;
     }
-    return library.metadataUri;
+    return library.metadataUri!;
   }
 
   try {
     const cachedLibrary = await ensureLibraryMetadataCached(library);
-    return cachedLibrary.metadataUri;
+    return cachedLibrary.metadataUri!;
   } catch {
     showAlertWithStatusBarRestore(
       "书库数据已损坏",
@@ -349,7 +349,7 @@ export async function readBookCountFromMetadata(metadataUri: string) {
 }
 
 export async function readBookDetailFromMetadata(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number
 ): Promise<BookDetail | null> {
   const metadataUri = await resolveMetadataUriForRead(library);
@@ -436,7 +436,7 @@ export async function readBookDetailFromMetadata(
  * where `data.name` comes from the `data` table (typically matches the book title).
  */
 export async function readBookFileBytes(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number,
   format: string
 ): Promise<Uint8Array> {
@@ -445,7 +445,7 @@ export async function readBookFileBytes(
 }
 
 async function lookupBookFileLocation(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number,
   format: string
 ): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
@@ -476,7 +476,7 @@ async function lookupBookFileLocation(
 }
 
 export async function getBookFormatPaths(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number,
 ): Promise<{ format: string; relativePath: string }[]> {
   const metadataUri = await resolveMetadataUriForRead(library);
@@ -503,7 +503,7 @@ export async function getBookFormatPaths(
  * Returns every downloadable format path keyed by Calibre book id.
  */
 export async function getLibraryBookFormatPathMap(
-  library: MobileLibrary,
+  library: Library,
 ): Promise<Record<string, string[]>> {
   const metadataUri = await resolveMetadataUriForRead(library);
   if (!metadataUri) {
@@ -530,7 +530,7 @@ export async function getLibraryBookFormatPathMap(
  * Returns all readable formats keyed by Calibre book id.
  */
 export async function getAllBookFormats(
-  library: MobileLibrary,
+  library: Library,
 ): Promise<Record<string, string[]>> {
   const metadataUri = await resolveMetadataUriForRead(library);
   if (!metadataUri) {
@@ -587,7 +587,7 @@ function describeFileForLog(file: FSFile) {
 }
 
 export async function materializeBookFileToCache(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number,
   format: string,
   cachePrefix = "local-book"
@@ -679,7 +679,7 @@ export function clearLocalCopyCacheByLibrary(libraryId: string): void {
 }
 
 export async function resolveBookFile(
-  library: MobileLibrary,
+  library: Library,
   calibreBookId: number,
   format: string
 ): Promise<FSFile> {
@@ -701,7 +701,7 @@ export async function resolveBookFile(
   return bookFile;
 }
 
-export async function readBooksFromLibrary(library: MobileLibrary): Promise<BookItem[]> {
+export async function readBooksFromLibrary(library: Library): Promise<BookItem[]> {
   const metadataUri = await resolveMetadataUriForRead(library);
   if (!metadataUri) {
     return [];

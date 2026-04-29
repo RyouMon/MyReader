@@ -5,10 +5,10 @@ import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-ba
 import { buildHttpBasicAuthHeader } from "../utils/http";
 import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
 import { openDatabaseFromUri } from "./sqlite";
-import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
+import type { BookItem, Library, WebDavDataSource } from "./types";
 
 export function buildWebDavBookCoverUri(
-  library: MobileLibrary,
+  library: Library,
   source: WebDavDataSource,
   bookPath: string,
   hasCover: boolean
@@ -229,10 +229,10 @@ async function downloadToCache(source: WebDavDataSource, remotePath: string, loc
  * Ensures WebDAV metadata.db exists in current sandbox cache, re-downloading when missing.
  */
 async function ensureWebDavMetadataCached(
-  library: MobileLibrary,
+  library: Library,
   source: WebDavDataSource,
 ): Promise<string | null> {
-  const existingMetadata = new File(library.metadataUri);
+  const existingMetadata = new File(library.metadataUri!);
   if (existingMetadata.exists) {
     return existingMetadata.uri;
   }
@@ -258,7 +258,7 @@ async function ensureWebDavMetadataCached(
 export async function createWebDavLibraryFromPath(
   source: WebDavDataSource,
   remoteLibraryPath: string
-): Promise<MobileLibrary> {
+): Promise<Library> {
   const normalizedPath = normalizeRemotePath(remoteLibraryPath);
   const metadataFile = await downloadToCache(
     source,
@@ -287,14 +287,14 @@ export async function createWebDavLibraryFromPath(
 }
 
 export async function readBooksFromWebDavLibrary(
-  library: MobileLibrary,
+  library: Library,
   source: WebDavDataSource
 ): Promise<{ books: BookItem[]; metadataUri: string }> {
   const metadataUri = await ensureWebDavMetadataCached(library, source);
   if (!metadataUri) {
     return {
       books: [],
-      metadataUri: library.metadataUri,
+      metadataUri: library.metadataUri!,
     };
   }
   const db = await openDatabaseFromUri(metadataUri);

@@ -140,7 +140,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { activeLibraryId, libraries, books, loadingBooks, loadingLibraries, setActiveLibrary, error } =
+  const { activeLibraryId, libraries, books, loadingBooks, loading, switchLibrary, error } =
     useLibraryStore();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
@@ -179,7 +179,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     if (nextLibraryId === effectiveLibraryId) {
       return;
     }
-    void setActiveLibrary(nextLibraryId);
+    void switchLibrary(nextLibraryId);
   }
 
   /** Opens a platform-neutral library picker menu without navigation. */
@@ -209,8 +209,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       return;
     }
 
-    void setActiveLibrary(libraryIdProp);
-  }, [activeLibraryId, libraryIdProp, selectedLibrary, setActiveLibrary]);
+    void switchLibrary(libraryIdProp);
+  }, [activeLibraryId, libraryIdProp, selectedLibrary, switchLibrary]);
 
   useEffect(() => {
     if (!selectedLibrary) {
@@ -706,7 +706,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     },
   ];
 
-  if (loadingLibraries && typeof effectiveLibraryId === "string" && !selectedLibrary) {
+  if (loading && typeof effectiveLibraryId === "string" && !selectedLibrary) {
     return (
       <>
         <Stack.Screen
@@ -725,7 +725,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const showInvalidLibrary =
     typeof effectiveLibraryId === "string" &&
     !selectedLibrary &&
-    !loadingLibraries &&
+    !loading &&
     libraries.length > 0;
 
   if (showInvalidLibrary) {
@@ -744,7 +744,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (!loadingLibraries && libraries.length === 0) {
+  if (!loading && libraries.length === 0) {
     return (
       <>
         <Stack.Screen
@@ -766,7 +766,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (loadingLibraries && libraries.length === 0) {
+  if (loading && libraries.length === 0) {
     return (
       <>
         <Stack.Screen

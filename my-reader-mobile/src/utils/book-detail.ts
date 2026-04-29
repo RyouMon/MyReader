@@ -1,7 +1,7 @@
 import type { BookDetail } from "my-reader-tools/types/book";
 
 import { buildCoverUri } from "../data/calibre";
-import type { BookItem, MobileLibrary, WebDavDataSource } from "../data/types";
+import type { BookItem, Library, WebDavDataSource } from "../data/types";
 import { buildWebDavBookCoverUri } from "../data/webdav";
 
 export const IDENTIFIER_LABELS: Record<string, string> = {
@@ -85,7 +85,7 @@ export function stripHtml(html: string): string {
 }
 
 export function resolveCoverForDetail(
-  library: MobileLibrary | null,
+  library: Library | null,
   detail: BookDetail,
   webDavSource: WebDavDataSource | null,
   fallback?: BookItem["coverUri"]

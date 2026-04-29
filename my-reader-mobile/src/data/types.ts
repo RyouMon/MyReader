@@ -1,4 +1,5 @@
 import type { DataSource, DataSourceWebdav } from "my-reader-tools/store/data-source";
+import type { Library } from "my-reader-tools/store/library";
 
 export type BookItem = {
   id: string;
@@ -15,32 +16,13 @@ export type BookItem = {
 
 export type DataSourceType = "local" | "webdav";
 
-export type SecurityScopedBookmark = {
-  bookmarkBase64: string;
-  resolvedUri: string;
-  stale: boolean;
-};
-
-export type { DataSource, DataSourceWebdav };
+export type { DataSource, DataSourceWebdav, Library };
 
 /** WebDAV API 层：要求已配置密码 */
 export type WebDavDataSource = DataSourceWebdav & { password: string };
 
-export type MobileLibrary = {
-  id: string;
-  name: string;
-  path: string;
-  metadataUri: string;
-  bookCount: number;
-  addedAt: number;
-  dataSourceId?: string;
-  sourceType?: DataSourceType;
-  sourcePath?: string;
-  securityScopedBookmark?: SecurityScopedBookmark;
-};
-
 export type MobileLibrariesConfig = {
-  libraries: MobileLibrary[];
+  libraries: Library[];
   activeLibraryId: string | null;
   dataSources: DataSource[];
 };

@@ -1,8 +1,9 @@
 import type { StateCreator } from "zustand";
 
 import type { DataSourceStore } from "my-reader-tools/store/data-source";
+import type { LibraryStore } from "my-reader-tools/store/library";
 
-import type { BookItem, MobileLibrary } from "../data/types";
+import type { BookItem, Library } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
 export type ReaderTheme = "light" | "paper" | "green" | "dark";
@@ -40,7 +41,7 @@ export type ReaderSettings = {
 export type PersistedAppState = {
   settings: ReaderSettings;
   dataSources: DataSourceStore["dataSources"];
-  libraries: MobileLibrary[];
+  libraries: Library[];
   activeLibraryId: string | null;
   libraryViewMode: LibraryViewMode;
 };
@@ -55,16 +56,27 @@ type DataSourceActions = Pick<
   | "testDataSourceConnection"
 >;
 
-export type AppState = Omit<PersistedAppState, "dataSources"> &
+type LibraryActions = Pick<
+  LibraryStore,
+  | "libraries"
+  | "activeLibraryId"
+  | "loading"
+  | "hydrated"
+  | "hydrateFromBackend"
+  | "refreshLibraries"
+  | "addLibrary"
+  | "removeLibrary"
+  | "switchLibrary"
+>;
+
+export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "activeLibraryId"> &
   Pick<DataSourceStore, "dataSources" | "loading" | "hydrated"> &
-  DataSourceActions & {
+  DataSourceActions &
+  LibraryActions & {
     books: BookItem[];
-    loadingLibraries: boolean;
     loadingBooks: boolean;
     error: string | null;
-    hasHydrated: boolean;
-    setHasHydrated: (value: boolean) => void;
-    initialize: () => Promise<void>;
+    setHydrated: (value: boolean) => void;
     setThemeMode: (mode: ThemeMode) => void;
     setLibraryViewMode: (mode: LibraryViewMode) => void;
     setSyncEnabled: (enabled: boolean) => void;
@@ -72,10 +84,7 @@ export type AppState = Omit<PersistedAppState, "dataSources"> &
     patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
     patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
     clearError: () => void;
-    addLibrary: () => Promise<boolean>;
-    addResolvedLibrary: (library: MobileLibrary) => Promise<boolean>;
-    removeLibrary: (id: string) => Promise<void>;
-    setActiveLibrary: (id: string) => Promise<void>;
+    addResolvedLibrary: (library: Library) => Promise<boolean>;
     refreshBooks: () => Promise<void>;
   };
 

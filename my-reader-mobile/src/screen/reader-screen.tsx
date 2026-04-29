@@ -22,7 +22,7 @@ import {
 } from "@/src/data/calibre";
 import { extractEpubToCache } from "@/src/data/native-epub-cache";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
-import type { MobileLibrary, WebDavDataSource } from "@/src/data/types";
+import type { Library, WebDavDataSource } from "@/src/data/types";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { getFileState, type LocalState } from "@/src/sync/file_state";
 import { useThemePalette } from "@/src/design/tokens";
@@ -148,7 +148,7 @@ async function resolveDownloadedWebDavBookFile(input: {
   libraryId: string;
   dataSourceId: string;
   cacheDirUri: string;
-  library: MobileLibrary;
+  library: Library;
   calibreBookId: number;
   format: string;
 }): Promise<File | null> {

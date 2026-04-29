@@ -1,4 +1,4 @@
-import type { DataSource, MobileLibrary, WebDavDataSource } from "../data/types";
+import type { DataSource, Library, WebDavDataSource } from "../data/types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import { readWebDavPassword } from "../store/secure-credential-store";
 import { parentDirectoryUriForFileUri } from "../utils/io";
@@ -25,7 +25,7 @@ export type ResolvedSyncTarget = {
  * the user so they can fix credentials.
  */
 export async function resolveSyncTarget(
-  library: MobileLibrary,
+  library: Library,
   dataSources: DataSource[],
 ): Promise<ResolvedSyncTarget> {
   const libraryCacheDirUri = resolveLibraryBooksDir(library.id);
@@ -56,7 +56,7 @@ export async function resolveSyncTarget(
     };
   }
 
-  const libraryRootUri = parentDirectoryUriForFileUri(library.metadataUri);
+  const libraryRootUri = parentDirectoryUriForFileUri(library.metadataUri!);
   if (!libraryRootUri) {
     throw new SyncConfigError("无法解析本地书库根目录。");
   }

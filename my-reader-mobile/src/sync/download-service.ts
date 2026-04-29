@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 
-import type { MobileLibrary } from "../data/types";
+import type { Library } from "../data/types";
 import { useAppStore } from "../store/app-store";
 import { AppInvariantError, DataIntegrityError, NetworkError } from "../errors";
 
@@ -28,7 +28,7 @@ export type LibraryDownloadRequest = {
  */
 export async function openDownloadContextForLibrary(libraryId: string): Promise<SyncTargetContext> {
   const { libraries, dataSources } = useAppStore.getState();
-  const library = libraries.find((item: MobileLibrary) => item.id === libraryId);
+  const library = libraries.find((item: Library) => item.id === libraryId);
   if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
   return openSyncContext(library, dataSources);
 }
@@ -39,7 +39,7 @@ export async function openDownloadContextForLibrary(libraryId: string): Promise<
  */
 export async function checkLibraryConnectivity(libraryId: string): Promise<void> {
   const { libraries, dataSources } = useAppStore.getState();
-  const library = libraries.find((item: MobileLibrary) => item.id === libraryId);
+  const library = libraries.find((item: Library) => item.id === libraryId);
   if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
   if (library.sourceType !== "webdav") return;
 

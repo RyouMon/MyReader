@@ -6,13 +6,13 @@ export function useLibraryStore() {
   const libraries = useAppStore((state) => state.libraries);
   const activeLibraryId = useAppStore((state) => state.activeLibraryId);
   const books = useAppStore((state) => state.books);
-  const loadingLibraries = useAppStore((state) => state.loadingLibraries);
+  const loading = useAppStore((state) => state.loading);
   const loadingBooks = useAppStore((state) => state.loadingBooks);
   const error = useAppStore((state) => state.error);
   const addLibrary = useAppStore((state) => state.addLibrary);
   const addResolvedLibrary = useAppStore((state) => state.addResolvedLibrary);
   const removeLibrary = useAppStore((state) => state.removeLibrary);
-  const setActiveLibrary = useAppStore((state) => state.setActiveLibrary);
+  const switchLibrary = useAppStore((state) => state.switchLibrary);
   const refreshBooks = useAppStore((state) => state.refreshBooks);
 
   const activeLibrary = useMemo(
@@ -26,13 +26,13 @@ export function useLibraryStore() {
       activeLibraryId,
       activeLibrary,
       books,
-      loadingLibraries,
+      loading,
       loadingBooks,
       error,
       addLibrary,
       addResolvedLibrary,
       removeLibrary,
-      setActiveLibrary,
+      switchLibrary,
       refreshBooks,
     }),
     [
@@ -40,13 +40,13 @@ export function useLibraryStore() {
       activeLibraryId,
       activeLibrary,
       books,
-      loadingLibraries,
+      loading,
       loadingBooks,
       error,
       addLibrary,
       addResolvedLibrary,
       removeLibrary,
-      setActiveLibrary,
+      switchLibrary,
       refreshBooks,
     ]
   );

@@ -6,7 +6,7 @@ import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import type { DataSource, MobileLibrary } from "@/src/data/types";
+import type { DataSource, Library } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
@@ -38,15 +38,15 @@ function formatDate(timestamp?: number) {
   }).format(date);
 }
 
-function getSourceTypeLabel(library: MobileLibrary) {
+function getSourceTypeLabel(library: Library) {
   return library.sourceType === "webdav" ? "WebDAV" : "本地";
 }
 
-function getLibraryTypeLabel(_library: MobileLibrary) {
+function getLibraryTypeLabel(_library: Library) {
   return "Calibre 书库";
 }
 
-function getSourcePathDetail(library: MobileLibrary, dataSource?: DataSource | null) {
+function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
   if (library.sourceType === "webdav" && dataSource?.type === "webdav") {
     return `${dataSource.endpoint}${library.sourcePath ?? (dataSource.rootPath ?? "")}`;
   }
@@ -59,7 +59,7 @@ function getLibraryAccent(index: number, palette: ReturnType<typeof useThemePale
   return accents[index % accents.length] ?? palette.primary;
 }
 
-function DetailHero({ library, accent, isActive }: { library: MobileLibrary; accent: string; isActive: boolean }) {
+function DetailHero({ library, accent, isActive }: { library: Library; accent: string; isActive: boolean }) {
   const palette = useThemePalette();
 
   return (

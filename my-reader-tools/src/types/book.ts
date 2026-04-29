@@ -57,9 +57,3 @@ export interface BookIdentifier {
   value: string
 }
 
-export interface LibraryInfo {
-  id: string
-  name: string
-  path: string
-  bookCount: number
-}
