@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
 
-import type { SFSymbol } from "expo-symbols";
 import { Stack } from "expo-router";
-import type { ColorValue } from "react-native";
+import type { SFSymbol } from "expo-symbols";
+import { ActivityIndicator, type ColorValue } from "react-native";
 
 import { View } from "@/tw";
 
@@ -17,6 +17,8 @@ type HeaderToolbarAction = {
   /** Toolbar icon tint; on iOS maps to `Stack.Toolbar.Button` `tintColor`. */
   color?: ColorValue;
   iconOnly?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 };
 
 type HeaderToolbarProps = {
@@ -28,7 +30,19 @@ function ActionGroup({ actions }: { actions: HeaderToolbarAction[] }) {
   return (
     <View className="flex-row items-center gap-2">
       {actions.map((action) => (
-        <RoundIconButton key={action.label} label={action.label} onPress={action.onPress} icon={action.icon} />
+        <RoundIconButton
+          key={action.label}
+          label={action.label}
+          onPress={action.onPress}
+          icon={
+            action.loading ? (
+              <ActivityIndicator color={String(action.color ?? "#000")} size="small" />
+            ) : (
+              action.icon
+            )
+          }
+          disabled={action.loading || action.disabled}
+        />
       ))}
     </View>
   );
@@ -40,7 +54,18 @@ function renderActions(actions?: HeaderToolbarAction[]) {
   }
 
   return actions.length === 1 ? (
-    <RoundIconButton label={actions[0].label} onPress={actions[0].onPress} icon={actions[0].icon} />
+    <RoundIconButton
+      label={actions[0].label}
+      onPress={actions[0].onPress}
+      icon={
+        actions[0].loading ? (
+          <ActivityIndicator color={String(actions[0].color ?? "#000")} size="small" />
+        ) : (
+          actions[0].icon
+        )
+      }
+      disabled={actions[0].disabled}
+    />
   ) : (
     <ActionGroup actions={actions} />
   );

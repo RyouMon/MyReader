@@ -116,18 +116,20 @@ export function AddDataSourcePanel({
               }
               setTesting(true)
               try {
-                await useDataSourceStore
+                const result = await useDataSourceStore
                   .getState()
                   .testDataSourceConnection(datasource)
-                setTestFeedback({
-                  tone: "success",
-                  message: "连接成功，可正常访问 WebDAV。",
-                })
-              } catch (error) {
-                setTestFeedback({
-                  tone: "error",
-                  message: String(error),
-                })
+                if (result.ok) {
+                  setTestFeedback({
+                    tone: "success",
+                    message: "连接成功，可正常访问 WebDAV。",
+                  })
+                } else {
+                  setTestFeedback({
+                    tone: "error",
+                    message: result.message,
+                  })
+                }
               } finally {
                 setTesting(false)
               }

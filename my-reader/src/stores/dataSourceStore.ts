@@ -1,5 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
-import type { DataSource, DataSourceStore } from "my-reader-tools/store/data-source"
+import type { DataSource, DataSourceConnectionTestResult, DataSourceStore } from "my-reader-tools/store/data-source"
 import { create } from "zustand"
 
 function isRuntimeAvailable(): boolean {
@@ -66,8 +66,16 @@ async function testWebdavConnection(input: {
   username: string
   password: string
   rootPath?: string
-}): Promise<void> {
-  await invoke("test_webdav_connection", { input })
+}): Promise<DataSourceConnectionTestResult> {
+  try {
+    await invoke("test_webdav_connection", { input })
+    return { ok: true, message: "OK" }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
 
 export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
@@ -120,7 +128,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
   },
 
   testDataSourceConnection: async (datasource: DataSource) => {
-    await testWebdavConnection({
+    return await testWebdavConnection({
       endpoint: datasource.endpoint,
       username: datasource.username,
       password: datasource.password ?? "",

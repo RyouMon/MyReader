@@ -4,8 +4,14 @@ import type { HeaderToolbarAction, HeaderToolbarProps } from "./header-toolbar.a
 
 function toolbarButtonElements(actions: HeaderToolbarAction[]) {
   return actions.map((action) => (
-    <Stack.Toolbar.Button key={action.label} onPress={action.onPress} tintColor={action.color}>
-      {action.iosSfSymbol ? <Stack.Toolbar.Icon sf={action.iosSfSymbol} /> : null}
+    <Stack.Toolbar.Button
+      key={action.label}
+      disabled={action.disabled}
+      onPress={action.onPress}
+      tintColor={action.color}
+    >
+      {action.loading ? <Stack.Toolbar.Icon sf="progress.indicator" /> : null}
+      {!action.loading && action.iosSfSymbol ? <Stack.Toolbar.Icon sf={action.iosSfSymbol} /> : null}
       {!action.iconOnly ? <Stack.Toolbar.Label>{action.label}</Stack.Toolbar.Label> : null}
     </Stack.Toolbar.Button>
   ));

@@ -1,9 +1,11 @@
 import { File, Paths } from "expo-file-system";
+import ky from "ky";
 
-import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
-import { openDatabaseFromUri } from "./sqlite";
-import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
+import { buildHttpBasicAuthHeader } from "../utils/http";
+import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
+import { openDatabaseFromUri } from "./sqlite";
+import type { BookItem, MobileLibrary, WebDavDataSource } from "./types";
 
 export function buildWebDavBookCoverUri(
   library: MobileLibrary,
@@ -57,14 +59,6 @@ const BOOKS_QUERY = `
   ORDER BY b.sort COLLATE NOCASE ASC
 `;
 
-function encodeBasicAuth(username: string, password: string) {
-  if (typeof globalThis.btoa === "function") {
-    return globalThis.btoa(`${username}:${password}`);
-  }
-
-  throw new Error("当前环境不支持 Basic Auth 编码");
-}
-
 function normalizeBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
 }
@@ -102,10 +96,8 @@ function buildUrl(source: WebDavDataSource, path = "") {
   return encodedPath ? `${baseUrl}/${encodedPath}` : baseUrl;
 }
 
-function buildAuthHeader(source: WebDavDataSource) {
-  return {
-    Authorization: `Basic ${encodeBasicAuth(source.username, source.password)}`,
-  };
+function buildAuthHeader(source: WebDavDataSource): Record<string, string> {
+  return buildHttpBasicAuthHeader(source.username, source.password);
 }
 
 function splitConcat(value: string | null) {
@@ -171,30 +163,29 @@ function parsePropfind(source: WebDavDataSource, xml: string): WebDavEntry[] {
     .filter((entry) => entry.href);
 }
 
-async function requestWebDav(source: WebDavDataSource, path: string, init?: RequestInit) {
-  const response = await fetch(buildUrl(source, path), {
-    ...init,
+export async function testWebDavConnection(source: WebDavDataSource, timeout?: number | false): Promise<Response> {
+  const response = await ky(buildUrl(source, ""), {
+    method: "PROPFIND",
+    timeout,
+    throwHttpErrors: false,
     headers: {
       ...buildAuthHeader(source),
-      ...(init?.headers ?? {}),
+      Depth: "0",
     },
   });
-
-  if (!response.ok) {
-    throw new Error(`WebDAV 请求失败: ${response.status}`);
-  }
-
   return response;
 }
 
-export async function testWebDavConnection(source: WebDavDataSource) {
-  await requestWebDav(source, "", { method: "PROPFIND", headers: { Depth: "0" } });
-}
-
-export async function listWebDavDirectory(source: WebDavDataSource, path = "") {
-  const response = await requestWebDav(source, path, {
+export async function listWebDavDirectory(
+  source: WebDavDataSource,
+  path = "",
+  timeout?: number | false
+) {
+  const response = await ky(buildUrl(source, path), {
     method: "PROPFIND",
+    timeout,
     headers: {
+      ...buildAuthHeader(source),
       Depth: "1",
       "Content-Type": "application/xml; charset=utf-8",
     },
@@ -218,7 +209,11 @@ export async function listWebDavDirectory(source: WebDavDataSource, path = "") {
 }
 
 async function downloadToCache(source: WebDavDataSource, remotePath: string, localName: string) {
-  const response = await requestWebDav(source, remotePath);
+  const response = await ky(buildUrl(source, remotePath), {
+    headers: {
+      ...buildAuthHeader(source),
+    },
+  });
   const bytes = new Uint8Array(await response.arrayBuffer());
   const file = new File(Paths.cache, localName);
 

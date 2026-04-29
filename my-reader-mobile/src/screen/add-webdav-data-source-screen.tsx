@@ -1,15 +1,15 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useForm, useStore } from "@tanstack/react-form";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Alert, TextInput as RNTextInput, StyleSheet } from "react-native";
 import { z } from "zod";
 
 import type { DataSource } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
-import { Text, TextInput, View } from "@/tw";
+import { TextInput, View } from "@/tw";
 
 import {
-  FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS,
   FormFieldSwitch,
   FormLabeledFieldRow,
   HeaderToolbar,
@@ -31,70 +31,34 @@ const addWebDavMobileSchema = z
         "端口范围应为 1-65535",
       ),
     basePath: z.string().trim(),
-    username: z.string().trim().min(1, "请输入用户名"),
-    password: z.string().min(1, "请输入密码或应用专用密码"),
+    username: z.string().trim(),
+    password: z.string(),
     useSsl: z.boolean(),
   })
   .transform((data) => {
     const base = data.serverUrl;
     const portTrim = data.port;
+    let endpoint = base;
 
-    const urlIssue = (): never => {
-      throw new z.ZodError([
-        {
-          code: z.ZodIssueCode.custom,
-          message: "服务器地址格式不正确。",
-          path: ["serverUrl"],
-        },
-      ]);
-    };
+    if (!/^https?:\/\//i.test(endpoint)) {
+      endpoint = `${data.useSsl ? "https" : "http"}://${endpoint}`;
+    }
 
-    if (portTrim === "") {
-      if (/^https?:\/\//i.test(base)) {
-        try {
-          new URL(base);
-          return { ...data, endpoint: base };
-        } catch {
-          urlIssue();
-        }
-      }
-      try {
-        const scheme = data.useSsl ? "https" : "http";
-        const url = new URL(`${scheme}://${base}`);
-        const href = url.toString();
-        return {
-          ...data,
-          endpoint: href.endsWith("/") && url.pathname === "/" ? href.slice(0, -1) : href,
-        };
-      } catch {
-        urlIssue();
+    if (portTrim !== "") {
+      const matched = endpoint.match(/^(https?:\/\/)([^/?#]*)(.*)$/i);
+      if (matched) {
+        const [, protocol, authority, suffix] = matched;
+        endpoint = `${protocol}${authority.replace(/:\d+$/, "")}:${portTrim}${suffix}`;
+      } else {
+        endpoint = `${endpoint.replace(/:\d+$/, "")}:${portTrim}`;
       }
     }
 
-    const portNum = Number.parseInt(portTrim, 10);
-    let normalized = base;
-    if (!/^https?:\/\//i.test(normalized)) {
-      normalized = `${data.useSsl ? "https" : "http"}://${normalized}`;
-    }
-    try {
-      const url = new URL(normalized);
-      url.port = String(portNum);
-      const href = url.toString();
-      return {
-        ...data,
-        endpoint: href.endsWith("/") && url.pathname === "/" ? href.slice(0, -1) : href,
-      };
-    } catch {
-      urlIssue();
-    }
+    return { ...data, endpoint };
   });
 
 type WebDavFormInput = z.input<typeof addWebDavMobileSchema>;
-const CONNECTION_TIMEOUT_MS = 10000;
 
-/**
- * 从 endpoint URL 推断数据源显示名称（通常为 hostname）。
- */
 function deriveWebDavDataSourceName(endpoint: string): string {
   try {
     let normalized = endpoint.trim();
@@ -134,35 +98,21 @@ function buildDraft(values: WebDavFormInput): DataSource {
   };
 }
 
-/**
- * 为异步操作添加超时保护，避免网络请求长时间挂起导致 UI 卡死。
- */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-  return await new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
+// Inline-style equivalent of className "min-h-10 border-0 bg-transparent py-1 text-[15px]"
+const rnInputStyle = StyleSheet.create({
+  base: { minHeight: 40, borderWidth: 0, backgroundColor: "transparent", paddingVertical: 4, fontSize: 15 },
+});
 
 export default function AddWebDavDataSourceScreen() {
   const palette = useThemePalette();
   const { createDataSource, testDataSourceConnection } = useDataSourceStore();
-  const [error, setError] = useState<string | null>(null);
-  const [testOk, setTestOk] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+
+  const portRef = useRef<RNTextInput>(null);
+  const basePathRef = useRef<RNTextInput>(null);
+  const usernameRef = useRef<RNTextInput>(null);
+  const passwordRef = useRef<RNTextInput>(null);
 
   const form = useForm({
     defaultValues: {
@@ -176,77 +126,67 @@ export default function AddWebDavDataSourceScreen() {
     validators: {
       onSubmit: addWebDavMobileSchema,
     },
-    listeners: {
-      onChange: () => {
-        setError(null);
-        setTestOk(false);
-      },
-    },
   });
 
   const useSsl = useStore(form.store, (s) => s.values.useSsl);
 
-  async function handleTest() {
-    if (saving || testing) {
-      return;
-    }
-    setTesting(true);
-    setError(null);
-    setTestOk(false);
-    try {
-      await form.validateAllFields("submit");
-      const draft = buildDraft(form.store.state.values);
-      await withTimeout(
-        testDataSourceConnection(draft),
-        CONNECTION_TIMEOUT_MS,
-        "连接测试超时，请检查网络或服务器地址后重试。",
-      );
-      setTestOk(true);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
-    } finally {
-      setTesting(false);
+  async function persistDataSource(draft: DataSource) {
+    await createDataSource(draft);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/settings/webdav");
     }
   }
 
   async function handleSave() {
-    if (saving || testing) {
+    if (saving) return;
+
+    const parseResult = addWebDavMobileSchema.safeParse(form.store.state.values);
+    if (!parseResult.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of parseResult.error.issues) {
+        const key = String(issue.path[0]);
+        if (!errors[key]) errors[key] = issue.message;
+      }
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
+
     setSaving(true);
-    setError(null);
-    setTestOk(false);
     try {
-      await form.validateAllFields("submit");
       const draft = buildDraft(form.store.state.values);
-      await withTimeout(
-        testDataSourceConnection(draft),
-        CONNECTION_TIMEOUT_MS,
-        "连接测试超时，请检查网络或服务器地址后重试。",
-      );
-      await createDataSource(draft);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace("/settings/webdav");
+
+      const testResult = await testDataSourceConnection(draft);
+      if (!testResult.ok) {
+        Alert.alert(
+          "连接测试失败",
+          testResult.message,
+          [
+            { text: "重新填写", style: "cancel" },
+            {
+              text: "仍然添加",
+              onPress: () => {
+                setSaving(true);
+                void persistDataSource(draft).finally(() => setSaving(false));
+              },
+            },
+          ],
+        );
+        return;
       }
+
+      await persistDataSource(draft);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "无法连接到 WebDAV 服务。");
+      Alert.alert("添加失败", caught instanceof Error ? caught.message : "操作失败，请重试。");
     } finally {
       setSaving(false);
     }
   }
 
-  const inputClassName = `${FORM_FIELD_CONTROL_MIN_HEIGHT_CLASS} border-0 bg-transparent py-1 text-[15px]`;
+  const inputClassName = "border-0 bg-transparent py-1 text-[15px]";
   const rightToolbar: HeaderToolbarAction[] = [
-    {
-      label: testing ? "测试中" : "测试连接",
-      onPress: () => void handleTest(),
-      icon: <MaterialIcons name="network-check" size={18} color={palette.primary} />,
-      iosSfSymbol: "antenna.radiowaves.left.and.right",
-      iconOnly: true,
-      color: palette.primary,
-    },
     {
       label: saving ? "完成中" : "完成",
       onPress: () => void handleSave(),
@@ -254,8 +194,13 @@ export default function AddWebDavDataSourceScreen() {
       iosSfSymbol: "checkmark",
       iconOnly: true,
       color: palette.primary,
+      loading: saving,
     },
   ];
+
+  function fieldError(name: string): string | undefined {
+    return fieldErrors[name];
+  }
 
   return (
     <>
@@ -266,132 +211,104 @@ export default function AddWebDavDataSourceScreen() {
           <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
             <form.Field name="serverUrl">
               {(field) => (
-                <View className="gap-1">
-                  <FormLabeledFieldRow label="服务器地址">
-                    <TextInput
-                      value={field.state.value}
-                      onChangeText={(t) => {
-                        field.handleChange(t);
-                      }}
-                      placeholder="dav.example.com"
-                      placeholderTextColor={palette.textMuted}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      underlineColorAndroid="transparent"
-                      className={inputClassName}
-                      style={{ color: palette.text }}
-                    />
-                  </FormLabeledFieldRow>
-                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                      {field.state.meta.errors.map(String).join("，")}
-                    </Text>
-                  ) : null}
-                </View>
+                <FormLabeledFieldRow label="服务器地址" required error={fieldError("serverUrl")}>
+                  <TextInput
+                    value={field.state.value}
+                    onChangeText={(t) => field.handleChange(t)}
+                    onBlur={field.handleBlur}
+                    placeholder="dav.example.com"
+                    placeholderTextColor={palette.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    underlineColorAndroid="transparent"
+                    returnKeyType="next"
+                    onSubmitEditing={() => portRef.current?.focus()}
+                    className={inputClassName}
+                    style={{ color: palette.text }}
+                  />
+                </FormLabeledFieldRow>
               )}
             </form.Field>
 
             <form.Field name="port">
               {(field) => (
-                <View className="gap-1">
-                  <FormLabeledFieldRow label="端口号">
-                    <TextInput
-                      value={field.state.value}
-                      onChangeText={(t) => {
-                        field.handleChange(t);
-                      }}
-                      placeholder={useSsl ? "443" : "80"}
-                      placeholderTextColor={palette.textMuted}
-                      keyboardType="number-pad"
-                      underlineColorAndroid="transparent"
-                      className={inputClassName}
-                      style={{ color: palette.text }}
-                    />
-                  </FormLabeledFieldRow>
-                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                      {field.state.meta.errors.map(String).join("，")}
-                    </Text>
-                  ) : null}
-                </View>
+                <FormLabeledFieldRow label="端口号" error={fieldError("port")}>
+                  <RNTextInput
+                    ref={portRef}
+                    value={field.state.value}
+                    onChangeText={(t) => field.handleChange(t)}
+                    onBlur={field.handleBlur}
+                    placeholder={useSsl ? "443" : "80"}
+                    placeholderTextColor={palette.textMuted}
+                    keyboardType="number-pad"
+                    underlineColorAndroid="transparent"
+                    returnKeyType="next"
+                    onSubmitEditing={() => basePathRef.current?.focus()}
+                    style={[rnInputStyle.base, { color: palette.text }]}
+                  />
+                </FormLabeledFieldRow>
               )}
             </form.Field>
 
             <form.Field name="basePath">
               {(field) => (
-                <View className="gap-1">
-                  <FormLabeledFieldRow label="基础路径">
-                    <TextInput
-                      value={field.state.value}
-                      onChangeText={(t) => {
-                        field.handleChange(t);
-                      }}
-                      placeholder="/"
-                      placeholderTextColor={palette.textMuted}
-                      underlineColorAndroid="transparent"
-                      className={inputClassName}
-                      style={{ color: palette.text }}
-                    />
-                  </FormLabeledFieldRow>
-                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                      {field.state.meta.errors.map(String).join("，")}
-                    </Text>
-                  ) : null}
-                </View>
+                <FormLabeledFieldRow label="基础路径" error={fieldError("basePath")}>
+                  <RNTextInput
+                    ref={basePathRef}
+                    value={field.state.value}
+                    onChangeText={(t) => field.handleChange(t)}
+                    onBlur={field.handleBlur}
+                    placeholder="/"
+                    placeholderTextColor={palette.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    underlineColorAndroid="transparent"
+                    returnKeyType="next"
+                    onSubmitEditing={() => usernameRef.current?.focus()}
+                    style={[rnInputStyle.base, { color: palette.text }]}
+                  />
+                </FormLabeledFieldRow>
               )}
             </form.Field>
 
             <form.Field name="username">
               {(field) => (
-                <View className="gap-1">
-                  <FormLabeledFieldRow label="用户名">
-                    <TextInput
-                      value={field.state.value}
-                      onChangeText={(t) => {
-                        field.handleChange(t);
-                      }}
-                      placeholder="reader"
-                      placeholderTextColor={palette.textMuted}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      underlineColorAndroid="transparent"
-                      className={inputClassName}
-                      style={{ color: palette.text }}
-                    />
-                  </FormLabeledFieldRow>
-                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                      {field.state.meta.errors.map(String).join("，")}
-                    </Text>
-                  ) : null}
-                </View>
+                <FormLabeledFieldRow label="用户名" error={fieldError("username")}>
+                  <RNTextInput
+                    ref={usernameRef}
+                    value={field.state.value}
+                    onChangeText={(t) => field.handleChange(t)}
+                    onBlur={field.handleBlur}
+                    placeholder="请输入用户名"
+                    placeholderTextColor={palette.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    underlineColorAndroid="transparent"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    style={[rnInputStyle.base, { color: palette.text }]}
+                  />
+                </FormLabeledFieldRow>
               )}
             </form.Field>
 
             <form.Field name="password">
               {(field) => (
-                <View className="gap-1">
-                  <FormLabeledFieldRow label="密码">
-                    <TextInput
-                      value={field.state.value}
-                      onChangeText={(t) => {
-                        field.handleChange(t);
-                      }}
-                      placeholder="••••••••"
-                      placeholderTextColor={palette.textMuted}
-                      secureTextEntry
-                      underlineColorAndroid="transparent"
-                      className={inputClassName}
-                      style={{ color: palette.text }}
-                    />
-                  </FormLabeledFieldRow>
-                  {!field.state.meta.isValid && field.state.meta.errors.length > 0 ? (
-                    <Text className="pl-1 text-xs leading-5" style={{ color: palette.error }}>
-                      {field.state.meta.errors.map(String).join("，")}
-                    </Text>
-                  ) : null}
-                </View>
+                <FormLabeledFieldRow label="密码" error={fieldError("password")}>
+                  <RNTextInput
+                    ref={passwordRef}
+                    value={field.state.value}
+                    onChangeText={(t) => field.handleChange(t)}
+                    onBlur={field.handleBlur}
+                    placeholder="请输入密码"
+                    placeholderTextColor={palette.textMuted}
+                    secureTextEntry
+                    underlineColorAndroid="transparent"
+                    returnKeyType="done"
+                    onSubmitEditing={() => void handleSave()}
+                    style={[rnInputStyle.base, { color: palette.text }]}
+                  />
+                </FormLabeledFieldRow>
               )}
             </form.Field>
 
@@ -402,17 +319,6 @@ export default function AddWebDavDataSourceScreen() {
                 </FormLabeledFieldRow>
               )}
             </form.Field>
-
-            {error ? (
-              <Text className="text-sm leading-6" style={{ color: palette.error }}>
-                {error}
-              </Text>
-            ) : null}
-            {testOk && !error ? (
-              <Text className="text-sm leading-6" style={{ color: palette.success }}>
-                连接成功
-              </Text>
-            ) : null}
           </View>
         </Screen>
       </View>

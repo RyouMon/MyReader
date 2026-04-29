@@ -109,13 +109,15 @@ describe("useDataSourceStore", () => {
     const seenInputs: unknown[] = []
     mockIPC((cmd, args) => {
       if (cmd === "test_webdav_connection") {
-        seenInputs.push(args.input)
+        if (args && typeof args === "object" && !Array.isArray(args) && "input" in args) {
+          seenInputs.push(args.input)
+        }
         return null
       }
       throw new Error(`unexpected command: ${cmd}`)
     })
 
-    await useDataSourceStore.getState().testDataSourceConnection({
+    const result = await useDataSourceStore.getState().testDataSourceConnection({
       id: "source-1",
       type: "webdav",
       name: "My WebDAV",
@@ -126,6 +128,7 @@ describe("useDataSourceStore", () => {
       enabled: true,
     })
 
+    expect(result).toEqual({ ok: true, message: "OK" })
     expect(seenInputs).toEqual([
       {
         endpoint: "https://example.com/dav",

@@ -19,6 +19,11 @@ export type DataSourceWebdav = {
 
 export type DataSource = DataSourceWebdav
 
+export type DataSourceConnectionTestResult = {
+  ok: boolean
+  message: string
+}
+
 /**
  * 数据源 Store
  */
@@ -33,5 +38,7 @@ export type DataSourceStore = {
   createDataSource: (datasource: DataSource) => Promise<DataSource>
   updateDataSource: (id: string, datasource: DataSource) => Promise<void>
   deleteDataSource: (id: string) => Promise<void>
-  testDataSourceConnection: (datasource: DataSource) => Promise<void>
+  testDataSourceConnection: (
+    datasource: DataSource,
+  ) => Promise<DataSourceConnectionTestResult>
 }
