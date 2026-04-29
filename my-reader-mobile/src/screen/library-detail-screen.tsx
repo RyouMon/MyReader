@@ -178,6 +178,7 @@ export default function LibraryDetailScreen() {
           iosSfSymbol: "trash",
           color: palette.destructive,
           iconOnly: true,
+          variant: "prominent",
         },
       ]
     : [];

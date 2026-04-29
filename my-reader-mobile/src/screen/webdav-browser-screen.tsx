@@ -1,18 +1,18 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, Text } from "@/tw";
+import { Text } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
+import { HeaderToolbar } from "../components/ui/header-toolbar";
 import type { WebDavDataSource } from "../data/types";
+import { createWebDavLibraryFromPath, listWebDavDirectory } from "../data/webdav";
 import { useDataSourceStore } from "../store/data-source-store";
 import { useLibraryStore } from "../store/library-store";
 import { readWebDavPassword } from "../store/secure-credential-store";
-import { createWebDavLibraryFromPath, listWebDavDirectory } from "../data/webdav";
 
 type BrowserEntry = {
   href: string;
@@ -175,34 +175,21 @@ export default function WebDavBrowserScreen() {
 
   return (
     <Screen>
-      {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Button
-            tintColor={palette.primary}
-            disabled={saving}
-            onPress={() => void handleChooseCurrentPath()}
-          >
-            <Stack.Toolbar.Icon sf="checkmark" />
-          </Stack.Toolbar.Button>
-        </Stack.Toolbar>
-      ) : (
-        <Stack.Screen
-          options={{
-            headerRight: () => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={saving ? "正在验证目录" : "选择当前目录为书库"}
-                className="min-h-10 min-w-10 items-center justify-center"
-                disabled={saving}
-                onPress={() => void handleChooseCurrentPath()}
-                style={{ opacity: saving ? 0.45 : 1 }}
-              >
-                <MaterialIcons name="check" size={22} color={palette.primary} />
-              </Pressable>
-            ),
-          }}
-        />
-      )}
+      <HeaderToolbar
+        right={[
+          {
+            label: saving ? "正在验证目录" : "选择当前目录为书库",
+            onPress: () => void handleChooseCurrentPath(),
+            icon: <MaterialIcons name="check" size={22} color={palette.primary} />,
+            iosSfSymbol: "checkmark",
+            color: palette.primary,
+            iconOnly: true,
+            loading: saving,
+            disabled: saving,
+            variant: "prominent",
+          },
+        ]}
+      />
 
       <Text className="px-1 text-sm leading-6" style={{ color: palette.textMuted }}>
         当前路径：{currentPath}

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { FlashList } from "@shopify/flash-list";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { FlashList } from "@shopify/flash-list";
 import { Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
@@ -11,7 +11,6 @@ import { useThemePalette } from "@/src/design/tokens";
 
 import {
   BookCard,
-  type BookDownloadStatus,
   BookRow,
   EmptyState,
   HeaderToolbar,
@@ -20,15 +19,16 @@ import {
   Screen,
   SearchField,
   SectionHeading,
+  type BookDownloadStatus,
   type HeaderToolbarAction,
 } from "../components";
 import { getAllBookFormats, getBookFormatPaths } from "../data/calibre";
 import type { BookItem } from "../data/types";
+import { describeDownloadError } from "../errors";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
 import { useLibraryStore } from "../store/library-store";
-import { describeDownloadError } from "../errors";
 import { dismissTasksForPath, enqueue as enqueueDownload, useDownloadStore } from "../sync/download-store";
 import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
 import { useSyncActions } from "../sync/useSyncActions";
@@ -848,7 +848,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       ) : null}
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Menu icon="line.3.horizontal.decrease.circle">
+          <Stack.Toolbar.Menu icon="line.3.horizontal.decrease">
             <Stack.Toolbar.Menu inline title="筛选">
               {downloadFilterOptions.map((option) => (
                 <Stack.Toolbar.MenuAction

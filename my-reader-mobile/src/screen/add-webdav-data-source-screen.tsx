@@ -195,6 +195,7 @@ export default function AddWebDavDataSourceScreen() {
       iconOnly: true,
       color: palette.primary,
       loading: saving,
+      variant: "prominent",
     },
   ];
 

@@ -9,7 +9,7 @@ import { View } from "@/tw";
 import { RoundIconButton } from "./round-icon-button";
 
 type HeaderToolbarAction = {
-  label: string;
+  label: string; 
   onPress: () => void;
   icon?: ReactNode;
   /** SF Symbol name for iOS `Stack.Toolbar.Icon` (native toolbar does not accept arbitrary React children). */
@@ -19,6 +19,7 @@ type HeaderToolbarAction = {
   iconOnly?: boolean;
   loading?: boolean;
   disabled?: boolean;
+  variant?: "done" | "prominent" | "plain";
 };
 
 type HeaderToolbarProps = {

@@ -30,6 +30,7 @@ export default function WebDavSourcesScreen() {
       iosSfSymbol: "plus",
       iconOnly: true,
       color: palette.primary,
+      variant: "prominent",
     },
   ];
 

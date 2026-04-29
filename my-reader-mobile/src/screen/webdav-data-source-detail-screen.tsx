@@ -154,6 +154,7 @@ export default function WebDavDataSourceDetailScreen() {
           iosSfSymbol: "trash",
           color: palette.destructive,
           iconOnly: true,
+          variant: "prominent",
         },
       ]
     : [];

@@ -9,6 +9,7 @@ function toolbarButtonElements(actions: HeaderToolbarAction[]) {
       disabled={action.disabled}
       onPress={action.onPress}
       tintColor={action.color}
+      variant={action.variant ?? "plain"}
     >
       {action.loading ? <Stack.Toolbar.Icon sf="progress.indicator" /> : null}
       {!action.loading && action.iosSfSymbol ? <Stack.Toolbar.Icon sf={action.iosSfSymbol} /> : null}
