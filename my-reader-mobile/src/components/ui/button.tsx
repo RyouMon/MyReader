@@ -1,11 +1,17 @@
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { router, type Href } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { type ReactNode } from "react";
-import { ActivityIndicator, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { ActivityIndicator, Platform, Pressable, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { useThemePalette, type ThemePalette } from "@/src/design/tokens";
 import { Text, TouchableHighlight, View } from "@/tw";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
+export type HeaderCloseButtonProps = {
+  fallbackRoute?: Href;
+};
 
 type ButtonColorOverrides = {
   backgroundColor?: string;
@@ -250,4 +256,34 @@ export function FilterChip({
   onPress?: () => void;
 }) {
   return <Button className="self-start" onPress={onPress} size="md" title={label} variant={active ? "primary" : "secondary"} />;
+}
+
+/**
+ * Reuses the same modal-close behavior and icon across stack headers.
+ */
+export function HeaderCloseButton({
+  fallbackRoute = "/",
+}: HeaderCloseButtonProps) {
+  const palette = useThemePalette();
+
+  return (
+    <Pressable
+      hitSlop={8}
+      accessibilityLabel="关闭"
+      accessibilityRole="button"
+      onPress={() => {
+        if (router.canGoBack()) {
+          router.dismiss();
+          return;
+        }
+        router.replace(fallbackRoute);
+      }}
+    >
+      {Platform.OS === "ios" ? (
+        <SymbolView name="xmark" tintColor={palette.text} />
+      ) : (
+        <MaterialIcons name="close" size={24} color={palette.text} />
+      )}
+    </Pressable>
+  );
 }

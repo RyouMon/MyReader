@@ -1,5 +1,5 @@
-import { Link } from "expo-router";
-import { useMemo, useState } from "react";
+import { router, useNavigation } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 
 import {
@@ -21,6 +21,31 @@ const themeModeLabels: Record<ThemeMode, string> = { system: "跟随设备", lig
 export default function SettingsScreen() {
   const { mode, setMode } = useTheme();
   const { libraries, activeLibraryId } = useLibraryStore();
+  const navigation = useNavigation();
+  const isTransitioningRef = useRef(false);
+
+  useEffect(() => {
+    // transitionStart/transitionEnd are Stack-specific events; the generic
+    // useNavigation() type doesn't expose them but they exist at runtime.
+    const nav = navigation as unknown as {
+      addListener: (event: "transitionStart" | "transitionEnd", cb: () => void) => () => void;
+    };
+    const unsubStart = nav.addListener("transitionStart", () => {
+      isTransitioningRef.current = true;
+    });
+    const unsubEnd = nav.addListener("transitionEnd", () => {
+      isTransitioningRef.current = false;
+    });
+    return () => {
+      unsubStart();
+      unsubEnd();
+    };
+  }, [navigation]);
+
+  function navigateTo(href: Parameters<typeof router.push>[0]) {
+    if (isTransitioningRef.current) return;
+    router.push(href);
+  }
   const cacheSettings = useAppStore((s) => s.settings.cache);
   const patchCacheSettings = useAppStore((s) => s.patchCacheSettings);
   const [cacheUsageLabel, setCacheUsageLabel] = useState(() => {
@@ -52,20 +77,23 @@ export default function SettingsScreen() {
           <SectionHeading title="书库" />
           <SectionCard>
             {libraries.map((library) => (
-              <Link
+              <SettingsRow
                 key={library.id}
-                href={{ pathname: "/settings/library/[libraryId]", params: { libraryId: library.id } }}
-                asChild
-              >
-                <SettingsRow
-                  title={library.name}
-                  detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
-                />
-              </Link>
+                title={library.name}
+                detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
+                onPress={() =>
+                  navigateTo({
+                    pathname: "/settings/library/[libraryId]",
+                    params: { libraryId: library.id },
+                  })
+                }
+              />
             ))}
-            <Link href="/settings/add-library" asChild>
-              <SettingsRow title="添加书库" isLast />
-            </Link>
+            <SettingsRow
+              title="添加书库"
+              isLast
+              onPress={() => navigateTo("/settings/add-library")}
+            />
           </SectionCard>
         </View>
         <View className="gap-3">
@@ -113,16 +141,17 @@ export default function SettingsScreen() {
           <SectionHeading title="数据与来源" />
           <SectionCard>
             <SettingsRow title="本地存储" detail="默认数据源，无需配置" />
-            <Link href="/settings/webdav" asChild>
-              <SettingsRow title="WebDAV" detail="可添加并管理远程 WebDAV 数据源" />
-            </Link>
-            <Link href="/settings/sync" asChild>
-              <SettingsRow
-                title="同步与下载"
-                detail="管理数据源连通性与 file_state 文件下载 / 释放 / 删除"
-                isLast
-              />
-            </Link>
+            <SettingsRow
+              title="WebDAV"
+              detail="可添加并管理远程 WebDAV 数据源"
+              onPress={() => navigateTo("/settings/webdav")}
+            />
+            <SettingsRow
+              title="同步与下载"
+              detail="管理数据源连通性与 file_state 文件下载 / 释放 / 删除"
+              isLast
+              onPress={() => navigateTo("/settings/sync")}
+            />
           </SectionCard>
         </View>
       </Screen>
