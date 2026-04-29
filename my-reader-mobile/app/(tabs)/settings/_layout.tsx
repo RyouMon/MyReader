@@ -34,7 +34,6 @@ export default function SettingsStackLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen name="sync/index" options={{ title: "同步与下载" }} />
     </Stack>
   );
 }

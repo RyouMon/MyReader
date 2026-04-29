@@ -82,6 +82,29 @@ export function getReaderCacheUsageSummary(): { totalBytes: number; fileCount: n
 }
 
 /**
+ * Deletes reader cache entries for a specific book within a library.
+ * Matches local-copy files and extracted directories by libraryId + bookId.
+ */
+export function clearReaderCachesForBook(libraryId: string, bookId: string): void {
+  ensureReaderCacheDirectories();
+  const localCopyPrefix = `-${libraryId}-${bookId}-`;
+  if (READER_LOCAL_COPY_CACHE_DIR.exists) {
+    for (const entry of READER_LOCAL_COPY_CACHE_DIR.list()) {
+      if (entry instanceof File && entry.name?.includes(localCopyPrefix)) {
+        entry.delete();
+      }
+    }
+  }
+  if (READER_EXTRACTED_CACHE_DIR.exists) {
+    for (const entry of READER_EXTRACTED_CACHE_DIR.list()) {
+      if (entry instanceof Directory && entry.name?.includes(localCopyPrefix)) {
+        entry.delete();
+      }
+    }
+  }
+}
+
+/**
  * Deletes all managed reader caches.
  */
 export function clearAllReaderCaches(): void {

@@ -30,6 +30,19 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     }
   },
 
+  refreshLibrary: async (id: string) => {
+    if (!isTauri()) return
+    console.info(`Start to refresh library. id: "${id}"`)
+    try {
+      await invoke("refresh_library", { id })
+      await get().refreshLibraries()
+      console.info(`Success to refresh library. id: "${id}"`)
+    } catch (e) {
+      console.error(`Failed to refresh library. id: "${id}", error:`, e)
+      throw e
+    }
+  },
+
   hydrateFromBackend: async () => {
     if (!isTauri()) {
       console.info(
@@ -123,6 +136,7 @@ export function useLibrary() {
   const removeLibrary = useLibraryStore((s) => s.removeLibrary)
   const switchLibrary = useLibraryStore((s) => s.switchLibrary)
   const refreshLibraries = useLibraryStore((s) => s.refreshLibraries)
+  const refreshLibrary = useLibraryStore((s) => s.refreshLibrary)
 
   const activeLibrary = useMemo(
     () => libraries.find((l) => l.id === activeLibraryId) ?? null,
@@ -138,6 +152,7 @@ export function useLibrary() {
     removeLibrary,
     switchLibrary,
     refreshLibraries,
+    refreshLibrary,
   }
 }
 

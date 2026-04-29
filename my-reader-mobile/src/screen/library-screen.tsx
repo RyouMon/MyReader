@@ -140,7 +140,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { activeLibraryId, libraries, books, loadingBooks, loading, switchLibrary, error } =
+  const { activeLibraryId, libraries, books, loadingBooks, loading, switchLibrary, error, refreshLibrary } =
     useLibraryStore();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
@@ -688,15 +688,49 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const selectedLibraryToolbarLeft: HeaderToolbarAction[] = [
     {
-      label: "切换书库",
-      onPress: openLibrarySwitchMenu,
-      icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
-      iosSfSymbol: "arrow.left.arrow.right",
+      label: "书库操作",
+      onPress: () => {
+        showAlertWithStatusBarRestore(
+          selectedLibrary?.name ?? "书库",
+          "",
+          [
+            {
+              text: "刷新书库",
+              onPress: () => {
+                if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
+              },
+            },
+            {
+              text: "切换书库",
+              onPress: () => openLibrarySwitchMenu(),
+            },
+            { text: "取消", style: "cancel" as const },
+          ]
+        );
+      },
+      icon: (
+        <SymbolView
+          name="ellipsis.circle"
+          size={18}
+          tintColor={palette.text}
+          fallback={<MaterialIcons name="more-horiz" size={18} color={palette.text} />}
+        />
+      ),
+      iosSfSymbol: "ellipsis.circle",
       iconOnly: true,
     },
   ];
 
   const selectedLibraryToolbarRight: HeaderToolbarAction[] = [
+    {
+      label: "重新拉取书库",
+      onPress: () => {
+        if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
+      },
+      icon: <MaterialIcons name="refresh" size={22} color={palette.text} />,
+      iosSfSymbol: "arrow.clockwise",
+      iconOnly: true,
+    },
     {
       label: "视图配置",
       onPress: openSortViewMenu,
@@ -833,16 +867,25 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Menu icon="arrow.left.arrow.right">
-            {libraries.map((library) => (
-              <Stack.Toolbar.MenuAction
-                key={`library-${library.id}`}
-                isOn={effectiveLibraryId === library.id}
-                onPress={() => applyLibrarySelection(library.id)}
-              >
-                {library.name}
-              </Stack.Toolbar.MenuAction>
-            ))}
+          <Stack.Toolbar.Menu icon="ellipsis">
+            <Stack.Toolbar.MenuAction
+              onPress={() => {
+                if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
+              }}
+            >
+              更新当前书库
+            </Stack.Toolbar.MenuAction>
+            <Stack.Toolbar.Menu inline title="切换书库">
+              {libraries.map((library) => (
+                <Stack.Toolbar.MenuAction
+                  key={`library-${library.id}`}
+                  isOn={effectiveLibraryId === library.id}
+                  onPress={() => applyLibrarySelection(library.id)}
+                >
+                  {library.name}
+                </Stack.Toolbar.MenuAction>
+              ))}
+            </Stack.Toolbar.Menu>
           </Stack.Toolbar.Menu>
         </Stack.Toolbar>
       ) : null}

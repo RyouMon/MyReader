@@ -18,7 +18,8 @@
       "Bash(node *)",
       "WebSearch",
       "WebFetch(domain:docs.expo.dev)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(cargo check *)"
     ]
   }
 }

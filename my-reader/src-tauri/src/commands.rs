@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, UNIX_EPOCH};
 
@@ -126,6 +126,51 @@ fn clear_library_cache_files(library_id: &str) -> Result<(), AppError> {
             fs::remove_dir_all(path)?;
         } else {
             fs::remove_file(path)?;
+        }
+    }
+    Ok(())
+}
+
+/// Remove extracted reader cache entries for books that no longer exist in the library.
+fn clear_orphaned_library_cache_files(
+    library_id: &str,
+    valid_book_ids: &[i64],
+) -> Result<(), AppError> {
+    let root = reader_cache_extracted_root();
+    if !root.exists() {
+        return Ok(());
+    }
+    let prefix = format!("{}-", sanitize_key_part(library_id));
+    let valid_set: std::collections::HashSet<i64> = valid_book_ids.iter().copied().collect();
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|x| x.to_str()) else {
+            continue;
+        };
+        if !name.starts_with(&prefix) {
+            continue;
+        }
+        // After prefix, the name should start with "{book_id}-..."
+        let remainder = &name[prefix.len()..];
+        let book_id_str: String = remainder.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if book_id_str.is_empty() {
+            continue;
+        }
+        if let Ok(book_id) = book_id_str.parse::<i64>() {
+            if !valid_set.contains(&book_id) {
+                if path.is_dir() {
+                    fs::remove_dir_all(&path)?;
+                } else {
+                    fs::remove_file(&path)?;
+                }
+                info!(
+                    "Removed orphaned cache file for deleted book. library id: \"{}\", book id: {}, path: \"{}\"",
+                    library_id,
+                    book_id,
+                    path.display()
+                );
+            }
         }
     }
     Ok(())
@@ -676,6 +721,63 @@ pub fn add_library(
             info_item.id, info_item.name, info_item.book_count
         ),
         Err(err) => error!("Failed to add library. path: \"{path}\", error: {err}"),
+    }
+
+    result
+}
+
+#[tauri::command]
+pub fn refresh_library(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<LibraryInfo, AppError> {
+    info!("Start to refresh library. id: \"{id}\"");
+    let result = (|| {
+        let config = state.lock().unwrap();
+        let lib = config
+            .libraries
+            .iter()
+            .find(|l| l.id == id)
+            .ok_or_else(|| AppError::NotFound(format!("书库 {id} 不存在")))?;
+        let lib_path = lib.path.clone();
+        drop(config);
+
+        if !calibre::validate_calibre_library(&lib_path) {
+            return Err(AppError::NotFound(format!(
+                "未在 {} 找到 Calibre 数据库 (metadata.db)",
+                lib_path
+            )));
+        }
+
+        let conn = calibre::open_calibre_db(&lib_path)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let book_count = calibre::get_book_count(&conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let book_ids = calibre::get_all_book_ids(&conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        clear_orphaned_library_cache_files(&id, &book_ids)?;
+
+        let lib_name = Path::new(&lib_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("未命名书库")
+            .to_string();
+
+        Ok(LibraryInfo {
+            id: id.clone(),
+            name: lib_name,
+            path: lib_path,
+            book_count,
+        })
+    })();
+
+    match &result {
+        Ok(info_item) => info!(
+            "Success to refresh library. id: \"{}\", name: \"{}\", book count: {}",
+            info_item.id, info_item.name, info_item.book_count
+        ),
+        Err(err) => error!("Failed to refresh library. id: \"{id}\", error: {err}"),
     }
 
     result

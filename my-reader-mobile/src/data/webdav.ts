@@ -255,6 +255,32 @@ async function ensureWebDavMetadataCached(
   }
 }
 
+/**
+ * Forcefully re-download metadata.db from WebDAV, overwriting the local cache.
+ * Used by "refresh library".
+ */
+export async function forceRefreshWebDavMetadata(
+  library: Library,
+  source: WebDavDataSource,
+): Promise<string | null> {
+  try {
+    const remoteBase = normalizeRemotePath(library.sourcePath ?? library.path);
+    const metadataFile = await downloadToCache(
+      source,
+      `${remoteBase}/metadata.db`,
+      `webdav-${library.id}-metadata.db`,
+    );
+    return metadataFile.uri;
+  } catch {
+    showAlertWithStatusBarRestore(
+      "书库数据已损坏",
+      "无法重新下载该书库的 metadata.db。请检查网络或 WebDAV 配置。",
+      [{ text: "知道了" }],
+    );
+    return null;
+  }
+}
+
 export async function createWebDavLibraryFromPath(
   source: WebDavDataSource,
   remoteLibraryPath: string

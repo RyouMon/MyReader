@@ -292,6 +292,39 @@ export async function ensureLibraryMetadataCached(library: Library): Promise<Lib
   };
 }
 
+/**
+ * Forcefully re-copy metadata.db from the original directory to the app cache,
+ * overwriting any existing cached copy. Used by "refresh library".
+ */
+export async function forceRefreshLibraryMetadata(library: Library): Promise<Library> {
+  if (library.sourceType === "webdav") {
+    return library;
+  }
+
+  if (library.securityScopedBookmark) {
+    const { result: cachedMetadataUri, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+      library,
+      async (resolvedPath) => refreshCachedMetadataFromDirectory(library, resolvedPath)
+    );
+
+    const effectiveLibrary = refreshedLibrary ?? library;
+    const bookCount = await readBookCountFromMetadata(cachedMetadataUri);
+    return {
+      ...effectiveLibrary,
+      metadataUri: cachedMetadataUri,
+      bookCount,
+    };
+  }
+
+  const cachedMetadataUri = copyMetadataToCache(library.metadataUri!, library.id);
+  const bookCount = await readBookCountFromMetadata(cachedMetadataUri);
+  return {
+    ...library,
+    metadataUri: cachedMetadataUri,
+    bookCount,
+  };
+}
+
 export async function readBookCountFromLibrary(library: Library) {
   const nextLibrary = await ensureLibraryMetadataCached(library);
   const bookCount = await readBookCountFromMetadata(nextLibrary.metadataUri!);

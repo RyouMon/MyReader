@@ -20,6 +20,7 @@ function LibraryPage() {
     activeLibraryId,
     loading: libLoading,
     libraries,
+    refreshLibrary,
   } = useLibrary()
   const navigate = useNavigate()
 
@@ -31,10 +32,20 @@ function LibraryPage() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
 
-  const { books, total, initialLoading, error, ensureRange } =
+  const { books, total, initialLoading, error, ensureRange, refresh } =
     usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
 
   const loading = libLoading || initialLoading
+
+  const handleRefresh = async () => {
+    if (!activeLibraryId) return
+    try {
+      await refreshLibrary(activeLibraryId)
+      refresh()
+    } catch (e) {
+      console.error("Failed to refresh library:", e)
+    }
+  }
 
   const sectionLabel =
     activeView === "all"
@@ -70,6 +81,7 @@ function LibraryPage() {
         onViewModeChange={setViewMode}
         sortBy={sortBy}
         onSortChange={setSortBy}
+        onRefresh={handleRefresh}
       />
 
       {loading && (

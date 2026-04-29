@@ -216,6 +216,7 @@ pub fn run() {
             commands::list_data_sources,
             commands::test_webdav_connection,
             commands::add_library,
+            commands::refresh_library,
             commands::add_local_data_source,
             commands::add_webdav_data_source,
             commands::remove_library,

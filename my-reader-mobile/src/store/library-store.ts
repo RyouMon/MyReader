@@ -14,6 +14,7 @@ export function useLibraryStore() {
   const removeLibrary = useAppStore((state) => state.removeLibrary);
   const switchLibrary = useAppStore((state) => state.switchLibrary);
   const refreshBooks = useAppStore((state) => state.refreshBooks);
+  const refreshLibrary = useAppStore((state) => state.refreshLibrary);
 
   const activeLibrary = useMemo(
     () => libraries.find((library) => library.id === activeLibraryId) ?? null,
@@ -34,6 +35,7 @@ export function useLibraryStore() {
       removeLibrary,
       switchLibrary,
       refreshBooks,
+      refreshLibrary,
     }),
     [
       libraries,
@@ -48,6 +50,7 @@ export function useLibraryStore() {
       removeLibrary,
       switchLibrary,
       refreshBooks,
+      refreshLibrary,
     ]
   );
 }

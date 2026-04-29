@@ -116,7 +116,7 @@ function DetailHero({ library, accent, isActive }: { library: Library; accent: s
 export default function LibraryDetailScreen() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
-  const { libraries, activeLibraryId, removeLibrary } = useLibraryStore();
+  const { libraries, activeLibraryId, removeLibrary, refreshLibrary } = useLibraryStore();
   const dataSources = useAppStore((state) => state.dataSources);
 
   const libraryIndex = useMemo(
@@ -212,7 +212,15 @@ export default function LibraryDetailScreen() {
               <SettingsRow title="数据源类型" detail={getSourceTypeLabel(library)} />
               <SettingsRow title="书库路径" detail={getSourcePathDetail(library, linkedDataSource)} />
               <SettingsRow title="收录图书数量" detail={formatBookCount(library.bookCount)} />
-              <SettingsRow title="添加时间" detail={formatDate(library.addedAt)} isLast />
+              <SettingsRow title="添加时间" detail={formatDate(library.addedAt)} />
+              <SettingsRow
+                title="重新拉取书库"
+                detail="重新下载 metadata.db 并更新图书列表"
+                onPress={() => {
+                  if (library) void refreshLibrary(library.id);
+                }}
+                isLast
+              />
             </SectionCard>
           </View>
       </View>

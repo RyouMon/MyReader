@@ -15,6 +15,7 @@ import { readBooksFromWebDavLibrary } from "../data/webdav";
 import { mergeDataSources } from "./app-store.constants";
 import type { AppState, AppStateSlice } from "./app-store.types";
 import { readWebDavPassword } from "./secure-credential-store";
+import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
 
 function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   return libraries.map((library) =>
@@ -22,7 +23,7 @@ function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   );
 }
 
-type LibrarySlice = Pick<AppState, keyof LibraryStore>;
+type LibrarySlice = Pick<AppState, keyof LibraryStore | "books" | "loadingBooks" | "error" | "setHydrated" | "clearError" | "addResolvedLibrary" | "refreshBooks" | "refreshLibrary">;
 
 export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
   ({
@@ -233,4 +234,41 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
       }
     },
     async refreshLibraries() {},
+    async refreshLibrary(libraryId: string) {
+      const state = get();
+      const library = state.libraries.find((l) => l.id === libraryId);
+      if (!library) return;
+
+      set({ loadingBooks: true, error: null });
+      try {
+        const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(
+          library,
+          state.dataSources
+        );
+
+        // Update the library in the list with new metadataUri / bookCount
+        const nextLibraries = state.libraries.map((l) =>
+          l.id === libraryId
+            ? { ...newLibrary, bookCount: newBookCount }
+            : l
+        );
+        set({ libraries: nextLibraries });
+
+        // Refresh books list
+        await get().refreshBooks();
+
+        console.info("Library refreshed:", {
+          libraryId,
+          added: diff.added.length,
+          removed: diff.removed.length,
+          modified: diff.modified.length,
+          newBookCount,
+        });
+      } catch (caught) {
+        set({
+          loadingBooks: false,
+          error: caught instanceof Error ? caught.message : "刷新书库失败",
+        });
+      }
+    },
   });

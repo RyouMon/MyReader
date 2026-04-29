@@ -92,6 +92,23 @@ pub fn get_book_count(conn: &Connection) -> SqlResult<usize> {
     result
 }
 
+/// Get all book ids from the Calibre database.
+pub fn get_all_book_ids(conn: &Connection) -> SqlResult<Vec<i64>> {
+    debug!("Start to load all book ids from Calibre.");
+    let result = (|| {
+        let mut stmt = conn.prepare("SELECT id FROM books")?;
+        let ids = stmt
+            .query_map([], |row| row.get::<_, i64>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ids)
+    })();
+    match &result {
+        Ok(ids) => debug!("Success to load all book ids from Calibre. count: {}", ids.len()),
+        Err(err) => error!("Failed to load all book ids from Calibre. error: {err}"),
+    }
+    result
+}
+
 /// Single optimized query that fetches all books with related data via correlated subqueries.
 pub fn get_all_books(conn: &Connection) -> SqlResult<Vec<BookEntry>> {
     info!("Start to load all books from Calibre.");

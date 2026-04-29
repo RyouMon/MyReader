@@ -3,6 +3,7 @@ import {
   ChevronDown,
   LayoutGrid,
   List,
+  RefreshCw,
   Search,
   SlidersHorizontal,
 } from "lucide-react"
@@ -29,6 +30,7 @@ interface ToolbarProps {
   onViewModeChange: (mode: "grid" | "list") => void
   sortBy: SortOption
   onSortChange: (sort: SortOption) => void
+  onRefresh?: () => void
 }
 
 export default function Toolbar({
@@ -38,6 +40,7 @@ export default function Toolbar({
   onViewModeChange,
   sortBy,
   onSortChange,
+  onRefresh,
 }: ToolbarProps) {
   function cycleSortOption() {
     const options: SortOption[] = ["recent", "title", "author", "progress"]
@@ -103,6 +106,18 @@ export default function Toolbar({
         {/* Filter */}
         <Button variant="ghost" size="icon-sm" title="筛选">
           <SlidersHorizontal />
+        </Button>
+
+        <Separator orientation="vertical" className="h-4 mx-1" />
+
+        {/* Refresh */}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="重新拉取书库"
+          onClick={onRefresh}
+        >
+          <RefreshCw className="size-4" />
         </Button>
       </div>
     </header>

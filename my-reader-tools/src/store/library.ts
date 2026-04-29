@@ -30,6 +30,7 @@ export type LibraryStore = {
   setHydrated: (value: boolean) => void
   hydrateFromBackend: () => Promise<void>
   refreshLibraries: () => Promise<void>
+  refreshLibrary: (id: string) => Promise<void>
   refreshBooks: () => Promise<void>
   addLibrary: (path?: string, name?: string) => Promise<Library | null>
   addResolvedLibrary: (library: Library) => Promise<boolean>

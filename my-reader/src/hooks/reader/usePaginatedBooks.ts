@@ -14,9 +14,14 @@ export function usePaginatedBooks(
   const [total, setTotal] = useState(0)
   const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const loadedPagesRef = useRef(new Set<number>())
   const epochRef = useRef(0)
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1)
+  }, [])
 
   useEffect(() => {
     const epoch = ++epochRef.current
@@ -64,7 +69,7 @@ export function usePaginatedBooks(
       .finally(() => {
         if (epochRef.current === epoch) setInitialLoading(false)
       })
-  }, [libraryId, sortBy, search])
+  }, [libraryId, sortBy, search, refreshKey])
 
   const ensureRange = useCallback(
     (startIdx: number, endIdx: number) => {
@@ -114,5 +119,5 @@ export function usePaginatedBooks(
     [libraryId, sortBy, search, total],
   )
 
-  return { books, total, initialLoading, error, ensureRange }
+  return { books, total, initialLoading, error, ensureRange, refresh }
 }

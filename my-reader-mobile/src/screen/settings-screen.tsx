@@ -1,6 +1,6 @@
+import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { router, useNavigation } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
 
 import {
   clearAllReaderCaches,
@@ -97,6 +97,17 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
+          <SectionHeading title="数据与来源" />
+          <SectionCard>
+            <SettingsRow title="本地存储" detail="默认数据源，无需配置" />
+            <SettingsRow
+              title="WebDAV"
+              detail="可添加并管理远程 WebDAV 数据源"
+              onPress={() => navigateTo("/settings/webdav")}
+            />
+          </SectionCard>
+        </View>
+        <View className="gap-3">
           <SectionHeading title="阅读偏好" />
           <SectionCard>
             <MenuView
@@ -109,7 +120,6 @@ export default function SettingsScreen() {
             >
               <SettingsRow title="深色模式" detail={themeMode} />
             </MenuView>
-            <SettingsRow title="同步阅读进度" detail="在已连接设备间保留最近位置" />
             <SettingsRow title="阅读器样式" detail="字体、字号、页边距" />
             <MenuView
               actions={cacheLimitMenuActions}
@@ -134,23 +144,6 @@ export default function SettingsScreen() {
                 setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
               }}
               isLast
-            />
-          </SectionCard>
-        </View>
-        <View className="gap-3">
-          <SectionHeading title="数据与来源" />
-          <SectionCard>
-            <SettingsRow title="本地存储" detail="默认数据源，无需配置" />
-            <SettingsRow
-              title="WebDAV"
-              detail="可添加并管理远程 WebDAV 数据源"
-              onPress={() => navigateTo("/settings/webdav")}
-            />
-            <SettingsRow
-              title="同步与下载"
-              detail="管理数据源连通性与 file_state 文件下载 / 释放 / 删除"
-              isLast
-              onPress={() => navigateTo("/settings/sync")}
             />
           </SectionCard>
         </View>

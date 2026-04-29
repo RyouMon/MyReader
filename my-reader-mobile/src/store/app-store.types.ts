@@ -86,6 +86,7 @@ export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "ac
     clearError: () => void;
     addResolvedLibrary: (library: Library) => Promise<boolean>;
     refreshBooks: () => Promise<void>;
+    refreshLibrary: (libraryId: string) => Promise<void>;
   };
 
 export type AppStateSlice<TSlice> = StateCreator<AppState, [], [], TSlice>;
