@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { Platform, View, useWindowDimensions } from "react-native";
+import { Platform, TouchableNativeFeedback, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
@@ -60,6 +61,43 @@ const GRID_MAX_COLUMNS = 8;
 type LibraryScreenProps = {
   libraryId?: string;
 };
+
+/** Renders an Android icon button with native ripple feedback for MenuView triggers. */
+function AndroidMenuRippleButton({
+  icon,
+  menuRef,
+  accessibilityLabel,
+}: {
+  icon: React.ReactNode;
+  menuRef: React.RefObject<MenuComponentRef | null>;
+  accessibilityLabel?: string;
+}) {
+  const palette = useThemePalette();
+  return (
+    <TouchableNativeFeedback
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      background={TouchableNativeFeedback.SelectableBackgroundBorderless()}
+      onPress={() => menuRef.current?.show()}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: palette.surface,
+          borderWidth: 1,
+          borderColor: palette.border,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        {icon}
+      </View>
+    </TouchableNativeFeedback>
+  );
+}
 
 /** Returns the display label for a persisted library view mode. */
 function getViewModeLabel(mode: LibraryViewMode) {
@@ -199,10 +237,82 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const effectiveLibraryId = libraryIdProp ?? activeLibraryId ?? undefined;
 
+  const leftMenuRef = useRef<MenuComponentRef>(null);
+  const rightMenuRef = useRef<MenuComponentRef>(null);
+
+  const androidLeftMenuActions = useMemo(
+    () => [
+      { id: "refreshLibrary", title: "刷新书库" },
+      {
+        id: "switchLibrary",
+        title: "切换书库",
+        subactions: libraries.map((library) => ({
+          id: `switchLibrary:${library.id}`,
+          title: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
+        })),
+      },
+    ],
+    [libraries, effectiveLibraryId],
+  );
+
+  const androidRightMenuActions = useMemo(
+    () => [
+      {
+        id: "filter",
+        title: "筛选",
+        subactions: downloadFilterOptions.map((option) => ({
+          id: `filter:${option.value}`,
+          title: `${downloadFilter === option.value ? "✓ " : ""}${option.label}`,
+        })),
+      },
+      {
+        id: "sort",
+        title: "排序",
+        subactions: sortOptions.map((option) => ({
+          id: `sort:${option}`,
+          title: `${sortBy === option ? "✓ " : ""}${option}`,
+        })),
+      },
+      {
+        id: "view",
+        title: "视图",
+        subactions: viewOptions.map((option) => ({
+          id: `view:${option.value}`,
+          title: `${viewMode === option.value ? "✓ " : ""}${option.label}`,
+        })),
+      },
+    ],
+    [downloadFilter, sortBy, viewMode],
+  );
+
   const selectedLibrary = useMemo(
     () => (effectiveLibraryId ? libraries.find((library) => library.id === effectiveLibraryId) ?? null : null),
     [libraries, effectiveLibraryId]
   );
+
+  function handleAndroidLeftMenuAction(event: string) {
+    if (event === "refreshLibrary") {
+      if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
+      return;
+    }
+    if (event.startsWith("switchLibrary:")) {
+      applyLibrarySelection(event.slice("switchLibrary:".length));
+    }
+  }
+
+  function handleAndroidRightMenuAction(event: string) {
+    if (event.startsWith("filter:")) {
+      applyDownloadFilter(event.slice("filter:".length) as DownloadFilterOption);
+      return;
+    }
+    if (event.startsWith("sort:")) {
+      applySort(event.slice("sort:".length) as SortOption);
+      return;
+    }
+    if (event.startsWith("view:")) {
+      applyView(event.slice("view:".length) as LibraryViewMode);
+    }
+  }
 
   useEffect(() => {
     if (!libraryIdProp || !selectedLibrary || libraryIdProp === activeLibraryId) {
@@ -640,28 +750,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     setDownloadFilter(option);
   }
 
-  function openSortViewMenu() {
-    showAlertWithStatusBarRestore(
-      "视图配置",
-      `当前排序：${sortBy}\n当前视图：${getViewModeLabel(viewMode)}\n当前筛选：${getDownloadFilterLabel(downloadFilter)}`,
-      [
-        ...downloadFilterOptions.map((option) => ({
-          text: `${downloadFilter === option.value ? "✓ " : ""}筛选：${option.label}`,
-          onPress: () => applyDownloadFilter(option.value),
-        })),
-        ...sortOptions.map((option) => ({
-          text: `${sortBy === option ? "✓ " : ""}排序：${option}`,
-          onPress: () => applySort(option),
-        })),
-        ...viewOptions.map((option) => ({
-          text: `${viewMode === option.value ? "✓ " : ""}视图：${option.label}`,
-          onPress: () => applyView(option.value),
-        })),
-        { text: "关闭", style: "cancel" },
-      ]
-    );
-  }
-
   const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
     {
       label: "添加书库",
@@ -683,60 +771,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       onPress: () => router.push("/settings/add-library"),
       icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
       iosSfSymbol: "plus",
-    },
-  ];
-
-  const selectedLibraryToolbarLeft: HeaderToolbarAction[] = [
-    {
-      label: "书库操作",
-      onPress: () => {
-        showAlertWithStatusBarRestore(
-          selectedLibrary?.name ?? "书库",
-          "",
-          [
-            {
-              text: "刷新书库",
-              onPress: () => {
-                if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
-              },
-            },
-            {
-              text: "切换书库",
-              onPress: () => openLibrarySwitchMenu(),
-            },
-            { text: "取消", style: "cancel" as const },
-          ]
-        );
-      },
-      icon: (
-        <SymbolView
-          name="ellipsis.circle"
-          size={18}
-          tintColor={palette.text}
-          fallback={<MaterialIcons name="more-horiz" size={18} color={palette.text} />}
-        />
-      ),
-      iosSfSymbol: "ellipsis.circle",
-      iconOnly: true,
-    },
-  ];
-
-  const selectedLibraryToolbarRight: HeaderToolbarAction[] = [
-    {
-      label: "重新拉取书库",
-      onPress: () => {
-        if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
-      },
-      icon: <MaterialIcons name="refresh" size={22} color={palette.text} />,
-      iosSfSymbol: "arrow.clockwise",
-      iconOnly: true,
-    },
-    {
-      label: "视图配置",
-      onPress: openSortViewMenu,
-      icon: <MaterialIcons name="tune" size={22} color={palette.text} />,
-      iosSfSymbol: "slider.horizontal.3",
-      iconOnly: true,
     },
   ];
 
@@ -859,11 +893,48 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         options={{
           title: selectedLibrary.name,
           headerLargeTitle: true,
+          headerLeft:
+            Platform.OS !== "ios"
+              ? () => (
+                  <View style={{ width: 40, height: 40 }}>
+                    <MenuView
+                      ref={leftMenuRef}
+                      actions={androidLeftMenuActions}
+                      onPressAction={({ nativeEvent }) => handleAndroidLeftMenuAction(nativeEvent.event)}
+                      style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
+                    >
+                      <View style={{ width: 40, height: 40 }} />
+                    </MenuView>
+                    <AndroidMenuRippleButton
+                      menuRef={leftMenuRef}
+                      icon={<MaterialIcons name="more-vert" size={22} color={palette.text} />}
+                      accessibilityLabel="书库操作"
+                    />
+                  </View>
+                )
+              : undefined,
+          headerRight:
+            Platform.OS !== "ios"
+              ? () => (
+                  <View style={{ width: 40, height: 40 }}>
+                    <MenuView
+                      ref={rightMenuRef}
+                      actions={androidRightMenuActions}
+                      isAnchoredToRight
+                      onPressAction={({ nativeEvent }) => handleAndroidRightMenuAction(nativeEvent.event)}
+                      style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
+                    >
+                      <View style={{ width: 40, height: 40 }} />
+                    </MenuView>
+                    <AndroidMenuRippleButton
+                      menuRef={rightMenuRef}
+                      icon={<MaterialIcons name="tune" size={22} color={palette.text} />}
+                      accessibilityLabel="视图配置"
+                    />
+                  </View>
+                )
+              : undefined,
         }}
-      />
-      <HeaderToolbar
-        left={Platform.OS === "ios" ? undefined : selectedLibraryToolbarLeft}
-        right={Platform.OS === "ios" ? undefined : selectedLibraryToolbarRight}
       />
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="left">
