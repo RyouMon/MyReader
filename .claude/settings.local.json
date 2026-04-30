@@ -19,7 +19,8 @@
       "WebSearch",
       "WebFetch(domain:docs.expo.dev)",
       "Bash(npx vitest *)",
-      "Bash(cargo check *)"
+      "Bash(cargo check *)",
+      "Bash(npx patch-package *)"
     ]
   }
 }
