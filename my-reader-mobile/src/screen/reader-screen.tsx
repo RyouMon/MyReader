@@ -16,6 +16,7 @@ import {
 } from "@/src/components/reader/chrome";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import {
+  buildCoverUri,
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
@@ -26,11 +27,12 @@ import type { Library, WebDavDataSource } from "@/src/data/types";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { getFileState, type LocalState } from "@/src/sync/file_state";
 import { useThemePalette } from "@/src/design/tokens";
+import { getFallbackCoverColor } from "@/src/components/books/book-cover";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
 import { useLibraryStore } from "@/src/store/library-store";
 import { toFileUri } from "@/src/utils/io";
-import { Animated, Pressable, Text, View } from "@/tw";
+import { Animated, Image, Pressable, Text, View } from "@/tw";
 
 /** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
@@ -207,6 +209,8 @@ export default function ReaderScreen() {
     status: "loading",
     message: "正在加载书籍…",
   });
+  const [coverUri, setCoverUri] = useState<string | undefined>(undefined);
+  const [bookTitle, setBookTitle] = useState<string | undefined>(undefined);
   const [readerState, setReaderState] = useState<ReaderState | null>(null);
   const [toc, setToc] = useState<ReaderTocItem[]>([]);
   const [chromeVisible, setChromeVisible] = useState(true);
@@ -253,6 +257,15 @@ export default function ReaderScreen() {
         });
         setLoadState({ status: "loading", message: "正在读取书籍信息…" });
 
+        // 优先从已有的 books 列表中获取封面和标题，减少等待感
+        const bookItem = useAppStore.getState().books.find((b) => b.id === id);
+        if (bookItem?.coverUri) {
+          setCoverUri(typeof bookItem.coverUri === "string" ? bookItem.coverUri : bookItem.coverUri.uri);
+        }
+        if (bookItem?.title) {
+          setBookTitle(bookItem.title);
+        }
+
         const calibreId = Number(id);
         if (!Number.isFinite(calibreId) || calibreId <= 0) {
           console.error("[mobile-reader] load:invalid-book-id", { id, calibreId });
@@ -270,6 +283,13 @@ export default function ReaderScreen() {
           setLoadState({ status: "error", message: "在书库中未找到该书" });
           return;
         }
+
+        // 如果 books 列表中没有封面，用 detail 构建本地封面 URI
+        if (!bookItem?.coverUri && detail.hasCover && detail.path) {
+          const builtCover = buildCoverUri(currentLibrary, detail.path, detail.hasCover);
+          if (builtCover) setCoverUri(builtCover);
+        }
+        setBookTitle(detail.title);
 
         console.info("[mobile-reader] load:book-detail-ready", {
           calibreId,
@@ -493,9 +513,10 @@ export default function ReaderScreen() {
       <DomReaderFallback
         format={loadState.status === "ready" ? loadState.format : null}
         title={loadState.status === "ready" ? loadState.title : null}
+        coverUri={coverUri}
       />
     ),
-    [loadState]
+    [loadState, coverUri]
   );
 
   const progressPercent = readerState?.progress ?? 0;
@@ -506,14 +527,35 @@ export default function ReaderScreen() {
   const fixedSettings = settings.fixed;
 
   if (loadState.status === "loading") {
+    const bgColor = coverUri
+      ? READER_SCREEN_BACKGROUND_COLOR
+      : bookTitle
+        ? getFallbackCoverColor(bookTitle)
+        : READER_SCREEN_BACKGROUND_COLOR;
     return (
-      <View className="flex-1" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: bgColor }}>
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar hidden={false} barStyle="light-content" />
+
+        {coverUri ? (
+          <>
+            <Image
+              source={coverUri}
+              className="absolute inset-0 h-full w-full"
+              contentFit="cover"
+            />
+            <View className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.55)" }} />
+          </>
+        ) : null}
+
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-        <Text className="mt-4 text-sm text-white/60">
-          {loadState.message}
-        </Text>
+        {bookTitle ? (
+          <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
+            {bookTitle}
+          </Text>
+        ) : (
+          <Text className="mt-4 text-sm text-white/60">{loadState.message}</Text>
+        )}
       </View>
     );
   }
@@ -565,7 +607,11 @@ export default function ReaderScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
+    <Animated.View
+      entering={FadeIn.duration(300)}
+      className="flex-1"
+      style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+    >
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         hidden={!chromeVisible && !tocOpen && !settingsOpen}
@@ -575,34 +621,63 @@ export default function ReaderScreen() {
 
       <View style={styles.readerSurface}>
         {isReflowSurface ? (
-          <ReflowableDOMReader
-            extractedDirPath={loadState.extractedEpubDirUri}
-            format={loadState.format}
-            initialPage={loadState.initialPage}
-            onStateChange={handleStateChange}
-            onTocReady={handleTocReady}
-            onDomProbe={async (event) => {
-              console.info("[mobile-reader] dom-probe", event);
-            }}
-            onRequestClose={handleRequestClose}
-            onToggleChrome={toggleChrome}
-            gotoPageCommand={gotoPageCmd}
-            readingLayout={reflowSettings.readingLayout}
-            theme={reflowSettings.theme}
-            fontSize={reflowSettings.fontSize}
-            lineHeight={reflowSettings.lineHeight}
-            paddingX={reflowSettings.paddingX}
-            brightness={reflowSettings.brightness}
-            contentInsetTop={paginateContentInsetTop}
-            contentInsetBottom={paginateContentInsetBottom}
-            readBinaryFromFileUrl={
-              loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
-            }
-            dom={{
-              style: { flex: 1 },
-              scrollEnabled: reflowSettings.readingLayout === "scroll",
-            }}
-          />
+          <>
+            <ReflowableDOMReader
+              extractedDirPath={loadState.extractedEpubDirUri}
+              format={loadState.format}
+              initialPage={loadState.initialPage}
+              onStateChange={handleStateChange}
+              onTocReady={handleTocReady}
+              onDomProbe={async (event) => {
+                console.info("[mobile-reader] dom-probe", event);
+              }}
+              onRequestClose={handleRequestClose}
+              onToggleChrome={toggleChrome}
+              gotoPageCommand={gotoPageCmd}
+              readingLayout={reflowSettings.readingLayout}
+              theme={reflowSettings.theme}
+              fontSize={reflowSettings.fontSize}
+              lineHeight={reflowSettings.lineHeight}
+              paddingX={reflowSettings.paddingX}
+              brightness={reflowSettings.brightness}
+              contentInsetTop={paginateContentInsetTop}
+              contentInsetBottom={paginateContentInsetBottom}
+              readBinaryFromFileUrl={
+                loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
+              }
+              dom={{
+                style: { flex: 1 },
+                scrollEnabled: reflowSettings.readingLayout === "scroll",
+              }}
+            />
+            {!readerState?.ready && (
+              <Animated.View
+                exiting={FadeOut.duration(300)}
+                className="absolute inset-0 z-20 items-center justify-center"
+                style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+              >
+                {coverUri ? (
+                  <>
+                    <Image
+                      source={coverUri}
+                      className="absolute inset-0 h-full w-full"
+                      contentFit="cover"
+                    />
+                    <View
+                      className="absolute inset-0"
+                      style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+                    />
+                  </>
+                ) : null}
+                <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
+                {title ? (
+                  <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
+                    {title}
+                  </Text>
+                ) : null}
+              </Animated.View>
+            )}
+          </>
         ) : isFixedSurface ? (
           <FixedReaderSurface
             archiveUri={loadState.bookArchiveUri}
@@ -691,16 +766,18 @@ export default function ReaderScreen() {
           onPatchFixedReaderSettings={patchFixedReaderSettings}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 function DomReaderFallback({
   format,
   title,
+  coverUri,
 }: {
   format: string | null;
   title: string | null;
+  coverUri?: string;
 }) {
   useEffect(() => {
     console.info("[mobile-reader] dom-fallback:mounted", {
@@ -709,11 +786,27 @@ function DomReaderFallback({
     });
   }, [format, title]);
 
+  const bgColor = coverUri
+    ? READER_SCREEN_BACKGROUND_COLOR
+    : title
+      ? getFallbackCoverColor(title)
+      : READER_SCREEN_BACKGROUND_COLOR;
+
   return (
     <View
       className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+      style={{ backgroundColor: bgColor }}
     >
+      {coverUri ? (
+        <>
+          <Image
+            source={coverUri}
+            className="absolute inset-0 h-full w-full"
+            contentFit="cover"
+          />
+          <View className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.55)" }} />
+        </>
+      ) : null}
       <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
       <Text className="mt-4 text-sm" style={{ color: DOM_FALLBACK_PRIMARY_TEXT_COLOR }}>
         正在挂载阅读器…

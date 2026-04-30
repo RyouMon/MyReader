@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import Animated, { FadeOut } from "react-native-reanimated";
 
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 
@@ -383,12 +384,13 @@ export default function NativeComicReader({
           )}
         </View>
       ) : (
-        <View
+        <Animated.View
+          exiting={FadeOut.duration(300)}
           className="flex-1 items-center justify-center"
           style={{ width: screenWidth, height: screenHeight, backgroundColor: READER_FIXED.canvasBg }}
         >
           <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
-        </View>
+        </Animated.View>
       )}
     </View>
   );

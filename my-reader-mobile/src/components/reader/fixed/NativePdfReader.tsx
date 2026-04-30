@@ -17,6 +17,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated, { FadeOut } from "react-native-reanimated";
 
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
@@ -306,11 +307,11 @@ export default function NativePdfReader({
           onToggleChrome?.();
         }}
       />
-      {loading ? (
-        <View style={styles.loadingOverlay} pointerEvents="none">
+      {loading && (
+        <Animated.View exiting={FadeOut.duration(300)} style={styles.loadingOverlay} pointerEvents="none">
           <ActivityIndicator size="large" color={READER_CHROME.loadingIndicator} />
-        </View>
-      ) : null}
+        </Animated.View>
+      )}
     </View>
   );
 }
