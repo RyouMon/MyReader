@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
 import { Image, Text, View } from "@/tw";
-import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
 
@@ -25,48 +24,23 @@ export function getFallbackCoverColor(title: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-/**
- * Renders a compact mobile book cover with fallback title art.
- * While a cover image is loading, the background shows a neutral skeleton
- * grey instead of the fallback color so the grid does not flash color
- * before the real cover appears.
- */
-export function BookCover({
-  book,
-  width,
-  height,
-  borderRadius = 10,
-  showTitle = true,
-}: {
+type BookCoverProps = {
   book: BookItem;
   width: number;
   height: number;
   borderRadius?: number;
   showTitle?: boolean;
-}) {
+};
+
+function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = true }: BookCoverProps) {
   const palette = useThemePalette();
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const imageOpacity = useSharedValue(0);
 
   useEffect(() => {
-    setImageLoaded(false);
     setImageError(false);
-    imageOpacity.value = 0;
-  }, [book.coverUri, imageOpacity]);
+  }, [book.coverUri]);
 
-  useEffect(() => {
-    if (imageLoaded) {
-      imageOpacity.value = withTiming(1, { duration: 300 });
-    }
-  }, [imageLoaded, imageOpacity]);
-
-  const animatedImageStyle = useAnimatedStyle(() => ({
-    opacity: imageOpacity.value,
-  }));
-
-  const hasCover = !!book.coverUri;
-  const showSkeleton = hasCover && !imageLoaded && !imageError;
+  const hasCover = !!book.coverUri && !imageError;
 
   return (
     <View
@@ -75,7 +49,7 @@ export function BookCover({
         width,
         height,
         borderRadius,
-        backgroundColor: showSkeleton ? palette.backgroundSecondary : getFallbackCoverColor(book.title),
+        backgroundColor: hasCover ? palette.backgroundSecondary : getFallbackCoverColor(book.title),
         shadowColor: palette.text,
         shadowOpacity: 0.18,
         shadowRadius: 8,
@@ -84,9 +58,13 @@ export function BookCover({
       }}
     >
       {hasCover ? (
-        <Reanimated.View style={[{ width, height }, animatedImageStyle]}>
-          <Image source={book.coverUri} className="h-full w-full" onLoad={() => setImageLoaded(true)} onError={() => setImageError(true)} />
-        </Reanimated.View>
+        <Image
+          source={book.coverUri}
+          style={{ width, height }}
+          recyclingKey={book.id}
+          transition={200}
+          onError={() => setImageError(true)}
+        />
       ) : (
         <View className="h-full w-full justify-end px-2 py-3">
           {showTitle ? (
@@ -99,3 +77,14 @@ export function BookCover({
     </View>
   );
 }
+
+/**
+ * Renders a compact mobile book cover with fallback title art.
+ *
+ * Memoized so FlashList row recycling does not re-mount the cover when only
+ * sibling cells change. Uses expo-image's built-in `transition` for fade-in
+ * instead of a per-cell reanimated worklet to keep N (cell count) low-overhead.
+ * `recyclingKey` ensures the image refreshes when the cell is reused for a
+ * different book.
+ */
+export const BookCover = memo(BookCoverImpl);

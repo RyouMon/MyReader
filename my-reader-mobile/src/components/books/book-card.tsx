@@ -1,8 +1,11 @@
+import { memo, useCallback, useMemo } from "react";
+
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
+import { buildBookMenuActions } from "@/src/data/book-menu";
 import type { BookItem } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
@@ -10,11 +13,44 @@ import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { CircularProgress } from "../ui/circular-progress";
 import { ProgressBar } from "../ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
+import { DownloadProgressIndicator } from "./download-progress-indicator";
 
-/**
- * Renders the mobile cover-first book card.
- */
-export function BookCard({
+export type BookCardProps = {
+  book: BookItem;
+  width: number;
+  /**
+   * Handlers receive `bookId` so the parent can keep a single stable callback
+   * across all cells, which lets React.memo short-circuit cell renders.
+   */
+  onPress?: (bookId: string) => void;
+  onMore?: (bookId: string) => void;
+  menuActions?: MenuAction[];
+  onMenuAction?: (bookId: string, actionId: string) => void;
+  onMenuOpen?: (bookId: string) => void;
+  onMenuClose?: () => void;
+  isAnyMenuOpen?: boolean;
+  progress?: BookProgressSnapshot;
+  downloadStatus?: BookDownloadStatus;
+  downloadProgress?: number;
+  /**
+   * Primitive menu inputs let the card build its own actions while keeping
+   * `React.memo` shallow comparison cheap. Passing a single `menuConfig` object
+   * would defeat memoization because the parent reallocates the object whenever
+   * any of these fields change.
+   */
+  menuIsWebdav?: boolean;
+  menuFormats?: string[];
+  menuSelectedFormat?: string;
+  /**
+   * When set together, the card subscribes directly to the download store for
+   * this book+format so progress updates do not re-render the parent list.
+   * Falls back to `downloadProgress` when not set.
+   */
+  subscriptionLibraryId?: string;
+  subscriptionFormat?: string;
+};
+
+function BookCardImpl({
   book,
   width,
   onPress,
@@ -27,27 +63,55 @@ export function BookCard({
   progress,
   downloadStatus,
   downloadProgress,
-}: {
-  book: BookItem;
-  width: number;
-  onPress?: () => void;
-  onMore?: () => void;
-  menuActions?: MenuAction[];
-  onMenuAction?: (actionId: string) => void;
-  onMenuOpen?: () => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  progress?: BookProgressSnapshot;
-  downloadStatus?: BookDownloadStatus;
-  downloadProgress?: number;
-}) {
+  menuIsWebdav,
+  menuFormats,
+  menuSelectedFormat,
+  subscriptionLibraryId,
+  subscriptionFormat,
+}: BookCardProps) {
   const palette = useThemePalette();
   const coverHeight = Math.round(width * 1.43);
   const progressValue = typeof progress?.percent === "number" ? Math.max(0, Math.min(100, progress.percent)) / 100 : undefined;
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
-  const hasMenu = (menuActions && menuActions.length > 0 && onMenuAction) || onMore;
+  const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
+
+  const hasMenuInputs = menuIsWebdav !== undefined;
+  const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
+    if (!hasMenuInputs) return menuActions;
+    return buildBookMenuActions(downloadStatus, {
+      isWebdav: menuIsWebdav ?? false,
+      formats: menuFormats,
+      selectedFormat: menuSelectedFormat,
+    });
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsWebdav, menuSelectedFormat]);
+
+  const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
+
+  const handlePress = useCallback(() => {
+    if (isAnyMenuOpen || !onPress) return;
+    onPress(book.id);
+  }, [book.id, isAnyMenuOpen, onPress]);
+
+  const handleMorePress = useCallback(
+    (event: { stopPropagation?: () => void }) => {
+      event.stopPropagation?.();
+      onMore?.(book.id);
+    },
+    [book.id, onMore],
+  );
+
+  const handleMenuOpenLocal = useCallback(() => {
+    onMenuOpen?.(book.id);
+  }, [book.id, onMenuOpen]);
+
+  const handleMenuPressAction = useCallback(
+    ({ nativeEvent }: { nativeEvent: { event: string } }) => {
+      onMenuAction?.(book.id, nativeEvent.event);
+    },
+    [book.id, onMenuAction],
+  );
 
   const moreButton = (
     <Pressable
@@ -55,10 +119,7 @@ export function BookCard({
       accessibilityLabel={`更多操作：${book.title}`}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
-      onPress={(event) => {
-        event.stopPropagation();
-        onMore?.();
-      }}
+      onPress={handleMorePress}
     >
       {Platform.OS === "ios" ? (
         <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
@@ -93,10 +154,7 @@ export function BookCard({
         <TouchableHighlight
           accessibilityRole={onPress ? "button" : undefined}
           accessibilityLabel={`打开《${book.title}》`}
-          onPress={() => {
-            if (isAnyMenuOpen) return;
-            onPress?.();
-          }}
+          onPress={handlePress}
           activeOpacity={0.78}
           underlayColor={palette.backgroundSecondary}
           style={{ borderRadius: 10, overflow: "hidden" }}
@@ -126,18 +184,28 @@ export function BookCard({
               <MaterialIcons name="cloud" size={14} color={palette.textMuted} />
             )
           ) : showProgressIndicator ? (
-            <CircularProgress progress={downloadProgress ?? 0} size={14} strokeWidth={1.5} color={palette.primary} />
+            hasSubscription ? (
+              <DownloadProgressIndicator
+                libraryId={subscriptionLibraryId ?? ""}
+                bookId={book.id}
+                format={subscriptionFormat ?? ""}
+                size={14}
+                strokeWidth={1.5}
+                color={palette.primary}
+                fallbackProgress={downloadProgress}
+              />
+            ) : (
+              <CircularProgress progress={downloadProgress ?? 0} size={14} strokeWidth={1.5} color={palette.primary} />
+            )
           ) : null}
           {hasMenu ? (
-            menuActions && onMenuAction ? (
+            computedMenuActions && onMenuAction ? (
               <MenuView
-                actions={menuActions}
+                actions={computedMenuActions}
                 isAnchoredToRight={Platform.OS === "android"}
-                onOpenMenu={onMenuOpen}
+                onOpenMenu={handleMenuOpenLocal}
                 onCloseMenu={onMenuClose}
-                onPressAction={({ nativeEvent }) => {
-                  onMenuAction(nativeEvent.event);
-                }}
+                onPressAction={handleMenuPressAction}
               >
                 {menuTrigger}
               </MenuView>
@@ -155,3 +223,8 @@ export function BookCard({
     </View>
   );
 }
+
+/**
+ * Renders the mobile cover-first book card.
+ */
+export const BookCard = memo(BookCardImpl);

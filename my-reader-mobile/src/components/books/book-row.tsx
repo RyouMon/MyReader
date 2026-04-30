@@ -1,8 +1,11 @@
+import { memo, useCallback, useMemo } from "react";
+
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
+import { buildBookMenuActions } from "@/src/data/book-menu";
 import type { BookItem } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
@@ -10,6 +13,7 @@ import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { CircularProgress } from "../ui/circular-progress";
 import { ProgressBar } from "../ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
+import { DownloadProgressIndicator } from "./download-progress-indicator";
 
 /**
  * Returns the mobile row status label for an optional progress snapshot.
@@ -27,10 +31,42 @@ function getProgressLabel(progress?: BookProgressSnapshot) {
   return "阅读中";
 }
 
-/**
- * Renders the mobile list row for a book.
- */
-export function BookRow({
+export type BookRowProps = {
+  book: BookItem;
+  /**
+   * Handlers receive `bookId` so the parent can keep a single stable callback
+   * across all cells, which lets React.memo short-circuit cell renders.
+   */
+  onPress?: (bookId: string) => void;
+  onMore?: (bookId: string) => void;
+  menuActions?: MenuAction[];
+  onMenuAction?: (bookId: string, actionId: string) => void;
+  onMenuOpen?: (bookId: string) => void;
+  onMenuClose?: () => void;
+  isAnyMenuOpen?: boolean;
+  progress?: BookProgressSnapshot;
+  downloadStatus?: BookDownloadStatus;
+  downloadProgress?: number;
+  horizontalPadding?: number;
+  /**
+   * Primitive menu inputs let the row build its own actions while keeping
+   * `React.memo` shallow comparison cheap. Passing a single `menuConfig` object
+   * would defeat memoization because the parent reallocates the object whenever
+   * any of these fields change.
+   */
+  menuIsWebdav?: boolean;
+  menuFormats?: string[];
+  menuSelectedFormat?: string;
+  /**
+   * When set together, the row subscribes directly to the download store for
+   * this book+format so progress updates do not re-render the parent list.
+   * Falls back to `downloadProgress` when not set.
+   */
+  subscriptionLibraryId?: string;
+  subscriptionFormat?: string;
+};
+
+function BookRowImpl({
   book,
   onPress,
   onMore,
@@ -43,20 +79,12 @@ export function BookRow({
   downloadStatus,
   downloadProgress,
   horizontalPadding = 16,
-}: {
-  book: BookItem;
-  onPress?: () => void;
-  onMore?: () => void;
-  menuActions?: MenuAction[];
-  onMenuAction?: (actionId: string) => void;
-  onMenuOpen?: () => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  progress?: BookProgressSnapshot;
-  downloadStatus?: BookDownloadStatus;
-  downloadProgress?: number;
-  horizontalPadding?: number;
-}) {
+  menuIsWebdav,
+  menuFormats,
+  menuSelectedFormat,
+  subscriptionLibraryId,
+  subscriptionFormat,
+}: BookRowProps) {
   const palette = useThemePalette();
   const hasProgress = typeof progress?.percent === "number";
   const progressValue = hasProgress ? Math.max(0, Math.min(100, progress.percent ?? 0)) / 100 : undefined;
@@ -64,7 +92,43 @@ export function BookRow({
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
-  const hasMenu = (menuActions && menuActions.length > 0 && onMenuAction) || onMore;
+  const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
+
+  const hasMenuInputs = menuIsWebdav !== undefined;
+  const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
+    if (!hasMenuInputs) return menuActions;
+    return buildBookMenuActions(downloadStatus, {
+      isWebdav: menuIsWebdav ?? false,
+      formats: menuFormats,
+      selectedFormat: menuSelectedFormat,
+    });
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsWebdav, menuSelectedFormat]);
+
+  const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
+
+  const handlePress = useCallback(() => {
+    if (isAnyMenuOpen || !onPress) return;
+    onPress(book.id);
+  }, [book.id, isAnyMenuOpen, onPress]);
+
+  const handleMorePress = useCallback(
+    (event: { stopPropagation?: () => void }) => {
+      event.stopPropagation?.();
+      onMore?.(book.id);
+    },
+    [book.id, onMore],
+  );
+
+  const handleMenuOpenLocal = useCallback(() => {
+    onMenuOpen?.(book.id);
+  }, [book.id, onMenuOpen]);
+
+  const handleMenuPressAction = useCallback(
+    ({ nativeEvent }: { nativeEvent: { event: string } }) => {
+      onMenuAction?.(book.id, nativeEvent.event);
+    },
+    [book.id, onMenuAction],
+  );
 
   const moreButton = (
     <Pressable
@@ -72,10 +136,7 @@ export function BookRow({
       accessibilityLabel={`更多操作：${book.title}`}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
-      onPress={(event) => {
-        event.stopPropagation();
-        onMore?.();
-      }}
+      onPress={handleMorePress}
     >
       {Platform.OS === "ios" ? (
         <SymbolView name="ellipsis" size={13} tintColor={palette.textMuted} />
@@ -104,10 +165,7 @@ export function BookRow({
     <TouchableHighlight
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={`打开《${book.title}》`}
-      onPress={() => {
-        if (isAnyMenuOpen) return;
-        onPress?.();
-      }}
+      onPress={handlePress}
       underlayColor={palette.backgroundSecondary}
     >
       <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
@@ -153,19 +211,29 @@ export function BookRow({
                   <MaterialIcons name="cloud" size={13} color={palette.textMuted} />
                 )
               ) : showProgressIndicator ? (
-                <CircularProgress progress={downloadProgress ?? 0} size={13} strokeWidth={1.5} color={palette.primary} />
+                hasSubscription ? (
+                  <DownloadProgressIndicator
+                    libraryId={subscriptionLibraryId ?? ""}
+                    bookId={book.id}
+                    format={subscriptionFormat ?? ""}
+                    size={13}
+                    strokeWidth={1.5}
+                    color={palette.primary}
+                    fallbackProgress={downloadProgress}
+                  />
+                ) : (
+                  <CircularProgress progress={downloadProgress ?? 0} size={13} strokeWidth={1.5} color={palette.primary} />
+                )
               ) : null}
               {hasMenu ? (
-                menuActions && onMenuAction ? (
+                computedMenuActions && onMenuAction ? (
                   <View onStartShouldSetResponder={() => true}>
                     <MenuView
-                      actions={menuActions}
+                      actions={computedMenuActions}
                       isAnchoredToRight={Platform.OS === "android"}
-                      onOpenMenu={onMenuOpen}
+                      onOpenMenu={handleMenuOpenLocal}
                       onCloseMenu={onMenuClose}
-                      onPressAction={({ nativeEvent }) => {
-                        onMenuAction(nativeEvent.event);
-                      }}
+                      onPressAction={handleMenuPressAction}
                     >
                       {menuTrigger}
                     </MenuView>
@@ -186,3 +254,8 @@ export function BookRow({
     </TouchableHighlight>
   );
 }
+
+/**
+ * Renders the mobile list row for a book.
+ */
+export const BookRow = memo(BookRowImpl);

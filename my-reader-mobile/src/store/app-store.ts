@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import {
-  DEFAULT_LIBRARY_VIEW_MODE,
-  defaultSettings,
-  mergeDataSources,
-  persistableDataSources,
-  STORE_NAME,
+    DEFAULT_LIBRARY_VIEW_MODE,
+    defaultSettings,
+    mergeDataSources,
+    persistableDataSources,
+    STORE_NAME,
 } from "./app-store.constants";
 import type { AppState, AppStateSlice, LibraryViewMode, PersistedAppState } from "./app-store.types";
 import { createDataSourceSlice } from "./data-source-slice";
