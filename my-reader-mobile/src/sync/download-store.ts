@@ -1,8 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-import { notifyDownloadState } from "../notifications/download-notifications";
 import { SyncConfigError } from "../errors";
-import { checkLibraryConnectivity, downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
+import { notifyDownloadState } from "../notifications/download-notifications";
+import { checkLibraryConnectivity } from "./connectivity";
+import { downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
 import {
   cancelNativeDownload,
   completeNativeDownload,
