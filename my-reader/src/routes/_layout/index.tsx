@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { BookX, Loader2 } from "lucide-react"
+import { BookX } from "lucide-react"
 import { useState } from "react"
-import BookGrid from "@/components/library/BookGrid"
+import BookGrid, {
+  LibrarySkeletonGrid,
+} from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibrary } from "@/stores/libraryStore"
@@ -84,12 +86,7 @@ function LibraryPage() {
         onRefresh={handleRefresh}
       />
 
-      {loading && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">正在加载书库…</p>
-        </div>
-      )}
+      {loading && !error && <LibrarySkeletonGrid viewMode={viewMode} />}
 
       {!loading && error && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
@@ -156,3 +153,4 @@ function LibraryPage() {
     </>
   )
 }
+

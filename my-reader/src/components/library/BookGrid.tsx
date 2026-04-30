@@ -7,6 +7,7 @@ import BookRow from "./BookRow"
 
 const MIN_COL_WIDTH = 152
 const GAP = 24
+const SKELETON_COUNT = 20
 /**
  * Fixed row height avoids dynamic `measureElement` calls which cause
  * layout thrashing. Cover 2:3 at ~170px ≈ 255px + info ~55px + gap.
@@ -162,35 +163,69 @@ function renderListRow(
   )
 }
 
-/**
- * Renders a placeholder for unloaded list rows.
- */
-function BookRowSkeleton() {
+export function BookRowSkeleton() {
   return (
     <div className="flex min-h-14 animate-pulse items-center gap-3 rounded-md px-2.5 py-1.5">
       <div className="h-[42px] w-[30px] shrink-0 rounded-[5px] bg-muted" />
-      <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="min-w-0 flex-1">
         <div className="h-3.5 w-1/2 rounded bg-muted" />
-        <div className="h-3 w-1/3 rounded bg-muted" />
+        <div className="mt-0.5 h-3 w-1/3 rounded bg-muted" />
+        <div className="mt-0.5 h-3.5 w-8 rounded bg-muted" />
+      </div>
+      <div className="flex shrink-0 items-center gap-0.5">
+        <div className="size-7 rounded bg-muted" />
+        <div className="size-7 rounded bg-muted" />
       </div>
     </div>
   )
 }
 
-/**
- * Renders a placeholder for unloaded cover cards.
- */
-function BookCardSkeleton() {
+export function BookCardSkeleton() {
   return (
     <div className="animate-pulse min-w-0">
       <div
-        className="w-full rounded-lg bg-muted"
+        className="w-full overflow-hidden rounded-lg bg-muted"
         style={{ aspectRatio: "2/3" }}
       />
-      <div className="px-0.5 pt-2.5 space-y-1.5">
-        <div className="h-4 bg-muted rounded w-3/4" />
-        <div className="h-3 bg-muted rounded w-1/2" />
+      <div className="mt-2 px-0.5">
+        <div className="h-3.5 w-3/4 rounded bg-muted" />
+        <div className="mt-0.5 h-3 w-1/2 rounded bg-muted" />
+        <div className="mt-1 h-3.5 w-10 rounded bg-muted" />
       </div>
+    </div>
+  )
+}
+
+export function LibrarySkeletonGrid({
+  viewMode,
+}: {
+  viewMode: LibraryViewMode
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-6">
+      <div className="mb-4 flex items-baseline gap-2.5 pt-5">
+        <div className="h-5 w-14 animate-pulse rounded bg-muted" />
+        <div className="h-3.5 w-6 animate-pulse rounded bg-muted" />
+      </div>
+      {viewMode === "list" ? (
+        <div>
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <BookRowSkeleton key={i} />
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(152px, 1fr))",
+            gap: "24px",
+          }}
+        >
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <BookCardSkeleton key={i} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

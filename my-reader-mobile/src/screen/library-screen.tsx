@@ -6,6 +6,7 @@ import { FlashList } from "@shopify/flash-list";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Platform, TouchableNativeFeedback, View, useWindowDimensions } from "react-native";
+import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
@@ -15,6 +16,7 @@ import {
   BookRow,
   EmptyState,
   HeaderToolbar,
+  LibrarySkeletonContent,
   PrimaryButton,
   RoundIconButton,
   Screen,
@@ -198,6 +200,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevRefreshingIdRef = useRef<string | null>(null);
+
+  const isLoadingNewContent = loadingBooks && !refreshingLibraryId;
 
   function handleMenuOpen(bookId: string) {
     if (menuCloseTimerRef.current) {
@@ -1005,57 +1009,67 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           </Stack.Toolbar.Menu>
         </Stack.Toolbar>
       ) : null}
-      <FlashList
-        key={`${viewMode}-${gridColumns}`}
-        data={loadingBooks && !refreshingLibraryId ? [] : visibleBooks}
-        numColumns={isGridView ? gridColumns : 1}
-        keyExtractor={(item) => item.id}
-        contentInsetAdjustmentBehavior="automatic"
-        style={{ flex: 1, backgroundColor: palette.background }}
-        contentContainerStyle={{
-          paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
-          paddingTop: 16,
-          paddingBottom: 40,
-        }}
-        ItemSeparatorComponent={() => <View style={{ height: isGridView ? GRID_GAP : 0 }} />}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={
-          loadingBooks && !refreshingLibraryId
-            ? <EmptyState title="正在读取书库" detail="正在解析 metadata.db 并读取图书列表。" />
-            : <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
-        }
-        renderItem={({ item }) =>
-          isGridView ? (
-            <View style={{ paddingHorizontal: GRID_HALF_GAP }}>
-              <BookCard
+      <Reanimated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(200)} style={{ flex: 1 }}>
+        <FlashList
+          key={`${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
+          data={isLoadingNewContent ? [] : visibleBooks}
+          numColumns={isGridView ? gridColumns : 1}
+          keyExtractor={(item) => item.id}
+          contentInsetAdjustmentBehavior="automatic"
+          style={{ flex: 1, backgroundColor: palette.background }}
+          contentContainerStyle={{
+            paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
+            paddingTop: 16,
+            paddingBottom: 40,
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: isGridView ? GRID_GAP : 0 }} />}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            isLoadingNewContent ? (
+              <LibrarySkeletonContent
+                viewMode={viewMode}
+                cardWidth={cardWidth}
+                gridColumns={gridColumns}
+                gridGap={GRID_GAP}
+                listPaddingH={LIST_PADDING_H}
+              />
+            ) : (
+              <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
+            )
+          }
+          renderItem={({ item }) =>
+            isGridView ? (
+              <View style={{ paddingHorizontal: GRID_HALF_GAP }}>
+                <BookCard
+                  book={item}
+                  downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
+                  downloadProgress={bookDownloadProgressById[item.id]}
+                  width={cardWidth}
+                  isAnyMenuOpen={openMenuBookId !== null}
+                  onPress={() => void handleBookPress(item)}
+                  menuActions={buildBookMenuActions(item, bookDownloadStatusById[item.id] ?? "notDownloaded", bookFormatsById[item.id], selectedFormatById[item.id])}
+                  onMenuAction={(actionId) => handleBookMenuAction(item, actionId)}
+                  onMenuOpen={() => handleMenuOpen(item.id)}
+                  onMenuClose={handleMenuClose}
+                />
+              </View>
+            ) : (
+              <BookRow
                 book={item}
                 downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
                 downloadProgress={bookDownloadProgressById[item.id]}
-                width={cardWidth}
                 isAnyMenuOpen={openMenuBookId !== null}
                 onPress={() => void handleBookPress(item)}
                 menuActions={buildBookMenuActions(item, bookDownloadStatusById[item.id] ?? "notDownloaded", bookFormatsById[item.id], selectedFormatById[item.id])}
                 onMenuAction={(actionId) => handleBookMenuAction(item, actionId)}
                 onMenuOpen={() => handleMenuOpen(item.id)}
-                onMenuClose={handleMenuClose}
+                  onMenuClose={handleMenuClose}
+                horizontalPadding={LIST_PADDING_H}
               />
-            </View>
-          ) : (
-            <BookRow
-              book={item}
-              downloadStatus={bookDownloadStatusById[item.id] ?? "notDownloaded"}
-              downloadProgress={bookDownloadProgressById[item.id]}
-              isAnyMenuOpen={openMenuBookId !== null}
-              onPress={() => void handleBookPress(item)}
-              menuActions={buildBookMenuActions(item, bookDownloadStatusById[item.id] ?? "notDownloaded", bookFormatsById[item.id], selectedFormatById[item.id])}
-              onMenuAction={(actionId) => handleBookMenuAction(item, actionId)}
-              onMenuOpen={() => handleMenuOpen(item.id)}
-              onMenuClose={handleMenuClose}
-              horizontalPadding={LIST_PADDING_H}
-            />
-          )
-        }
-      />
+            )
+          }
+        />
+      </Reanimated.View>
     </>
   );
 }

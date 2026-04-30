@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
+
 import { useThemePalette } from "@/src/design/tokens";
 import type { BookItem } from "@/src/data/types";
 import { Image, Text, View } from "@/tw";
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
 
@@ -24,6 +27,9 @@ export function getFallbackCoverColor(title: string) {
 
 /**
  * Renders a compact mobile book cover with fallback title art.
+ * While a cover image is loading, the background shows a neutral skeleton
+ * grey instead of the fallback color so the grid does not flash color
+ * before the real cover appears.
  */
 export function BookCover({
   book,
@@ -39,6 +45,28 @@ export function BookCover({
   showTitle?: boolean;
 }) {
   const palette = useThemePalette();
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const imageOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(false);
+    imageOpacity.value = 0;
+  }, [book.coverUri, imageOpacity]);
+
+  useEffect(() => {
+    if (imageLoaded) {
+      imageOpacity.value = withTiming(1, { duration: 300 });
+    }
+  }, [imageLoaded, imageOpacity]);
+
+  const animatedImageStyle = useAnimatedStyle(() => ({
+    opacity: imageOpacity.value,
+  }));
+
+  const hasCover = !!book.coverUri;
+  const showSkeleton = hasCover && !imageLoaded && !imageError;
 
   return (
     <View
@@ -47,7 +75,7 @@ export function BookCover({
         width,
         height,
         borderRadius,
-        backgroundColor: getFallbackCoverColor(book.title),
+        backgroundColor: showSkeleton ? palette.backgroundSecondary : getFallbackCoverColor(book.title),
         shadowColor: palette.text,
         shadowOpacity: 0.18,
         shadowRadius: 8,
@@ -55,8 +83,10 @@ export function BookCover({
         elevation: 3,
       }}
     >
-      {book.coverUri ? (
-        <Image source={book.coverUri} className="h-full w-full" />
+      {hasCover ? (
+        <Reanimated.View style={[{ width, height }, animatedImageStyle]}>
+          <Image source={book.coverUri} className="h-full w-full" onLoad={() => setImageLoaded(true)} onError={() => setImageError(true)} />
+        </Reanimated.View>
       ) : (
         <View className="h-full w-full justify-end px-2 py-3">
           {showTitle ? (
