@@ -1,8 +1,7 @@
-import { AppState, Appearance } from "react-native";
+import { AppState } from "react-native";
 import { Notifier } from "react-native-notifier";
 
-import { getThemePalette } from "../design/tokens";
-import { useAppStore } from "../store/app-store";
+import { InAppNotification } from "./in-app-notification";
 
 type DownloadNotificationKind = "start" | "done" | "error";
 
@@ -17,6 +16,23 @@ export function initializeDownloadNotifications(): void {
 }
 
 /**
+ * Sends an in-app banner notification for library refresh completion or failure.
+ */
+export function notifyLibraryRefresh(kind: "done" | "error", detail?: string): void {
+  if (AppState.currentState !== "active") return;
+
+  Notifier.showNotification({
+    title: kind === "done" ? "书库已更新" : "书库更新失败",
+    description: detail,
+    duration: 2800,
+    showAnimationDuration: 260,
+    hideOnPress: true,
+    Component: InAppNotification,
+    componentProps: { kind: kind === "done" ? "success" : "error" },
+  });
+}
+
+/**
  * Sends an in-app banner notification for download task state changes.
  */
 export function notifyDownloadState(kind: DownloadNotificationKind, label: string, detail?: string): void {
@@ -24,29 +40,15 @@ export function notifyDownloadState(kind: DownloadNotificationKind, label: strin
   if (AppState.currentState !== "active") return;
 
   const title = kind === "start" ? "开始下载" : kind === "done" ? "下载完成" : "下载失败";
-  const body = detail ? `${label}\n${detail}` : label;
-  const themeMode = useAppStore.getState().settings.themeMode;
-  const resolvedColorScheme = (themeMode === "system" ? Appearance.getColorScheme() : themeMode) ?? "light";
-  const palette = getThemePalette(resolvedColorScheme);
-  const accentColor = kind === "done" ? palette.success : kind === "error" ? palette.error : palette.primary;
+  const notifKind = kind === "done" ? "success" : kind === "error" ? "error" : "info";
 
   Notifier.showNotification({
     title,
-    description: body,
+    description: detail ? `${label}\n${detail}` : label,
     duration: 2800,
     showAnimationDuration: 260,
     hideOnPress: true,
-    componentProps: {
-      containerStyle: {
-        backgroundColor: palette.surface,
-        borderColor: palette.border,
-        borderWidth: 1,
-        borderLeftColor: accentColor,
-        borderLeftWidth: 3,
-      },
-      titleStyle: { fontWeight: "700", color: palette.text },
-      descriptionStyle: { opacity: 0.9, color: palette.textMuted },
-    },
+    Component: InAppNotification,
+    componentProps: { kind: notifKind },
   });
 }
- 

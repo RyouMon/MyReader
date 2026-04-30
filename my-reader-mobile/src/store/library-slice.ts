@@ -24,7 +24,7 @@ function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   );
 }
 
-type LibrarySlice = Pick<AppState, keyof LibraryStore | "books" | "loadingBooks" | "error" | "setHydrated" | "clearError" | "addResolvedLibrary" | "refreshBooks" | "refreshLibrary">;
+type LibrarySlice = Pick<AppState, keyof LibraryStore | "books" | "loadingBooks" | "refreshingLibraryId" | "error" | "setHydrated" | "clearError" | "addResolvedLibrary" | "refreshBooks" | "refreshLibrary">;
 
 export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
   ({
@@ -33,6 +33,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
     books: [],
     loading: true,
     loadingBooks: false,
+    refreshingLibraryId: null,
     error: null,
     hydrated: false,
     setHydrated(value: boolean) {
@@ -245,14 +246,13 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         showAlertWithStatusBarRestore("数据源无法连接", "无法访问 WebDAV 数据源，同步已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误", [{ text: "知道了" }]);
         return;
       }
-      set({ loadingBooks: true, error: null });
+      set({ refreshingLibraryId: libraryId, error: null });
       try {
         const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(
           library,
           state.dataSources
         );
 
-        // Update the library in the list with new metadataUri / bookCount
         const nextLibraries = state.libraries.map((l) =>
           l.id === libraryId
             ? { ...newLibrary, bookCount: newBookCount }
@@ -260,9 +260,9 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         );
         set({ libraries: nextLibraries });
 
-        // Refresh books list
         await get().refreshBooks();
 
+        set({ refreshingLibraryId: null });
         console.info("Library refreshed:", {
           libraryId,
           added: diff.added.length,
@@ -272,6 +272,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         });
       } catch (caught) {
         set({
+          refreshingLibraryId: null,
           loadingBooks: false,
           error: caught instanceof Error ? caught.message : "刷新书库失败",
         });

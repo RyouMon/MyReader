@@ -32,11 +32,6 @@ function formatDate(timestamp?: number) {
   }).format(date);
 }
 
-function getWebDavAccent(index: number, palette: ReturnType<typeof useThemePalette>) {
-  const accents = [palette.primary, palette.warning, palette.success, palette.textMuted];
-  return accents[index % accents.length] ?? palette.primary;
-}
-
 function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent: string }) {
   const palette = useThemePalette();
 
@@ -102,7 +97,7 @@ export default function WebDavDataSourceDetailScreen() {
   );
   const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined;
   const webdavSource: DataSourceWebdav | null = raw?.type === "webdav" ? raw : null;
-  const accent = getWebDavAccent(Math.max(sourceIndex, 0), palette);
+  const accent = palette.primary;
 
   function handleBack() {
     if (router.canGoBack()) {

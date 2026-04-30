@@ -1,18 +1,21 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import type { DataSource, Library } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
+import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
+import { useAppStore } from "../store/app-store";
 import { Text, View } from "@/tw";
 
 import { Screen } from "@/src/components/ui/screen";
+import { Button } from "@/src/components/ui/button";
 import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "../components";
-import { useAppStore } from "../store/app-store";
 import { useLibraryStore } from "../store/library-store";
 
 function formatBookCount(count: number) {
@@ -52,11 +55,6 @@ function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
   }
 
   return library.path;
-}
-
-function getLibraryAccent(index: number, palette: ReturnType<typeof useThemePalette>) {
-  const accents = [palette.primary, palette.warning, palette.success, palette.textMuted];
-  return accents[index % accents.length] ?? palette.primary;
 }
 
 function DetailHero({ library, accent, isActive }: { library: Library; accent: string; isActive: boolean }) {
@@ -116,8 +114,10 @@ function DetailHero({ library, accent, isActive }: { library: Library; accent: s
 export default function LibraryDetailScreen() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
-  const { libraries, activeLibraryId, removeLibrary, refreshLibrary } = useLibraryStore();
+  const { libraries, activeLibraryId, removeLibrary, refreshLibrary, switchLibrary } = useLibraryStore();
   const dataSources = useAppStore((state) => state.dataSources);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const libraryIndex = useMemo(
     () => libraries.findIndex((item) => item.id === libraryId),
@@ -129,7 +129,7 @@ export default function LibraryDetailScreen() {
     [dataSources, library?.dataSourceId]
   );
   const isActive = library?.id === activeLibraryId;
-  const accent = getLibraryAccent(Math.max(libraryIndex, 0), palette);
+  const accent = palette.primary;
 
   function handleBack() {
     if (router.canGoBack()) {
@@ -207,20 +207,44 @@ export default function LibraryDetailScreen() {
         <HeaderToolbar right={rightToolbar} />
           <View className="flex-1 gap-8">
             <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} />
+            <View className="items-center">
+              <View className="w-full flex-row gap-3 px-4" style={{ maxWidth: 400 }}>
+                <Button
+                  className="flex-1"
+                  disabled={Boolean(isActive)}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    void switchLibrary(library.id);
+                  }}
+                  title="使用该书库"
+                  variant="primary"
+                />
+                <Button
+                  className="flex-1"
+                  disabled={isRefreshing}
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    void (async () => {
+                      setIsRefreshing(true);
+                      await refreshLibrary(library.id);
+                      setIsRefreshing(false);
+                      const storeError = useAppStore.getState().error;
+                      if (!storeError) {
+                        notifyLibraryRefresh("done");
+                      }
+                    })();
+                  }}
+                  title={isRefreshing ? "更新中..." : "更新书库"}
+                  variant="secondary"
+                />
+              </View>
+            </View>
             <SectionCard>
               <SettingsRow title="书库类型" detail={getLibraryTypeLabel(library)} />
               <SettingsRow title="数据源类型" detail={getSourceTypeLabel(library)} />
               <SettingsRow title="书库路径" detail={getSourcePathDetail(library, linkedDataSource)} />
               <SettingsRow title="收录图书数量" detail={formatBookCount(library.bookCount)} />
-              <SettingsRow title="添加时间" detail={formatDate(library.addedAt)} />
-              <SettingsRow
-                title="重新拉取书库"
-                detail="重新下载 metadata.db 并更新图书列表"
-                onPress={() => {
-                  if (library) void refreshLibrary(library.id);
-                }}
-                isLast
-              />
+              <SettingsRow title="添加时间" detail={formatDate(library.addedAt)} isLast />
             </SectionCard>
           </View>
       </View>

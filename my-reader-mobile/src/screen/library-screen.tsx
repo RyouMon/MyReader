@@ -26,6 +26,7 @@ import {
 import { getAllBookFormats, getBookFormatPaths } from "../data/calibre";
 import type { BookItem } from "../data/types";
 import { describeDownloadError } from "../errors";
+import { notifyLibraryRefresh } from "../notifications/download-notifications";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
@@ -178,7 +179,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { activeLibraryId, libraries, books, loadingBooks, loading, switchLibrary, error, refreshLibrary } =
+  const { activeLibraryId, libraries, books, loadingBooks, refreshingLibraryId, loading, switchLibrary, error, refreshLibrary } =
     useLibraryStore();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
@@ -196,6 +197,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const syncActions = useSyncActions();
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevRefreshingIdRef = useRef<string | null>(null);
 
   function handleMenuOpen(bookId: string) {
     if (menuCloseTimerRef.current) {
@@ -382,6 +384,14 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       cancelled = true;
     };
   }, [books, selectedLibrary]);
+
+  useEffect(() => {
+    if (prevRefreshingIdRef.current !== null && refreshingLibraryId === null) {
+      const storeError = useAppStore.getState().error;
+      notifyLibraryRefresh(storeError ? "error" : "done", storeError ?? undefined);
+    }
+    prevRefreshingIdRef.current = refreshingLibraryId;
+  }, [refreshingLibraryId]);
 
   const activeDownloadTasks = useMemo(
     () =>
@@ -997,7 +1007,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       ) : null}
       <FlashList
         key={`${viewMode}-${gridColumns}`}
-        data={loadingBooks ? [] : visibleBooks}
+        data={loadingBooks && !refreshingLibraryId ? [] : visibleBooks}
         numColumns={isGridView ? gridColumns : 1}
         keyExtractor={(item) => item.id}
         contentInsetAdjustmentBehavior="automatic"
@@ -1010,7 +1020,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         ItemSeparatorComponent={() => <View style={{ height: isGridView ? GRID_GAP : 0 }} />}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          loadingBooks
+          loadingBooks && !refreshingLibraryId
             ? <EmptyState title="正在读取书库" detail="正在解析 metadata.db 并读取图书列表。" />
             : <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
         }

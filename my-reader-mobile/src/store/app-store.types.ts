@@ -83,6 +83,7 @@ export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "ac
     patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
     patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
     patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
+    refreshingLibraryId: string | null;
     clearError: () => void;
     addResolvedLibrary: (library: Library) => Promise<boolean>;
     refreshBooks: () => Promise<void>;

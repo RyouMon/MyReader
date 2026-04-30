@@ -4,14 +4,16 @@ import "../src/global.css";
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotifierWrapper } from "react-native-notifier";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { getAppDatabase } from "@/src/data/sqlite";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { ErrorBoundary } from "@/src/components/error-boundary";
+import { LibraryRefreshPill } from "@/src/components/ui/library-refresh-pill";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { initializeDownloadNotifications } from "@/src/notifications/download-notifications";
 import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
@@ -75,23 +77,31 @@ function RootNavigator() {
       };
 
   return (
-    <NavigationThemeProvider value={navigationTheme}>
-      <StatusBar style={statusBarStyle} />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="book" />
-        <Stack.Screen name="library-book" />
-        <Stack.Screen
-          name="reader"
-          options={{
-            presentation: "fullScreenModal",
-            animation: "fade",
-            gestureEnabled: false,
-          }}
-        />
-      </Stack>
-    </NavigationThemeProvider>
+    <>
+      <NavigationThemeProvider value={navigationTheme}>
+        <StatusBar style={statusBarStyle} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="book" />
+          <Stack.Screen name="library-book" />
+          <Stack.Screen
+            name="reader"
+            options={{
+              presentation: "fullScreenModal",
+              animation: "fade",
+              gestureEnabled: false,
+            }}
+          />
+        </Stack>
+      </NavigationThemeProvider>
+      <LibraryRefreshPill />
+    </>
   );
+}
+
+function NotifierWithSafeArea({ children }: { children: ReactNode }) {
+  const { top } = useSafeAreaInsets();
+  return <NotifierWrapper containerStyle={{ marginTop: top }}>{children}</NotifierWrapper>;
 }
 
 export default function RootLayout() {
@@ -103,9 +113,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <ErrorBoundary>
-          <NotifierWrapper>
+          <NotifierWithSafeArea>
             <RootNavigator />
-          </NotifierWrapper>
+          </NotifierWithSafeArea>
         </ErrorBoundary>
       </ThemeProvider>
     </GestureHandlerRootView>

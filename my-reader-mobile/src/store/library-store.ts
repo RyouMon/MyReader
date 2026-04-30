@@ -8,6 +8,7 @@ export function useLibraryStore() {
   const books = useAppStore((state) => state.books);
   const loading = useAppStore((state) => state.loading);
   const loadingBooks = useAppStore((state) => state.loadingBooks);
+  const refreshingLibraryId = useAppStore((state) => state.refreshingLibraryId);
   const error = useAppStore((state) => state.error);
   const addLibrary = useAppStore((state) => state.addLibrary);
   const addResolvedLibrary = useAppStore((state) => state.addResolvedLibrary);
@@ -29,6 +30,7 @@ export function useLibraryStore() {
       books,
       loading,
       loadingBooks,
+      refreshingLibraryId,
       error,
       addLibrary,
       addResolvedLibrary,
@@ -44,6 +46,7 @@ export function useLibraryStore() {
       books,
       loading,
       loadingBooks,
+      refreshingLibraryId,
       error,
       addLibrary,
       addResolvedLibrary,
