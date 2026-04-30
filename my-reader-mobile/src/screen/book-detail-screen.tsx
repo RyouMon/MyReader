@@ -229,7 +229,7 @@ export default function BookDetailScreen() {
         <Stack.Screen options={screenOptions} />
         <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-          <EmptyState title="缺少书籍参数" detail="请从书库重新进入书籍详情。" />
+          <EmptyState title="缺少书籍参数" detail="请从书库重新进入书籍详情。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
       </>
     );
@@ -241,7 +241,7 @@ export default function BookDetailScreen() {
         <Stack.Screen options={screenOptions} />
         <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-          <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" />
+          <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
       </>
     );

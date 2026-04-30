@@ -60,6 +60,7 @@ export default function WebDavSourcesScreen() {
                 title="还没有 WebDAV 数据源"
                 detail="通过「添加 WebDAV」连接服务器后，即可浏览远程目录并选择 Calibre 书库。"
                 action={<PrimaryButton title="添加 WebDAV 数据源" onPress={handleAdd} />}
+                icon={{ ios: "externaldrive.fill", android: "storage" }}
               />
             ) : (
               <SectionCard>

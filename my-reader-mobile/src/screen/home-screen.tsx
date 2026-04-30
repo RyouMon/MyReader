@@ -28,6 +28,7 @@ export default function HomeScreen() {
           title="还没有添加书库"
           detail="在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"
           action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
+          icon={{ ios: "books.vertical.fill", android: "library-books" }}
         />
       ) : currentBook ? (
         <>
@@ -99,6 +100,7 @@ export default function HomeScreen() {
         <EmptyState
           title="书库中还没有图书"
           detail="请确认你选择的是有效的 Calibre 书库，并且 metadata.db 中存在 books 表数据。"
+          icon={{ ios: "book", android: "book" }}
         />
       )}
     </Screen>

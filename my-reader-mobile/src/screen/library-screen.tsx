@@ -798,7 +798,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           }}
         />
         <Screen>
-          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" />
+          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
       </>
     );
@@ -820,7 +820,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           }}
         />
         <Screen>
-          <EmptyState title="没有找到这个书库" detail="它可能已被移除，或链接参数已经失效。" />
+          <EmptyState title="没有找到这个书库" detail="它可能已被移除，或链接参数已经失效。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </Screen>
       </>
     );
@@ -842,6 +842,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             title="还没有添加书库"
             detail="先添加一个 Calibre 书库，之后即可在书库标签中浏览图书。"
             action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
+            icon={{ ios: "books.vertical.fill", android: "library-books" }}
           />
         </Screen>
       </>
@@ -858,7 +859,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           }}
         />
         <Screen>
-          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" />
+          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
       </>
     );
@@ -885,6 +886,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                 icon={<MaterialIcons name="swap-horiz" size={22} color={palette.text} />}
               />
             }
+            icon={{ ios: "list.bullet.rectangle", android: "list" }}
           />
         </Screen>
       </>
@@ -1033,8 +1035,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                 gridGap={GRID_GAP}
                 listPaddingH={LIST_PADDING_H}
               />
+            ) : error ? (
+              <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
             ) : (
-              <EmptyState title={error ? "读取失败" : "没有匹配的图书"} detail={error ?? "请调整搜索词，或确认书库中存在图书。"} />
+              <EmptyState title="没有匹配的图书" detail="请调整搜索词，或确认书库中存在图书。" icon={{ ios: "magnifyingglass", android: "search" }} />
             )
           }
           renderItem={({ item }) =>

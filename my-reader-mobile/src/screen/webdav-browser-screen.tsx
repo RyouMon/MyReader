@@ -168,7 +168,7 @@ export default function WebDavBrowserScreen() {
   if (!source) {
     return (
       <Screen>
-        <EmptyState title="数据源不存在" detail="请先添加一个 WebDAV 数据源。" />
+        <EmptyState title="数据源不存在" detail="请先添加一个 WebDAV 数据源。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
       </Screen>
     );
   }
@@ -196,11 +196,11 @@ export default function WebDavBrowserScreen() {
       </Text>
 
       {loading ? (
-        <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" />
+        <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
       ) : error ? (
-        <EmptyState title="读取失败" detail={error} />
+        <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
       ) : entries.length === 0 ? (
-        <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" />
+        <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" icon={{ ios: "folder", android: "folder-open" }} />
       ) : (
         <SectionCard>
           {entries.map((entry, index) => (
