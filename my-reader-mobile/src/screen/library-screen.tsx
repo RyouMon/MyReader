@@ -180,6 +180,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevRefreshingIdRef = useRef<string | null>(null);
+  const isNavigatingRef = useRef(false);
 
   const isLoadingNewContent = loadingBooks && !refreshingLibraryId;
 
@@ -596,6 +597,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   const handleBookPress = useCallback((bookId: string) => {
+    if (isNavigatingRef.current) return;
     const latest = handlersStateRef.current;
     if (latest.openMenuBookId) return;
     const book = latest.books.find((b) => b.id === bookId);
@@ -603,12 +605,16 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     const status = latest.bookDownloadStatusById[bookId] ?? "notDownloaded";
 
     if (latest.selectedLibrary?.sourceType !== "webdav" || status === "downloaded") {
+      isNavigatingRef.current = true;
       const effectiveFormat = latest.bookFormatMetaById.get(bookId)?.effectiveFormat;
       if (effectiveFormat) {
         router.push({ pathname: "/reader/[id]", params: { id: bookId, format: effectiveFormat } });
       } else {
         router.push({ pathname: "/reader/[id]", params: { id: bookId } });
       }
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, 1200);
       return;
     }
 
