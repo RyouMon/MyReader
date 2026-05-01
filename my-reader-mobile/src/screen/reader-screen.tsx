@@ -519,6 +519,37 @@ export default function ReaderScreen() {
     [loadState, coverUri]
   );
 
+  const readerLoadingOverlay = useMemo(
+    () => (
+      <Animated.View
+        exiting={FadeOut.duration(300)}
+        className="absolute inset-0 z-20 items-center justify-center"
+        style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+      >
+        {coverUri ? (
+          <>
+            <Image
+              source={coverUri}
+              className="absolute inset-0 h-full w-full"
+              contentFit="cover"
+            />
+            <View
+              className="absolute inset-0"
+              style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+            />
+          </>
+        ) : null}
+        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
+        {title ? (
+          <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
+            {title}
+          </Text>
+        ) : null}
+      </Animated.View>
+    ),
+    [coverUri, title]
+  );
+
   const progressPercent = readerState?.progress ?? 0;
   const pageLabel = readerState
     ? `${readerState.currentPage + 1} / ${readerState.totalPages}`
@@ -621,63 +652,34 @@ export default function ReaderScreen() {
 
       <View style={styles.readerSurface}>
         {isReflowSurface ? (
-          <>
-            <ReflowableDOMReader
-              extractedDirPath={loadState.extractedEpubDirUri}
-              format={loadState.format}
-              initialPage={loadState.initialPage}
-              onStateChange={handleStateChange}
-              onTocReady={handleTocReady}
-              onDomProbe={async (event) => {
-                console.info("[mobile-reader] dom-probe", event);
-              }}
-              onRequestClose={handleRequestClose}
-              onToggleChrome={toggleChrome}
-              gotoPageCommand={gotoPageCmd}
-              readingLayout={reflowSettings.readingLayout}
-              theme={reflowSettings.theme}
-              fontSize={reflowSettings.fontSize}
-              lineHeight={reflowSettings.lineHeight}
-              paddingX={reflowSettings.paddingX}
-              brightness={reflowSettings.brightness}
-              contentInsetTop={paginateContentInsetTop}
-              contentInsetBottom={paginateContentInsetBottom}
-              readBinaryFromFileUrl={
-                loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
-              }
-              dom={{
-                style: { flex: 1 },
-                scrollEnabled: reflowSettings.readingLayout === "scroll",
-              }}
-            />
-            {!readerState?.ready && (
-              <Animated.View
-                exiting={FadeOut.duration(300)}
-                className="absolute inset-0 z-20 items-center justify-center"
-                style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
-              >
-                {coverUri ? (
-                  <>
-                    <Image
-                      source={coverUri}
-                      className="absolute inset-0 h-full w-full"
-                      contentFit="cover"
-                    />
-                    <View
-                      className="absolute inset-0"
-                      style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-                    />
-                  </>
-                ) : null}
-                <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-                {title ? (
-                  <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
-                    {title}
-                  </Text>
-                ) : null}
-              </Animated.View>
-            )}
-          </>
+          <ReflowableDOMReader
+            extractedDirPath={loadState.extractedEpubDirUri}
+            format={loadState.format}
+            initialPage={loadState.initialPage}
+            onStateChange={handleStateChange}
+            onTocReady={handleTocReady}
+            onDomProbe={async (event) => {
+              console.info("[mobile-reader] dom-probe", event);
+            }}
+            onRequestClose={handleRequestClose}
+            onToggleChrome={toggleChrome}
+            gotoPageCommand={gotoPageCmd}
+            readingLayout={reflowSettings.readingLayout}
+            theme={reflowSettings.theme}
+            fontSize={reflowSettings.fontSize}
+            lineHeight={reflowSettings.lineHeight}
+            paddingX={reflowSettings.paddingX}
+            brightness={reflowSettings.brightness}
+            contentInsetTop={paginateContentInsetTop}
+            contentInsetBottom={paginateContentInsetBottom}
+            readBinaryFromFileUrl={
+              loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
+            }
+            dom={{
+              style: { flex: 1 },
+              scrollEnabled: reflowSettings.readingLayout === "scroll",
+            }}
+          />
         ) : isFixedSurface ? (
           <FixedReaderSurface
             archiveUri={loadState.bookArchiveUri}
@@ -703,6 +705,8 @@ export default function ReaderScreen() {
             contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
           />
         ) : null}
+
+        {loadState.status === "ready" && !readerState?.ready && readerLoadingOverlay}
       </View>
 
       {chromeVisible && (
