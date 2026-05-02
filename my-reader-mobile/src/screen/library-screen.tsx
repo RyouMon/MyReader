@@ -44,6 +44,7 @@ import {
   useDownloadStatusTasks,
   type DownloadStatusTask,
 } from "../sync/download-store";
+import { syncDbNow } from "../sync/db_sync";
 import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
 import { useSyncActions } from "../sync/useSyncActions";
 
@@ -174,6 +175,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const statusTasks = useDownloadStatusTasks();
   const viewMode = useAppStore((state) => state.libraryViewMode);
   const setViewMode = useAppStore((state) => state.setLibraryViewMode);
+  const dataSources = useAppStore((state) => state.dataSources);
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
   const syncActions = useSyncActions();
@@ -230,12 +232,28 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }, [applyLibrarySelection, effectiveLibraryId, libraries, selectedLibrary]);
 
+  const handleSyncCurrentLibrary = useCallback(() => {
+    if (!selectedLibrary) return;
+    void (async () => {
+      try {
+        await refreshLibrary(selectedLibrary.id);
+      } catch (e) {
+        console.error("[library-screen] refresh library failed:", e);
+      }
+      try {
+        await syncDbNow(selectedLibrary, dataSources);
+      } catch (e) {
+        console.error("[library-screen] db sync failed:", e);
+      }
+    })();
+  }, [selectedLibrary, dataSources, refreshLibrary]);
+
   const leftMenuRef = useRef<MenuComponentRef>(null);
   const rightMenuRef = useRef<MenuComponentRef>(null);
 
   const androidLeftMenuActions = useMemo(
     () => [
-      { id: "refreshLibrary", title: "刷新书库" },
+      { id: "refreshLibrary", title: "同步当前书库" },
       {
         id: "switchLibrary",
         title: "切换书库",
@@ -280,7 +298,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   function handleAndroidLeftMenuAction(event: string) {
     if (event === "refreshLibrary") {
-      if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
+      handleSyncCurrentLibrary();
       return;
     }
     if (event.startsWith("switchLibrary:")) {
@@ -948,12 +966,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Menu icon="ellipsis">
-            <Stack.Toolbar.MenuAction
-              onPress={() => {
-                if (selectedLibrary) void refreshLibrary(selectedLibrary.id);
-              }}
-            >
-              更新当前书库
+            <Stack.Toolbar.MenuAction onPress={handleSyncCurrentLibrary}>
+              同步当前书库
             </Stack.Toolbar.MenuAction>
             <Stack.Toolbar.Menu inline title="切换书库">
               {libraries.map((library) => (

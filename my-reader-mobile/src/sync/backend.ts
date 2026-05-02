@@ -1,5 +1,4 @@
 import { Directory, File, Paths } from "expo-file-system";
-import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
 import type { WebDavDataSource } from "../data/types";
 import {
@@ -44,6 +43,12 @@ export interface SyncBackend {
   writeBytes(relativePath: string, bytes: Uint8Array): Promise<void>;
   deleteRemote(relativePath: string): Promise<void>;
   statRemote(relativePath: string): Promise<RemoteStat>;
+  /**
+   * List direct children of the given prefix. Returns names relative to the
+   * prefix — directories include a trailing `/`, files do not.
+   * Returns `[]` when the directory does not exist (404).
+   */
+  listRemote(prefix: string): Promise<string[]>;
   getDownloadRequest(relativePath: string): DownloadRequest | null;
   getUploadRequest(relativePath: string): UploadRequest | null;
   prepareUpload?(relativePath: string): Promise<void>;
@@ -156,6 +161,47 @@ class WebDavBackend implements SyncBackend {
     return { size, mtimeMs, exists: true };
   }
 
+  async listRemote(prefix: string): Promise<string[]> {
+    const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    const url = this.urlFor(normalizedPrefix);
+    const response = await fetch(url, {
+      method: "PROPFIND",
+      headers: { ...this.authHeader(), Depth: "1" },
+    });
+    if (response.status === 404) return [];
+    if (!response.ok) {
+      throw new NetworkError(
+        `WebDAV PROPFIND 列目录失败: ${response.status} ${normalizedPrefix}`,
+        response.status,
+      );
+    }
+    const xml = await response.text();
+    // Base path (decoded, trailing-slash) derived from the request URL.
+    const requestPath = decodeURIComponent(url.replace(/^https?:\/\/[^/]+/, "")).replace(
+      /\/?$/,
+      "/",
+    );
+    const children: string[] = [];
+    const hrefRegex = /<(?:[^>:]*:)?href>([^<]+)</gi;
+    let match: RegExpExecArray | null;
+    while ((match = hrefRegex.exec(xml)) !== null) {
+      const hrefPath = decodeURIComponent(match[1].trim().replace(/^https?:\/\/[^/]+/, ""));
+      // Skip the collection itself.
+      if (hrefPath.replace(/\/?$/, "/") === requestPath) continue;
+      // Must be a direct child.
+      const hrefWithSlash = hrefPath.endsWith("/") ? hrefPath : `${hrefPath}/`;
+      if (!hrefWithSlash.startsWith(requestPath)) continue;
+      const childRaw = hrefPath.slice(requestPath.length);
+      const childName = hrefPath.endsWith("/")
+        ? `${childRaw.replace(/\/$/, "")}/`
+        : childRaw;
+      if (childName && !childName.replace(/\/$/, "").includes("/")) {
+        children.push(childName);
+      }
+    }
+    return children;
+  }
+
   /**
    * WebDAV servers return 409 for PUT into missing directories; MKCOL each
    * parent segment until reaching the target so uploads stay idempotent.
@@ -190,12 +236,12 @@ class LocalDirectBackend implements SyncBackend {
     return new File(localCachedFileUri(this.libraryRootUri, relativePath));
   }
 
-  private async ensureParentAsync(relativePath: string): Promise<void> {
+  private ensureParent(relativePath: string): void {
     const parentUri = parentDirectoryUriForFileUri(this.fileFor(relativePath).uri);
     if (!parentUri) return;
     const parent = new Directory(parentUri);
     if (!parent.exists) {
-      await makeDirectoryAsync(parent.uri, { intermediates: true });
+      parent.create({ idempotent: true, intermediates: true });
     }
   }
 
@@ -208,16 +254,16 @@ class LocalDirectBackend implements SyncBackend {
   }
 
   async writeBytes(relativePath: string, bytes: Uint8Array): Promise<void> {
-    await this.ensureParentAsync(relativePath);
+    this.ensureParent(relativePath);
     const file = this.fileFor(relativePath);
-    if (file.exists) await deleteAsync(file.uri, { idempotent: true });
+    if (file.exists) file.delete();
     file.create({ intermediates: true, overwrite: true });
     file.write(bytes);
   }
 
   async deleteRemote(relativePath: string): Promise<void> {
     const file = this.fileFor(relativePath);
-    if (file.exists) await deleteAsync(file.uri, { idempotent: true });
+    if (file.exists) file.delete();
   }
 
   async statRemote(relativePath: string): Promise<RemoteStat> {
@@ -228,6 +274,22 @@ class LocalDirectBackend implements SyncBackend {
       mtimeMs: file.modificationTime ? file.modificationTime * 1000 : 0,
       exists: true,
     };
+  }
+
+  async listRemote(prefix: string): Promise<string[]> {
+    const normalizedPrefix = prefix.replace(/\/$/, "");
+    const dirUri = normalizedPrefix
+      ? localCachedFileUri(this.libraryRootUri, normalizedPrefix)
+      : this.libraryRootUri;
+    const dir = new Directory(dirUri);
+    if (!dir.exists) return [];
+    try {
+      return dir.list().map((item) =>
+        item instanceof Directory ? `${item.name}/` : (item.name ?? ""),
+      ).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
 
   getDownloadRequest(_relativePath: string): DownloadRequest | null {

@@ -243,6 +243,7 @@ pub fn run() {
             sync::commands::sync_evict_local_file,
             sync::commands::sync_delete_file_everywhere,
             sync::commands::sync_db_now,
+            sync::commands::sync_db_for_library,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

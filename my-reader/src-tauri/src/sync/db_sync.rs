@@ -346,7 +346,12 @@ impl SyncProvider for LwwProvider {
             payload.push('\n');
         }
         let seq = now_ms();
-        let object_path = format!("changes/{}/{seq}.jsonl", device_id);
+        // Ensure the per-device directory exists (create_dir_all on fs, MKCOL on WebDAV).
+        let device_dir = format!(".myreader/changes/{device_id}/");
+        if let Err(e) = op.create_dir(&device_dir).await {
+            log::warn!("[db-sync] create_dir {device_dir} failed: {e}");
+        }
+        let object_path = format!(".myreader/changes/{device_id}/{seq}.jsonl");
         op.write(&object_path, payload.into_bytes())
             .await
             .map_err(|err| AppError::Config(format!("上传 DB changes 失败: {err}")))?;
@@ -362,67 +367,89 @@ impl SyncProvider for LwwProvider {
         device_id: &str,
     ) -> Result<usize, AppError> {
         Self::initialize_schema(conn)?;
-        let entries = match op.list("changes/").await {
+
+        // Step 1: enumerate device subdirectories under .myreader/changes/
+        let device_dirs = match op.list(".myreader/changes/").await {
             Ok(e) => e,
             Err(err) if err.kind() == opendal::ErrorKind::NotFound => return Ok(0),
             Err(err) => {
-                return Err(AppError::Config(format!("列出 changes/ 失败: {err}")));
+                return Err(AppError::Config(format!("列出 .myreader/changes/ 失败: {err}")));
             }
         };
 
         let mut applied = 0usize;
-        for entry in entries {
-            let path = entry.path().to_string();
-            // changes/<device>/<seq>.jsonl；跳过本机与非数据文件
-            if !path.ends_with(".jsonl") {
-                continue;
-            }
-            let segments: Vec<&str> = path.trim_start_matches("changes/").split('/').collect();
-            if segments.len() < 2 {
-                continue;
-            }
-            let remote_device = segments[0];
-            if remote_device == device_id {
-                continue;
-            }
 
-            let cursor_key = Self::last_pull_cursor_key(device_id, remote_device);
+        for dir_entry in device_dirs {
+            let dir_path = dir_entry.path().to_string();
+            // Expect ".myreader/changes/<device>/"
+            let remote_device = match dir_path
+                .strip_prefix(".myreader/changes/")
+                .and_then(|s| s.strip_suffix('/'))
+            {
+                Some(d) if !d.is_empty() && d != device_id => d.to_string(),
+                _ => continue,
+            };
+
+            let cursor_key = Self::last_pull_cursor_key(device_id, &remote_device);
             let last_seq: i64 = Self::read_meta(conn, &cursor_key)?
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
-            let seq_str = segments
-                .last()
-                .and_then(|n| n.strip_suffix(".jsonl"))
-                .unwrap_or("0");
-            let seq: i64 = seq_str.parse().unwrap_or(0);
-            if seq <= last_seq {
-                continue;
-            }
 
-            let buf = op
-                .read(&path)
-                .await
-                .map_err(|err| AppError::Config(format!("读取 {path} 失败: {err}")))?;
-            let bytes = buf.to_vec();
-            let text = std::str::from_utf8(&bytes)
-                .map_err(|err| AppError::Serialize(format!("解码 changes 失败: {err}")))?;
+            // Step 2: list .jsonl files in this device's directory
+            let file_entries =
+                match op.list(&format!(".myreader/changes/{remote_device}/")).await {
+                    Ok(e) => e,
+                    Err(err) => {
+                        log::warn!(
+                            "列出 .myreader/changes/{remote_device}/ 失败: {err}"
+                        );
+                        continue;
+                    }
+                };
 
-            for line in text.lines() {
-                if line.trim().is_empty() {
-                    continue;
-                }
-                let change: ChangeRow = serde_json::from_str(line)
-                    .map_err(|err| AppError::Serialize(format!("解析 change 失败: {err}")))?;
-                for spec in &self.tables {
-                    if Self::apply_row(conn, spec, &change)? {
-                        applied += 1;
-                        break;
+            // Collect and sort by sequence number ascending
+            let mut seq_files: Vec<(i64, String)> = file_entries
+                .into_iter()
+                .filter_map(|e| {
+                    let p = e.path().to_string();
+                    let prefix = format!(".myreader/changes/{remote_device}/");
+                    let name = p.strip_prefix(&prefix)?;
+                    let seq: i64 = name.strip_suffix(".jsonl")?.parse().ok()?;
+                    if seq <= last_seq {
+                        return None;
+                    }
+                    Some((seq, p))
+                })
+                .collect();
+            seq_files.sort_by_key(|(seq, _)| *seq);
+
+            for (seq, file_path) in seq_files {
+                let buf = op
+                    .read(&file_path)
+                    .await
+                    .map_err(|err| AppError::Config(format!("读取 {file_path} 失败: {err}")))?;
+                let bytes = buf.to_vec();
+                let text = std::str::from_utf8(&bytes)
+                    .map_err(|err| AppError::Serialize(format!("解码 changes 失败: {err}")))?;
+
+                for line in text.lines() {
+                    if line.trim().is_empty() {
+                        continue;
+                    }
+                    let change: ChangeRow = serde_json::from_str(line)
+                        .map_err(|err| AppError::Serialize(format!("解析 change 失败: {err}")))?;
+                    for spec in &self.tables {
+                        if Self::apply_row(conn, spec, &change)? {
+                            applied += 1;
+                            break;
+                        }
                     }
                 }
-            }
 
-            Self::write_meta(conn, &cursor_key, &format!("{}", seq))?;
+                Self::write_meta(conn, &cursor_key, &format!("{seq}"))?;
+            }
         }
+
         Ok(applied)
     }
 }

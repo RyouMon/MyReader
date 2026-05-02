@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo } from "react";
 
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
 import type {
   FixedNavigationMode,
   ReadingLayout,
@@ -21,6 +22,8 @@ export type FixedReaderSurfaceProps = {
   /** 原生 PDF：`react-native-pdf` 使用的稳定本地 `file://` URI */
   pdfLocalUri?: string | null;
   initialPage?: number;
+  /** 精确阅读位置锚点，优先于 `initialPage`。 */
+  initialAnchor?: BookAnchor;
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
   onRequestClose: () => Promise<void>;
@@ -54,6 +57,7 @@ export default function FixedReaderSurface({
   format,
   pdfLocalUri,
   initialPage,
+  initialAnchor,
   onStateChange,
   onTocReady,
   onRequestClose,
@@ -70,6 +74,7 @@ export default function FixedReaderSurface({
   contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);
+  const effectiveInitialPage = initialAnchor?.chapterIndex ?? initialPage ?? 0;
 
   if (isCbzFormat(format)) {
     return (
@@ -81,7 +86,7 @@ export default function FixedReaderSurface({
           bookBytes={bookBytes ?? null}
           bookId={bookId ?? 0}
           format={format}
-          initialPage={initialPage}
+          initialPage={effectiveInitialPage}
           onStateChange={onStateChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
@@ -107,7 +112,7 @@ export default function FixedReaderSurface({
     return (
       <NativePdfReader
         pdfLocalUri={pdfLocalUri}
-        initialPage={initialPage}
+        initialPage={effectiveInitialPage}
         onStateChange={onStateChange}
         onTocReady={onTocReady}
         onRequestClose={onRequestClose}

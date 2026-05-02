@@ -146,6 +146,11 @@ export function useBookReader({
 }: UseReaderOptions): UseReaderReturn {
   const coreRef = useRef<BookReader | null>(null)
   const mountedRef = useRef(true)
+  // Captured synchronously so the init effect reads the anchor that was current
+  // when source/format changed — not re-triggered when only the anchor reference
+  // changes (e.g. bridge re-serialization in DOM components).
+  const initialOpenAnchorRef = useRef(initialOpenAnchor)
+  initialOpenAnchorRef.current = initialOpenAnchor
   const [parsedReady, setParsedReady] = useState(false)
   const [firstLayoutDone, setFirstLayoutDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -206,6 +211,7 @@ export function useBookReader({
     const core = new BookReader()
     coreRef.current = core
     let cancelled = false
+    const anchorForInit = initialOpenAnchorRef.current
 
     async function init() {
       try {
@@ -213,7 +219,7 @@ export function useBookReader({
         setError(null)
 
         const book = await core.init(sourceForInit, format, {
-          initialOpenAnchor: initialOpenAnchor ?? undefined,
+          initialOpenAnchor: anchorForInit ?? undefined,
         })
         if (cancelled) return
 
@@ -254,7 +260,7 @@ export function useBookReader({
         fraction: 0,
       })
     }
-  }, [source, format, initialOpenAnchor, syncNavigationState])
+  }, [source, format, syncNavigationState])
 
   const gotoChapter = useCallback(
     async (index: number) => {

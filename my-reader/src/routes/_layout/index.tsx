@@ -9,6 +9,7 @@ import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibrary } from "@/stores/libraryStore"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
+import { useSyncActions } from "@/hooks/sync/useSyncActions"
 import { cn } from "@/lib/utils"
 import type { CalibreBook } from "my-reader-tools/types/book"
 
@@ -36,6 +37,7 @@ function LibraryPage() {
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
     usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
+  const { syncDbForLibrary } = useSyncActions()
 
   const loading = libLoading || initialLoading
 
@@ -46,6 +48,11 @@ function LibraryPage() {
       refresh()
     } catch (e) {
       console.error("Failed to refresh library:", e)
+    }
+    try {
+      await syncDbForLibrary(activeLibraryId)
+    } catch (e) {
+      console.error("Failed to sync db:", e)
     }
   }
 

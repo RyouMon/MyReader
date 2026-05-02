@@ -2,8 +2,9 @@ import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { File } from "expo-file-system";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
+import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
 import { resolveReadFormat } from "my-reader-tools/utils";
-import { lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +24,7 @@ import {
 } from "@/src/data/calibre";
 import { extractEpubToCache } from "@/src/data/native-epub-cache";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
+import { getReadingProgress, setReadingProgress } from "@/src/data/reading-progress";
 import type { Library, WebDavDataSource } from "@/src/data/types";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { getFileState, type LocalState } from "@/src/sync/file_state";
@@ -30,7 +32,6 @@ import { useThemePalette } from "@/src/design/tokens";
 import { getFallbackCoverColor } from "@/src/components/books/book-cover";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
-import { useLibraryStore } from "@/src/store/library-store";
 import { toFileUri } from "@/src/utils/io";
 import { Animated, Image, Pressable, Text, View } from "@/tw";
 
@@ -40,6 +41,8 @@ const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/ref
 
 /** 初始阅读位置（从第 0 章/页开始）。 */
 const INITIAL_READER_PAGE = 0;
+/** 阅读进度保存防抖时长（毫秒），与桌面端保持一致。 */
+const SAVE_DEBOUNCE_MS = 1600;
 /** 目录日志预览条目数，避免一次性输出过多日志。 */
 const TOC_LOG_PREVIEW_COUNT = 5;
 /** TOC 跳转命令复位延迟，确保命令被消费后再清空。 */
@@ -185,6 +188,7 @@ type LoadState =
       format: string;
       title: string;
       initialPage: number;
+      initialAnchor: BookAnchor | null;
       layoutMode: "fixedLayout" | "reflowable" | "unknown";
     };
 
@@ -196,15 +200,6 @@ export default function ReaderScreen() {
   }>();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
-  const { activeLibrary } = useLibraryStore();
-  const dataSources = useAppStore((s) => s.dataSources);
-
-  const webDavSource = activeLibrary?.sourceType === "webdav"
-    ? (dataSources.find(
-        (d) => d.id === activeLibrary.dataSourceId && d.type === "webdav"
-      ) as WebDavDataSource | undefined) ?? null
-    : null;
-
   const [loadState, setLoadState] = useState<LoadState>({
     status: "loading",
     message: "正在加载书籍…",
@@ -222,19 +217,25 @@ export default function ReaderScreen() {
   const patchReflowableReaderSettings = useAppStore((s) => s.patchReflowableReaderSettings);
   const patchFixedReaderSettings = useAppStore((s) => s.patchFixedReaderSettings);
 
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
+  const loadStateRef = useRef<LoadState>({ status: "loading", message: "正在加载书籍…" });
+
+  useEffect(() => {
+    loadStateRef.current = loadState;
+  }, [loadState]);
+
   useEffect(() => {
     console.info("[mobile-reader] effect:start", {
       id,
       formatParam,
-      activeLibraryId: activeLibrary?.id ?? null,
-      activeLibrarySourceType: activeLibrary?.sourceType ?? null,
-      hasWebDavSource: Boolean(webDavSource),
+      activeLibraryId,
+      hasActiveLibrary: Boolean(activeLibraryId),
     });
 
-    if (!id || !activeLibrary) {
+    if (!id || !activeLibraryId) {
       console.error("[mobile-reader] effect:missing-input", {
         id,
-        hasActiveLibrary: Boolean(activeLibrary),
+        hasActiveLibrary: Boolean(activeLibraryId),
       });
       setLoadState({
         status: "error",
@@ -243,7 +244,37 @@ export default function ReaderScreen() {
       return;
     }
 
-    const currentLibrary = activeLibrary;
+    // Guard: 如果已经加载好了同一本书的同一格式，跳过重复加载
+    if (
+      loadStateRef.current.status === "ready" &&
+      loadStateRef.current.bookId === Number(id) &&
+      loadStateRef.current.format.toUpperCase() === (formatParam ?? "").toUpperCase()
+    ) {
+      console.info("[mobile-reader] effect:skip-duplicate-load", {
+        id,
+        formatParam,
+        bookId: loadStateRef.current.bookId,
+        format: loadStateRef.current.format,
+      });
+      return;
+    }
+
+    const state = useAppStore.getState();
+    const currentLibrary = state.libraries.find((l) => l.id === activeLibraryId) ?? null;
+    if (!currentLibrary) {
+      console.error("[mobile-reader] effect:library-not-found", { activeLibraryId });
+      setLoadState({ status: "error", message: "未选择书库" });
+      return;
+    }
+    const lib = currentLibrary;
+
+    const currentWebDavSource =
+      lib.sourceType === "webdav"
+        ? (state.dataSources.find(
+            (d) => d.id === lib.dataSourceId && d.type === "webdav"
+          ) as WebDavDataSource | undefined) ?? null
+        : null;
+
     let cancelled = false;
 
     async function load() {
@@ -252,8 +283,8 @@ export default function ReaderScreen() {
         console.info("[mobile-reader] load:start", {
           id,
           formatParam,
-          libraryId: currentLibrary.id,
-          sourceType: currentLibrary.sourceType,
+          libraryId: lib.id,
+          sourceType: lib.sourceType,
         });
         setLoadState({ status: "loading", message: "正在读取书籍信息…" });
 
@@ -273,12 +304,12 @@ export default function ReaderScreen() {
           return;
         }
 
-        const detail = await readBookDetailFromMetadata(currentLibrary, calibreId);
+        const detail = await readBookDetailFromMetadata(lib, calibreId);
         if (cancelled) return;
         if (!detail) {
           console.error("[mobile-reader] load:book-detail-not-found", {
             calibreId,
-            libraryId: currentLibrary.id,
+            libraryId: lib.id,
           });
           setLoadState({ status: "error", message: "在书库中未找到该书" });
           return;
@@ -286,7 +317,7 @@ export default function ReaderScreen() {
 
         // 如果 books 列表中没有封面，用 detail 构建本地封面 URI
         if (!bookItem?.coverUri && detail.hasCover && detail.path) {
-          const builtCover = buildCoverUri(currentLibrary, detail.path, detail.hasCover);
+          const builtCover = buildCoverUri(lib, detail.path, detail.hasCover);
           if (builtCover) setCoverUri(builtCover);
         }
         setBookTitle(detail.title);
@@ -319,7 +350,7 @@ export default function ReaderScreen() {
 
         setLoadState({
           status: "loading",
-          message: webDavSource ? "正在从 WebDAV 下载书籍…" : "正在加载书籍文件…",
+          message: currentWebDavSource ? "正在从 WebDAV 下载书籍…" : "正在加载书籍文件…",
         });
 
         const detailLayoutMode =
@@ -329,42 +360,42 @@ export default function ReaderScreen() {
         const needsPdfNativePath = fmtUpper === "PDF";
         const needsEpubExtract = fmtUpper === "EPUB";
 
-        const syncCacheDirUri = webDavSource ? resolveLibraryBooksDir(currentLibrary.id) : undefined;
+        const syncCacheDirUri = currentWebDavSource ? resolveLibraryBooksDir(lib.id) : undefined;
         const downloadedWebDavBookFile =
-          webDavSource && syncCacheDirUri && currentLibrary.dataSourceId
+          currentWebDavSource && syncCacheDirUri && lib.dataSourceId
             ? await resolveDownloadedWebDavBookFile({
-                libraryId: currentLibrary.id,
-                dataSourceId: currentLibrary.dataSourceId,
+                libraryId: lib.id,
+                dataSourceId: lib.dataSourceId,
                 cacheDirUri: syncCacheDirUri,
-                library: currentLibrary,
+                library: lib,
                 calibreBookId: calibreId,
                 format: fmt,
               })
             : null;
 
-        const localBookFile = !webDavSource && needsNativeComicPath
-          ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-comic")
+        const localBookFile = !currentWebDavSource && needsNativeComicPath
+          ? await materializeBookFileToCache(lib, calibreId, fmt, "local-comic")
           : null;
         const localEpubFile =
-          needsEpubExtract && !webDavSource
-            ? await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-epub")
+          needsEpubExtract && !currentWebDavSource
+            ? await materializeBookFileToCache(lib, calibreId, fmt, "local-epub")
             : null;
         const webDavEpubFile =
-          needsEpubExtract && webDavSource
+          needsEpubExtract && currentWebDavSource
             ? downloadedWebDavBookFile
             : null;
-        const webDavBookFile = webDavSource && needsNativeComicPath
+        const webDavBookFile = currentWebDavSource && needsNativeComicPath
           ? downloadedWebDavBookFile
           : null;
 
         const pdfLocalFile = needsPdfNativePath
-          ? webDavSource
+          ? currentWebDavSource
             ? downloadedWebDavBookFile
-            : await materializeBookFileToCache(currentLibrary, calibreId, fmt, "local-pdf")
+            : await materializeBookFileToCache(lib, calibreId, fmt, "local-pdf")
           : null;
 
         const epubArchiveFile = localEpubFile ?? webDavEpubFile;
-        const requiredWebDavFile = webDavSource && (needsEpubExtract || needsNativeComicPath || needsPdfNativePath);
+        const requiredWebDavFile = currentWebDavSource && (needsEpubExtract || needsNativeComicPath || needsPdfNativePath);
         if (requiredWebDavFile && !downloadedWebDavBookFile) {
           setLoadState({
             status: "error",
@@ -389,7 +420,7 @@ export default function ReaderScreen() {
           format: fmtUpper,
           archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
           extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
-          sourceType: webDavSource ? "webdav" : "local",
+          sourceType: currentWebDavSource ? "webdav" : "local",
         });
 
         console.info("[mobile-reader] load:reader-input-ready", {
@@ -414,7 +445,9 @@ export default function ReaderScreen() {
             ? `${calibreId}-${fmtUpper}-${epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`}`
             : `${calibreId}-${fmtUpper}-nohash`;
         const bookArchiveOwned =
-          Boolean(localBookFile) || Boolean(needsPdfNativePath && !webDavSource && pdfLocalFile);
+          Boolean(localBookFile) || Boolean(needsPdfNativePath && !currentWebDavSource && pdfLocalFile);
+
+        const initialAnchor = await getReadingProgress(lib, calibreId, fmt);
 
         setLoadState({
           status: "ready",
@@ -426,7 +459,8 @@ export default function ReaderScreen() {
           bookId: calibreId,
           format: fmt,
           title: detail.title,
-          initialPage: INITIAL_READER_PAGE,
+          initialPage: initialAnchor?.chapterIndex ?? INITIAL_READER_PAGE,
+          initialAnchor,
           layoutMode: detailLayoutMode,
         });
 
@@ -434,7 +468,10 @@ export default function ReaderScreen() {
           calibreId,
           format: fmtUpper,
           title: detail.title,
-          initialPage: INITIAL_READER_PAGE,
+          initialPage: initialAnchor?.chapterIndex ?? INITIAL_READER_PAGE,
+          initialAnchor: initialAnchor
+            ? { chapterIndex: initialAnchor.chapterIndex, hasCharOffset: initialAnchor.charOffset != null }
+            : null,
           layoutMode: detailLayoutMode,
         });
       } catch (e) {
@@ -442,7 +479,7 @@ export default function ReaderScreen() {
         console.error("[mobile-reader] load:failed", {
           id,
           formatParam,
-            libraryId: currentLibrary.id,
+            libraryId: lib.id,
 
           error: e,
         });
@@ -457,7 +494,50 @@ export default function ReaderScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, activeLibrary, formatParam, webDavSource, settings.cache.maxCacheSizeMB]);
+  }, [id, activeLibraryId, formatParam, settings.cache.maxCacheSizeMB]);
+
+  const bookContextRef = useRef<{ library: Library; bookId: number; format: string } | null>(null);
+
+  useEffect(() => {
+    if (loadState.status === "ready") {
+      const state = useAppStore.getState();
+      const lib = state.libraries.find((l) => l.id === activeLibraryId);
+      if (lib) {
+        bookContextRef.current = {
+          library: lib,
+          bookId: loadState.bookId,
+          format: loadState.format,
+        };
+      }
+    }
+  }, [activeLibraryId, loadState]);
+
+  const saveSeqRef = useRef(0);
+
+  useEffect(() => {
+    const ctx = bookContextRef.current;
+    if (!ctx) return;
+    if (!readerState?.ready || !readerState.anchor) return;
+
+    const seq = ++saveSeqRef.current;
+    const t = setTimeout(() => {
+      if (saveSeqRef.current !== seq) return;
+      void (async () => {
+        try {
+          await setReadingProgress(
+            ctx.library,
+            ctx.bookId,
+            ctx.format,
+            readerState.anchor!,
+          );
+        } catch (e) {
+          console.error("[mobile-reader] save-progress-error", e);
+        }
+      })();
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(t);
+  }, [readerState?.ready, readerState?.anchor]);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
     console.info("[mobile-reader] state-change", state);
@@ -540,14 +620,14 @@ export default function ReaderScreen() {
           </>
         ) : null}
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-        {title ? (
+        {loadState.status === "ready" ? (
           <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
-            {title}
+            {loadState.title}
           </Text>
         ) : null}
       </Animated.View>
     ),
-    [coverUri, title]
+    [coverUri, loadState]
   );
 
   const progressPercent = readerState?.progress ?? 0;
@@ -656,6 +736,7 @@ export default function ReaderScreen() {
             extractedDirPath={loadState.extractedEpubDirUri}
             format={loadState.format}
             initialPage={loadState.initialPage}
+            initialAnchor={loadState.initialAnchor ?? undefined}
             onStateChange={handleStateChange}
             onTocReady={handleTocReady}
             onDomProbe={async (event) => {
@@ -689,6 +770,7 @@ export default function ReaderScreen() {
             bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}
+            initialAnchor={loadState.initialAnchor ?? undefined}
             onStateChange={handleStateChange}
             onTocReady={handleTocReady}
             onRequestClose={handleRequestClose}

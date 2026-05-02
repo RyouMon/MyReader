@@ -145,6 +145,7 @@ export default function NativeComicReader({
         error: err,
         canGoPrev: page > 0,
         canGoNext: page < total - 1,
+        anchor: { chapterIndex: page },
       });
     },
     [],

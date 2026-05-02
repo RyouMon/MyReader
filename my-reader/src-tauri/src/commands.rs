@@ -1160,11 +1160,11 @@ pub fn get_series_books(
     result
 }
 
-fn unix_epoch_secs() -> f64 {
+fn unix_epoch_millis() -> f64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs_f64())
+        .map(|d| d.as_millis() as f64)
         .unwrap_or(0.0)
 }
 
@@ -1241,7 +1241,7 @@ pub fn set_reading_progress(
             .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
 
         let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
-        let now = unix_epoch_secs();
+        let now = unix_epoch_millis();
         reading_progress::set_progress(&conn, &lib_id, book_id, &format, &anchor, now)
     })();
 

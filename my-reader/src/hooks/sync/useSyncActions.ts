@@ -124,6 +124,14 @@ export function useSyncActions() {
     [],
   )
 
+  const syncDbForLibrary = useCallback(
+    async (libraryId: string): Promise<DbSyncReport> => {
+      assertTauri()
+      return await invoke<DbSyncReport>("sync_db_for_library", { libraryId })
+    },
+    [],
+  )
+
   return {
     listBackends,
     testBackend,
@@ -132,5 +140,6 @@ export function useSyncActions() {
     evictLocal,
     deleteEverywhere,
     syncDbNow,
+    syncDbForLibrary,
   }
 }

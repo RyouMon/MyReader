@@ -76,6 +76,8 @@ type ReflowableDOMReaderProps = {
   extractedDirPath: string | null;
   format: string;
   initialPage?: number;
+  /** 精确阅读位置锚点，优先于 `initialPage`。 */
+  initialAnchor?: BookAnchor;
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
   onDomProbe: (event: {
@@ -337,6 +339,7 @@ export default function ReflowableDOMReader({
   extractedDirPath,
   format,
   initialPage,
+  initialAnchor,
   onStateChange,
   onTocReady,
   onDomProbe,
@@ -371,6 +374,7 @@ export default function ReflowableDOMReader({
 
   const readerLoadingRef = useRef(false);
   const readerErrorRef = useRef<string | null>(null);
+  const initialScrollCommittedRef = useRef(false);
   const scrollSnapRef = useRef({
     curChapter: 0,
     totalChapters: 0,
@@ -409,11 +413,14 @@ export default function ReflowableDOMReader({
   }, [extractedDirPath]);
 
   const initialOpenAnchor = useMemo((): BookAnchor | null => {
+    if (initialAnchor) {
+      return initialAnchor;
+    }
     if (initialPage != null && initialPage > 0) {
       return { chapterIndex: initialPage };
     }
     return null;
-  }, [initialPage]);
+  }, [initialAnchor, initialPage]);
 
   const {
     ready: readerReady,
@@ -430,6 +437,7 @@ export default function ReflowableDOMReader({
     layout: runLayout,
     notifyInitialViewCommitted,
     progress: readerProgress,
+    buildSaveBookAnchor,
   } = useBookReader({
     source,
     format: format || "",
@@ -600,7 +608,11 @@ export default function ReflowableDOMReader({
         notifyInitialViewCommitted();
         setPagination(null);
         requestAnimationFrame(() => {
-          scrollRootRef.current?.scrollTo({ top: 0, behavior: "auto" });
+          const isFirstLayoutWithAnchor = !initialScrollCommittedRef.current && initialAnchor != null;
+          initialScrollCommittedRef.current = true;
+          if (!isFirstLayoutWithAnchor) {
+            scrollRootRef.current?.scrollTo({ top: 0, behavior: "auto" });
+          }
         });
       } catch (e) {
         if (cancelled) return;
@@ -621,6 +633,7 @@ export default function ReflowableDOMReader({
     paddingX,
     runLayout,
     notifyInitialViewCommitted,
+    initialAnchor,
   ]);
 
   useEffect(() => {
@@ -685,6 +698,7 @@ export default function ReflowableDOMReader({
   useEffect(() => {
     const err = displayError;
     const loading = readerLoading;
+    const anchor = readerReady ? buildSaveBookAnchor(format || "") : undefined;
 
     if (readingLayout === "paginate") {
       const pageCount = Math.max(1, getPaginatedPageCount(pagination));
@@ -699,6 +713,7 @@ export default function ReflowableDOMReader({
         error: err,
         canGoPrev: nav.canGoPrev,
         canGoNext: nav.canGoNext,
+        anchor,
       });
     } else {
       void onStateChangeRef.current({
@@ -711,6 +726,7 @@ export default function ReflowableDOMReader({
         error: err,
         canGoPrev: curChapter > 0,
         canGoNext: curChapter < Math.max(0, totalChapters - 1),
+        anchor,
       });
     }
   }, [
@@ -723,6 +739,8 @@ export default function ReflowableDOMReader({
     readerProgress,
     readingLayout,
     pagination,
+    buildSaveBookAnchor,
+    format,
   ]);
 
   useEffect(() => {
@@ -738,6 +756,7 @@ export default function ReflowableDOMReader({
       const whole =
         snap.totalChapters > 0 ? (snap.curChapter + fraction) / snap.totalChapters : fraction;
       const percent = Math.round(Math.max(base, whole) * PROGRESS_PERCENT_MULTIPLIER);
+      const anchor = snap.ready ? buildSaveBookAnchor(format || "") : undefined;
       void onStateChangeRef.current({
         ready: snap.ready,
         currentPage: snap.curChapter,
@@ -748,12 +767,13 @@ export default function ReflowableDOMReader({
         error: readerErrorRef.current,
         canGoPrev: snap.curChapter > 0,
         canGoNext: snap.curChapter < Math.max(0, snap.totalChapters - 1),
+        anchor,
       });
     };
 
     root.addEventListener("scroll", onScroll, { passive: true });
     return () => root.removeEventListener("scroll", onScroll);
-  }, [readingLayout, curChapter, totalChapters, readerReady, readerProgress.chapterTitle]);
+  }, [readingLayout, curChapter, totalChapters, readerReady, readerProgress.chapterTitle, buildSaveBookAnchor, format]);
 
   const scopedCss = useMemo(() => {
     if (!renderedChapter?.cssText) return "";

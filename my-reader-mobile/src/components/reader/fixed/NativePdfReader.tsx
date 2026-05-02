@@ -128,6 +128,7 @@ export default function NativePdfReader({
         error: err,
         canGoPrev: page0 > 0,
         canGoNext: total > 0 && page0 < total - 1,
+        anchor: { chapterIndex: page0 },
       });
     },
     [],

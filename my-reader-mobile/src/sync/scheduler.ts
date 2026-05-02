@@ -8,6 +8,7 @@ import {
   reconcileFileStates,
   type SyncTargetContext,
 } from "./actions";
+import { syncDbFromContext } from "./db_sync";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";
 
@@ -18,6 +19,8 @@ export type LibrarySyncResult = {
   skipped: boolean;
   skipReason?: string;
   reconciledCount?: number;
+  dbPushed?: number;
+  dbPulled?: number;
   error?: string;
 };
 
@@ -138,6 +141,10 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
         await reconcileFileStates(ctx);
         const rows = await listBackedFiles(ctx);
         entry.reconciledCount = rows.length;
+
+        const dbResult = await syncDbFromContext(library, ctx);
+        entry.dbPushed = dbResult.pushed;
+        entry.dbPulled = dbResult.pulled;
       } catch (err) {
         entry.error = describeError(err);
       }

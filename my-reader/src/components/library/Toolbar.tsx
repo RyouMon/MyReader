@@ -114,7 +114,7 @@ export default function Toolbar({
         <Button
           variant="ghost"
           size="icon-sm"
-          title="重新拉取书库"
+          title="同步当前书库"
           onClick={onRefresh}
         >
           <RefreshCw className="size-4" />

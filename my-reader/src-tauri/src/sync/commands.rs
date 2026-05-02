@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use log::{error, info};
+use log::{error, info, warn};
 use rusqlite::Connection;
 use serde::Serialize;
 use tauri::{AppHandle, State};
@@ -295,13 +295,6 @@ pub async fn sync_db_now(
     );
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     let kind = resolve_backend(&state, &data_source_id)?;
-    if kind.is_local_direct() {
-        info!("Skip db sync: data source is LocalDirect.");
-        return Ok(DbSyncReport {
-            pushed: 0,
-            pulled: 0,
-        });
-    }
     let op = backend::build_operator(&kind)?;
     let device = device_identifier();
     let provider = LwwProvider::default_for_myreader();
@@ -333,5 +326,60 @@ pub async fn sync_db_now(
     .map_err(|err| AppError::Config(format!("blocking pull 任务失败: {err}")))??;
 
     info!("Success to run db sync. pushed: {pushed}, pulled: {pulled}");
+    Ok(DbSyncReport { pushed, pulled })
+}
+
+/// 为当前书库执行 DB 同步。
+///
+/// 直接以书库根目录构建 `fs` Operator，无需配置独立的本地数据源。
+/// 对 iCloud 书库，写入 `.myreader/changes/` 的文件会被 iCloud 自动同步到其他设备。
+#[tauri::command]
+pub async fn sync_db_for_library(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    library_id: String,
+) -> Result<DbSyncReport, AppError> {
+    info!("Start to sync db for library. id: \"{library_id}\"");
+
+    let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
+
+    // lib.path is always a local filesystem path. Build an fs Operator rooted
+    // there so .myreader/changes/ resolves to {library_path}/.myreader/changes/.
+    let op = backend::build_operator(&BackendKind::LocalDirect {
+        root: lib_path.to_string_lossy().to_string(),
+    })?;
+    let device = device_identifier();
+
+    let lib_path_push = lib_path.clone();
+    let lib_id_push = lib_id.clone();
+    let device_push = device.clone();
+    let app_push = app.clone();
+    let op_push = op.clone();
+
+    let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
+        let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
+        let prov = LwwProvider::default_for_myreader();
+        tauri::async_runtime::block_on(async { prov.push(&conn, &op_push, &device_push).await })
+    })
+    .await
+    .map_err(|e| AppError::Config(format!("blocking push 失败: {e}")))?
+    .unwrap_or_else(|e| {
+        warn!("db sync: push error: {e}");
+        0
+    });
+
+    let pulled = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
+        let conn = open_library_db(&app, &lib_path, &lib_id)?;
+        let prov = LwwProvider::default_for_myreader();
+        tauri::async_runtime::block_on(async { prov.pull(&conn, &op, &device).await })
+    })
+    .await
+    .map_err(|e| AppError::Config(format!("blocking pull 失败: {e}")))?
+    .unwrap_or_else(|e| {
+        warn!("db sync: pull error: {e}");
+        0
+    });
+
+    info!("Success to sync db for library. pushed={pushed}, pulled={pulled}");
     Ok(DbSyncReport { pushed, pulled })
 }
