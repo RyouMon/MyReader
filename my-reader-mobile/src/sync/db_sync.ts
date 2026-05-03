@@ -50,7 +50,7 @@ async function pushDbChanges(
   const sinceMs = cursorStr ? parseFloat(cursorStr) : 0;
 
   const result = await db.execute(
-    `SELECT library_id, book_id, format, anchor_json, updated_at
+    `SELECT book_id, format, anchor_json, updated_at
      FROM reading_progress
      WHERE updated_at > ?
      ORDER BY updated_at`,
@@ -58,7 +58,6 @@ async function pushDbChanges(
   );
 
   const rows = result.rows as Array<{
-    library_id: string;
     book_id: number;
     format: string;
     anchor_json: string;
@@ -73,7 +72,7 @@ async function pushDbChanges(
     if (row.updated_at > maxTs) maxTs = row.updated_at;
     const change: ChangeRow = {
       t: "reading_progress",
-      k: { library_id: row.library_id, book_id: row.book_id, format: row.format },
+      k: { book_id: row.book_id, format: row.format },
       v: { anchor_json: row.anchor_json, updated_at: row.updated_at },
     };
     lines.push(JSON.stringify(change));
@@ -146,18 +145,17 @@ async function pullDbChanges(
 
         const incomingTs =
           typeof change.v.updated_at === "number" ? change.v.updated_at : 0;
-        const libraryId = String(change.k.library_id ?? "");
         const bookId = Number(change.k.book_id ?? 0);
         const format = String(change.k.format ?? "");
         const anchorJson = String(change.v.anchor_json ?? "");
 
-        if (!libraryId || !bookId || !format || !anchorJson || incomingTs <= 0) continue;
+        if (!bookId || !format || !anchorJson || incomingTs <= 0) continue;
 
         // LWW: only apply if incoming timestamp is newer.
         const existingResult = await db.execute(
           `SELECT updated_at FROM reading_progress
-           WHERE library_id = ? AND book_id = ? AND format = ?`,
-          [libraryId, bookId, format],
+           WHERE book_id = ? AND format = ?`,
+          [bookId, format],
         );
         const existingTs =
           existingResult.rows[0]
@@ -168,9 +166,9 @@ async function pullDbChanges(
 
         await db.execute(
           `INSERT OR REPLACE INTO reading_progress
-           (library_id, book_id, format, anchor_json, updated_at)
-           VALUES (?, ?, ?, ?, ?)`,
-          [libraryId, bookId, format, anchorJson, incomingTs],
+           (book_id, format, anchor_json, updated_at)
+           VALUES (?, ?, ?, ?)`,
+          [bookId, format, anchorJson, incomingTs],
         );
         applied++;
       }

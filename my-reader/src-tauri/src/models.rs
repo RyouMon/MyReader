@@ -54,6 +54,9 @@ pub struct AppConfig {
     pub data_sources: Vec<DataSourceConfig>,
     #[serde(default)]
     pub reader_ui: ReaderUiPreferences,
+    /// 稳定的 per-install 设备 UUID，首次生成后写回 config.json。
+    #[serde(default)]
+    pub device_id: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -63,6 +66,7 @@ impl Default for AppConfig {
             active_library_id: None,
             data_sources: Vec::new(),
             reader_ui: ReaderUiPreferences::default(),
+            device_id: None,
         }
     }
 }

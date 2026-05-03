@@ -9,12 +9,11 @@ const LIBRARY_DB_FILE_NAME = "myreader.db";
 
 const READING_PROGRESS_SCHEMA = `
 CREATE TABLE IF NOT EXISTS reading_progress (
-  library_id TEXT NOT NULL,
   book_id    INTEGER NOT NULL,
   format     TEXT NOT NULL COLLATE NOCASE,
   anchor_json TEXT NOT NULL,
   updated_at REAL NOT NULL,
-  PRIMARY KEY (library_id, book_id, format)
+  PRIMARY KEY (book_id, format)
 );
 `;
 
@@ -41,6 +40,7 @@ function libraryDbUri(libraryRootUri: string): string {
   const file = new File(dataDir, LIBRARY_DB_FILE_NAME);
   return file.uri;
 }
+
 
 function uriToNativePath(uri: string): string {
   if (uri.startsWith("file://")) {

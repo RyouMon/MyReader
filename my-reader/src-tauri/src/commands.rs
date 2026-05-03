@@ -227,7 +227,7 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, AppError> {
     result
 }
 
-fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), AppError> {
+pub(crate) fn save_config(app: &AppHandle, config: &AppConfig) -> Result<(), AppError> {
     info!(
         "Start to save application config. library count: {}, active library id: {:?}",
         config.libraries.len(),
@@ -1242,7 +1242,7 @@ pub fn set_reading_progress(
 
         let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
         let now = unix_epoch_millis();
-        reading_progress::set_progress(&conn, &lib_id, book_id, &format, &anchor, now)
+        reading_progress::set_progress(&conn, book_id, &format, &anchor, now)
     })();
 
     match &result {

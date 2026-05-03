@@ -9,19 +9,12 @@ use crate::storage_paths::{MYREADER_LIBRARY_DB_FILE_NAME, MYREADER_LIBRARY_DIR_N
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS reading_progress (
-  library_id TEXT NOT NULL,
   book_id INTEGER NOT NULL,
   format TEXT NOT NULL COLLATE NOCASE,
   anchor_json TEXT NOT NULL,
   updated_at REAL NOT NULL,
-  PRIMARY KEY (library_id, book_id, format)
+  PRIMARY KEY (book_id, format)
 );
-CREATE INDEX IF NOT EXISTS idx_reading_progress_library_id
-  ON reading_progress(library_id);
-CREATE INDEX IF NOT EXISTS idx_reading_progress_book_id
-  ON reading_progress(book_id);
-CREATE INDEX IF NOT EXISTS idx_reading_progress_format
-  ON reading_progress(format);
 ";
 
 const LOG_TARGET: &str = "my_reader_lib::reading_progress";
@@ -75,7 +68,8 @@ pub fn open_db(
     }
 }
 
-/// 按书库 id、书籍 id、格式读取一条进度；`format` 大小写不敏感。
+/// 按书籍 id、格式读取一条进度；`format` 大小写不敏感。
+/// `library_id` 仅用于填充返回 DTO，不参与查询（DB 文件路径已确定书库归属）。
 pub fn get_progress(
     conn: &Connection,
     library_id: &str,
@@ -85,12 +79,12 @@ pub fn get_progress(
     let fmt = format.to_uppercase();
     log::info!(
         target: LOG_TARGET,
-        "Start to get reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
+        "Start to get reading progress row. book id: {book_id}, format: \"{fmt}\""
     );
     let row = conn.query_row(
         "SELECT anchor_json, updated_at FROM reading_progress \
-         WHERE library_id = ?1 AND book_id = ?2 AND format = ?3",
-        rusqlite::params![library_id, book_id, fmt],
+         WHERE book_id = ?1 AND format = ?2",
+        rusqlite::params![book_id, fmt],
         |row| {
             let j: String = row.get(0)?;
             let u: f64 = row.get(1)?;
@@ -102,14 +96,14 @@ pub fn get_progress(
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             log::info!(
                 target: LOG_TARGET,
-                "Success to get reading progress row. found: false, library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
+                "Success to get reading progress row. found: false, book id: {book_id}, format: \"{fmt}\""
             );
             return Ok(None);
         }
         Err(e) => {
             log::error!(
                 target: LOG_TARGET,
-                "Failed to get reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", error: {e}"
+                "Failed to get reading progress row. book id: {book_id}, format: \"{fmt}\", error: {e}"
             );
             return Err(AppError::Database(e.to_string()));
         }
@@ -135,10 +129,9 @@ pub fn get_progress(
     }))
 }
 
-/// `INSERT OR REPLACE`，主键为 (library_id, book_id, format)。
+/// `INSERT OR REPLACE`，主键为 (book_id, format)。
 pub fn set_progress(
     conn: &Connection,
-    library_id: &str,
     book_id: i64,
     format: &str,
     anchor: &BookAnchor,
@@ -148,27 +141,27 @@ pub fn set_progress(
     let json = serde_json::to_string(anchor).map_err(|e| AppError::Serialize(e.to_string()))?;
     log::info!(
         target: LOG_TARGET,
-        "Start to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", updated at: {updated_at}, chapter index: {}, char offset: {:?}, json length: {}",
+        "Start to set reading progress row. book id: {book_id}, format: \"{fmt}\", updated at: {updated_at}, chapter index: {}, char offset: {:?}, json length: {}",
         anchor.chapter_index,
         anchor.char_offset,
         json.len(),
     );
     conn.execute(
         "INSERT OR REPLACE INTO reading_progress \
-         (library_id, book_id, format, anchor_json, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![library_id, book_id, fmt, json, updated_at],
+         (book_id, format, anchor_json, updated_at) \
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![book_id, fmt, json, updated_at],
     )
     .map_err(|e| {
         log::error!(
             target: LOG_TARGET,
-            "Failed to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\", error: {e}"
+            "Failed to set reading progress row. book id: {book_id}, format: \"{fmt}\", error: {e}"
         );
         AppError::Database(e.to_string())
     })?;
     log::info!(
         target: LOG_TARGET,
-        "Success to set reading progress row. library id: \"{library_id}\", book id: {book_id}, format: \"{fmt}\""
+        "Success to set reading progress row. book id: {book_id}, format: \"{fmt}\""
     );
     Ok(())
 }

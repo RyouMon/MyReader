@@ -12,6 +12,7 @@ use crate::error::AppError;
 /// 否则历史用户在系统钥匙串中的密码将无法被读取。
 pub(crate) const WEBDAV_KEYRING_SERVICE: &str = "com.myreader.webdav";
 
+
 /// 将数据源 id 映射为 keyring account 名称。
 pub(crate) fn webdav_password_account(data_source_id: &str) -> String {
     format!("webdav-password-{data_source_id}")

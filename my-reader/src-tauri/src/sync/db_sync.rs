@@ -29,9 +29,10 @@ pub struct TableSpec {
 }
 
 /// `reading_progress` 表的同步规格。
+/// library_id 不在 key_columns 中——DB 文件路径已确定书库归属，该列冗余。
 pub const READING_PROGRESS_SPEC: TableSpec = TableSpec {
     name: "reading_progress",
-    key_columns: &["library_id", "book_id", "format"],
+    key_columns: &["book_id", "format"],
     value_columns: &["anchor_json", "updated_at"],
 };
 

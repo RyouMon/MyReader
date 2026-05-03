@@ -185,7 +185,7 @@ pub async fn sync_download_file(
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     let kind = resolve_backend(&state, &data_source_id)?;
     let op = backend::build_operator(&kind)?;
-    let device = device_identifier();
+    let device = device_identifier(&app, &state)?;
     let m = manifest::load(&op, &device).await?;
     let outcome = file_ops::download(&op, &lib_path, &m, &relative_path).await?;
 
@@ -248,7 +248,7 @@ pub async fn sync_delete_file_everywhere(
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     let kind = resolve_backend(&state, &data_source_id)?;
     let op = backend::build_operator(&kind)?;
-    let device = device_identifier();
+    let device = device_identifier(&app, &state)?;
     let mut m = manifest::load(&op, &device).await?;
     file_ops::delete_everywhere(&op, &lib_path, &mut m, &relative_path).await?;
 
@@ -265,11 +265,22 @@ pub async fn sync_delete_file_everywhere(
     Ok(())
 }
 
-/// 稳定的设备标识；阶段 1 先用机器 hostname；后续可替换为 keyring 持久化 UUID。
-fn device_identifier() -> String {
-    std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| "unknown-device".into())
+/// 返回稳定的 per-install 设备 UUID。
+/// 优先从 AppConfig.device_id 读取；首次调用时生成并写回 config.json。
+fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<String, AppError> {
+    {
+        let config = state.lock().unwrap();
+        if let Some(id) = &config.device_id {
+            if !id.is_empty() {
+                return Ok(id.clone());
+            }
+        }
+    }
+    let id = uuid::Uuid::new_v4().to_string();
+    let mut config = state.lock().unwrap();
+    config.device_id = Some(id.clone());
+    crate::commands::save_config(app, &config)?;
+    Ok(id)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -296,7 +307,7 @@ pub async fn sync_db_now(
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     let kind = resolve_backend(&state, &data_source_id)?;
     let op = backend::build_operator(&kind)?;
-    let device = device_identifier();
+    let device = device_identifier(&app, &state)?;
     let provider = LwwProvider::default_for_myreader();
 
     let lib_path_push = lib_path.clone();
@@ -348,7 +359,7 @@ pub async fn sync_db_for_library(
     let op = backend::build_operator(&BackendKind::LocalDirect {
         root: lib_path.to_string_lossy().to_string(),
     })?;
-    let device = device_identifier();
+    let device = device_identifier(&app, &state)?;
 
     let lib_path_push = lib_path.clone();
     let lib_id_push = lib_id.clone();

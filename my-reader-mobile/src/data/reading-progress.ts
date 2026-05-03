@@ -15,7 +15,8 @@ function summarizeAnchor(a: BookAnchor): Record<string, unknown> {
 }
 
 /**
- * 按书库 id、书籍 id、格式读取一条进度；format 大小写不敏感。
+ * 按书籍 id、格式读取一条进度；format 大小写不敏感。
+ * DB 文件路径已确定书库归属，不需要 library_id 参与查询。
  */
 export async function getReadingProgress(
   library: Library,
@@ -23,41 +24,32 @@ export async function getReadingProgress(
   format: string,
 ): Promise<BookAnchor | null> {
   const fmt = format.toUpperCase();
-  console.info(
-    `[${LOG_TARGET}] get:start`,
-    { libraryId: library.id, bookId, format: fmt },
-  );
+  console.info(`[${LOG_TARGET}] get:start`, { bookId, format: fmt });
 
   try {
     const db = getLibraryDatabase(library);
     const result = await db.execute(
-      `SELECT anchor_json FROM reading_progress
-       WHERE library_id = ? AND book_id = ? AND format = ?`,
-      [library.id, bookId, fmt],
+      `SELECT anchor_json FROM reading_progress WHERE book_id = ? AND format = ?`,
+      [bookId, fmt],
     );
 
     const row = result.rows[0] as { anchor_json: string } | undefined;
     if (!row) {
-      console.info(`[${LOG_TARGET}] get:miss`, { libraryId: library.id, bookId, format: fmt });
+      console.info(`[${LOG_TARGET}] get:miss`, { bookId, format: fmt });
       return null;
     }
 
     const anchor: BookAnchor = JSON.parse(row.anchor_json);
-    console.info(`[${LOG_TARGET}] get:hit`, {
-      libraryId: library.id,
-      bookId,
-      format: fmt,
-      ...summarizeAnchor(anchor),
-    });
+    console.info(`[${LOG_TARGET}] get:hit`, { bookId, format: fmt, ...summarizeAnchor(anchor) });
     return anchor;
   } catch (e) {
-    console.error(`[${LOG_TARGET}] get:error`, { libraryId: library.id, bookId, format: fmt, error: e });
+    console.error(`[${LOG_TARGET}] get:error`, { bookId, format: fmt, error: e });
     return null;
   }
 }
 
 /**
- * 保存或更新阅读进度。主键为 (library_id, book_id, format)。
+ * 保存或更新阅读进度。主键为 (book_id, format)。
  */
 export async function setReadingProgress(
   library: Library,
@@ -70,7 +62,6 @@ export async function setReadingProgress(
   const json = JSON.stringify(anchor);
 
   console.info(`[${LOG_TARGET}] set:start`, {
-    libraryId: library.id,
     bookId,
     format: fmt,
     updatedAt,
@@ -81,12 +72,12 @@ export async function setReadingProgress(
     const db = getLibraryDatabase(library);
     await db.execute(
       `INSERT OR REPLACE INTO reading_progress
-       (library_id, book_id, format, anchor_json, updated_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [library.id, bookId, fmt, json, updatedAt],
+       (book_id, format, anchor_json, updated_at)
+       VALUES (?, ?, ?, ?)`,
+      [bookId, fmt, json, updatedAt],
     );
-    console.info(`[${LOG_TARGET}] set:ok`, { libraryId: library.id, bookId, format: fmt });
+    console.info(`[${LOG_TARGET}] set:ok`, { bookId, format: fmt });
   } catch (e) {
-    console.error(`[${LOG_TARGET}] set:error`, { libraryId: library.id, bookId, format: fmt, error: e });
+    console.error(`[${LOG_TARGET}] set:error`, { bookId, format: fmt, error: e });
   }
 }
