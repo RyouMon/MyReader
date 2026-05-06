@@ -3,6 +3,7 @@ import type {
   IPaginator,
   LayoutConfig,
   PageData,
+  RangeBoundary,
   ReaderTypographyConfig,
   TextChapterData,
   TextChapterPaginationResult,
@@ -10,14 +11,16 @@ import type {
 import { scopeEpubCss } from "../../utils/reader"
 import {
   createRootEndBoundary,
+  findPageIndexForReadingAnchor,
   serializeLocationAsBoundary,
+  sourceLocationFromBoundary,
   type DomPaginationSourceLocation,
 } from "./DomBoundaryMapper"
 import {
   appendScopedStyles,
   READER_TYPOGRAPHY_OVERRIDE_CSS,
 } from "./DomSliceRenderer"
-import type { DomReflowLayoutOptions, ReflowLayoutEngine } from "./types"
+import type { DomReflowLayoutOptions, ReflowLayoutEngine, ReflowMeasurer } from "./types"
 
 type ProgressiveTextPaginator = IPaginator<
   { chapter: TextChapterData; pages: DomPageSlice[] },
@@ -103,6 +106,7 @@ export async function layoutTextChapterAtMeasureHost(
   config: LayoutConfig,
   measureHost: HTMLDivElement,
   paginator: ProgressiveTextPaginator,
+  recenterBoundary?: RangeBoundary | null,
 ): Promise<TextChapterPaginationResult> {
   const width = paginationColumnMeasureWidthPx(
     config.viewPortWidth,
@@ -155,6 +159,54 @@ export async function layoutTextChapterAtMeasureHost(
     measureContainer,
     measureRoot,
   )
+
+  // Recenter: if a boundary is provided and we have multiple pages,
+  // rebuild slices so the anchor lands near the vertical middle.
+  if (
+    recenterBoundary &&
+    pages.length > 1 &&
+    sourceRoot
+  ) {
+    const anchorLoc = sourceLocationFromBoundary(sourceRoot, recenterBoundary)
+    if (anchorLoc) {
+      const { start, end, startSliceIndex } = await paginateAroundAnchor(
+        sourceRoot,
+        measureContainer,
+        measureRoot,
+        pages,
+        anchorLoc,
+        height,
+      )
+      const forwardPages = await paginateDomIntoPages(
+        sourceRoot,
+        measureContainer,
+        measureRoot,
+        end,
+      )
+      const recenteredHeight = Math.round(
+        measureRoot.getBoundingClientRect().height,
+      )
+      const newPages: DomPageSlice[] = [
+        ...pages.slice(0, startSliceIndex),
+        {
+          start: serializeLocationAsBoundary(sourceRoot, start),
+          end: serializeLocationAsBoundary(sourceRoot, end),
+          pageHeightPx: recenteredHeight,
+        },
+        ...forwardPages,
+      ]
+      await paginator.layout({ chapter, pages: newPages }, config)
+      measureHost.replaceChildren()
+      return {
+        mode: "sliced",
+        pages: newPages,
+        pageCount: Math.max(1, newPages.length),
+        sourceRoot,
+        texts: [],
+      }
+    }
+  }
+
   await paginator.layout({ chapter, pages }, config)
 
   measureHost.replaceChildren()
@@ -203,15 +255,17 @@ function buildEmptyMeasureDom(chapter: TextChapterData): {
   return { container, content }
 }
 
-async function paginateDomIntoPages(
+export async function paginateDomIntoPages(
   sourceRoot: HTMLElement,
   measureContainer: HTMLElement,
   measureRoot: HTMLElement,
+  start?: SourceLocation,
+  measurer: ReflowMeasurer = defaultReflowMeasurer,
 ): Promise<DomPageSlice[]> {
   if (sourceRoot.childNodes.length <= 0) return []
 
   const pages: DomPageSlice[] = []
-  let current = createRootStartLocation(sourceRoot)
+  let current = start ?? createRootStartLocation(sourceRoot)
   const maxIterations = Math.max(1, countNodes(sourceRoot) * 2)
 
   for (let i = 0; i < maxIterations; i += 1) {
@@ -220,12 +274,16 @@ async function paginateDomIntoPages(
       measureContainer,
       measureRoot,
       current,
+      measurer,
     )
+
+    const pageHeightPx = Math.round(measureRoot.getBoundingClientRect().height)
 
     if (!next) {
       pages.push({
         start: serializeLocationAsBoundary(sourceRoot, current),
         end: createRootEndBoundary(sourceRoot),
+        pageHeightPx,
       })
       return pages
     }
@@ -237,6 +295,7 @@ async function paginateDomIntoPages(
         pages.push({
           start: serializeLocationAsBoundary(sourceRoot, current),
           end: createRootEndBoundary(sourceRoot),
+          pageHeightPx,
         })
         return pages
       }
@@ -246,22 +305,106 @@ async function paginateDomIntoPages(
     pages.push({
       start: serializeLocationAsBoundary(sourceRoot, current),
       end: serializeLocationAsBoundary(sourceRoot, safeNext),
+      pageHeightPx,
     })
     current = safeNext
   }
 
+  const finalHeight = Math.round(measureRoot.getBoundingClientRect().height)
   pages.push({
     start: serializeLocationAsBoundary(sourceRoot, current),
     end: createRootEndBoundary(sourceRoot),
+    pageHeightPx: finalHeight,
   })
   return pages
 }
 
-async function paginateOnePage(
+/**
+ * Given a full-chapter slice array and an anchor position, computes a "recentered" page
+ * whose start is far enough before the anchor that the anchor lands roughly in the
+ * vertical middle of the viewport.
+ *
+ * Uses a two-stage approach:
+ * 1. Find which slice contains the anchor.
+ * 2. Walk backward accumulating `pageHeightPx` until we reach ~viewportHeight/2.
+ * 3. Run `paginateOnePage` from that earlier slice start to get the end boundary.
+ */
+export async function paginateAroundAnchor(
+  sourceRoot: HTMLElement,
+  measureContainer: HTMLElement,
+  measureRoot: HTMLElement,
+  allSlices: DomPageSlice[],
+  anchor: SourceLocation,
+  viewportHeightPx: number,
+  measurer: ReflowMeasurer = defaultReflowMeasurer,
+): Promise<{ start: SourceLocation; end: SourceLocation; startSliceIndex: number }> {
+  // Degenerate: empty or single-page chapter.
+  if (allSlices.length <= 1) {
+    return {
+      start: createRootStartLocation(sourceRoot),
+      end: { node: sourceRoot, offset: sourceRoot.childNodes.length },
+      startSliceIndex: 0,
+    }
+  }
+
+  const anchorBoundary = serializeLocationAsBoundary(sourceRoot, anchor)
+  const anchorSliceIndex = findPageIndexForReadingAnchor(
+    sourceRoot,
+    allSlices,
+    anchorBoundary,
+  )
+
+  const halfViewport = Math.max(1, viewportHeightPx / 2)
+  let accumulated = 0
+  let recenterStartSliceIndex = anchorSliceIndex
+
+  for (let i = anchorSliceIndex; i >= 0; i--) {
+    const h = allSlices[i]?.pageHeightPx ?? 0
+    accumulated += h
+    recenterStartSliceIndex = i
+    if (accumulated >= halfViewport) break
+  }
+
+  const startBoundary = allSlices[recenterStartSliceIndex]?.start
+  if (!startBoundary) {
+    return {
+      start: createRootStartLocation(sourceRoot),
+      end: { node: sourceRoot, offset: sourceRoot.childNodes.length },
+      startSliceIndex: 0,
+    }
+  }
+
+  const startLocation = sourceLocationFromBoundary(sourceRoot, startBoundary)
+  if (!startLocation) {
+    return {
+      start: createRootStartLocation(sourceRoot),
+      end: { node: sourceRoot, offset: sourceRoot.childNodes.length },
+      startSliceIndex: 0,
+    }
+  }
+
+  const next = await paginateOnePage(
+    sourceRoot,
+    measureContainer,
+    measureRoot,
+    startLocation,
+    measurer,
+  )
+
+  const endLocation: SourceLocation = next ?? {
+    node: sourceRoot,
+    offset: sourceRoot.childNodes.length,
+  }
+
+  return { start: startLocation, end: endLocation, startSliceIndex: recenterStartSliceIndex }
+}
+
+export async function paginateOnePage(
   sourceRoot: HTMLElement,
   measureContainer: HTMLElement,
   measureRoot: HTMLElement,
   start: SourceLocation,
+  measurer: ReflowMeasurer = defaultReflowMeasurer,
 ): Promise<SourceLocation | null> {
   measureRoot.replaceChildren()
 
@@ -289,8 +432,8 @@ async function paginateOnePage(
         node.textContent?.slice(offset) ?? "",
       )
       target.appendChild(partial)
-      if (didOverflow(partial, measureContainer, measureRoot)) {
-        const newOffset = findOverflowOffset(
+      if (measurer.didOverflow(partial, measureContainer, measureRoot)) {
+        const newOffset = measurer.findOverflowOffset(
           partial,
           measureContainer,
           measureRoot,
@@ -317,7 +460,7 @@ async function paginateOnePage(
     }
   }
 
-  heightAdded = syncLaidOutColumnHeight(measureRoot, measureContainer)
+  heightAdded = measurer.syncLaidOutColumnHeight(measureRoot, measureContainer)
 
   let firstRun = true
 
@@ -333,7 +476,7 @@ async function paginateOnePage(
     }
     firstRun = false
 
-    const breakRule = shouldBreak(target)
+    const breakRule = measurer.shouldBreak(target)
     if (!avoidInside && breakRule === "avoid-inside") {
       avoidInside = { node, target }
       breakAtDepth = depth
@@ -352,7 +495,7 @@ async function paginateOnePage(
       await ensureImageDrawable(target)
     }
 
-    let overflowed = didOverflow(target, measureContainer, measureRoot)
+    let overflowed = measurer.didOverflow(target, measureContainer, measureRoot)
 
     if (
       overflowed &&
@@ -367,7 +510,7 @@ async function paginateOnePage(
       target.style.maxHeight = `${Math.floor(r.height)}px`
       target.style.objectFit = "contain"
       void target.getBoundingClientRect()
-      overflowed = didOverflow(target, measureContainer, measureRoot)
+      overflowed = measurer.didOverflow(target, measureContainer, measureRoot)
     }
 
     if (overflowed || breakBefore) {
@@ -380,7 +523,7 @@ async function paginateOnePage(
       }
 
       if (target.nodeType === Node.TEXT_NODE && !breakBefore) {
-        const splitOffset = findOverflowOffset(
+        const splitOffset = measurer.findOverflowOffset(
           target as Text,
           measureContainer,
           measureRoot,
@@ -413,7 +556,7 @@ async function paginateOnePage(
     ) {
       nodesAdded += 1
     }
-    heightAdded = syncLaidOutColumnHeight(measureRoot, measureContainer)
+    heightAdded = measurer.syncLaidOutColumnHeight(measureRoot, measureContainer)
   }
 }
 
@@ -597,6 +740,63 @@ function shouldBreak(node: Node): "avoid-inside" | "before" | "after" | null {
   return null
 }
 
+/** Default DOM-based measurer used in production. */
+export const defaultReflowMeasurer: ReflowMeasurer = {
+  didOverflow,
+  findOverflowOffset,
+  syncLaidOutColumnHeight,
+  shouldBreak,
+}
+
+/**
+ * Create a mock ReflowMeasurer for unit tests.
+ *
+ * `capacity` is the maximum number of text characters (or leaf node count for elements)
+ * allowed on one page before overflow.  Each call to `didOverflow` increments an internal
+ * counter; when the counter exceeds `capacity` the function returns `true`.
+ *
+ * `findOverflowOffset` performs a simple binary search on the text length against the
+ * same capacity counter.
+ */
+export function createMockReflowMeasurer(capacity = 80): ReflowMeasurer {
+  let used = 0
+  return {
+    didOverflow(target, _measureContainer, _stopRoot) {
+      const addition =
+        target.nodeType === Node.TEXT_NODE
+          ? (target.textContent?.length ?? 1)
+          : 1
+      used += addition
+      return used > capacity
+    },
+    findOverflowOffset(target, _measureContainer, _stopRoot) {
+      const text = target.textContent ?? ""
+      const len = text.length
+      if (len <= 0) return 0
+      if (len === 1) return 1
+      // Binary search against remaining capacity
+      const remaining = Math.max(1, capacity - used)
+      let lo = 0
+      let hi = len
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2)
+        if (mid <= remaining) {
+          lo = mid + 1
+        } else {
+          hi = mid
+        }
+      }
+      return Math.max(0, lo - 1)
+    },
+    syncLaidOutColumnHeight() {
+      return used * 16
+    },
+    shouldBreak(_node) {
+      return null
+    },
+  }
+}
+
 function getFirstElementAncestor(
   node: Node,
   stopRoot: HTMLElement,
@@ -702,6 +902,10 @@ function applyTypography(
 
 /**
  * DOM 环境下对 {@link TextChapterData} 做测量分页，结果写入 {@link ProgressivePaginator}。
+ *
+ * 实现思路（与 fread-ink/ebook-paginator 一致）：
+ * 在固定宽高的隐藏测量容器中，逐节点 clone 追加，每步用 `getBoundingClientRect()`
+ * 检测溢出；文本节点二分定位精确切分点。不依赖 CSS `column-*`。
  */
 export class DomReflowEngine implements ReflowLayoutEngine {
   async layoutChapter(
@@ -714,6 +918,7 @@ export class DomReflowEngine implements ReflowLayoutEngine {
       config,
       options.measureHost,
       options.paginator,
+      options.recenterBoundary,
     )
   }
 }

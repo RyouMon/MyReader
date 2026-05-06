@@ -109,7 +109,7 @@ Headless reading engine with Parser → Paginator → Renderer architecture:
 - **`reader-core/`** — `BookReader`, `NavigationController`, `ProgressController`, `ReaderSession`, `ResourceCache`
 - **`parsers/`** — `EpubParser`, `PdfParser`, `ComicParser`
 - **`layout-engines/`** — Fixed layout engine, DOM reflow engine (`DomReflowEngine`, `DomSliceRenderer`, `DomBoundaryMapper`)
-- **`pagination/`** — `ProgressivePaginator` with 3-page cache
+- **`pagination/`** — `ProgressivePaginator` holds full-chapter slice arrays (`DomPageSlice[]`) with cur/prev/next page descriptors; no arbitrary page limit
 - **`progress/`** — `BookAnchor`, `epubBookAnchor`, `reflowViewportAnchor`
 - **`foliate-js/`** — Vendored subtree (git submodule) with its own `package.json`. Avoid incidental edits unless the task is specifically about the reading engine.
 

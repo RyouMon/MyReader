@@ -79,6 +79,8 @@ export class BookReader {
   private _pendingLinkFragment: string | null = null
   /** 文本书：由 {@link applyCharOffsetResume} 设置，首屏 layout 后对齐到章内偏移对应列页。 */
   private _pendingTextResumeBoundary: RangeBoundary | null = null
+  /** 文本书：由 {@link applyAnchorRecenter} 设置，首屏 layout 后让锚点落在新页垂直正中。 */
+  private _pendingRecenterAnchor: BookAnchor | null = null
   /** 最近一次带 `sourceRoot` 的分页结果，供 EPUB 打包 CFI 锚点。 */
   private _lastTextLayout: {
     sourceRoot: HTMLDivElement
@@ -221,6 +223,7 @@ export class BookReader {
 
     this._pendingLinkFragment = null
     this._pendingTextResumeBoundary = null
+    this._pendingRecenterAnchor = null
     this._lastTextLayout = null
     this._openAtChapterEndPending = false
 
@@ -245,6 +248,7 @@ export class BookReader {
         )
         if (boundary) {
           this._pendingTextResumeBoundary = boundary
+          this._pendingRecenterAnchor = anchor
         }
       }
     }
@@ -313,10 +317,20 @@ export class BookReader {
           this.paginator.getAllSlices().length > 0
             ? (this.paginator.getCurrentSlice()?.start ?? null)
             : null
+        const recenterBoundary =
+          this._pendingRecenterAnchor?.charOffset != null &&
+          Number.isFinite(this._pendingRecenterAnchor.charOffset)
+            ? epubReadingBoundaryFromChapterCharOffset(
+                ch,
+                this._pendingRecenterAnchor.charOffset,
+              )
+            : null
         const result = await defaultDomReflowEngine.layoutChapter(ch, config, {
           measureHost,
           paginator: this.paginator,
+          recenterBoundary,
         })
+        this._pendingRecenterAnchor = null
         if (result.sourceRoot) {
           this._lastTextLayout = { sourceRoot: result.sourceRoot, chapter: ch }
         } else {
@@ -422,6 +436,7 @@ export class BookReader {
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
     this._pendingTextResumeBoundary = null
+    this._pendingRecenterAnchor = null
     this._lastTextLayout = null
     this.invalidatePageDescriptorCaches()
   }
@@ -460,6 +475,7 @@ export class BookReader {
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = true
     this._openAtChapterEndPending = true
+    this._pendingRecenterAnchor = null
     this.invalidatePageDescriptorCaches()
   }
 
@@ -784,6 +800,10 @@ export class BookReader {
     if (!boundary) return false
     this._pendingLinkFragment = null
     this._pendingTextResumeBoundary = boundary
+    this._pendingRecenterAnchor = {
+      chapterIndex,
+      charOffset,
+    }
     this.gotoChapterWithResume(chapterIndex, 0)
     if (this.paginator instanceof ProgressivePaginator) {
       void this.paginator.clearCache()
@@ -845,11 +865,106 @@ export class BookReader {
     this._totalPagesOfCurChapter = 1
     this._chapterStartFromEnd = false
     this._openAtChapterEndPending = false
+    this._pendingRecenterAnchor = null
     if (this.paginator instanceof ProgressivePaginator) {
       void this.paginator.clearCache()
     }
     this.invalidatePageDescriptorCaches()
     return { chapterIndex: resolved.chapterIndex }
+  }
+
+  /**
+   * Explicitly request a recentered resume for the given anchor.
+   * The next `layout()` will place the anchor near the vertical middle of the page.
+   */
+  applyAnchorRecenter(anchor: BookAnchor): void {
+    this._pendingRecenterAnchor = anchor
+    if (this.paginator instanceof ProgressivePaginator) {
+      void this.paginator.clearCache()
+    }
+    this.invalidatePageDescriptorCaches()
+  }
+
+  /**
+   * Render an arbitrary page of the current chapter into the provided target element.
+   * Returns `true` if the page was rendered, `false` if out of bounds or not available.
+   */
+  renderPageInto(target: HTMLElement, pageIndex: number): boolean {
+    if (
+      !(this.paginator instanceof ProgressivePaginator) ||
+      !this._lastTextLayout ||
+      this._lastTextLayout.chapter.type !== "text"
+    ) {
+      target.replaceChildren()
+      return false
+    }
+    const slices = this.paginator.getAllSlices()
+    if (pageIndex < 0 || pageIndex >= slices.length) {
+      target.replaceChildren()
+      return false
+    }
+    renderTextChapterPage(
+      target,
+      this._lastTextLayout.chapter,
+      "sliced",
+      slices,
+      pageIndex,
+      this._lastTextLayout.sourceRoot,
+      [],
+    )
+    return true
+  }
+
+  /**
+   * Return valid page indices around `centerIndex` within `radius`.
+   * Useful for pre-rendering neighboring pages for animations.
+   */
+  peekPageIndices(centerIndex: number, radius = 1): number[] {
+    if (!(this.paginator instanceof ProgressivePaginator)) return []
+    const slices = this.paginator.getAllSlices()
+    const len = slices.length
+    if (len === 0) return []
+    const out: number[] = []
+    for (let i = centerIndex - radius; i <= centerIndex + radius; i++) {
+      if (i >= 0 && i < len) out.push(i)
+    }
+    return out
+  }
+
+  /**
+   * Render a two-column spread into the provided left/right elements.
+   * `leftPageIndex` is the column index (not spread index).
+   */
+  renderSpreadInto(
+    targets: { left: HTMLElement; right: HTMLElement | null },
+    leftPageIndex: number,
+  ): void {
+    if (
+      !(this.paginator instanceof ProgressivePaginator) ||
+      !this._lastTextLayout ||
+      this._lastTextLayout.chapter.type !== "text"
+    ) {
+      targets.left.replaceChildren()
+      targets.right?.replaceChildren()
+      return
+    }
+    const slices = this.paginator.getAllSlices()
+    BookReader.renderPaginatedViewport(
+      {
+        single: null,
+        left: targets.left,
+        right: targets.right,
+      },
+      {
+        chapter: this._lastTextLayout.chapter,
+        mode: "sliced",
+        pages: slices,
+        leftColumnIndex: leftPageIndex,
+        sourceRoot: this._lastTextLayout.sourceRoot,
+        texts: [],
+        twoColumnShell: true,
+      },
+    )
   }
 
   destroy(): void {
@@ -866,6 +981,7 @@ export class BookReader {
     this._openAtChapterEndPending = false
     this._pendingLinkFragment = null
     this._pendingTextResumeBoundary = null
+    this._pendingRecenterAnchor = null
     this._lastTextLayout = null
     this.invalidatePageDescriptorCaches()
   }

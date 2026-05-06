@@ -25,7 +25,14 @@
   "dependencies": {
     "pdfjs-dist": "^5.5.207"
   },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "devDependencies": {
-    "@types/react": "~19.2.0"
+    "@types/react": "~19.2.0",
+    "@vitest/ui": "^4.1.5",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.5"
   }
 }
