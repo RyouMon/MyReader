@@ -65,8 +65,10 @@
     "react-native-blob-util": "^0.24.7",
     "react-native-css": "^3.0.6",
     "react-native-gesture-handler": "~2.30.0",
+    "react-native-nitro-modules": "^0.35.6",
     "react-native-notifier": "^2.0.0",
     "react-native-pdf": "^7.0.4",
+    "react-native-readium": "^5.0.0-rc.17",
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.23.0",
@@ -102,6 +104,9 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
     "testMatch": [
       "<rootDir>/tests/**/*-test.ts",
       "<rootDir>/tests/**/*-test.tsx",

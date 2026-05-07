@@ -1,3 +1,7 @@
+jest.mock("../src/sync/connectivity", () => ({
+  checkLibraryConnectivity: jest.fn(() => Promise.resolve()),
+}));
+
 import {
   __downloadStoreTestApi,
   cancel,
@@ -11,7 +15,6 @@ import {
 import { finalizeRecoveredDownload } from "../src/sync/download-service";
 
 jest.mock("../src/sync/download-service", () => ({
-  checkLibraryConnectivity: jest.fn(() => Promise.resolve()),
   downloadLibraryFile: jest.fn(() => Promise.resolve({ blake3: null, size: 1, mtimeMs: 1 })),
   finalizeRecoveredDownload: jest.fn(() => Promise.resolve({ blake3: null, size: 100, mtimeMs: 1 })),
 }));
@@ -29,13 +32,13 @@ describe("download-store queue", () => {
     __downloadStoreTestApi.reset();
   });
 
-  test("deduplicates active downloads by library and path", () => {
-    const firstId = enqueue({
+  test("deduplicates active downloads by library and path", async () => {
+    const firstId = await enqueue({
       libraryId: "library-1",
       relativePath: "Book/book.epub",
       label: "Book",
     });
-    const secondId = enqueue({
+    const secondId = await enqueue({
       libraryId: "library-1",
       relativePath: "Book/book.epub",
       label: "Book",
@@ -45,18 +48,18 @@ describe("download-store queue", () => {
     expect(__downloadStoreTestApi.getState().tasks).toHaveLength(1);
   });
 
-  test("cancels queued tasks without starting native work", () => {
-    const firstId = enqueue({
+  test("cancels queued tasks without starting native work", async () => {
+    const firstId = await enqueue({
       libraryId: "library-1",
       relativePath: "Book/first.epub",
       label: "First",
     });
-    const secondId = enqueue({
+    const secondId = await enqueue({
       libraryId: "library-1",
       relativePath: "Book/second.epub",
       label: "Second",
     });
-    const thirdId = enqueue({
+    const thirdId = await enqueue({
       libraryId: "library-1",
       relativePath: "Book/third.epub",
       label: "Third",

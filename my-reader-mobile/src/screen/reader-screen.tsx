@@ -1,8 +1,7 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { File } from "expo-file-system";
-import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
-import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
+import type { ReaderState, ReaderTocItem, ReadingProgressAnchor } from "@/src/components/reader/types";
 import { resolveReadFormat } from "my-reader-tools/utils";
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
@@ -15,16 +14,14 @@ import {
   ReaderTocSheet,
   ReaderTopBar,
 } from "@/src/components/reader/chrome";
-import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import {
   buildCoverUri,
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/data/calibre";
-import { extractEpubToCache } from "@/src/data/native-epub-cache";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
-import { getReadingProgress, setReadingProgress } from "@/src/data/reading-progress";
+import { getReadingProgress, isLocatorAnchor, setReadingProgress } from "@/src/data/reading-progress";
 import type { Library, WebDavDataSource } from "@/src/data/types";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { getFileState, type LocalState } from "@/src/sync/file_state";
@@ -32,12 +29,12 @@ import { useThemePalette } from "@/src/design/tokens";
 import { getFallbackCoverColor } from "@/src/components/books/book-cover";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
-import { toFileUri } from "@/src/utils/io";
+import { toNativeFilesystemPath } from "@/src/utils/io";
 import { Animated, Image, Pressable, Text, View } from "@/tw";
 
 /** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
-const ReflowableDOMReader = lazy(async () => import("@/src/components/reader/reflow/ReflowableDOMReader"));
+const ReadiumReflowReader = lazy(async () => import("@/src/components/reader/reflow/ReadiumReflowReader"));
 
 /** 初始阅读位置（从第 0 章/页开始）。 */
 const INITIAL_READER_PAGE = 0;
@@ -178,7 +175,8 @@ type LoadState =
   | { status: "error"; message: string }
   | {
       status: "ready";
-      extractedEpubDirUri: string | null;
+      /** EPUB 容器 `file://` URI，供 Readium 转原生路径打开。 */
+      epubFileUri: string | null;
       /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
       pdfLocalUri: string | null;
       bookArchiveUri: string | null;
@@ -188,7 +186,7 @@ type LoadState =
       format: string;
       title: string;
       initialPage: number;
-      initialAnchor: BookAnchor | null;
+      initialAnchor: ReadingProgressAnchor | null;
       layoutMode: "fixedLayout" | "reflowable" | "unknown";
     };
 
@@ -404,22 +402,13 @@ export default function ReaderScreen() {
           return;
         }
 
-        const extractedEpub =
-          epubArchiveFile && needsEpubExtract
-            ? await extractEpubToCache({
-                bookId: calibreId,
-                format: fmtUpper,
-                archiveUri: epubArchiveFile.uri,
-                fingerprint: epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`,
-              })
-            : null;
         if (cancelled) return;
 
         console.info("[mobile-reader] load:file-ready", {
           calibreId,
           format: fmtUpper,
           archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
-          extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
+          epubFileUri: needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
           sourceType: currentWebDavSource ? "webdav" : "local",
         });
 
@@ -430,7 +419,7 @@ export default function ReaderScreen() {
           layoutMode: detailLayoutMode,
           renderer:
             detailLayoutMode === "reflowable"
-              ? "native-reflow-webview"
+              ? "readium-reflow"
               : fmtUpper === "PDF"
                 ? "native-pdf"
                 : "native-fixed",
@@ -448,10 +437,16 @@ export default function ReaderScreen() {
           Boolean(localBookFile) || Boolean(needsPdfNativePath && !currentWebDavSource && pdfLocalFile);
 
         const initialAnchor = await getReadingProgress(lib, calibreId, fmt);
+        if (cancelled) return;
+
+        const initialPage =
+          initialAnchor && !isLocatorAnchor(initialAnchor)
+            ? initialAnchor.chapterIndex
+            : INITIAL_READER_PAGE;
 
         setLoadState({
           status: "ready",
-          extractedEpubDirUri: extractedEpub?.extractionUri ?? null,
+          epubFileUri: needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
           pdfLocalUri: needsPdfNativePath && pdfLocalFile ? pdfLocalFile.uri : null,
           bookArchiveUri: archiveFile?.uri ?? null,
           bookArchiveFingerprint,
@@ -459,7 +454,7 @@ export default function ReaderScreen() {
           bookId: calibreId,
           format: fmt,
           title: detail.title,
-          initialPage: initialAnchor?.chapterIndex ?? INITIAL_READER_PAGE,
+          initialPage,
           initialAnchor,
           layoutMode: detailLayoutMode,
         });
@@ -468,9 +463,15 @@ export default function ReaderScreen() {
           calibreId,
           format: fmtUpper,
           title: detail.title,
-          initialPage: initialAnchor?.chapterIndex ?? INITIAL_READER_PAGE,
+          initialPage,
           initialAnchor: initialAnchor
-            ? { chapterIndex: initialAnchor.chapterIndex, hasCharOffset: initialAnchor.charOffset != null }
+            ? isLocatorAnchor(initialAnchor)
+              ? { kind: "locator", href: initialAnchor.href }
+              : {
+                  kind: "bookAnchor",
+                  chapterIndex: initialAnchor.chapterIndex,
+                  hasCharOffset: initialAnchor.charOffset != null,
+                }
             : null,
           layoutMode: detailLayoutMode,
         });
@@ -556,11 +557,6 @@ export default function ReaderScreen() {
     if (router.canGoBack()) {
       router.back();
     }
-  }, []);
-
-  /** DOM 阅读器内 `fetch(file:)` 不可用，经 Expo DOM 桥接用原生读文件（返回 Base64）。 */
-  const readBinaryFromFileUrl = useCallback(async (url: string): Promise<string> => {
-    return readAsStringAsync(toFileUri(url), { encoding: EncodingType.Base64 });
   }, []);
 
   const handleBack = useCallback(() => {
@@ -732,35 +728,32 @@ export default function ReaderScreen() {
 
       <View style={styles.readerSurface}>
         {isReflowSurface ? (
-          <ReflowableDOMReader
-            extractedDirPath={loadState.extractedEpubDirUri}
-            format={loadState.format}
-            initialPage={loadState.initialPage}
-            initialAnchor={loadState.initialAnchor ?? undefined}
-            onStateChange={handleStateChange}
-            onTocReady={handleTocReady}
-            onDomProbe={async (event) => {
-              console.info("[mobile-reader] dom-probe", event);
-            }}
-            onRequestClose={handleRequestClose}
-            onToggleChrome={toggleChrome}
-            gotoPageCommand={gotoPageCmd}
-            readingLayout={reflowSettings.readingLayout}
-            theme={reflowSettings.theme}
-            fontSize={reflowSettings.fontSize}
-            lineHeight={reflowSettings.lineHeight}
-            paddingX={reflowSettings.paddingX}
-            brightness={reflowSettings.brightness}
-            contentInsetTop={paginateContentInsetTop}
-            contentInsetBottom={paginateContentInsetBottom}
-            readBinaryFromFileUrl={
-              loadState.extractedEpubDirUri ? readBinaryFromFileUrl : undefined
-            }
-            dom={{
-              style: { flex: 1 },
-              scrollEnabled: reflowSettings.readingLayout === "scroll",
-            }}
-          />
+          loadState.epubFileUri ? (
+            <ReadiumReflowReader
+              epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+              initialLocator={
+                loadState.initialAnchor && isLocatorAnchor(loadState.initialAnchor)
+                  ? loadState.initialAnchor
+                  : undefined
+              }
+              legacyInitialChapterIndex={
+                loadState.initialAnchor && !isLocatorAnchor(loadState.initialAnchor)
+                  ? loadState.initialAnchor.chapterIndex
+                  : undefined
+              }
+              onStateChange={handleStateChange}
+              onTocReady={handleTocReady}
+              onRequestClose={handleRequestClose}
+              onToggleChrome={toggleChrome}
+              gotoTocIndex={gotoPageCmd}
+              readingLayout={reflowSettings.readingLayout}
+              theme={reflowSettings.theme}
+              fontSize={reflowSettings.fontSize}
+              lineHeight={reflowSettings.lineHeight}
+              paddingX={reflowSettings.paddingX}
+              brightness={reflowSettings.brightness}
+            />
+          ) : null
         ) : isFixedSurface ? (
           <FixedReaderSurface
             archiveUri={loadState.bookArchiveUri}
@@ -770,7 +763,11 @@ export default function ReaderScreen() {
             bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}
-            initialAnchor={loadState.initialAnchor ?? undefined}
+            initialAnchor={
+              loadState.initialAnchor && !isLocatorAnchor(loadState.initialAnchor)
+                ? loadState.initialAnchor
+                : undefined
+            }
             onStateChange={handleStateChange}
             onTocReady={handleTocReady}
             onRequestClose={handleRequestClose}

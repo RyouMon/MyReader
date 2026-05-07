@@ -1,11 +1,25 @@
 import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
+import type { Locator } from "react-native-readium";
 
+import type { ReadingProgressAnchor } from "../components/reader/types";
 import type { Library } from "./types";
 import { getLibraryDatabase } from "./library-db";
 
 const LOG_TARGET = "reading-progress";
 
-function summarizeAnchor(a: BookAnchor): Record<string, unknown> {
+/** Returns true when the stored anchor is a Readium Locator (EPUB). */
+export function isLocatorAnchor(anchor: ReadingProgressAnchor): anchor is Locator {
+  return "href" in anchor && "type" in anchor;
+}
+
+function summarizeAnchor(a: ReadingProgressAnchor): Record<string, unknown> {
+  if (isLocatorAnchor(a)) {
+    return {
+      href: a.href,
+      progression: a.locations?.progression ?? null,
+      position: a.locations?.position ?? null,
+    };
+  }
   return {
     chapterIndex: a.chapterIndex,
     charOffset: a.charOffset ?? null,
@@ -16,13 +30,14 @@ function summarizeAnchor(a: BookAnchor): Record<string, unknown> {
 
 /**
  * 按书籍 id、格式读取一条进度；format 大小写不敏感。
- * DB 文件路径已确定书库归属，不需要 library_id 参与查询。
+ * EPUB 格式返回 Readium Locator；PDF/CBZ 返回 BookAnchor。
+ * DB 层统一存 opaque JSON 字符串，无协议变更。
  */
 export async function getReadingProgress(
   library: Library,
   bookId: number,
   format: string,
-): Promise<BookAnchor | null> {
+): Promise<ReadingProgressAnchor | null> {
   const fmt = format.toUpperCase();
   console.info(`[${LOG_TARGET}] get:start`, { bookId, format: fmt });
 
@@ -39,7 +54,7 @@ export async function getReadingProgress(
       return null;
     }
 
-    const anchor: BookAnchor = JSON.parse(row.anchor_json);
+    const anchor: ReadingProgressAnchor = JSON.parse(row.anchor_json);
     console.info(`[${LOG_TARGET}] get:hit`, { bookId, format: fmt, ...summarizeAnchor(anchor) });
     return anchor;
   } catch (e) {
@@ -50,12 +65,13 @@ export async function getReadingProgress(
 
 /**
  * 保存或更新阅读进度。主键为 (book_id, format)。
+ * anchor_json 为 opaque JSON：EPUB 存 Locator，PDF/CBZ 存 BookAnchor。
  */
 export async function setReadingProgress(
   library: Library,
   bookId: number,
   format: string,
-  anchor: BookAnchor,
+  anchor: ReadingProgressAnchor,
 ): Promise<void> {
   const fmt = format.toUpperCase();
   const updatedAt = Date.now();
