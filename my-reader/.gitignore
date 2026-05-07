@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Copied from node_modules by Vite buildStart (pdf.js worker)
+public/pdf.worker.min.mjs
 dist-ssr
 *.local
 msedgedriver.exe

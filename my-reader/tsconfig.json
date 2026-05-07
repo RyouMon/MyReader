@@ -21,11 +21,10 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "my-reader-tools/*": ["./node_modules/my-reader-tools/src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "./node_modules/my-reader-tools/src/types/foliate-epub.d.ts"],
+  "include": ["src"],
   "exclude": ["tests/**"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
