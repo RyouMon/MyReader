@@ -1,5 +1,9 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
-import type { DataSource, DataSourceConnectionTestResult, DataSourceStore } from "my-reader-tools/store/data-source"
+import type {
+  DataSource,
+  DataSourceConnectionTestResult,
+  DataSourceStore,
+} from "my-reader-tools/store/data-source"
 import { create } from "zustand"
 
 function isRuntimeAvailable(): boolean {

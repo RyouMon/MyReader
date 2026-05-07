@@ -113,12 +113,12 @@ fn resolve_library_path(
 fn open_library_db(
     app: &AppHandle,
     library_path: &Path,
-    library_id: &str,
+    _library_id: &str,
 ) -> Result<Connection, AppError> {
     let path_str = library_path
         .to_str()
         .ok_or_else(|| AppError::Config("书库路径包含非 UTF-8 字符".into()))?;
-    let conn = reading_progress::open_db(app, path_str, library_id)?;
+    let conn = reading_progress::open_db(app, path_str)?;
     file_state::initialize_schema(&conn)?;
     Ok(conn)
 }

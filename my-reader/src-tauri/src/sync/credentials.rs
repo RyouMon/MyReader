@@ -1,8 +1,6 @@
 //! 系统凭据存储封装，复用 `keyring` crate v3。
 //!
-//! 历史实现位于 [`crate::commands`]，其中的 `save_webdav_password` / `delete_webdav_password`
-//! 是私有函数。新同步引擎需要在多个模块内复用凭据读写，因此将其迁移到本模块并提升到
-//! `pub(crate)`，commands 层改为薄封装，避免重复实现与前后不一致。
+//! `crate::commands` 通过本模块保存与删除 WebDAV 密码（与同步后端共用读写逻辑）。
 
 use keyring::{Entry, Error as KeyringError};
 

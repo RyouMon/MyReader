@@ -22,7 +22,7 @@ import { openReaderInNewWindow } from "@/lib/readerWindow"
 import {
   isReadableInAppFormat,
   pickReadableFormat,
-} from "my-reader-tools/utils"
+} from "@/lib/readFormats"
 import { cn } from "@/lib/utils"
 import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
 

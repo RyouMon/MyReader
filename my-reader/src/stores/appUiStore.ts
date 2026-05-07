@@ -7,6 +7,7 @@ import {
   type FixedLayoutSettings,
   type ReaderSettings,
 } from "@/components/reader/types"
+import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import type {
   LibraryViewMode,
   ReaderUiPreferencesPayload,
@@ -141,7 +142,11 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
       libraryViewMode: isLibraryViewMode(data.libraryViewMode)
         ? data.libraryViewMode
         : "grid",
-      fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS, ...data.fixedLayout },
+      fixedLayout: {
+        ...DEFAULT_FIXED_LAYOUT_SETTINGS,
+        ...data.fixedLayout,
+        spreadMode: normalizeSpreadPreference(data.fixedLayout?.spreadMode),
+      },
       reflowable: {
         settings: { ...DEFAULT_SETTINGS, ...data.reflowable.settings },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },

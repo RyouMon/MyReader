@@ -16,5 +16,9 @@ export const Route = createFileRoute("/read/$bookId")({
 function ReadRoute() {
   const { bookId } = useParams({ from: "/read/$bookId" })
   const { format: formatFromSearch } = Route.useSearch()
-  return <ReadBookPage bookId={bookId} formatFromSearch={formatFromSearch} />
+  return (
+    <div className="flex h-dvh min-h-0 w-full max-w-[100vw] flex-col overflow-hidden">
+      <ReadBookPage bookId={bookId} formatFromSearch={formatFromSearch} />
+    </div>
+  )
 }

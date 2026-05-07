@@ -11,10 +11,11 @@
 //! 每行一个 JSON，形如：
 //! ```json
 //! {"t":"reading_progress","k":{"library_id":"..","book_id":1,"format":"EPUB"},
-//!  "v":{"anchor_json":"..","updated_at":1.72e12}}
+//!  "v":{"locator_json":"..","updated_at":1.72e12}}
 //! ```
 
 use async_trait::async_trait;
+use base64::Engine as _;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +34,7 @@ pub struct TableSpec {
 pub const READING_PROGRESS_SPEC: TableSpec = TableSpec {
     name: "reading_progress",
     key_columns: &["book_id", "format"],
-    value_columns: &["anchor_json", "updated_at"],
+    value_columns: &["locator_json", "updated_at"],
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,8 +306,6 @@ fn json_to_sql_param(v: &serde_json::Value) -> rusqlite::types::Value {
         _ => Value::Text(v.to_string()),
     }
 }
-
-use base64::Engine as _;
 
 #[async_trait(?Send)]
 impl SyncProvider for LwwProvider {
