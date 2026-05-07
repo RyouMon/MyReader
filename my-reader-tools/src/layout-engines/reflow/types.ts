@@ -16,6 +16,8 @@ export interface DomReflowLayoutOptions {
     { chapter: TextChapterData; pages: DomPageSlice[] },
     PageData
   >
+  /** If set, the paginator will recenter the layout so this boundary lands near the vertical middle of the page. */
+  recenterBoundary?: RangeBoundary | null
 }
 
 export interface ReflowLayoutEngine {
@@ -59,3 +61,25 @@ export interface PaginatedViewportRenderArgs {
 }
 
 export type { RangeBoundary }
+
+/**
+ * Abstract interface for DOM-layout measurements during pagination.
+ * Allows injecting mock implementations in unit tests.
+ */
+export interface ReflowMeasurer {
+  didOverflow(
+    target: Node,
+    measureContainer: HTMLElement,
+    stopRoot: HTMLElement,
+  ): boolean
+  findOverflowOffset(
+    target: Text,
+    measureContainer: HTMLElement,
+    stopRoot: HTMLElement,
+  ): number
+  syncLaidOutColumnHeight(
+    measureRoot: HTMLElement,
+    measureContainer: HTMLElement,
+  ): number
+  shouldBreak(node: Node): "avoid-inside" | "before" | "after" | null
+}

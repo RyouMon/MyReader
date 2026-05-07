@@ -41,6 +41,8 @@ export interface RangeBoundary {
 export interface DomPageSlice {
   start: RangeBoundary
   end: RangeBoundary
+  /** Measured height of this page in the layout container (px), used for recentering. */
+  pageHeightPx?: number
 }
 
 /** Reader typography values applied to source and measure roots. */

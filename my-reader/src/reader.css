@@ -68,9 +68,6 @@
   padding: clamp(1.25rem, 2vw, 2.25rem) var(--reader-padding-x, 1.25rem)
     clamp(2rem, 4vw, 3.25rem);
   box-sizing: border-box;
-  column-width: auto;
-  column-gap: 0;
-  column-fill: auto;
 }
 
 /* 分页/单页：大图按版心缩放到不超出可视区域（cqh/cqw 相对本容器内容盒） */
@@ -89,10 +86,8 @@
   min-height: 0 !important;
 }
 
-/* Range 分页模式：单屏一列，不再使用多列横向滑动 */
+/* Range 分页模式：单屏一列 */
 .reader-paginated-container.reader-paginated-range-page {
-  column-width: auto;
-  column-count: auto;
 }
 
 /* EPUB 内联 CSS 中 html/body 选择器经 scope 后落在此容器上，勿删类名 */

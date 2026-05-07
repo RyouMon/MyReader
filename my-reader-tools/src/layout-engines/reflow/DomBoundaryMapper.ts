@@ -76,6 +76,33 @@ export function applyRangeBoundary(
   else range.setEnd(target, safeOffset)
 }
 
+/** Inverse of {@link serializeLocationAsBoundary}: resolve a stored boundary back to a live node+offset. */
+export function sourceLocationFromBoundary(
+  root: HTMLElement,
+  boundary: RangeBoundary,
+): DomPaginationSourceLocation | null {
+  const target = resolveNodePath(root, boundary.path)
+  if (!target) return null
+
+  if (boundary.isText && target.nodeType === Node.TEXT_NODE) {
+    const maxOffset = target.textContent?.length ?? 0
+    return { node: target, offset: Math.max(0, Math.min(boundary.offset, maxOffset)) }
+  }
+
+  // Non-text: offset is a child index; if it points past the end, treat as root-end.
+  if (target === root && boundary.offset >= target.childNodes.length) {
+    return { node: root, offset: root.childNodes.length }
+  }
+
+  const child = target.childNodes.item(boundary.offset)
+  if (child) {
+    return { node: child, offset: 0 }
+  }
+
+  // Fallback: boundary.offset may be at end of a non-root element.
+  return { node: target, offset: 0 }
+}
+
 function resolveNodePath(root: Node, path: number[]): Node | null {
   let current: Node | null = root
   for (const index of path) {

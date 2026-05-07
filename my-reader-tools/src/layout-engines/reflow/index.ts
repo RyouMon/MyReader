@@ -3,6 +3,11 @@ export {
   layoutTextChapterAtMeasureHost,
   DomReflowEngine,
   defaultDomReflowEngine,
+  defaultReflowMeasurer,
+  createMockReflowMeasurer,
+  paginateAroundAnchor,
+  paginateDomIntoPages,
+  paginateOnePage,
 } from "./DomReflowEngine"
 export {
   renderTextChapterPage,
@@ -18,12 +23,14 @@ export {
   serializeLocationAsBoundary,
   createRootEndBoundary,
   applyRangeBoundary,
+  sourceLocationFromBoundary,
   type DomPaginationSourceLocation,
 } from "./DomBoundaryMapper"
 export type {
   ReflowLayoutResult,
   DomReflowLayoutOptions,
   ReflowLayoutEngine,
+  ReflowMeasurer,
   PaginatedViewportModel,
   PaginatedViewportModelInput,
   PaginatedViewportElements,
