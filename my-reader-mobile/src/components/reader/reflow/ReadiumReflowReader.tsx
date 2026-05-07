@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View, type GestureResponderEvent } from "react-native";
 import { ReadiumView } from "react-native-readium";
 import type {
   Link,
@@ -15,6 +15,14 @@ import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
+const TAP_MAX_DRIFT = 12;
+const TAP_MAX_DURATION_MS = 260;
+
+type TouchSnapshot = {
+  x: number;
+  y: number;
+  timestampMs: number;
+};
 
 export type ReadiumReflowReaderRef = {
   goTo: (locator: Locator) => void;
@@ -145,6 +153,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
       initialLocator,
       onStateChange,
       onTocReady,
+      onToggleChrome,
       gotoTocIndex,
       readingLayout = "scroll",
       theme = "paper",
@@ -158,6 +167,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
     const currentLocatorRef = useRef<Locator | null>(initialLocator ?? null);
+    const touchStartRef = useRef<TouchSnapshot | null>(null);
 
     useImperativeHandle(ref, () => ({
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -247,6 +257,48 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
       [onStateChange],
     );
 
+    const handleTouchStart = useCallback((event: GestureResponderEvent) => {
+      if (event.nativeEvent.touches.length !== 1) {
+        touchStartRef.current = null;
+        return;
+      }
+
+      const touch = event.nativeEvent.touches[0];
+      touchStartRef.current = {
+        x: touch.pageX,
+        y: touch.pageY,
+        timestampMs: Date.now(),
+      };
+    }, []);
+
+    const handleTouchEnd = useCallback(
+      (event: GestureResponderEvent) => {
+        const start = touchStartRef.current;
+        touchStartRef.current = null;
+        if (!start) return;
+
+        const currentTouch = event.nativeEvent.changedTouches[0];
+        if (!currentTouch) return;
+
+        const dx = currentTouch.pageX - start.x;
+        const dy = currentTouch.pageY - start.y;
+        const durationMs = Date.now() - start.timestampMs;
+        const isTapGesture =
+          Math.abs(dx) <= TAP_MAX_DRIFT &&
+          Math.abs(dy) <= TAP_MAX_DRIFT &&
+          durationMs <= TAP_MAX_DURATION_MS;
+
+        if (isTapGesture) {
+          onToggleChrome?.();
+        }
+      },
+      [onToggleChrome],
+    );
+
+    const handleTouchCancel = useCallback(() => {
+      touchStartRef.current = null;
+    }, []);
+
     useEffect(() => {
       if (gotoTocIndex == null || gotoTocIndex < 0) return;
 
@@ -262,14 +314,21 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     }, [gotoTocIndex]);
 
     return (
-      <ReadiumView
-        ref={readiumRef}
-        file={file}
-        preferences={preferences}
+      <View
         style={styles.reader}
-        onPublicationReady={handlePublicationReady}
-        onLocationChange={handleLocationChange}
-      />
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
+      >
+        <ReadiumView
+          ref={readiumRef}
+          file={file}
+          preferences={preferences}
+          style={styles.reader}
+          onPublicationReady={handlePublicationReady}
+          onLocationChange={handleLocationChange}
+        />
+      </View>
     );
   },
 );
