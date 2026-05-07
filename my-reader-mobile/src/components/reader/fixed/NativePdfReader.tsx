@@ -20,6 +20,7 @@ import {
 import Animated, { FadeOut } from "react-native-reanimated";
 
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
+import { pdfPageLocator } from "@/src/components/reader/locator";
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import type {
@@ -128,7 +129,11 @@ export default function NativePdfReader({
         error: err,
         canGoPrev: page0 > 0,
         canGoNext: total > 0 && page0 < total - 1,
-        anchor: { chapterIndex: page0 },
+        locator: pdfPageLocator({
+          pageIndex: page0,
+          totalPages: total,
+          title: total > 0 ? `第 ${page0 + 1} 页` : undefined,
+        }),
       });
     },
     [],

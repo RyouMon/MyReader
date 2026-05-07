@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "
 
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 
+import { comicPageLocator } from "@/src/components/reader/locator";
 import { flattenFixedToc } from "@/src/components/reader/reader-toc";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
@@ -145,7 +146,11 @@ export default function NativeComicReader({
         error: err,
         canGoPrev: page > 0,
         canGoNext: page < total - 1,
-        anchor: { chapterIndex: page },
+        locator: comicPageLocator({
+          pageIndex: page,
+          totalPages: total,
+          title: total > 0 ? `第 ${page + 1} 页` : undefined,
+        }),
       });
     },
     [],

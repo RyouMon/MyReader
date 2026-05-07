@@ -1,7 +1,9 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { File } from "expo-file-system";
-import type { ReaderState, ReaderTocItem, ReadingProgressAnchor } from "@/src/components/reader/types";
+import type { Locator } from "react-native-readium";
+import { pageIndexFromFixedLocator } from "@/src/components/reader/locator";
+import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import { resolveReadFormat } from "my-reader-tools/utils";
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
@@ -21,7 +23,7 @@ import {
   readBookDetailFromMetadata,
 } from "@/src/data/calibre";
 import { enforceReaderCacheLimit } from "@/src/data/cache";
-import { getReadingProgress, isLocatorAnchor, setReadingProgress } from "@/src/data/reading-progress";
+import { getReadingProgress, setReadingProgress } from "@/src/data/reading-progress";
 import type { Library, WebDavDataSource } from "@/src/data/types";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { getFileState, type LocalState } from "@/src/sync/file_state";
@@ -186,7 +188,7 @@ type LoadState =
       format: string;
       title: string;
       initialPage: number;
-      initialAnchor: ReadingProgressAnchor | null;
+      initialLocator: Locator | null;
       layoutMode: "fixedLayout" | "reflowable" | "unknown";
     };
 
@@ -436,12 +438,12 @@ export default function ReaderScreen() {
         const bookArchiveOwned =
           Boolean(localBookFile) || Boolean(needsPdfNativePath && !currentWebDavSource && pdfLocalFile);
 
-        const initialAnchor = await getReadingProgress(lib, calibreId, fmt);
+        const initialLocator = await getReadingProgress(lib, calibreId, fmt);
         if (cancelled) return;
 
         const initialPage =
-          initialAnchor && !isLocatorAnchor(initialAnchor)
-            ? initialAnchor.chapterIndex
+          detailLayoutMode === "fixedLayout"
+            ? pageIndexFromFixedLocator(initialLocator, INITIAL_READER_PAGE)
             : INITIAL_READER_PAGE;
 
         setLoadState({
@@ -455,7 +457,7 @@ export default function ReaderScreen() {
           format: fmt,
           title: detail.title,
           initialPage,
-          initialAnchor,
+          initialLocator,
           layoutMode: detailLayoutMode,
         });
 
@@ -464,14 +466,8 @@ export default function ReaderScreen() {
           format: fmtUpper,
           title: detail.title,
           initialPage,
-          initialAnchor: initialAnchor
-            ? isLocatorAnchor(initialAnchor)
-              ? { kind: "locator", href: initialAnchor.href }
-              : {
-                  kind: "bookAnchor",
-                  chapterIndex: initialAnchor.chapterIndex,
-                  hasCharOffset: initialAnchor.charOffset != null,
-                }
+          initialLocator: initialLocator
+            ? { href: initialLocator.href, type: initialLocator.type }
             : null,
           layoutMode: detailLayoutMode,
         });
@@ -518,7 +514,7 @@ export default function ReaderScreen() {
   useEffect(() => {
     const ctx = bookContextRef.current;
     if (!ctx) return;
-    if (!readerState?.ready || !readerState.anchor) return;
+    if (!readerState?.ready || !readerState.locator) return;
 
     const seq = ++saveSeqRef.current;
     const t = setTimeout(() => {
@@ -529,7 +525,7 @@ export default function ReaderScreen() {
             ctx.library,
             ctx.bookId,
             ctx.format,
-            readerState.anchor!,
+            readerState.locator!,
           );
         } catch (e) {
           console.error("[mobile-reader] save-progress-error", e);
@@ -538,7 +534,7 @@ export default function ReaderScreen() {
     }, SAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(t);
-  }, [readerState?.ready, readerState?.anchor]);
+  }, [readerState?.ready, readerState?.locator]);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
     console.info("[mobile-reader] state-change", state);
@@ -731,16 +727,7 @@ export default function ReaderScreen() {
           loadState.epubFileUri ? (
             <ReadiumReflowReader
               epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
-              initialLocator={
-                loadState.initialAnchor && isLocatorAnchor(loadState.initialAnchor)
-                  ? loadState.initialAnchor
-                  : undefined
-              }
-              legacyInitialChapterIndex={
-                loadState.initialAnchor && !isLocatorAnchor(loadState.initialAnchor)
-                  ? loadState.initialAnchor.chapterIndex
-                  : undefined
-              }
+              initialLocator={loadState.initialLocator ?? undefined}
               onStateChange={handleStateChange}
               onTocReady={handleTocReady}
               onRequestClose={handleRequestClose}
@@ -763,11 +750,7 @@ export default function ReaderScreen() {
             bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}
-            initialAnchor={
-              loadState.initialAnchor && !isLocatorAnchor(loadState.initialAnchor)
-                ? loadState.initialAnchor
-                : undefined
-            }
+            initialLocator={loadState.initialLocator ?? undefined}
             onStateChange={handleStateChange}
             onTocReady={handleTocReady}
             onRequestClose={handleRequestClose}

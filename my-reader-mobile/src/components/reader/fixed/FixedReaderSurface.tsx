@@ -1,11 +1,13 @@
 import { lazy, Suspense, useMemo } from "react";
 
-import type { BookAnchor } from "my-reader-tools/progress/BookAnchor";
+import type { Locator } from "react-native-readium";
+
 import type {
   FixedNavigationMode,
   ReadingLayout,
   ReaderTheme,
 } from "@/src/store/app-store.types";
+import { pageIndexFromFixedLocator } from "@/src/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 
 import NativePdfReader from "./NativePdfReader";
@@ -22,8 +24,8 @@ export type FixedReaderSurfaceProps = {
   /** 原生 PDF：`react-native-pdf` 使用的稳定本地 `file://` URI */
   pdfLocalUri?: string | null;
   initialPage?: number;
-  /** 精确阅读位置锚点，优先于 `initialPage`。 */
-  initialAnchor?: BookAnchor;
+  /** 精确阅读位置（固定版式 Readium Locator），优先于 `initialPage`。 */
+  initialLocator?: Locator;
   onStateChange: (state: ReaderState) => Promise<void>;
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>;
   onRequestClose: () => Promise<void>;
@@ -57,7 +59,7 @@ export default function FixedReaderSurface({
   format,
   pdfLocalUri,
   initialPage,
-  initialAnchor,
+  initialLocator,
   onStateChange,
   onTocReady,
   onRequestClose,
@@ -74,7 +76,7 @@ export default function FixedReaderSurface({
   contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);
-  const effectiveInitialPage = initialAnchor?.chapterIndex ?? initialPage ?? 0;
+  const effectiveInitialPage = pageIndexFromFixedLocator(initialLocator, initialPage ?? 0);
 
   if (isCbzFormat(format)) {
     return (

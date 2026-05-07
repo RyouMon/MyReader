@@ -9,10 +9,10 @@ const LIBRARY_DB_FILE_NAME = "myreader.db";
 
 const READING_PROGRESS_SCHEMA = `
 CREATE TABLE IF NOT EXISTS reading_progress (
-  book_id    INTEGER NOT NULL,
-  format     TEXT NOT NULL COLLATE NOCASE,
-  anchor_json TEXT NOT NULL,
-  updated_at REAL NOT NULL,
+  book_id     INTEGER NOT NULL,
+  format      TEXT NOT NULL COLLATE NOCASE,
+  locator_json TEXT NOT NULL,
+  updated_at  REAL NOT NULL,
   PRIMARY KEY (book_id, format)
 );
 `;

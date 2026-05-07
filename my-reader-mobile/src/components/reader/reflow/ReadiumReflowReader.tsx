@@ -23,13 +23,8 @@ export type ReadiumReflowReaderRef = {
 export type ReadiumReflowReaderProps = {
   /** Native filesystem path to the EPUB archive（`toNativeFilesystemPath(fileUri)`）。 */
   epubPath: string;
-  /** 自 DB 恢复的 Readium Locator，作为初始阅读位置。 */
+  /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
   initialLocator?: Locator;
-  /**
-   * 迁移自旧版 DOM EPUB 的 `BookAnchor.chapterIndex`：在尚无 Locator 时，
-   * 在 `onPublicationReady` 后按扁平目录下标做一次近似跳转（best-effort）。
-   */
-  legacyInitialChapterIndex?: number;
   onStateChange: (state: ReaderState) => void;
   onTocReady: (items: ReaderTocItem[]) => void;
   onRequestClose: () => void;
@@ -148,7 +143,6 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     {
       epubPath,
       initialLocator,
-      legacyInitialChapterIndex,
       onStateChange,
       onTocReady,
       gotoTocIndex,
@@ -164,11 +158,6 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
     const currentLocatorRef = useRef<Locator | null>(initialLocator ?? null);
-    const legacyJumpPendingRef = useRef(
-      initialLocator == null &&
-        legacyInitialChapterIndex != null &&
-        legacyInitialChapterIndex >= 0,
-    );
 
     useImperativeHandle(ref, () => ({
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -213,20 +202,6 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
           startLocator?.locations?.totalProgression ?? startLocator?.locations?.progression ?? 0;
         const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER);
 
-        if (
-          legacyJumpPendingRef.current &&
-          legacyInitialChapterIndex != null &&
-          legacyInitialChapterIndex >= 0
-        ) {
-          legacyJumpPendingRef.current = false;
-          const idx = Math.min(legacyInitialChapterIndex, tocItems.length - 1);
-          const item = tocItems[idx];
-          const target = item?.locator ?? (item?.href ? findLocatorForLinkHref(event.positions, item.href) : undefined);
-          if (target) {
-            setTimeout(() => readiumRef.current?.goTo(target), 0);
-          }
-        }
-
         onStateChange({
           ready: true,
           currentPage,
@@ -235,10 +210,10 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
           chapterTitle: event.metadata.title,
           loading: false,
           error: null,
-          anchor: startLocator ?? undefined,
+          locator: startLocator ?? undefined,
         });
       },
-      [initialLocator, legacyInitialChapterIndex, onTocReady, onStateChange],
+      [initialLocator, onTocReady, onStateChange],
     );
 
     const handleLocationChange = useCallback(
@@ -266,7 +241,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
           chapterTitle,
           loading: false,
           error: null,
-          anchor: locator,
+          locator,
         });
       },
       [onStateChange],

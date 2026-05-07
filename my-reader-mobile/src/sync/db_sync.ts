@@ -50,7 +50,7 @@ async function pushDbChanges(
   const sinceMs = cursorStr ? parseFloat(cursorStr) : 0;
 
   const result = await db.execute(
-    `SELECT book_id, format, anchor_json, updated_at
+    `SELECT book_id, format, locator_json, updated_at
      FROM reading_progress
      WHERE updated_at > ?
      ORDER BY updated_at`,
@@ -60,7 +60,7 @@ async function pushDbChanges(
   const rows = result.rows as Array<{
     book_id: number;
     format: string;
-    anchor_json: string;
+    locator_json: string;
     updated_at: number;
   }>;
 
@@ -73,7 +73,7 @@ async function pushDbChanges(
     const change: ChangeRow = {
       t: "reading_progress",
       k: { book_id: row.book_id, format: row.format },
-      v: { anchor_json: row.anchor_json, updated_at: row.updated_at },
+      v: { locator_json: row.locator_json, updated_at: row.updated_at },
     };
     lines.push(JSON.stringify(change));
   }
@@ -147,9 +147,9 @@ async function pullDbChanges(
           typeof change.v.updated_at === "number" ? change.v.updated_at : 0;
         const bookId = Number(change.k.book_id ?? 0);
         const format = String(change.k.format ?? "");
-        const anchorJson = String(change.v.anchor_json ?? "");
+        const locatorJson = String(change.v.locator_json ?? "");
 
-        if (!bookId || !format || !anchorJson || incomingTs <= 0) continue;
+        if (!bookId || !format || !locatorJson || incomingTs <= 0) continue;
 
         // LWW: only apply if incoming timestamp is newer.
         const existingResult = await db.execute(
@@ -166,9 +166,9 @@ async function pullDbChanges(
 
         await db.execute(
           `INSERT OR REPLACE INTO reading_progress
-           (book_id, format, anchor_json, updated_at)
+           (book_id, format, locator_json, updated_at)
            VALUES (?, ?, ?, ?)`,
-          [bookId, format, anchorJson, incomingTs],
+          [bookId, format, locatorJson, incomingTs],
         );
         applied++;
       }
