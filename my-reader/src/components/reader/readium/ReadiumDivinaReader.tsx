@@ -7,19 +7,16 @@ import {
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import {
-    READER_PAGINATE_EDGE_PX,
-    useReaderPaginateEdgeTurn,
-} from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
-import { applySpreadPreference, type SpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import {
-  goToReadingOrderPositionBySteps,
-  tocTargetReadingOrderIndex,
-  tocTargetToLocator,
-} from "@/lib/readium/tocNavigation"
+  applySpreadPreference,
+  epubPreferencesForSpread,
+  type SpreadPreference,
+} from "@/lib/readium/epubReaderPrefs"
+import { tocTargetToLocator } from "@/lib/readium/tocNavigation"
 import { cn } from "@/lib/utils"
 import { EpubNavigator } from "@readium/navigator"
 import { Locator, LocatorLocations, type Publication } from "@readium/shared"
@@ -48,8 +45,6 @@ export function ReadiumDivinaReader({
   progressSyncEnabled,
 }: ReadiumDivinaReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  /** 与左右翻页条同层，用于边缘悬停检测（对齐可视阅读区，而非整窗）。 */
-  const edgeTrackRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } = useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } = useReadingChrome(
@@ -71,6 +66,22 @@ export function ReadiumDivinaReader({
     setSpreadMode(mode)
   }, [])
 
+  const positions = useMemo(() => {
+    const items = publication.readingOrder.items
+    return items.map(
+      (item, index) =>
+        new Locator({
+          href: item.href,
+          type: item.type ?? "image/jpeg",
+          title: item.title,
+          locations: new LocatorLocations({
+            position: index + 1,
+            progression: index / Math.max(1, items.length - 1),
+          }),
+        }),
+    )
+  }, [publication])
+
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     return publication.readingOrder.items.map((item, i) => ({
       depth: 0,
@@ -80,70 +91,53 @@ export function ReadiumDivinaReader({
     }))
   }, [publication])
 
-  const onTocSelect = useCallback(
-    async (row: ReadiumTocRow) => {
+  const goToIndex = useCallback(
+    (targetIndex: number) => {
       const nav = navigatorRef.current
       if (!nav) return
-      const targetIndex = tocTargetReadingOrderIndex(publication, row)
-      if (targetIndex >= 0) {
-        await goToReadingOrderPositionBySteps(nav, targetIndex + 1)
-        closePanels()
-        return
+      if (targetIndex < 0 || targetIndex >= positions.length) return
+      nav.go(positions[targetIndex], false, () => {})
+    },
+    [positions],
+  )
+
+  const onTocSelect = useCallback(
+    (row: ReadiumTocRow) => {
+      const nav = navigatorRef.current
+      if (!nav) return
+      const items = publication.readingOrder.items
+      const hrefWithoutFragment = row.href.split("#")[0]
+      const idx = items.findIndex((link) => link.href === hrefWithoutFragment)
+      if (idx >= 0) {
+        goToIndex(idx)
+      } else {
+        const locator = tocTargetToLocator(publication, row)
+        if (locator) nav.go(locator, false, () => {})
       }
-      const locator = tocTargetToLocator(publication, row)
-      if (!locator) return
-      nav.go(locator, false, () => {})
       closePanels()
     },
-    [publication, closePanels],
+    [publication, closePanels, goToIndex],
   )
 
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, edgeTrackRef)
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
 
   const onReadiumEdgePrev = useCallback(() => {
-    navigatorRef.current?.goBackward(false, () => {})
-  }, [])
+    const nav = navigatorRef.current
+    if (!nav) return
+    const pos = nav.currentLocator?.locations?.position
+    const idx = typeof pos === "number" ? pos - 1 : 0
+    goToIndex(idx - 1)
+  }, [goToIndex])
 
   const onReadiumEdgeNext = useCallback(() => {
-    navigatorRef.current?.goForward(false, () => {})
-  }, [])
-
-  const onEdgePointerDownCapture = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!readiumNavReady || tocOpen || settingsOpen || initError) return
-      const el = edgeTrackRef.current
-      if (!el) return
-      const r = el.getBoundingClientRect()
-      const x = e.clientX - r.left
-      const y = e.clientY - r.top
-      if (x < 0 || x > r.width || y < 0 || y > r.height) return
-      if (x <= READER_PAGINATE_EDGE_PX) {
-        e.preventDefault()
-        e.stopPropagation()
-        navigatorRef.current?.goBackward(false, () => {})
-      } else if (x >= r.width - READER_PAGINATE_EDGE_PX) {
-        e.preventDefault()
-        e.stopPropagation()
-        navigatorRef.current?.goForward(false, () => {})
-      }
-    },
-    [readiumNavReady, tocOpen, settingsOpen, initError],
-  )
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!readiumNavReady || initError) return
-      if (e.key === "ArrowRight" || e.key === "PageDown") {
-        navigatorRef.current?.goForward(false, () => {})
-      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        navigatorRef.current?.goBackward(false, () => {})
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [readiumNavReady, initError])
+    const nav = navigatorRef.current
+    if (!nav) return
+    const pos = nav.currentLocator?.locations?.position
+    const idx = typeof pos === "number" ? pos - 1 : 0
+    goToIndex(idx + 1)
+  }, [goToIndex])
 
   useLocatorProgressSync({
     enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0,
@@ -162,19 +156,6 @@ export function ReadiumDivinaReader({
         const items = publication.readingOrder.items
         if (items.length === 0) throw new Error("No pages in comic")
 
-        const positions = items.map(
-          (item, index) =>
-            new Locator({
-              href: item.href,
-              type: item.type ?? "image/jpeg",
-              title: item.title,
-              locations: new LocatorLocations({
-                position: index + 1,
-                progression: index / Math.max(1, items.length - 1),
-              }),
-            }),
-        )
-
         let initialPosition: Locator = positions[0]
         if (initialSavedLocator) {
           const pos = initialSavedLocator.locations?.position
@@ -184,6 +165,15 @@ export function ReadiumDivinaReader({
             const m = positions.findIndex((p) => p.href === initialSavedLocator.href)
             if (m >= 0) initialPosition = positions[m]
           }
+        }
+
+        const stepBy = (delta: 1 | -1) => {
+          const nav2 = navigatorRef.current
+          if (!nav2) return
+          const cur = (nav2.currentLocator?.locations?.position ?? 1) - 1
+          const next = cur + delta
+          if (next < 0 || next >= positions.length) return
+          nav2.go(positions[next], false, () => {})
         }
 
         const nav = new EpubNavigator(
@@ -213,26 +203,25 @@ export function ReadiumDivinaReader({
             contentProtection: () => {},
             contextMenu: () => {},
             peripheral: (ev) => {
-              const nav2 = navigatorRef.current
-              if (!nav2) return
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
               if (key === "ArrowRight" || key === "PageDown" || rec.keyCode === 39) {
-                nav2.goForward(false, () => {})
+                stepBy(1)
               } else if (key === "ArrowLeft" || key === "PageUp" || rec.keyCode === 37) {
-                nav2.goBackward(false, () => {})
+                stepBy(-1)
               }
             },
           },
           positions,
           initialPosition,
           {
-            preferences: {},
+            preferences: epubPreferencesForSpread("auto"),
             defaults: {},
           },
         )
         patchEpubNavigatorFixedLayoutGoNav(nav)
         await nav.load()
+        await applySpreadPreference(nav, "auto")
         requestAnimationFrame(() => {
           void nav.resizeHandler()
           requestAnimationFrame(() => {
@@ -257,7 +246,7 @@ export function ReadiumDivinaReader({
       void navigatorRef.current?.destroy()
       navigatorRef.current = null
     }
-  }, [publication, initialSavedLocator, showChrome])
+  }, [publication, initialSavedLocator, positions, showChrome])
 
   if (initError) {
     return (
@@ -360,42 +349,32 @@ export function ReadiumDivinaReader({
       }
       beforeMain={
         <style>{`
-        .readium-divina-host > div[aria-label="Book"] {
-          width: 100% !important;
-          height: 100% !important;
-          min-height: 0 !important;
-        }
         /* 勿对 iframe 设 width/height/top/left !important：FXL 依赖内联像素尺寸 + transform: scale() 铺满双页 */
         .readium-navigator-iframe {
           border: none !important;
         }
       `}</style>
       }
+      edgeTurnOverlays={
+        <ReaderPaginateEdgeTurnStrips
+          nearLeft={nearLeft}
+          nearRight={nearRight}
+          onPrev={onReadiumEdgePrev}
+          onNext={onReadiumEdgeNext}
+          prevLabel="上一页"
+          nextLabel="下一页"
+        />
+      }
       main={
         <div
-          ref={edgeTrackRef}
-          onPointerDownCapture={onEdgePointerDownCapture}
+          ref={containerRef}
           className={cn(
-            "relative min-h-0 min-w-0 flex-1 basis-0 overflow-hidden",
+            "readium-divina-host relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden",
             surface === "black" && "bg-black",
             surface === "dim" && "bg-zinc-950",
             surface === "paper" && "bg-background",
           )}
-        >
-          <div
-            ref={containerRef}
-            className="readium-divina-host absolute inset-0 overflow-hidden"
-          />
-          <ReaderPaginateEdgeTurnStrips
-            nearLeft={nearLeft}
-            nearRight={nearRight}
-            onPrev={onReadiumEdgePrev}
-            onNext={onReadiumEdgeNext}
-            prevLabel="上一页"
-            nextLabel="下一页"
-            stripZClass="z-[80]"
-          />
-        </div>
+        />
       }
     />
   )
