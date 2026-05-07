@@ -1,21 +1,19 @@
-import { FixedLayoutReader } from "@/components/reader/fixed-layout/FixedLayoutReader"
-import { ReflowableReader } from "@/components/reader/reflowable/ReflowableReader"
-import {
-  type ReadingProgressDto,
-  useReadingProgressSync,
-} from "@/hooks/reader/useReadingProgressSync"
+import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
+import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
+import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
+import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
+import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
+import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
+import { parseSavedLocator } from "@/lib/readium/locator"
+import { resolveReadFormat } from "@/lib/readFormats"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
+import type { BookDetail } from "my-reader-tools/types/book"
 import { useLibrary } from "@/stores/libraryStore"
 import { useNavigate } from "@tanstack/react-router"
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { useBookReader } from "my-reader-tools/hooks/useReader"
-import type { BookAnchor } from "my-reader-tools/progress/BookAnchor"
-import {
-  resolveReadFormat,
-} from "my-reader-tools/utils"
-import type { BookDetail } from "my-reader-tools/types/book"
+import type { Locator } from "@readium/shared"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 export type ReadBookPageProps = {
@@ -23,47 +21,37 @@ export type ReadBookPageProps = {
   formatFromSearch?: string
 }
 
-/**
- * 阅读路由：加载书籍文件并驱动 useBookReader，按格式提供流式阅读与版式切换。
- */
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
   const { activeLibraryId, loading: libraryLoading } = useLibrary()
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
-  /** 阅读进度就绪后再交给 useBookReader，避免首屏渲染第 1 章与续读跳转冲突 */
   const [bookPayload, setBookPayload] = useState<{
     source: {
       filePath: string
       extractedDirPath?: string
-      extractedEntries?: string[]
+      extractedEntries: string[]
     }
-    initialOpenAnchor: BookAnchor | null
+    initialSavedLocator: Locator | null
   } | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
 
+  const progressSyncEnabled =
+    isTauri() && !mainHandoff && Boolean(activeLibraryId && format)
+
   useEffect(() => {
     if (!mainHandoff) return
     let cancelled = false
     void (async () => {
-      console.info(
-        `Start to open dedicated reader window from main route. book id: "${bookId}", format from search: "${formatFromSearch ?? ""}"`,
-      )
       try {
         await openReaderInNewWindow(bookId, formatFromSearch)
         if (cancelled) return
-        console.info(
-          `Success to open dedicated reader window from main route. book id: "${bookId}"`,
-        )
         navigate({ to: "/book/$bookId", params: { bookId } })
       } catch (e) {
-        console.error(
-          `Failed to open dedicated reader window from main route. book id: "${bookId}", error:`,
-          e,
-        )
+        console.error(`Failed to open reader window. book id: "${bookId}":`, e)
       }
     })()
     return () => {
@@ -79,17 +67,11 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       if (libraryLoading) return
       if (!activeLibraryId) {
         if (!cancelled) {
-          console.error(
-            `Failed to load book for reading. reason: no active library, book id: "${bookId}"`,
-          )
           setFetchError("没有活动书库。请先在主窗口选择书库后再阅读")
         }
         return
       }
       setBookPayload(null)
-      console.info(
-        `Start to load book for reading. book id: "${bookId}", library id: "${activeLibraryId}", format hint: "${formatFromSearch ?? ""}"`,
-      )
       try {
         const detail = await invoke<BookDetail>("get_book_detail", {
           libraryId: activeLibraryId,
@@ -97,9 +79,6 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         })
         if (cancelled) return
 
-        console.info(
-          `Success to load book detail for reading. book id: ${detail.id}, title: "${detail.title}"`,
-        )
         setBookTitle(detail.title)
         if (isTauri()) {
           void WebviewWindow.getCurrent().setTitle(detail.title)
@@ -107,9 +86,6 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const fmt = resolveReadFormat(detail.formats, formatFromSearch)
         if (!fmt) {
-          console.error(
-            `Failed to load book for reading. reason: no supported format, book id: "${bookId}", formats: "${detail.formats.join(", ")}"`,
-          )
           setFetchError("该书籍没有可阅读的格式。需要 EPUB、CBZ 或 PDF")
           return
         }
@@ -146,45 +122,40 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
             : undefined,
           extractedEntries: preparedSource.extractedEntries ?? [],
         }
+
+        const initialSavedLocator = parseSavedLocator(row?.locator ?? null)
+
         setBookPayload({
           source,
-          initialOpenAnchor: row?.anchor ?? null,
+          initialSavedLocator,
         })
-        console.info(
-          `Success to prepare book file source for reading. format: "${fmt}", extracted entries: ${source.extractedEntries.length}, has initial anchor: ${Boolean(row?.anchor)}`,
-        )
       } catch (e) {
-        if (!cancelled) {
-          console.error(
-            `Failed to load book for reading. book id: "${bookId}", library id: "${activeLibraryId}", error:`,
-            e,
-          )
-          setFetchError(String(e))
-        }
+        if (!cancelled) setFetchError(String(e))
       }
     }
 
     load()
     return () => {
       cancelled = true
+      if (activeLibraryId) {
+        void invoke("close_book_streamer", {
+          libraryId: activeLibraryId,
+          bookId: Number(bookId),
+        })
+      }
     }
   }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])
 
-  const reader = useBookReader({
-    source: bookPayload?.source ?? null,
-    format,
-    initialOpenAnchor: bookPayload?.initialOpenAnchor ?? null,
+  const readiumPub = useReadiumPublication({
+    assetBaseUrl: format === "EPUB" ? bookPayload?.source.extractedDirPath ?? null : null,
+    enabled: format === "EPUB" && Boolean(bookPayload?.source.extractedDirPath),
   })
 
-  useReadingProgressSync({
-    enabled:
-      isTauri() &&
-      !mainHandoff &&
-      Boolean(activeLibraryId && format && bookPayload),
-    libraryId: activeLibraryId,
-    bookId: Number(bookId),
-    format,
-    reader,
+  const divinaPub = useReadiumDivinaPublication({
+    extractedDirUrl: format === "CBZ" ? bookPayload?.source.extractedDirPath ?? null : null,
+    bookTitle,
+    extractedEntries: bookPayload?.source.extractedEntries ?? [],
+    enabled: format === "CBZ" && Boolean(bookPayload?.source.extractedDirPath),
   })
 
   const handleErrorClose = useCallback(() => {
@@ -199,30 +170,104 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     return <ReadBookLoading message="正在打开阅读窗口…" />
   }
 
-  if (fetchError || reader.error) {
+  if (fetchError) {
     return (
       <ReadBookError
-        message={fetchError ?? reader.error ?? ""}
+        message={fetchError}
         actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
         onAction={handleErrorClose}
       />
     )
   }
 
-  if (!reader.chapter) {
-    return <ReadBookLoading message="正在加载书籍内容…" />
+  if (!bookPayload) {
+    return <ReadBookLoading message="正在加载书籍…" />
   }
 
-  if (reader.layoutMode === "fixedLayout") {
-    return <FixedLayoutReader bookTitle={bookTitle} reader={reader} />
+  if (format === "EPUB") {
+    if (readiumPub.loading) {
+      return <ReadBookLoading message="正在加载 Readium 书籍…" />
+    }
+    if (readiumPub.error || !readiumPub.publication) {
+      return (
+        <ReadBookError
+          message={readiumPub.error ?? "无法加载 EPUB"}
+          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          onAction={handleErrorClose}
+        />
+      )
+    }
+    return (
+      <ReadiumEpubReader
+        bookTitle={bookTitle}
+        publication={readiumPub.publication}
+        initialSavedLocator={bookPayload.initialSavedLocator}
+        libraryId={activeLibraryId}
+        bookId={Number(bookId)}
+        format={format}
+        progressSyncEnabled={progressSyncEnabled}
+      />
+    )
   }
 
-  return <ReflowableReader bookTitle={bookTitle} reader={reader} />
+  if (format === "CBZ") {
+    if (!bookPayload.source.extractedDirPath) {
+      return (
+        <ReadBookError
+          message="漫画解压目录不可用"
+          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          onAction={handleErrorClose}
+        />
+      )
+    }
+    if (divinaPub.loading) {
+      return <ReadBookLoading message="正在加载漫画…" />
+    }
+    if (divinaPub.error || !divinaPub.publication) {
+      return (
+        <ReadBookError
+          message={divinaPub.error ?? "无法加载漫画"}
+          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          onAction={handleErrorClose}
+        />
+      )
+    }
+    return (
+      <ReadiumDivinaReader
+        bookTitle={bookTitle}
+        publication={divinaPub.publication}
+        initialSavedLocator={bookPayload.initialSavedLocator}
+        libraryId={activeLibraryId}
+        bookId={Number(bookId)}
+        format={format}
+        progressSyncEnabled={progressSyncEnabled}
+      />
+    )
+  }
+
+  if (format === "PDF") {
+    return (
+      <ReadiumPdfReader
+        bookTitle={bookTitle}
+        fileUrl={bookPayload.source.filePath}
+        initialSavedLocator={bookPayload.initialSavedLocator}
+        libraryId={activeLibraryId}
+        bookId={Number(bookId)}
+        format={format}
+        progressSyncEnabled={progressSyncEnabled}
+      />
+    )
+  }
+
+  return (
+    <ReadBookError
+      message="不支持的格式"
+      actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+      onAction={handleErrorClose}
+    />
+  )
 }
 
-/**
- * 全屏居中加载态：阅读窗口打开前的占位，与阅读页边距、字号无关。
- */
 function ReadBookLoading({ message }: { message: string }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4">
@@ -241,9 +286,6 @@ function ReadBookLoading({ message }: { message: string }) {
   )
 }
 
-/**
- * 书籍加载或解析失败时的全屏错误态。
- */
 function ReadBookError({
   message,
   actionLabel,

@@ -11,6 +11,8 @@ export type ReaderPaginateEdgeTurnStripsProps = {
   nextLabel: string
   /** 与 `useReaderPaginateEdgeTurn` 的 `edgePx` 保持一致。 */
   edgeWidthPx?: number
+  /** 须高于 FXL iframe 叠层（漫画等），默认 `z-[50]`。 */
+  stripZClass?: string
 }
 
 /**
@@ -24,6 +26,7 @@ export function ReaderPaginateEdgeTurnStrips({
   prevLabel,
   nextLabel,
   edgeWidthPx = READER_PAGINATE_EDGE_PX,
+  stripZClass = "z-[50]",
 }: ReaderPaginateEdgeTurnStripsProps) {
   const stripStyle = { width: edgeWidthPx } as const
 
@@ -35,7 +38,8 @@ export function ReaderPaginateEdgeTurnStrips({
         title={prevLabel}
         style={stripStyle}
         className={cn(
-          "absolute inset-y-0 left-0 z-30 flex cursor-pointer touch-manipulation items-center justify-center",
+          "absolute inset-y-0 left-0 flex cursor-pointer touch-manipulation items-center justify-center",
+          stripZClass,
           "border-none bg-transparent p-0 outline-none select-none",
           "transition-opacity duration-[220ms] ease-[ease]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -58,7 +62,8 @@ export function ReaderPaginateEdgeTurnStrips({
         title={nextLabel}
         style={stripStyle}
         className={cn(
-          "absolute inset-y-0 right-0 z-30 flex cursor-pointer touch-manipulation items-center justify-center",
+          "absolute inset-y-0 right-0 flex cursor-pointer touch-manipulation items-center justify-center",
+          stripZClass,
           "border-none bg-transparent p-0 outline-none select-none",
           "transition-opacity duration-[220ms] ease-[ease]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",

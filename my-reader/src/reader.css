@@ -407,10 +407,17 @@
 /* ═══ Tailwind-friendly reader chrome (replaces scattered inline styles) ═══ */
 
 @layer components {
+  /* 不透明底：避免正文透过顶栏难以辨认（毛玻璃仅作轻微边缘柔化，主色实底） */
   .reader-chrome-frost {
-    background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    background-color: var(--reader-chrome-bg);
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--reader-chrome-bg) 100%, transparent),
+      color-mix(in srgb, var(--reader-chrome-bg) 98%, var(--reader-chrome-border))
+    );
+    box-shadow: 0 1px 0 0 var(--reader-chrome-border);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     transition:
       opacity 300ms ease-out,
       background 350ms ease,
@@ -418,10 +425,17 @@
   }
 
   .reader-chrome-frost-sm {
-    background: color-mix(in srgb, var(--reader-chrome-bg) 92%, transparent);
+    background-color: var(--reader-chrome-bg);
     color: var(--reader-chrome-fg);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+
+  .reader-chrome-footer-bar {
+    background-color: var(--reader-chrome-bg);
+    border-top: 1px solid var(--reader-chrome-border);
+    color: var(--reader-chrome-fg);
+    box-shadow: 0 -4px 16px color-mix(in srgb, var(--reader-chrome-bg) 40%, transparent);
   }
 
   .reader-chrome-icon-btn {
@@ -531,8 +545,11 @@
   }
 
   .reader-chrome-panel-aside {
-    background: var(--reader-panel-bg);
+    /* 与顶栏一致用实色底，避免滑入动画或毛玻璃类样式造成「透正文」观感 */
+    background-color: var(--reader-chrome-bg);
     border-color: var(--reader-chrome-border);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .reader-chrome-panel-shadow-l {

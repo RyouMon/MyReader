@@ -11,6 +11,8 @@ interface ReaderTopBarProps {
   onToggleToc: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
+  /** 指针离开顶栏（例如移入 iframe 正文）时触发，用于延迟隐藏工具栏。 */
+  scheduleChromeHide?: () => void
 }
 
 export function ReaderTopBar({
@@ -21,6 +23,7 @@ export function ReaderTopBar({
   onToggleToc,
   onToggleBookmark,
   onToggleSettings,
+  scheduleChromeHide,
 }: ReaderTopBarProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -44,6 +47,13 @@ export function ReaderTopBar({
         "reader-chrome-frost absolute inset-x-0 top-0 z-50 grid h-[52px] grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-reader-chrome-border px-5 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
+      onPointerLeave={
+        visible && scheduleChromeHide
+          ? () => {
+              scheduleChromeHide()
+            }
+          : undefined
+      }
     >
       <div className="flex min-w-0 items-center justify-start gap-0.5">
         <TopBarButton title="目录" onClick={onToggleToc}>

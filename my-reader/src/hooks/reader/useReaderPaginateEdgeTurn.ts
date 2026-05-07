@@ -1,5 +1,8 @@
 import { useEffect, useState, type RefObject } from "react"
 
+/** 阅读根容器 ref，仅读取 `getBoundingClientRect` 与 `current`。 */
+export type ReaderPaginateRootRef = RefObject<HTMLElement | null>
+
 /** 与边缘翻页条默认宽度一致，供指针检测与可点区域对齐。 */
 export const READER_PAGINATE_EDGE_PX = 72
 
@@ -9,7 +12,7 @@ export const READER_PAGINATE_EDGE_PX = 72
  */
 export function useReaderPaginateEdgeTurn(
   enabled: boolean,
-  readerRootRef: RefObject<HTMLElement | null>,
+  readerRootRef: ReaderPaginateRootRef,
   edgePx: number = READER_PAGINATE_EDGE_PX,
 ): { nearLeft: boolean; nearRight: boolean } {
   const [nearLeft, setNearLeft] = useState(false)
@@ -35,8 +38,9 @@ export function useReaderPaginateEdgeTurn(
       setNearLeft(x - r.left <= edgePx)
       setNearRight(r.right - x <= edgePx)
     }
-    document.addEventListener("pointermove", onMove, { passive: true })
-    return () => document.removeEventListener("pointermove", onMove)
+    /** capture：指针在 FXL iframe 内时冒泡不到 document，捕获阶段仍能更新左右高亮。 */
+    document.addEventListener("pointermove", onMove, { passive: true, capture: true })
+    return () => document.removeEventListener("pointermove", onMove, { capture: true })
   }, [enabled, readerRootRef, edgePx])
 
   return { nearLeft, nearRight }
