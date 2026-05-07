@@ -13,12 +13,13 @@ use zip::ZipArchive;
 use crate::calibre;
 use crate::error::AppError;
 use crate::models::{
-    AppConfig, BookAnchor, BookDetail, BookEntry, BookIdentifier, DataSourceConfig,
+    AppConfig, BookDetail, BookEntry, BookIdentifier, DataSourceConfig,
     DataSourceDetail, DataSourceDto, FormatSize, LibraryConfig, LibraryInfo, PaginatedBooks,
     ReadingProgressDto,
 };
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::reading_progress;
+use crate::streamer::StreamerState;
 use crate::sync::credentials;
 
 pub type AppState = Mutex<AppConfig>;
@@ -30,6 +31,7 @@ pub struct PreparedBookSource {
     pub file_path: String,
     pub extracted_dir_path: Option<String>,
     pub extracted_entries: Vec<String>,
+    pub streamer_url: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -62,6 +64,32 @@ fn reader_cache_extracted_root() -> PathBuf {
 
 fn ensure_reader_cache_dirs() -> Result<(), AppError> {
     fs::create_dir_all(reader_cache_extracted_root())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn write_epub_readium_manifest(
+    dir_path: String,
+    manifest: serde_json::Value,
+) -> Result<(), AppError> {
+    ensure_reader_cache_dirs()?;
+    let root = reader_cache_extracted_root();
+    let desired = PathBuf::from(&dir_path);
+    let root_canon = root
+        .canonicalize()
+        .map_err(|e| AppError::Config(format!("阅读器缓存根目录无效: {}", e)))?;
+    let dir_canon = desired
+        .canonicalize()
+        .map_err(|e| AppError::Config(format!("解压目录无效: {}", e)))?;
+    if !dir_canon.starts_with(&root_canon) {
+        return Err(AppError::Config(
+            "拒绝写入：路径不在阅读器解压缓存目录内".into(),
+        ));
+    }
+    let out = dir_canon.join("manifest.json");
+    let file = fs::File::create(&out)?;
+    serde_json::to_writer_pretty(file, &manifest)
+        .map_err(|e| AppError::Serialize(e.to_string()))?;
     Ok(())
 }
 
@@ -751,10 +779,9 @@ pub fn refresh_library(
 
         let conn = calibre::open_calibre_db(&lib_path)
             .map_err(|e| AppError::Database(e.to_string()))?;
-        let book_count = calibre::get_book_count(&conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
-        let book_ids = calibre::get_all_book_ids(&conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
+        let books = calibre::get_all_books(&conn).map_err(|e| AppError::Database(e.to_string()))?;
+        let book_count = books.len();
+        let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 
         clear_orphaned_library_cache_files(&id, &book_ids)?;
 
@@ -856,6 +883,7 @@ pub fn prepare_book_source(
                 file_path: file_path.to_string_lossy().to_string(),
                 extracted_dir_path: Some(extracted_dir.to_string_lossy().to_string()),
                 extracted_entries: entries,
+                streamer_url: None,
             });
         }
         Ok(PreparedBookSource {
@@ -863,6 +891,7 @@ pub fn prepare_book_source(
             file_path: file_path.to_string_lossy().to_string(),
             extracted_dir_path: None,
             extracted_entries: Vec::new(),
+            streamer_url: None,
         })
     })();
     match &result {
@@ -878,6 +907,21 @@ pub fn prepare_book_source(
         ),
     }
     result
+}
+
+#[tauri::command]
+pub async fn close_book_streamer(
+    streamer_state: State<'_, StreamerState>,
+    library_id: String,
+    book_id: i64,
+) -> Result<(), AppError> {
+    let session_key = format!("{}-{}", sanitize_key_part(&library_id), book_id);
+    let mut streamers = streamer_state.write().await;
+    if let Some(mut streamer) = streamers.remove(&session_key) {
+        streamer.shutdown();
+        info!("Closed EPUB streamer for library: {}, book: {}", library_id, book_id);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1191,7 +1235,7 @@ pub fn get_reading_progress(
             .find(|lib| lib.id == lib_id)
             .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
 
-        let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
+        let conn = reading_progress::open_db(&app, &lib.path)?;
         reading_progress::get_progress(&conn, &lib_id, book_id, &format)
     })();
 
@@ -1218,13 +1262,11 @@ pub fn set_reading_progress(
     library_id: Option<String>,
     book_id: i64,
     format: String,
-    anchor: BookAnchor,
+    locator: serde_json::Value,
 ) -> Result<(), AppError> {
     info!(
-        "Start to set reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{}\", chapter index: {}, char offset: {:?}",
-        format,
-        anchor.chapter_index,
-        anchor.char_offset
+        "Start to set reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{}\"",
+        format
     );
     let result = (|| {
         let config = state.lock().unwrap();
@@ -1240,9 +1282,9 @@ pub fn set_reading_progress(
             .find(|lib| lib.id == lib_id)
             .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
 
-        let conn = reading_progress::open_db(&app, &lib.path, &lib.id)?;
+        let conn = reading_progress::open_db(&app, &lib.path)?;
         let now = unix_epoch_millis();
-        reading_progress::set_progress(&conn, book_id, &format, &anchor, now)
+        reading_progress::set_progress(&conn, book_id, &format, &locator, now)
     })();
 
     match &result {

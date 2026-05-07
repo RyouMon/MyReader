@@ -6,16 +6,20 @@ pub mod models;
 mod reader_ui_prefs;
 pub mod reading_progress;
 mod storage_paths;
+pub mod streamer;
 pub mod sync;
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use log::{debug, error, info, LevelFilter};
 use tauri::Manager;
 use time::{macros::format_description, OffsetDateTime};
+use tokio::sync::RwLock;
 
 use commands::AppState;
+use streamer::StreamerState;
 
 /// 本地日期时间 + 毫秒（无法解析本地时区时回退 UTC）。勿使用错误嵌套的 `[[[year]…]]`。
 const LOG_LINE_TIMESTAMP: &[time::format_description::FormatItem<'static>] =
@@ -56,6 +60,7 @@ pub fn run() {
 
     builder
         .manage(Mutex::new(models::AppConfig::default()))
+        .manage(StreamerState::new(RwLock::new(HashMap::new())))
         .setup(|app| {
             info!("Start to initialize application.");
             let config_path = app.path().app_data_dir()?.join("config.json");
@@ -233,6 +238,8 @@ pub fn run() {
             commands::get_reader_ui_preferences,
             commands::set_reader_ui_preferences,
             commands::prepare_book_source,
+            commands::write_epub_readium_manifest,
+            commands::close_book_streamer,
             commands::get_cache_usage,
             commands::clear_cache,
             commands::enforce_cache_limit,

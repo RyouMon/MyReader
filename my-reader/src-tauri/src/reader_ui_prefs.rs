@@ -8,6 +8,8 @@ pub struct FixedLayoutSettingsDto {
     pub reading_layout: String,
     #[serde(default = "default_display_mode")]
     pub display_mode: String,
+    #[serde(default = "default_spread_mode")]
+    pub spread_mode: String,
     #[serde(default = "default_zoom_mode")]
     pub zoom_mode: String,
     #[serde(default = "default_direction")]
@@ -23,6 +25,9 @@ fn default_reading_layout() -> String {
 }
 fn default_display_mode() -> String {
     "single".into()
+}
+fn default_spread_mode() -> String {
+    "auto".into()
 }
 fn default_zoom_mode() -> String {
     "fit-height".into()
@@ -42,6 +47,7 @@ impl Default for FixedLayoutSettingsDto {
         Self {
             reading_layout: default_reading_layout(),
             display_mode: default_display_mode(),
+            spread_mode: default_spread_mode(),
             zoom_mode: default_zoom_mode(),
             direction: default_direction(),
             brightness: default_brightness(),

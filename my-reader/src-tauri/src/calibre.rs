@@ -55,7 +55,7 @@ fn map_book_row(row: &rusqlite::Row) -> rusqlite::Result<BookEntry> {
 
 pub fn validate_calibre_library(library_path: &str) -> bool {
     info!("Start to validate Calibre library. path: \"{library_path}\"");
-    let result = Path::new(library_path).join("metadata.db").exists();
+    let result = Path::new(library_path).join("metadata.db").is_file();
     info!(
         "Success to validate Calibre library. path: \"{}\", metadata db exists: {}",
         library_path, result
@@ -88,23 +88,6 @@ pub fn get_book_count(conn: &Connection) -> SqlResult<usize> {
     match &result {
         Ok(count) => debug!("Success to count books in Calibre. count: {count}"),
         Err(err) => error!("Failed to count books in Calibre. error: {err}"),
-    }
-    result
-}
-
-/// Get all book ids from the Calibre database.
-pub fn get_all_book_ids(conn: &Connection) -> SqlResult<Vec<i64>> {
-    debug!("Start to load all book ids from Calibre.");
-    let result = (|| {
-        let mut stmt = conn.prepare("SELECT id FROM books")?;
-        let ids = stmt
-            .query_map([], |row| row.get::<_, i64>(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(ids)
-    })();
-    match &result {
-        Ok(ids) => debug!("Success to load all book ids from Calibre. count: {}", ids.len()),
-        Err(err) => error!("Failed to load all book ids from Calibre. error: {err}"),
     }
     result
 }
