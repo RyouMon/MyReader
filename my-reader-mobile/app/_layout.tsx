@@ -17,6 +17,26 @@ import { LibraryRefreshPill } from "@/src/components/ui/library-refresh-pill";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { initializeDownloadNotifications } from "@/src/notifications/download-notifications";
 import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://e7973f39423d9c5ace34d0b6e95760ab@o955872.ingest.us.sentry.io/4511353696944128',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 function RootNavigator() {
   const { colorScheme, palette } = useTheme();
@@ -104,7 +124,7 @@ function NotifierWithSafeArea({ children }: { children: ReactNode }) {
   return <NotifierWrapper containerStyle={{ marginTop: top }}>{children}</NotifierWrapper>;
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   // RN 运行时在首次渲染前已就绪，此处调用是最早的安全时机。
   // setupGlobalErrorHandler 内部有幂等保护，重渲染不会重复注册。
   setupGlobalErrorHandler();
@@ -120,4 +140,4 @@ export default function RootLayout() {
       </ThemeProvider>
     </GestureHandlerRootView>
   );
-}
+});

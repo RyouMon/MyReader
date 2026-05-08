@@ -1,12 +1,14 @@
 const path = require("node:path");
-const { getDefaultConfig } = require("expo/metro-config");
 const { FileStore } = require("@expo/metro-config/build/file-store");
 const { withNativewind } = require("nativewind/metro");
+const {
+  getSentryExpoConfig
+} = require("@sentry/react-native/metro");
 
 // 在 EAS local build 的临时目录中，`__dirname` 可能是 /var/... 而进程 cwd 是 /private/var/...；
 // 两者混用会让 Metro 生成越级相对路径，导致入口模块解析失败。
 const projectRoot = process.env.EXPO_PROJECT_ROOT ?? process.cwd();
-const config = getDefaultConfig(projectRoot);
+const config = getSentryExpoConfig(projectRoot);
 
 // 默认 Metro 缓存在系统临时目录（如 /var/.../T/metro-cache），会与 EAS 每次拷贝到新临时目录的路径
 // 交叉污染：`expo export:embed` 为「use dom」生成相对 require 时若命中旧缓存，会指向已不存在的绝对路径。

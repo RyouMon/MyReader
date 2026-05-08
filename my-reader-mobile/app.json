@@ -65,7 +65,15 @@
         }
       ],
       "expo-font",
-      "expo-image"
+      "expo-image",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "my-reader-mobile",
+          "organization": "myself-eu"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
