@@ -241,6 +241,86 @@ Apply these when writing, reviewing, or refactoring code:
 
 ---
 
+## Commit Message Convention
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/) with project-specific scope rules.
+
+### Scope
+
+Prefix with package: `desktop/<area>`, `mobile/<area>`, or `shared/<area>`.
+
+- `desktop/reader` — Desktop comic/EPUB reader
+- `desktop/library` — Desktop library UI
+- `desktop/settings` — Desktop settings
+- `mobile/reader` — Mobile reader
+- `shared/sync` — Shared sync engine
+- `shared/parser` — Shared parsing logic
+
+Omit scope only for repo-wide changes (CI, root docs).
+
+### Subject
+
+`<type>(<scope>): <imperative summary>` — ≤50 chars, no trailing period.
+
+Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `chore`, `build`, `ci`, `style`, `revert`.
+
+The summary states **what was done** at a high level (e.g., "fix page turn requiring double click", "add spread mode toggle").
+
+### Body
+
+Skip when the subject is self-explanatory. Otherwise:
+
+1. **Problem / pain point first** — describe the bug, broken behavior, or motivation.
+2. **Then the fix / change** — explain what was modified and why it resolves the problem.
+
+Use terse, caveman-style language. No "This commit", "I", "we". Bullets with `-`.
+
+### Bilingual Messages
+
+Provide two versions: **English** for the actual commit, and the user's **native language** for review. If the user's native language is English, one version is sufficient.
+
+### Example (English — for commit)
+
+```
+fix(desktop/reader): fix comic page turns broken and requiring double click
+
+React StrictMode double-mount left orphaned navigator DOM because cleanup
+destroyed navigatorRef.current (the new instance) while the first
+navigator's DOM stayed in the tree. Page turns completely failed.
+
+After fixing the leak, FXL spread mode revealed a second bug: reAlign()
+snaps currentSlide to even indices, but currentLocation stayed at the
+original odd index. framePool.update() skipped sliding because currentSlide
+already matched the aligned target, forcing a double click to turn one page.
+
+- Add cancelled flag + local nav variable to prevent double-mount leaks
+- Sync currentLocation to currentSlide after FXL initialization
+- Base edge-turn and keyboard navigation on framePool.currentSlide
+```
+
+### Example (中文 — 给用户审核)
+
+```
+fix(desktop/reader): 修复漫画阅读器翻页失败及需双击才能翻页的问题
+
+React StrictMode 双挂载导致 useEffect 执行两次，cleanup 时销毁的是
+navigatorRef.current（第二个实例），而第一个 navigator 的 DOM（bookElement
++ 204 个 iframe）残留在页面中。可见的 spine 被孤儿 iframe 覆盖，导致翻页
+完全失效。
+
+修复泄漏后，FXL 双页模式暴露出第二个问题：reAlign() 将 currentSlide 对齐到
+偶数索引，但 currentLocation 仍停留在原始奇数索引。翻页时 goToIndex 基于
+currentLocation 计算目标，而 framePool.update() 发现 currentSlide 已经等于
+对齐后的目标，于是跳过 slideToCurrent()。结果是标题变了但画面没动，需要点
+两次才真正翻一页。
+
+- 添加 cancelled 标志和局部 nav 变量，防止双挂载泄漏
+- FXL 初始化完成后将 currentLocation 同步到 currentSlide
+- 边缘翻页和键盘导航基于 framePool.currentSlide 而非 currentLocator 计算目标
+```
+
+---
+
 ## Cursor Agent / gstack Notes
 
 - Browser tasks (open page, snapshot, click-through QA, visual verification) should use gstack `/browse` workflow.
@@ -266,3 +346,47 @@ You are **superdesign**, a senior frontend designer. Follow this workflow unless
 - Import Flowbite via CDN: `<script src="https://cdn.jsdelivr.net/npm/flowbite@2.0.0/dist/flowbite.min.js"></script>`.
 - Use `!important` for CSS properties that might be overwritten by Tailwind/Flowbite.
 - Avoid bootstrap-style blue colors unless requested.
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **MyReader** (363079 symbols, 1133812 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/MyReader/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/MyReader/clusters` | All functional areas |
+| `gitnexus://repo/MyReader/processes` | All execution flows |
+| `gitnexus://repo/MyReader/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->
