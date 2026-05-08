@@ -126,18 +126,22 @@ export function ReadiumDivinaReader({
   const onReadiumEdgePrev = useCallback(() => {
     const nav = navigatorRef.current
     if (!nav) return
-    const pos = nav.currentLocator?.locations?.position
-    const idx = typeof pos === "number" ? pos - 1 : 0
-    goToIndex(idx - 1)
+    const fp = (nav as any).framePool
+    const perPage = fp?.perPage ?? 1
+    const currentSlide = fp?.currentSlide ?? 0
+    const targetSlide = Math.max(0, currentSlide - perPage)
+    goToIndex(targetSlide)
   }, [goToIndex])
 
   const onReadiumEdgeNext = useCallback(() => {
     const nav = navigatorRef.current
     if (!nav) return
-    const pos = nav.currentLocator?.locations?.position
-    const idx = typeof pos === "number" ? pos - 1 : 0
-    goToIndex(idx + 1)
-  }, [goToIndex])
+    const fp = (nav as any).framePool
+    const perPage = fp?.perPage ?? 1
+    const currentSlide = fp?.currentSlide ?? 0
+    const targetSlide = Math.min(positions.length - 1, currentSlide + perPage)
+    goToIndex(targetSlide)
+  }, [goToIndex, positions])
 
   useLocatorProgressSync({
     enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0,
@@ -149,6 +153,9 @@ export function ReadiumDivinaReader({
 
   useEffect(() => {
     if (!containerRef.current) return
+
+    let cancelled = false
+    let nav: EpubNavigator | null = null
 
     async function init() {
       try {
@@ -170,13 +177,15 @@ export function ReadiumDivinaReader({
         const stepBy = (delta: 1 | -1) => {
           const nav2 = navigatorRef.current
           if (!nav2) return
-          const cur = (nav2.currentLocator?.locations?.position ?? 1) - 1
-          const next = cur + delta
-          if (next < 0 || next >= positions.length) return
-          nav2.go(positions[next], false, () => {})
+          const fp = (nav2 as any).framePool
+          const perPage = fp?.perPage ?? 1
+          const currentSlide = fp?.currentSlide ?? 0
+          const nextSlide = currentSlide + delta * perPage
+          if (nextSlide < 0 || nextSlide >= positions.length) return
+          nav2.go(positions[nextSlide], false, () => {})
         }
 
-        const nav = new EpubNavigator(
+        nav = new EpubNavigator(
           container,
           publication,
           {
@@ -223,11 +232,26 @@ export function ReadiumDivinaReader({
         await nav.load()
         await applySpreadPreference(nav, "auto")
         requestAnimationFrame(() => {
-          void nav.resizeHandler()
+          void nav!.resizeHandler()
           requestAnimationFrame(() => {
-            void nav.resizeHandler()
+            void nav!.resizeHandler()
           })
         })
+        if (cancelled) {
+          await nav.destroy()
+          return
+        }
+
+        const fp = (nav as any).framePool
+        if (fp) {
+          const slide = fp.currentSlide
+          const currentPos = (nav as any).currentLocation?.locations?.position
+          const currentIdx = typeof currentPos === "number" ? currentPos - 1 : 0
+          if (typeof slide === "number" && slide !== currentIdx && slide >= 0 && slide < positions.length) {
+            (nav as any).currentLocation = positions[slide]
+          }
+        }
+
         navigatorRef.current = nav
         setReadiumNavReady(true)
         setCurrentLocator(nav.currentLocator)
@@ -242,8 +266,9 @@ export function ReadiumDivinaReader({
     void init()
 
     return () => {
+      cancelled = true
       setReadiumNavReady(false)
-      void navigatorRef.current?.destroy()
+      void nav?.destroy()
       navigatorRef.current = null
     }
   }, [publication, initialSavedLocator, positions, showChrome])
