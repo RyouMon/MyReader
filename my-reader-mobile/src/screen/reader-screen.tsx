@@ -1,7 +1,7 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { File } from "expo-file-system";
-import type { Locator } from "react-native-readium";
+import type { Locator } from "@ryoumon/react-native-readium";
 import { pageIndexFromFixedLocator } from "@/src/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
 import { resolveReadFormat } from "my-reader-tools/utils";
@@ -424,7 +424,9 @@ export default function ReaderScreen() {
               ? "readium-reflow"
               : fmtUpper === "PDF"
                 ? "native-pdf"
-                : "native-fixed",
+                : fmtUpper === "PDF"
+                  ? "native-pdf"
+                  : "readium-fixed",
         });
 
         const archiveFile = needsPdfNativePath
@@ -744,10 +746,7 @@ export default function ReaderScreen() {
         ) : isFixedSurface ? (
           <FixedReaderSurface
             archiveUri={loadState.bookArchiveUri}
-            archiveFingerprint={loadState.bookArchiveFingerprint}
-            archiveOwned={loadState.bookArchiveOwned}
             pdfLocalUri={loadState.pdfLocalUri}
-            bookId={loadState.bookId}
             format={loadState.format}
             initialPage={loadState.initialPage}
             initialLocator={loadState.initialLocator ?? undefined}

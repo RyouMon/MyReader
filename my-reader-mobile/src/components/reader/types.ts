@@ -1,4 +1,4 @@
-import type { Locator } from "react-native-readium";
+import type { Locator } from "@ryoumon/react-native-readium";
 
 export type ReaderState = {
   ready: boolean;

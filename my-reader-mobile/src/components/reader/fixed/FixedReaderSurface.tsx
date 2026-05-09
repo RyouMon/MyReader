@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from "react";
 
-import type { Locator } from "react-native-readium";
+import type { Locator } from "@ryoumon/react-native-readium";
 
 import type {
   FixedNavigationMode,
@@ -9,17 +9,14 @@ import type {
 } from "@/src/store/app-store.types";
 import { pageIndexFromFixedLocator } from "@/src/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import { toNativeFilesystemPath } from "@/src/utils/io";
 
 import NativePdfReader from "./NativePdfReader";
 
-const NativeComicReader = lazy(async () => import("./NativeComicReader"));
+const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"));
 
 export type FixedReaderSurfaceProps = {
   archiveUri?: string | null;
-  archiveFingerprint?: string | null;
-  archiveOwned?: boolean;
-  bookBytes?: Uint8Array;
-  bookId?: number;
   format: string;
   /** 原生 PDF：`react-native-pdf` 使用的稳定本地 `file://` URI */
   pdfLocalUri?: string | null;
@@ -52,10 +49,6 @@ function isCbzFormat(format: string): boolean {
 
 export default function FixedReaderSurface({
   archiveUri,
-  archiveFingerprint,
-  archiveOwned,
-  bookBytes,
-  bookId,
   format,
   pdfLocalUri,
   initialPage,
@@ -76,31 +69,25 @@ export default function FixedReaderSurface({
   contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);
-  const effectiveInitialPage = pageIndexFromFixedLocator(initialLocator, initialPage ?? 0);
 
   if (isCbzFormat(format)) {
+    if (!archiveUri) {
+      console.error("[fixed-reader-surface] cbz-missing-archive-uri", { format });
+      return null;
+    }
+    const cbzFilePath = toNativeFilesystemPath(archiveUri);
     return (
       <Suspense fallback={domFallback}>
-        <NativeComicReader
-          archiveUri={archiveUri ?? null}
-          archiveFingerprint={archiveFingerprint ?? null}
-          archiveOwned={archiveOwned ?? false}
-          bookBytes={bookBytes ?? null}
-          bookId={bookId ?? 0}
-          format={format}
-          initialPage={effectiveInitialPage}
+        <ReadiumFixedReader
+          filePath={cbzFilePath}
+          initialLocator={initialLocator}
           onStateChange={onStateChange}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
-          navigationMode={navigationMode === "horizontal" ? "horizontal" : "vertical"}
           brightness={brightness}
-          zoomScale={zoomScale}
-          pinchZoomEnabled
-          onZoomScaleChange={onZoomScaleChange}
-          contentInsetTop={contentInsetTop}
-          contentInsetBottom={contentInsetBottom}
+          theme={theme}
         />
       </Suspense>
     );
@@ -111,6 +98,7 @@ export default function FixedReaderSurface({
       console.error("[fixed-reader-surface] pdf-missing-local-uri", { format });
       return null;
     }
+    const effectiveInitialPage = pageIndexFromFixedLocator(initialLocator, initialPage ?? 0);
     return (
       <NativePdfReader
         pdfLocalUri={pdfLocalUri}

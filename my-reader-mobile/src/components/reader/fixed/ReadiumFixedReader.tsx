@@ -2,9 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { StyleSheet, View, type GestureResponderEvent } from "react-native";
 import { ReadiumView } from "@ryoumon/react-native-readium";
 import type {
-  Link,
   Locator,
-  Preferences,
   PublicationReadyEvent,
   ReadiumFile,
   ReadiumViewRef,
@@ -12,7 +10,7 @@ import type {
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
+import type { ReaderTheme } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 const TAP_MAX_DRIFT = 12;
@@ -24,53 +22,53 @@ type TouchSnapshot = {
   timestampMs: number;
 };
 
-export type ReadiumReflowReaderRef = {
+export type ReadiumFixedReaderRef = {
   goTo: (locator: Locator) => void;
 };
 
-export type ReadiumReflowReaderProps = {
-  /** Native filesystem path to the EPUB archive（`toNativeFilesystemPath(fileUri)`）。 */
-  epubPath: string;
-  /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
+export type ReadiumFixedReaderProps = {
+  /** Native filesystem path to the CBZ archive. */
+  filePath: string;
+  /** Restored Readium Locator used as `ReadiumFile.initialLocation`. */
   initialLocator?: Locator;
   onStateChange: (state: ReaderState) => void;
   onTocReady: (items: ReaderTocItem[]) => void;
   onRequestClose: () => void;
   onToggleChrome?: () => void;
-  /** 与 {@link ReaderTocItem.pageIndex} 一致，由目录 sheet 选择触发。 */
-  gotoTocIndex?: number;
-  readingLayout?: ReadingLayout;
-  theme?: ReaderTheme;
-  fontSize?: number;
-  lineHeight?: number;
-  paddingX?: number;
+  /** Page index from TOC sheet selection. */
+  gotoPageCommand?: number;
   brightness?: number;
+  theme?: ReaderTheme;
 };
 
-function stripFragment(href: string): string {
-  const i = href.indexOf("#");
-  return i >= 0 ? href.slice(0, i) : href;
+function buildTocItemId(prefix: string, path: readonly number[]) {
+  return `${prefix}-${path.join(".")}`;
 }
 
-function hrefRoughlyMatches(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  const na = stripFragment(a);
-  const nb = stripFragment(b);
-  return na === nb || na.endsWith(nb) || nb.endsWith(na);
-}
-
-/**
- * 为目录链接在 positions 中找首个匹配 locator（用于 TOC `goTo`）。
- */
-function findLocatorForLinkHref(positions: Locator[], linkHref: string | undefined): Locator | undefined {
-  if (!linkHref || positions.length === 0) return undefined;
-  return positions.find((p) => hrefRoughlyMatches(p.href, linkHref));
+function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
+  const items: ReaderTocItem[] = [];
+  for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    items.push({
+      id: buildTocItemId("cbz", [i]),
+      label: p.title ?? `第 ${i + 1} 页`,
+      pageIndex: i,
+      chapterIndex: i,
+      href: p.href,
+      locator: p,
+    });
+  }
+  return items;
 }
 
 function positionIndexForLocator(positions: Locator[], locator: Locator): number {
   if (positions.length === 0) return 0;
-  const byHref = positions.findIndex((p) => hrefRoughlyMatches(p.href, locator.href));
+  const byHref = positions.findIndex((p) => p.href === locator.href);
   if (byHref >= 0) return byHref;
+  const position = locator.locations?.position;
+  if (typeof position === "number" && position >= 1) {
+    return Math.max(0, Math.min(positions.length - 1, position - 1));
+  }
   const prog = locator.locations?.totalProgression ?? locator.locations?.progression;
   if (prog != null && Number.isFinite(prog)) {
     return Math.max(0, Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))));
@@ -78,88 +76,17 @@ function positionIndexForLocator(positions: Locator[], locator: Locator): number
   return 0;
 }
 
-/**
- * Readium `Preferences.theme` 使用 light / dark / sepia（见库类型定义）。
- */
-function toReadiumThemeToken(theme: ReaderTheme): "light" | "dark" | "sepia" {
-  switch (theme) {
-    case "dark":
-      return "dark";
-    case "paper":
-    case "green":
-      return "sepia";
-    default:
-      return "light";
-  }
-}
-
-function buildPreferences(
-  theme: ReaderTheme,
-  fontSize: number,
-  lineHeight: number,
-  paddingX: number,
-  scroll: boolean,
-): Preferences {
-  const t = READER_THEMES[theme];
-  return {
-    theme: toReadiumThemeToken(theme),
-    fontSize: fontSize / 16,
-    lineHeight,
-    pageMargins: 0.5 + (paddingX / 100) * 1.5,
-    scroll,
-    textColor: t.fg,
-    backgroundColor: t.bg,
-    publisherStyles: false,
-  };
-}
-
-function buildTocItemId(prefix: string, path: readonly number[], rawHref: string | undefined) {
-  const pathPart = path.join(".");
-  return `${prefix}-${pathPart}-${rawHref ?? "no-href"}`;
-}
-
-function linksToTocItems(links: Link[], positions: Locator[]): ReaderTocItem[] {
-  const items: ReaderTocItem[] = [];
-  let flatIndex = 0;
-
-  function walk(list: Link[], parentPath: number[] = []) {
-    for (const [idx, link] of list.entries()) {
-      const path = [...parentPath, idx];
-      const href = link.href;
-      const locator = findLocatorForLinkHref(positions, href);
-      items.push({
-        id: buildTocItemId("readium", path, href),
-        label: link.title ?? `Chapter ${flatIndex + 1}`,
-        pageIndex: flatIndex,
-        chapterIndex: flatIndex,
-        href,
-        locator,
-      });
-      flatIndex++;
-      if (link.children?.length) {
-        walk(link.children, path);
-      }
-    }
-  }
-
-  walk(links);
-  return items;
-}
-
-const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowReaderProps>(
-  function ReadiumReflowReader(
+const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderProps>(
+  function ReadiumFixedReader(
     {
-      epubPath,
+      filePath,
       initialLocator,
       onStateChange,
       onTocReady,
       onToggleChrome,
-      gotoTocIndex,
-      readingLayout = "scroll",
-      theme = "paper",
-      fontSize = 18,
-      lineHeight = 1.85,
-      paddingX = 20,
+      gotoPageCommand,
+      brightness = 100,
+      theme = "dark",
     },
     ref,
   ) {
@@ -175,27 +102,30 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
 
     const file = useMemo<ReadiumFile>(
       () => ({
-        url: epubPath,
+        url: filePath,
         initialLocation: initialLocator,
       }),
-      [epubPath, initialLocator],
+      [filePath, initialLocator],
     );
 
-    const preferences = useMemo(
-      () => buildPreferences(theme, fontSize, lineHeight, paddingX, readingLayout === "scroll"),
-      [theme, fontSize, lineHeight, paddingX, readingLayout],
-    );
+    const preferences = useMemo(() => {
+      const t = READER_THEMES[theme];
+      return {
+        theme: (theme === "dark" ? "dark" : "light") as "light" | "dark" | "sepia",
+        backgroundColor: t.bg,
+      };
+    }, [theme]);
 
     const handlePublicationReady = useCallback(
       (event: PublicationReadyEvent) => {
-        console.info("[readium-reflow] publication-ready", {
+        console.info("[readium-fixed] publication-ready", {
           title: event.metadata.title,
           tocCount: event.tableOfContents.length,
           positionCount: event.positions.length,
         });
 
         positionsRef.current = event.positions;
-        const tocItems = linksToTocItems(event.tableOfContents, event.positions);
+        const tocItems = positionsToTocItems(event.positions);
         tocItemsRef.current = tocItems;
         onTocReady(tocItems);
 
@@ -237,11 +167,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
         const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER);
 
         const currentPage = positionIndexForLocator(positions, locator);
-
-        const href = locator.href;
-        const tocItems = tocItemsRef.current;
-        const matchedToc = tocItems.find((item) => item.href && hrefRoughlyMatches(href, item.href));
-        const chapterTitle = locator.title ?? matchedToc?.label ?? "";
+        const chapterTitle = locator.title ?? `第 ${currentPage + 1} 页`;
 
         onStateChange({
           ready: true,
@@ -300,40 +226,51 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     }, []);
 
     useEffect(() => {
-      if (gotoTocIndex == null || gotoTocIndex < 0) return;
+      if (gotoPageCommand == null || gotoPageCommand < 0) return;
 
-      const tocItem = tocItemsRef.current[gotoTocIndex];
+      const tocItem = tocItemsRef.current[gotoPageCommand];
       if (!tocItem) return;
 
-      const target =
-        tocItem.locator ??
-        (tocItem.href ? findLocatorForLinkHref(positionsRef.current, tocItem.href) : undefined);
+      const target = tocItem.locator ?? tocItem.href
+        ? positionsRef.current.find((p) => p.href === tocItem.href)
+        : undefined;
       if (target) {
         readiumRef.current?.goTo(target);
       }
-    }, [gotoTocIndex]);
+    }, [gotoPageCommand]);
 
     return (
-      <View
-        style={styles.reader}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
-      >
-        <ReadiumView
-          ref={readiumRef}
-          file={file}
-          preferences={preferences}
+      <View style={styles.reader}>
+        <View
           style={styles.reader}
-          onPublicationReady={handlePublicationReady}
-          onLocationChange={handleLocationChange}
-        />
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+        >
+          <ReadiumView
+            ref={readiumRef}
+            file={file}
+            preferences={preferences}
+            style={styles.reader}
+            onPublicationReady={handlePublicationReady}
+            onLocationChange={handleLocationChange}
+          />
+        </View>
+        {brightness < 100 && (
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: "black", opacity: (100 - brightness) / 100 },
+            ]}
+            pointerEvents="none"
+          />
+        )}
       </View>
     );
   },
 );
 
-export default ReadiumReflowReader;
+export default ReadiumFixedReader;
 
 const styles = StyleSheet.create({
   reader: {

@@ -1,4 +1,4 @@
-import type { Locator } from "react-native-readium";
+import type { Locator } from "@ryoumon/react-native-readium";
 
 const PDF_HREF = "publication.pdf";
 const PDF_TYPE = "application/pdf";
@@ -11,7 +11,7 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 /**
  * PDF 当前页 → Readium {@link Locator}。
  *
- * Readium 规范要求：必含 `position`、`progression`、`fragments` 中的 `page=N`，应含 `totalProgression`。
+ * Readium 规范要求：必含 `position`、`progression`，应含 `totalProgression`。
  */
 export function pdfPageLocator(input: {
   pageIndex: number;
@@ -27,7 +27,6 @@ export function pdfPageLocator(input: {
     type: PDF_TYPE,
     title: input.title,
     locations: {
-      fragments: [`page=${position}`],
       progression,
       position,
       totalProgression: progression,
@@ -38,7 +37,7 @@ export function pdfPageLocator(input: {
 /**
  * Comics 当前页 → Readium {@link Locator}。
  *
- * Readium 规范要求：每页是独立 resource，必含 `position`，应含 `totalProgression`。
+ * Readium 规范要求：每页是独立 resource，必含 `position`、`progression`，应含 `totalProgression`。
  */
 export function comicPageLocator(input: {
   pageIndex: number;
@@ -54,13 +53,14 @@ export function comicPageLocator(input: {
     type: COMIC_TYPE,
     title: input.title,
     locations: {
+      progression: totalProgression,
       position,
       totalProgression,
     },
   };
 }
 
-/** 从固定版式 {@link Locator} 解析 0-based 页码：优先 `position`，回退到 `fragments` 中的 `page=N`。 */
+/** 从固定版式 {@link Locator} 解析 0-based 页码：优先 `position`。 */
 export function pageIndexFromFixedLocator(
   locator: Locator | undefined | null,
   fallback: number,
@@ -69,18 +69,6 @@ export function pageIndexFromFixedLocator(
 
   const position = locator.locations?.position;
   if (typeof position === "number" && position >= 1) return position - 1;
-
-  const fragments = locator.locations?.fragments;
-  if (Array.isArray(fragments)) {
-    for (const frag of fragments) {
-      if (typeof frag !== "string") continue;
-      const m = frag.match(/^page=(\d+)/);
-      if (m) {
-        const n = Number(m[1]);
-        if (Number.isFinite(n) && n >= 1) return n - 1;
-      }
-    }
-  }
 
   return fallback;
 }

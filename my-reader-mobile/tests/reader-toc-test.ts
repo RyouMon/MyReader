@@ -67,7 +67,7 @@ describe("flattenReflowToc", () => {
     const result = flattenReflowToc([
       {
         label: "",
-        href: undefined,
+        href: "",
         index: -1,
       },
     ]);

@@ -5,8 +5,8 @@ source 'https://cdn.cocoapods.org/'
 `;
 
 const READIUM_LOAD = `
-load File.join(__dir__, '..', 'node_modules', 'react-native-readium', 'scripts', 'readium_pods.rb')
-load File.join(__dir__, '..', 'node_modules', 'react-native-readium', 'scripts', 'readium_post_install.rb')
+load File.join(__dir__, '..', 'node_modules', '@ryoumon/react-native-readium', 'scripts', 'readium_pods.rb')
+load File.join(__dir__, '..', 'node_modules', '@ryoumon/react-native-readium', 'scripts', 'readium_post_install.rb')
 `;
 
 /**
