@@ -42,12 +42,11 @@
             "deploymentTarget": "15.5",
             "buildReactNativeFromSource": true
           },
-          "android": {
-            "enableCoreLibraryDesugaring": true
-          }
+          "android": {}
         }
       ],
       "./plugins/with-readium-ios",
+      "./plugins/with-android-desugaring",
       "@config-plugins/react-native-blob-util",
       "@config-plugins/react-native-pdf",
       "@kesha-antonov/react-native-background-downloader",
