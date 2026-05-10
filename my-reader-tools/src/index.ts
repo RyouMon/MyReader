@@ -1,6 +1,1 @@
-export {
-    useBookReader,
-    type UseReaderOptions,
-    type UseReaderReturn,
-  } from "./hooks/useReader"
-  
+// my-reader-tools — shared types and utilities for MyReader

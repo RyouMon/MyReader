@@ -4,23 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./reader-core": "./src/reader-core/index.ts",
     "./reader-core/*": "./src/reader-core/*",
-    "./parsers": "./src/parsers/index.ts",
-    "./parsers/*": "./src/parsers/*",
-    "./pagination": "./src/pagination/index.ts",
-    "./pagination/*": "./src/pagination/*",
     "./utils": "./src/utils/index.ts",
-    "./utils/*": "./src/utils/*",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*",
-    "./state/data-source": "./src/state/data-source.ts",
-    "./layout-engines/reflow": "./src/layout-engines/reflow/index.ts",
-    "./layout-engines/*": "./src/layout-engines/*",
-    "./progress/*": "./src/progress/*",
-    "./foliate-js/*": "./src/foliate-js/*",
-    "./hooks/useReader": "./src/hooks/useReader.ts",
-    "./index": "./src/index.ts"
+    "./state/data-source": "./src/state/data-source.ts"
   },
   "dependencies": {
     "pdfjs-dist": "^5.5.207"

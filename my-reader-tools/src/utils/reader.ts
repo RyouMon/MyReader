@@ -1,15 +1,4 @@
 /**
- * 将 EPUB 内联样式里针对 `html` / `body` 的选择器改写为挂在章节容器上的类，
- * 避免在 SPA 中命中整页 `<html>` / `<body>` 导致各屏继承与字重不一致。
- */
-export function scopeEpubCss(css: string): string {
-  if (!css.trim()) return css
-  return css
-    .replace(/\bhtml\b/g, ".reader-epub-scope")
-    .replace(/\bbody\b/g, ".reader-epub-scope")
-}
-
-/**
  * Prefer `requested` when it matches a file on the book and is readable;
  * otherwise fall back to priority order.
  */
@@ -41,43 +30,4 @@ export function pickReadableFormat(formats: string[]): string | null {
     if (upper.includes(pref)) return pref
   }
   return null
-}
-
-const IS_WINDOWS =
-  typeof navigator !== "undefined" &&
-  typeof navigator.userAgent === "string" &&
-  navigator.userAgent.includes("Windows")
-
-/** Build a URL for the `bookfile` custom protocol. */
-export function buildBookFileUrl(
-  libraryId: string,
-  bookId: number | string,
-  format: string,
-): string {
-  const path = `${libraryId}/${bookId}/${format.toUpperCase()}`
-  return IS_WINDOWS
-    ? `http://bookfile.localhost/${path}`
-    : `bookfile://localhost/${path}`
-}
-
-/**
- * Resolves HTML fragment targets inside a chapter subtree (`id` or legacy `name`).
- */
-export function findHtmlFragmentElement(
-  root: HTMLElement,
-  fragment: string,
-): HTMLElement | null {
-  if (!fragment) return null
-  try {
-    const byId = root.querySelector(`#${CSS.escape(fragment)}`)
-    if (byId instanceof HTMLElement) return byId
-  } catch {
-    // invalid id for selector
-  }
-  try {
-    const byName = root.querySelector(`[name="${CSS.escape(fragment)}"]`)
-    return byName instanceof HTMLElement ? byName : null
-  } catch {
-    return null
-  }
 }
