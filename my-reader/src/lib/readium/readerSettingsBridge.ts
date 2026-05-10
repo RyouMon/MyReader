@@ -41,10 +41,10 @@ function uiTextAlignToReadium(align: string): TextAlignment | undefined {
   return undefined
 }
 
-function uiColCountToReadium(colCount: string): number | undefined {
+function uiColCountToReadium(colCount: string): number | null {
   if (colCount === "1") return 1
   if (colCount === "2") return 2
-  return undefined
+  return null
 }
 
 /** 将已持久化的 `ReaderSettings` 转为提交给 `EpubNavigator` 的偏好。 */
@@ -67,5 +67,8 @@ export function readerSettingsToEpubPreferences(settings: ReaderSettings): EpubP
     pageGutter: gutter,
     textAlign: uiTextAlignToReadium(settings.textAlign),
     columnCount: uiColCountToReadium(settings.colCount),
+    optimalLineLength: 35,
+    maximalLineLength:
+      settings.colCount === "auto" ? 9999 : settings.colCount === "1" ? null : undefined,
   })
 }
