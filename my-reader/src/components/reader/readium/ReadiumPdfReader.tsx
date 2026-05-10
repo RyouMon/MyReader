@@ -3,6 +3,7 @@ import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
+import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import { Label } from "@/components/ui/label"
@@ -285,6 +286,13 @@ export function ReadiumPdfReader({
           onNext={onPdfEdgeNext}
           prevLabel="上一页"
           nextLabel="下一页"
+        />
+      }
+      bottomStatusBar={
+        <ReaderBottomStatusBar
+          visible={chromeVisible}
+          leftText={totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : undefined}
+          progress={totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0}
         />
       }
       main={

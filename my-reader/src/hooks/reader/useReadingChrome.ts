@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 /** 顶栏唤出带高度（与 `ReadingChromeEdgeZones` 对齐）。 */
-export const READING_CHROME_TOP_BAND_PX = 56
+export const READING_CHROME_TOP_BAND_PX = 48
 const BOTTOM_BAR_PX = 72
 const TTS_EXTRA_BOTTOM_PX = 176
 const CHROME_HIDE_DELAY_MS = 280

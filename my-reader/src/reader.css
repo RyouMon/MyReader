@@ -416,21 +416,14 @@
 /* ═══ Tailwind-friendly reader chrome (replaces scattered inline styles) ═══ */
 
 @layer components {
-  /* 不透明底：避免正文透过顶栏难以辨认（毛玻璃仅作轻微边缘柔化，主色实底） */
+  /* 轻量毛玻璃：苹果 Books 风格，极低不透明度实底 + 模糊，无可见边框 */
   .reader-chrome-frost {
-    background-color: var(--reader-chrome-bg);
-    background-image: linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--reader-chrome-bg) 100%, transparent),
-      color-mix(in srgb, var(--reader-chrome-bg) 98%, var(--reader-chrome-border))
-    );
-    box-shadow: 0 1px 0 0 var(--reader-chrome-border);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    background-color: color-mix(in srgb, var(--reader-chrome-bg) 72%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: blur(20px) saturate(1.2);
     transition:
       opacity 300ms ease-out,
-      background 350ms ease,
-      border-color 350ms ease;
+      background 350ms ease;
   }
 
   .reader-chrome-frost-sm {
@@ -438,6 +431,22 @@
     color: var(--reader-chrome-fg);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+
+  .reader-edge-turn-btn {
+    background: color-mix(in srgb, var(--reader-chrome-bg) 85%, transparent);
+    color: var(--reader-chrome-muted);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--reader-chrome-fg) 6%, transparent);
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease,
+      background 350ms ease;
+  }
+  .reader-edge-turn-btn:hover {
+    background: color-mix(in srgb, var(--reader-chrome-bg) 95%, transparent);
+    color: var(--reader-chrome-fg);
   }
 
   .reader-chrome-footer-bar {

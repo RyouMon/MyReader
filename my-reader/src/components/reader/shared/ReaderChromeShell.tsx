@@ -31,6 +31,8 @@ export type ReaderChromeShellProps = {
   main: ReactNode
   /** 底栏；无则省略。 */
   bottomChrome?: ReactNode
+  /** 底部状态栏（页码、进度文字），轻量悬浮风格。 */
+  bottomStatusBar?: ReactNode
   /** 叠在正文区上的左右边缘翻页（须放在 `relative` 阅读区内，由调用方包一层 `relative` 或经此槽置于内容槽末尾）。 */
   edgeTurnOverlays?: ReactNode
   /** 追加在根布局 class 上。 */
@@ -56,6 +58,7 @@ export function ReaderChromeShell({
   beforeMain,
   main,
   bottomChrome,
+  bottomStatusBar,
   edgeTurnOverlays,
   rootClassName,
   panelsOpen = false,
@@ -90,6 +93,7 @@ export function ReaderChromeShell({
         {beforeMain}
         {main}
         {bottomChrome}
+        {bottomStatusBar}
         {edgeTurnOverlays}
       </div>
       {tocPanel}

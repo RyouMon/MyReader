@@ -1,4 +1,5 @@
 import { ReadiumTocPanel, type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
@@ -556,6 +557,23 @@ export function ReadiumEpubReader({
           onNext={onReadiumEdgeNext}
           prevLabel="上一页"
           nextLabel="下一页"
+        />
+      }
+      bottomStatusBar={
+        <ReaderBottomStatusBar
+          visible={chromeVisible}
+          leftText={
+            isFixedLayout
+              ? `第 ${currentLocator?.locations?.position ?? 1} / ${publication.readingOrder.items.length} 页`
+              : currentLocator?.locations?.progression != null
+                ? `${Math.round((currentLocator.locations.progression ?? 0) * 100)}%`
+                : undefined
+          }
+          progress={
+            currentLocator?.locations?.totalProgression != null
+              ? (currentLocator.locations.totalProgression ?? 0) * 100
+              : undefined
+          }
         />
       }
       main={

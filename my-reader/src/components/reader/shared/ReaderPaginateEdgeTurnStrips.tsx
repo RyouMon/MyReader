@@ -48,12 +48,12 @@ export function ReaderPaginateEdgeTurnStrips({
       >
         <span
           className={cn(
-            "reader-chrome-frost-sm pointer-events-none flex size-11 shrink-0 items-center justify-center rounded-full transition-opacity duration-[220ms] ease-[ease]",
-            nearLeft ? "opacity-100" : "opacity-0",
+            "reader-edge-turn-btn pointer-events-none flex size-10 shrink-0 items-center justify-center rounded-full transition-all duration-[220ms] ease-[ease]",
+            nearLeft ? "opacity-100 scale-100" : "opacity-0 scale-90",
           )}
           aria-hidden
         >
-          <ChevronLeft className="size-5" aria-hidden />
+          <ChevronLeft className="size-[18px]" aria-hidden />
         </span>
       </button>
       <button
@@ -72,12 +72,12 @@ export function ReaderPaginateEdgeTurnStrips({
       >
         <span
           className={cn(
-            "reader-chrome-frost-sm pointer-events-none flex size-11 shrink-0 items-center justify-center rounded-full transition-opacity duration-[220ms] ease-[ease]",
-            nearRight ? "opacity-100" : "opacity-0",
+            "reader-edge-turn-btn pointer-events-none flex size-10 shrink-0 items-center justify-center rounded-full transition-all duration-[220ms] ease-[ease]",
+            nearRight ? "opacity-100 scale-100" : "opacity-0 scale-90",
           )}
           aria-hidden
         >
-          <ChevronRight className="size-5" aria-hidden />
+          <ChevronRight className="size-[18px]" aria-hidden />
         </span>
       </button>
     </>

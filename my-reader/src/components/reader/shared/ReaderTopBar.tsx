@@ -1,4 +1,4 @@
-import { Bookmark, List, Maximize, Minimize, Settings } from "lucide-react"
+import { Bookmark, List, Maximize, Minimize, Search, Type } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { cn } from "@/lib/utils"
@@ -44,7 +44,7 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "reader-chrome-frost absolute inset-x-0 top-0 z-50 grid h-[52px] grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-reader-chrome-border px-5 transition-opacity duration-300 ease-out",
+        "reader-chrome-frost absolute inset-x-0 top-0 z-50 grid h-11 grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 transition-opacity duration-300 ease-out",
         visible ? "opacity-100" : "opacity-0 pointer-events-none",
       )}
       onPointerLeave={
@@ -59,31 +59,32 @@ export function ReaderTopBar({
         <TopBarButton title="目录" onClick={onToggleToc}>
           <List className="size-[18px]" />
         </TopBarButton>
-        <TopBarButton
-          title="书签"
-          onClick={onToggleBookmark}
-          active={bookmarked}
-        >
-          <Bookmark className="size-[18px]" />
-        </TopBarButton>
-      </div>
-
-      <div className="font-serif min-w-0 max-w-[min(100vw-12rem,42rem)] truncate text-center text-sm font-medium text-reader-chrome-fg">
-        {bookTitle}
-        <span className="mx-1.5 text-reader-chrome-muted">·</span>
-        {chapterTitle}
-      </div>
-
-      <div className="flex items-center justify-end gap-0.5">
-        <TopBarButton title="设置" onClick={onToggleSettings}>
-          <Settings className="size-[18px]" />
-        </TopBarButton>
         <TopBarButton title="全屏" onClick={toggleFullscreen}>
           {isFullscreen ? (
             <Minimize className="size-[18px]" />
           ) : (
             <Maximize className="size-[18px]" />
           )}
+        </TopBarButton>
+      </div>
+
+      <div className="min-w-0 max-w-[min(100vw-14rem,42rem)] truncate text-center text-[13px] text-reader-chrome-fg">
+        {bookTitle}
+      </div>
+
+      <div className="flex items-center justify-end gap-0.5">
+        <TopBarButton title="字体大小" onClick={onToggleSettings}>
+          <Type className="size-[18px]" />
+        </TopBarButton>
+        <TopBarButton title="搜索" onClick={() => {}}>
+          <Search className="size-[18px]" />
+        </TopBarButton>
+        <TopBarButton
+          title="书签"
+          onClick={onToggleBookmark}
+          active={bookmarked}
+        >
+          <Bookmark className="size-[18px]" />
         </TopBarButton>
       </div>
     </header>
