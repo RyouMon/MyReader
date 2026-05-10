@@ -71,6 +71,10 @@ pub struct ReaderSettingsDto {
     pub padding_x: f64,
     #[serde(default = "default_reflowable_reading_layout")]
     pub reading_layout: String,
+    #[serde(default = "default_text_align")]
+    pub text_align: String,
+    #[serde(default = "default_col_count")]
+    pub col_count: String,
 }
 
 fn default_theme() -> String {
@@ -91,6 +95,12 @@ fn default_padding_x() -> f64 {
 fn default_reflowable_reading_layout() -> String {
     "paginate".into()
 }
+fn default_text_align() -> String {
+    "auto".into()
+}
+fn default_col_count() -> String {
+    "auto".into()
+}
 
 impl Default for ReaderSettingsDto {
     fn default() -> Self {
@@ -101,6 +111,8 @@ impl Default for ReaderSettingsDto {
             line_height: default_line_height(),
             padding_x: default_padding_x(),
             reading_layout: default_reflowable_reading_layout(),
+            text_align: default_text_align(),
+            col_count: default_col_count(),
         }
     }
 }
@@ -164,7 +176,7 @@ pub struct ReaderUiPreferences {
 }
 
 fn default_version() -> u32 {
-    3
+    4
 }
 
 fn default_library_view_mode() -> String {

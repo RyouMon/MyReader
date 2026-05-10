@@ -26,21 +26,49 @@ export async function applySpreadPreference(
   await nav.resizeHandler()
 }
 
-/** 重排 EPUB：纸色 / 夜间（固定色值，避免依赖未持久化的主题管线）。 */
-export type ReflowThemePreset = "paper" | "sepia" | "dark"
+/** 重排 EPUB：与 Thorium 对齐的 8 个主题。 */
+export type ReflowThemePreset =
+  | "neutral"
+  | "sepia"
+  | "night"
+  | "paper"
+  | "contrast1"
+  | "contrast2"
+  | "ocean"
+  | "green"
 
 const REFLOW_PRESETS: Record<ReflowThemePreset, EpubPreferences> = {
-  paper: new EpubPreferences({
-    backgroundColor: "#fffef9",
-    textColor: "#1a1a1a",
+  neutral: new EpubPreferences({
+    backgroundColor: "#fefefe",
+    textColor: "#000000",
   }),
   sepia: new EpubPreferences({
-    backgroundColor: "#f4ecd8",
-    textColor: "#2c2416",
+    backgroundColor: "#faf4e8",
+    textColor: "#000000",
   }),
-  dark: new EpubPreferences({
-    backgroundColor: "#1a1a1a",
-    textColor: "#e8e6e3",
+  night: new EpubPreferences({
+    backgroundColor: "#121212",
+    textColor: "#ffffff",
+  }),
+  paper: new EpubPreferences({
+    backgroundColor: "#E9DDC8",
+    textColor: "#000000",
+  }),
+  contrast1: new EpubPreferences({
+    backgroundColor: "#000000",
+    textColor: "#ffffff",
+  }),
+  contrast2: new EpubPreferences({
+    backgroundColor: "#000000",
+    textColor: "#FFFF00",
+  }),
+  ocean: new EpubPreferences({
+    backgroundColor: "#181842",
+    textColor: "#ffffff",
+  }),
+  green: new EpubPreferences({
+    backgroundColor: "#C5E7CD",
+    textColor: "#000000",
   }),
 }
 
@@ -48,4 +76,3 @@ const REFLOW_PRESETS: Record<ReflowThemePreset, EpubPreferences> = {
 export function epubPreferencesForReflowTheme(preset: ReflowThemePreset): EpubPreferences {
   return REFLOW_PRESETS[preset]
 }
-

@@ -45,7 +45,7 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
     persistTimer = null
     const s = get()
     const payload: ReaderUiPreferencesPayload = {
-      version: 3,
+      version: 4,
       libraryViewMode: s.libraryViewMode,
       fixedLayout: s.fixedLayout,
       reflowable: s.reflowable,
@@ -138,6 +138,13 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
     schedulePersistReaderPreferences(get)
   },
   hydrateReaderPreferences: (data) => {
+    const rawTheme = data.reflowable?.settings?.theme as string | undefined
+    const migratedTheme =
+      rawTheme === "contrast3"
+        ? "ocean"
+        : rawTheme === "contrast4"
+          ? "green"
+          : rawTheme
     set({
       libraryViewMode: isLibraryViewMode(data.libraryViewMode)
         ? data.libraryViewMode
@@ -148,7 +155,12 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
         spreadMode: normalizeSpreadPreference(data.fixedLayout?.spreadMode),
       },
       reflowable: {
-        settings: { ...DEFAULT_SETTINGS, ...data.reflowable.settings },
+        settings: {
+          ...DEFAULT_SETTINGS,
+          ...data.reflowable.settings,
+          theme:
+            typeof migratedTheme === "string" ? migratedTheme : DEFAULT_SETTINGS.theme,
+        },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },
       },
       cache: {

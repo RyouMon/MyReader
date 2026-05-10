@@ -4,7 +4,19 @@ export type ReadingLayout = "paginate" | "scroll"
 export type DisplayMode = "single" | "spread"
 export type ZoomMode = "fit-height" | "fit-width" | "manual" | string
 export type PageDirection = "ltr" | "rtl"
-export type ReaderTheme = "paper" | "dark" | "sepia" | string
+export type TextAlign = "auto" | "justify" | "start"
+export type ColCount = "auto" | "1" | "2"
+
+/** 与 Thorium 对齐的 8 个阅读主题。 */
+export type ReaderTheme =
+  | "neutral"
+  | "sepia"
+  | "night"
+  | "paper"
+  | "contrast1"
+  | "contrast2"
+  | "ocean"
+  | "green"
 
 export interface ReaderSettings {
   theme: ReaderTheme
@@ -13,6 +25,8 @@ export interface ReaderSettings {
   lineHeight: number
   paddingX: number
   readingLayout: ReadingLayout
+  textAlign: TextAlign
+  colCount: ColCount
 }
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -22,6 +36,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   lineHeight: 1.85,
   paddingX: 2.5,
   readingLayout: "paginate",
+  textAlign: "auto",
+  colCount: "auto",
 }
 
 export interface FixedLayoutSettings {

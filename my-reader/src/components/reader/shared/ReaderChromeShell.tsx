@@ -40,6 +40,8 @@ export type ReaderChromeShellProps = {
   /** 目录或设置展开时显示顶栏下方的点击蒙层并调用关闭。 */
   panelsOpen?: boolean
   onClosePanels?: () => void
+  /** 当前阅读主题，用于设置 data-reader-theme 以驱动工具栏颜色。 */
+  theme?: string
 }
 
 /**
@@ -63,6 +65,7 @@ export function ReaderChromeShell({
   rootClassName,
   panelsOpen = false,
   onClosePanels,
+  theme,
 }: ReaderChromeShellProps) {
   const onReaderRootPointerLeave = (e: ReactPointerEvent<HTMLDivElement>) => {
     const next = e.relatedTarget
@@ -74,6 +77,7 @@ export function ReaderChromeShell({
     <div
       ref={readerRootRef}
       className={cn(READER_ROOT_LAYOUT, rootClassName)}
+      data-reader-theme={theme || undefined}
       onPointerLeave={onReaderRootPointerLeave}
     >
       <ReaderTopBar
