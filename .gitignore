@@ -2,3 +2,4 @@ REF*.md
 .DS_Store
 .claude/settings.local.json
 .gitnexus
+node_modules

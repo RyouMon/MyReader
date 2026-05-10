@@ -51,7 +51,8 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build());
 
     #[cfg(debug_assertions)]
     let builder = base.plugin(tauri_plugin_mcp_bridge::init());

@@ -469,7 +469,7 @@ export function ReadiumEpubReader({
   )
 
   const epubNavigatorDefaults = useMemo(
-    () => (isFixedLayout ? {} : { maximalLineLength: null }),
+    () => (isFixedLayout ? {} : {}),
     [isFixedLayout],
   )
 
