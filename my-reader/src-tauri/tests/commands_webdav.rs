@@ -1,4 +1,4 @@
-use my_reader_lib::commands::{build_webdav_test_url, normalize_webdav_root_path};
+use my_reader_lib::commands::source::{build_webdav_test_url, normalize_webdav_root_path};
 
 /// 根路径为空时应回退为 `/`，避免探活请求落到非法地址。
 #[test]
