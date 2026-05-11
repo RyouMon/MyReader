@@ -5,6 +5,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { ensurePdfJsWorker } from "./lib/pdfWorker"
 import { routeTree } from "./routeTree.gen"
 import { installForwardConsoleToLog } from "./forward-console-to-log"
+import "./i18n"
 import "./index.css"
 
 void ensurePdfJsWorker().catch((e) => {
@@ -23,5 +24,12 @@ declare module "@tanstack/react-router" {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
     <RouterProvider router={router} />
+    <div
+      id="a11y-live"
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+      style={{ position: "absolute", left: "-10000px", width: "1px", height: "1px", overflow: "hidden" }}
+    />
   </StrictMode>,
 )

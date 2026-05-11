@@ -199,6 +199,15 @@
   }
 }
 
+/* Global prefers-reduced-motion: disable all animations and transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Active sidebar item indicator */
 [data-sidebar="menu-button"][data-active="true"] {
   background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;

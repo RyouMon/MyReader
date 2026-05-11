@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   Database,
@@ -18,17 +19,17 @@ interface SettingsNavProps {
 
 interface NavItem {
   key: SettingsSection
-  label: string
+  tKey: string
   Icon: LucideIcon
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { key: "libraries", label: "书库管理", Icon: FolderOpen },
-  { key: "dataSources", label: "数据源管理", Icon: Database },
-  { key: "sync", label: "同步与下载", Icon: RefreshCw },
-  { key: "appearance", label: "外观", Icon: Palette },
-  { key: "reading", label: "阅读偏好", Icon: BookOpen },
-  { key: "about", label: "关于", Icon: Info },
+  { key: "libraries", tKey: "settings.nav.libraries", Icon: FolderOpen },
+  { key: "dataSources", tKey: "settings.nav.dataSources", Icon: Database },
+  { key: "sync", tKey: "settings.nav.sync", Icon: RefreshCw },
+  { key: "appearance", tKey: "settings.nav.appearance", Icon: Palette },
+  { key: "reading", tKey: "settings.nav.reading", Icon: BookOpen },
+  { key: "about", tKey: "settings.nav.about", Icon: Info },
 ]
 
 /**
@@ -38,16 +39,17 @@ export default function SettingsNav({
   activeSection,
   onSectionChange,
 }: SettingsNavProps) {
+  const { t } = useTranslation();
   return (
     <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-r border-border bg-settings-nav">
       <div className="shrink-0 border-b border-border px-4 py-[18px] pb-3">
         <h2 className="font-serif text-[15px] font-semibold text-foreground">
-          设置
+          {t("settings.title")}
         </h2>
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {NAV_ITEMS.map(({ key, label, Icon }) => {
+        {NAV_ITEMS.map(({ key, tKey, Icon }) => {
           const isActive = activeSection === key
           return (
             <button
@@ -70,7 +72,7 @@ export default function SettingsNav({
                   isActive ? "opacity-100" : "opacity-70",
                 )}
               />
-              <span>{label}</span>
+              <span>{t(tKey)}</span>
             </button>
           )
         })}
