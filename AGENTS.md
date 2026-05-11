@@ -354,6 +354,8 @@ Apply these when writing, reviewing, or refactoring code:
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) with project-specific scope rules.
 
+**Agent-authored commits:** Do not append trailer lines that attribute the commit to an AI or vendor mailbox (for example `Co-Authored-By: … <noreply@…>`). Commit messages should read like normal project history with no model or tool attribution footers.
+
 ### Scope
 
 Prefix with package: `desktop/<area>`, `mobile/<area>`, or `shared/<area>`.
