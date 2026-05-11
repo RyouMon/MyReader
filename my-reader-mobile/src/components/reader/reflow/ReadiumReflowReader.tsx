@@ -263,7 +263,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
         return;
       }
 
-      const touch = event.nativeEvent.touches[0];
+      const touch = event.nativeEvent.touches[0]!;
       touchStartRef.current = {
         x: touch.pageX,
         y: touch.pageY,

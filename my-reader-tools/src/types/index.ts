@@ -9,6 +9,5 @@ export type {
   BookIdentifier,
   CalibreBook,
   FormatSize,
-  LibraryInfo,
   PaginatedBooks,
 } from "./book"

@@ -185,7 +185,7 @@ class WebDavBackend implements SyncBackend {
     const hrefRegex = /<(?:[^>:]*:)?href>([^<]+)</gi;
     let match: RegExpExecArray | null;
     while ((match = hrefRegex.exec(xml)) !== null) {
-      const hrefPath = decodeURIComponent(match[1].trim().replace(/^https?:\/\/[^/]+/, ""));
+      const hrefPath = decodeURIComponent(match[1]!.trim().replace(/^https?:\/\/[^/]+/, ""));
       // Skip the collection itself.
       if (hrefPath.replace(/\/?$/, "/") === requestPath) continue;
       // Must be a direct child.

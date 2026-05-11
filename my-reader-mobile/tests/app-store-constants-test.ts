@@ -24,6 +24,6 @@ describe("persistableDataSources", () => {
       { id: "webdav-1", hasPassword: true },
       { id: "webdav-2", hasPassword: true },
     ]);
-    expect("password" in result[0]).toBe(false);
+    expect("password" in result[0]!).toBe(false);
   });
 });

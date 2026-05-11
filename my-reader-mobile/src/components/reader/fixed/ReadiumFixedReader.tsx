@@ -48,7 +48,7 @@ function buildTocItemId(prefix: string, path: readonly number[]) {
 function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
   const items: ReaderTocItem[] = [];
   for (let i = 0; i < positions.length; i++) {
-    const p = positions[i];
+    const p = positions[i]!;
     items.push({
       id: buildTocItemId("cbz", [i]),
       label: p.title ?? `第 ${i + 1} 页`,
@@ -189,7 +189,7 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
         return;
       }
 
-      const touch = event.nativeEvent.touches[0];
+      const touch = event.nativeEvent.touches[0]!;
       touchStartRef.current = {
         x: touch.pageX,
         y: touch.pageY,

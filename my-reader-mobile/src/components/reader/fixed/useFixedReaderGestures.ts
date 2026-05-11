@@ -30,8 +30,8 @@ type TouchSnapshot = {
 function pinchDistance(evt: GestureResponderEvent): number | null {
   const { touches } = evt.nativeEvent;
   if (touches.length < 2) return null;
-  const a = touches[0];
-  const b = touches[1];
+  const a = touches[0]!;
+  const b = touches[1]!;
   const dx = a.pageX - b.pageX;
   const dy = a.pageY - b.pageY;
   return Math.sqrt(dx * dx + dy * dy);
@@ -100,7 +100,7 @@ export function useFixedReaderGestures(options: UseFixedReaderGesturesOptions) {
       readerTouchStartRef.current = null;
       return;
     }
-    const touch = event.nativeEvent.touches[0];
+    const touch = event.nativeEvent.touches[0]!;
     readerTouchStartRef.current = {
       x: touch.pageX,
       y: touch.pageY,

@@ -591,7 +591,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         return;
       }
       if (readableFormats.length === 1) {
-        setSelectedFormatById((prev) => ({ ...prev, [book.id]: readableFormats[0] }));
+        setSelectedFormatById((prev) => ({ ...prev, [book.id]: readableFormats[0]! }));
         showAlertWithStatusBarRestore("已设置默认格式", readableFormats[0]);
         return;
       }

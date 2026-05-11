@@ -48,7 +48,7 @@ const addWebDavMobileSchema = z
       const matched = endpoint.match(/^(https?:\/\/)([^/?#]*)(.*)$/i);
       if (matched) {
         const [, protocol, authority, suffix] = matched;
-        endpoint = `${protocol}${authority.replace(/:\d+$/, "")}:${portTrim}${suffix}`;
+        endpoint = `${protocol}${authority!.replace(/:\d+$/, "")}:${portTrim}${suffix}`;
       } else {
         endpoint = `${endpoint.replace(/:\d+$/, "")}:${portTrim}`;
       }

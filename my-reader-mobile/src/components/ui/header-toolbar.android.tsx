@@ -54,18 +54,21 @@ function renderActions(actions?: HeaderToolbarAction[]) {
     return null;
   }
 
+  const first = actions[0];
+  if (!first) return null;
+
   return actions.length === 1 ? (
     <RoundIconButton
-      label={actions[0].label}
-      onPress={actions[0].onPress}
+      label={first.label}
+      onPress={first.onPress}
       icon={
-        actions[0].loading ? (
-          <ActivityIndicator color={String(actions[0].color ?? "#000")} size="small" />
+        first.loading ? (
+          <ActivityIndicator color={String(first.color ?? "#000")} size="small" />
         ) : (
-          actions[0].icon
+          first.icon
         )
       }
-      disabled={actions[0].disabled}
+      disabled={first.disabled}
     />
   ) : (
     <ActionGroup actions={actions} />
