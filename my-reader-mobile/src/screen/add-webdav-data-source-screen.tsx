@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useForm, useStore } from "@tanstack/react-form";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { Alert, TextInput as RNTextInput, StyleSheet } from "react-native";
+import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
 import type { DataSource } from "@/src/data/types";
@@ -97,11 +97,6 @@ function buildDraft(values: WebDavFormInput): DataSource {
     rootPath,
   };
 }
-
-// Inline-style equivalent of className "min-h-10 border-0 bg-transparent py-1 text-[15px]"
-const rnInputStyle = StyleSheet.create({
-  base: { minHeight: 40, borderWidth: 0, backgroundColor: "transparent", paddingVertical: 4, fontSize: 15 },
-});
 
 export default function AddWebDavDataSourceScreen() {
   const palette = useThemePalette();
@@ -245,7 +240,8 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => basePathRef.current?.focus()}
-                    style={[rnInputStyle.base, { color: palette.text }]}
+                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
               )}
@@ -266,7 +262,8 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => usernameRef.current?.focus()}
-                    style={[rnInputStyle.base, { color: palette.text }]}
+                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
               )}
@@ -287,7 +284,8 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => passwordRef.current?.focus()}
-                    style={[rnInputStyle.base, { color: palette.text }]}
+                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
               )}
@@ -307,7 +305,8 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="done"
                     onSubmitEditing={() => void handleSave()}
-                    style={[rnInputStyle.base, { color: palette.text }]}
+                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
               )}

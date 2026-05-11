@@ -85,17 +85,8 @@ function AndroidMenuRippleButton({
       onPress={() => menuRef.current?.show()}
     >
       <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: palette.surface,
-          borderWidth: 1,
-          borderColor: palette.border,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
+        className="h-10 w-10 rounded-full items-center justify-center overflow-hidden border"
+        style={{ backgroundColor: palette.surface, borderColor: palette.border }}
       >
         {icon}
       </View>
@@ -124,8 +115,7 @@ function resolveDownloadTargetFormat(actionId: string): string | undefined {
   return undefined;
 }
 
-const GRID_GAP_PX = 12;
-const SeparatorGrid = () => <View style={{ height: GRID_GAP_PX }} />;
+const SeparatorGrid = () => <View className="h-3" />;
 const SeparatorList = () => null;
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
@@ -549,7 +539,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
       if (isGridView) {
         return (
-          <View style={{ paddingHorizontal: GRID_HALF_GAP }}>
+          <View className="px-1.5">
             <BookCard
               book={item}
               downloadStatus={status}
@@ -714,7 +704,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   const listHeader = (
-    <View style={{ gap: 20, marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
+    <View className="gap-5" style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
       <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
       <SectionHeading
         title={getDownloadFilterLabel(downloadFilter)}
@@ -732,14 +722,14 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           headerLeft:
             Platform.OS !== "ios"
               ? () => (
-                  <View style={{ width: 40, height: 40 }}>
+                  <View className="h-10 w-10">
                     <MenuView
                       ref={leftMenuRef}
                       actions={androidLeftMenuActions}
                       onPressAction={({ nativeEvent }) => handleAndroidLeftMenuAction(nativeEvent.event)}
                       style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
                     >
-                      <View style={{ width: 40, height: 40 }} />
+                      <View className="h-10 w-10" />
                     </MenuView>
                     <AndroidMenuRippleButton
                       menuRef={leftMenuRef}
@@ -752,7 +742,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           headerRight:
             Platform.OS !== "ios"
               ? () => (
-                  <View style={{ width: 40, height: 40 }}>
+                  <View className="h-10 w-10">
                     <MenuView
                       ref={rightMenuRef}
                       actions={androidRightMenuActions}
@@ -760,7 +750,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                       onPressAction={({ nativeEvent }) => handleAndroidRightMenuAction(nativeEvent.event)}
                       style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
                     >
-                      <View style={{ width: 40, height: 40 }} />
+                      <View className="h-10 w-10" />
                     </MenuView>
                     <AndroidMenuRippleButton
                       menuRef={rightMenuRef}
@@ -834,7 +824,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         keyExtractor={(item) => item.id}
         getItemType={getItemType}
         contentInsetAdjustmentBehavior="automatic"
-        style={{ flex: 1, backgroundColor: palette.background }}
+        className="flex-1"
+        style={{ backgroundColor: palette.background }}
         contentContainerStyle={{
           paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
           paddingTop: 16,
