@@ -41,7 +41,7 @@ fn resolve_backend(state: &State<'_, AppState>, id: &str) -> Result<BackendKind,
         .data_sources
         .iter()
         .find(|s| s.id == id)
-        .ok_or_else(|| AppError::NotFound(format!("数据源 {id} 不存在")))?;
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {id}")))?;
     data_source_to_backend_kind(source)
 }
 
@@ -105,7 +105,7 @@ fn resolve_library_path(
         .libraries
         .iter()
         .find(|l| l.id == library_id)
-        .ok_or_else(|| AppError::NotFound(format!("书库 {library_id} 不存在")))?;
+        .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {library_id}")))?;
     Ok((PathBuf::from(&lib.path), lib.id.clone()))
 }
 
@@ -117,7 +117,7 @@ fn open_library_db(
 ) -> Result<Connection, AppError> {
     let path_str = library_path
         .to_str()
-        .ok_or_else(|| AppError::Config("书库路径包含非 UTF-8 字符".into()))?;
+        .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
     let conn = reading_progress::open_db(app, path_str)?;
     file_state::initialize_schema(&conn)?;
     Ok(conn)
@@ -166,7 +166,7 @@ pub async fn sync_list_file_states(
         }
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_TASK_FAILED: {err}")))??;
     info!("Success to list file states. count: {}", rows.len());
     Ok(rows)
 }
@@ -203,7 +203,7 @@ pub async fn sync_download_file(
         )
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_TASK_FAILED: {err}")))??;
 
     info!("Success to download file. path: \"{relative_path}\"");
     Ok(())
@@ -228,7 +228,7 @@ pub async fn sync_evict_local_file(
         file_state::upsert(&conn, &rel, "remote_only", None, None, None)
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_TASK_FAILED: {err}")))??;
 
     info!("Success to evict local file. path: \"{relative_path}\"");
     Ok(())
@@ -259,7 +259,7 @@ pub async fn sync_delete_file_everywhere(
         file_state::delete(&conn, &rel)
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_TASK_FAILED: {err}")))??;
 
     info!("Success to delete file everywhere. path: \"{relative_path}\"");
     Ok(())
@@ -321,7 +321,7 @@ pub async fn sync_db_now(
         tauri::async_runtime::block_on(async { provider.push(&conn, &op_push, &device_push).await })
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking push 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_PUSH_FAILED: {err}")))??;
 
     let provider2 = LwwProvider::default_for_myreader();
     let app_pull = app.clone();
@@ -334,7 +334,7 @@ pub async fn sync_db_now(
         })
     })
     .await
-    .map_err(|err| AppError::Config(format!("blocking pull 任务失败: {err}")))??;
+    .map_err(|err| AppError::Config(format!("BLOCKING_PULL_FAILED: {err}")))??;
 
     info!("Success to run db sync. pushed: {pushed}, pulled: {pulled}");
     Ok(DbSyncReport { pushed, pulled })
@@ -373,7 +373,7 @@ pub async fn sync_db_for_library(
         tauri::async_runtime::block_on(async { prov.push(&conn, &op_push, &device_push).await })
     })
     .await
-    .map_err(|e| AppError::Config(format!("blocking push 失败: {e}")))?
+    .map_err(|e| AppError::Config(format!("BLOCKING_PUSH_FAILED: {e}")))?
     .unwrap_or_else(|e| {
         warn!("db sync: push error: {e}");
         0
@@ -385,7 +385,7 @@ pub async fn sync_db_for_library(
         tauri::async_runtime::block_on(async { prov.pull(&conn, &op, &device).await })
     })
     .await
-    .map_err(|e| AppError::Config(format!("blocking pull 失败: {e}")))?
+    .map_err(|e| AppError::Config(format!("BLOCKING_PULL_FAILED: {e}")))?
     .unwrap_or_else(|e| {
         warn!("db sync: pull error: {e}");
         0

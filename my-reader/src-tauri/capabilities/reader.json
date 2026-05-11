@@ -1,12 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "reader",
-  "description": "独立阅读器窗口（invoke、对话框等与主窗口一致）",
+  "description": "独立阅读器窗口",
   "windows": ["reader-*"],
   "permissions": [
-    "core:default",
-    "opener:default",
+    "core:app:default",
+    "core:event:default",
+    "core:path:default",
+    "core:window:default",
+    "core:webview:default",
     "dialog:default",
+    "opener:default",
     "log:default"
   ]
 }

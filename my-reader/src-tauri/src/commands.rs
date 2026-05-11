@@ -77,13 +77,13 @@ pub fn write_epub_readium_manifest(
     let desired = PathBuf::from(&dir_path);
     let root_canon = root
         .canonicalize()
-        .map_err(|e| AppError::Config(format!("阅读器缓存根目录无效: {}", e)))?;
+        .map_err(|e| AppError::Config(format!("INVALID_READER_CACHE_ROOT: {}", e)))?;
     let dir_canon = desired
         .canonicalize()
-        .map_err(|e| AppError::Config(format!("解压目录无效: {}", e)))?;
+        .map_err(|e| AppError::Config(format!("INVALID_EXTRACT_DIR: {}", e)))?;
     if !dir_canon.starts_with(&root_canon) {
         return Err(AppError::Config(
-            "拒绝写入：路径不在阅读器解压缓存目录内".into(),
+            "PATH_TRAVERSAL_BLOCKED: path is outside reader cache directory".into(),
         ));
     }
     let out = dir_canon.join("manifest.json");
@@ -358,7 +358,7 @@ pub fn build_webdav_test_url(
     root_path: Option<&str>,
 ) -> Result<reqwest::Url, AppError> {
     let mut url = reqwest::Url::parse(endpoint.trim())
-        .map_err(|err| AppError::Config(format!("WebDAV 地址格式错误: {err}")))?;
+        .map_err(|err| AppError::Config(format!("INVALID_WEBDAV_ENDPOINT: {err}")))?;
     let normalized_root = normalize_webdav_root_path(root_path);
     let mut base_path = url.path().trim_end_matches('/').to_string();
     if base_path.is_empty() {
@@ -389,13 +389,13 @@ pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<
 
     let result = async {
         if endpoint.is_empty() {
-            return Err(AppError::Config("WebDAV 地址不能为空".into()));
+            return Err(AppError::Config("WEBDAV_ENDPOINT_REQUIRED".into()));
         }
         if username.is_empty() {
-            return Err(AppError::Config("WebDAV 用户名不能为空".into()));
+            return Err(AppError::Config("WEBDAV_USERNAME_REQUIRED".into()));
         }
         if password.is_empty() {
-            return Err(AppError::Config("WebDAV 密码不能为空".into()));
+            return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
         let method =
@@ -404,7 +404,7 @@ pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
             .build()
-            .map_err(|err| AppError::Config(format!("创建 HTTP 客户端失败: {err}")))?;
+            .map_err(|err| AppError::Config(format!("HTTP_CLIENT_BUILD_FAILED: {err}")))?;
 
         let response = client
             .request(method, target_url.clone())
@@ -415,17 +415,15 @@ pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<
             .map_err(|err| {
                 if err.is_timeout() {
                     return AppError::Config(format!(
-                        "连接超时：请求在 10 秒内未完成（{}）",
-                        target_url
+                        "WEBDAV_TIMEOUT: request did not complete within 10s ({target_url})"
                     ));
                 }
                 if err.is_connect() {
                     return AppError::Config(format!(
-                        "无法建立连接：请检查服务器地址、端口或网络连通性（{}）",
-                        target_url
+                        "WEBDAV_CONNECT_FAILED: check server address, port or network ({target_url})"
                     ));
                 }
-                AppError::Config(format!("连接失败：{err}（{target_url}）"))
+                AppError::Config(format!("WEBDAV_REQUEST_FAILED: {err} ({target_url})"))
             })?;
 
         let status = response.status();
@@ -511,10 +509,10 @@ pub fn add_local_data_source(
     );
     let result = (|| {
         if name.is_empty() {
-            return Err(AppError::Config("数据源名称不能为空".into()));
+            return Err(AppError::Config("DATASOURCE_NAME_REQUIRED".into()));
         }
         if root_path.is_empty() {
-            return Err(AppError::Config("本地存储路径不能为空".into()));
+            return Err(AppError::Config("LOCAL_ROOT_PATH_REQUIRED".into()));
         }
 
         let mut config = state.lock().unwrap();
@@ -524,7 +522,7 @@ pub fn add_local_data_source(
             } => existing == root_path,
             _ => false,
         }) {
-            return Err(AppError::Config("该本地存储路径已存在".into()));
+            return Err(AppError::Config("LOCAL_DATASOURCE_ALREADY_EXISTS".into()));
         }
 
         let source = DataSourceConfig {
@@ -570,16 +568,16 @@ pub fn add_webdav_data_source(
     );
     let result = (|| {
         if name.is_empty() {
-            return Err(AppError::Config("数据源名称不能为空".into()));
+            return Err(AppError::Config("DATASOURCE_NAME_REQUIRED".into()));
         }
         if endpoint.is_empty() {
-            return Err(AppError::Config("WebDAV 地址不能为空".into()));
+            return Err(AppError::Config("WEBDAV_ENDPOINT_REQUIRED".into()));
         }
         if username.is_empty() {
-            return Err(AppError::Config("WebDAV 用户名不能为空".into()));
+            return Err(AppError::Config("WEBDAV_USERNAME_REQUIRED".into()));
         }
         if password.is_empty() {
-            return Err(AppError::Config("WebDAV 密码不能为空".into()));
+            return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
         let mut config = state.lock().unwrap();
@@ -591,7 +589,7 @@ pub fn add_webdav_data_source(
             } => existing_endpoint == endpoint && existing_username == username,
             _ => false,
         }) {
-            return Err(AppError::Config("该 WebDAV 连接已存在".into()));
+            return Err(AppError::Config("WEBDAV_DATASOURCE_ALREADY_EXISTS".into()));
         }
 
         let mut source = DataSourceConfig {
@@ -658,7 +656,7 @@ pub fn remove_data_source(
         let before = config.data_sources.len();
         config.data_sources.retain(|source| source.id != id);
         if before == config.data_sources.len() {
-            return Err(AppError::NotFound(format!("数据源 {} 不存在", id)));
+            return Err(AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", id)));
         }
         for account in webdav_accounts_to_delete {
             credentials::delete_webdav_password(&account)?;
@@ -717,7 +715,7 @@ pub fn add_library(
         let mut config = state.lock().unwrap();
 
         if config.libraries.iter().any(|l| l.path == path) {
-            return Err(AppError::Config("该路径已添加过书库".into()));
+            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
         }
 
         config.libraries.push(lib_config);
@@ -766,7 +764,7 @@ pub fn refresh_library(
             .libraries
             .iter()
             .find(|l| l.id == id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {id} 不存在")))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {id}")))?;
         let lib_path = lib.path.clone();
         drop(config);
 
@@ -858,17 +856,17 @@ pub fn prepare_book_source(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
         let conn =
             calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
         let file_path = calibre::get_book_file_path(&lib.path, &conn, book_id, &format)
             .map_err(|e| AppError::Database(e.to_string()))?
-            .ok_or_else(|| AppError::NotFound(format!("书籍 {} 未找到格式 {}", book_id, format)))?;
+            .ok_or_else(|| AppError::NotFound(format!("BOOK_FORMAT_NOT_FOUND: book={}, format={}", book_id, format)))?;
         let format_upper = format.to_uppercase();
         if format_upper == "EPUB" || format_upper == "CBZ" {
             let cache_key = build_archive_cache_key(&lib.id, book_id, &format_upper);
@@ -984,7 +982,7 @@ pub fn switch_library(
     let result = (|| {
         let mut config = state.lock().unwrap();
         if !config.libraries.iter().any(|lib| lib.id == id) {
-            return Err(AppError::NotFound(format!("书库 {} 不存在", id)));
+            return Err(AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)));
         }
         config.active_library_id = Some(id.clone());
         save_config(&app, &config)?;
@@ -1019,13 +1017,13 @@ pub fn get_books(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn =
             calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
@@ -1061,13 +1059,13 @@ pub fn get_books_page(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn =
             calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
@@ -1107,20 +1105,20 @@ pub fn get_book_detail(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn =
             calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
 
         let book = calibre::get_book_by_id(&conn, book_id)
             .map_err(|e| AppError::Database(e.to_string()))?
-            .ok_or_else(|| AppError::NotFound(format!("书籍 {} 不存在", book_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("BOOK_NOT_FOUND: {}", book_id)))?;
 
         let format_sizes = calibre::get_book_format_sizes(&conn, book_id)
             .map_err(|e| AppError::Database(e.to_string()))?
@@ -1174,13 +1172,13 @@ pub fn get_series_books(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn =
             calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
@@ -1227,13 +1225,13 @@ pub fn get_reading_progress(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn = reading_progress::open_db(&app, &lib.path)?;
         reading_progress::get_progress(&conn, &lib_id, book_id, &format)
@@ -1274,13 +1272,13 @@ pub fn set_reading_progress(
         let lib_id = library_id
             .clone()
             .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("没有活动的书库".into()))?;
+            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", lib_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
 
         let conn = reading_progress::open_db(&app, &lib.path)?;
         let now = unix_epoch_millis();
@@ -1314,7 +1312,7 @@ pub fn get_book_cover(
             .libraries
             .iter()
             .find(|lib| lib.id == library_id)
-            .ok_or_else(|| AppError::NotFound(format!("书库 {} 不存在", library_id)))?;
+            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", library_id)))?;
 
         match calibre::get_book_cover_path(&lib.path, &book_path) {
             Some(cover_path) => {

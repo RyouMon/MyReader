@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": "default-src 'self'; img-src 'self' asset: bookcover: bookfile: blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc:; script-src 'self'; font-src 'self'; media-src 'self' asset: bookcover: bookfile:",
       "assetProtocol": {
         "enable": true,
         "scope": {

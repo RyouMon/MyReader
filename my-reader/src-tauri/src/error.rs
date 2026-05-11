@@ -2,19 +2,29 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("IO 错误: {0}")]
+    #[error("IO_ERROR: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("数据库错误: {0}")]
+    #[error("DATABASE_ERROR: {0}")]
     Database(String),
 
-    #[error("未找到: {0}")]
+    #[error("NOT_FOUND: {0}")]
     NotFound(String),
 
-    #[error("配置错误: {0}")]
+    #[error("CONFIG_ERROR: {0}")]
     Config(String),
 
-    #[error("序列化错误: {0}")]
+    #[error("SERIALIZE_ERROR: {0}")]
+    Serialize(String),
+}
+
+#[derive(serde::Serialize)]
+#[serde(tag = "kind", content = "message")]
+enum ErrorKind {
+    Io(String),
+    Database(String),
+    NotFound(String),
+    Config(String),
     Serialize(String),
 }
 
@@ -23,6 +33,13 @@ impl serde::Serialize for AppError {
     where
         S: serde::ser::Serializer,
     {
-        serializer.serialize_str(self.to_string().as_ref())
+        let kind = match self {
+            Self::Io(_) => ErrorKind::Io(self.to_string()),
+            Self::Database(_) => ErrorKind::Database(self.to_string()),
+            Self::NotFound(_) => ErrorKind::NotFound(self.to_string()),
+            Self::Config(_) => ErrorKind::Config(self.to_string()),
+            Self::Serialize(_) => ErrorKind::Serialize(self.to_string()),
+        };
+        kind.serialize(serializer)
     }
 }
