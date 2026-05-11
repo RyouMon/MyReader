@@ -1,6 +1,7 @@
 use super::*;
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_cache_usage(state: State<'_, AppState>) -> Result<CacheUsageDto, AppError> {
     let max_mb = {
         let config = state.lock().unwrap();
@@ -15,6 +16,7 @@ pub fn get_cache_usage(state: State<'_, AppState>) -> Result<CacheUsageDto, AppE
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn clear_cache() -> Result<(), AppError> {
     let root = reader_cache_root();
     if root.exists() {
@@ -25,6 +27,7 @@ pub fn clear_cache() -> Result<(), AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn enforce_cache_limit(state: State<'_, AppState>) -> Result<(), AppError> {
     let max_bytes = {
         let config = state.lock().unwrap();

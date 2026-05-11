@@ -12,7 +12,7 @@ use crate::calibre;
 use crate::error::AppError;
 use crate::models::{
     AppConfig, BookDetail, BookEntry, BookIdentifier, DataSourceConfig,
-    DataSourceDetail, DataSourceDto, FormatSize, LibraryConfig, LibraryInfo, PaginatedBooks,
+    DataSourceDetail, DataSourceDto, FormatSize, JsonAny, LibraryConfig, LibraryInfo, PaginatedBooks,
     ReadingProgressDto,
 };
 use crate::reader_ui_prefs::ReaderUiPreferences;
@@ -22,7 +22,7 @@ use crate::sync::credentials;
 
 pub type AppState = Mutex<AppConfig>;
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PreparedBookSource {
     pub format: String,
@@ -32,7 +32,7 @@ pub struct PreparedBookSource {
     pub streamer_url: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheUsageDto {
     pub total_bytes: u64,

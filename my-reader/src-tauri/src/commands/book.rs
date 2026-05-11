@@ -1,6 +1,7 @@
 use super::*;
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_books(
     state: State<'_, AppState>,
     library_id: Option<String>,
@@ -37,6 +38,7 @@ pub fn get_books(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_books_page(
     state: State<'_, AppState>,
     library_id: Option<String>,
@@ -88,6 +90,7 @@ pub fn get_books_page(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_book_detail(
     state: State<'_, AppState>,
     library_id: Option<String>,
@@ -151,6 +154,7 @@ pub fn get_book_detail(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_series_books(
     state: State<'_, AppState>,
     library_id: Option<String>,
@@ -198,6 +202,7 @@ pub fn get_series_books(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_book_cover(
     state: State<'_, AppState>,
     library_id: String,

@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// 与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FixedLayoutSettingsDto {
     #[serde(default = "default_reading_layout")]
@@ -56,7 +57,7 @@ impl Default for FixedLayoutSettingsDto {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReaderSettingsDto {
     #[serde(default = "default_theme")]
@@ -117,7 +118,7 @@ impl Default for ReaderSettingsDto {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReflowTtsDto {
     #[serde(default = "default_tts_config_id")]
@@ -142,7 +143,7 @@ impl Default for ReflowTtsDto {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReflowableReaderPreferencesDto {
     #[serde(default)]
@@ -160,7 +161,7 @@ impl Default for ReflowableReaderPreferencesDto {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReaderUiPreferences {
     #[serde(default = "default_version")]
@@ -195,7 +196,7 @@ impl Default for ReaderUiPreferences {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CachePreferencesDto {
     #[serde(default = "default_max_cache_size_mb")]

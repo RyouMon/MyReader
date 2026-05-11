@@ -1,6 +1,7 @@
 use super::*;
 
 #[tauri::command]
+#[specta::specta]
 pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
     info!("Start to list libraries.");
     let result = (|| {
@@ -33,6 +34,7 @@ pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, Ap
 
 /// 新建本地目录数据源时的入参。
 #[tauri::command]
+#[specta::specta]
 pub fn add_library(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -112,6 +114,7 @@ pub fn add_library(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn refresh_library(
     state: State<'_, AppState>,
     id: String,
@@ -168,6 +171,7 @@ pub fn refresh_library(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn remove_library(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -199,6 +203,7 @@ pub fn remove_library(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn switch_library(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -224,6 +229,7 @@ pub fn switch_library(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_active_library_id(state: State<'_, AppState>) -> Option<String> {
     info!("Start to get active library id.");
     let result = state.lock().unwrap().active_library_id.clone();

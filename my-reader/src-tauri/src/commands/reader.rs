@@ -1,9 +1,10 @@
 use super::*;
 
 #[tauri::command]
+#[specta::specta]
 pub fn write_epub_readium_manifest(
     dir_path: String,
-    manifest: serde_json::Value,
+    manifest: JsonAny,
 ) -> Result<(), AppError> {
     ensure_reader_cache_dirs()?;
     let root = reader_cache_extracted_root();
@@ -21,12 +22,13 @@ pub fn write_epub_readium_manifest(
     }
     let out = dir_canon.join("manifest.json");
     let file = fs::File::create(&out)?;
-    serde_json::to_writer_pretty(file, &manifest)
+    serde_json::to_writer_pretty(file, &manifest.0)
         .map_err(|e| AppError::Serialize(e.to_string()))?;
     Ok(())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn prepare_book_source(
     state: State<'_, AppState>,
     library_id: Option<String>,
@@ -95,6 +97,7 @@ pub fn prepare_book_source(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn close_book_streamer(
     streamer_state: State<'_, StreamerState>,
     library_id: String,
@@ -110,6 +113,7 @@ pub async fn close_book_streamer(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_reader_ui_preferences(
     state: State<'_, AppState>,
 ) -> Result<ReaderUiPreferences, AppError> {
@@ -126,6 +130,7 @@ pub fn get_reader_ui_preferences(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn set_reader_ui_preferences(
     app: AppHandle,
     state: State<'_, AppState>,

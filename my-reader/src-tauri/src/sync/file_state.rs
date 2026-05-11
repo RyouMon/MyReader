@@ -9,6 +9,7 @@
 
 use rusqlite::{params, Connection};
 use serde::Serialize;
+use specta::Type;
 
 use crate::error::AppError;
 
@@ -32,7 +33,7 @@ pub fn initialize_schema(conn: &Connection) -> Result<(), AppError> {
         .map_err(|e| AppError::Database(e.to_string()))
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FileStateRow {
     pub path: String,

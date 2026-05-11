@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 use crate::reader_ui_prefs::ReaderUiPreferences;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryConfig {
     pub id: String,
@@ -11,7 +12,7 @@ pub struct LibraryConfig {
 }
 
 /// 数据源配置；用于在本机保存可连接的数据位置（如本地目录、WebDAV）。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DataSourceConfig {
     pub id: String,
@@ -23,7 +24,7 @@ pub struct DataSourceConfig {
 }
 
 /// 数据源类型与其连接参数。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DataSourceDetail {
     Local {
@@ -45,7 +46,7 @@ fn default_data_source_enabled() -> bool {
 }
 
 /// 应用配置根结构，持久化为 `app_data_dir/config.json`（仅机器本地：书库注册、活动书库、阅读器 UI）。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub libraries: Vec<LibraryConfig>,
@@ -72,7 +73,7 @@ impl Default for AppConfig {
 }
 
 /// 前端展示用数据源 DTO，WebDAV 仅回传是否已配置密码，避免在设置页明文回显。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DataSourceDto {
     pub id: String,
@@ -82,7 +83,7 @@ pub struct DataSourceDto {
     pub detail: DataSourceDetailDto,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DataSourceDetailDto {
     Local {
@@ -127,7 +128,7 @@ impl From<&DataSourceConfig> for DataSourceDto {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedBooks {
     pub items: Vec<BookEntry>,
@@ -135,7 +136,7 @@ pub struct PaginatedBooks {
 }
 
 /// Flattened book entry from Calibre's metadata.db with all related data pre-joined.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BookEntry {
     pub id: i64,
@@ -159,7 +160,7 @@ pub struct BookEntry {
 }
 
 /// Extended book detail with format sizes and identifiers pre-loaded.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BookDetail {
     #[serde(flatten)]
@@ -168,21 +169,21 @@ pub struct BookDetail {
     pub identifiers: Vec<BookIdentifier>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FormatSize {
     pub format: String,
     pub size_bytes: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BookIdentifier {
     pub id_type: String,
     pub value: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryInfo {
     pub id: String,
@@ -192,12 +193,24 @@ pub struct LibraryInfo {
 }
 
 /// `get_reading_progress` 返回：Readium `Locator` 的 JSON（与 `@readium/shared` 一致）。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadingProgressDto {
     pub library_id: String,
     pub book_id: i64,
     pub format: String,
+    #[specta(type = specta_typescript::Any)]
     pub locator: serde_json::Value,
     pub updated_at: f64,
+}
+
+/// Wrapper around `serde_json::Value` that exports as TypeScript `any` via specta.
+/// The inner value is public so callers can access `.0` directly.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JsonAny(pub serde_json::Value);
+
+impl specta::Type for JsonAny {
+    fn definition(_types: &mut specta::Types) -> specta::datatype::DataType {
+        specta::datatype::DataType::Reference(specta_typescript::define("any"))
+    }
 }

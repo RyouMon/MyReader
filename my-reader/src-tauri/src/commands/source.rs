@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NewLocalDataSourceInput {
     pub name: String,
@@ -8,7 +8,7 @@ pub struct NewLocalDataSourceInput {
 }
 
 /// 新建 WebDAV 数据源时的入参。
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NewWebdavDataSourceInput {
     pub name: String,
@@ -19,7 +19,7 @@ pub struct NewWebdavDataSourceInput {
 }
 
 /// 测试 WebDAV 连接时的入参。
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TestWebdavConnectionInput {
     pub endpoint: String,
@@ -64,6 +64,7 @@ pub fn build_webdav_test_url(
 }
 
 #[tauri::command]
+#[specta::specta]
 /// 使用真实 WebDAV 请求进行连接测试，成功返回 `Ok(())`。
 pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<(), AppError> {
     let endpoint = input.endpoint.trim();
@@ -159,6 +160,7 @@ pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<
 }
 
 #[tauri::command]
+#[specta::specta]
 /// 返回已配置的数据源列表（敏感字段会在 DTO 层做脱敏）。
 pub fn list_data_sources(
     state: State<'_, AppState>,
@@ -183,6 +185,7 @@ pub fn list_data_sources(
 }
 
 #[tauri::command]
+#[specta::specta]
 /// 新增本地目录类型数据源。
 pub fn add_local_data_source(
     app: AppHandle,
@@ -239,6 +242,7 @@ pub fn add_local_data_source(
 }
 
 #[tauri::command]
+#[specta::specta]
 /// 新增 WebDAV 类型数据源。
 pub fn add_webdav_data_source(
     app: AppHandle,
@@ -319,6 +323,7 @@ pub fn add_webdav_data_source(
 }
 
 #[tauri::command]
+#[specta::specta]
 /// 删除指定数据源。
 pub fn remove_data_source(
     app: AppHandle,

@@ -1,0 +1,43 @@
+#[test]
+fn export_tauri_specta_typescript_bindings() {
+    tauri_specta::Builder::<tauri::Wry>::new()
+        .dangerously_cast_bigints_to_number()
+        .commands(tauri_specta::collect_commands![
+            my_reader_lib::commands::library::list_libraries,
+            my_reader_lib::commands::source::list_data_sources,
+            my_reader_lib::commands::source::test_webdav_connection,
+            my_reader_lib::commands::library::add_library,
+            my_reader_lib::commands::library::refresh_library,
+            my_reader_lib::commands::source::add_local_data_source,
+            my_reader_lib::commands::source::add_webdav_data_source,
+            my_reader_lib::commands::library::remove_library,
+            my_reader_lib::commands::source::remove_data_source,
+            my_reader_lib::commands::library::switch_library,
+            my_reader_lib::commands::library::get_active_library_id,
+            my_reader_lib::commands::book::get_books,
+            my_reader_lib::commands::book::get_books_page,
+            my_reader_lib::commands::book::get_book_detail,
+            my_reader_lib::commands::book::get_series_books,
+            my_reader_lib::commands::progress::get_reading_progress,
+            my_reader_lib::commands::progress::set_reading_progress,
+            my_reader_lib::commands::book::get_book_cover,
+            my_reader_lib::commands::reader::get_reader_ui_preferences,
+            my_reader_lib::commands::reader::set_reader_ui_preferences,
+            my_reader_lib::commands::reader::prepare_book_source,
+            my_reader_lib::commands::reader::write_epub_readium_manifest,
+            my_reader_lib::commands::reader::close_book_streamer,
+            my_reader_lib::commands::cache::get_cache_usage,
+            my_reader_lib::commands::cache::clear_cache,
+            my_reader_lib::commands::cache::enforce_cache_limit,
+            my_reader_lib::sync::commands::sync_list_backends,
+            my_reader_lib::sync::commands::sync_test_backend,
+            my_reader_lib::sync::commands::sync_list_file_states,
+            my_reader_lib::sync::commands::sync_download_file,
+            my_reader_lib::sync::commands::sync_evict_local_file,
+            my_reader_lib::sync::commands::sync_delete_file_everywhere,
+            my_reader_lib::sync::commands::sync_db_now,
+            my_reader_lib::sync::commands::sync_db_for_library,
+        ])
+        .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
+        .unwrap();
+}

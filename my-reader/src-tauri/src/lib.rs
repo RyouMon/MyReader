@@ -28,6 +28,50 @@ const LOG_LINE_TIMESTAMP: &[time::format_description::FormatItem<'static>] =
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let specta_builder = tauri_specta::Builder::<tauri::Wry>::new()
+        .dangerously_cast_bigints_to_number()
+        .commands(tauri_specta::collect_commands![
+            commands::library::list_libraries,
+            commands::source::list_data_sources,
+            commands::source::test_webdav_connection,
+            commands::library::add_library,
+            commands::library::refresh_library,
+            commands::source::add_local_data_source,
+            commands::source::add_webdav_data_source,
+            commands::library::remove_library,
+            commands::source::remove_data_source,
+            commands::library::switch_library,
+            commands::library::get_active_library_id,
+            commands::book::get_books,
+            commands::book::get_books_page,
+            commands::book::get_book_detail,
+            commands::book::get_series_books,
+            commands::progress::get_reading_progress,
+            commands::progress::set_reading_progress,
+            commands::book::get_book_cover,
+            commands::reader::get_reader_ui_preferences,
+            commands::reader::set_reader_ui_preferences,
+            commands::reader::prepare_book_source,
+            commands::reader::write_epub_readium_manifest,
+            commands::reader::close_book_streamer,
+            commands::cache::get_cache_usage,
+            commands::cache::clear_cache,
+            commands::cache::enforce_cache_limit,
+            sync::commands::sync_list_backends,
+            sync::commands::sync_test_backend,
+            sync::commands::sync_list_file_states,
+            sync::commands::sync_download_file,
+            sync::commands::sync_evict_local_file,
+            sync::commands::sync_delete_file_everywhere,
+            sync::commands::sync_db_now,
+            sync::commands::sync_db_for_library,
+        ]);
+
+    #[cfg(debug_assertions)]
+    specta_builder
+        .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
+        .unwrap();
+
     let base = tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -92,42 +136,7 @@ pub fn run() {
         })
         .register_uri_scheme_protocol("bookcover", protocols::bookcover_handler)
         .register_uri_scheme_protocol("bookfile", protocols::bookfile_handler)
-        .invoke_handler(tauri::generate_handler![
-            commands::library::list_libraries,
-            commands::source::list_data_sources,
-            commands::source::test_webdav_connection,
-            commands::library::add_library,
-            commands::library::refresh_library,
-            commands::source::add_local_data_source,
-            commands::source::add_webdav_data_source,
-            commands::library::remove_library,
-            commands::source::remove_data_source,
-            commands::library::switch_library,
-            commands::library::get_active_library_id,
-            commands::book::get_books,
-            commands::book::get_books_page,
-            commands::book::get_book_detail,
-            commands::book::get_series_books,
-            commands::progress::get_reading_progress,
-            commands::progress::set_reading_progress,
-            commands::book::get_book_cover,
-            commands::reader::get_reader_ui_preferences,
-            commands::reader::set_reader_ui_preferences,
-            commands::reader::prepare_book_source,
-            commands::reader::write_epub_readium_manifest,
-            commands::reader::close_book_streamer,
-            commands::cache::get_cache_usage,
-            commands::cache::clear_cache,
-            commands::cache::enforce_cache_limit,
-            sync::commands::sync_list_backends,
-            sync::commands::sync_test_backend,
-            sync::commands::sync_list_file_states,
-            sync::commands::sync_download_file,
-            sync::commands::sync_evict_local_file,
-            sync::commands::sync_delete_file_everywhere,
-            sync::commands::sync_db_now,
-            sync::commands::sync_db_for_library,
-        ])
+        .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

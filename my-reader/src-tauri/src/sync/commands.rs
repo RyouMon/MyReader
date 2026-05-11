@@ -23,7 +23,7 @@ use super::data_source_to_backend_kind;
 use super::db_sync::{LwwProvider, SyncProvider};
 use super::{file_ops, file_state, manifest};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncBackendInfo {
     pub id: String,
@@ -46,6 +46,7 @@ fn resolve_backend(state: &State<'_, AppState>, id: &str) -> Result<BackendKind,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn sync_list_backends(state: State<'_, AppState>) -> Result<Vec<SyncBackendInfo>, AppError> {
     info!("Start to list sync backends.");
     let config = state.lock().unwrap();
@@ -84,6 +85,7 @@ pub fn sync_list_backends(state: State<'_, AppState>) -> Result<Vec<SyncBackendI
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_test_backend(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
     info!("Start to test sync backend via OpenDAL. id: \"{id}\"");
     let kind = resolve_backend(&state, &id)?;
@@ -124,6 +126,7 @@ fn open_library_db(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_list_file_states(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -172,6 +175,7 @@ pub async fn sync_list_file_states(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_download_file(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -210,6 +214,7 @@ pub async fn sync_download_file(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_evict_local_file(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -235,6 +240,7 @@ pub async fn sync_evict_local_file(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_delete_file_everywhere(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -283,7 +289,7 @@ fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<Str
     Ok(id)
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DbSyncReport {
     pub pushed: usize,
@@ -295,6 +301,7 @@ pub struct DbSyncReport {
 /// 阶段 1 使用 `LwwProvider`（行级 LWW by `updated_at`）；后续接入 cr-sqlite 时，
 /// 调用方代码无需变化（`SyncProvider` trait 即可替换）。
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_db_now(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -345,6 +352,7 @@ pub async fn sync_db_now(
 /// 直接以书库根目录构建 `fs` Operator，无需配置独立的本地数据源。
 /// 对 iCloud 书库，写入 `.myreader/changes/` 的文件会被 iCloud 自动同步到其他设备。
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_db_for_library(
     app: AppHandle,
     state: State<'_, AppState>,

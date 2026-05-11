@@ -18,14 +18,20 @@ pub enum AppError {
     Serialize(String),
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, specta::Type)]
 #[serde(tag = "kind", content = "message")]
-enum ErrorKind {
+pub enum ErrorKind {
     Io(String),
     Database(String),
     NotFound(String),
     Config(String),
     Serialize(String),
+}
+
+impl specta::Type for AppError {
+    fn definition(types: &mut specta::Types) -> specta::datatype::DataType {
+        ErrorKind::definition(types)
+    }
 }
 
 impl serde::Serialize for AppError {

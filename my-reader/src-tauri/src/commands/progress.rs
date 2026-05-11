@@ -9,6 +9,7 @@ fn unix_epoch_millis() -> f64 {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_reading_progress(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -52,13 +53,14 @@ pub fn get_reading_progress(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn set_reading_progress(
     app: AppHandle,
     state: State<'_, AppState>,
     library_id: Option<String>,
     book_id: i64,
     format: String,
-    locator: serde_json::Value,
+    locator: JsonAny,
 ) -> Result<(), AppError> {
     info!(
         "Start to set reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{}\"",
@@ -80,7 +82,7 @@ pub fn set_reading_progress(
 
         let conn = reading_progress::open_db(&app, &lib.path)?;
         let now = unix_epoch_millis();
-        reading_progress::set_progress(&conn, book_id, &format, &locator, now)
+        reading_progress::set_progress(&conn, book_id, &format, &locator.0, now)
     })();
 
     match &result {

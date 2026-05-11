@@ -25,6 +25,9 @@ tauri-plugin-window-state = "2"
 tauri-plugin-mcp-bridge = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+specta = { version = "2.0.0-rc.25", features = ["derive", "serde_json"] }
+specta-typescript = { version = "0.0.12", features = ["serde"] }
+tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "1"
 base64 = "0.22"
