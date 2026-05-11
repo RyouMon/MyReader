@@ -21,19 +21,18 @@ import {
   Screen,
   SearchField,
   SectionHeading,
-  type BookDownloadStatus,
   type HeaderToolbarAction,
 } from "../components";
 import {
-  getFormatFromPath,
   getReadableFormats,
-  pathBelongsToBook,
   resolveEffectiveFormat,
 } from "../data/book-formats";
-import { getAllBookFormats, getBookFormatPaths } from "../data/calibre";
+import { getBookFormatPaths } from "../data/calibre";
 import type { BookItem } from "../data/types";
 import { describeDownloadError } from "../errors";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useLibraryBookMeta } from "../hooks/use-library-book-meta";
+import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "../hooks/use-library-book-search";
 import { notifyLibraryRefresh } from "../notifications/download-notifications";
 import { useAppStore } from "../store/app-store";
 import type { LibraryViewMode } from "../store/app-store.types";
@@ -41,11 +40,8 @@ import { useLibraryStore } from "../store/library-store";
 import {
   dismissTasksForPath,
   enqueue as enqueueDownload,
-  useDownloadStatusTasks,
-  type DownloadStatusTask,
 } from "../sync/download-store";
 import { syncDbNow } from "../sync/db_sync";
-import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "../sync/file_state";
 import { useSyncActions } from "../sync/useSyncActions";
 
 const downloadFilterOptions = [
@@ -60,19 +56,11 @@ const viewOptions: { value: LibraryViewMode; label: string }[] = [
   { value: "list", label: "列表视图" },
 ];
 
-type DownloadFilterOption = (typeof downloadFilterOptions)[number]["value"];
-type SortOption = (typeof sortOptions)[number];
-type BookFileStateMap = Record<string, BookDownloadStatus>;
-type BookFileStateRowMap = Record<string, FileStateRow[]>;
-type BookFileStateBundle = { statuses: BookFileStateMap; rows: BookFileStateRowMap };
-type BookFormatMeta = { readableFormats: string[]; effectiveFormat?: string };
-
 const defaultSortOption: SortOption = "最近添加";
-const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
+const downloadedStates = new Set(["present", "local_only", "dirty_push"]);
 const GRID_MIN_CARD_WIDTH = 150;
 const GRID_MIN_COLUMNS = 2;
 const GRID_MAX_COLUMNS = 6;
-const EMPTY_FILE_STATE_BUNDLE: BookFileStateBundle = { statuses: {}, rows: {} };
 
 type LibraryScreenProps = {
   libraryId?: string;
@@ -140,20 +128,6 @@ const GRID_GAP_PX = 12;
 const SeparatorGrid = () => <View style={{ height: GRID_GAP_PX }} />;
 const SeparatorList = () => null;
 
-/** Compares newest Calibre additions first, falling back to id for older rows without timestamps. */
-function compareRecentlyAdded(left: BookItem, right: BookItem): number {
-  const byTimestamp = (right.timestamp ?? "").localeCompare(left.timestamp ?? "");
-  if (byTimestamp !== 0) return byTimestamp;
-
-  const leftId = left.calibreId ?? Number(left.id);
-  const rightId = right.calibreId ?? Number(right.id);
-  if (Number.isFinite(leftId) && Number.isFinite(rightId)) {
-    return rightId - leftId;
-  }
-
-  return right.id.localeCompare(left.id, "zh-CN", { numeric: true });
-}
-
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
@@ -168,17 +142,15 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
-  const [fileStateBundle, setFileStateBundle] = useState<BookFileStateBundle>(EMPTY_FILE_STATE_BUNDLE);
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
-  const [bookFormatsById, setBookFormatsById] = useState<Record<string, string[]>>({});
-  const fileStateRevision = useFileStateRevision();
-  const statusTasks = useDownloadStatusTasks();
   const viewMode = useAppStore((state) => state.libraryViewMode);
   const setViewMode = useAppStore((state) => state.setLibraryViewMode);
   const dataSources = useAppStore((state) => state.dataSources);
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
   const syncActions = useSyncActions();
+
+
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevRefreshingIdRef = useRef<string | null>(null);
@@ -215,6 +187,19 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const selectedLibrary = useMemo(
     () => (effectiveLibraryId ? libraries.find((library) => library.id === effectiveLibraryId) ?? null : null),
     [libraries, effectiveLibraryId]
+  );
+
+  const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById } = useLibraryBookMeta(
+    selectedLibrary,
+    books,
+    selectedFormatById,
+  );
+  const { visibleBooks } = useLibraryBookSearch(
+    books,
+    debouncedQuery,
+    sortBy,
+    downloadFilter,
+    bookDownloadStatusById,
   );
 
   /** Opens a platform-neutral library picker menu without navigation. */
@@ -328,56 +313,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     void switchLibrary(libraryIdProp);
   }, [activeLibraryId, libraryIdProp, selectedLibrary, switchLibrary]);
 
-  useEffect(() => {
-    if (!selectedLibrary) {
-      setFileStateBundle(EMPTY_FILE_STATE_BUNDLE);
-      return;
-    }
-
-    if (selectedLibrary.sourceType !== "webdav" || !selectedLibrary.dataSourceId) {
-      const statuses: BookFileStateMap = {};
-      for (const book of books) statuses[book.id] = "downloaded";
-      setFileStateBundle({ statuses, rows: {} });
-      return;
-    }
-
-    let cancelled = false;
-    void listFileStates({
-      dataSourceId: selectedLibrary.dataSourceId,
-      libraryId: selectedLibrary.id,
-    }).then((rows) => {
-      if (cancelled) return;
-      const statuses: BookFileStateMap = {};
-      const rowsByBook: BookFileStateRowMap = {};
-      for (const book of books) {
-        const matchedRows = rows.filter((row) => pathBelongsToBook(row.path, book.path));
-        rowsByBook[book.id] = matchedRows;
-        statuses[book.id] = matchedRows.some((row) => downloadedStates.has(row.localState))
-          ? "downloaded"
-          : "notDownloaded";
-      }
-      setFileStateBundle({ statuses, rows: rowsByBook });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [books, fileStateRevision, selectedLibrary]);
-
-  useEffect(() => {
-    if (!selectedLibrary) {
-      setBookFormatsById({});
-      return;
-    }
-    let cancelled = false;
-    void getAllBookFormats(selectedLibrary).then((formats) => {
-      if (cancelled) return;
-      setBookFormatsById(formats);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [books, selectedLibrary]);
 
   useEffect(() => {
     if (prevRefreshingIdRef.current !== null && refreshingLibraryId === null) {
@@ -390,133 +325,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const isWebdav = selectedLibrary?.sourceType === "webdav";
   const selectedLibraryId = selectedLibrary?.id;
 
-  /**
-   * One-shot per-book format index. Drives both menu construction and download
-   * status resolution without rebuilding inner arrays per book on every render.
-   */
-  const bookFormatMetaById = useMemo(() => {
-    const map = new Map<string, BookFormatMeta>();
-    for (const book of books) {
-      const readableFormats = getReadableFormats(bookFormatsById[book.id]);
-      const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
-      map.set(book.id, { readableFormats, effectiveFormat });
-    }
-    return map;
-  }, [books, bookFormatsById, selectedFormatById]);
 
-  /**
-   * Reverse index of in-flight tasks by bookId, computed once per status change
-   * (NOT per progress tick — `useDownloadStatusTasks` ignores progress-only updates).
-   * Removes the per-book O(N) `books.find()` from the status pipeline.
-   */
-  const tasksByBookId = useMemo(() => {
-    const map = new Map<string, DownloadStatusTask[]>();
-    if (!selectedLibraryId) return map;
-
-    let needPathLookup = false;
-    for (const task of statusTasks) {
-      if (task.libraryId !== selectedLibraryId) continue;
-      if (task.status !== "queued" && task.status !== "starting" && task.status !== "downloading" && task.status !== "done") continue;
-      if (!task.bookId) {
-        needPathLookup = true;
-        continue;
-      }
-      const existing = map.get(task.bookId);
-      if (existing) existing.push(task);
-      else map.set(task.bookId, [task]);
-    }
-
-    if (needPathLookup) {
-      for (const task of statusTasks) {
-        if (task.bookId) continue;
-        if (task.libraryId !== selectedLibraryId) continue;
-        if (task.status !== "queued" && task.status !== "starting" && task.status !== "downloading" && task.status !== "done") continue;
-        const book = books.find((candidate) => pathBelongsToBook(task.relativePath, candidate.path));
-        if (!book) continue;
-        const existing = map.get(book.id);
-        if (existing) existing.push(task);
-        else map.set(book.id, [task]);
-      }
-    }
-
-    return map;
-  }, [statusTasks, books, selectedLibraryId]);
-
-  const bookDownloadStatusById = useMemo(() => {
-    const next: BookFileStateMap = {};
-    const { statuses, rows } = fileStateBundle;
-
-    for (const book of books) {
-      if (!isWebdav) {
-        next[book.id] = statuses[book.id] ?? "downloaded";
-        continue;
-      }
-      const meta = bookFormatMetaById.get(book.id);
-      const effectiveFormat = meta?.effectiveFormat;
-      const bookRows = rows[book.id] ?? [];
-      const isDownloadedByEffectiveFormat = effectiveFormat
-        ? bookRows.some(
-            (row) =>
-              downloadedStates.has(row.localState) && getFormatFromPath(row.path) === effectiveFormat,
-          )
-        : false;
-      next[book.id] = isDownloadedByEffectiveFormat ? "downloaded" : "notDownloaded";
-    }
-
-    for (const [bookId, tasks] of tasksByBookId) {
-      const meta = bookFormatMetaById.get(bookId);
-      const effectiveFormat = meta?.effectiveFormat;
-      if (!effectiveFormat) continue;
-      for (const task of tasks) {
-        const taskFormat = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
-        if (taskFormat !== effectiveFormat) continue;
-        if (task.status === "done") {
-          next[bookId] = "downloaded";
-        } else if (next[bookId] !== "downloaded") {
-          next[bookId] = "downloading";
-        }
-      }
-    }
-
-    return next;
-  }, [bookFormatMetaById, books, fileStateBundle, isWebdav, tasksByBookId]);
-
-  /**
-   * Search + sort step does NOT depend on download status, so progress changes
-   * never trigger a resort. Filtering by download state is a separate, cheap pass.
-   */
-  const sortedSearchedBooks = useMemo(() => {
-    const needle = debouncedQuery.trim().toLowerCase();
-    const searchedBooks = !needle
-      ? books
-      : books.filter((book) => {
-          const authorMatches = book.authors?.some((author) => author.toLowerCase().includes(needle));
-          return (
-            book.title.toLowerCase().includes(needle) ||
-            book.author.toLowerCase().includes(needle) ||
-            Boolean(authorMatches)
-          );
-        });
-
-    return [...searchedBooks].sort((left, right) => {
-      switch (sortBy) {
-        case "作者":
-          return left.author.localeCompare(right.author, "zh-CN");
-        case "最近添加":
-          return compareRecentlyAdded(left, right);
-        case "书名":
-        default:
-          return left.title.localeCompare(right.title, "zh-CN");
-      }
-    });
-  }, [books, debouncedQuery, sortBy]);
-
-  const visibleBooks = useMemo(() => {
-    if (downloadFilter === "all") return sortedSearchedBooks;
-    return sortedSearchedBooks.filter(
-      (book) => (bookDownloadStatusById[book.id] ?? "notDownloaded") === downloadFilter,
-    );
-  }, [bookDownloadStatusById, downloadFilter, sortedSearchedBooks]);
 
   /**
    * Snapshot of every value that menu/press handlers need. Updated each render
