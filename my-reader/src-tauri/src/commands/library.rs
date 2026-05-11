@@ -43,39 +43,43 @@ pub fn add_library(
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to add library. path: \"{path}\", requested name: {name:?}");
     let result = (|| {
-        let path_for_result = path.clone();
-        if !calibre::validate_calibre_library(&path) {
+        let canon_path = dunce::canonicalize(&path)
+            .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
+        let canon_str = canon_path.to_string_lossy().to_string();
+        let path_for_result = canon_str.clone();
+
+        if !calibre::validate_calibre_library(&canon_str) {
             return Err(AppError::NotFound(format!(
-                "未在 {} 找到 Calibre 数据库 (metadata.db)",
-                path
+                "METADATA_DB_NOT_FOUND: {}",
+                canon_str
             )));
         }
 
         let lib_name = name.unwrap_or_else(|| {
-            std::path::Path::new(&path)
+            canon_path
                 .file_name()
                 .and_then(|n| n.to_str())
-                .unwrap_or("未命名书库")
+                .unwrap_or("Unnamed Library")
                 .to_string()
         });
 
         let id = uuid::Uuid::new_v4().to_string();
 
-        reading_progress::ensure_library_data_dir(&path)?;
+        reading_progress::ensure_library_data_dir(&canon_str)?;
 
-        let book_count = calibre::open_calibre_db(&path)
+        let book_count = calibre::open_calibre_db(&canon_str)
             .and_then(|conn| calibre::get_book_count(&conn))
             .unwrap_or(0);
 
         let lib_config = LibraryConfig {
             id: id.clone(),
             name: lib_name.clone(),
-            path: path.clone(),
+            path: canon_str.clone(),
         };
 
         let mut config = state.lock().unwrap();
 
-        if config.libraries.iter().any(|l| l.path == path) {
+        if config.libraries.iter().any(|l| l.path == canon_str) {
             return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
         }
 
@@ -130,14 +134,18 @@ pub fn refresh_library(
         let lib_path = lib.path.clone();
         drop(config);
 
-        if !calibre::validate_calibre_library(&lib_path) {
+        let lib_path_canon = dunce::canonicalize(&lib_path)
+            .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
+        let lib_path_str = lib_path_canon.to_string_lossy().to_string();
+
+        if !calibre::validate_calibre_library(&lib_path_str) {
             return Err(AppError::NotFound(format!(
-                "未在 {} 找到 Calibre 数据库 (metadata.db)",
-                lib_path
+                "METADATA_DB_NOT_FOUND: {}",
+                lib_path_str
             )));
         }
 
-        let conn = calibre::open_calibre_db(&lib_path)
+        let conn = calibre::open_calibre_db(&lib_path_str)
             .map_err(|e| AppError::Database(e.to_string()))?;
         let books = calibre::get_all_books(&conn).map_err(|e| AppError::Database(e.to_string()))?;
         let book_count = books.len();
@@ -145,16 +153,16 @@ pub fn refresh_library(
 
         clear_orphaned_library_cache_files(&id, &book_ids)?;
 
-        let lib_name = Path::new(&lib_path)
+        let lib_name = lib_path_canon
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("未命名书库")
+            .unwrap_or("Unnamed Library")
             .to_string();
 
         Ok(LibraryInfo {
             id: id.clone(),
             name: lib_name,
-            path: lib_path,
+            path: lib_path_str,
             book_count,
         })
     })();

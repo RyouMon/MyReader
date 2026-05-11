@@ -41,9 +41,18 @@ pub fn bookcover_handler<R: tauri::Runtime>(
         return not_found();
     };
 
-    let cover_file = std::path::Path::new(&lib.path)
-        .join(&book_path)
-        .join("cover.jpg");
+    let lib_path = match dunce::canonicalize(&lib.path) {
+        Ok(p) => p,
+        Err(_) => return not_found(),
+    };
+    let cover_file = lib_path.join(&book_path).join("cover.jpg");
+    let cover_file = match dunce::canonicalize(&cover_file) {
+        Ok(p) => p,
+        Err(_) => return not_found(),
+    };
+    if !cover_file.starts_with(&lib_path) {
+        return not_found();
+    }
 
     match std::fs::read(&cover_file) {
         Ok(data) => {
@@ -102,6 +111,11 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         return not_found();
     };
 
+    let lib_path = match dunce::canonicalize(&lib.path) {
+        Ok(p) => p,
+        Err(_) => return not_found(),
+    };
+
     let conn = match calibre::open_calibre_db(&lib.path) {
         Ok(c) => c,
         Err(_) => return not_found(),
@@ -111,6 +125,13 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Ok(Some(p)) => p,
         _ => return not_found(),
     };
+    let file_path = match dunce::canonicalize(&file_path) {
+        Ok(p) => p,
+        Err(_) => return not_found(),
+    };
+    if !file_path.starts_with(&lib_path) {
+        return not_found();
+    }
 
     match std::fs::read(&file_path) {
         Ok(data) => {

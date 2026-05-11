@@ -46,6 +46,14 @@ notify = "7"
 futures = "0.3"
 warp = "0.3"
 portpicker = "0.1"
+dunce = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
 
 [[test]]
 name = "commands_webdav"
