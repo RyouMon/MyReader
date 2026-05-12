@@ -43,7 +43,7 @@ fn needs_legacy_table_drop(conn: &Connection) -> Result<bool, AppError> {
 }
 
 /// 统一数据库 schema 初始化入口，确保生产与测试环境使用一致结构。
-fn initialize_schema(conn: &Connection) -> Result<(), AppError> {
+pub fn initialize_schema(conn: &Connection) -> Result<(), AppError> {
     if needs_legacy_table_drop(conn)? {
         conn.execute("DROP TABLE reading_progress", [])?;
         log::info!(target: LOG_TARGET, "Dropped legacy reading_progress (anchor_json schema).");
@@ -102,6 +102,12 @@ pub struct SqliteProgressRepository {
 impl SqliteProgressRepository {
     pub fn open(library_path: &str) -> Result<Self, AppError> {
         let conn = open_db(library_path)?;
+        Ok(Self { conn })
+    }
+
+    /// Construct from an existing connection (useful for in-memory tests).
+    pub fn from_connection(conn: Connection) -> Result<Self, AppError> {
+        initialize_schema(&conn)?;
         Ok(Self { conn })
     }
 }

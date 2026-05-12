@@ -12,11 +12,11 @@ use std::path::{Path, PathBuf};
 use log::{error, info, warn};
 use rusqlite::Connection;
 use serde::Serialize;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::repositories::progress_repo;
+use crate::repositories::{config_repo, progress_repo};
 
 use super::backend::{self, BackendKind};
 use super::data_source_to_backend_kind;
@@ -284,7 +284,8 @@ fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<Str
     let id = uuid::Uuid::new_v4().to_string();
     let mut config = state.lock().unwrap();
     config.device_id = Some(id.clone());
-    crate::services::config_service::save_config(app, &config)?;
+    let path = config_repo::config_path(&app.path().app_data_dir()?);
+    config_repo::save_config(&path, &config)?;
     Ok(id)
 }
 
