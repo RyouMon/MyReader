@@ -10,7 +10,7 @@ import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
 import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
-import { BookDetailContent, getDetailColors } from "@/src/components/books/book-detail";
+import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/data/calibre";
 import type { WebDavDataSource } from "@/src/data/types";

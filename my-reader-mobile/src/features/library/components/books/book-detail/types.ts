@@ -1,4 +1,4 @@
-import type { ThemePalette } from "../../../design/tokens";
+import type { ThemePalette } from "@/src/design/tokens";
 
 export type DetailColors = {
   accent: string;

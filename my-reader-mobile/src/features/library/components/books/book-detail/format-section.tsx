@@ -1,15 +1,15 @@
 import Feather from "@expo/vector-icons/Feather";
 import type { BookDetail } from "my-reader-tools/types/book";
 
-import { Pressable, ScrollView, Text, View } from "../../../tw";
-import { Button } from "../../ui";
-import { FONT_UI } from "../../../design/typography";
-import { FORMAT_LABELS, formatFileSize } from "../../../utils/book-detail";
+import { Pressable, ScrollView, Text, View } from "@/tw";
+import { Button } from "@/src/components/ui";
+import { FONT_UI } from "@/src/design/typography";
+import { FORMAT_LABELS, formatFileSize } from "@/src/utils/book-detail";
 import {
   cancel,
   useDownloadTaskForBookFormat,
   useDownloadTaskForPath,
-} from "../../../sync/download-store";
+} from "@/src/sync/download-store";
 import type { DetailColors } from "./types";
 import { SectionFrame, SectionHeader } from "./section-frame";
 
@@ -17,7 +17,7 @@ type FormatSectionProps = {
   book: BookDetail;
   colors: DetailColors;
   defaultFormat: string | null;
-  formatInfoMap: Record<string, { relativePath: string; localState: import("../../../sync/file_state").LocalState | null }>;
+  formatInfoMap: Record<string, { relativePath: string; localState: import("@/src/sync/file_state").LocalState | null }>;
   formatSizeMap: Map<string, number>;
   isNetworkSource: boolean;
   libraryId: string;
@@ -100,7 +100,7 @@ function FormatCard({
   bookId: string;
   colors: DetailColors;
   defaultFormatKey: string | null;
-  fileLocalState: import("../../../sync/file_state").LocalState | null;
+  fileLocalState: import("@/src/sync/file_state").LocalState | null;
   format: string;
   isNetworkSource: boolean;
   isReadable: boolean;

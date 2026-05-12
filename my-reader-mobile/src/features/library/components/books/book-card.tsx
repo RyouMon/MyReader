@@ -10,8 +10,8 @@ import type { BookItem } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 
-import { CircularProgress } from "../ui/circular-progress";
-import { ProgressBar } from "../ui/progress-bar";
+import { CircularProgress } from "@/src/components/ui/circular-progress";
+import { ProgressBar } from "@/src/components/ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 import { DownloadProgressIndicator } from "./download-progress-indicator";
 

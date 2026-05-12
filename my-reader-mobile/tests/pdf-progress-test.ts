@@ -1,4 +1,4 @@
-import { pdfEqualPageProgressPercent } from "@/src/components/reader/native-pdf/pdfProgress";
+import { pdfEqualPageProgressPercent } from "@/src/features/reader/components/reader/native-pdf/pdfProgress";
 
 describe("pdfEqualPageProgressPercent", () => {
   test("returns 0 when total page count is invalid", () => {

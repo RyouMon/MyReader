@@ -1,6 +1,6 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { lazy, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
@@ -11,9 +11,9 @@ import {
   ReaderSettingsSheet,
   ReaderTocSheet,
   ReaderTopBar,
-} from "@/src/components/reader/chrome";
+} from "@/src/features/reader/components/reader/chrome";
 import { useThemePalette } from "@/src/design/tokens";
-import { getFallbackCoverColor } from "@/src/components/books/book-cover";
+import { getFallbackCoverColor } from "@/src/features/library/components/books/book-cover";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReadingLayout } from "@/src/store/app-store.types";
 import { toNativeFilesystemPath } from "@/src/utils/io";
@@ -23,8 +23,8 @@ import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 
 /** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
-const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
-const ReadiumReflowReader = lazy(async () => import("@/src/components/reader/reflow/ReadiumReflowReader"));
+const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));
+const ReadiumReflowReader = lazy(async () => import("@/src/features/reader/components/reader/reflow/ReadiumReflowReader"));
 
 /** 目录日志预览条目数，避免一次性输出过多日志。 */
 const TOC_LOG_PREVIEW_COUNT = 5;

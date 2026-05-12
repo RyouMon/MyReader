@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { BookDownloadStatus } from "@/src/components/books/book-cover";
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffectiveFormat } from "@/src/data/book-formats";
 import { getAllBookFormats } from "@/src/data/calibre";
 import type { BookItem, Library } from "@/src/data/types";

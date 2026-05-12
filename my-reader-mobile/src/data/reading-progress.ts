@@ -1,6 +1,6 @@
 import type { Locator } from "@ryoumon/react-native-readium";
 
-import { parseStoredLocator } from "../components/reader/locator";
+import { parseStoredLocator } from "@/src/features/reader/components/reader/locator";
 import type { Library } from "./types";
 import { getLibraryDatabase } from "./library-db";
 

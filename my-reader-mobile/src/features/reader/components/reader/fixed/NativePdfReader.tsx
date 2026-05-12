@@ -2,7 +2,7 @@ import {
   tocItemsFromNativePdfTableContents,
   type NativePdfTableContentNode,
   pdfEqualPageProgressPercent,
-} from "@/src/components/reader/native-pdf";
+} from "@/src/features/reader/components/reader/native-pdf";
 import {
   useCallback,
   useEffect,
@@ -20,9 +20,9 @@ import {
 import Animated, { FadeOut } from "react-native-reanimated";
 
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
-import { pdfPageLocator } from "@/src/components/reader/locator";
-import { flattenFixedToc } from "@/src/components/reader/reader-toc";
-import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import { pdfPageLocator } from "@/src/features/reader/components/reader/locator";
+import { flattenFixedToc } from "@/src/features/reader/components/reader/reader-toc";
+import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import type {
   FixedNavigationMode,
   ReadingLayout,

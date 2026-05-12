@@ -25,7 +25,7 @@ export type SyncTargetInfo = {
   summary: string;
 };
 
-type SyncActions = {
+export type SyncActions = {
   getTargetInfo: (libraryId: string) => Promise<SyncTargetInfo>;
   testBackend: (libraryId: string) => Promise<void>;
   downloadFile: (libraryId: string, relativePath: string) => Promise<void>;

@@ -1,6 +1,6 @@
 import type { MenuAction } from "@react-native-menu/menu";
 
-import type { BookDownloadStatus } from "@/src/components/books/book-cover";
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 
 import { getReadableFormats, resolveEffectiveFormat } from "./book-formats";
 

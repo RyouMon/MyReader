@@ -1,5 +1,5 @@
-import { Text, View } from "../../../tw";
-import { FONT_MONO, FONT_UI } from "../../../design/typography";
+import { Text, View } from "@/tw";
+import { FONT_MONO, FONT_UI } from "@/src/design/typography";
 import type { DetailColors, InfoCardItem } from "./types";
 import { SectionFrame, SectionHeader } from "./section-frame";
 

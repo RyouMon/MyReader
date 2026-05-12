@@ -1,5 +1,5 @@
-import { Text } from "../../../tw";
-import { FONT_UI } from "../../../design/typography";
+import { Text } from "@/tw";
+import { FONT_UI } from "@/src/design/typography";
 import type { DetailColors } from "./types";
 import { SectionFrame, SectionHeader } from "./section-frame";
 

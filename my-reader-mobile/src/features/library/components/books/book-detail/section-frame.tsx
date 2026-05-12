@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { FONT_DISPLAY, FONT_UI } from "../../../design/typography";
-import { Text, View } from "../../../tw";
+import { FONT_DISPLAY, FONT_UI } from "@/src/design/typography";
+import { Text, View } from "@/tw";
 import type { DetailColors } from "./types";
 
 export function SectionFrame({ children, colors }: { children: ReactNode; colors: DetailColors }) {

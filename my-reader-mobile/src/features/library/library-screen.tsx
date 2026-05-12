@@ -11,11 +11,8 @@ import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status
 import { useThemePalette } from "@/src/design/tokens";
 
 import {
-  BookCard,
-  BookRow,
   EmptyState,
   HeaderToolbar,
-  LibrarySkeletonContent,
   PrimaryButton,
   RoundIconButton,
   Screen,
@@ -23,6 +20,11 @@ import {
   SectionHeading,
   type HeaderToolbarAction,
 } from "@/src/components";
+import {
+  BookCard,
+  BookRow,
+  LibrarySkeletonContent,
+} from "@/src/features/library/components/books";
 import { AndroidMenuRippleButton } from "@/src/components/ui/AndroidMenuRippleButton";
 import type { BookItem } from "@/src/data/types";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
@@ -272,21 +274,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const isWebdav = selectedLibrary?.sourceType === "webdav";
   const selectedLibraryId = selectedLibrary?.id;
 
-  const { updateContext, handleBookPress, handleBookMenuAction } = useBookActions();
-
-  useEffect(() => {
-    updateContext({
-      books,
-      bookDownloadStatusById,
-      bookFormatMetaById,
-      fileStateBundle,
-      openMenuBookId,
-      selectedFormatById,
-      selectedLibrary,
-      syncActions,
-      setSelectedFormatById,
-    });
-  }, [
+  const { handleBookPress, handleBookMenuAction } = useBookActions(
     books,
     bookDownloadStatusById,
     bookFormatMetaById,
@@ -295,8 +283,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     selectedFormatById,
     selectedLibrary,
     syncActions,
-    updateContext,
-  ]);
+    setSelectedFormatById,
+  );
 
   const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
     {
