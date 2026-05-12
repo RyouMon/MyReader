@@ -16,6 +16,27 @@ pub enum AppError {
 
     #[error("SERIALIZE_ERROR: {0}")]
     Serialize(String),
+
+    #[error("REQUEST_ERROR: {0}")]
+    Request(#[from] reqwest::Error),
+
+    #[error("ZIP_ERROR: {0}")]
+    Zip(#[from] zip::result::ZipError),
+
+    #[error("TASK_ERROR: {0}")]
+    Task(String),
+}
+
+impl From<rusqlite::Error> for AppError {
+    fn from(err: rusqlite::Error) -> Self {
+        AppError::Database(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(err: serde_json::Error) -> Self {
+        AppError::Serialize(err.to_string())
+    }
 }
 
 #[derive(serde::Serialize, specta::Type)]
@@ -26,6 +47,9 @@ pub enum ErrorKind {
     NotFound(String),
     Config(String),
     Serialize(String),
+    Request(String),
+    Zip(String),
+    Task(String),
 }
 
 impl specta::Type for AppError {
@@ -45,6 +69,9 @@ impl serde::Serialize for AppError {
             Self::NotFound(_) => ErrorKind::NotFound(self.to_string()),
             Self::Config(_) => ErrorKind::Config(self.to_string()),
             Self::Serialize(_) => ErrorKind::Serialize(self.to_string()),
+            Self::Request(_) => ErrorKind::Request(self.to_string()),
+            Self::Zip(_) => ErrorKind::Zip(self.to_string()),
+            Self::Task(_) => ErrorKind::Task(self.to_string()),
         };
         kind.serialize(serializer)
     }
