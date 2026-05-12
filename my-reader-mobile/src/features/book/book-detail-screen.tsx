@@ -11,6 +11,7 @@ import { View } from "@/tw";
 
 import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
 import { BookDetailContent, getDetailColors } from "@/src/components/books/book-detail";
+import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/data/calibre";
 import type { WebDavDataSource } from "@/src/data/types";
 import { useAppStore } from "@/src/store/app-store";
@@ -251,19 +252,34 @@ export default function BookDetailScreen() {
     <View className="flex-1 overflow-hidden" style={{ backgroundColor: palette.background }}>
       <Stack.Screen options={screenOptions} />
       <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
-      <BookDetailContent
-        activeLibrary={activeLibrary}
-        bookId={currentId}
-        colors={detailColors}
-        detail={currentEntry?.detail ?? null}
-        detailError={currentEntry?.error ?? null}
-        listBook={getListBook(currentId)}
-        loadingDetail={currentEntry?.loading ?? true}
-        onOpenReader={openReader}
-        onSelectFormat={handleSelectFormat}
-        selectedFormat={selectedFormat}
-        webDavSource={webDavSource}
-      />
+      <ErrorBoundary
+        title="书籍详情加载失败"
+        message="书籍详情页面遇到了意外错误，请重试。"
+        onRetry={() => {
+          if (currentId) {
+            loadingIdsRef.current.delete(currentId);
+            setDetailCache((prev) => {
+              const next = { ...prev };
+              delete next[currentId];
+              return next;
+            });
+          }
+        }}
+      >
+        <BookDetailContent
+          activeLibrary={activeLibrary}
+          bookId={currentId}
+          colors={detailColors}
+          detail={currentEntry?.detail ?? null}
+          detailError={currentEntry?.error ?? null}
+          listBook={getListBook(currentId)}
+          loadingDetail={currentEntry?.loading ?? true}
+          onOpenReader={openReader}
+          onSelectFormat={handleSelectFormat}
+          selectedFormat={selectedFormat}
+          webDavSource={webDavSource}
+        />
+      </ErrorBoundary>
     </View>
   );
 }

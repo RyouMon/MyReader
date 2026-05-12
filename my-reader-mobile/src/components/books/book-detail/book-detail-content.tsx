@@ -97,6 +97,9 @@ export function BookDetailContent({
   }, [detail]);
 
   const [formatInfoMap, setFormatInfoMap] = useState<Record<string, FormatInfo>>({});
+  const formatInfoMapRef = useRef(formatInfoMap);
+  formatInfoMapRef.current = formatInfoMap;
+
   const syncActions = useSyncActions();
   const fileStateRevision = useFileStateRevision();
   const downloadStatusTasks = useDownloadStatusTasks();
@@ -133,11 +136,12 @@ export function BookDetailContent({
 
   useEffect(() => {
     if (!detail) return;
+    const latestMap = formatInfoMapRef.current;
     const relevantTasks = downloadStatusTasks.filter(
       (task) =>
         task.libraryId === activeLibrary.id &&
         (task.bookId === bookId ||
-          Object.values(formatInfoMap).some((info) => info.relativePath === task.relativePath)),
+          Object.values(latestMap).some((info) => info.relativePath === task.relativePath)),
     );
 
     for (const task of relevantTasks) {
@@ -182,7 +186,7 @@ export function BookDetailContent({
       }
       return changed ? next : prev;
     });
-  }, [activeLibrary.id, bookId, detail, downloadStatusTasks, formatInfoMap]);
+  }, [activeLibrary.id, bookId, detail, downloadStatusTasks]);
 
   const handleDownloadFormat = useCallback(
     async (format: string) => {

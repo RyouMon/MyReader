@@ -1,11 +1,18 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+interface ErrorBoundaryProps {
+  title?: string;
+  message?: string;
+  onRetry?: () => void;
+  children: React.ReactNode;
+}
+
 interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -16,14 +23,19 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
     console.error("[ErrorBoundary] 组件渲染崩溃:", error.message, "\n", info.componentStack);
   }
 
+  handleRetry = () => {
+    this.props.onRetry?.();
+    this.setState({ error: null });
+  };
+
   render() {
     const { error } = this.state;
     if (error) {
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>页面遇到了意外错误</Text>
-          <Text style={styles.message}>{error.message}</Text>
-          <Pressable style={styles.button} onPress={() => this.setState({ error: null })}>
+          <Text style={styles.title}>{this.props.title ?? "页面遇到了意外错误"}</Text>
+          <Text style={styles.message}>{this.props.message ?? error.message}</Text>
+          <Pressable style={styles.button} onPress={this.handleRetry}>
             <Text style={styles.buttonText}>重试</Text>
           </Pressable>
         </View>

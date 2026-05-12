@@ -20,6 +20,7 @@ import { toNativeFilesystemPath } from "@/src/utils/io";
 import { Animated, Image, Pressable, Text, View } from "@/tw";
 import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
+import { ErrorBoundary } from "@/src/components/error-boundary";
 
 /** 按格式懒加载固定版式阅读器，避免为 EPUB 等非固定格式加载 CBZ/PDF 相关依赖。 */
 const FixedReaderSurface = lazy(async () => import("@/src/components/reader/fixed/FixedReaderSurface"));
@@ -260,51 +261,53 @@ export default function ReaderScreen() {
         translucent={false}
       />
 
-      <View className="absolute inset-0">
-        {isReflowSurface ? (
-          loadState.epubFileUri ? (
-            <ReadiumReflowReader
-              epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+      <ErrorBoundary title="阅读器加载失败" message="阅读器遇到了意外错误，请返回重试。" onRetry={handleBack}>
+        <View className="absolute inset-0">
+          {isReflowSurface ? (
+            loadState.epubFileUri ? (
+              <ReadiumReflowReader
+                epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+                initialLocator={loadState.initialLocator ?? undefined}
+                onStateChange={handleStateChange}
+                onTocReady={handleTocReady}
+                onRequestClose={handleRequestClose}
+                onToggleChrome={toggleChrome}
+                gotoTocIndex={gotoPageCmd}
+                readingLayout={reflowSettings.readingLayout}
+                theme={reflowSettings.theme}
+                fontSize={reflowSettings.fontSize}
+                lineHeight={reflowSettings.lineHeight}
+                paddingX={reflowSettings.paddingX}
+                brightness={reflowSettings.brightness}
+              />
+            ) : null
+          ) : isFixedSurface ? (
+            <FixedReaderSurface
+              archiveUri={loadState.bookArchiveUri}
+              pdfLocalUri={loadState.pdfLocalUri}
+              format={loadState.format}
+              initialPage={loadState.initialPage}
               initialLocator={loadState.initialLocator ?? undefined}
               onStateChange={handleStateChange}
               onTocReady={handleTocReady}
               onRequestClose={handleRequestClose}
               onToggleChrome={toggleChrome}
-              gotoTocIndex={gotoPageCmd}
-              readingLayout={reflowSettings.readingLayout}
-              theme={reflowSettings.theme}
-              fontSize={reflowSettings.fontSize}
-              lineHeight={reflowSettings.lineHeight}
-              paddingX={reflowSettings.paddingX}
-              brightness={reflowSettings.brightness}
+              gotoPageCommand={gotoPageCmd}
+              fallback={domFallback}
+              readingLayout={fixedSettings.readingLayout}
+              navigationMode={fixedSettings.navigationMode}
+              theme={fixedSettings.theme}
+              brightness={fixedSettings.brightness}
+              zoomScale={fixedSettings.zoomScale}
+              onZoomScaleChange={(scale) => patchFixedReaderSettings({ zoomScale: scale })}
+              contentInsetTop={fixedSettings.readingLayout === "paginate" ? paginateContentInsetTop : 0}
+              contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
             />
-          ) : null
-        ) : isFixedSurface ? (
-          <FixedReaderSurface
-            archiveUri={loadState.bookArchiveUri}
-            pdfLocalUri={loadState.pdfLocalUri}
-            format={loadState.format}
-            initialPage={loadState.initialPage}
-            initialLocator={loadState.initialLocator ?? undefined}
-            onStateChange={handleStateChange}
-            onTocReady={handleTocReady}
-            onRequestClose={handleRequestClose}
-            onToggleChrome={toggleChrome}
-            gotoPageCommand={gotoPageCmd}
-            fallback={domFallback}
-            readingLayout={fixedSettings.readingLayout}
-            navigationMode={fixedSettings.navigationMode}
-            theme={fixedSettings.theme}
-            brightness={fixedSettings.brightness}
-            zoomScale={fixedSettings.zoomScale}
-            onZoomScaleChange={(scale) => patchFixedReaderSettings({ zoomScale: scale })}
-            contentInsetTop={fixedSettings.readingLayout === "paginate" ? paginateContentInsetTop : 0}
-            contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
-          />
-        ) : null}
+          ) : null}
 
-        {loadState.status === "ready" && !readerState?.ready && readerLoadingOverlay}
-      </View>
+          {loadState.status === "ready" && !readerState?.ready && readerLoadingOverlay}
+        </View>
+      </ErrorBoundary>
 
       {chromeVisible && (
         <>

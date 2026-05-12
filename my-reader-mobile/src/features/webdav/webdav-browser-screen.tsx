@@ -7,6 +7,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Text } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
+import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import type { WebDavDataSource } from "@/src/data/types";
 import { createWebDavLibraryFromPath, listWebDavDirectory } from "@/src/data/webdav";
@@ -175,45 +176,54 @@ export default function WebDavBrowserScreen() {
 
   return (
     <Screen>
-      <HeaderToolbar
-        right={[
-          {
-            label: saving ? "正在验证目录" : "选择当前目录为书库",
-            onPress: () => void handleChooseCurrentPath(),
-            icon: <MaterialIcons name="check" size={22} color={palette.primary} />,
-            iosSfSymbol: "checkmark",
-            color: palette.primary,
-            iconOnly: true,
-            loading: saving,
-            disabled: saving,
-            variant: "prominent",
-          },
-        ]}
-      />
+      <ErrorBoundary
+        title="浏览目录失败"
+        message="WebDAV 浏览器遇到了意外错误，请重试。"
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      >
+        <HeaderToolbar
+          right={[
+            {
+              label: saving ? "正在验证目录" : "选择当前目录为书库",
+              onPress: () => void handleChooseCurrentPath(),
+              icon: <MaterialIcons name="check" size={22} color={palette.primary} />,
+              iosSfSymbol: "checkmark",
+              color: palette.primary,
+              iconOnly: true,
+              loading: saving,
+              disabled: saving,
+              variant: "prominent",
+            },
+          ]}
+        />
 
-      <Text className="px-1 text-sm leading-6" style={{ color: palette.textMuted }}>
-        当前路径：{currentPath}
-      </Text>
+        <Text className="px-1 text-sm leading-6" style={{ color: palette.textMuted }}>
+          当前路径：{currentPath}
+        </Text>
 
-      {loading ? (
-        <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
-      ) : error ? (
-        <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
-      ) : entries.length === 0 ? (
-        <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" icon={{ ios: "folder", android: "folder-open" }} />
-      ) : (
-        <SectionCard>
-          {entries.map((entry, index) => (
-            <SettingsRow
-              key={entry.href}
-              title={entry.name}
-              detail={entry.href || "/"}
-              onPress={() => handleOpenDirectory(entry.href)}
-              isLast={index === entries.length - 1}
-            />
-          ))}
-        </SectionCard>
-      )}
+        {loading ? (
+          <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+        ) : error ? (
+          <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+        ) : entries.length === 0 ? (
+          <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" icon={{ ios: "folder", android: "folder-open" }} />
+        ) : (
+          <SectionCard>
+            {entries.map((entry, index) => (
+              <SettingsRow
+                key={entry.href}
+                title={entry.name}
+                detail={entry.href || "/"}
+                onPress={() => handleOpenDirectory(entry.href)}
+                isLast={index === entries.length - 1}
+              />
+            ))}
+          </SectionCard>
+        )}
+      </ErrorBoundary>
     </Screen>
   );
 }
