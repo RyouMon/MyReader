@@ -203,7 +203,7 @@ pub fn get_series_books(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_book_cover(
+pub async fn get_book_cover(
     state: State<'_, AppState>,
     library_id: String,
     book_path: String,
@@ -212,23 +212,30 @@ pub fn get_book_cover(
         "Start to get book cover. library id: \"{}\", book path: \"{}\"",
         library_id, book_path
     );
-    let result = (|| {
+
+    let cover_path = {
         let config = state.lock().unwrap();
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == library_id)
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", library_id)))?;
+        calibre::get_book_cover_path(&lib.path, &book_path)
+    };
 
-        match calibre::get_book_cover_path(&lib.path, &book_path) {
-            Some(cover_path) => {
-                let data = fs::read(&cover_path)?;
+    let result = match cover_path {
+        Some(path) => {
+            let encoded = tauri::async_runtime::spawn_blocking(move || -> Result<String, AppError> {
+                let data = fs::read(&path)?;
                 let encoded = BASE64.encode(&data);
-                Ok(Some(format!("data:image/jpeg;base64,{}", encoded)))
-            }
-            None => Ok(None),
+                Ok(format!("data:image/jpeg;base64,{}", encoded))
+            })
+            .await
+            .map_err(|e| AppError::Io(std::io::Error::other(e)))??;
+            Ok(Some(encoded))
         }
-    })();
+        None => Ok(None),
+    };
 
     match &result {
         Ok(data) => info!(

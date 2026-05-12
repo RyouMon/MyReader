@@ -29,7 +29,7 @@ pub fn write_epub_readium_manifest(
 
 #[tauri::command]
 #[specta::specta]
-pub fn prepare_book_source(
+pub async fn prepare_book_source(
     state: State<'_, AppState>,
     library_id: Option<String>,
     book_id: i64,
@@ -39,7 +39,8 @@ pub fn prepare_book_source(
         "Start to prepare book source. library id: {:?}, book id: {}, format: \"{}\"",
         library_id, book_id, format
     );
-    let result = (|| {
+
+    let (lib_id, _lib_path, file_path) = {
         ensure_reader_cache_dirs()?;
         let config = state.lock().unwrap();
         let lib_id = library_id
@@ -56,23 +57,34 @@ pub fn prepare_book_source(
         let file_path = calibre::get_book_file_path(&lib.path, &conn, book_id, &format)
             .map_err(|e| AppError::Database(e.to_string()))?
             .ok_or_else(|| AppError::NotFound(format!("BOOK_FORMAT_NOT_FOUND: book={}, format={}", book_id, format)))?;
-        let format_upper = format.to_uppercase();
-        if format_upper == "EPUB" || format_upper == "CBZ" {
-            let cache_key = build_archive_cache_key(&lib.id, book_id, &format_upper);
-            let extracted_dir = reader_cache_extracted_root().join(cache_key);
+        (lib_id, lib.path.clone(), file_path)
+    };
+
+    let format_upper = format.to_uppercase();
+    let result = if format_upper == "EPUB" || format_upper == "CBZ" {
+        let cache_key = build_archive_cache_key(&lib_id, book_id, &format_upper);
+        let extracted_dir = reader_cache_extracted_root().join(cache_key);
+        let file_path_str = file_path.to_string_lossy().to_string();
+        let extracted_dir_str = extracted_dir.to_string_lossy().to_string();
+
+        let entries = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<String>, AppError> {
             if extracted_dir.exists() {
                 fs::remove_dir_all(&extracted_dir)?;
             }
             fs::create_dir_all(&extracted_dir)?;
-            let entries = extract_zip_to_dir(&file_path, &extracted_dir)?;
-            return Ok(PreparedBookSource {
-                format: format_upper,
-                file_path: file_path.to_string_lossy().to_string(),
-                extracted_dir_path: Some(extracted_dir.to_string_lossy().to_string()),
-                extracted_entries: entries,
-                streamer_url: None,
-            });
-        }
+            extract_zip_to_dir(&file_path, &extracted_dir)
+        })
+        .await
+        .map_err(|e| AppError::Io(std::io::Error::other(e)))??;
+
+        Ok(PreparedBookSource {
+            format: format_upper,
+            file_path: file_path_str,
+            extracted_dir_path: Some(extracted_dir_str),
+            extracted_entries: entries,
+            streamer_url: None,
+        })
+    } else {
         Ok(PreparedBookSource {
             format: format_upper,
             file_path: file_path.to_string_lossy().to_string(),
@@ -80,7 +92,8 @@ pub fn prepare_book_source(
             extracted_entries: Vec::new(),
             streamer_url: None,
         })
-    })();
+    };
+
     match &result {
         Ok(source) => info!(
             "Success to prepare book source. format: \"{}\", has extracted dir: {}, entries: {}",

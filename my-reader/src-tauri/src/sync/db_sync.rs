@@ -307,6 +307,30 @@ fn json_to_sql_param(v: &serde_json::Value) -> rusqlite::types::Value {
     }
 }
 
+impl LwwProvider {
+    /// Synchronous wrapper for push so callers inside `spawn_blocking` do not
+    /// need to call `block_on` explicitly.
+    pub fn push_sync(
+        &self,
+        conn: &Connection,
+        op: &Operator,
+        device_id: &str,
+    ) -> Result<usize, AppError> {
+        tauri::async_runtime::block_on(self.push(conn, op, device_id))
+    }
+
+    /// Synchronous wrapper for pull so callers inside `spawn_blocking` do not
+    /// need to call `block_on` explicitly.
+    pub fn pull_sync(
+        &self,
+        conn: &Connection,
+        op: &Operator,
+        device_id: &str,
+    ) -> Result<usize, AppError> {
+        tauri::async_runtime::block_on(self.pull(conn, op, device_id))
+    }
+}
+
 #[async_trait(?Send)]
 impl SyncProvider for LwwProvider {
     async fn push(

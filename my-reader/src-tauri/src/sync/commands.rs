@@ -20,7 +20,7 @@ use crate::reading_progress;
 
 use super::backend::{self, BackendKind};
 use super::data_source_to_backend_kind;
-use super::db_sync::{LwwProvider, SyncProvider};
+use super::db_sync::LwwProvider;
 use super::{file_ops, file_state, manifest};
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -325,7 +325,7 @@ pub async fn sync_db_now(
 
     let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
         let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
-        tauri::async_runtime::block_on(async { provider.push(&conn, &op_push, &device_push).await })
+        provider.push_sync(&conn, &op_push, &device_push)
     })
     .await
     .map_err(|err| AppError::Config(format!("BLOCKING_PUSH_FAILED: {err}")))??;
@@ -336,9 +336,7 @@ pub async fn sync_db_now(
     let device_pull = device.clone();
     let pulled = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
         let conn = open_library_db(&app_pull, &lib_path, &lib_id)?;
-        tauri::async_runtime::block_on(async {
-            provider2.pull(&conn, &op_pull, &device_pull).await
-        })
+        provider2.pull_sync(&conn, &op_pull, &device_pull)
     })
     .await
     .map_err(|err| AppError::Config(format!("BLOCKING_PULL_FAILED: {err}")))??;
@@ -378,7 +376,7 @@ pub async fn sync_db_for_library(
     let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
         let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
         let prov = LwwProvider::default_for_myreader();
-        tauri::async_runtime::block_on(async { prov.push(&conn, &op_push, &device_push).await })
+        prov.push_sync(&conn, &op_push, &device_push)
     })
     .await
     .map_err(|e| AppError::Config(format!("BLOCKING_PUSH_FAILED: {e}")))?
@@ -390,7 +388,7 @@ pub async fn sync_db_for_library(
     let pulled = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
         let conn = open_library_db(&app, &lib_path, &lib_id)?;
         let prov = LwwProvider::default_for_myreader();
-        tauri::async_runtime::block_on(async { prov.pull(&conn, &op, &device).await })
+        prov.pull_sync(&conn, &op, &device)
     })
     .await
     .map_err(|e| AppError::Config(format!("BLOCKING_PULL_FAILED: {e}")))?
