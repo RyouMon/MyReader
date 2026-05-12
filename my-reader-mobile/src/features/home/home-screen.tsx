@@ -4,7 +4,8 @@ import { router } from "expo-router";
 import { useThemePalette } from "@/src/design/tokens";
 import { Image, Text, View } from "@/tw";
 
-import { EmptyState, HeroCard, HorizontalBookShelf, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "@/src/components";
+import { EmptyState, HeroCard, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "@/src/components";
+import { HorizontalBookShelf } from "@/src/features/library/components/books";
 import { useLibraryStore } from "@/src/store/library-store";
 
 export default function HomeScreen() {

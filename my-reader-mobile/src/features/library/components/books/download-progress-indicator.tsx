@@ -2,7 +2,7 @@ import { memo } from "react";
 
 import { useDownloadTaskForBookFormat } from "@/src/sync/download-store";
 
-import { CircularProgress } from "../ui/circular-progress";
+import { CircularProgress } from "@/src/components/ui/circular-progress";
 
 export type DownloadProgressIndicatorProps = {
   libraryId: string;

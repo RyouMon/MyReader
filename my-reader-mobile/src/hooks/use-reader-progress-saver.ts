@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { setReadingProgress } from "@/src/data/reading-progress";
 import type { Library } from "@/src/data/types";
-import type { ReaderState } from "@/src/components/reader/types";
+import type { ReaderState } from "@/src/features/reader/components/reader/types";
 import { useAppStore } from "@/src/store/app-store";
 
 const SAVE_DEBOUNCE_MS = 1600;

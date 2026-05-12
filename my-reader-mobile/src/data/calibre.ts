@@ -224,12 +224,12 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
   try {
     directory = await Directory.pickDirectoryAsync();
   } catch (error) {
-    console.log("[MyReader] 用户取消或未选择书库目录", error);
+    console.info("[MyReader] 用户取消或未选择书库目录", error);
     return null;
   }
 
   if (directory == null) {
-    console.log("[MyReader] 用户取消或未选择书库目录（无返回目录）");
+    console.info("[MyReader] 用户取消或未选择书库目录（无返回目录）");
     return null;
   }
 

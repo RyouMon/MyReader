@@ -16,38 +16,46 @@ import type { FileStateRow } from "@/src/sync/file_state";
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"]);
 
-type BookActionContext = {
-  books: BookItem[];
-  bookDownloadStatusById: Record<string, string>;
-  bookFormatMetaById: Map<string, { readableFormats: string[]; effectiveFormat?: string }>;
-  fileStateBundle: { rows: Record<string, FileStateRow[]> };
-  openMenuBookId: string | null;
-  selectedFormatById: Record<string, string>;
-  selectedLibrary: Library | null;
-  syncActions: SyncActions | null;
-  setSelectedFormatById: React.Dispatch<React.SetStateAction<Record<string, string>>> | null;
-};
-
-export function useBookActions() {
+export function useBookActions(
+  books: BookItem[],
+  bookDownloadStatusById: Record<string, string>,
+  bookFormatMetaById: Map<string, { readableFormats: string[]; effectiveFormat?: string }>,
+  fileStateBundle: { rows: Record<string, FileStateRow[]> },
+  openMenuBookId: string | null,
+  selectedFormatById: Record<string, string>,
+  selectedLibrary: Library | null,
+  syncActions: SyncActions | null,
+  setSelectedFormatById: React.Dispatch<React.SetStateAction<Record<string, string>>> | null,
+) {
   const isNavigatingRef = useRef(false);
-  const handlersStateRef = useRef<BookActionContext>({
-    books: [],
-    bookDownloadStatusById: {},
-    bookFormatMetaById: new Map(),
-    fileStateBundle: { rows: {} },
-    openMenuBookId: null,
-    selectedFormatById: {},
-    selectedLibrary: null,
-    syncActions: null,
-    setSelectedFormatById: null,
-  });
 
-  const updateContext = useCallback((ctx: Partial<BookActionContext>) => {
-    handlersStateRef.current = { ...handlersStateRef.current, ...ctx };
-  }, []);
+  // Sync latest props into a ref so callbacks always read current values
+  // without rebuilding their references on every parent render.
+  const stateRef = useRef({
+    books,
+    bookDownloadStatusById,
+    bookFormatMetaById,
+    fileStateBundle,
+    openMenuBookId,
+    selectedFormatById,
+    selectedLibrary,
+    syncActions,
+    setSelectedFormatById,
+  });
+  stateRef.current = {
+    books,
+    bookDownloadStatusById,
+    bookFormatMetaById,
+    fileStateBundle,
+    openMenuBookId,
+    selectedFormatById,
+    selectedLibrary,
+    syncActions,
+    setSelectedFormatById,
+  };
 
   const downloadBook = useCallback(async (book: BookItem, targetFormat?: string) => {
-    const { selectedLibrary: lib, selectedFormatById: formatById } = handlersStateRef.current;
+    const { selectedLibrary: lib, selectedFormatById: formatById } = stateRef.current;
     const calibreId = Number(book.id);
     if (!Number.isFinite(calibreId) || calibreId <= 0 || !lib || lib.sourceType !== "webdav") return;
 
@@ -79,7 +87,7 @@ export function useBookActions() {
   }, []);
 
   const promptSetDefaultFormat = useCallback(async (book: BookItem) => {
-    const { selectedLibrary: lib, selectedFormatById: formatById } = handlersStateRef.current;
+    const { selectedLibrary: lib, selectedFormatById: formatById } = stateRef.current;
     const calibreId = Number(book.id);
     if (!Number.isFinite(calibreId) || calibreId <= 0 || !lib) return;
 
@@ -91,7 +99,7 @@ export function useBookActions() {
         showAlertWithStatusBarRestore("无可读格式", "该书没有可阅读的格式");
         return;
       }
-      const setFormat = handlersStateRef.current.setSelectedFormatById;
+      const setFormat = stateRef.current.setSelectedFormatById;
       if (readableFormats.length === 1) {
         if (setFormat) {
           setFormat((prev) => ({ ...prev, [book.id]: readableFormats[0]! }));
@@ -124,7 +132,7 @@ export function useBookActions() {
 
   const handleBookPress = useCallback((bookId: string) => {
     if (isNavigatingRef.current) return;
-    const latest = handlersStateRef.current;
+    const latest = stateRef.current;
     if (latest.openMenuBookId) return;
     const book = latest.books.find((b) => b.id === bookId);
     if (!book) return;
@@ -149,7 +157,7 @@ export function useBookActions() {
 
   const handleBookMenuAction = useCallback(
     (bookId: string, actionId: string) => {
-      const latest = handlersStateRef.current;
+      const latest = stateRef.current;
       const book = latest.books.find((b) => b.id === bookId);
       if (!book) return;
 
@@ -217,7 +225,6 @@ export function useBookActions() {
   );
 
   return {
-    updateContext,
     handleBookPress,
     handleBookMenuAction,
   };

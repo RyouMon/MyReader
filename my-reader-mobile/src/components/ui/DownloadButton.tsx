@@ -3,15 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-import { Button } from "../components/ui/button";
+import { Button } from "./button";
 
 import {
   enqueue,
   useDownloadStatusTasks,
   useDownloadTaskForPath,
-} from "./download-store";
-import type { FileStateRow } from "./file_state";
-import { useSyncActions } from "./useSyncActions";
+} from "@/src/sync/download-store";
+import type { FileStateRow } from "@/src/sync/file_state";
+import { useSyncActions } from "@/src/sync/useSyncActions";
 
 export type DownloadButtonState = FileStateRow["localState"];
 

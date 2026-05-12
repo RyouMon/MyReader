@@ -1,4 +1,4 @@
-import { tocItemsFromNativePdfTableContents } from "@/src/components/reader/native-pdf/tableContentsToToc";
+import { tocItemsFromNativePdfTableContents } from "@/src/features/reader/components/reader/native-pdf/tableContentsToToc";
 
 describe("tocItemsFromNativePdfTableContents", () => {
   test("returns empty array for empty input", () => {

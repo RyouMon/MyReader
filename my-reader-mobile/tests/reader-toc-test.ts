@@ -1,4 +1,4 @@
-import { flattenFixedToc, flattenReflowToc } from "@/src/components/reader/reader-toc";
+import { flattenFixedToc, flattenReflowToc } from "@/src/features/reader/components/reader/reader-toc";
 
 describe("flattenFixedToc", () => {
   test("flattens source toc recursively", () => {

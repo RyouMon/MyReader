@@ -1,7 +1,8 @@
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import type React from "react";
 
-import type { ReaderTocItem } from "@/src/components/reader/types";
+import type { ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Animated, Pressable, Text, View } from "@/tw";
 
@@ -17,6 +18,9 @@ export type ReaderTocSheetProps = {
 
 /** Estimated row height for FlashList recycling. */
 const TOC_ITEM_ESTIMATED_HEIGHT = 48;
+
+// FlashList v2.0.2 typings omit estimatedItemSize; cast to avoid TS errors.
+const FlashListFixed = FlashList as React.ComponentType<Record<string, unknown>>;
 
 function TocItemRow({
   item,
@@ -85,13 +89,13 @@ export function ReaderTocSheet({
       </Text>
       <View className="flex-1 px-4">
         {toc.length > 0 ? (
-          <FlashList
+          <FlashListFixed
             data={toc}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item: ReaderTocItem) => item.id}
             estimatedItemSize={TOC_ITEM_ESTIMATED_HEIGHT}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 16 }}
-            renderItem={({ item }) => (
+            renderItem={({ item }: ListRenderItemInfo<ReaderTocItem>) => (
               <TocItemRow
                 item={item}
                 isActive={currentPage != null && item.pageIndex === currentPage}

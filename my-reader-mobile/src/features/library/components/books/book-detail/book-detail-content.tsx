@@ -5,28 +5,28 @@ import { Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 
-import { AnimatedScrollView, Text, View } from "../../../tw";
-import { Button, EmptyState } from "../../ui";
-import { FONT_UI } from "../../../design/typography";
-import { getBookFormatPaths } from "../../../data/calibre";
-import type { BookItem, Library, WebDavDataSource } from "../../../data/types";
-import { describeDownloadError } from "../../../errors";
-import { getFileState, useFileStateRevision, type LocalState } from "../../../sync/file_state";
-import { useSyncActions } from "../../../sync/useSyncActions";
+import { AnimatedScrollView, Text, View } from "@/tw";
+import { Button, EmptyState } from "@/src/components/ui";
+import { FONT_UI } from "@/src/design/typography";
+import { getBookFormatPaths } from "@/src/data/calibre";
+import type { BookItem, Library, WebDavDataSource } from "@/src/data/types";
+import { describeDownloadError } from "@/src/errors";
+import { getFileState, useFileStateRevision, type LocalState } from "@/src/sync/file_state";
+import { useSyncActions } from "@/src/sync/useSyncActions";
 import {
   dismissTasksForPath,
   enqueue,
   isTaskErrorAlerted,
   markTaskErrorAlerted,
   useDownloadStatusTasks,
-} from "../../../sync/download-store";
+} from "@/src/sync/download-store";
 import {
   extractYear,
   formatDate,
   formatLanguage,
   IDENTIFIER_LABELS,
   resolveCoverForDetail,
-} from "../../../utils/book-detail";
+} from "@/src/utils/book-detail";
 import type { BookDetail } from "my-reader-tools/types/book";
 import type { DetailColors, InfoCardItem } from "./types";
 import { HeroSection } from "./hero-section";

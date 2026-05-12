@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { File } from "expo-file-system";
 import type { Locator } from "@ryoumon/react-native-readium";
 import { resolveReadFormat } from "my-reader-tools/utils";
-import { pageIndexFromFixedLocator } from "@/src/components/reader/locator";
+import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import {
   buildCoverUri,
   getBookFormatPaths,

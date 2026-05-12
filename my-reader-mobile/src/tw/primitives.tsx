@@ -16,11 +16,13 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const cssElement = useCssElement as unknown as (
   Component: React.ComponentType<any>,
   props: any,
   mapping: any
 ) => any;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const RouterLinkForCss = RouterLink as React.ComponentType<
   LinkProps & { className?: string }

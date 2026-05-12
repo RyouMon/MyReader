@@ -11,7 +11,7 @@ import type {
 } from "@ryoumon/react-native-readium";
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
-import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
+import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
