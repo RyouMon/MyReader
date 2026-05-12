@@ -2,5 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    my_reader_lib::run()
+    if let Err(e) = my_reader_lib::run() {
+        eprintln!("Application failed to start: {e}");
+        std::process::exit(1);
+    }
 }

@@ -9,11 +9,9 @@ pub fn write_epub_readium_manifest(
     ensure_reader_cache_dirs()?;
     let root = reader_cache_extracted_root();
     let desired = PathBuf::from(&dir_path);
-    let root_canon = root
-        .canonicalize()
+    let root_canon = dunce::canonicalize(&root)
         .map_err(|e| AppError::Config(format!("INVALID_READER_CACHE_ROOT: {}", e)))?;
-    let dir_canon = desired
-        .canonicalize()
+    let dir_canon = dunce::canonicalize(&desired)
         .map_err(|e| AppError::Config(format!("INVALID_EXTRACT_DIR: {}", e)))?;
     if !dir_canon.starts_with(&root_canon) {
         return Err(AppError::Config(

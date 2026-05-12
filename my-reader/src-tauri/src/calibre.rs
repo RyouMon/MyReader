@@ -332,6 +332,17 @@ pub fn get_book_cover_path(library_path: &str, book_path: &str) -> Option<PathBu
         "Start to resolve book cover path. library path: \"{}\", book path: \"{}\"",
         library_path, book_path
     );
+    let book_path_buf = Path::new(book_path);
+    if book_path_buf
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
+        debug!(
+            "Blocked path traversal in book cover path. library path: \"{}\", book path: \"{}\"",
+            library_path, book_path
+        );
+        return None;
+    }
     let cover = Path::new(library_path).join(book_path).join("cover.jpg");
     let result = cover.exists().then_some(cover);
     debug!(

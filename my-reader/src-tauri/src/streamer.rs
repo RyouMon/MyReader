@@ -36,8 +36,8 @@ impl EpubStreamer {
                     let file_path = dir.join(path);
 
                     // Security: prevent directory traversal
-                    let canonical_dir = std::fs::canonicalize(&*dir).ok();
-                    let canonical_file = std::fs::canonicalize(&file_path).ok();
+                    let canonical_dir = dunce::canonicalize(&*dir).ok();
+                    let canonical_file = dunce::canonicalize(&file_path).ok();
 
                     if let (Some(d), Some(f)) = (canonical_dir, canonical_file) {
                         if !f.starts_with(d) {

@@ -27,7 +27,7 @@ const LOG_LINE_TIMESTAMP: &[time::format_description::FormatItem<'static>] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() -> Result<(), tauri::Error> {
     let specta_builder = tauri_specta::Builder::<tauri::Wry>::new()
         .dangerously_cast_bigints_to_number()
         .commands(tauri_specta::collect_commands![
@@ -138,5 +138,4 @@ pub fn run() {
         .register_uri_scheme_protocol("bookfile", protocols::bookfile_handler)
         .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
 }
