@@ -16,7 +16,7 @@ use tauri::{AppHandle, State};
 
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::reading_progress;
+use crate::repositories::progress_repo;
 
 use super::backend::{self, BackendKind};
 use super::data_source_to_backend_kind;
@@ -113,14 +113,13 @@ fn resolve_library_path(
 
 /// 为 library 打开本地 myreader.db 并确保 `file_state` schema 存在。
 fn open_library_db(
-    app: &AppHandle,
     library_path: &Path,
     _library_id: &str,
 ) -> Result<Connection, AppError> {
     let path_str = library_path
         .to_str()
         .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-    let conn = reading_progress::open_db(app, path_str)?;
+    let conn = progress_repo::open_db(path_str)?;
     file_state::initialize_schema(&conn)?;
     Ok(conn)
 }
@@ -128,7 +127,7 @@ fn open_library_db(
 #[tauri::command]
 #[specta::specta]
 pub async fn sync_list_file_states(
-    app: AppHandle,
+    _app: AppHandle,
     state: State<'_, AppState>,
     library_id: String,
     filter: Option<String>,
@@ -139,7 +138,7 @@ pub async fn sync_list_file_states(
     );
     let (lib_path, lib_id) = resolve_library_path(&state, &library_id)?;
     let rows = tauri::async_runtime::spawn_blocking(move || -> Result<_, AppError> {
-        let conn = open_library_db(&app, &lib_path, &lib_id)?;
+        let conn = open_library_db(&lib_path, &lib_id)?;
         match filter.as_deref() {
             Some(s) if !s.is_empty() => file_state::list_by_state(&conn, s),
             _ => {
@@ -194,9 +193,9 @@ pub async fn sync_download_file(
     let outcome = file_ops::download(&op, &lib_path, &m, &relative_path).await?;
 
     let rel = relative_path.clone();
-    let app_clone = app.clone();
+    let _app_clone = app.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), AppError> {
-        let conn = open_library_db(&app_clone, &lib_path, &lib_id)?;
+        let conn = open_library_db(&lib_path, &lib_id)?;
         file_state::upsert(
             &conn,
             &rel,
@@ -226,10 +225,10 @@ pub async fn sync_evict_local_file(
     file_ops::evict_local(&lib_path, &relative_path).await?;
 
     let rel = relative_path.clone();
-    let app_clone = app.clone();
+    let _app_clone = app.clone();
     let lib_path_clone = lib_path.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), AppError> {
-        let conn = open_library_db(&app_clone, &lib_path_clone, &lib_id)?;
+        let conn = open_library_db(&lib_path_clone, &lib_id)?;
         file_state::upsert(&conn, &rel, "remote_only", None, None, None)
     })
     .await
@@ -259,9 +258,9 @@ pub async fn sync_delete_file_everywhere(
     file_ops::delete_everywhere(&op, &lib_path, &mut m, &relative_path).await?;
 
     let rel = relative_path.clone();
-    let app_clone = app.clone();
+    let _app_clone = app.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), AppError> {
-        let conn = open_library_db(&app_clone, &lib_path, &lib_id)?;
+        let conn = open_library_db(&lib_path, &lib_id)?;
         file_state::delete(&conn, &rel)
     })
     .await
@@ -285,7 +284,7 @@ fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<Str
     let id = uuid::Uuid::new_v4().to_string();
     let mut config = state.lock().unwrap();
     config.device_id = Some(id.clone());
-    crate::commands::save_config(app, &config)?;
+    crate::services::config_service::save_config(app, &config)?;
     Ok(id)
 }
 
@@ -320,22 +319,22 @@ pub async fn sync_db_now(
     let lib_path_push = lib_path.clone();
     let lib_id_push = lib_id.clone();
     let device_push = device.clone();
-    let app_push = app.clone();
+    let _app_push = app.clone();
     let op_push = op.clone();
 
     let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
-        let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
+        let conn = open_library_db(&lib_path_push, &lib_id_push)?;
         provider.push_sync(&conn, &op_push, &device_push)
     })
     .await
     .map_err(|err| AppError::Config(format!("BLOCKING_PUSH_FAILED: {err}")))??;
 
     let provider2 = LwwProvider::default_for_myreader();
-    let app_pull = app.clone();
+    let _app_pull = app.clone();
     let op_pull = op.clone();
     let device_pull = device.clone();
     let pulled = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
-        let conn = open_library_db(&app_pull, &lib_path, &lib_id)?;
+        let conn = open_library_db(&lib_path, &lib_id)?;
         provider2.pull_sync(&conn, &op_pull, &device_pull)
     })
     .await
@@ -370,11 +369,11 @@ pub async fn sync_db_for_library(
     let lib_path_push = lib_path.clone();
     let lib_id_push = lib_id.clone();
     let device_push = device.clone();
-    let app_push = app.clone();
+    let _app_push = app.clone();
     let op_push = op.clone();
 
     let pushed = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
-        let conn = open_library_db(&app_push, &lib_path_push, &lib_id_push)?;
+        let conn = open_library_db(&lib_path_push, &lib_id_push)?;
         let prov = LwwProvider::default_for_myreader();
         prov.push_sync(&conn, &op_push, &device_push)
     })
@@ -386,7 +385,7 @@ pub async fn sync_db_for_library(
     });
 
     let pulled = tauri::async_runtime::spawn_blocking(move || -> Result<usize, AppError> {
-        let conn = open_library_db(&app, &lib_path, &lib_id)?;
+        let conn = open_library_db(&lib_path, &lib_id)?;
         let prov = LwwProvider::default_for_myreader();
         prov.pull_sync(&conn, &op, &device)
     })

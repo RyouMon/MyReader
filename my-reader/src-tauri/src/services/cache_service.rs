@@ -46,15 +46,3 @@ impl CacheService {
     }
 }
 
-// Re-export legacy cache helpers for backward compatibility during migration.
-pub use crate::repositories::cache_repo::{
-    build_archive_cache_key,
-    clear_library_cache_files,
-    clear_orphaned_library_cache_files,
-    collect_cache_files_sorted_oldest,
-    ensure_reader_cache_dirs,
-    extract_zip_to_dir,
-    reader_cache_extracted_root,
-    reader_cache_root,
-    sanitize_key_part,
-};

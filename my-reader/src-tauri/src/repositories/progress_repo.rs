@@ -79,6 +79,21 @@ pub trait ReadingProgressRepository {
     ) -> Result<(), AppError>;
 }
 
+/// Open a per-library SQLite connection with schema initialized.
+/// Exposed for sync engine and legacy callers that need raw `Connection`.
+pub fn open_db(library_path: &str) -> Result<Connection, AppError> {
+    log::info!(target: LOG_TARGET, "Start to open reading progress database.");
+    let path = library_db_path(library_path)?;
+    let conn = Connection::open(&path)?;
+    initialize_schema(&conn)?;
+    log::info!(
+        target: LOG_TARGET,
+        "Success to open reading progress database. path: \"{}\"",
+        path.display()
+    );
+    Ok(conn)
+}
+
 /// SQLite-backed reading progress repository.
 pub struct SqliteProgressRepository {
     conn: Connection,
@@ -86,15 +101,7 @@ pub struct SqliteProgressRepository {
 
 impl SqliteProgressRepository {
     pub fn open(library_path: &str) -> Result<Self, AppError> {
-        log::info!(target: LOG_TARGET, "Start to open reading progress database.");
-        let path = library_db_path(library_path)?;
-        let conn = Connection::open(&path)?;
-        initialize_schema(&conn)?;
-        log::info!(
-            target: LOG_TARGET,
-            "Success to open reading progress database. path: \"{}\"",
-            path.display()
-        );
+        let conn = open_db(library_path)?;
         Ok(Self { conn })
     }
 }

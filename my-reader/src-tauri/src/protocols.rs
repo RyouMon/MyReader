@@ -3,8 +3,8 @@ use log::{debug, error};
 use tauri::http::Response;
 use tauri::Manager;
 
-use crate::calibre;
 use crate::commands::AppState;
+use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 
 pub fn bookcover_handler<R: tauri::Runtime>(
     ctx: tauri::UriSchemeContext<'_, R>,
@@ -116,12 +116,12 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Err(_) => return not_found(),
     };
 
-    let conn = match calibre::open_calibre_db(&lib.path) {
-        Ok(c) => c,
+    let repo = match CalibreBookRepository::open(&lib.path) {
+        Ok(r) => r,
         Err(_) => return not_found(),
     };
 
-    let file_path = match calibre::get_book_file_path(&lib.path, &conn, book_id, format) {
+    let file_path = match repo.get_book_file_path(&lib.path, book_id, format) {
         Ok(Some(p)) => p,
         _ => return not_found(),
     };

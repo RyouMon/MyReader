@@ -39,6 +39,12 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
+impl From<tauri::Error> for AppError {
+    fn from(err: tauri::Error) -> Self {
+        AppError::Config(err.to_string())
+    }
+}
+
 #[derive(serde::Serialize, specta::Type)]
 #[serde(tag = "kind", content = "message")]
 pub enum ErrorKind {

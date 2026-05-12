@@ -1,4 +1,11 @@
-use super::*;
+use log::{error, info};
+use tauri::State;
+
+use crate::commands::AppState;
+use crate::error::AppError;
+use crate::models::{BookDetail, BookEntry, PaginatedBooks};
+use crate::services::book_service::BookService;
+use crate::services::library_service::LibraryService;
 
 #[tauri::command]
 #[specta::specta]
@@ -9,22 +16,9 @@ pub fn get_books(
     info!("Start to get books. library id: {library_id:?}");
     let result = (|| {
         let config = state.lock().unwrap();
-
-        let lib_id = library_id
-            .clone()
-            .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
-
-        let lib = config
-            .libraries
-            .iter()
-            .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
-
-        let conn =
-            calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
-
-        calibre::get_all_books(&conn).map_err(|e| AppError::Database(e.to_string()))
+        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
+        drop(config);
+        BookService::get_books(&lib_path)
     })();
 
     match &result {
@@ -52,27 +46,9 @@ pub fn get_books_page(
     );
     let result = (|| {
         let config = state.lock().unwrap();
-
-        let lib_id = library_id
-            .clone()
-            .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
-
-        let lib = config
-            .libraries
-            .iter()
-            .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
-
-        let conn =
-            calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
-
-        let sort = sort_by.as_deref().unwrap_or("title");
-        let limit = limit.clamp(1, 200);
-        let (items, total) = calibre::get_books_page(&conn, offset, limit, sort, search.as_deref())
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        Ok(PaginatedBooks { items, total })
+        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
+        drop(config);
+        BookService::get_books_page(&lib_path, offset, limit, sort_by.as_deref(), search.as_deref())
     })();
 
     match &result {
@@ -99,42 +75,9 @@ pub fn get_book_detail(
     info!("Start to get book detail. library id: {library_id:?}, book id: {book_id}");
     let result = (|| {
         let config = state.lock().unwrap();
-
-        let lib_id = library_id
-            .clone()
-            .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
-
-        let lib = config
-            .libraries
-            .iter()
-            .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
-
-        let conn =
-            calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
-
-        let book = calibre::get_book_by_id(&conn, book_id)
-            .map_err(|e| AppError::Database(e.to_string()))?
-            .ok_or_else(|| AppError::NotFound(format!("BOOK_NOT_FOUND: {}", book_id)))?;
-
-        let format_sizes = calibre::get_book_format_sizes(&conn, book_id)
-            .map_err(|e| AppError::Database(e.to_string()))?
-            .into_iter()
-            .map(|(format, size_bytes)| FormatSize { format, size_bytes })
-            .collect();
-
-        let identifiers = calibre::get_book_identifiers(&conn, book_id)
-            .map_err(|e| AppError::Database(e.to_string()))?
-            .into_iter()
-            .map(|(id_type, value)| BookIdentifier { id_type, value })
-            .collect();
-
-        Ok(BookDetail {
-            book,
-            format_sizes,
-            identifiers,
-        })
+        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
+        drop(config);
+        BookService::get_book_detail(&lib_path, book_id)
     })();
 
     match &result {
@@ -167,23 +110,9 @@ pub fn get_series_books(
     );
     let result = (|| {
         let config = state.lock().unwrap();
-
-        let lib_id = library_id
-            .clone()
-            .or_else(|| config.active_library_id.clone())
-            .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
-
-        let lib = config
-            .libraries
-            .iter()
-            .find(|lib| lib.id == lib_id)
-            .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))?;
-
-        let conn =
-            calibre::open_calibre_db(&lib.path).map_err(|e| AppError::Database(e.to_string()))?;
-
-        calibre::get_books_by_series(&conn, &series_name, exclude_book_id)
-            .map_err(|e| AppError::Database(e.to_string()))
+        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
+        drop(config);
+        BookService::get_series_books(&lib_path, &series_name, exclude_book_id)
     })();
 
     match &result {
@@ -213,26 +142,29 @@ pub async fn get_book_cover(
         library_id, book_path
     );
 
-    let cover_path = {
+    let lib_path = {
         let config = state.lock().unwrap();
         let lib = config
             .libraries
             .iter()
             .find(|lib| lib.id == library_id)
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", library_id)))?;
-        calibre::get_book_cover_path(&lib.path, &book_path)
+        lib.path.clone()
     };
 
-    let result = match cover_path {
-        Some(path) => {
-            let encoded = tauri::async_runtime::spawn_blocking(move || -> Result<String, AppError> {
-                let data = fs::read(&path)?;
-                let encoded = BASE64.encode(&data);
-                Ok(format!("data:image/jpeg;base64,{}", encoded))
-            })
-            .await
-            .map_err(|e| AppError::Io(std::io::Error::other(e)))??;
-            Ok(Some(encoded))
+    let lib_path_clone = lib_path.clone();
+    let book_path_clone = book_path.clone();
+    let result = match tauri::async_runtime::spawn_blocking(move || {
+        BookService::get_book_cover_bytes(&lib_path_clone, &book_path_clone)
+    })
+    .await
+    .map_err(|e| AppError::Task(e.to_string()))?
+    ?
+    {
+        Some(bytes) => {
+            use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+            let encoded = BASE64.encode(&bytes);
+            Ok(Some(format!("data:image/jpeg;base64,{}", encoded)))
         }
         None => Ok(None),
     };
@@ -252,4 +184,3 @@ pub async fn get_book_cover(
 
     result
 }
-

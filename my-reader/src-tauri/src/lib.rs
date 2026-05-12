@@ -1,11 +1,9 @@
 mod asset_scope;
-mod calibre;
 pub mod commands;
 mod error;
 pub mod models;
 mod protocols;
 mod reader_ui_prefs;
-mod reading_progress;
 mod repositories;
 mod services;
 mod storage_paths;
@@ -21,6 +19,7 @@ use time::{macros::format_description, OffsetDateTime};
 use tokio::sync::RwLock;
 
 use commands::AppState;
+use repositories::config_repo;
 use streamer::StreamerState;
 
 /// 本地日期时间 + 毫秒（无法解析本地时区时回退 UTC）。勿使用错误嵌套的 `[[[year]…]]`。
@@ -110,21 +109,8 @@ pub fn run() -> Result<(), tauri::Error> {
         .manage(StreamerState::new(RwLock::new(HashMap::new())))
         .setup(|app| {
             info!("Start to initialize application.");
-            let config_path = app.path().app_data_dir()?.join("config.json");
-            let config = if config_path.exists() {
-                std::fs::read_to_string(&config_path)
-                    .ok()
-                    .and_then(|json| serde_json::from_str::<models::AppConfig>(&json).ok())
-                    .unwrap_or_default()
-            } else {
-                models::AppConfig::default()
-            };
-            info!(
-                "Loaded config from disk. path: \"{}\", library count: {}, active library id: {:?}",
-                config_path.display(),
-                config.libraries.len(),
-                config.active_library_id
-            );
+            let config_path = config_repo::config_path(&app.path().app_data_dir()?);
+            let config = config_repo::load_config(&config_path).unwrap_or_default();
             *app.state::<AppState>().lock().unwrap() = config;
             if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
                 error!(
