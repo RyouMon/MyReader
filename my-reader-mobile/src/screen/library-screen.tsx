@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
@@ -115,8 +115,12 @@ function resolveDownloadTargetFormat(actionId: string): string | undefined {
   return undefined;
 }
 
-const SeparatorGrid = () => <View className="h-3" />;
-const SeparatorList = () => null;
+const SeparatorGrid = memo(function SeparatorGrid() {
+  return <View className="h-3" />;
+});
+const SeparatorList = memo(function SeparatorList() {
+  return null;
+});
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const palette = useThemePalette();

@@ -1,7 +1,7 @@
 import { READER_CHROME, READER_FIXED } from "@/src/design/reader-tokens";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import type { ReaderState, ReaderTocItem } from "@/src/components/reader/types";
-import { lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -115,6 +115,11 @@ export default function ReaderScreen() {
     setTimeout(() => setGotoPageCmd(undefined), TOC_GOTO_RESET_DELAY_MS);
   }, []);
 
+  const handleDismissOverlay = useCallback(() => {
+    setTocOpen(false);
+    setSettingsOpen(false);
+  }, []);
+
   const domFallback = useMemo(
     () => (
       <DomReaderFallback
@@ -203,6 +208,8 @@ export default function ReaderScreen() {
           <Text className="text-center text-lg font-bold text-[rgba(244,238,230,0.96)] mb-3">无法打开书籍</Text>
           <Text className="text-center text-[15px] text-[rgba(244,238,230,0.78)] leading-[22px]">{loadState.message}</Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="返回"
             className="mt-[22px] py-3 px-7 rounded-full bg-white/6 border"
             style={{ borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
             onPress={handleBack}
@@ -328,11 +335,10 @@ export default function ReaderScreen() {
           className="absolute inset-0 z-30 bg-black/45"
         >
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="关闭弹层"
             className="absolute inset-0"
-            onPress={() => {
-              setTocOpen(false);
-              setSettingsOpen(false);
-            }}
+            onPress={handleDismissOverlay}
           />
         </Animated.View>
       )}
@@ -363,7 +369,7 @@ export default function ReaderScreen() {
   );
 }
 
-function DomReaderFallback({
+const DomReaderFallback = memo(function DomReaderFallback({
   format,
   title,
   coverUri,
@@ -410,5 +416,5 @@ function DomReaderFallback({
       </Text>
     </View>
   );
-}
+});
 
