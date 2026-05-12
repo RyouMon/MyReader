@@ -13,7 +13,6 @@ import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 function usePulse() {
   const opacity = useSharedValue(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
@@ -23,7 +22,7 @@ function usePulse() {
       -1,
       false,
     );
-  }, []);
+  }, [opacity]);
   return useAnimatedStyle(() => ({ opacity: opacity.value }));
 }
 

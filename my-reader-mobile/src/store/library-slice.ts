@@ -242,7 +242,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
       if (!library) return;
       try {
         await checkLibraryConnectivity(library.id);
-      } catch (caught) {
+      } catch {
         showAlertWithStatusBarRestore("数据源无法连接", "无法访问 WebDAV 数据源，同步已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误", [{ text: "知道了" }]);
         return;
       }

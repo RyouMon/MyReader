@@ -582,7 +582,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       );
     },
     [
-      GRID_HALF_GAP,
       LIST_PADDING_H,
       bookDownloadStatusById,
       bookFormatMetaById,

@@ -57,12 +57,12 @@ async function pushDbChanges(
     [sinceMs],
   );
 
-  const rows = result.rows as Array<{
+  const rows = result.rows as {
     book_id: number;
     format: string;
     locator_json: string;
     updated_at: number;
-  }>;
+  }[];
 
   if (rows.length === 0) return 0;
 
