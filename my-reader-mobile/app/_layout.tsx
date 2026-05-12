@@ -9,6 +9,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotifierWrapper } from "react-native-notifier";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/src/hooks/queries/queryClient";
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { getAppDatabase } from "@/src/data/sqlite";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
@@ -134,13 +136,15 @@ export default Sentry.wrap(function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <ErrorBoundary>
-          <NotifierWithSafeArea>
-            <RootNavigator />
-          </NotifierWithSafeArea>
-        </ErrorBoundary>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <NotifierWithSafeArea>
+              <RootNavigator />
+            </NotifierWithSafeArea>
+          </ErrorBoundary>
+        </ThemeProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 });

@@ -38,6 +38,7 @@
     "@shopify/flash-list": "2.0.2",
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/react-form": "^1.29.0",
+    "@tanstack/react-query": "^5.100.10",
     "base-64": "^1.0.0",
     "clsx": "^2.1.1",
     "expo": "~55.0.13",

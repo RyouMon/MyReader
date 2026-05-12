@@ -8,15 +8,14 @@ import {
   ensureLibraryMetadataCached,
   pickCalibreLibrary,
   readBookCountFromLibrary,
-  readBooksFromLibrary,
 } from "../data/calibre";
-import type { Library, WebDavDataSource } from "../data/types";
-import { readBooksFromWebDavLibrary } from "../data/webdav";
+import type { Library } from "../data/types";
 import { checkLibraryConnectivity } from "../sync/connectivity";
 import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
+import { fetchBooksWithMeta, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
+import { queryClient } from "../hooks/queries/queryClient";
 import { mergeDataSources } from "./app-store.constants";
 import type { AppState, AppStateSlice } from "./app-store.types";
-import { readWebDavPassword } from "./secure-credential-store";
 
 function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   return libraries.map((library) =>
@@ -184,43 +183,24 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
       set({ loadingBooks: true, error: null });
 
       try {
-        const nextBooks =
-          activeLibrary.sourceType === "webdav"
-            ? await (async () => {
-                const source = state.dataSources.find(
-                  (item) => item.id === activeLibrary.dataSourceId && item.type === "webdav"
-                );
-                if (!source || source.type !== "webdav") {
-                  throw new Error("当前书库关联的 WebDAV 数据源不存在。");
-                }
-
-                const password =
-                  source.password ?? (await readWebDavPassword(source.id)) ?? "";
-                if (!password) {
-                  throw new Error("当前 WebDAV 数据源缺少密码，请重新编辑数据源。");
-                }
-
-                const { books, metadataUri } = await readBooksFromWebDavLibrary(activeLibrary, {
-                  ...source,
-                  password,
-                } as WebDavDataSource);
-                return { books, metadataUri };
-              })()
-            : { books: await readBooksFromLibrary(activeLibrary), metadataUri: activeLibrary.metadataUri };
+        const { books: nextBooks, metadataUri } = await queryClient.fetchQuery({
+          queryKey: libraryQueryKeys.books(state.activeLibraryId),
+          queryFn: () => fetchBooksWithMeta(activeLibrary, state.dataSources),
+        });
 
         const { library: refreshedLibrary, bookCount } =
           activeLibrary.sourceType === "webdav"
             ? {
                 library:
-                  nextBooks.metadataUri === activeLibrary.metadataUri
+                  metadataUri === activeLibrary.metadataUri
                     ? activeLibrary
-                    : { ...activeLibrary, metadataUri: nextBooks.metadataUri },
+                    : { ...activeLibrary, metadataUri },
                 bookCount: activeLibrary.bookCount,
               }
             : await readBookCountFromLibrary(activeLibrary);
 
         set((currentState) => ({
-          books: nextBooks.books,
+          books: nextBooks,
           loadingBooks: false,
           libraries: mergeLibraryUpdate(
             currentState.libraries,
