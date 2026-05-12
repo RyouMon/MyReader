@@ -9,7 +9,6 @@ export const commands = {
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
 	/**  使用真实 WebDAV 请求进行连接测试，成功返回 `Ok(())`。 */
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
-	/**  新建本地目录数据源时的入参。 */
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
 	refreshLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_library", { id })),
 	/**  新增本地目录类型数据源。 */
@@ -122,7 +121,7 @@ export type DbSyncReport = {
 	pulled: number,
 };
 
-export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string };
+export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string };
 
 export type FileStateRow = {
 	path: string,
