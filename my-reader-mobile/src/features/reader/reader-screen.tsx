@@ -136,7 +136,8 @@ export default function ReaderScreen() {
     () => (
       <Animated.View
         exiting={FadeOut.duration(300)}
-        className="absolute inset-0 z-20 items-center justify-center bg-[#111111]"
+        className="absolute inset-0 z-20 items-center justify-center"
+        style={{ backgroundColor: READER_FIXED.canvasBg }}
       >
         {coverUri ? (
           <>
@@ -150,7 +151,7 @@ export default function ReaderScreen() {
         ) : null}
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         {loadState.status === "ready" ? (
-          <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
+          <Text className="mt-4 px-8 text-center text-sm" style={{ color: READER_CHROME.textSecondary }} numberOfLines={2}>
             {loadState.title}
           </Text>
         ) : null}
@@ -190,11 +191,11 @@ export default function ReaderScreen() {
 
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         {bookTitle ? (
-          <Text className="mt-4 px-8 text-center text-sm text-white/70" numberOfLines={2}>
+          <Text className="mt-4 px-8 text-center text-sm" style={{ color: READER_CHROME.textSecondary }} numberOfLines={2}>
             {bookTitle}
           </Text>
         ) : (
-          <Text className="mt-4 text-sm text-white/60">{loadState.message}</Text>
+          <Text className="mt-4 text-sm" style={{ color: READER_CHROME.textMuted }}>{loadState.message}</Text>
         )}
       </View>
     );
@@ -205,17 +206,26 @@ export default function ReaderScreen() {
       <View className="flex-1 w-full items-center justify-center px-7" style={{ backgroundColor: palette.background }}>
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar hidden={false} barStyle="light-content" />
-        <View className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-[20px] bg-white/8 border border-white/8">
-          <Text className="text-center text-lg font-bold text-[rgba(244,238,230,0.96)] mb-3">无法打开书籍</Text>
-          <Text className="text-center text-[15px] text-[rgba(244,238,230,0.78)] leading-[22px]">{loadState.message}</Text>
+        <View
+          className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-[20px] border"
+          style={{ backgroundColor: READER_CHROME.errorCardBg, borderColor: READER_CHROME.errorCardBorder }}
+        >
+          <Text className="text-center text-lg font-bold mb-3" style={{ color: READER_CHROME.textStrong }}>
+            无法打开书籍
+          </Text>
+          <Text className="text-center text-[15px] leading-[22px]" style={{ color: READER_CHROME.textSecondary }}>
+            {loadState.message}
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="返回"
-            className="mt-[22px] py-3 px-7 rounded-full bg-white/6 border"
-            style={{ borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
+            className="mt-[22px] py-3 px-7 rounded-full border"
+            style={{ backgroundColor: READER_CHROME.surfaceIdle, borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
             onPress={handleBack}
           >
-            <Text className="text-[15px] font-semibold text-[rgba(244,238,230,0.96)]">返回</Text>
+            <Text className="text-[15px] font-semibold" style={{ color: READER_CHROME.textStrong }}>
+              返回
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -252,7 +262,8 @@ export default function ReaderScreen() {
   return (
     <Animated.View
       entering={FadeIn.duration(300)}
-      className="flex-1 bg-[#111111]"
+      className="flex-1"
+      style={{ backgroundColor: READER_FIXED.canvasBg }}
     >
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
@@ -335,7 +346,8 @@ export default function ReaderScreen() {
         <Animated.View
           entering={FadeIn.duration(OVERLAY_FADE_IN_DURATION_MS)}
           exiting={FadeOut.duration(OVERLAY_FADE_OUT_DURATION_MS)}
-          className="absolute inset-0 z-30 bg-black/45"
+          className="absolute inset-0 z-30"
+          style={{ backgroundColor: READER_CHROME.scrim }}
         >
           <Pressable
             accessibilityRole="button"
@@ -410,10 +422,10 @@ const DomReaderFallback = memo(function DomReaderFallback({
         </>
       ) : null}
       <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-      <Text className="mt-4 text-sm text-white/70">
+      <Text className="mt-4 text-sm" style={{ color: READER_CHROME.textSecondary }}>
         正在挂载阅读器…
       </Text>
-      <Text className="mt-2 text-center text-xs text-[rgba(244,238,230,0.56)]">
+      <Text className="mt-2 text-center text-xs" style={{ color: READER_CHROME.textMuted }}>
         {format ? `format=${format}` : "format=unknown"}
         {title ? ` · ${title}` : ""}
       </Text>

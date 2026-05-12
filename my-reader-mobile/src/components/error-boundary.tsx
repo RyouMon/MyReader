@@ -1,5 +1,50 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useCallback } from "react";
+
+import { useThemePalette } from "@/src/design/tokens";
+import { Pressable, Text, View } from "@/tw";
+
+function ErrorFallback({
+  title,
+  message,
+  errorMessage,
+  onRetry,
+}: {
+  title?: string;
+  message?: string;
+  errorMessage: string;
+  onRetry: () => void;
+}) {
+  const palette = useThemePalette();
+
+  return (
+    <View
+      className="flex-1 items-center justify-center gap-3 px-8 py-8"
+      style={{ backgroundColor: palette.background }}
+    >
+      <Text className="text-base font-semibold" style={{ color: palette.text }}>
+        {title ?? "页面遇到了意外错误"}
+      </Text>
+      <Text
+        className="text-sm text-center leading-5"
+        style={{ color: palette.textMuted }}
+      >
+        {message ?? errorMessage}
+      </Text>
+      <Pressable
+        className="mt-2 rounded-lg px-6 py-2.5"
+        style={{ backgroundColor: palette.primary }}
+        onPress={onRetry}
+      >
+        <Text
+          className="text-[15px] font-semibold"
+          style={{ color: palette.textOnPrimary }}
+        >
+          重试
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 interface ErrorBoundaryProps {
   title?: string;
@@ -32,49 +77,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
     const { error } = this.state;
     if (error) {
       return (
-        <View style={styles.container}>
-          <Text style={styles.title}>{this.props.title ?? "页面遇到了意外错误"}</Text>
-          <Text style={styles.message}>{this.props.message ?? error.message}</Text>
-          <Pressable style={styles.button} onPress={this.handleRetry}>
-            <Text style={styles.buttonText}>重试</Text>
-          </Pressable>
-        </View>
+        <ErrorFallback
+          title={this.props.title}
+          message={this.props.message}
+          errorMessage={error.message}
+          onRetry={this.handleRetry}
+        />
       );
     }
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-    gap: 12,
-    backgroundColor: "#FAF8F5",
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#1C1917",
-  },
-  message: {
-    fontSize: 14,
-    color: "#78716C",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  button: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#C4622D",
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-});
