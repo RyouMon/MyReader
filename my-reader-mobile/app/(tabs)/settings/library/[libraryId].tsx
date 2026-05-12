@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import LibraryDetailScreen from "@/src/screen/library-detail-screen";
+import LibraryDetailScreen from "@/src/features/library/library-detail-screen";
 
 export default function LibraryDetailRoute() {
   return (

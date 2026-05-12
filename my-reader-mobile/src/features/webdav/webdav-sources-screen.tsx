@@ -14,8 +14,8 @@ import {
   SectionCard,
   SettingsRow,
   type HeaderToolbarAction,
-} from "../components";
-import { useDataSourceStore } from "../store/data-source-store";
+} from "@/src/components";
+import { useDataSourceStore } from "@/src/store/data-source-store";
 
 export default function WebDavSourcesScreen() {
   const palette = useThemePalette();

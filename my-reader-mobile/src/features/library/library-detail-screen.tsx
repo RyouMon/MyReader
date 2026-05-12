@@ -10,13 +10,13 @@ import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status
 import type { DataSource, Library } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
-import { useAppStore } from "../store/app-store";
+import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
 import { Screen } from "@/src/components/ui/screen";
 import { Button } from "@/src/components/ui/button";
-import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "../components";
-import { useLibraryStore } from "../store/library-store";
+import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
+import { useLibraryStore } from "@/src/store/library-store";
 
 function formatBookCount(count: number) {
   return `${count.toLocaleString("zh-CN")} 本`;

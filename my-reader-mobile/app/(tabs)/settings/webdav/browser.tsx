@@ -1,3 +1,3 @@
-import WebDavBrowserScreen from "@/src/screen/webdav-browser-screen";
+import WebDavBrowserScreen from "@/src/features/webdav/webdav-browser-screen";
 
 export default WebDavBrowserScreen;

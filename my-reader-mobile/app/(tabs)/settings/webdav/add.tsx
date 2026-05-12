@@ -1,3 +1,3 @@
-import AddWebDavDataSourceScreen from "@/src/screen/add-webdav-data-source-screen";
+import AddWebDavDataSourceScreen from "@/src/features/webdav/add-webdav-data-source-screen";
 
 export default AddWebDavDataSourceScreen;

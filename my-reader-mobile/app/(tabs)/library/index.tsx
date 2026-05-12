@@ -1,4 +1,4 @@
-import LibraryScreen from "@/src/screen/library-screen";
+import LibraryScreen from "@/src/features/library/library-screen";
 
 export default function LibraryRoute() {
   return <LibraryScreen />;

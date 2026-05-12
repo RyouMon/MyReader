@@ -10,9 +10,9 @@ import {
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SectionHeading, SettingsRow } from "../components";
-import { useAppStore } from "../store/app-store";
-import { useLibraryStore } from "../store/library-store";
+import { Screen, SectionCard, SectionHeading, SettingsRow } from "@/src/components";
+import { useAppStore } from "@/src/store/app-store";
+import { useLibraryStore } from "@/src/store/library-store";
 
 const themeModes = ["跟随设备", "浅色", "深色"];
 const themeModeMap: Record<string, ThemeMode> = { 跟随设备: "system", 浅色: "light", 深色: "dark" };

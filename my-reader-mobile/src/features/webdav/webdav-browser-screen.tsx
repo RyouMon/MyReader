@@ -6,13 +6,13 @@ import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status
 import { useThemePalette } from "@/src/design/tokens";
 import { Text } from "@/tw";
 
-import { EmptyState, Screen, SectionCard, SettingsRow } from "../components";
-import { HeaderToolbar } from "../components/ui/header-toolbar";
-import type { WebDavDataSource } from "../data/types";
-import { createWebDavLibraryFromPath, listWebDavDirectory } from "../data/webdav";
-import { useDataSourceStore } from "../store/data-source-store";
-import { useLibraryStore } from "../store/library-store";
-import { readWebDavPassword } from "../store/secure-credential-store";
+import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
+import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
+import type { WebDavDataSource } from "@/src/data/types";
+import { createWebDavLibraryFromPath, listWebDavDirectory } from "@/src/data/webdav";
+import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useLibraryStore } from "@/src/store/library-store";
+import { readWebDavPassword } from "@/src/store/secure-credential-store";
 
 type BrowserEntry = {
   href: string;

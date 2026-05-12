@@ -1,3 +1,3 @@
-import ReaderScreen from "@/src/screen/reader-screen";
+import ReaderScreen from "@/src/features/reader/reader-screen";
 
 export default ReaderScreen;

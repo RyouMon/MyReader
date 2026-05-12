@@ -10,8 +10,8 @@ import type { DataSourceWebdav } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-import { HeaderToolbar, Screen, SectionCard, SettingsRow, type HeaderToolbarAction } from "../components";
-import { useDataSourceStore } from "../store/data-source-store";
+import { HeaderToolbar, Screen, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
+import { useDataSourceStore } from "@/src/store/data-source-store";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {

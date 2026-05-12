@@ -15,8 +15,8 @@ import {
   HeaderToolbar,
   Screen,
   type HeaderToolbarAction,
-} from "../components";
-import { useDataSourceStore } from "../store/data-source-store";
+} from "@/src/components";
+import { useDataSourceStore } from "@/src/store/data-source-store";
 
 const addWebDavMobileSchema = z
   .object({

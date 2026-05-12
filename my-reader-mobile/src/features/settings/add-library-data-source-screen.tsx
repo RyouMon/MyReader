@@ -3,9 +3,9 @@ import { Link, router } from "expo-router";
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "../components";
-import { useDataSourceStore } from "../store/data-source-store";
-import { useLibraryStore } from "../store/library-store";
+import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useLibraryStore } from "@/src/store/library-store";
 
 export default function AddLibraryDataSourceScreen() {
   const { addLibrary } = useLibraryStore();

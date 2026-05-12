@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import SettingsScreen from "@/src/screen/settings-screen";
+import SettingsScreen from "@/src/features/settings/settings-screen";
 
 export default function SettingsRoute() {
   return (

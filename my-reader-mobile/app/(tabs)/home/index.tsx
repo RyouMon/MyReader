@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import HomeScreen from "@/src/screen/home-screen";
+import HomeScreen from "@/src/features/home/home-screen";
 
 export default function HomeRoute() {
   return (

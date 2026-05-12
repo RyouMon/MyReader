@@ -9,12 +9,12 @@ import { Share } from "react-native";
 import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "../components";
-import { BookDetailContent, getDetailColors } from "../components/books/book-detail";
-import { readBookDetailFromMetadata } from "../data/calibre";
-import type { WebDavDataSource } from "../data/types";
-import { useAppStore } from "../store/app-store";
-import { useLibraryStore } from "../store/library-store";
+import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
+import { BookDetailContent, getDetailColors } from "@/src/components/books/book-detail";
+import { readBookDetailFromMetadata } from "@/src/data/calibre";
+import type { WebDavDataSource } from "@/src/data/types";
+import { useAppStore } from "@/src/store/app-store";
+import { useLibraryStore } from "@/src/store/library-store";
 
 type DetailCacheEntry = {
   detail: import("my-reader-tools/types/book").BookDetail | null;

@@ -22,27 +22,27 @@ import {
   SearchField,
   SectionHeading,
   type HeaderToolbarAction,
-} from "../components";
+} from "@/src/components";
 import {
   getReadableFormats,
   resolveEffectiveFormat,
-} from "../data/book-formats";
-import { getBookFormatPaths } from "../data/calibre";
-import type { BookItem } from "../data/types";
-import { describeDownloadError } from "../errors";
-import { useDebouncedValue } from "../hooks/use-debounced-value";
-import { useLibraryBookMeta } from "../hooks/use-library-book-meta";
-import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "../hooks/use-library-book-search";
-import { notifyLibraryRefresh } from "../notifications/download-notifications";
-import { useAppStore } from "../store/app-store";
-import type { LibraryViewMode } from "../store/app-store.types";
-import { useLibraryStore } from "../store/library-store";
+} from "@/src/data/book-formats";
+import { getBookFormatPaths } from "@/src/data/calibre";
+import type { BookItem } from "@/src/data/types";
+import { describeDownloadError } from "@/src/errors";
+import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
+import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
+import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
+import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
+import { useAppStore } from "@/src/store/app-store";
+import type { LibraryViewMode } from "@/src/store/app-store.types";
+import { useLibraryStore } from "@/src/store/library-store";
 import {
   dismissTasksForPath,
   enqueue as enqueueDownload,
-} from "../sync/download-store";
-import { syncDbNow } from "../sync/db_sync";
-import { useSyncActions } from "../sync/useSyncActions";
+} from "@/src/sync/download-store";
+import { syncDbNow } from "@/src/sync/db_sync";
+import { useSyncActions } from "@/src/sync/useSyncActions";
 
 const downloadFilterOptions = [
   { value: "all", label: "全部" },
