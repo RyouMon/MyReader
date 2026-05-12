@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { router } from "expo-router";
 
 import { useThemePalette } from "@/src/design/tokens";
@@ -11,10 +12,14 @@ export default function HomeScreen() {
   const { activeLibrary, books, loadingBooks } = useLibraryStore();
 
   const currentBook = books[0];
-  const recentBooks = books.slice(0, 5);
-  const addedBooks = [...books]
-    .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
-    .slice(0, 5);
+  const recentBooks = useMemo(() => books.slice(0, 5), [books]);
+  const addedBooks = useMemo(
+    () =>
+      [...books]
+        .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
+        .slice(0, 5),
+    [books]
+  );
   const continueProgress = 0.32;
 
   function openBookDetail(bookId: string) {
