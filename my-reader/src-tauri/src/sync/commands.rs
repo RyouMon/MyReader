@@ -16,7 +16,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::repositories::{config_repo, progress_repo};
+use crate::{config, db};
 
 use super::backend::{self, BackendKind};
 use super::data_source_to_backend_kind;
@@ -119,7 +119,7 @@ fn open_library_db(
     let path_str = library_path
         .to_str()
         .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-    let conn = progress_repo::open_db(path_str)?;
+    let conn = db::open_db(path_str)?;
     file_state::initialize_schema(&conn)?;
     Ok(conn)
 }
@@ -284,8 +284,8 @@ fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<Str
     let id = uuid::Uuid::new_v4().to_string();
     let mut config = state.lock().unwrap();
     config.device_id = Some(id.clone());
-    let path = config_repo::config_path(&app.path().app_data_dir()?);
-    config_repo::save_config(&path, &config)?;
+    let path = config::config_path(&app.path().app_data_dir()?);
+    config::save_config(&path, &config)?;
     Ok(id)
 }
 

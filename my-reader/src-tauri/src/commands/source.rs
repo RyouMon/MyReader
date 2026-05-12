@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::DataSourceDto;
-use crate::repositories::config_repo;
+use crate::config;
 use crate::services::datasource_service::DataSourceService;
 
 #[derive(Debug, serde::Deserialize, specta::Type)]
@@ -101,7 +101,7 @@ pub fn add_local_data_source(
         let dto = DataSourceService::add_local_data_source(name, root_path, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(dto)
     })();
     match &result {
@@ -138,7 +138,7 @@ pub fn add_webdav_data_source(
         )?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(dto)
     })();
     match &result {
@@ -165,7 +165,7 @@ pub fn remove_data_source(
         DataSourceService::remove_data_source(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(())
     })();
     match &result {

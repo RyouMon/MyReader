@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::LibraryInfo;
-use crate::repositories::config_repo;
+use crate::config;
 use crate::services::library_service::LibraryService;
 
 #[tauri::command]
@@ -36,7 +36,7 @@ pub fn add_library(
         let info = LibraryService::add_library(&path, name.as_deref(), &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         drop(config);
 
         if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
@@ -92,7 +92,7 @@ pub fn remove_library(
         LibraryService::remove_library(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(())
     })();
     match &result {
@@ -115,7 +115,7 @@ pub fn switch_library(
         LibraryService::switch_library(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(())
     })();
     match &result {

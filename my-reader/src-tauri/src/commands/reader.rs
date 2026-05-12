@@ -5,8 +5,8 @@ use crate::commands::{AppState, PreparedBookSource};
 use crate::error::AppError;
 use crate::models::JsonAny;
 use crate::reader_ui_prefs::ReaderUiPreferences;
-use crate::repositories::cache_repo;
-use crate::repositories::config_repo;
+use crate::cache;
+use crate::config;
 use crate::services::library_service::LibraryService;
 use crate::services::reader_service::ReaderService;
 use crate::streamer::StreamerState;
@@ -73,7 +73,7 @@ pub async fn close_book_streamer(
 ) -> Result<(), AppError> {
     let session_key = format!(
         "{}-{}",
-        cache_repo::sanitize_key_part(&library_id),
+        cache::sanitize_key_part(&library_id),
         book_id
     );
     let mut streamers = streamer_state.write().await;
@@ -123,7 +123,7 @@ pub fn set_reader_ui_preferences(
         ReaderService::set_reader_ui_preferences(&mut config, prefs);
 
         let config_path = app.path().app_data_dir()?.join("config.json");
-        config_repo::save_config(&config_path, &config)?;
+        config::save_config(&config_path, &config)?;
         Ok(())
     })();
 

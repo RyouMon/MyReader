@@ -1,5 +1,8 @@
 mod asset_scope;
+pub mod cache;
 pub mod commands;
+mod config;
+mod db;
 mod error;
 pub mod models;
 mod protocols;
@@ -19,7 +22,6 @@ use time::{macros::format_description, OffsetDateTime};
 use tokio::sync::RwLock;
 
 use commands::AppState;
-use repositories::config_repo;
 use streamer::StreamerState;
 
 /// 本地日期时间 + 毫秒（无法解析本地时区时回退 UTC）。勿使用错误嵌套的 `[[[year]…]]`。
@@ -109,8 +111,8 @@ pub fn run() -> Result<(), tauri::Error> {
         .manage(StreamerState::new(RwLock::new(HashMap::new())))
         .setup(|app| {
             info!("Start to initialize application.");
-            let config_path = config_repo::config_path(&app.path().app_data_dir()?);
-            let config = config_repo::load_config(&config_path).unwrap_or_default();
+            let config_path = config::config_path(&app.path().app_data_dir()?);
+            let config = config::load_config(&config_path).unwrap_or_default();
             *app.state::<AppState>().lock().unwrap() = config;
             if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
                 error!(

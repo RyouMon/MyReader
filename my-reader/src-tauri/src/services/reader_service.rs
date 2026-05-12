@@ -3,7 +3,7 @@ use crate::error::AppError;
 use crate::models::AppConfig;
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
-use crate::repositories::cache_repo;
+use crate::cache;
 
 pub struct ReaderService;
 
@@ -12,8 +12,8 @@ impl ReaderService {
         dir_path: &str,
         manifest: &serde_json::Value,
     ) -> Result<(), AppError> {
-        cache_repo::ensure_reader_cache_dirs()?;
-        let root = cache_repo::reader_cache_extracted_root();
+        cache::ensure_reader_cache_dirs()?;
+        let root = cache::reader_cache_extracted_root();
         let desired = std::path::PathBuf::from(dir_path);
         let root_canon = dunce::canonicalize(&root)
             .map_err(|e| AppError::Config(format!("INVALID_READER_CACHE_ROOT: {}", e)))?;
@@ -36,7 +36,7 @@ impl ReaderService {
         book_id: i64,
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
-        cache_repo::ensure_reader_cache_dirs()?;
+        cache::ensure_reader_cache_dirs()?;
         let repo = CalibreBookRepository::open(lib_path)?;
         let file_path = repo
             .get_book_file_path(lib_path, book_id, format)?
@@ -48,14 +48,14 @@ impl ReaderService {
 
         let format_upper = format.to_uppercase();
         if format_upper == "EPUB" || format_upper == "CBZ" {
-            let cache_key = cache_repo::build_archive_cache_key(lib_id, book_id, &format_upper);
-            let extracted_dir = cache_repo::reader_cache_extracted_root().join(&cache_key);
+            let cache_key = cache::build_archive_cache_key(lib_id, book_id, &format_upper);
+            let extracted_dir = cache::reader_cache_extracted_root().join(&cache_key);
 
             if extracted_dir.exists() {
                 std::fs::remove_dir_all(&extracted_dir)?;
             }
             std::fs::create_dir_all(&extracted_dir)?;
-            let entries = cache_repo::extract_zip_to_dir(&file_path, &extracted_dir)?;
+            let entries = cache::extract_zip_to_dir(&file_path, &extracted_dir)?;
 
             Ok(PreparedBookSource {
                 format: format_upper,

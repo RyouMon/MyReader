@@ -1,8 +1,8 @@
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
-use crate::repositories::cache_repo;
-use crate::repositories::progress_repo;
+use crate::cache;
+use crate::db;
 
 pub struct LibraryService;
 
@@ -53,7 +53,7 @@ impl LibraryService {
 
         let id = uuid::Uuid::new_v4().to_string();
 
-        progress_repo::ensure_library_data_dir(&canon_str)?;
+        db::ensure_library_data_dir(&canon_str)?;
 
         let book_count = CalibreBookRepository::open(&canon_str)
             .and_then(|repo| repo.get_book_count())
@@ -100,7 +100,7 @@ impl LibraryService {
         let book_count = books.len();
         let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 
-        cache_repo::clear_orphaned_library_cache_files(id, &book_ids)?;
+        cache::clear_orphaned_library_cache_files(id, &book_ids)?;
 
         let lib_name = lib_path_canon
             .file_name()
@@ -118,7 +118,7 @@ impl LibraryService {
 
     pub fn remove_library(id: &str, config: &mut AppConfig) -> Result<(), AppError> {
         config.libraries.retain(|lib| lib.id != id);
-        cache_repo::clear_library_cache_files(id)?;
+        cache::clear_library_cache_files(id)?;
 
         if config.active_library_id.as_ref() == Some(&id.to_string()) {
             config.active_library_id = config.libraries.first().map(|lib| lib.id.clone());

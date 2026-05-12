@@ -1,12 +1,12 @@
 use crate::commands::CacheUsageDto;
 use crate::error::AppError;
-use crate::repositories::cache_repo;
+use crate::cache;
 
 pub struct CacheService;
 
 impl CacheService {
     pub fn get_cache_usage(max_mb: i64) -> Result<CacheUsageDto, AppError> {
-        let files = cache_repo::collect_cache_files_sorted_oldest()?;
+        let files = cache::collect_cache_files_sorted_oldest()?;
         let total_bytes = files.iter().map(|(_, size, _)| *size).sum::<u64>();
         Ok(CacheUsageDto {
             total_bytes,
@@ -15,11 +15,11 @@ impl CacheService {
     }
 
     pub fn clear_cache() -> Result<(), AppError> {
-        let root = cache_repo::reader_cache_root();
+        let root = cache::reader_cache_root();
         if root.exists() {
             std::fs::remove_dir_all(&root)?;
         }
-        cache_repo::ensure_reader_cache_dirs()?;
+        cache::ensure_reader_cache_dirs()?;
         Ok(())
     }
 
@@ -28,7 +28,7 @@ impl CacheService {
         if max_bytes == 0 {
             return Self::clear_cache();
         }
-        let files = cache_repo::collect_cache_files_sorted_oldest()?;
+        let files = cache::collect_cache_files_sorted_oldest()?;
         let mut total_bytes = files.iter().map(|(_, size, _)| *size).sum::<u64>();
         if total_bytes <= max_bytes {
             return Ok(());
