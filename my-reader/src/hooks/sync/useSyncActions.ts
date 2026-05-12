@@ -1,4 +1,5 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { useCallback } from "react"
 
 export interface SyncBackendInfo {
@@ -53,21 +54,18 @@ function assertTauri(): void {
 export function useSyncActions() {
   const listBackends = useCallback(async (): Promise<SyncBackendInfo[]> => {
     assertTauri()
-    return await invoke<SyncBackendInfo[]>("sync_list_backends")
+    return await api.syncListBackends()
   }, [])
 
   const testBackend = useCallback(async (id: string): Promise<void> => {
     assertTauri()
-    await invoke("sync_test_backend", { id })
+    await api.syncTestBackend(id)
   }, [])
 
   const listFileStates = useCallback(
     async (libraryId: string, filter?: string): Promise<FileStateRow[]> => {
       assertTauri()
-      const rows = await invoke<BackendFileStateRow[]>("sync_list_file_states", {
-        libraryId,
-        filter: filter ?? null,
-      })
+      const rows = await api.syncListFileStates(libraryId, filter ?? null)
       return rows.map(normalizeRow)
     },
     [],
@@ -80,11 +78,7 @@ export function useSyncActions() {
       relativePath: string,
     ): Promise<void> => {
       assertTauri()
-      await invoke("sync_download_file", {
-        libraryId,
-        dataSourceId,
-        relativePath,
-      })
+      await api.syncDownloadFile(libraryId, dataSourceId, relativePath)
     },
     [],
   )
@@ -92,7 +86,7 @@ export function useSyncActions() {
   const evictLocal = useCallback(
     async (libraryId: string, relativePath: string): Promise<void> => {
       assertTauri()
-      await invoke("sync_evict_local_file", { libraryId, relativePath })
+      await api.syncEvictLocalFile(libraryId, relativePath)
     },
     [],
   )
@@ -104,11 +98,7 @@ export function useSyncActions() {
       relativePath: string,
     ): Promise<void> => {
       assertTauri()
-      await invoke("sync_delete_file_everywhere", {
-        libraryId,
-        dataSourceId,
-        relativePath,
-      })
+      await api.syncDeleteFileEverywhere(libraryId, dataSourceId, relativePath)
     },
     [],
   )
@@ -116,10 +106,7 @@ export function useSyncActions() {
   const syncDbNow = useCallback(
     async (libraryId: string, dataSourceId: string): Promise<DbSyncReport> => {
       assertTauri()
-      return await invoke<DbSyncReport>("sync_db_now", {
-        libraryId,
-        dataSourceId,
-      })
+      return await api.syncDbNow(libraryId, dataSourceId)
     },
     [],
   )
@@ -127,7 +114,7 @@ export function useSyncActions() {
   const syncDbForLibrary = useCallback(
     async (libraryId: string): Promise<DbSyncReport> => {
       assertTauri()
-      return await invoke<DbSyncReport>("sync_db_for_library", { libraryId })
+      return await api.syncDbForLibrary(libraryId)
     },
     [],
   )

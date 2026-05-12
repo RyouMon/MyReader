@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import {
   ArrowLeft,
   BookOpen,
@@ -153,10 +154,7 @@ function BookDetailPage() {
         `Start to load book detail page. book id: "${bookId}", library id: "${activeLibraryId ?? ""}"`,
       )
       try {
-        const detail = await invoke<BookDetail>("get_book_detail", {
-          libraryId: activeLibraryId,
-          bookId: Number(bookId),
-        })
+        const detail = await api.getBookDetail(activeLibraryId, Number(bookId))
         setBook(detail)
         setSelectedFormat(pickReadableFormat(detail.formats))
         setCoverFailed(brokenCovers.has(detail.path))
@@ -168,11 +166,7 @@ function BookDetailPage() {
           console.info(
             `Start to load series books. series name: "${detail.series}", exclude book id: ${detail.id}`,
           )
-          const related = await invoke<CalibreBook[]>("get_series_books", {
-            libraryId: activeLibraryId,
-            seriesName: detail.series,
-            excludeBookId: detail.id,
-          })
+          const related = await api.getSeriesBooks(activeLibraryId, detail.series, detail.id)
           setSeriesBooks(related)
           console.info(
             `Success to load series books. count: ${related.length}`,

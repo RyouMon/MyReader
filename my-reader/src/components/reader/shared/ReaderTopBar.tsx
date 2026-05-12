@@ -69,7 +69,7 @@ export function ReaderTopBar({
       </div>
 
       <div className="min-w-0 max-w-[min(100vw-14rem,42rem)] truncate text-center text-[13px] text-reader-chrome-fg">
-        {bookTitle}
+        {chapterTitle || bookTitle}
       </div>
 
       <div className="flex items-center justify-end gap-0.5">

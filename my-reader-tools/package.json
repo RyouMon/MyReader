@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./reader-core/*": "./src/reader-core/*",
+    "./reader-core/*": "./src/reader-core/*.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
-    "./types/*": "./src/types/*",
+    "./types/*": "./src/types/*.ts",
+    "./store/*": "./src/store/*.ts",
     "./state/data-source": "./src/state/data-source.ts"
   },
   "dependencies": {

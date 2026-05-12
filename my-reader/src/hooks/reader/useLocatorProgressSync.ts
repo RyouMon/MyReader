@@ -1,4 +1,5 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { useEffect, useRef } from "react"
 import type { Locator } from "@readium/shared"
 import { locatorToJson } from "@/lib/readium/locator"
@@ -10,7 +11,7 @@ export interface ReadingProgressDto {
   bookId: number
   format: string
   locator: Record<string, unknown>
-  updatedAt: number
+  updatedAt: number | null
 }
 
 export function useLocatorProgressSync(params: {
@@ -37,12 +38,7 @@ export function useLocatorProgressSync(params: {
       if (saveSeqRef.current !== seq) return
       const loc = locatorRef.current
       if (!loc) return
-      invoke("set_reading_progress", {
-        libraryId,
-        bookId,
-        format,
-        locator: locatorToJson(loc),
-      }).catch((e: unknown) => {
+      api.setReadingProgress(libraryId, bookId, format, locatorToJson(loc)).catch((e: unknown) => {
         console.error("[useLocatorProgressSync] save failed:", e)
       })
     }, SAVE_DEBOUNCE_MS)

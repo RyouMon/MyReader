@@ -1,4 +1,5 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
@@ -42,7 +43,7 @@ function mapDataSourceFromBackendJson(
 }
 
 async function fetchDataSources(): Promise<DataSource[]> {
-  const rows = await invoke<Record<string, unknown>[]>("list_data_sources")
+  const rows = await api.listDataSources()
   return rows
     .map((row) => mapDataSourceFromBackendJson(row))
     .filter((row): row is DataSource => row !== null)
@@ -53,26 +54,30 @@ async function createWebdavDataSource(input: {
   endpoint: string
   username: string
   password: string
-  rootPath?: string
+  rootPath?: string | null
 }): Promise<DataSource> {
-  const raw = await invoke<Record<string, unknown>>("add_webdav_data_source", {
-    input,
+  const raw = await api.addWebdavDataSource({
+    ...input,
+    rootPath: input.rootPath ?? null,
   })
   return mapDataSourceFromBackendJson(raw) as DataSource
 }
 
 async function removeDataSource(id: string): Promise<void> {
-  await invoke("remove_data_source", { id })
+  await api.removeDataSource(id)
 }
 
 async function testWebdavConnection(input: {
   endpoint: string
   username: string
   password: string
-  rootPath?: string
+  rootPath?: string | null
 }): Promise<DataSourceConnectionTestResult> {
   try {
-    await invoke("test_webdav_connection", { input })
+    await api.testWebdavConnection({
+      ...input,
+      rootPath: input.rootPath ?? null,
+    })
     return { ok: true, message: "OK" }
   } catch (error) {
     return {
@@ -116,7 +121,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
       endpoint: datasource.endpoint,
       username: datasource.username,
       password: datasource.password ?? "",
-      rootPath: datasource.rootPath ?? undefined,
+      rootPath: datasource.rootPath ?? null,
     })
     await get().refreshDataSources(created.id)
     return created
@@ -136,7 +141,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
       endpoint: datasource.endpoint,
       username: datasource.username,
       password: datasource.password ?? "",
-      rootPath: datasource.rootPath ?? undefined,
+      rootPath: datasource.rootPath ?? null,
     })
   },
 }))

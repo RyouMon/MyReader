@@ -7,10 +7,10 @@ import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
 import { parseSavedLocator } from "@/lib/readium/locator"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import type { BookDetail } from "my-reader-tools/types/book"
 import { useLibrary } from "@/stores/libraryStore"
 import { useNavigate } from "@tanstack/react-router"
-import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core"
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import type { Locator } from "@readium/shared"
@@ -73,10 +73,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       }
       setBookPayload(null)
       try {
-        const detail = await invoke<BookDetail>("get_book_detail", {
-          libraryId: activeLibraryId,
-          bookId: Number(bookId),
-        })
+        const detail = await api.getBookDetail(activeLibraryId, Number(bookId))
         if (cancelled) return
 
         setBookTitle(detail.title)
@@ -93,25 +90,12 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const progressP: Promise<ReadingProgressDto | null> =
           isTauri() && activeLibraryId
-            ? invoke<ReadingProgressDto | null>("get_reading_progress", {
-                libraryId: activeLibraryId,
-                bookId: Number(bookId),
-                format: fmt,
-              }).catch(() => null)
+            ? api.getReadingProgress(activeLibraryId, Number(bookId), fmt).catch(() => null)
             : Promise.resolve(null)
 
         const [row, preparedSource] = await Promise.all([
           progressP,
-          invoke<{
-            format: string
-            filePath: string
-            extractedDirPath: string | null
-            extractedEntries: string[]
-          }>("prepare_book_source", {
-            libraryId: activeLibraryId,
-            bookId: Number(bookId),
-            format: fmt,
-          }),
+          api.prepareBookSource(activeLibraryId, Number(bookId), fmt),
         ])
         if (cancelled) return
 
@@ -138,10 +122,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     return () => {
       cancelled = true
       if (activeLibraryId) {
-        void invoke("close_book_streamer", {
-          libraryId: activeLibraryId,
-          bookId: Number(bookId),
-        })
+        void api.closeBookStreamer(activeLibraryId, Number(bookId))
       }
     }
   }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])

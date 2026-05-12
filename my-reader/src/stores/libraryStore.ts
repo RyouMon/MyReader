@@ -1,8 +1,9 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 
-import type { Library, LibraryStore } from "my-reader-tools/store/library"
+import type { LibraryStore } from "my-reader-tools/store/library"
 
 export const useLibraryStore = create<LibraryStore>()((set, get) => ({
   libraries: [],
@@ -20,7 +21,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     if (!isTauri()) return
     console.info("Start to refresh library list.")
     try {
-      const libs = await invoke<Library[]>("list_libraries")
+      const libs = await api.listLibraries()
       set({ libraries: libs })
       console.info(
         `Success to refresh library list. count: ${libs.length}`,
@@ -34,7 +35,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     if (!isTauri()) return
     console.info(`Start to refresh library. id: "${id}"`)
     try {
-      await invoke("refresh_library", { id })
+      await api.refreshLibrary(id)
       await get().refreshLibraries()
       console.info(`Success to refresh library. id: "${id}"`)
     } catch (e) {
@@ -54,8 +55,8 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     console.info("Start to hydrate library state from backend.")
     set({ loading: true })
     try {
-      const libs = await invoke<Library[]>("list_libraries")
-      const id = await invoke<string | null>("get_active_library_id")
+      const libs = await api.listLibraries()
+      const id = await api.getActiveLibraryId()
       set({ libraries: libs, activeLibraryId: id })
       console.info(
         `Success to hydrate library state from backend. library count: ${libs.length}, active library id: "${id ?? ""}"`,
@@ -72,9 +73,9 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
       `Start to add library. path: "${path}", requested name: "${name ?? ""}"`,
     )
     try {
-      const info = await invoke<Library>("add_library", { path, name })
+      const info = await api.addLibrary(path ?? "", name ?? null)
       await get().refreshLibraries()
-      const newId = await invoke<string | null>("get_active_library_id")
+      const newId = await api.getActiveLibraryId()
       if (newId) set({ activeLibraryId: newId })
       console.info(
         `Success to add library. id: "${info.id}", name: "${info.name}", book count: ${info.bookCount}`,
@@ -92,9 +93,9 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
   removeLibrary: async (id) => {
     console.info(`Start to remove library. id: "${id}"`)
     try {
-      await invoke("remove_library", { id })
+      await api.removeLibrary(id)
       await get().refreshLibraries()
-      const newId = await invoke<string | null>("get_active_library_id")
+      const newId = await api.getActiveLibraryId()
       set({ activeLibraryId: newId })
       console.info(
         `Success to remove library. id: "${id}", active library id after: "${newId ?? ""}"`,
@@ -108,7 +109,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
   switchLibrary: async (id) => {
     console.info(`Start to switch active library. id: "${id}"`)
     try {
-      await invoke("switch_library", { id })
+      await api.switchLibrary(id)
       set({ activeLibraryId: id })
       console.info(`Success to switch active library. id: "${id}"`)
     } catch (e) {

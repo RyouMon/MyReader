@@ -1,8 +1,9 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { useEffect } from "react"
 
-import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
 import { useAppUiStore } from "@/stores/appUiStore"
+import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
 
 /**
  * 在 Tauri 下从应用数据目录的 `config.json`（readerUi 段）加载并写回；
@@ -26,13 +27,11 @@ export function AppUiPreferencesSync() {
     void (async () => {
       try {
         console.info("Start to load reader UI preferences from backend.")
-        const prefs = await invoke<ReaderUiPreferencesPayload>(
-          "get_reader_ui_preferences",
-        )
+        const prefs = await api.getReaderUiPreferences()
         if (cancelled) return
-        hydrateReaderPreferences(prefs)
+        hydrateReaderPreferences(prefs as ReaderUiPreferencesPayload)
         if (prefs.cache?.autoCleanupOnLaunch) {
-          await invoke("enforce_cache_limit")
+          await api.enforceCacheLimit()
         }
         console.info(
           `Success to load reader UI preferences. version: ${prefs.version}`,

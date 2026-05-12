@@ -1,4 +1,5 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { create } from "zustand"
 
 import {
@@ -54,7 +55,7 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
     console.info(
       `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
     )
-    void invoke("set_reader_ui_preferences", { prefs: payload })
+    void api.setReaderUiPreferences(payload)
       .then(() => {
         console.info("Success to persist reader UI preferences.")
       })
@@ -159,7 +160,7 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
           ...DEFAULT_SETTINGS,
           ...data.reflowable.settings,
           theme:
-            typeof migratedTheme === "string" ? migratedTheme : DEFAULT_SETTINGS.theme,
+            (typeof migratedTheme === "string" ? migratedTheme : DEFAULT_SETTINGS.theme) as typeof DEFAULT_SETTINGS.theme,
         },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },
       },

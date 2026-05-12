@@ -1,4 +1,5 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -33,7 +34,7 @@ export default function ReadingSection() {
 
   useEffect(() => {
     if (!isTauri()) return
-    void invoke<CacheUsageDto>("get_cache_usage")
+    void api.getCacheUsage()
       .then((row) => setUsage(row))
       .catch(() => setUsage(null))
   }, [])
@@ -48,8 +49,8 @@ export default function ReadingSection() {
     if (!Number.isFinite(parsed) || parsed < 0) return
     patchCacheSettings({ maxCacheSizeMB: Math.floor(parsed) })
     if (!isTauri()) return
-    await invoke("enforce_cache_limit")
-    const row = await invoke<CacheUsageDto>("get_cache_usage")
+    await api.enforceCacheLimit()
+    const row = await api.getCacheUsage()
     setUsage(row)
   }
 
@@ -57,8 +58,8 @@ export default function ReadingSection() {
     if (!isTauri()) return
     setLoading(true)
     try {
-      await invoke("clear_cache")
-      const row = await invoke<CacheUsageDto>("get_cache_usage")
+      await api.clearCache()
+      const row = await api.getCacheUsage()
       setUsage(row)
     } finally {
       setLoading(false)

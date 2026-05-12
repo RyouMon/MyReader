@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { api } from "@/lib/tauri-api"
 
-import type { CalibreBook, PaginatedBooks } from "my-reader-tools/types/book"
+import type { CalibreBook } from "my-reader-tools/types/book"
 
 const PAGE_SIZE = 100
 
@@ -39,13 +39,7 @@ export function usePaginatedBooks(
     console.info(
       `Start to fetch books page (initial). library id: "${libraryId}", offset: 0, limit: ${PAGE_SIZE}, sort by: "${sortBy}", search: "${search}"`,
     )
-    invoke<PaginatedBooks>("get_books_page", {
-      libraryId,
-      offset: 0,
-      limit: PAGE_SIZE,
-      sortBy,
-      search: search || null,
-    })
+    api.getBooksPage(libraryId, 0, PAGE_SIZE, sortBy, search || null)
       .then((result) => {
         if (epochRef.current !== epoch) return
         const m = new Map<number, CalibreBook>()
@@ -85,13 +79,7 @@ export function usePaginatedBooks(
         console.info(
           `Start to fetch books page (range). library id: "${libraryId}", page index: ${p}, offset: ${p * PAGE_SIZE}`,
         )
-        invoke<PaginatedBooks>("get_books_page", {
-          libraryId,
-          offset: p * PAGE_SIZE,
-          limit: PAGE_SIZE,
-          sortBy,
-          search: search || null,
-        })
+        api.getBooksPage(libraryId, p * PAGE_SIZE, PAGE_SIZE, sortBy, search || null)
           .then((result) => {
             if (epochRef.current !== epoch) return
             setBooks((prev) => {
