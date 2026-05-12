@@ -1,11 +1,33 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { api } from "@/lib/tauri-api"
+import i18n from "@/i18n"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
   DataSourceStore,
 } from "my-reader-tools/store/data-source"
 import { create } from "zustand"
+
+function formatTauriError(error: unknown): string {
+  const raw =
+    typeof error === "object" && error !== null && "message" in error
+      ? String((error as Record<string, unknown>).message)
+      : String(error)
+
+  const prefix = "CONFIG_ERROR: "
+  if (!raw.startsWith(prefix)) return raw
+
+  const rest = raw.slice(prefix.length).trim()
+  const firstColon = rest.indexOf(":")
+  if (firstColon === -1) return rest
+
+  const code = rest.slice(0, firstColon).trim()
+  const detail = rest.slice(firstColon + 1).trim()
+  const translated = i18n.t(`errors.${code}`, { detail })
+  // i18n returns the key itself when translation is missing; fall back to raw.
+  if (translated === `errors.${code}`) return raw
+  return translated
+}
 
 function isRuntimeAvailable(): boolean {
   return isTauri()
@@ -82,7 +104,7 @@ async function testWebdavConnection(input: {
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : String(error),
+      message: formatTauriError(error),
     }
   }
 }

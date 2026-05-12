@@ -7,6 +7,14 @@ export const zhCN = {
       config: "配置错误",
       serialize: "数据序列化错误",
       unknown: "未知错误",
+      WEBDAV_UNAUTHORIZED:
+        "连接失败：服务返回 401 Unauthorized，用户名或密码错误（{{detail}}）",
+      WEBDAV_FORBIDDEN:
+        "连接失败：服务返回 403 Forbidden，当前账号无访问权限（{{detail}}）",
+      WEBDAV_NOT_FOUND:
+        "连接失败：服务返回 404 Not Found，远程根路径不存在（{{detail}}）",
+      WEBDAV_UNEXPECTED_STATUS:
+        "连接失败：服务返回状态码 {{detail}}",
     },
     settings: {
       title: "设置",

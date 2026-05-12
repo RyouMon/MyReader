@@ -121,26 +121,22 @@ pub async fn test_webdav_connection(input: TestWebdavConnectionInput) -> Result<
         }
         if status == reqwest::StatusCode::UNAUTHORIZED {
             return Err(AppError::Config(format!(
-                "连接失败：服务返回 401 Unauthorized，用户名或密码错误（{}）",
-                target_url
+                "WEBDAV_UNAUTHORIZED: {target_url}"
             )));
         }
         if status == reqwest::StatusCode::FORBIDDEN {
             return Err(AppError::Config(format!(
-                "连接失败：服务返回 403 Forbidden，当前账号无访问权限（{}）",
-                target_url
+                "WEBDAV_FORBIDDEN: {target_url}"
             )));
         }
         if status == reqwest::StatusCode::NOT_FOUND {
             return Err(AppError::Config(format!(
-                "连接失败：服务返回 404 Not Found，远程根路径不存在（{}）",
-                target_url
+                "WEBDAV_NOT_FOUND: {target_url}"
             )));
         }
         Err(AppError::Config(format!(
-            "连接失败：服务返回状态码 {}（{}）",
-            status.as_u16(),
-            target_url
+            "WEBDAV_UNEXPECTED_STATUS: {}: {target_url}",
+            status.as_u16()
         )))
     }
     .await;
