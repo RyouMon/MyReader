@@ -6,7 +6,7 @@ Feature: 书库网格视图布局
 
   Background:
     Given 书库中已存在 100 本书
-    And 用户处于网格视图模式
+    And 视图模式为网格
 
   @smoke @layout
   Scenario Outline: 不同窗口宽度下书籍卡片完整显示

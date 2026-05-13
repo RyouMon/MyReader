@@ -60,7 +60,7 @@ const BookCard = memo(function BookCard({
       role="button"
       tabIndex={0}
     >
-      <div className="relative aspect-[2/3] w-full max-h-[280px] overflow-hidden rounded-lg transition duration-200 ease-out group-hover/card:-translate-y-1 group-hover/card:shadow-[var(--shadow-md)] group-active/card:scale-[0.98]">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg transition duration-200 ease-out group-hover/card:-translate-y-1 group-hover/card:shadow-[var(--shadow-md)] group-active/card:scale-[0.98]">
         <BookCover
           book={book}
           libraryId={libraryId}

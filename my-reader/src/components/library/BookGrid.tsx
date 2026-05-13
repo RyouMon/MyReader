@@ -9,10 +9,9 @@ const MIN_COL_WIDTH = 152
 const GAP = 24
 const SKELETON_COUNT = 20
 const LIST_ROW_HEIGHT = 62
-const MAX_COVER_HEIGHT = 280
 const TEXT_BLOCK_HEIGHT = 78 // mt-2 (8px) + h-[70px] text area
 const ROW_GAP = 24
-const DEFAULT_GRID_ROW_HEIGHT = MAX_COVER_HEIGHT + TEXT_BLOCK_HEIGHT + ROW_GAP
+const DEFAULT_GRID_ROW_HEIGHT = MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
 
 export type LibraryViewMode = "grid" | "list"
 
@@ -58,7 +57,7 @@ export default function BookGrid({
         Math.floor((contentWidth + GAP) / (MIN_COL_WIDTH + GAP)),
       )
       const colWidth = (contentWidth - (newCols - 1) * GAP) / newCols
-      const coverHeight = Math.min(colWidth * 1.5, MAX_COVER_HEIGHT)
+      const coverHeight = colWidth * 1.5
       const cardHeight = coverHeight + TEXT_BLOCK_HEIGHT
       const rowHeight = cardHeight + ROW_GAP
       setCols(newCols)

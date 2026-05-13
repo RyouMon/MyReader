@@ -9,11 +9,6 @@ Given("书库中已存在 {int} 本书", async ({ page }, count: number) => {
   await libraryPage.setupIpcMocks()
 })
 
-Given("用户处于网格视图模式", async ({ page }) => {
-  // Grid mode is the default; no action needed.
-  // If persisted preference overrides it, the mock returns "grid".
-})
-
 Given("用户访问书库首页", async ({ page }) => {
   const libraryPage = new LibraryPage(page)
   await libraryPage.goto()
@@ -137,4 +132,28 @@ Then("第一行与第二行书籍之间的垂直间距应为 {int} 像素", asyn
     Math.abs(spacing - expected),
     `Expected spacing ${expected}, got ${spacing}`,
   ).toBeLessThanOrEqual(2)
+})
+
+Given("视图模式为网格", async () => {
+  // Grid mode is the default; the IPC mock already returns "grid".
+})
+
+Then("每个可见书籍卡片的宽高比应为 2:3", async ({ page }) => {
+  const libraryPage = new LibraryPage(page)
+  const cards = await libraryPage.getVisibleBookCards()
+  const count = await cards.count()
+  expect(count).toBeGreaterThan(0)
+
+  for (let i = 0; i < count; i++) {
+    const card = cards.nth(i)
+    const cover = card.locator("> div:first-child")
+    await expect(cover).toBeVisible()
+    const box = await cover.boundingBox()
+    expect(box).not.toBeNull()
+    const ratio = box!.width / box!.height
+    expect(
+      Math.abs(ratio - 2 / 3),
+      `Card ${i} ratio ${ratio} deviates from 2/3 at ${box!.width}x${box!.height}`,
+    ).toBeLessThan(0.05)
+  }
 })

@@ -6,7 +6,7 @@ Feature: 书库网格视图行距一致性
 
   Background:
     Given 书库中已存在 100 本书
-    And 用户处于网格视图模式
+    And 视图模式为网格
 
   @layout @row-spacing
   Scenario Outline: 同一列数下调整窗口宽度行距不变
