@@ -2,23 +2,17 @@ import { lazy, Suspense, useMemo } from "react";
 
 import type { Locator } from "@ryoumon/react-native-readium";
 
-import type {
-  FixedNavigationMode,
-  ReadingLayout,
-  ReaderTheme,
-} from "@/src/store/app-store.types";
+import type { ReaderTheme } from "@/src/store/app-store.types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { toNativeFilesystemPath } from "@/src/utils/io";
-
-import NativePdfReader from "./NativePdfReader";
 
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"));
 
 export type FixedReaderSurfaceProps = {
   archiveUri?: string | null;
   format: string;
-  /** 原生 PDF：`react-native-pdf` 使用的稳定本地 `file://` URI */
+  /** PDF：Readium 使用的稳定本地 `file://` URI */
   pdfLocalUri?: string | null;
   initialPage?: number;
   /** 精确阅读位置（固定版式 Readium Locator），优先于 `initialPage`。 */
@@ -29,14 +23,8 @@ export type FixedReaderSurfaceProps = {
   onToggleChrome?: () => void;
   gotoPageCommand?: number;
   fallback: React.ReactNode;
-  readingLayout?: ReadingLayout;
-  navigationMode?: FixedNavigationMode;
   theme?: ReaderTheme;
   brightness?: number;
-  zoomScale?: number;
-  onZoomScaleChange?: (scale: number) => void;
-  contentInsetTop?: number;
-  contentInsetBottom?: number;
 };
 
 function isPdfFormat(format: string): boolean {
@@ -59,14 +47,8 @@ export default function FixedReaderSurface({
   onToggleChrome,
   gotoPageCommand,
   fallback,
-  readingLayout = "paginate",
-  navigationMode = "horizontal",
   theme = "dark",
   brightness = 100,
-  zoomScale = 1,
-  onZoomScaleChange,
-  contentInsetTop = 0,
-  contentInsetBottom = 0,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);
 
@@ -98,25 +80,31 @@ export default function FixedReaderSurface({
       console.error("[fixed-reader-surface] pdf-missing-local-uri", { format });
       return null;
     }
+    const pdfFilePath = toNativeFilesystemPath(pdfLocalUri);
     const effectiveInitialPage = pageIndexFromFixedLocator(initialLocator, initialPage ?? 0);
+    const pdfInitialLocator: Locator | undefined = initialLocator ?? (effectiveInitialPage > 0 ? {
+      href: "publication.pdf",
+      type: "application/pdf",
+      locations: {
+        position: effectiveInitialPage + 1,
+        progression: 0,
+        totalProgression: 0,
+      },
+    } : undefined);
     return (
-      <NativePdfReader
-        pdfLocalUri={pdfLocalUri}
-        initialPage={effectiveInitialPage}
-        onStateChange={onStateChange}
-        onTocReady={onTocReady}
-        onRequestClose={onRequestClose}
-        onToggleChrome={onToggleChrome}
-        gotoPageCommand={gotoPageCommand}
-        readingLayout={readingLayout}
-        navigationMode={navigationMode}
-        theme={theme}
-        brightness={brightness}
-        zoomScale={zoomScale}
-        onZoomScaleChange={onZoomScaleChange}
-        contentInsetTop={contentInsetTop}
-        contentInsetBottom={contentInsetBottom}
-      />
+      <Suspense fallback={domFallback}>
+        <ReadiumFixedReader
+          filePath={pdfFilePath}
+          initialLocator={pdfInitialLocator}
+          onStateChange={onStateChange}
+          onTocReady={onTocReady}
+          onRequestClose={onRequestClose}
+          onToggleChrome={onToggleChrome}
+          gotoPageCommand={gotoPageCommand}
+          brightness={brightness}
+          theme={theme}
+        />
+      </Suspense>
     );
   }
 
