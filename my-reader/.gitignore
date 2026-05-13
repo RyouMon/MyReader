@@ -16,6 +16,12 @@ dist-ssr
 *.local
 msedgedriver.exe
 
+# Playwright / playwright-bdd generated
+.features-gen
+playwright-report
+test-results
+e2e-frontend/reports/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

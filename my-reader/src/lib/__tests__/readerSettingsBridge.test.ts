@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { readerSettingsToEpubPreferences } from "../../src/lib/readium/readerSettingsBridge"
-import type { ReaderSettings } from "../../src/components/reader/types"
+import { readerSettingsToEpubPreferences } from "../readium/readerSettingsBridge"
+import type { ReaderSettings } from "../../components/reader/types"
 
 const BASE_SETTINGS: ReaderSettings = {
   theme: "paper",

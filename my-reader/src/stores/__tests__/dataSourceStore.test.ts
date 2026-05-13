@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { mockIPC } from "@tauri-apps/api/mocks"
-import { useDataSourceStore } from "../../src/stores/dataSourceStore"
+import { useDataSourceStore } from "../dataSourceStore"
 
 /**
  * Build a WebDAV row payload that matches backend DTO shape.

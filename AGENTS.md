@@ -36,11 +36,13 @@ npm run preview      # Preview production build
 
 **Testing:**
 ```bash
-npm test                    # Full suite (unit + E2E)
-npm run test:unit           # Vitest (jsdom, tests/**/*.test.ts)
-npm run test:unit:watch     # Vitest watch mode
-npm run test:e2e            # WebdriverIO (Edge WebDriver)
-cd src-tauri && cargo test  # Rust integration tests
+npm test                      # Full suite (unit + E2E)
+npm run test:unit             # Vitest (jsdom, src/**/__tests__/**/*.test.ts)
+npm run test:unit:watch       # Vitest watch mode
+npm run test:unit:coverage    # Vitest with coverage report
+npm run test:e2e:frontend     # Playwright E2E (Layer 4, browser)
+npm run test:e2e:desktop      # WebdriverIO E2E (Layer 5, desktop)
+cd src-tauri && cargo test    # Rust integration tests
 ```
 
 **Lint/Format:** Biome 2.4.9 (`biome.json`). No separate lint script; `npm run build` is the main compile/typecheck gate.
@@ -195,81 +197,11 @@ The app requires a Calibre library directory containing `metadata.db`. For local
 
 ## Testing
 
-### Philosophy: TDD + BDD
+> **桌面端完整测试策略**（五层架构、技术选型、BDD/Gherkin 规范、编码规范、运行命令）参见 `.claude/rules/tauri-testing-rules.md`。
 
-#### 1. Test-Driven Development (TDD)
+桌面端采用五层测试架构：Vitest 单元测试 → Rust 内联/集成测试 → Playwright 前端 E2E → WebdriverIO 桌面 E2E。所有新功能必须使用 TDD（Red-Green-Refactor），E2E 层使用 Cucumber + Gherkin。
 
-**Always use TDD for all new features and bug fixes.** Follow the Red-Green-Refactor cycle strictly:
-
-1. **Red** — Write a failing test that defines the expected behavior.
-2. **Green** — Write the minimum production code to make the test pass.
-3. **Refactor** — Clean up the code while keeping all tests green.
-
-No production code should be written without a corresponding failing test first. No feature is considered complete unless it is covered by automated tests.
-
-#### 2. Behavior-Driven Development (BDD) — Gherkin Schema
-
-**Before writing any test implementation, you MUST follow BDD practices using Gherkin schema.**
-
-For every new feature or behavior, create an **empty test file** first that contains only:
-
-- **Behavior comments** written in Chinese `Given-When-Then` format
-- **Empty test function names** reflecting those behaviors, with body left empty or containing only `// TODO: implement after BDD review`
-
-**Empty Test File Template:**
-
-```typescript
-// Feature：用户登录
-//
-// Scenario：使用有效凭据成功登录
-//   Given 用户位于登录页面
-//   When 用户输入正确的用户名和密码
-//   And 用户点击登录按钮
-//   Then 用户应被重定向到仪表盘
-//   And 页面头部应显示用户名
-//
-// Scenario：使用无效凭据登录失败
-//   Given 用户位于登录页面
-//   When 用户输入错误的用户名或密码
-//   And 用户点击登录按钮
-//   Then 应显示错误提示信息
-//   And 用户应停留在登录页面
-
-describe('用户登录', () => {
-  it('成功登录后应重定向到仪表盘并显示用户名', () => {
-    // TODO: BDD 审核通过后实现
-  });
-
-  it('登录失败时应显示错误并停留在登录页面', () => {
-    // TODO: BDD 审核通过后实现
-  });
-});
-```
-
-**Workflow:**
-1. Write an empty test file containing only Chinese `Given-When-Then` behavior comments and empty test function names.
-2. **Submit for user review** — confirm the behavior descriptions are complete and accurate.
-3. Only after approval, proceed to write the actual test code (enter TDD Red-Green-Refactor).
-
----
-
-### Test File Locations & Structure
-
-#### Desktop (`my-reader/`)
-
-| Test Type | Location | Framework | Environment |
-|-----------|----------|-----------|-------------|
-| **Unit Tests (UT)** | `tests/**/*.test.ts` | Vitest | jsdom |
-| **Component Tests** | `tests/components/**/*.test.tsx` | Vitest + React Testing Library | jsdom |
-| **Store/Hook Tests** | `tests/stores/**/*.test.ts` | Vitest | jsdom |
-| **Utility Tests** | `tests/utils/**/*.test.ts` | Vitest | node |
-| **Rust Integration Tests** | `src-tauri/tests/**/*.rs` | Cargo test | native |
-| **E2E Tests** | `webdriver/webdriverio/**/*.e2e.ts` | WebdriverIO | Edge WebDriver |
-
-- Unit test setup: `tests/setup.ts`
-- Test config: `vitest.config.ts` (extends `vite.config.ts`)
-
-#### Mobile (`my-reader-mobile/`)
+### Mobile (`my-reader-mobile/`)
 
 | Test Type | Location | Framework | Environment |
 |-----------|----------|-----------|-------------|
@@ -279,54 +211,25 @@ describe('用户登录', () => {
 | **Data Layer Tests** | `data/**/__tests__/**/*.test.ts` | Jest | jsdom |
 | **E2E Tests** | `.maestro/**/*.yaml` | Maestro | Physical device / emulator |
 
-#### Shared Tools (`my-reader-tools/`)
+```bash
+npm run test:ci               # Jest in CI mode
+npm run test                  # Jest watch mode
+npm run e2e:maestro:home      # Maestro home flow
+npm run e2e:maestro:settings  # Maestro settings flow
+```
+
+### Shared Tools (`my-reader-tools/`)
 
 | Test Type | Location | Framework | Environment |
 |-----------|----------|-----------|-------------|
 | **Unit Tests (UT)** | `tests/**/*.test.ts` | Vitest | node |
 | **Parser Tests** | `tests/parsers/**/*.test.ts` | Vitest | node |
-| **Layout Engine Tests** | `tests/layout-engines/**/*.test.ts` | Vitest | jsdom (for DOM-dependent engines) |
+| **Layout Engine Tests** | `tests/layout-engines/**/*.test.ts` | Vitest | jsdom |
 
----
-
-### Commands
-
-#### Desktop (`my-reader`)
-
-| Layer | Command | Notes |
-| --- | --- | --- |
-| Full suite | `npm test` | Runs `test:unit` then `test:e2e`. |
-| Frontend unit | `npm run test:unit` | Vitest, `jsdom`; files in `tests/**/*.test.ts`, setup in `tests/setup.ts`. |
-| Frontend unit (watch) | `npm run test:unit:watch` | Same as above in watch mode. |
-| Rust | `cargo test` | Run from `src-tauri/`; integration tests in `src-tauri/tests/` (`commands_webdav`, `reading_progress`). |
-| E2E | `npm run test:e2e` | WebdriverIO in `webdriver/webdriverio/`; starts `vite preview` + Edge WebDriver per `wdio.conf.js`. |
-| E2E build only | `npm run build:frontend:e2e` | `vite build` without `tsc`, used by the E2E pipeline when a full `npm run build` is not required. |
-
-#### Mobile (`my-reader-mobile`)
-
-| Layer | Command | Notes |
-| --- | --- | --- |
-| Unit tests | `npm run test:ci` | Jest in CI mode (`jest-expo` preset). |
-| Unit tests (watch) | `npm run test` | Jest watch mode. |
-| E2E (Maestro) | `npm run e2e:maestro:home` | Maestro home flow (requires `maestro` in PATH). |
-| E2E (Maestro) | `npm run e2e:maestro:settings` | Maestro settings flow. |
-| EAS local build | `npm run e2e:build:android:local` | EAS local Android build (`e2e-test` profile). |
-| EAS local build | `npm run e2e:build:ios:local` | EAS local iOS build (`e2e-test` profile). |
-
----
-
-### Testing Conventions
-
-- **Test file naming**: Use `.test.ts` for unit/integration tests, `.e2e.ts` for E2E tests.
-- **Test function naming**: Use descriptive Chinese sentences that explain the behavior being tested (e.g., `it('计算总价时应包含税费', ...)`).
-- **One concept per test**: Each test should verify exactly one behavior. Avoid multiple unrelated assertions in a single test.
-- **AAA pattern**: Structure tests with Arrange-Act-Assert comments or visual separation.
-- **Mocking rules**:
-  - Mock external APIs and file system I/O in unit tests
-  - Do NOT mock the database in integration tests — use test databases or in-memory SQLite
-  - Do NOT mock internal business logic that is being tested
-- **Coverage expectation**: New features must have ≥ 80% branch coverage. Bug fixes must include a regression test that fails before the fix.
-- **E2E scope**: E2E tests cover critical user flows only (login, reading, library browsing, settings). Do not test edge cases at the E2E layer — keep those in unit tests.
+```bash
+npm test            # Vitest run
+npm run test:watch  # Vitest watch mode
+```
 
 ## Design System
 

@@ -29,7 +29,7 @@ describe("buildCoverUrl", () => {
   it("在 Windows 环境输出 bookcover 的 http URL", async () => {
     setUserAgentForModuleLoad("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     vi.resetModules()
-    const { buildCoverUrl } = await import("../../src/lib/cover")
+    const { buildCoverUrl } = await import("../cover")
 
     const url = buildCoverUrl("lib-1", "Author/Book (1)")
 
@@ -40,7 +40,7 @@ describe("buildCoverUrl", () => {
   it("在非 Windows 环境输出 bookcover 自定义协议 URL", async () => {
     setUserAgentForModuleLoad("Mozilla/5.0 (X11; Linux x86_64)")
     vi.resetModules()
-    const { buildCoverUrl } = await import("../../src/lib/cover")
+    const { buildCoverUrl } = await import("../cover")
 
     const url = buildCoverUrl("lib-2", "中文/章节.epub")
 
