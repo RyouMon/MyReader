@@ -8,12 +8,11 @@ import BookRow from "./BookRow"
 const MIN_COL_WIDTH = 152
 const GAP = 24
 const SKELETON_COUNT = 20
-/**
- * Fixed row height avoids dynamic `measureElement` calls which cause
- * layout thrashing. Cover 2:3 at ~170px ≈ 255px + info ~55px + gap.
- */
-const ROW_HEIGHT = 330
 const LIST_ROW_HEIGHT = 62
+const MAX_COVER_HEIGHT = 280
+const TEXT_BLOCK_HEIGHT = 78 // mt-2 (8px) + h-[70px] text area
+const ROW_GAP = 24
+const DEFAULT_GRID_ROW_HEIGHT = MAX_COVER_HEIGHT + TEXT_BLOCK_HEIGHT + ROW_GAP
 
 export type LibraryViewMode = "grid" | "list"
 
@@ -43,16 +42,27 @@ export default function BookGrid({
 }: BookGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(4)
+  const [gridRowHeight, setGridRowHeight] = useState(DEFAULT_GRID_ROW_HEIGHT)
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
     const measure = () => {
-      const available = el.clientWidth
-      setCols(
-        Math.max(1, Math.floor((available + GAP) / (MIN_COL_WIDTH + GAP))),
+      const style = window.getComputedStyle(el)
+      const paddingX =
+        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+      const contentWidth = el.clientWidth - paddingX
+      const newCols = Math.max(
+        1,
+        Math.floor((contentWidth + GAP) / (MIN_COL_WIDTH + GAP)),
       )
+      const colWidth = (contentWidth - (newCols - 1) * GAP) / newCols
+      const coverHeight = Math.min(colWidth * 1.5, MAX_COVER_HEIGHT)
+      const cardHeight = coverHeight + TEXT_BLOCK_HEIGHT
+      const rowHeight = cardHeight + ROW_GAP
+      setCols(newCols)
+      setGridRowHeight(rowHeight)
     }
 
     measure()
@@ -67,7 +77,7 @@ export default function BookGrid({
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => (isList ? LIST_ROW_HEIGHT : ROW_HEIGHT),
+    estimateSize: () => (isList ? LIST_ROW_HEIGHT : gridRowHeight),
     overscan: 3,
   })
 
@@ -98,12 +108,14 @@ export default function BookGrid({
         {virtualItems.map((vRow) => (
           <div
             key={vRow.key}
+            data-index={vRow.index}
+            ref={virtualizer.measureElement}
             style={{
               position: "absolute",
               top: vRow.start,
               left: 0,
               width: "100%",
-              height: isList ? LIST_ROW_HEIGHT : ROW_HEIGHT,
+              height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
             }}
           >
             {isList ? (
@@ -113,7 +125,7 @@ export default function BookGrid({
                 style={{
                   display: "grid",
                   gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                  gap: `${GAP}px`,
+                  columnGap: `${GAP}px`,
                 }}
               >
                 {Array.from({ length: cols }, (_, c) => {
