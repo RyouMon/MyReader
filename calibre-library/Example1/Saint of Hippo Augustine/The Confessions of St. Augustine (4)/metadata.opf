@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">4</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">6c68ed08-8234-4fdf-99f5-d004fe1422c6</dc:identifier>
+        <dc:title>The Confessions of St. Augustine</dc:title>
+        <dc:creator opf:file-as="Augustine, of Hippo, Saint" opf:role="aut">Saint of Hippo Augustine</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (8.4.0) [https://calibre-ebook.com]</dc:contributor>
+        <dc:date>2002-06-02T00:00:00+00:00</dc:date>
+        <dc:language>eng</dc:language>
+        <dc:subject>Augustine</dc:subject>
+        <dc:subject>of Hippo</dc:subject>
+        <dc:subject>Saint</dc:subject>
+        <dc:subject>354-430</dc:subject>
+        <dc:subject>Christian saints -- Algeria -- Hippo (Extinct city) -- Biography</dc:subject>
+        <dc:subject>Catholic Church -- Bishops -- Biography</dc:subject>
+        <dc:subject>Bishops -- Algeria -- Hippo (Extinct city) -- Biography</dc:subject>
+        <meta name="calibre:timestamp" content="2026-05-13T04:11:57.648414+00:00"/>
+        <meta name="calibre:title_sort" content="Confessions of St. Augustine, The"/>
+    </metadata>
+    <guide>
+        <reference type="cover" title="封面" href="cover.jpg"/>
+    </guide>
+</package>

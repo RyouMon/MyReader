@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">1</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">540c95c3-1d1b-4a31-9d81-1dd102cdd27e</dc:identifier>
+        <dc:title>The Brothers Karamazov</dc:title>
+        <dc:creator opf:file-as="Dostoevsky, Fyodor" opf:role="aut">Fyodor Dostoevsky</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (8.4.0) [https://calibre-ebook.com]</dc:contributor>
+        <dc:date>2019-02-05T23:11:47+00:00</dc:date>
+        <dc:description>A dispute over inheritance between father and son escalates into a family feud.</dc:description>
+        <dc:publisher>Standard Ebooks</dc:publisher>
+        <dc:language>eng</dc:language>
+        <dc:subject>Didactic fiction</dc:subject>
+        <dc:subject>Fathers and sons -- Fiction</dc:subject>
+        <dc:subject>Russia -- Social life and customs -- 1533-1917 -- Fiction</dc:subject>
+        <dc:subject>Brothers -- Fiction</dc:subject>
+        <meta name="calibre:timestamp" content="2026-05-13T04:11:57.585140+00:00"/>
+        <meta name="calibre:title_sort" content="Brothers Karamazov, The"/>
+    </metadata>
+    <guide>
+        <reference type="cover" title="封面" href="cover.jpg"/>
+    </guide>
+</package>

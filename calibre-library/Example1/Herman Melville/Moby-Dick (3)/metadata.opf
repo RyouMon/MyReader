@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="uuid_id" version="2.0">
+    <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+        <dc:identifier opf:scheme="calibre" id="calibre_id">3</dc:identifier>
+        <dc:identifier opf:scheme="uuid" id="uuid_id">789ca425-228f-4c1f-83c0-2c265d0dcf76</dc:identifier>
+        <dc:title>Moby-Dick</dc:title>
+        <dc:creator opf:file-as="Melville, Herman" opf:role="aut">Herman Melville</dc:creator>
+        <dc:contributor opf:file-as="calibre" opf:role="bkp">calibre (8.4.0) [https://calibre-ebook.com]</dc:contributor>
+        <dc:date>1851-05-14T16:00:00+00:00</dc:date>
+        <dc:description>Moby-Dick is an 1851 novel by Herman Melville. The story tells the adventures of the wandering sailor Ishmael and his voyage on the whaling ship Pequod, commanded by Captain Ahab. Ishmael soon learns that Ahab seeks one specific whale, Moby-Dick, a white whale of tremendous size and ferocity. Comparatively few whaling ships know of Moby-Dick, and fewer yet have encountered him. In a previous encounter, the whale destroyed Ahab's boat and bit off his leg. Ahab intends to exact revenge.</dc:description>
+        <dc:publisher>Feedbooks</dc:publisher>
+        <dc:identifier opf:scheme="URN">urn:uuid:8a5c1522-197b-11e7-8b0a-4c72b9252ec6</dc:identifier>
+        <dc:identifier opf:scheme="URI">http://www.feedbooks.com/book/54</dc:identifier>
+        <dc:language>eng</dc:language>
+        <dc:subject>Fiction</dc:subject>
+        <dc:subject>Action &amp; Adventure</dc:subject>
+        <meta name="calibre:timestamp" content="2026-05-13T04:11:57.621146+00:00"/>
+        <meta name="calibre:title_sort" content="Moby-Dick"/>
+    </metadata>
+    <guide>
+        <reference type="cover" title="封面" href="cover.jpg"/>
+    </guide>
+</package>
