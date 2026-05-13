@@ -28,7 +28,7 @@ function withAndroidDesugaring(config) {
     }
 
     // Add coreLibraryDesugaring dependency if not present
-    if (!contents.includes("coreLibraryDesugaring")) {
+    if (!contents.includes('coreLibraryDesugaring("')) {
       const dependenciesNeedle = "dependencies {";
       if (contents.includes(dependenciesNeedle)) {
         contents = contents.replace(

@@ -301,11 +301,7 @@ export function useBookLoader(
           renderer:
             detailLayoutMode === "reflowable"
               ? "readium-reflow"
-              : fmtUpper === "PDF"
-                ? "native-pdf"
-                : fmtUpper === "PDF"
-                  ? "native-pdf"
-                  : "readium-fixed",
+              : "readium-fixed",
         });
 
         const archiveFile = needsPdfNativePath ? pdfLocalFile : (localBookFile ?? webDavBookFile);

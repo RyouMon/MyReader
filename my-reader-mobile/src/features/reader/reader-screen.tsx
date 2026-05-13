@@ -34,10 +34,6 @@ const TOC_GOTO_RESET_DELAY_MS = 100;
 const OVERLAY_FADE_IN_DURATION_MS = 200;
 /** 遮罩层退场动画时长（毫秒）。 */
 const OVERLAY_FADE_OUT_DURATION_MS = 200;
-/** 分页模式顶部额外留白（在安全区基础上叠加）。 */
-const PAGINATE_CONTENT_INSET_TOP = 32;
-/** 分页模式底部额外留白（在安全区基础上叠加）。 */
-const PAGINATE_CONTENT_INSET_BOTTOM = 32;
 /** 阅读器页面背景色。 */
 const READER_SCREEN_BACKGROUND_COLOR = READER_FIXED.canvasBg;
 /** 加载指示器颜色。 */
@@ -166,6 +162,7 @@ export default function ReaderScreen() {
     : "";
   const reflowSettings = settings.reflowable;
   const fixedSettings = settings.fixed;
+  void patchFixedReaderSettings;
 
   if (loadState.status === "loading") {
     const bgColor = coverUri
@@ -240,8 +237,7 @@ export default function ReaderScreen() {
   const activeReadingLayout: ReadingLayout = isReflowSurface
     ? reflowSettings.readingLayout
     : fixedSettings.readingLayout;
-  const paginateContentInsetBottom = insets.bottom + PAGINATE_CONTENT_INSET_BOTTOM;
-  const paginateContentInsetTop = insets.top + PAGINATE_CONTENT_INSET_TOP;
+  void activeReadingLayout;
 
   if (__DEV__) {
     console.info("[mobile-reader] render:ready-screen", {
@@ -305,14 +301,8 @@ export default function ReaderScreen() {
               onToggleChrome={toggleChrome}
               gotoPageCommand={gotoPageCmd}
               fallback={domFallback}
-              readingLayout={fixedSettings.readingLayout}
-              navigationMode={fixedSettings.navigationMode}
               theme={fixedSettings.theme}
               brightness={fixedSettings.brightness}
-              zoomScale={fixedSettings.zoomScale}
-              onZoomScaleChange={(scale) => patchFixedReaderSettings({ zoomScale: scale })}
-              contentInsetTop={fixedSettings.readingLayout === "paginate" ? paginateContentInsetTop : 0}
-              contentInsetBottom={fixedSettings.readingLayout === "paginate" ? paginateContentInsetBottom : 0}
             />
           ) : null}
 
