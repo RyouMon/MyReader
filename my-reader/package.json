@@ -14,8 +14,8 @@
     "test:unit:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
     "test:e2e": "npm run test:e2e:frontend && npm run test:e2e:desktop",
-    "test:e2e:frontend": "npx playwright test",
-    "test:e2e:frontend:ui": "npx playwright test --ui",
+    "test:e2e:frontend": "npx playwright test -c e2e-frontend/playwright.config.ts",
+    "test:e2e:frontend:ui": "npx playwright test --ui -c e2e-frontend/playwright.config.ts",
     "test:e2e:desktop": "cd e2e && npx wdio run wdio.conf.ts",
     "build:frontend:e2e": "vite build"
   },

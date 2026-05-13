@@ -112,7 +112,7 @@ export const config = {
     timeout: 120000,
     strict: true,
     retry: 1,
-    retryTagFilter: /@flaky/,
+    retryTagFilter: '@flaky',
   },
 
   connectionRetryCount: 0,

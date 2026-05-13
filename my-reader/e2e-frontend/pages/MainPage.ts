@@ -10,8 +10,4 @@ export class MainPage {
   getBranding() {
     return this.page.getByText('MyReader')
   }
-
-  getSettingsLink() {
-    return this.page.getByRole('link', { name: /settings|设置/i })
-  }
 }

@@ -1,9 +1,9 @@
-import { defineConfig, devices } from '@playwright/test'
-import { defineBddConfig } from 'playwright-bdd'
+import { defineConfig, devices } from "@playwright/test"
+import { defineBddConfig } from "playwright-bdd"
 
 const testDir = defineBddConfig({
-  features: './features/**/*.feature',
-  steps: './step-definitions/**/*.ts',
+  features: "./features/**/*.feature",
+  steps: "./step-definitions/**/*.ts",
 })
 
 export default defineConfig({
@@ -13,21 +13,23 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ['html', { open: 'never' }],
-    ['json', { outputFile: 'e2e-frontend/reports/report.json' }],
+    ["html", { open: "never" }],
+    ["json", { outputFile: "reports/report.json" }],
   ],
   use: {
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    baseURL: 'http://localhost:5173',
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    baseURL: "http://localhost:1420",
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: "npm run dev",
+    url: "http://localhost:1420",
     reuseExistingServer: !process.env.CI,
+    cwd: "..",
+    timeout: 120000,
   },
 })

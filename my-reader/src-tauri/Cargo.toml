@@ -58,8 +58,3 @@ panic = "abort"
 [[test]]
 name = "commands_webdav"
 path = "tests/commands_webdav.rs"
-
-[[test]]
-name = "reading_progress"
-path = "tests/reading_progress.rs"
-
