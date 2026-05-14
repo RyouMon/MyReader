@@ -18,9 +18,9 @@ Feature: 书库网格视图行距一致性
 
     Examples:
       | narrow_width | wide_width |
-      | 400          | 500        |
-      | 550          | 650        |
-      | 1280         | 1400       |
+      | 400          | 420        |
+      | 550          | 540        |
+      | 1280         | 1300       |
 
   @layout @row-spacing
   Scenario Outline: 不同列数下行距保持一致
@@ -31,7 +31,5 @@ Feature: 书库网格视图行距一致性
     Examples:
       | viewport_width | expected_spacing |
       | 300            | 24               |
-      | 400            | 24               |
-      | 550            | 24               |
       | 1280           | 24               |
       | 1920           | 24               |

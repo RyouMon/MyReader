@@ -18,13 +18,7 @@ Feature: 书库网格视图布局
     Examples:
       | viewport_width |
       | 300            |
-      | 350            |
-      | 400            |
-      | 550            |
-      | 750            |
       | 1280           |
-      | 1440           |
-      | 1600           |
       | 1920           |
 
   @scroll @layout

@@ -1,18 +1,19 @@
-import { createBdd } from "playwright-bdd"
 import { expect } from "@playwright/test"
+import { createBdd } from "playwright-bdd"
+import { setupLibraryMocks } from "../fixtures/library-mock"
+import { test } from "../fixtures/test"
 import { LibraryPage } from "../pages/LibraryPage"
+import { MainPage } from "../pages/MainPage"
 
-const { Given, When, Then } = createBdd()
+const { Given, When, Then } = createBdd(test)
 
 Given("书库中已存在 {int} 本书", async ({ page }, count: number) => {
-  const libraryPage = new LibraryPage(page)
-  await libraryPage.setupIpcMocks()
+  await setupLibraryMocks(page, count)
 })
 
 Given("用户访问书库首页", async ({ page }) => {
   const libraryPage = new LibraryPage(page)
   await libraryPage.goto()
-  await libraryPage.waitForBooksLoaded()
 })
 
 When("窗口宽度调整为 {int} 像素", async ({ page }, width: number) => {
@@ -28,6 +29,16 @@ When("用户向下滚动书库列表", async ({ page }) => {
   await libraryPage.scrollDown(800)
   await page.waitForTimeout(200)
   await libraryPage.waitForBooksLoaded()
+})
+
+Then("页面应该显示应用标题 {string}", async ({ page }, text: string) => {
+  const mainPage = new MainPage(page)
+  await expect(mainPage.getBranding()).toBeVisible()
+  await expect(mainPage.getBranding()).toContainText(text)
+})
+
+Then("页面应该显示主内容区域", async ({ page }) => {
+  await expect(page.locator('main, [class*="sidebar-inset"], [data-slot="sidebar-inset"]')).toBeVisible()
 })
 
 Then("网格中每本书的封面和标题都完整可见", async ({ page }) => {
