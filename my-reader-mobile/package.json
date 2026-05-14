@@ -31,7 +31,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
-    "@ryoumon/react-native-readium": "^5.0.0-rc.19",
+    "@ryoumon/react-native-readium": "^5.0.0-rc.20",
     "@sentry/react-native": "^8.11.0",
     "@shopify/flash-list": "2.0.2",
     "@tailwindcss/postcss": "^4.2.2",
