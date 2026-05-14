@@ -106,7 +106,7 @@ export default function BookGrid({
       >
         {virtualItems.map((vRow) => (
           <div
-            key={vRow.key}
+            key={`${vRow.key}-${cols}`}
             data-index={vRow.index}
             ref={virtualizer.measureElement}
             style={{
