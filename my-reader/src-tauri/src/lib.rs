@@ -19,7 +19,7 @@ use log::LevelFilter;
 use tracing::{error, info};
 use tauri::Manager;
 use time::{macros::format_description, OffsetDateTime};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use commands::AppState;
 use streamer::StreamerState;
@@ -108,13 +108,13 @@ pub fn run() -> Result<(), tauri::Error> {
     let builder = base;
 
     builder
-        .manage(Mutex::new(models::AppConfig::default()))
+        .manage(std::sync::Mutex::new(models::AppConfig::default()))
         .manage(StreamerState::new(RwLock::new(HashMap::new())))
         .setup(|app| {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
-            *app.state::<AppState>().blocking_lock() = config;
+            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config;
             if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle()) {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",

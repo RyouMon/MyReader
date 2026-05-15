@@ -40,7 +40,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.blocking_lock();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
@@ -108,7 +108,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.blocking_lock();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();

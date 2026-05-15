@@ -36,7 +36,7 @@ pub struct SyncBackendInfo {
 }
 
 fn resolve_backend(state: &State<'_, AppState>, id: &str) -> Result<BackendKind, AppError> {
-    let config = state.blocking_lock();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
     let source = config
         .data_sources
         .iter()
@@ -49,7 +49,7 @@ fn resolve_backend(state: &State<'_, AppState>, id: &str) -> Result<BackendKind,
 #[specta::specta]
 pub fn sync_list_backends(state: State<'_, AppState>) -> Result<Vec<SyncBackendInfo>, AppError> {
     info!("Start to list sync backends.");
-    let config = state.blocking_lock();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
     let out = config
         .data_sources
         .iter()
@@ -102,7 +102,7 @@ fn resolve_library_path(
     state: &State<'_, AppState>,
     library_id: &str,
 ) -> Result<(PathBuf, String), AppError> {
-    let config = state.blocking_lock();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
     let lib = config
         .libraries
         .iter()
@@ -274,7 +274,7 @@ pub async fn sync_delete_file_everywhere(
 /// 优先从 AppConfig.device_id 读取；首次调用时生成并写回 config.json。
 fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<String, AppError> {
     {
-        let config = state.blocking_lock();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(id) = &config.device_id {
             if !id.is_empty() {
                 return Ok(id.clone());
@@ -282,7 +282,7 @@ fn device_identifier(app: &AppHandle, state: &State<'_, AppState>) -> Result<Str
         }
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let mut config = state.blocking_lock();
+    let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
     config.device_id = Some(id.clone());
     let path = config::config_path(&app.path().app_data_dir()?);
     config::save_config(&path, &config)?;
