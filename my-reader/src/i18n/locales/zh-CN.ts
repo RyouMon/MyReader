@@ -66,5 +66,8 @@ export const zhCN = {
       save: "保存",
       loading: "加载中…",
     },
+    reader: {
+      loadTimeout: "书籍加载超时，请检查书库连接后重试",
+    },
   },
 }

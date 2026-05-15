@@ -1,9 +1,3 @@
-import type { Locator } from "@readium/shared"
-import { useNavigate } from "@tanstack/react-router"
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import { useCallback, useEffect, useMemo, useState } from "react"
 import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
 import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
 import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
@@ -15,6 +9,14 @@ import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
 import { useLibrary } from "@/stores/libraryStore"
+import type { Locator } from "@readium/shared"
+import { useNavigate } from "@tanstack/react-router"
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import pTimeout from "p-timeout"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 export type ReadBookPageProps = {
   bookId: string
@@ -23,6 +25,7 @@ export type ReadBookPageProps = {
 
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { activeLibraryId, loading: libraryLoading } = useLibrary()
 
   const [bookTitle, setBookTitle] = useState("")
@@ -97,7 +100,10 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const [row, preparedSource] = await Promise.all([
           progressP,
-          api.prepareBookSource(activeLibraryId, Number(bookId), fmt),
+          pTimeout(api.prepareBookSource(activeLibraryId, Number(bookId), fmt), {
+            milliseconds: 10000,
+            message: t("reader.loadTimeout"),
+          }),
         ])
         if (cancelled) return
 
