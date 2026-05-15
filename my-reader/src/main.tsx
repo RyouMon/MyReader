@@ -24,12 +24,6 @@ declare module "@tanstack/react-router" {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
     <RouterProvider router={router} />
-    <div
-      id="a11y-live"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-      style={{ position: "absolute", left: "-10000px", width: "1px", height: "1px", overflow: "hidden" }}
-    />
+    <div id="a11y-live" aria-live="polite" aria-atomic="true" className="sr-only" />
   </StrictMode>,
 )

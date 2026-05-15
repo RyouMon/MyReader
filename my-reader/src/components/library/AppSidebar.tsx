@@ -120,7 +120,11 @@ export default function AppSidebar() {
               libMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground",
             )}
           >
+            <span className="sr-only">
+              {activeLibrary ? "已连接" : "未连接"}
+            </span>
             <span
+              aria-hidden="true"
               className={cn(
                 "size-2 shrink-0 rounded-full",
                 activeLibrary

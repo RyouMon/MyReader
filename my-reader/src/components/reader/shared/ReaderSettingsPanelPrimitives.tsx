@@ -130,7 +130,7 @@ export function ReaderSettingSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="reader-chrome-select flex-1 cursor-pointer rounded-lg border bg-transparent px-3 py-[7px] text-[13px] outline-none"
+      className="reader-chrome-select flex-1 cursor-pointer rounded-lg border bg-transparent px-3 py-[7px] text-[13px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       {options.map((opt) => (
         <option

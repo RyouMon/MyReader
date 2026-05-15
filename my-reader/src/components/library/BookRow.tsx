@@ -63,6 +63,7 @@ const BookRow = memo(function BookRow({
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-label={`打开《${book.title}》`}
     >
       <BookCover
         book={book}

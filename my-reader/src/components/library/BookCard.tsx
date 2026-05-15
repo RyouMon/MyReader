@@ -54,11 +54,12 @@ const BookCard = memo(function BookCard({
   return (
     // biome-ignore lint/a11y/useSemanticElements: The card contains nested action buttons, so the outer target cannot be a button.
     <div
-      className="group/card min-w-0 cursor-pointer outline-none"
+      className="group/card min-w-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-label={`打开《${book.title}》`}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg transition duration-200 ease-out group-hover/card:-translate-y-1 group-hover/card:shadow-[var(--shadow-md)] group-active/card:scale-[0.98]">
         <BookCover
