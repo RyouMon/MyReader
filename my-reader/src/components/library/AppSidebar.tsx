@@ -27,6 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { useLibrary } from "@/stores/libraryStore"
@@ -80,8 +81,9 @@ export default function AppSidebar() {
       collapsible="icon"
       className="min-w-0 overflow-x-hidden touch-pan-y overscroll-x-none"
     >
-      <SidebarHeader className="gap-0 pt-3 pb-2 overflow-x-hidden">
-        <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="gap-0 pt-3 pb-2 overflow-x-hidden relative">
+        <SidebarTrigger className="absolute top-2 end-2 z-10 group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:end-auto group-data-[collapsible=icon]:top-auto group-data-[collapsible=icon]:mx-auto" />
+        <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:hidden">
           <div
             className="font-serif flex size-9 shrink-0 items-center justify-center rounded-lg text-base font-bold text-ink-inverse"
             style={{
