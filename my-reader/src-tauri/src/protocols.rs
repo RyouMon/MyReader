@@ -1,10 +1,18 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use log::{debug, error};
+use tracing::{debug, error};
 use tauri::http::Response;
 use tauri::Manager;
 
 use crate::commands::AppState;
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
+
+fn build_response(status: u16, headers: Vec<(&str, &str)>, body: Vec<u8>) -> Response<Vec<u8>> {
+    let mut builder = Response::builder().status(status);
+    for (k, v) in headers {
+        builder = builder.header(k, v);
+    }
+    builder.body(body).unwrap_or_else(|_| Response::new(Vec::new()))
+}
 
 pub fn bookcover_handler<R: tauri::Runtime>(
     ctx: tauri::UriSchemeContext<'_, R>,
@@ -13,10 +21,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
     debug!("Start to serve book cover. uri: \"{}\"", request.uri());
     let not_found = || -> Response<Vec<u8>> {
         error!("Failed to serve book cover. reason: not found");
-        Response::builder()
-            .status(404)
-            .body(Vec::new())
-            .unwrap()
+        build_response(404, Vec::new(), Vec::new())
     };
 
     let raw_path = request.uri().path();
@@ -35,7 +40,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.lock().unwrap();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
@@ -62,13 +67,15 @@ pub fn bookcover_handler<R: tauri::Runtime>(
                 cover_file.display(),
                 data.len()
             );
-            Response::builder()
-                .status(200)
-                .header("content-type", "image/jpeg")
-                .header("access-control-allow-origin", "*")
-                .header("cache-control", "max-age=604800, immutable")
-                .body(data)
-                .unwrap()
+            build_response(
+                200,
+                vec![
+                    ("content-type", "image/jpeg"),
+                    ("access-control-allow-origin", "*"),
+                    ("cache-control", "max-age=604800, immutable"),
+                ],
+                data,
+            )
         }
         Err(_) => not_found(),
     }
@@ -81,11 +88,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
     debug!("Start to serve book file. uri: \"{}\"", request.uri());
     let not_found = || -> Response<Vec<u8>> {
         error!("Failed to serve book file. reason: not found");
-        Response::builder()
-            .status(404)
-            .header("access-control-allow-origin", "*")
-            .body(Vec::new())
-            .unwrap()
+        build_response(404, vec![("access-control-allow-origin", "*")], Vec::new())
     };
 
     let raw_path = request.uri().path();
@@ -105,7 +108,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.lock().unwrap();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
@@ -116,12 +119,17 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Err(_) => return not_found(),
     };
 
-    let repo = match CalibreBookRepository::open(&lib.path) {
+    let lib_path_str = match lib_path.to_str() {
+        Some(s) => s,
+        None => return not_found(),
+    };
+
+    let repo = match CalibreBookRepository::open(lib_path_str) {
         Ok(r) => r,
         Err(_) => return not_found(),
     };
 
-    let file_path = match repo.get_book_file_path(&lib.path, book_id, format) {
+    let file_path = match repo.get_book_file_path(lib_path_str, book_id, format) {
         Ok(Some(p)) => p,
         _ => return not_found(),
     };
@@ -137,7 +145,8 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Ok(data) => {
             let content_type = match format.to_uppercase().as_str() {
                 "EPUB" => "application/epub+zip",
-                "CBZ" | "CBR" => "application/zip",
+                "CBZ" => "application/zip",
+                "CBR" => "application/x-rar-compressed",
                 "PDF" => "application/pdf",
                 _ => "application/octet-stream",
             };
@@ -150,12 +159,14 @@ pub fn bookfile_handler<R: tauri::Runtime>(
                 data.len(),
                 content_type
             );
-            Response::builder()
-                .status(200)
-                .header("content-type", content_type)
-                .header("access-control-allow-origin", "*")
-                .body(data)
-                .unwrap()
+            build_response(
+                200,
+                vec![
+                    ("content-type", content_type),
+                    ("access-control-allow-origin", "*"),
+                ],
+                data,
+            )
         }
         Err(_) => not_found(),
     }

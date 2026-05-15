@@ -48,6 +48,7 @@ fn default_data_source_enabled() -> bool {
 /// 应用配置根结构，持久化为 `app_data_dir/config.json`（仅机器本地：书库注册、活动书库、阅读器 UI）。
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct AppConfig {
     pub libraries: Vec<LibraryConfig>,
     pub active_library_id: Option<String>,
@@ -60,17 +61,6 @@ pub struct AppConfig {
     pub device_id: Option<String>,
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            libraries: Vec::new(),
-            active_library_id: None,
-            data_sources: Vec::new(),
-            reader_ui: ReaderUiPreferences::default(),
-            device_id: None,
-        }
-    }
-}
 
 /// 前端展示用数据源 DTO，WebDAV 仅回传是否已配置密码，避免在设置页明文回显。
 #[derive(Debug, Clone, Serialize, Type)]
@@ -113,8 +103,7 @@ impl From<&DataSourceConfig> for DataSourceDto {
                 username: username.clone(),
                 has_password: credential_account
                     .as_ref()
-                    .map(|account| !account.trim().is_empty())
-                    .unwrap_or(false),
+                    .is_some_and(|account| !account.trim().is_empty()),
                 root_path: root_path.clone(),
             },
         };

@@ -19,7 +19,7 @@ export const commands = {
 	/**  删除指定数据源。 */
 	removeDataSource: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_data_source", { id })),
 	switchLibrary: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("switch_library", { id })),
-	getActiveLibraryId: () => __TAURI_INVOKE<string | null>("get_active_library_id"),
+	getActiveLibraryId: () => typedError<string | null, ErrorKind>(__TAURI_INVOKE("get_active_library_id")),
 	getBooks: (libraryId: string | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_books", { libraryId })),
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
@@ -32,7 +32,6 @@ export const commands = {
 	updatedAt: number | null,
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
-	getBookCover: (libraryId: string, bookPath: string) => typedError<string | null, ErrorKind>(__TAURI_INVOKE("get_book_cover", { libraryId, bookPath })),
 	getReaderUiPreferences: () => typedError<ReaderUiPreferences_Serialize, ErrorKind>(__TAURI_INVOKE("get_reader_ui_preferences")),
 	setReaderUiPreferences: (prefs: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { prefs })),
 	prepareBookSource: (libraryId: string | null, bookId: number, format: string) => typedError<PreparedBookSource, ErrorKind>(__TAURI_INVOKE("prepare_book_source", { libraryId, bookId, format })),

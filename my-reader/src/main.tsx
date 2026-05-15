@@ -1,10 +1,9 @@
+import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
-import { createRouter, RouterProvider } from "@tanstack/react-router"
-
+import { installForwardConsoleToLog } from "./forward-console-to-log"
 import { ensurePdfJsWorker } from "./lib/pdfWorker"
 import { routeTree } from "./routeTree.gen"
-import { installForwardConsoleToLog } from "./forward-console-to-log"
 import "./i18n"
 import "./index.css"
 
@@ -29,7 +28,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       aria-live="polite"
       aria-atomic="true"
       className="sr-only"
-      style={{ position: "absolute", left: "-10000px", width: "1px", height: "1px", overflow: "hidden" }}
     />
   </StrictMode>,
 )

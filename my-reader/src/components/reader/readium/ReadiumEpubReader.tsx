@@ -1,4 +1,28 @@
-import { ReadiumTocPanel, type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import { EpubNavigator } from "@readium/navigator"
+import {
+  Layout,
+  type Links,
+  Locator,
+  LocatorLocations,
+  type Publication,
+} from "@readium/shared"
+import {
+  AlignJustify,
+  AlignLeft,
+  BookOpen,
+  Columns2,
+  PanelLeftRightDashed,
+  ScrollText,
+  Settings,
+  Square,
+  TextInitial,
+} from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import {
+  ReadiumTocPanel,
+  type ReadiumTocRow,
+} from "@/components/reader/readium/ReadiumTocPanel"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
@@ -6,7 +30,11 @@ import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import type { ColCount, ReadingLayout, TextAlign } from "@/components/reader/types"
+import type {
+  ColCount,
+  ReadingLayout,
+  TextAlign,
+} from "@/components/reader/types"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
@@ -30,14 +58,15 @@ import {
 } from "@/lib/readium/tocNavigation"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { EpubNavigator } from "@readium/navigator"
-import { Layout, Links, Locator, LocatorLocations, type Publication } from "@readium/shared"
-import { AlignJustify, AlignLeft, BookOpen, Columns2, PanelLeftRightDashed, ScrollText, Settings, Square, TextInitial } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-const RANGE_INPUT_CLASS = "mt-1.5 block w-full accent-primary disabled:opacity-50"
+const RANGE_INPUT_CLASS =
+  "mt-1.5 block w-full accent-primary disabled:opacity-50"
 
-function walkTocLinks(links: Links | undefined, depth: number, out: ReadiumTocRow[]): void {
+function walkTocLinks(
+  links: Links | undefined,
+  depth: number,
+  out: ReadiumTocRow[],
+): void {
   if (!links) return
   for (const link of links.items) {
     out.push({
@@ -51,7 +80,9 @@ function walkTocLinks(links: Links | undefined, depth: number, out: ReadiumTocRo
 }
 
 function getIframeDocs(): Document[] {
-  return Array.from(document.querySelectorAll<HTMLIFrameElement>(".readium-navigator-iframe"))
+  return Array.from(
+    document.querySelectorAll<HTMLIFrameElement>(".readium-navigator-iframe"),
+  )
     .map((f) => f.contentDocument)
     .filter(Boolean) as Document[]
 }
@@ -84,15 +115,22 @@ function injectReaderScrollbarStyles(): void {
 
 function setupIframeWindow(
   wnd: Window,
-  opts: { isScrollMode: boolean; paddingX: number; getChromeVisible: () => boolean },
-): void {
+  opts: {
+    isScrollMode: boolean
+    paddingX: number
+    getChromeVisible: () => boolean
+  },
+): (() => void) | undefined {
   const iframe = wnd.frameElement as HTMLIFrameElement | null
   const alreadySetup = iframe?.dataset.myreaderSetup === "1"
   if (iframe) iframe.dataset.myreaderSetup = "1"
 
   const doc = wnd.document
   injectReaderScrollbarStyles()
-  doc.documentElement.classList.toggle("reader-scrollbar-visible", opts.getChromeVisible())
+  doc.documentElement.classList.toggle(
+    "reader-scrollbar-visible",
+    opts.getChromeVisible(),
+  )
 
   if (opts.isScrollMode) {
     injectScrollPadding([doc], opts.paddingX)
@@ -103,22 +141,29 @@ function setupIframeWindow(
   if (!alreadySetup) {
     const onMove = (e: PointerEvent) => {
       const nearRight = wnd.innerWidth - e.clientX < 20
-      doc.documentElement.classList.toggle("reader-scrollbar-visible", opts.getChromeVisible() || nearRight)
+      doc.documentElement.classList.toggle(
+        "reader-scrollbar-visible",
+        opts.getChromeVisible() || nearRight,
+      )
     }
     wnd.addEventListener("pointermove", onMove)
+    return () => wnd.removeEventListener("pointermove", onMove)
   }
+  return undefined
 }
 
 function injectScrollPadding(docs: Document[], paddingX: number): void {
   docs.forEach((doc) => {
-    let style = doc.getElementById("myreader-scroll-padding") as HTMLStyleElement | null
+    let style = doc.getElementById(
+      "myreader-scroll-padding",
+    ) as HTMLStyleElement | null
     if (!style) {
       style = doc.createElement("style")
       style.id = "myreader-scroll-padding"
       doc.head.appendChild(style)
     }
     const px = Math.round(paddingX * 10)
-    style.textContent = `body { padding-left: ${px}px !important; padding-right: ${px}px !important; }`
+    style.textContent = `body { padding-inline-start: ${px}px !important; padding-inline-end: ${px}px !important; }`
   })
 }
 
@@ -134,11 +179,18 @@ type EpubSettingsPanelProps = {
   onClose: () => void
 }
 
-function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPanelProps) {
+function EpubSettingsPanel({
+  visible,
+  isFixedLayout,
+  onClose,
+}: EpubSettingsPanelProps) {
+  const { t } = useTranslation()
   const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
   const patchFixedLayout = useAppUiStore((s) => s.patchFixedLayout)
   const readerSettings = useAppUiStore((s) => s.reflowable.settings)
-  const patchReflowableSettings = useAppUiStore((s) => s.patchReflowableSettings)
+  const patchReflowableSettings = useAppUiStore(
+    (s) => s.patchReflowableSettings,
+  )
   const reflowThemeActive = readerThemeToReflowPreset(readerSettings.theme)
 
   const onSpreadChange = useCallback(
@@ -157,22 +209,26 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
 
   return (
     <ReaderSidePanelFrame visible={visible} side="right">
-      <ReaderSidePanelHeader title="阅读设置" icon={Settings} onClose={onClose} />
+      <ReaderSidePanelHeader
+        title={t("reader.settings")}
+        icon={Settings}
+        onClose={onClose}
+      />
       <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
         {isFixedLayout ? (
           <section className="space-y-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-              固定版面 · 双页
+              {t("reader.fixedLayout")}
             </Label>
             <p className="text-[11px] text-reader-chrome-fg/60">
-              与 Thorium 类似：偏好写入本机配置，下次打开仍生效。
+              {t("reader.fixedLayoutNote")}
             </p>
             <div className="flex flex-col gap-1">
               {(
                 [
-                  ["auto", "自动（横屏双页）"],
-                  ["single", "始终单页"],
-                  ["double", "始终双页"],
+                  ["auto", t("reader.layoutOptions.auto")],
+                  ["single", t("reader.layoutOptions.single")],
+                  ["double", t("reader.layoutOptions.double")],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -180,7 +236,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                   type="button"
                   onClick={() => onSpreadChange(value)}
                   className={cn(
-                    "rounded-md border px-3 py-2 text-left text-[13px] transition-colors",
+                    "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
                     spreadMode === value
                       ? "border-primary bg-primary/10 text-reader-chrome-fg"
                       : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
@@ -195,19 +251,19 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
           <>
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                主题
+                {t("reader.theme")}
               </Label>
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    ["neutral", "纯白", "#fefefe", "#000000"],
-                    ["paper", "羊皮纸", "#E9DDC8", "#000000"],
-                    ["sepia", "护眼米黄", "#faf4e8", "#000000"],
-                    ["green", "护眼绿色", "#C5E7CD", "#000000"],
-                    ["ocean", "深海", "#181842", "#ffffff"],
-                    ["night", "夜间", "#121212", "#ffffff"],
-                    ["contrast1", "高对比度 1", "#000000", "#ffffff"],
-                    ["contrast2", "高对比度 2", "#000000", "#FFFF00"],
+                    ["neutral", t("reader.themes.neutral"), "#fefefe", "#000000"],
+                    ["paper", t("reader.themes.paper"), "#E9DDC8", "#000000"],
+                    ["sepia", t("reader.themes.sepia"), "#faf4e8", "#000000"],
+                    ["green", t("reader.themes.green"), "#C5E7CD", "#000000"],
+                    ["ocean", t("reader.themes.ocean"), "#181842", "#ffffff"],
+                    ["night", t("reader.themes.night"), "#121212", "#ffffff"],
+                    ["contrast1", t("reader.themes.contrast1"), "#000000", "#ffffff"],
+                    ["contrast2", t("reader.themes.contrast2"), "#000000", "#FFFF00"],
                   ] as const
                 ).map(([value, label, bg, fg]) => (
                   <button
@@ -215,7 +271,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                     type="button"
                     onClick={() => onReflowThemeChange(value)}
                     className={cn(
-                      "relative flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-left text-[12px] transition-all shadow-sm",
+                      "relative flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-start text-[12px] transition-all shadow-sm",
                       reflowThemeActive === value
                         ? "border-reader-chrome-active"
                         : "border-transparent hover:brightness-95",
@@ -225,7 +281,9 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                     <span
                       className={cn(
                         "inline-block h-3.5 w-3.5 shrink-0 rounded-full border",
-                        reflowThemeActive === value ? "opacity-100" : "opacity-0",
+                        reflowThemeActive === value
+                          ? "opacity-100"
+                          : "opacity-0",
                       )}
                       style={{
                         borderColor: fg,
@@ -245,7 +303,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                   htmlFor="readium-font-size"
                   className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
                 >
-                  字号
+                  {t("reader.fontSize")}
                 </Label>
                 <Label
                   htmlFor="readium-font-size"
@@ -262,7 +320,9 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                 step={1}
                 value={readerSettings.fontSize}
                 onChange={(e) =>
-                  patchReflowableSettings({ fontSize: Number(e.target.value) || 18 })
+                  patchReflowableSettings({
+                    fontSize: Number(e.target.value) || 18,
+                  })
                 }
                 className={RANGE_INPUT_CLASS}
               />
@@ -274,7 +334,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                   htmlFor="readium-page-margin"
                   className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
                 >
-                  页边距
+                  {t("reader.margin")}
                 </Label>
                 <Label
                   htmlFor="readium-page-margin"
@@ -291,7 +351,9 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                 step={0.25}
                 value={readerSettings.paddingX}
                 onChange={(e) =>
-                  patchReflowableSettings({ paddingX: Number(e.target.value) || 0 })
+                  patchReflowableSettings({
+                    paddingX: Number(e.target.value) || 0,
+                  })
                 }
                 className={RANGE_INPUT_CLASS}
               />
@@ -299,7 +361,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                行距
+                {t("reader.lineHeight")}
               </Label>
               <div className="flex gap-1">
                 {([1.35, 1.5, 1.65, 1.85, 2] as const).map((lh) => (
@@ -322,20 +384,22 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                版式
+                {t("reader.readingMode")}
               </Label>
               <div className="flex gap-1">
                 {(
                   [
-                    ["paginate", "分页", BookOpen],
-                    ["scroll", "连续滚动", ScrollText],
+                    ["paginate", t("reader.readingModeOptions.paginate"), BookOpen],
+                    ["scroll", t("reader.readingModeOptions.scroll"), ScrollText],
                   ] as const
                 ).map(([value, label, Icon]) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() =>
-                      patchReflowableSettings({ readingLayout: value as ReadingLayout })
+                      patchReflowableSettings({
+                        readingLayout: value as ReadingLayout,
+                      })
                     }
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors",
@@ -353,14 +417,14 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                排版
+                {t("reader.typography")}
               </Label>
               <div className="flex gap-1">
                 {(
                   [
-                    ["auto", "自动", TextInitial],
-                    ["justify", "两端对齐", AlignJustify],
-                    ["start", "左对齐", AlignLeft],
+                    ["auto", t("reader.typographyOptions.auto"), TextInitial],
+                    ["justify", t("reader.typographyOptions.justify"), AlignJustify],
+                    ["start", t("reader.typographyOptions.start"), AlignLeft],
                   ] as const
                 ).map(([value, label, Icon]) => (
                   <button
@@ -386,14 +450,14 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
             {readerSettings.readingLayout !== "scroll" && (
               <section className="space-y-2">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                  栏
+                  {t("reader.column")}
                 </Label>
                 <div className="flex gap-1">
                   {(
                     [
-                      ["auto", "自动", PanelLeftRightDashed],
-                      ["1", "单栏", Square],
-                      ["2", "双栏", Columns2],
+                      ["auto", t("reader.columnOptions.auto"), PanelLeftRightDashed],
+                      ["1", t("reader.columnOptions.1"), Square],
+                      ["2", t("reader.columnOptions.2"), Columns2],
                     ] as const
                   ).map(([value, label, Icon]) => (
                     <button
@@ -442,13 +506,13 @@ export function ReadiumEpubReader({
   format,
   progressSyncEnabled,
 }: ReadiumEpubReaderProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } = useReaderPanels()
-  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } = useReadingChrome(
-    false,
-    tocOpen || settingsOpen,
-  )
+  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
+    useReaderPanels()
+  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
+    useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -459,7 +523,9 @@ export function ReadiumEpubReader({
     chromeVisibleRef.current = chromeVisible
   }, [chromeVisible])
 
-  const readerPreferencesHydrated = useAppUiStore((s) => s.readerPreferencesHydrated)
+  const readerPreferencesHydrated = useAppUiStore(
+    (s) => s.readerPreferencesHydrated,
+  )
   const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
   const readerSettings = useAppUiStore((s) => s.reflowable.settings)
 
@@ -499,9 +565,17 @@ export function ReadiumEpubReader({
     [isFixedLayout, publication, closePanels],
   )
 
+  const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
-    readiumNavReady && !tocOpen && !settingsOpen && !initError && readerSettings.readingLayout !== "scroll"
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
+    readiumNavReady &&
+    !tocOpen &&
+    !settingsOpen &&
+    !initError &&
+    readerSettings.readingLayout !== "scroll"
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   const onReadiumEdgePrev = useCallback(() => {
     navigatorRef.current?.goBackward(false, () => {})
@@ -528,7 +602,10 @@ export function ReadiumEpubReader({
   useEffect(() => {
     if (!containerRef.current) return
     const container = containerRef.current
-    const isScrollMode = readerSettings.readingLayout === "scroll" && !isFixedLayout
+    const isScrollMode =
+      readerSettings.readingLayout === "scroll" && !isFixedLayout
+
+    const cleanups: (() => void)[] = []
 
     const trySetup = (iframe: HTMLIFrameElement) => {
       if (iframe.dataset.myreaderSetup === "1") return
@@ -536,11 +613,12 @@ export function ReadiumEpubReader({
         try {
           const wnd = iframe.contentWindow
           if (!wnd) return
-          setupIframeWindow(wnd, {
+          const cleanup = setupIframeWindow(wnd, {
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
           })
+          if (cleanup) cleanups.push(cleanup)
         } catch {
           // cross-origin or not ready
         }
@@ -552,19 +630,29 @@ export function ReadiumEpubReader({
       }
     }
 
-    container.querySelectorAll<HTMLIFrameElement>(".readium-navigator-iframe").forEach(trySetup)
+    container
+      .querySelectorAll<HTMLIFrameElement>(".readium-navigator-iframe")
+      .forEach(trySetup)
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
-          if (node instanceof HTMLIFrameElement && node.classList.contains("readium-navigator-iframe")) {
+          if (
+            node instanceof HTMLIFrameElement &&
+            node.classList.contains("readium-navigator-iframe")
+          ) {
             trySetup(node)
           }
         }
       }
     })
     observer.observe(container, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cleanups.forEach((fn) => {
+        fn()
+      })
+    }
   }, [readerSettings.readingLayout, isFixedLayout, readerSettings.paddingX])
 
   useLocatorProgressSync({
@@ -583,22 +671,12 @@ export function ReadiumEpubReader({
       return
     }
     void (async () => {
-      await nav.submitPreferences(readerSettingsToEpubPreferences(readerSettings))
+      await nav.submitPreferences(
+        readerSettingsToEpubPreferences(readerSettings),
+      )
       await nav.resizeHandler()
     })()
-  }, [
-    readerPreferencesHydrated,
-    isFixedLayout,
-    spreadMode,
-    readerSettings.theme,
-    readerSettings.fontSize,
-    readerSettings.lineHeight,
-    readerSettings.fontFamily,
-    readerSettings.readingLayout,
-    readerSettings.paddingX,
-    readerSettings.textAlign,
-    readerSettings.colCount,
-  ])
+  }, [readerPreferencesHydrated, isFixedLayout, spreadMode, readerSettings])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -653,7 +731,9 @@ export function ReadiumEpubReader({
             frameLoaded: (wnd) => {
               const ui = useAppUiStore.getState()
               setupIframeWindow(wnd, {
-                isScrollMode: ui.reflowable.settings.readingLayout === "scroll" && !isFixedLayout,
+                isScrollMode:
+                  ui.reflowable.settings.readingLayout === "scroll" &&
+                  !isFixedLayout,
                 paddingX: ui.reflowable.settings.paddingX,
                 getChromeVisible: () => chromeVisibleRef.current,
               })
@@ -664,10 +744,16 @@ export function ReadiumEpubReader({
             },
             tap: () => {
               showChrome()
-              return useAppUiStore.getState().reflowable.settings.readingLayout === "scroll"
+              return (
+                useAppUiStore.getState().reflowable.settings.readingLayout ===
+                "scroll"
+              )
             },
             click: () => {
-              return useAppUiStore.getState().reflowable.settings.readingLayout === "scroll"
+              return (
+                useAppUiStore.getState().reflowable.settings.readingLayout ===
+                "scroll"
+              )
             },
             zoom: () => {},
             miscPointer: () => {
@@ -684,10 +770,24 @@ export function ReadiumEpubReader({
               if (!nav2) return
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
-              if (key === "ArrowRight" || key === "PageDown" || rec.keyCode === 39) {
-                nav2.goForward(false, () => {})
-              } else if (key === "ArrowLeft" || key === "PageUp" || rec.keyCode === 37) {
-                nav2.goBackward(false, () => {})
+              const isRtl =
+                publication.metadata.effectiveReadingProgression === "rtl"
+              if (
+                key === "ArrowRight" ||
+                key === "PageDown" ||
+                rec.keyCode === 39
+              ) {
+                isRtl
+                  ? nav2.goBackward(false, () => {})
+                  : nav2.goForward(false, () => {})
+              } else if (
+                key === "ArrowLeft" ||
+                key === "PageUp" ||
+                rec.keyCode === 37
+              ) {
+                isRtl
+                  ? nav2.goForward(false, () => {})
+                  : nav2.goBackward(false, () => {})
               }
             },
           },
@@ -715,7 +815,9 @@ export function ReadiumEpubReader({
           if (isFixedLayout) {
             await applySpreadPreference(nav, store.fixedLayout.spreadMode)
           } else {
-            await nav.submitPreferences(readerSettingsToEpubPreferences(store.reflowable.settings))
+            await nav.submitPreferences(
+              readerSettingsToEpubPreferences(store.reflowable.settings),
+            )
             await nav.resizeHandler()
           }
         }
@@ -734,13 +836,21 @@ export function ReadiumEpubReader({
       void navigatorRef.current?.destroy()
       navigatorRef.current = null
     }
-  }, [publication, initialSavedLocator, showChrome, epubNavigatorDefaults, isFixedLayout])
+  }, [
+    publication,
+    initialSavedLocator,
+    showChrome,
+    epubNavigatorDefaults,
+    isFixedLayout,
+  ])
 
   if (initError) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">Readium 初始化失败</p>
+          <p className="text-destructive font-medium mb-2">
+            {t("reader.loadFailed")}
+          </p>
           <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
       </div>
@@ -799,12 +909,12 @@ export function ReadiumEpubReader({
       edgeTurnOverlays={
         readerSettings.readingLayout !== "scroll" ? (
           <ReaderPaginateEdgeTurnStrips
-            nearLeft={nearLeft}
-            nearRight={nearRight}
+            nearLeft={isRtl ? nearRight : nearLeft}
+            nearRight={isRtl ? nearLeft : nearRight}
             onPrev={onReadiumEdgePrev}
             onNext={onReadiumEdgeNext}
-            prevLabel="上一页"
-            nextLabel="下一页"
+            prevLabel={t("reader.prevPage")}
+            nextLabel={t("reader.nextPage")}
           />
         ) : null
       }
@@ -813,7 +923,7 @@ export function ReadiumEpubReader({
           visible={chromeVisible}
           leftText={
             isFixedLayout
-              ? `第 ${currentLocator?.locations?.position ?? 1} / ${publication.readingOrder.items.length} 页`
+              ? `t("reader.pageCount", { current: currentLocator?.locations?.position ?? 1, total: publication.readingOrder.items.length })`
               : currentLocator?.locations?.progression != null
                 ? `${Math.round((currentLocator.locations.progression ?? 0) * 100)}%`
                 : undefined

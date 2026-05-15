@@ -178,7 +178,7 @@ impl LwwProvider {
         let incoming_ts = change
             .value
             .get("updated_at")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
 
         let key_clause = spec
@@ -373,7 +373,7 @@ impl SyncProvider for LwwProvider {
         // Ensure the per-device directory exists (create_dir_all on fs, MKCOL on WebDAV).
         let device_dir = format!(".myreader/changes/{device_id}/");
         if let Err(e) = op.create_dir(&device_dir).await {
-            log::warn!("[db-sync] create_dir {device_dir} failed: {e}");
+            tracing::warn!("[db-sync] create_dir {device_dir} failed: {e}");
         }
         let object_path = format!(".myreader/changes/{device_id}/{seq}.jsonl");
         op.write(&object_path, payload.into_bytes())
@@ -424,7 +424,7 @@ impl SyncProvider for LwwProvider {
                 match op.list(&format!(".myreader/changes/{remote_device}/")).await {
                     Ok(e) => e,
                     Err(err) => {
-                        log::warn!(
+                        tracing::warn!(
                             "列出 .myreader/changes/{remote_device}/ 失败: {err}"
                         );
                         continue;

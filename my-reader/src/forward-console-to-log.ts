@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { warn, debug, trace, info, error } from "@tauri-apps/plugin-log"
+import { debug, error, info, trace, warn } from "@tauri-apps/plugin-log"
 
 function formatConsoleArgs(args: unknown[]): string {
   return args
@@ -20,7 +20,10 @@ function forwardConsole(
   logger: (message: string) => Promise<void>,
 ): void {
   const original = console[fnName].bind(console) as (...args: unknown[]) => void
-  const sink = console as unknown as Record<string, (...args: unknown[]) => void>
+  const sink = console as unknown as Record<
+    string,
+    (...args: unknown[]) => void
+  >
   sink[fnName] = (...args: unknown[]) => {
     original(...args)
     void logger(formatConsoleArgs(args))

@@ -1,4 +1,5 @@
 import { List } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
@@ -27,9 +28,10 @@ export function ReadiumTocPanel({
   onSelect,
   onClose,
 }: ReadiumTocPanelProps) {
+  const { t } = useTranslation()
   return (
     <ReaderSidePanelFrame visible={visible} side="left">
-      <ReaderSidePanelHeader title="目录" icon={List} onClose={onClose} />
+      <ReaderSidePanelHeader title={t("reader.toc")} icon={List} onClose={onClose} />
       <nav className="reader-chrome-scroll max-h-[calc(100vh-8rem)] overflow-y-auto px-2 py-2">
         <ul className="space-y-0.5">
           {rows.map((row, index) => (
@@ -37,10 +39,11 @@ export function ReadiumTocPanel({
               <button
                 type="button"
                 className={cn(
-                  "reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-left text-sm text-reader-chrome-fg transition-colors",
-                  activeHref === row.href.split("#")[0] && "bg-reader-chrome-muted/35",
+                  "reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-start text-sm text-reader-chrome-fg transition-colors",
+                  activeHref === row.href.split("#")[0] &&
+                    "bg-reader-chrome-muted/35",
                 )}
-                style={{ paddingLeft: `${8 + row.depth * 12}px` }}
+                style={{ paddingInlineStart: `${8 + row.depth * 12}px` }}
                 onClick={() => onSelect(row)}
               >
                 {row.title}

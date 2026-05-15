@@ -1,4 +1,7 @@
-import type { FixedLayoutSettings, ReaderSettings } from "@/components/reader/types"
+import type {
+  FixedLayoutSettings,
+  ReaderSettings,
+} from "@/components/reader/types"
 
 export type LibraryViewMode = "grid" | "list"
 

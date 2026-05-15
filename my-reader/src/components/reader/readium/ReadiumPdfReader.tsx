@@ -1,21 +1,26 @@
-import { ReadiumTocPanel, type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import {
+  ReadiumTocPanel,
+  type ReadiumTocRow,
+} from "@/components/reader/readium/ReadiumTocPanel"
+import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
+import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
+import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
-import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
-import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
-import type { PDFDocumentProxy } from "pdfjs-dist"
+import { useAppUiStore } from "@/stores/appUiStore"
 import { Locator, LocatorLocations } from "@readium/shared"
 import { Settings } from "lucide-react"
+import type { PDFDocumentProxy } from "pdfjs-dist"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 const PDF_RENDER_BASE = 1.25
 const PDF_SCALE_MIN = 0.75
@@ -75,24 +80,25 @@ export function ReadiumPdfReader({
   format,
   progressSyncEnabled,
 }: ReadiumPdfReaderProps) {
+  const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } = useReaderPanels()
-  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } = useReadingChrome(
-    false,
-    tocOpen || settingsOpen,
-  )
+  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
+    useReaderPanels()
+  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
+    useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageNum, setPageNum] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [renderScale, setRenderScale] = useState(PDF_RENDER_BASE)
+  const direction = useAppUiStore((s) => s.fixedLayout.direction)
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     if (totalPages < 1) return []
     return Array.from({ length: totalPages }, (_, i) => ({
       depth: 0,
-      title: `第 ${i + 1} 页`,
+      title: t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
       href: `page-${i + 1}`,
       type: "application/pdf",
     }))
@@ -104,7 +110,7 @@ export function ReadiumPdfReader({
     return new Locator({
       href: fileUrl,
       type: "application/pdf",
-      title: `第 ${pageNum} 页`,
+      title: t("reader.pageCount", { current: pageNum, total: "" }).replace(" / ", ""),
       locations: new LocatorLocations({
         fragments: [pdfPageFragment(pageNum)],
         position: pageNum,
@@ -115,7 +121,11 @@ export function ReadiumPdfReader({
   }, [fileUrl, pageNum, totalPages])
 
   useLocatorProgressSync({
-    enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0 && totalPages > 0,
+    enabled:
+      progressSyncEnabled &&
+      Boolean(libraryId) &&
+      format.length > 0 &&
+      totalPages > 0,
     libraryId,
     bookId,
     format,
@@ -164,7 +174,7 @@ export function ReadiumPdfReader({
       canvas.height = vp.height
       await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
     })()
-  }, [pageNum, totalPages, renderScale])
+  }, [pageNum, renderScale])
 
   const go = useCallback(
     (delta: number) => {
@@ -178,9 +188,12 @@ export function ReadiumPdfReader({
     [totalPages],
   )
 
-  const edgeTurnActive =
-    totalPages > 0 && !error && !tocOpen && !settingsOpen
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
+  const isRtl = direction === "rtl"
+  const edgeTurnActive = totalPages > 0 && !error && !tocOpen && !settingsOpen
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   const onPdfEdgePrev = useCallback(() => {
     go(-1)
@@ -201,26 +214,29 @@ export function ReadiumPdfReader({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === "PageDown") go(1)
-      else if (e.key === "ArrowLeft" || e.key === "PageUp") go(-1)
+      const isRtl = direction === "rtl"
+      if (e.key === "ArrowRight" || e.key === "PageDown") {
+        go(isRtl ? -1 : 1)
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        go(isRtl ? 1 : -1)
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [go])
+  }, [go, direction])
 
   if (error) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">PDF 加载失败</p>
+          <p className="text-destructive font-medium mb-2">{t("reader.loadFailed")}</p>
           <p className="text-sm text-muted-foreground max-w-md">{error}</p>
         </div>
       </div>
     )
   }
 
-  const chapterTitle =
-    totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : ""
+  const chapterTitle = totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : ""
 
   return (
     <ReaderChromeShell
@@ -249,14 +265,18 @@ export function ReadiumPdfReader({
       }
       settingsPanel={
         <ReaderSidePanelFrame visible={settingsOpen} side="right">
-          <ReaderSidePanelHeader title="设置" icon={Settings} onClose={closePanels} />
+          <ReaderSidePanelHeader
+            title={t("reader.settingsShort")}
+            icon={Settings}
+            onClose={closePanels}
+          />
           <div className="reader-chrome-muted space-y-4 px-4 py-3 text-xs leading-relaxed">
             <section className="space-y-2">
               <Label
                 htmlFor="pdf-render-scale"
                 className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
               >
-                渲染缩放
+                {t("reader.renderScale")}
               </Label>
               <input
                 id="pdf-render-scale"
@@ -269,36 +289,40 @@ export function ReadiumPdfReader({
                 className="mt-1 w-full accent-primary"
               />
               <p className="text-[11px] tabular-nums text-reader-chrome-fg/70">
-                {renderScale.toFixed(2)}×（方向键与左右边缘翻页）
+                {renderScale.toFixed(2)}× ({t("reader.renderScaleNote", { scale: renderScale.toFixed(2) }).replace("{{scale}}", renderScale.toFixed(2))})
               </p>
             </section>
             <p className="text-[11px] text-reader-chrome-fg/55">
-              连续滚动与手势缩放将另行接入 pdf.js 管线。
+              {t("reader.scrollZoomNote")}
             </p>
           </div>
         </ReaderSidePanelFrame>
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
-          nearLeft={nearLeft}
-          nearRight={nearRight}
+          nearLeft={isRtl ? nearRight : nearLeft}
+          nearRight={isRtl ? nearLeft : nearRight}
           onPrev={onPdfEdgePrev}
           onNext={onPdfEdgeNext}
-          prevLabel="上一页"
-          nextLabel="下一页"
+          prevLabel={t("reader.prevPage")}
+          nextLabel={t("reader.nextPage")}
         />
       }
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
-          leftText={totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : undefined}
-          progress={totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0}
+          leftText={
+            totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : undefined
+          }
+          progress={
+            totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
+          }
         />
       }
       main={
         <div className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-auto bg-muted/30 p-4">
           {totalPages < 1 ? (
-            <div className="text-sm text-muted-foreground">正在加载 PDF…</div>
+            <div className="text-sm text-muted-foreground">{t("reader.loadingPdf")}</div>
           ) : (
             <canvas
               ref={canvasRef}

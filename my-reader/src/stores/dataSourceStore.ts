@@ -1,12 +1,12 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
-import i18n from "@/i18n"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
   DataSourceStore,
 } from "my-reader-tools/store/data-source"
 import { create } from "zustand"
+import i18n from "@/i18n"
+import { api } from "@/lib/tauri-api"
 
 function formatTauriError(error: unknown): string {
   const raw =
@@ -61,7 +61,7 @@ function mapDataSourceFromBackendJson(
     return null
   }
 
-  throw new Error(`未知的数据源 kind: ${String(kind)}`)
+  throw new Error(i18n.t("errors.unknownDataSourceKind", { kind: String(kind) }))
 }
 
 async function fetchDataSources(): Promise<DataSource[]> {
@@ -136,7 +136,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
 
   createDataSource: async (datasource: DataSource) => {
     if (!isRuntimeAvailable()) {
-      throw new Error("当前环境不支持创建数据源")
+      throw new Error(i18n.t("stores.createNotSupported"))
     }
     const created = await createWebdavDataSource({
       name: datasource.name,
@@ -150,7 +150,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
   },
 
   updateDataSource: async () => {
-    throw new Error("桌面端暂不支持修改数据源，请删除后重新添加。")
+    throw new Error(i18n.t("stores.editNotSupported"))
   },
 
   deleteDataSource: async (id) => {

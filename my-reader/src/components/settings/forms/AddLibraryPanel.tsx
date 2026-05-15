@@ -1,12 +1,18 @@
 import { useForm } from "@tanstack/react-form"
 import { open } from "@tauri-apps/plugin-dialog"
 import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import type { DataSource } from "my-reader-tools/store/data-source"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { z } from "zod"
-
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { Button } from "@/components/ui/button"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -16,18 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/constants/local-library-data-source"
 import { cn } from "@/lib/utils"
-import {
-  LOCAL_LIBRARY_DATA_SOURCE_ID,
-  LOCAL_LIBRARY_DATA_SOURCE_NAME,
-} from "@/constants/local-library-data-source"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "my-reader-tools/store/data-source"
-
-const addLibrarySchema = z.object({
-  dataSourceId: z.string().trim().min(1, "请先选择数据源"),
-  path: z.string().trim().min(1, "请输入书库路径"),
-})
 
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
@@ -37,6 +34,7 @@ interface AddLibraryPanelProps {
  * 统一“添加书库”入口按钮与表单面板，便于在设置页复用与维护。
  */
 export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
+  const { t } = useTranslation()
   const dataSources = useDataSourceStore((s) => s.dataSources)
   const hydrated = useDataSourceStore((s) => s.hydrated)
   const loadingDataSources = useDataSourceStore((s) => s.loading)
@@ -47,6 +45,15 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const pathInputRef = useRef<HTMLInputElement>(null)
   const availableWebdavSources = dataSources.filter((row) => row.enabled)
+
+  const addLibrarySchema = useMemo(
+    () =>
+      z.object({
+        dataSourceId: z.string().trim().min(1, t("addLibraryForm.validation.selectDataSource")),
+        path: z.string().trim().min(1, t("addLibraryForm.validation.pathRequired")),
+      }),
+    [t],
+  )
 
   useEffect(() => {
     if (hydrated) return
@@ -100,7 +107,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "选择 Calibre 书库目录",
+        title: t("addLibraryForm.selectDirTitle"),
       })
       if (!selected) return
       const path = selected as string
@@ -108,7 +115,10 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
       setSubmitError(null)
       pathInputRef.current?.focus()
     } catch (error) {
-      console.error("Failed to open directory picker for library path. error:", error)
+      console.error(
+        "Failed to open directory picker for library path. error:",
+        error,
+      )
     }
   }
 
@@ -116,11 +126,13 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
     <div
       className={cn(
         "overflow-hidden rounded-[var(--radius)] transition-colors",
-        addPanelOpen ? "border border-primary" : "border border-dashed border-border",
+        addPanelOpen
+          ? "border border-primary"
+          : "border border-dashed border-border",
       )}
     >
       <AddPanelButton
-        label="添加书库"
+        label={t("addLibraryForm.label")}
         onClick={addPanelOpen ? handleClosePanel : handleOpenPanel}
       />
       {addPanelOpen && (
@@ -135,7 +147,8 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
             <FieldGroup>
               <addLibraryForm.Field name="dataSourceId">
                 {(field) => {
-                  const isLocalPick = field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
+                  const isLocalPick =
+                    field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
                   const selectedWebdav = resolveSelectedWebdavSource(
                     field.state.value,
                     availableWebdavSources,
@@ -146,7 +159,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                     adding || loadingDataSources || !isLocalPick
                   return (
                     <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>数据源</FieldLabel>
+                      <FieldLabel htmlFor={field.name}>{t("addLibraryForm.dataSourceLabel")}</FieldLabel>
                       <Select
                         name={field.name}
                         value={field.state.value}
@@ -162,12 +175,12 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                           onBlur={field.handleBlur}
                           aria-invalid={isInvalid}
                         >
-                          <SelectValue placeholder="选择已配置数据源" />
+                          <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
                             <SelectItem value={LOCAL_LIBRARY_DATA_SOURCE_ID}>
-                              {LOCAL_LIBRARY_DATA_SOURCE_NAME}
+                              {t("constants.localDataSourceName")}
                             </SelectItem>
                             {availableWebdavSources.map((source) => (
                               <SelectItem key={source.id} value={source.id}>
@@ -179,10 +192,12 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                       </Select>
                       {selectedWebdav && (
                         <p className="text-xs text-muted-foreground">
-                          当前选中 WebDAV，暂不支持目录浏览。
+                          {t("addLibraryForm.webdavNoBrowse")}
                         </p>
                       )}
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
                       <addLibraryForm.Field name="path">
                         {(pathField) => {
                           const isPathInvalid =
@@ -190,7 +205,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                             !pathField.state.meta.isValid
                           return (
                             <Field data-invalid={isPathInvalid}>
-                              <FieldLabel htmlFor={pathField.name}>书库路径</FieldLabel>
+                              <FieldLabel htmlFor={pathField.name}>
+                                {t("addLibraryForm.pathLabel")}
+                              </FieldLabel>
                               <div className="flex items-center gap-2">
                                 <Input
                                   ref={pathInputRef}
@@ -202,7 +219,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                                     pathField.handleChange(event.target.value)
                                     setSubmitError(null)
                                   }}
-                                  placeholder="输入 Calibre 书库路径，例如 D:\CalibreLibrary"
+                                  placeholder={t("addLibraryForm.pathPlaceholder")}
                                   className="h-9 flex-1 font-mono text-xs"
                                   spellCheck={false}
                                   autoComplete="off"
@@ -214,15 +231,19 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                                   variant="secondary"
                                   size="sm"
                                   className="shrink-0 gap-1.5"
-                                  onClick={() => void openLocalDirectoryPicker()}
+                                  onClick={() =>
+                                    void openLocalDirectoryPicker()
+                                  }
                                   disabled={browseDisabled}
                                 >
                                   <FolderSearch className="size-[13px]" />
-                                  浏览
+                                  {t("addLibraryForm.browse")}
                                 </Button>
                               </div>
                               {isPathInvalid && (
-                                <FieldError errors={pathField.state.meta.errors} />
+                                <FieldError
+                                  errors={pathField.state.meta.errors}
+                                />
                               )}
                             </Field>
                           )
@@ -245,15 +266,20 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                   onClick={handleClosePanel}
                   disabled={adding}
                 >
-                  取消
+                  {t("common.cancel")}
                 </Button>
-                <Button type="submit" size="sm" className="gap-1.5" disabled={adding}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={adding}
+                >
                   {adding ? (
                     <Loader2 className="size-[13px] animate-spin" />
                   ) : (
                     <PlusCircle className="size-[13px]" />
                   )}
-                  {adding ? "添加中…" : "确认添加"}
+                  {adding ? t("addLibraryForm.adding") : t("addLibraryForm.confirm")}
                 </Button>
               </div>
             </FieldGroup>

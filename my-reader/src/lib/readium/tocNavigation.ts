@@ -1,5 +1,10 @@
 import type { EpubNavigator } from "@readium/navigator"
-import { Link, Locator, LocatorLocations, type Publication } from "@readium/shared"
+import {
+  Link,
+  Locator,
+  LocatorLocations,
+  type Publication,
+} from "@readium/shared"
 
 export type ReadiumTocTarget = {
   href: string
@@ -19,7 +24,9 @@ export function tocTargetToLocator(
     (link) => link.href === hrefWithoutFragment,
   )
   const readingOrderLink =
-    readingOrderIndex >= 0 ? publication.readingOrder.items[readingOrderIndex] : null
+    readingOrderIndex >= 0
+      ? publication.readingOrder.items[readingOrderIndex]
+      : null
 
   if (!readingOrderLink) {
     const link = publication.linkWithHref(target.href) ?? new Link(target)
@@ -46,7 +53,9 @@ export function tocTargetReadingOrderIndex(
   target: ReadiumTocTarget,
 ): number {
   const [hrefWithoutFragment] = target.href.split("#", 1)
-  return publication.readingOrder.items.findIndex((link) => link.href === hrefWithoutFragment)
+  return publication.readingOrder.items.findIndex(
+    (link) => link.href === hrefWithoutFragment,
+  )
 }
 
 /**
@@ -56,7 +65,8 @@ export async function goToReadingOrderPositionBySteps(
   nav: EpubNavigator,
   targetPosition: number,
 ): Promise<boolean> {
-  const isVisible = () => nav.viewport.positions?.includes(targetPosition) ?? false
+  const isVisible = () =>
+    nav.viewport.positions?.includes(targetPosition) ?? false
   if (isVisible()) return true
 
   let guard = nav.publication.readingOrder.items.length + 2
@@ -65,7 +75,8 @@ export async function goToReadingOrderPositionBySteps(
     const firstVisible =
       nav.viewport.positions?.[0] ??
       nav.currentLocator.locations.position ??
-      nav.publication.readingOrder.findIndexWithHref(nav.currentLocator.href) + 1
+      nav.publication.readingOrder.findIndexWithHref(nav.currentLocator.href) +
+        1
     const ok = await new Promise<boolean>((resolve) => {
       if (firstVisible < targetPosition) {
         nav.goForward(false, resolve)

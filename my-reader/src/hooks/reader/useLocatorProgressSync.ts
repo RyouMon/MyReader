@@ -1,8 +1,8 @@
-import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
-import { useEffect, useRef } from "react"
 import type { Locator } from "@readium/shared"
+import { isTauri } from "@tauri-apps/api/core"
+import { useEffect, useRef } from "react"
 import { locatorToJson } from "@/lib/readium/locator"
+import { api } from "@/lib/tauri-api"
 
 const SAVE_DEBOUNCE_MS = 1600
 
@@ -38,9 +38,11 @@ export function useLocatorProgressSync(params: {
       if (saveSeqRef.current !== seq) return
       const loc = locatorRef.current
       if (!loc) return
-      api.setReadingProgress(libraryId, bookId, format, locatorToJson(loc)).catch((e: unknown) => {
-        console.error("[useLocatorProgressSync] save failed:", e)
-      })
+      api
+        .setReadingProgress(libraryId, bookId, format, locatorToJson(loc))
+        .catch((e: unknown) => {
+          console.error("[useLocatorProgressSync] save failed:", e)
+        })
     }, SAVE_DEBOUNCE_MS)
 
     return () => window.clearTimeout(t)

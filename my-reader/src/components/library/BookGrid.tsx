@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
-
 import type { CalibreBook } from "my-reader-tools/types/book"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
 
@@ -11,7 +10,8 @@ const SKELETON_COUNT = 20
 const LIST_ROW_HEIGHT = 62
 const TEXT_BLOCK_HEIGHT = 78 // mt-2 (8px) + h-[70px] text area
 const ROW_GAP = 24
-const DEFAULT_GRID_ROW_HEIGHT = MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
+const DEFAULT_GRID_ROW_HEIGHT =
+  MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
 
 export type LibraryViewMode = "grid" | "list"
 
@@ -112,7 +112,7 @@ export default function BookGrid({
             style={{
               position: "absolute",
               top: vRow.start,
-              left: 0,
+              insetInlineStart: 0,
               width: "100%",
               height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
             }}

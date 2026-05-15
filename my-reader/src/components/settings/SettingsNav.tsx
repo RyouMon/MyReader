@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   Database,
@@ -8,6 +7,7 @@ import {
   Palette,
   RefreshCw,
 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 import { cn } from "@/lib/utils"
 import type { SettingsSection } from "@/types/settings"
@@ -39,9 +39,9 @@ export default function SettingsNav({
   activeSection,
   onSectionChange,
 }: SettingsNavProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
-    <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-r border-border bg-settings-nav">
+    <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav">
       <div className="shrink-0 border-b border-border px-4 py-[18px] pb-3">
         <h2 className="font-serif text-[15px] font-semibold text-foreground">
           {t("settings.title")}
@@ -57,14 +57,14 @@ export default function SettingsNav({
               key={key}
               onClick={() => onSectionChange(key)}
               className={cn(
-                "relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] transition-colors",
+                "relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors",
                 isActive
                   ? "bg-primary/10 font-medium text-primary"
                   : "text-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
               {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-sm" />
+                <span className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-s-sm" />
               )}
               <Icon
                 className={cn(

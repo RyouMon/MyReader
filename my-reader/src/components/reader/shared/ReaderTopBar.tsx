@@ -1,6 +1,6 @@
 import { Bookmark, List, Maximize, Minimize, Search, Type } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
 interface ReaderTopBarProps {
@@ -25,6 +25,7 @@ export function ReaderTopBar({
   onToggleSettings,
   scheduleChromeHide,
 }: ReaderTopBarProps) {
+  const { t } = useTranslation()
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
@@ -56,10 +57,10 @@ export function ReaderTopBar({
       }
     >
       <div className="flex min-w-0 items-center justify-start gap-0.5">
-        <TopBarButton title="目录" onClick={onToggleToc}>
+        <TopBarButton title={t("reader.toc")} onClick={onToggleToc}>
           <List className="size-[18px]" />
         </TopBarButton>
-        <TopBarButton title="全屏" onClick={toggleFullscreen}>
+        <TopBarButton title={isFullscreen ? t("reader.exitFullscreen") : t("reader.fullscreen")} onClick={toggleFullscreen}>
           {isFullscreen ? (
             <Minimize className="size-[18px]" />
           ) : (
@@ -73,14 +74,14 @@ export function ReaderTopBar({
       </div>
 
       <div className="flex items-center justify-end gap-0.5">
-        <TopBarButton title="字体大小" onClick={onToggleSettings}>
+        <TopBarButton title={t("reader.fontSize")} onClick={onToggleSettings}>
           <Type className="size-[18px]" />
         </TopBarButton>
-        <TopBarButton title="搜索" onClick={() => {}}>
+        <TopBarButton title={t("reader.search")} onClick={() => {}}>
           <Search className="size-[18px]" />
         </TopBarButton>
         <TopBarButton
-          title="书签"
+          title={t("reader.bookmark")}
           onClick={onToggleBookmark}
           active={bookmarked}
         >

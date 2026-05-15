@@ -28,7 +28,7 @@ export function ReaderBottomStatusBar({
         <div className="absolute inset-0 bg-reader-chrome-border/40" />
         {typeof progress === "number" ? (
           <div
-            className="absolute left-0 top-0 h-full bg-reader-chrome-active/60 transition-[width] duration-300"
+            className="absolute start-0 top-0 h-full bg-reader-chrome-active/60 transition-[width] duration-300"
             style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
           />
         ) : null}
@@ -36,12 +36,16 @@ export function ReaderBottomStatusBar({
       {/* 文字行 */}
       <div className="flex items-center justify-between px-5 py-1.5">
         {leftText ? (
-          <span className="text-[11px] text-reader-chrome-muted/80">{leftText}</span>
+          <span className="text-[11px] text-reader-chrome-muted/80">
+            {leftText}
+          </span>
         ) : (
           <span />
         )}
         {rightText ? (
-          <span className="text-[11px] text-reader-chrome-muted/80">{rightText}</span>
+          <span className="text-[11px] text-reader-chrome-muted/80">
+            {rightText}
+          </span>
         ) : (
           <span />
         )}

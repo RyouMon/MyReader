@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use log::info;
+use tracing::info;
 use zip::ZipArchive;
 
 use crate::error::AppError;
@@ -87,7 +87,7 @@ pub fn clear_orphaned_library_cache_files(
             continue;
         }
         let remainder = &name[prefix.len()..];
-        let book_id_str: String = remainder.chars().take_while(|c| c.is_ascii_digit()).collect();
+        let book_id_str: String = remainder.chars().take_while(char::is_ascii_digit).collect();
         if book_id_str.is_empty() {
             continue;
         }
@@ -130,8 +130,7 @@ pub fn collect_cache_files_sorted_oldest() -> Result<Vec<(PathBuf, u64, u128)>, 
                 .modified()
                 .ok()
                 .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                .map(|d| d.as_millis())
-                .unwrap_or(0);
+                .map_or(0, |d| d.as_millis());
             out.push((path, meta.len(), modified));
         }
     }

@@ -1,4 +1,4 @@
-use log::{error, info};
+use tracing::{error, info};
 use tauri::{AppHandle, Manager, State};
 
 use crate::commands::AppState;
@@ -11,10 +11,10 @@ use crate::services::library_service::LibraryService;
 #[specta::specta]
 pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
     info!("Start to list libraries.");
-    let result = (|| {
-        let config = state.lock().unwrap();
+    let result = {
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         LibraryService::list_libraries(&config)
-    })();
+    };
     match &result {
         Ok(infos) => info!("Success to list libraries. count: {}", infos.len()),
         Err(err) => error!("Failed to list libraries. error: {err}"),
@@ -32,7 +32,7 @@ pub fn add_library(
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to add library. path: \"{path}\", requested name: {name:?}");
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         let info = LibraryService::add_library(&path, name.as_deref(), &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
@@ -64,7 +64,7 @@ pub fn refresh_library(
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to refresh library. id: \"{id}\"");
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let info = LibraryService::refresh_library(&id, &config)?;
         drop(config);
         Ok(info)
@@ -88,7 +88,7 @@ pub fn remove_library(
 ) -> Result<(), AppError> {
     info!("Start to remove library. id: \"{id}\"");
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         LibraryService::remove_library(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
@@ -111,7 +111,7 @@ pub fn switch_library(
 ) -> Result<(), AppError> {
     info!("Start to switch active library. id: \"{id}\"");
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         LibraryService::switch_library(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
@@ -127,9 +127,9 @@ pub fn switch_library(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_active_library_id(state: State<'_, AppState>) -> Option<String> {
+pub fn get_active_library_id(state: State<'_, AppState>) -> Result<Option<String>, AppError> {
     info!("Start to get active library id.");
-    let result = state.lock().unwrap().active_library_id.clone();
+    let result = state.lock().unwrap_or_else(|e| e.into_inner()).active_library_id.clone();
     info!("Success to get active library id. active library id: {result:?}");
-    result
+    Ok(result)
 }

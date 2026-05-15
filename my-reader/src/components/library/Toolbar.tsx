@@ -7,6 +7,7 @@ import {
   Search,
   SlidersHorizontal,
 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,11 +17,14 @@ import { cn } from "@/lib/utils"
 
 export type SortOption = "recent" | "title" | "author" | "progress"
 
-const SORT_LABELS: Record<SortOption, string> = {
-  recent: "最近添加",
-  title: "书名",
-  author: "作者",
-  progress: "进度",
+function useSortLabels(): Record<SortOption, string> {
+  const { t } = useTranslation()
+  return {
+    recent: t("library.sort.recent"),
+    title: t("library.sort.title"),
+    author: t("library.sort.author"),
+    progress: t("library.sort.progress"),
+  }
 }
 
 interface ToolbarProps {
@@ -42,6 +46,9 @@ export default function Toolbar({
   onSortChange,
   onRefresh,
 }: ToolbarProps) {
+  const { t } = useTranslation()
+  const sortLabels = useSortLabels()
+
   function cycleSortOption() {
     const options: SortOption[] = ["recent", "title", "author", "progress"]
     const next = options[(options.indexOf(sortBy) + 1) % options.length]
@@ -50,26 +57,26 @@ export default function Toolbar({
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
+      <SidebarTrigger className="-ms-1" />
+      <Separator orientation="vertical" className="me-2 h-4" />
 
       {/* Search */}
       <div className="relative flex-1 max-w-sm">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="搜索书名、作者、标签…"
-          className="pl-8 h-8 bg-card border-border"
+          placeholder={t("library.searchPlaceholder")}
+          className="ps-8 h-8 bg-card border-border"
         />
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ms-auto flex items-center gap-1">
         {/* View toggle */}
         <Button
           variant="ghost"
           size="icon-sm"
-          title="网格视图"
+          title={t("library.gridView")}
           className={cn(
             viewMode === "grid" && "bg-accent text-accent-foreground",
           )}
@@ -80,7 +87,7 @@ export default function Toolbar({
         <Button
           variant="ghost"
           size="icon-sm"
-          title="列表视图"
+          title={t("library.listView")}
           className={cn(
             viewMode === "list" && "bg-accent text-accent-foreground",
           )}
@@ -99,12 +106,12 @@ export default function Toolbar({
           onClick={cycleSortOption}
         >
           <ArrowUpDown className="size-3.5" />
-          <span className="text-xs">{SORT_LABELS[sortBy]}</span>
+          <span className="text-xs">{sortLabels[sortBy]}</span>
           <ChevronDown className="size-3 opacity-50" />
         </Button>
 
         {/* Filter */}
-        <Button variant="ghost" size="icon-sm" title="筛选">
+        <Button variant="ghost" size="icon-sm" title={t("library.filter")}>
           <SlidersHorizontal />
         </Button>
 
@@ -114,7 +121,7 @@ export default function Toolbar({
         <Button
           variant="ghost"
           size="icon-sm"
-          title="同步当前书库"
+          title={t("library.syncLibrary")}
           onClick={onRefresh}
         >
           <RefreshCw className="size-4" />

@@ -16,70 +16,70 @@
   --radius-xl: var(--radius-xl);
 
   /* ── Semantic colors ── */
-  --color-bg:             var(--bg);
-  --color-bg-secondary:   var(--bg-secondary);
-  --color-ink-1:          var(--ink-1);
-  --color-ink-2:          var(--ink-2);
-  --color-ink-inverse:    var(--ink-inverse);
-  --color-primary-token:  var(--primary);
+  --color-bg: var(--bg);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-inverse: var(--ink-inverse);
+  --color-primary-token: var(--primary);
   --color-secondary-token: var(--secondary);
-  --color-success:        var(--success);
-  --color-warning:        var(--warning);
-  --color-danger:         var(--danger);
-  --color-overlay:        var(--overlay);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-overlay: var(--overlay);
   --color-overlay-strong: var(--overlay-strong);
 
   /* shadcn / Tailwind bridge (keep for component library compatibility) */
-  --color-background:         var(--background);
-  --color-foreground:         var(--foreground);
-  --color-card:               var(--card);
-  --color-card-foreground:    var(--card-foreground);
-  --color-popover:            var(--popover);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary:            var(--primary);
+  --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary:          var(--secondary);
+  --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted:              var(--muted);
-  --color-muted-foreground:   var(--muted-foreground);
-  --color-accent:             var(--accent-ui);
-  --color-accent-foreground:  var(--accent-foreground);
-  --color-destructive:        var(--destructive);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-ui);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border:             var(--border);
-  --color-input:              var(--input);
-  --color-ring:               var(--ring);
-  --color-sidebar:            var(--sidebar);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary:    var(--sidebar-primary);
+  --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent:     var(--sidebar-accent);
+  --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border:     var(--sidebar-border);
-  --color-sidebar-ring:       var(--sidebar-ring);
-  --color-settings-nav:       var(--settings-nav);
-  --color-progress:           var(--progress);
-  --color-progress-track:     var(--progress-track);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-settings-nav: var(--settings-nav);
+  --color-progress: var(--progress);
+  --color-progress-track: var(--progress-track);
 
   /* Reader chrome tokens (defined per [data-reader-theme] in reader.css) */
-  --color-reader-bg:           var(--reader-bg);
-  --color-reader-fg:           var(--reader-fg);
-  --color-reader-chrome-bg:    var(--reader-chrome-bg);
-  --color-reader-chrome-fg:    var(--reader-chrome-fg);
+  --color-reader-bg: var(--reader-bg);
+  --color-reader-fg: var(--reader-fg);
+  --color-reader-chrome-bg: var(--reader-chrome-bg);
+  --color-reader-chrome-fg: var(--reader-chrome-fg);
   --color-reader-chrome-muted: var(--reader-chrome-muted);
   --color-reader-chrome-border: var(--reader-chrome-border);
   --color-reader-chrome-hover: var(--reader-chrome-hover);
   --color-reader-chrome-active: var(--reader-chrome-active);
-  --color-reader-panel-bg:     var(--reader-panel-bg);
-  --color-viewer-bg:           var(--viewer-bg);
+  --color-reader-panel-bg: var(--reader-panel-bg);
+  --color-viewer-bg: var(--viewer-bg);
 
   /* ── Fonts ── */
-  --font-sans:  "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+  --font-sans: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
   --font-serif: "Noto Serif SC", "Lora", serif;
-  --font-mono:  "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
 
   /* ── Shadow utilities ── */
-  --shadow-card:  var(--shadow-md);
+  --shadow-card: var(--shadow-md);
   --shadow-cover: var(--shadow-md);
   --shadow-panel: var(--shadow-lg);
   --shadow-modal: var(--shadow-lg);
@@ -87,35 +87,73 @@
 
 @layer utilities {
   /* Library indicator dots */
-  .bg-library-indicator-on  { background-color: var(--success); }
-  .bg-library-indicator-off { background-color: var(--ink-2); }
+  .bg-library-indicator-on {
+    background-color: var(--success);
+  }
+  .bg-library-indicator-off {
+    background-color: var(--ink-2);
+  }
 
   /* Semantic overlay utilities (replace bg-black/50 etc.) */
-  .bg-overlay        { background-color: var(--overlay); }
-  .bg-overlay-strong { background-color: var(--overlay-strong); }
+  .bg-overlay {
+    background-color: var(--overlay);
+  }
+  .bg-overlay-strong {
+    background-color: var(--overlay-strong);
+  }
 
   /* Elevation utilities */
-  .shadow-card  { box-shadow: var(--shadow-card); }
-  .shadow-cover { box-shadow: var(--shadow-cover); }
-  .shadow-panel { box-shadow: var(--shadow-panel); }
-  .shadow-modal { box-shadow: var(--shadow-modal); }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-cover {
+    box-shadow: var(--shadow-cover);
+  }
+  .shadow-panel {
+    box-shadow: var(--shadow-panel);
+  }
+  .shadow-modal {
+    box-shadow: var(--shadow-modal);
+  }
 
   /* Status feedback backgrounds */
-  .bg-success-soft { background-color: color-mix(in srgb, var(--success) 16%, var(--bg)); }
-  .bg-warning-soft { background-color: color-mix(in srgb, var(--warning) 16%, var(--bg)); }
-  .bg-danger-soft  { background-color: color-mix(in srgb, var(--danger) 14%, var(--bg)); }
-  .text-success    { color: var(--success); }
-  .text-warning    { color: var(--warning); }
-  .text-danger     { color: var(--danger); }
+  .bg-success-soft {
+    background-color: color-mix(in srgb, var(--success) 16%, var(--bg));
+  }
+  .bg-warning-soft {
+    background-color: color-mix(in srgb, var(--warning) 16%, var(--bg));
+  }
+  .bg-danger-soft {
+    background-color: color-mix(in srgb, var(--danger) 14%, var(--bg));
+  }
+  .text-success {
+    color: var(--success);
+  }
+  .text-warning {
+    color: var(--warning);
+  }
+  .text-danger {
+    color: var(--danger);
+  }
 
   /* Ink hierarchy utilities */
-  .text-ink-1       { color: var(--ink-1); }
-  .text-ink-2       { color: var(--ink-2); }
-  .text-ink-inverse { color: var(--ink-inverse); }
+  .text-ink-1 {
+    color: var(--ink-1);
+  }
+  .text-ink-2 {
+    color: var(--ink-2);
+  }
+  .text-ink-inverse {
+    color: var(--ink-inverse);
+  }
 
   /* Primary tint utilities */
-  .bg-primary-soft { background-color: color-mix(in srgb, var(--primary) 12%, var(--bg)); }
-  .bg-bg-secondary { background-color: var(--bg-secondary); }
+  .bg-primary-soft {
+    background-color: color-mix(in srgb, var(--primary) 12%, var(--bg));
+  }
+  .bg-bg-secondary {
+    background-color: var(--bg-secondary);
+  }
 }
 
 @layer base {
@@ -130,60 +168,119 @@
     overflow: hidden;
     font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
   }
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: "Noto Serif SC", "Lora", serif;
   }
-  button, [role="button"] {
+  button,
+  [role="button"] {
     cursor: pointer;
   }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-2);
+}
 
 /* Book card entrance */
 @keyframes card-fade-in {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Settings library card entrance */
 @keyframes settings-card-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.settings-card-in { animation: settings-card-in 250ms ease-out both; }
+.settings-card-in {
+  animation: settings-card-in 250ms ease-out both;
+}
 
 /* Book detail — cover entrance */
 @keyframes detail-cover-in {
-  from { opacity: 0; transform: scale(0.98); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
-.detail-cover-wrap { animation: detail-cover-in 0.5s ease-out 0.1s both; }
+.detail-cover-wrap {
+  animation: detail-cover-in 0.5s ease-out 0.1s both;
+}
 
 /* Book detail — staggered meta entrance */
 @keyframes detail-meta-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.detail-anim-1 { animation: detail-meta-in 0.35s ease-out 0.15s both; }
-.detail-anim-2 { animation: detail-meta-in 0.35s ease-out 0.21s both; }
-.detail-anim-3 { animation: detail-meta-in 0.35s ease-out 0.27s both; }
-.detail-anim-4 { animation: detail-meta-in 0.30s ease-out 0.33s both; }
-.detail-anim-5 { animation: detail-meta-in 0.35s ease-out 0.36s both; }
-.detail-anim-6 { animation: detail-meta-in 0.30s ease-out 0.40s both; }
-.detail-anim-7 { animation: detail-meta-in 0.30s ease-out 0.44s both; }
-.detail-anim-8 { animation: detail-meta-in 0.30s ease-out 0.48s both; }
+.detail-anim-1 {
+  animation: detail-meta-in 0.35s ease-out 0.15s both;
+}
+.detail-anim-2 {
+  animation: detail-meta-in 0.35s ease-out 0.21s both;
+}
+.detail-anim-3 {
+  animation: detail-meta-in 0.35s ease-out 0.27s both;
+}
+.detail-anim-4 {
+  animation: detail-meta-in 0.3s ease-out 0.33s both;
+}
+.detail-anim-5 {
+  animation: detail-meta-in 0.35s ease-out 0.36s both;
+}
+.detail-anim-6 {
+  animation: detail-meta-in 0.3s ease-out 0.4s both;
+}
+.detail-anim-7 {
+  animation: detail-meta-in 0.3s ease-out 0.44s both;
+}
+.detail-anim-8 {
+  animation: detail-meta-in 0.3s ease-out 0.48s both;
+}
 
 /* Book detail — tag entrance */
 @keyframes detail-tag-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .detail-tag {
   opacity: 0;
@@ -192,36 +289,55 @@
 
 @media (prefers-reduced-motion: reduce) {
   .detail-cover-wrap,
-  .detail-anim-1, .detail-anim-2, .detail-anim-3, .detail-anim-4,
-  .detail-anim-5, .detail-anim-6, .detail-anim-7, .detail-anim-8,
+  .detail-anim-1,
+  .detail-anim-2,
+  .detail-anim-3,
+  .detail-anim-4,
+  .detail-anim-5,
+  .detail-anim-6,
+  .detail-anim-7,
+  .detail-anim-8,
   .detail-tag {
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-duration: 0.01ms !important;
   }
 }
 
 /* Global prefers-reduced-motion: disable all animations and transitions */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     transition-duration: 0.01ms !important;
   }
 }
 
 /* Active sidebar item indicator */
 [data-sidebar="menu-button"][data-active="true"] {
-  background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: override shadcn/ui sidebar base styles */
+  background-color: color-mix(
+    in srgb,
+    var(--primary) 12%,
+    transparent
+  ) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: override shadcn/ui sidebar base styles */
   color: var(--primary) !important;
   position: relative;
 }
 [data-sidebar="menu-button"][data-active="true"]::before {
   content: "";
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
   height: 18px;
   background: var(--primary);
-  border-radius: 0 3px 3px 0;
+  border-start-end-radius: 3px;
+  border-end-end-radius: 3px;
 }

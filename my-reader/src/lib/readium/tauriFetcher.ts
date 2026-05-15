@@ -42,7 +42,12 @@ class TauriResource implements Resource {
 }
 
 function toFetchableUrl(path: string): string {
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("asset://")) return path
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("asset://")
+  )
+    return path
   if (isTauri()) return convertFileSrc(path)
   return path
 }

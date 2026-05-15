@@ -1,4 +1,4 @@
-use log::{error, info};
+use tracing::{error, info};
 use rusqlite::Connection;
 
 use crate::db;

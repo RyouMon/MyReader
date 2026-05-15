@@ -1,4 +1,4 @@
-import { EpubPreferences, type EpubNavigator } from "@readium/navigator"
+import { type EpubNavigator, EpubPreferences } from "@readium/navigator"
 
 /** FXL / Divina：与 Readium `setPerPage` 对应的列数偏好（null = 自动横屏双页）。 */
 export type SpreadPreference = "auto" | "single" | "double"
@@ -7,11 +7,15 @@ const SPREAD_VALUES: readonly SpreadPreference[] = ["auto", "single", "double"]
 
 /** 与 `config.json` 等外部数据对齐时的安全归一化。 */
 export function normalizeSpreadPreference(value: unknown): SpreadPreference {
-  return SPREAD_VALUES.includes(value as SpreadPreference) ? (value as SpreadPreference) : "auto"
+  return SPREAD_VALUES.includes(value as SpreadPreference)
+    ? (value as SpreadPreference)
+    : "auto"
 }
 
 /** 将版面偏好转为 Readium `EpubPreferences`（仅 `columnCount` 段）。 */
-export function epubPreferencesForSpread(mode: SpreadPreference): EpubPreferences {
+export function epubPreferencesForSpread(
+  mode: SpreadPreference,
+): EpubPreferences {
   if (mode === "auto") return new EpubPreferences({ columnCount: null })
   if (mode === "single") return new EpubPreferences({ columnCount: 1 })
   return new EpubPreferences({ columnCount: 2 })
@@ -73,6 +77,8 @@ const REFLOW_PRESETS: Record<ReflowThemePreset, EpubPreferences> = {
 }
 
 /** 重排 EPUB 的底/字色预设（固定色值）。 */
-export function epubPreferencesForReflowTheme(preset: ReflowThemePreset): EpubPreferences {
+export function epubPreferencesForReflowTheme(
+  preset: ReflowThemePreset,
+): EpubPreferences {
   return REFLOW_PRESETS[preset]
 }

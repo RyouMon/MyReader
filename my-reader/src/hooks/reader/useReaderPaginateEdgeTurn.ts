@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react"
+import { type RefObject, useEffect, useState } from "react"
 
 /** 阅读根容器 ref，仅读取 `getBoundingClientRect` 与 `current`。 */
 export type ReaderPaginateRootRef = RefObject<HTMLElement | null>
@@ -39,8 +39,12 @@ export function useReaderPaginateEdgeTurn(
       setNearRight(r.right - x <= edgePx)
     }
     /** capture：指针在 FXL iframe 内时冒泡不到 document，捕获阶段仍能更新左右高亮。 */
-    document.addEventListener("pointermove", onMove, { passive: true, capture: true })
-    return () => document.removeEventListener("pointermove", onMove, { capture: true })
+    document.addEventListener("pointermove", onMove, {
+      passive: true,
+      capture: true,
+    })
+    return () =>
+      document.removeEventListener("pointermove", onMove, { capture: true })
   }, [enabled, readerRootRef, edgePx])
 
   return { nearLeft, nearRight }

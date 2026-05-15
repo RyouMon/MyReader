@@ -11,7 +11,6 @@
     "core:webview:default",
     "core:webview:allow-create-webview-window",
     "dialog:default",
-    "opener:default",
     "log:default",
     "mcp-bridge:default"
   ]

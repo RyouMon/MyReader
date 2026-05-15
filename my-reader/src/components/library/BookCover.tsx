@@ -1,8 +1,7 @@
+import type { CalibreBook } from "my-reader-tools/types/book"
 import { memo, useCallback, useState } from "react"
-
 import { buildCoverUrl } from "@/lib/cover"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "my-reader-tools/types/book"
 
 export interface BookProgressSnapshot {
   percent?: number
@@ -76,7 +75,10 @@ export const BookCover = memo(function BookCover({
         <img
           src={coverSrc}
           alt={book.title}
-          className={cn("absolute inset-0 size-full object-cover", imageClassName)}
+          className={cn(
+            "absolute inset-0 size-full object-cover",
+            imageClassName,
+          )}
           loading="lazy"
           decoding="async"
           onError={handleImgError}
@@ -102,7 +104,7 @@ export const BookCover = memo(function BookCover({
 
       <div
         className={cn(
-          "absolute inset-y-0 left-0 w-1.5 bg-black/20",
+          "absolute inset-y-0 start-0 w-1.5 bg-black/20",
           spineClassName,
         )}
       />
@@ -110,7 +112,7 @@ export const BookCover = memo(function BookCover({
       {showProgress && typeof progressPercent === "number" ? (
         <div className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-inverse/20">
           <div
-            className="h-full rounded-r-full bg-ink-inverse/75"
+            className="h-full rounded-full bg-ink-inverse/75"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

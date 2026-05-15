@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest"
 import { mockIPC } from "@tauri-apps/api/mocks"
+import { beforeEach, describe, expect, it } from "vitest"
 import { useDataSourceStore } from "../dataSourceStore"
 
 /**
  * Build a WebDAV row payload that matches backend DTO shape.
  */
-function buildWebdavRow(overrides?: Partial<Record<string, unknown>>): Record<string, unknown> {
+function buildWebdavRow(
+  overrides?: Partial<Record<string, unknown>>,
+): Record<string, unknown> {
   return {
     id: "source-1",
     name: "My WebDAV",
@@ -82,11 +84,15 @@ describe("useDataSourceStore", () => {
       password: "secret",
       rootPath: "/books",
       enabled: true,
+      hasPassword: true,
     })
 
     expect(created.id).toBe("source-created")
     expect(useDataSourceStore.getState().dataSources).toHaveLength(1)
-    expect(commandCalls).toEqual(["add_webdav_data_source", "list_data_sources"])
+    expect(commandCalls).toEqual([
+      "add_webdav_data_source",
+      "list_data_sources",
+    ])
   })
 
   it("deleteDataSource 会调用删除命令并同步列表", async () => {
@@ -109,7 +115,12 @@ describe("useDataSourceStore", () => {
     const seenInputs: unknown[] = []
     mockIPC((cmd, args) => {
       if (cmd === "test_webdav_connection") {
-        if (args && typeof args === "object" && !Array.isArray(args) && "input" in args) {
+        if (
+          args &&
+          typeof args === "object" &&
+          !Array.isArray(args) &&
+          "input" in args
+        ) {
           seenInputs.push(args.input)
         }
         return null
@@ -117,16 +128,19 @@ describe("useDataSourceStore", () => {
       throw new Error(`unexpected command: ${cmd}`)
     })
 
-    const result = await useDataSourceStore.getState().testDataSourceConnection({
-      id: "source-1",
-      type: "webdav",
-      name: "My WebDAV",
-      endpoint: "https://example.com/dav",
-      username: "reader",
-      password: "secret",
-      rootPath: "/books",
-      enabled: true,
-    })
+    const result = await useDataSourceStore
+      .getState()
+      .testDataSourceConnection({
+        id: "source-1",
+        type: "webdav",
+        name: "My WebDAV",
+        endpoint: "https://example.com/dav",
+        username: "reader",
+        password: "secret",
+        rootPath: "/books",
+        enabled: true,
+        hasPassword: true,
+      })
 
     expect(result).toEqual({ ok: true, message: "OK" })
     expect(seenInputs).toEqual([

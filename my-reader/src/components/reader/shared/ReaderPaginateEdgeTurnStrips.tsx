@@ -38,7 +38,7 @@ export function ReaderPaginateEdgeTurnStrips({
         title={prevLabel}
         style={stripStyle}
         className={cn(
-          "absolute inset-y-0 left-0 flex cursor-pointer touch-manipulation items-center justify-center",
+          "absolute inset-y-0 start-0 flex cursor-pointer touch-manipulation items-center justify-center",
           stripZClass,
           "border-none bg-transparent p-0 outline-none select-none",
           "transition-opacity duration-[220ms] ease-[ease]",
@@ -62,7 +62,7 @@ export function ReaderPaginateEdgeTurnStrips({
         title={nextLabel}
         style={stripStyle}
         className={cn(
-          "absolute inset-y-0 right-0 flex cursor-pointer touch-manipulation items-center justify-center",
+          "absolute inset-y-0 end-0 flex cursor-pointer touch-manipulation items-center justify-center",
           stripZClass,
           "border-none bg-transparent p-0 outline-none select-none",
           "transition-opacity duration-[220ms] ease-[ease]",

@@ -1,7 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
 import { create } from "zustand"
-
 import {
   DEFAULT_FIXED_LAYOUT_SETTINGS,
   DEFAULT_SETTINGS,
@@ -9,6 +7,7 @@ import {
   type ReaderSettings,
 } from "@/components/reader/types"
 import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
+import { api } from "@/lib/tauri-api"
 import type {
   LibraryViewMode,
   ReaderUiPreferencesPayload,
@@ -55,7 +54,8 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
     console.info(
       `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
     )
-    void api.setReaderUiPreferences(payload)
+    void api
+      .setReaderUiPreferences(payload)
       .then(() => {
         console.info("Success to persist reader UI preferences.")
       })
@@ -159,8 +159,9 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
         settings: {
           ...DEFAULT_SETTINGS,
           ...data.reflowable.settings,
-          theme:
-            (typeof migratedTheme === "string" ? migratedTheme : DEFAULT_SETTINGS.theme) as typeof DEFAULT_SETTINGS.theme,
+          theme: (typeof migratedTheme === "string"
+            ? migratedTheme
+            : DEFAULT_SETTINGS.theme) as typeof DEFAULT_SETTINGS.theme,
         },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },
       },

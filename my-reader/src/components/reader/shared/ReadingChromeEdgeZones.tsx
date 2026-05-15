@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
 import {
   READING_CHROME_TOP_BAND_PX,
   readingChromeBottomBandPx,
 } from "@/hooks/reader/useReadingChrome"
-import { useEffect, useState } from "react"
+import { cn } from "@/lib/utils"
 
 type ReadingChromeEdgeZonesProps = {
   /** 为 true 时条带不拦截指针（工具栏已显示，点击应落到正文/按钮）。 */
@@ -31,7 +31,9 @@ export function ReadingChromeEdgeZones({
     return () => mq.removeEventListener("change", sync)
   }, [])
 
-  const topPx = coarsePointer ? Math.round(READING_CHROME_TOP_BAND_PX * 1.35) : READING_CHROME_TOP_BAND_PX
+  const topPx = coarsePointer
+    ? Math.round(READING_CHROME_TOP_BAND_PX * 1.35)
+    : READING_CHROME_TOP_BAND_PX
   const bottomPx = coarsePointer
     ? Math.round(readingChromeBottomBandPx(expandBottomForTts) * 1.25)
     : readingChromeBottomBandPx(expandBottomForTts)

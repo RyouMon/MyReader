@@ -89,8 +89,15 @@ impl DataSourceService {
             return Err(AppError::Config("LOCAL_ROOT_PATH_REQUIRED".into()));
         }
 
+        let canon_path = dunce::canonicalize(root_path)
+            .map_err(|e| AppError::Config(format!("INVALID_DATASOURCE_PATH: {e}")))?;
+        if !canon_path.is_dir() {
+            return Err(AppError::Config("DATASOURCE_PATH_NOT_DIR".into()));
+        }
+        let canon_str = canon_path.to_string_lossy().to_string();
+
         if config.data_sources.iter().any(|source| match &source.detail {
-            DataSourceDetail::Local { root_path: existing } => existing == root_path,
+            DataSourceDetail::Local { root_path: existing } => existing == &canon_str,
             _ => false,
         }) {
             return Err(AppError::Config("LOCAL_DATASOURCE_ALREADY_EXISTS".into()));
@@ -101,7 +108,7 @@ impl DataSourceService {
             name: name.to_string(),
             enabled: true,
             detail: DataSourceDetail::Local {
-                root_path: root_path.to_string(),
+                root_path: canon_str,
             },
         };
         let dto = DataSourceDto::from(&source);

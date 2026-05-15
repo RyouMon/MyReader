@@ -1,10 +1,10 @@
 import { BookOpen, Ellipsis } from "lucide-react"
-import { memo, type KeyboardEvent } from "react"
-
+import type { CalibreBook } from "my-reader-tools/types/book"
+import { type KeyboardEvent, memo } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "my-reader-tools/types/book"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 
 interface BookCardProps {
@@ -15,17 +15,15 @@ interface BookCardProps {
   progress?: BookProgressSnapshot
 }
 
-/**
- * Returns the action label that matches the optional progress snapshot.
- */
-function getReadLabel(progress?: BookProgressSnapshot) {
+function useReadLabel(progress?: BookProgressSnapshot) {
+  const { t } = useTranslation()
   if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return "开始阅读"
+    return t("bookCard.startReading")
   }
   if (progress.percent >= 100) {
-    return "再次阅读"
+    return t("bookCard.readAgain")
   }
-  return "继续阅读"
+  return t("bookCard.continueReading")
 }
 
 /**
@@ -38,9 +36,10 @@ const BookCard = memo(function BookCard({
   onMore,
   progress,
 }: BookCardProps) {
+  const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
   const primaryFormat = book.formats[0] ?? ""
-  const readLabel = getReadLabel(progress)
+  const readLabel = useReadLabel(progress)
   const showProgressBadge = typeof progress?.percent === "number"
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -54,11 +53,12 @@ const BookCard = memo(function BookCard({
   return (
     // biome-ignore lint/a11y/useSemanticElements: The card contains nested action buttons, so the outer target cannot be a button.
     <div
-      className="group/card min-w-0 cursor-pointer outline-none"
+      className="group/card min-w-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-label={t("bookCard.openBook", { title: book.title })}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg transition duration-200 ease-out group-hover/card:-translate-y-1 group-hover/card:shadow-[var(--shadow-md)] group-active/card:scale-[0.98]">
         <BookCover
@@ -88,8 +88,8 @@ const BookCard = memo(function BookCard({
               type="button"
               variant="secondary"
               size="icon-sm"
-              title="更多操作"
-              aria-label="更多操作"
+              title={t("bookCard.moreActions")}
+              aria-label={t("bookCard.moreActions")}
               className="size-9 rounded-full border border-ink-inverse/35 bg-ink-inverse/20 text-ink-inverse backdrop-blur-sm hover:bg-ink-inverse/30"
               onClick={(event) => {
                 event.stopPropagation()
@@ -103,7 +103,7 @@ const BookCard = memo(function BookCard({
         {primaryFormat ? (
           <Badge
             variant="secondary"
-            className="absolute left-2 top-2 rounded-sm border-0 bg-overlay px-1.5 py-0 text-[9px] uppercase tracking-wide text-ink-inverse/85 backdrop-blur-sm"
+            className="absolute start-2 top-2 rounded-sm border-0 bg-overlay px-1.5 py-0 text-[9px] uppercase tracking-wide text-ink-inverse/85 backdrop-blur-sm"
           >
             {primaryFormat}
           </Badge>
