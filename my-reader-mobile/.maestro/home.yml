@@ -1,6 +1,0 @@
-appId: ryoumon.myreadermobile
----
-- launchApp
-- assertVisible: "我的阅读"
-- assertVisible: "主页"
-- assertVisible: "设置"

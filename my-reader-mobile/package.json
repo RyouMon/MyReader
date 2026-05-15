@@ -16,8 +16,7 @@
     "test:update-snapshots": "jest -u --coverage=false",
     "e2e:build:android:local": "npx eas-cli@latest build --platform android --profile e2e-test --local",
     "e2e:build:ios:local": "npx eas-cli@latest build --platform ios --profile e2e-test --local",
-    "e2e:maestro:home": "maestro test .maestro/home.yml",
-    "e2e:maestro:settings": "maestro test .maestro/settings.yml",
+    "e2e:maestro:smoke": "maestro test e2e/maestro/smoke/smoke.yaml -e APP_ID=ryoumon.myreadermobile",
     "prepare": "cd .. && husky || true"
   },
   "dependencies": {
