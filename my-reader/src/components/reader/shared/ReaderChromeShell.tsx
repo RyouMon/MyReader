@@ -1,4 +1,5 @@
 import type { ReactNode, PointerEvent as ReactPointerEvent, Ref } from "react"
+import { useEffect } from "react"
 import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
 import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
 import { ReadingChromeEdgeZones } from "@/components/reader/shared/ReadingChromeEdgeZones"
@@ -72,6 +73,17 @@ export function ReaderChromeShell({
     if (next instanceof Node && e.currentTarget.contains(next)) return
     scheduleChromeHide()
   }
+
+  useEffect(() => {
+    if (!panelsOpen || !onClosePanels) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClosePanels()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [panelsOpen, onClosePanels])
 
   return (
     <div
