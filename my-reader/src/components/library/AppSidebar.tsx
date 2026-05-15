@@ -27,8 +27,8 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { useLibrary } from "@/stores/libraryStore"
 import { cn } from "@/lib/utils"
+import { useLibrary } from "@/stores/libraryStore"
 
 export type SidebarView = "all" | "recent" | "favorites"
 

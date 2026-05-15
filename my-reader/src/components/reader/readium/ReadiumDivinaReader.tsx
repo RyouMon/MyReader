@@ -1,10 +1,17 @@
-import { ReadiumTocPanel, type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import { EpubNavigator } from "@readium/navigator"
+import { Locator, LocatorLocations, type Publication } from "@readium/shared"
+import { Settings } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  ReadiumTocPanel,
+  type ReadiumTocRow,
+} from "@/components/reader/readium/ReadiumTocPanel"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
-    ReaderSidePanelFrame,
-    ReaderSidePanelHeader,
+  ReaderSidePanelFrame,
+  ReaderSidePanelHeader,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
@@ -19,10 +26,6 @@ import {
 } from "@/lib/readium/epubReaderPrefs"
 import { tocTargetToLocator } from "@/lib/readium/tocNavigation"
 import { cn } from "@/lib/utils"
-import { EpubNavigator } from "@readium/navigator"
-import { Locator, LocatorLocations, type Publication } from "@readium/shared"
-import { Settings } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 type DivinaSurface = "black" | "dim" | "paper"
 
@@ -47,11 +50,10 @@ export function ReadiumDivinaReader({
 }: ReadiumDivinaReaderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } = useReaderPanels()
-  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } = useReadingChrome(
-    false,
-    tocOpen || settingsOpen,
-  )
+  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
+    useReaderPanels()
+  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
+    useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -123,7 +125,10 @@ export function ReadiumDivinaReader({
   const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   const onReadiumEdgePrev = useCallback(() => {
     const nav = navigatorRef.current
@@ -171,7 +176,9 @@ export function ReadiumDivinaReader({
           if (typeof pos === "number" && pos >= 1 && pos <= positions.length) {
             initialPosition = positions[pos - 1]
           } else {
-            const m = positions.findIndex((p) => p.href === initialSavedLocator.href)
+            const m = positions.findIndex(
+              (p) => p.href === initialSavedLocator.href,
+            )
             if (m >= 0) initialPosition = positions[m]
           }
         }
@@ -216,10 +223,19 @@ export function ReadiumDivinaReader({
             peripheral: (ev) => {
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
-              const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
-              if (key === "ArrowRight" || key === "PageDown" || rec.keyCode === 39) {
+              const isRtl =
+                publication.metadata.effectiveReadingProgression === "rtl"
+              if (
+                key === "ArrowRight" ||
+                key === "PageDown" ||
+                rec.keyCode === 39
+              ) {
                 stepBy(isRtl ? -1 : 1)
-              } else if (key === "ArrowLeft" || key === "PageUp" || rec.keyCode === 37) {
+              } else if (
+                key === "ArrowLeft" ||
+                key === "PageUp" ||
+                rec.keyCode === 37
+              ) {
                 stepBy(isRtl ? 1 : -1)
               }
             },
@@ -250,8 +266,13 @@ export function ReadiumDivinaReader({
           const slide = fp.currentSlide
           const currentPos = (nav as any).currentLocation?.locations?.position
           const currentIdx = typeof currentPos === "number" ? currentPos - 1 : 0
-          if (typeof slide === "number" && slide !== currentIdx && slide >= 0 && slide < positions.length) {
-            (nav as any).currentLocation = positions[slide]
+          if (
+            typeof slide === "number" &&
+            slide !== currentIdx &&
+            slide >= 0 &&
+            slide < positions.length
+          ) {
+            ;(nav as any).currentLocation = positions[slide]
           }
         }
 
@@ -314,7 +335,11 @@ export function ReadiumDivinaReader({
       }
       settingsPanel={
         <ReaderSidePanelFrame visible={settingsOpen} side="right">
-          <ReaderSidePanelHeader title="设置" icon={Settings} onClose={closePanels} />
+          <ReaderSidePanelHeader
+            title="设置"
+            icon={Settings}
+            onClose={closePanels}
+          />
           <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">

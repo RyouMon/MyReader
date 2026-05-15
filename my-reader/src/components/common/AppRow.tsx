@@ -1,4 +1,3 @@
-import type { ElementType, ReactNode } from "react"
 import {
   BookCopy,
   Database,
@@ -8,6 +7,7 @@ import {
   Tag,
   User,
 } from "lucide-react"
+import type { ElementType, ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -69,7 +69,9 @@ export function AppRow({
         <p className="truncate text-sm font-medium">{body}</p>
         {detail ? (
           <div className="mt-0.5 text-muted-foreground" data-slot="row-detail">
-            <p className={cn("truncate text-[11.5px]", detailClassName)}>{detail}</p>
+            <p className={cn("truncate text-[11.5px]", detailClassName)}>
+              {detail}
+            </p>
           </div>
         ) : null}
       </div>

@@ -14,7 +14,7 @@
 :root,
 [data-reader-theme],
 [data-reader-theme="paper"] {
-  --reader-bg: #E9DDC8;
+  --reader-bg: #e9ddc8;
   --reader-fg: #1a1a1a;
   --reader-chrome-bg: #f0e6d0;
   --reader-chrome-fg: #2b2118;
@@ -119,7 +119,7 @@
 
 /* ── Green (green bg / black fg) ── */
 [data-reader-theme="green"] {
-  --reader-bg: #C5E7CD;
+  --reader-bg: #c5e7cd;
   --reader-fg: #000000;
   --reader-chrome-bg: #d4edd9;
   --reader-chrome-fg: #1a1a1a;
@@ -182,7 +182,6 @@
   break-inside: avoid;
 }
 
-
 /* ═══ TOC Active Item Indicator ═══ */
 
 .toc-item-active::before {
@@ -238,7 +237,6 @@
 
 /* ═══ Reduced Motion ═══ */
 
-
 /* ═══ Reading surface (text mode) ═══ */
 
 .reader-text-surface {
@@ -290,7 +288,11 @@
 @layer components {
   /* 轻量毛玻璃：苹果 Books 风格，极低不透明度实底 + 模糊，无可见边框 */
   .reader-chrome-frost {
-    background-color: color-mix(in srgb, var(--reader-chrome-bg) 72%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--reader-chrome-bg) 72%,
+      transparent
+    );
     -webkit-backdrop-filter: blur(20px) saturate(1.2);
     backdrop-filter: blur(20px) saturate(1.2);
     transition:
@@ -303,7 +305,8 @@
     color: var(--reader-chrome-muted);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--reader-chrome-fg) 6%, transparent);
+    box-shadow: 0 2px 8px
+      color-mix(in srgb, var(--reader-chrome-fg) 6%, transparent);
     transition:
       opacity 220ms ease,
       transform 220ms ease,
@@ -312,6 +315,14 @@
   .reader-edge-turn-btn:hover {
     background: color-mix(in srgb, var(--reader-chrome-bg) 95%, transparent);
     color: var(--reader-chrome-fg);
+  }
+
+  .reader-chrome-footer-bar {
+    background-color: var(--reader-chrome-bg);
+    border-top: 1px solid var(--reader-chrome-border);
+    color: var(--reader-chrome-fg);
+    box-shadow: 0 -4px 16px
+      color-mix(in srgb, var(--reader-chrome-bg) 40%, transparent);
   }
 
   .reader-chrome-icon-btn {

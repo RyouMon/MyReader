@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
 import {
   ArrowLeft,
   BookOpen,
@@ -13,19 +12,17 @@ import {
   Send,
   Star,
 } from "lucide-react"
+import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { useLibrary } from "@/stores/libraryStore"
 import { buildCoverUrl } from "@/lib/cover"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
-import {
-  isReadableInAppFormat,
-  pickReadableFormat,
-} from "@/lib/readFormats"
+import { isReadableInAppFormat, pickReadableFormat } from "@/lib/readFormats"
+import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
-import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
+import { useLibrary } from "@/stores/libraryStore"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,
@@ -166,11 +163,13 @@ function BookDetailPage() {
           console.info(
             `Start to load series books. series name: "${detail.series}", exclude book id: ${detail.id}`,
           )
-          const related = await api.getSeriesBooks(activeLibraryId, detail.series, detail.id)
-          setSeriesBooks(related)
-          console.info(
-            `Success to load series books. count: ${related.length}`,
+          const related = await api.getSeriesBooks(
+            activeLibraryId,
+            detail.series,
+            detail.id,
           )
+          setSeriesBooks(related)
+          console.info(`Success to load series books. count: ${related.length}`)
         }
       } catch (e) {
         console.error(
@@ -218,7 +217,11 @@ function BookDetailPage() {
           `Start to open reader window from book detail. book id: ${id}, format: "${fmt?.toUpperCase() ?? ""}", title: "${book?.title ?? ""}"`,
         )
         try {
-          await openReaderInNewWindow(String(id), fmt?.toUpperCase(), book?.title)
+          await openReaderInNewWindow(
+            String(id),
+            fmt?.toUpperCase(),
+            book?.title,
+          )
           console.info(
             `Success to open reader window from book detail. book id: ${id}`,
           )
@@ -295,9 +298,7 @@ function BookDetailPage() {
       <div
         className={cn(
           "detail-toolbar flex shrink-0 items-center gap-3 border-b bg-background px-7 py-3 transition-all duration-150 z-5",
-          toolbarScrolled
-            ? "border-border shadow-xs"
-            : "border-transparent",
+          toolbarScrolled ? "border-border shadow-xs" : "border-transparent",
         )}
       >
         <Button
@@ -386,14 +387,14 @@ function BookDetailPage() {
                 {/* Format badges on cover */}
                 {book.formats.length > 0 && (
                   <div className="absolute end-3 bottom-3 start-3 z-[2] flex flex-wrap gap-[5px]">
-                {book.formats.map((fmt) => (
-                  <Badge
-                    key={fmt}
-                    variant="outline"
-                    className="rounded-sm border-ink-inverse/10 bg-overlay px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-ink-inverse/90 backdrop-blur-sm"
-                  >
-                    {fmt}
-                  </Badge>
+                    {book.formats.map((fmt) => (
+                      <Badge
+                        key={fmt}
+                        variant="outline"
+                        className="rounded-sm border-ink-inverse/10 bg-overlay px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide text-ink-inverse/90 backdrop-blur-sm"
+                      >
+                        {fmt}
+                      </Badge>
                     ))}
                   </div>
                 )}
@@ -442,7 +443,11 @@ function BookDetailPage() {
                             key={i}
                             className="size-[13px]"
                             fill={i < ratingStars ? "currentColor" : "none"}
-                            color={i < ratingStars ? "var(--primary)" : "currentColor"}
+                            color={
+                              i < ratingStars
+                                ? "var(--primary)"
+                                : "currentColor"
+                            }
                           />
                         ))}
                       </span>
@@ -491,7 +496,10 @@ function BookDetailPage() {
                       void navigateToRead(book.id, fmt ?? undefined)
                     }}
                   >
-                    <BookOpen data-icon="inline-start" className="size-[18px]" />
+                    <BookOpen
+                      data-icon="inline-start"
+                      className="size-[18px]"
+                    />
                     <span>开始阅读</span>
                     {selectedFormat && (
                       <span className="ms-0.5 text-[13px] font-normal opacity-80">
@@ -782,7 +790,9 @@ function BookDetailPage() {
           <span
             className={cn(
               "inline-block size-1.5 rounded-full",
-              activeLibrary ? "bg-library-indicator-on" : "bg-library-indicator-off",
+              activeLibrary
+                ? "bg-library-indicator-on"
+                : "bg-library-indicator-off",
             )}
           />
           {activeLibrary ? "已同步" : "未连接"}

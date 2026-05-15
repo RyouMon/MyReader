@@ -36,12 +36,16 @@ export function ReaderBottomStatusBar({
       {/* 文字行 */}
       <div className="flex items-center justify-between px-5 py-1.5">
         {leftText ? (
-          <span className="text-[11px] text-reader-chrome-muted/80">{leftText}</span>
+          <span className="text-[11px] text-reader-chrome-muted/80">
+            {leftText}
+          </span>
         ) : (
           <span />
         )}
         {rightText ? (
-          <span className="text-[11px] text-reader-chrome-muted/80">{rightText}</span>
+          <span className="text-[11px] text-reader-chrome-muted/80">
+            {rightText}
+          </span>
         ) : (
           <span />
         )}

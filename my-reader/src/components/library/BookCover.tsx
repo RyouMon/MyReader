@@ -1,8 +1,7 @@
+import type { CalibreBook } from "my-reader-tools/types/book"
 import { memo, useCallback, useState } from "react"
-
 import { buildCoverUrl } from "@/lib/cover"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "my-reader-tools/types/book"
 
 export interface BookProgressSnapshot {
   percent?: number
@@ -76,7 +75,10 @@ export const BookCover = memo(function BookCover({
         <img
           src={coverSrc}
           alt={book.title}
-          className={cn("absolute inset-0 size-full object-cover", imageClassName)}
+          className={cn(
+            "absolute inset-0 size-full object-cover",
+            imageClassName,
+          )}
           loading="lazy"
           decoding="async"
           onError={handleImgError}

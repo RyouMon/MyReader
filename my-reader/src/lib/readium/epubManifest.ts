@@ -19,17 +19,28 @@ interface EpubTocItem {
 }
 
 function toFetchableUrl(path: string): string {
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("asset://")) return path
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("asset://")
+  )
+    return path
   if (isTauri()) return convertFileSrc(path)
   return path
 }
 
 function resolveHref(base: string, href: string): string {
-  if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("asset://")) {
+  if (
+    href.startsWith("http://") ||
+    href.startsWith("https://") ||
+    href.startsWith("asset://")
+  ) {
     return href
   }
   if (!base) return href
-  const baseDir = base.includes("/") ? base.slice(0, base.lastIndexOf("/") + 1) : ""
+  const baseDir = base.includes("/")
+    ? base.slice(0, base.lastIndexOf("/") + 1)
+    : ""
   if (href.startsWith("/")) return href
   return baseDir + href
 }
@@ -37,11 +48,16 @@ function resolveHref(base: string, href: string): string {
 /**
  * Resolve TOC targets relative to the document that declared them, matching readingOrder hrefs.
  */
-function resolveTocHrefs(items: EpubTocItem[], basePath: string): EpubTocItem[] {
+function resolveTocHrefs(
+  items: EpubTocItem[],
+  basePath: string,
+): EpubTocItem[] {
   return items.map((item) => ({
     ...item,
     href: item.href ? resolveHref(basePath, item.href) : item.href,
-    children: item.children ? resolveTocHrefs(item.children, basePath) : undefined,
+    children: item.children
+      ? resolveTocHrefs(item.children, basePath)
+      : undefined,
   }))
 }
 
@@ -55,7 +71,7 @@ async function parseXml(text: string): Promise<Document> {
   const parser = new DOMParser()
   const doc = parser.parseFromString(text, "application/xml")
   const error = doc.querySelector("parsererror")
-  if (error) throw new Error("XML parse error: " + error.textContent)
+  if (error) throw new Error(`XML parse error: ${error.textContent}`)
   return doc
 }
 
@@ -79,7 +95,9 @@ function childElements(parent: Element | null, localName: string): Element[] {
 async function findOpfPath(extractedDir: string): Promise<string> {
   const containerXml = await fetchText(`${extractedDir}/META-INF/container.xml`)
   const doc = await parseXml(containerXml)
-  const rootfile = doc.querySelector("rootfile[media-type='application/oebps-package+xml']")
+  const rootfile = doc.querySelector(
+    "rootfile[media-type='application/oebps-package+xml']",
+  )
   const fullPath = rootfile?.getAttribute("full-path")
   if (!fullPath) throw new Error("No OPF rootfile found in container.xml")
   return `${extractedDir}/${fullPath}`
@@ -103,7 +121,11 @@ async function parseNcx(ncxPath: string): Promise<EpubTocItem[]> {
       const content = point.querySelector("content")
       const href = content?.getAttribute("src") ?? ""
       const children = childElements(point, "navPoint").map(parsePoint)
-      return { label, href, children: children.length > 0 ? children : undefined }
+      return {
+        label,
+        href,
+        children: children.length > 0 ? children : undefined,
+      }
     }
 
     return childElements(navMap, "navPoint").map(parsePoint)
@@ -119,9 +141,10 @@ async function parseNavDoc(navPath: string): Promise<EpubTocItem[]> {
   try {
     const text = await fetchText(navPath)
     const doc = new DOMParser().parseFromString(text, "application/xhtml+xml")
-    const tocNav = doc.querySelector("nav[epub\\:type='toc'], nav[epub\\:type=\"toc\"]")
-      ?? doc.querySelector("nav[epub\\:type='toc']")
-      ?? doc.querySelector("nav")
+    const tocNav =
+      doc.querySelector("nav[epub\\:type='toc'], nav[epub\\:type=\"toc\"]") ??
+      doc.querySelector("nav[epub\\:type='toc']") ??
+      doc.querySelector("nav")
     if (!tocNav) return []
 
     const parseOl = (ol: Element): EpubTocItem[] =>
@@ -289,7 +312,9 @@ export async function buildReadiumManifest(
         ...(publisher && { publisher }),
         ...(description && { description }),
         ...(published && { published }),
-        ...(authors.length > 0 && { author: authors.length === 1 ? authors[0] : authors }),
+        ...(authors.length > 0 && {
+          author: authors.length === 1 ? authors[0] : authors,
+        }),
         ...(contributors.length > 0 && { contributor: contributors }),
         conformsTo: "https://readium.org/webpub-manifest/profiles/epub",
       },

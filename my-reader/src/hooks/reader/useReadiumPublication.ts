@@ -1,5 +1,5 @@
+import { Manifest, Publication } from "@readium/shared"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Publication, Manifest } from "@readium/shared"
 
 import { buildReadiumManifest } from "@/lib/readium/epubManifest"
 import { TauriFetcher } from "@/lib/readium/tauriFetcher"

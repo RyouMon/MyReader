@@ -1,5 +1,5 @@
-import type { ReaderSettings, ReaderTheme } from "@/components/reader/types"
 import { EpubPreferences, TextAlignment } from "@readium/navigator"
+import type { ReaderSettings, ReaderTheme } from "@/components/reader/types"
 import {
   epubPreferencesForReflowTheme,
   type ReflowThemePreset,
@@ -30,7 +30,9 @@ const VALID_THEMES: readonly ReaderTheme[] = [
   "green",
 ]
 
-export function readerThemeToReflowPreset(theme: ReaderTheme): ReflowThemePreset {
+export function readerThemeToReflowPreset(
+  theme: ReaderTheme,
+): ReflowThemePreset {
   if (VALID_THEMES.includes(theme)) return theme as ReflowThemePreset
   return "paper"
 }
@@ -48,14 +50,21 @@ function uiColCountToReadium(colCount: string): number | null {
 }
 
 /** 将已持久化的 `ReaderSettings` 转为提交给 `EpubNavigator` 的偏好。 */
-export function readerSettingsToEpubPreferences(settings: ReaderSettings): EpubPreferences {
+export function readerSettingsToEpubPreferences(
+  settings: ReaderSettings,
+): EpubPreferences {
   const preset = readerThemeToReflowPreset(settings.theme)
   const base = epubPreferencesForReflowTheme(preset)
   const lh = Math.min(
     READIUM_LINE_HEIGHT_MAX,
-    Math.max(READIUM_LINE_HEIGHT_MIN, Math.round(settings.lineHeight * 10) / 10),
+    Math.max(
+      READIUM_LINE_HEIGHT_MIN,
+      Math.round(settings.lineHeight * 10) / 10,
+    ),
   )
-  const gutter = Math.round(Math.min(56, Math.max(4, 6 + settings.paddingX * 10)))
+  const gutter = Math.round(
+    Math.min(56, Math.max(4, 6 + settings.paddingX * 10)),
+  )
 
   return new EpubPreferences({
     backgroundColor: base.backgroundColor,
@@ -69,6 +78,10 @@ export function readerSettingsToEpubPreferences(settings: ReaderSettings): EpubP
     columnCount: uiColCountToReadium(settings.colCount),
     optimalLineLength: 35,
     maximalLineLength:
-      settings.colCount === "auto" ? 9999 : settings.colCount === "1" ? null : undefined,
+      settings.colCount === "auto"
+        ? 9999
+        : settings.colCount === "1"
+          ? null
+          : undefined,
   })
 }

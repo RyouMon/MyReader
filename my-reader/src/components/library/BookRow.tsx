@@ -1,10 +1,9 @@
 import { BookOpen, Ellipsis } from "lucide-react"
-import { memo, type KeyboardEvent } from "react"
-
+import type { CalibreBook } from "my-reader-tools/types/book"
+import { type KeyboardEvent, memo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { CalibreBook } from "my-reader-tools/types/book"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 
 interface BookRowProps {

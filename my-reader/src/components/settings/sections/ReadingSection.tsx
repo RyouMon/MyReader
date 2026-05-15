@@ -1,9 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
 import { useEffect, useMemo, useState } from "react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { api } from "@/lib/tauri-api"
 import { useAppUiStore } from "@/stores/appUiStore"
 
 type CacheUsageDto = {
@@ -34,7 +33,8 @@ export default function ReadingSection() {
 
   useEffect(() => {
     if (!isTauri()) return
-    void api.getCacheUsage()
+    void api
+      .getCacheUsage()
       .then((row) => setUsage(row))
       .catch(() => setUsage(null))
   }, [])

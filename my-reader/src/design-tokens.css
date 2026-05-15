@@ -4,18 +4,18 @@
  */
 
 :root {
-  --primary: #D97757;
-  --secondary: #A87E62;
-  --bg: #F7F3EC;
-  --bg-secondary: #EDE8DF;
-  --ink-1: #1C1714;
-  --ink-2: #5C5349;
-  --ink-inverse: #FAF6F0;
-  --success: #3A7D5A;
-  --warning: #C4922D;
-  --danger: #B53A2F;
-  --border: rgba(28, 23, 20, 0.10);
-  --border-strong: rgba(28, 23, 20, 0.20);
+  --primary: #d97757;
+  --secondary: #a87e62;
+  --bg: #f7f3ec;
+  --bg-secondary: #ede8df;
+  --ink-1: #1c1714;
+  --ink-2: #5c5349;
+  --ink-inverse: #faf6f0;
+  --success: #3a7d5a;
+  --warning: #c4922d;
+  --danger: #b53a2f;
+  --border: rgba(28, 23, 20, 0.1);
+  --border-strong: rgba(28, 23, 20, 0.2);
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -29,15 +29,15 @@
   --radius-full: 9999px;
 
   --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08);
-  --shadow-md: 0 2px 8px  rgba(28, 23, 20, 0.10),
-               0 8px 24px rgba(28, 23, 20, 0.07);
-  --shadow-lg: 0 4px 16px rgba(28, 23, 20, 0.12),
-               0 24px 64px rgba(28, 23, 20, 0.14);
+  --shadow-md:
+    0 2px 8px rgba(28, 23, 20, 0.1), 0 8px 24px rgba(28, 23, 20, 0.07);
+  --shadow-lg:
+    0 4px 16px rgba(28, 23, 20, 0.12), 0 24px 64px rgba(28, 23, 20, 0.14);
 
-  --overlay: rgba(28,23,20,0.22);
-  --overlay-strong: rgba(28,23,20,0.50);
-  --cover-scrim-rest: rgba(0,0,0,0.15);
-  --cover-scrim-hover: rgba(0,0,0,0.45);
+  --overlay: rgba(28, 23, 20, 0.22);
+  --overlay-strong: rgba(28, 23, 20, 0.5);
+  --cover-scrim-rest: rgba(0, 0, 0, 0.15);
+  --cover-scrim-hover: rgba(0, 0, 0, 0.45);
   --hover-bg: color-mix(in srgb, var(--ink-1) 5%, transparent);
   --active-bg: color-mix(in srgb, var(--primary) 12%, transparent);
   --focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
@@ -72,26 +72,24 @@
 }
 
 .dark {
-  --primary: #C4602A;
-  --secondary: #B8895A;
-  --bg: #1C1814;
-  --bg-secondary: #26211D;
-  --ink-1: #F0EBE1;
-  --ink-2: #B8AFA6;
-  --ink-inverse: #1C1714;
-  --success: #5AAD7E;
-  --warning: #D4A844;
-  --danger: #D46060;
-  --border: rgba(240, 235, 225, 0.10);
-  --border-strong: rgba(240, 235, 225, 0.20);
-  --shadow-sm: 0 1px 3px  rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 2px 8px  rgba(0, 0, 0, 0.32),
-               0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.40),
-               0 24px 64px rgba(0, 0, 0, 0.35);
+  --primary: #c4602a;
+  --secondary: #b8895a;
+  --bg: #1c1814;
+  --bg-secondary: #26211d;
+  --ink-1: #f0ebe1;
+  --ink-2: #b8afa6;
+  --ink-inverse: #1c1714;
+  --success: #5aad7e;
+  --warning: #d4a844;
+  --danger: #d46060;
+  --border: rgba(240, 235, 225, 0.1);
+  --border-strong: rgba(240, 235, 225, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4), 0 24px 64px rgba(0, 0, 0, 0.35);
 
-  --overlay: rgba(0,0,0,0.38);
-  --overlay-strong: rgba(0,0,0,0.65);
+  --overlay: rgba(0, 0, 0, 0.38);
+  --overlay-strong: rgba(0, 0, 0, 0.65);
   --hover-bg: color-mix(in srgb, var(--ink-1) 5%, transparent);
   --active-bg: color-mix(in srgb, var(--primary) 12%, transparent);
   --focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 40%, transparent);

@@ -1,3 +1,6 @@
+import { Trash2 } from "lucide-react"
+import type { Library } from "my-reader-tools/store/library"
+import { useRef, useState } from "react"
 import { AppRow } from "@/components/common/AppRow"
 import {
   GroupList,
@@ -8,9 +11,6 @@ import { StatusNotice } from "@/components/common/StatusNotice"
 import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
 import { useLibrary } from "@/stores/libraryStore"
-import { Trash2 } from "lucide-react"
-import type { Library } from "my-reader-tools/store/library"
-import { useRef, useState } from "react"
 
 /**
  * 书库设置分区，负责展示、添加与删除书库引用。
@@ -117,7 +117,8 @@ function LibraryCard({
       className={cn(
         "bg-card transition-[opacity,transform,background-color]",
         "hover:bg-muted/40",
-        isRemoving && "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
+        isRemoving &&
+          "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >

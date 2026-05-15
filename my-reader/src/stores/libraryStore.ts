@@ -1,9 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
+import type { LibraryStore } from "my-reader-tools/store/library"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
-
-import type { LibraryStore } from "my-reader-tools/store/library"
+import { api } from "@/lib/tauri-api"
 
 export const useLibraryStore = create<LibraryStore>()((set, get) => ({
   libraries: [],
@@ -23,9 +22,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     try {
       const libs = await api.listLibraries()
       set({ libraries: libs })
-      console.info(
-        `Success to refresh library list. count: ${libs.length}`,
-      )
+      console.info(`Success to refresh library list. count: ${libs.length}`)
     } catch (e) {
       console.error("Failed to refresh library list. error:", e)
     }
@@ -82,10 +79,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
       )
       return info
     } catch (e) {
-      console.error(
-        `Failed to add library. path: "${path}", error:`,
-        e,
-      )
+      console.error(`Failed to add library. path: "${path}", error:`, e)
       throw e
     }
   },

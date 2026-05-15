@@ -13,8 +13,7 @@ export const zhCN = {
         "连接失败：服务返回 403 Forbidden，当前账号无访问权限（{{detail}}）",
       WEBDAV_NOT_FOUND:
         "连接失败：服务返回 404 Not Found，远程根路径不存在（{{detail}}）",
-      WEBDAV_UNEXPECTED_STATUS:
-        "连接失败：服务返回状态码 {{detail}}",
+      WEBDAV_UNEXPECTED_STATUS: "连接失败：服务返回状态码 {{detail}}",
     },
     settings: {
       title: "设置",
@@ -36,7 +35,7 @@ export const zhCN = {
         bookCount: "{{count}} 本",
         deleteTitle: "删除书库",
         addPrompt:
-          '请选择包含 metadata.db 的 Calibre 书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。',
+          "请选择包含 metadata.db 的 Calibre 书库根目录。添加后将自动读取数据库中的书籍信息和封面。删除书库仅移除引用，不会影响磁盘文件。",
       },
       dataSources: {
         title: "数据源管理",
@@ -68,4 +67,4 @@ export const zhCN = {
       loading: "加载中…",
     },
   },
-};
+}

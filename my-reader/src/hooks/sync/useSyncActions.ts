@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
 import { useCallback } from "react"
+import { api } from "@/lib/tauri-api"
 
 export interface SyncBackendInfo {
   id: string

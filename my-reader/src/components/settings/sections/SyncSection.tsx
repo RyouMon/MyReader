@@ -1,9 +1,12 @@
 import { Loader2, PlugZap, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-
-import DownloadButton from "@/components/library/DownloadButton"
-import { GroupList, GroupListEmpty, GroupListItem } from "@/components/common/GroupList"
+import {
+  GroupList,
+  GroupListEmpty,
+  GroupListItem,
+} from "@/components/common/GroupList"
 import { StatusNotice } from "@/components/common/StatusNotice"
+import DownloadButton from "@/components/library/DownloadButton"
 import { Button } from "@/components/ui/button"
 import {
   type DbSyncReport,
@@ -28,16 +31,21 @@ export default function SyncSection() {
 
   const [backends, setBackends] = useState<SyncBackendInfo[]>([])
   const [backendsLoading, setBackendsLoading] = useState(false)
-  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null)
-  const [selectedBackendId, setSelectedBackendId] = useState<string | null>(null)
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
+    null,
+  )
+  const [selectedBackendId, setSelectedBackendId] = useState<string | null>(
+    null,
+  )
 
   const [fileStates, setFileStates] = useState<FileStateRow[]>([])
   const [fileStatesLoading, setFileStatesLoading] = useState(false)
 
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<
-    { kind: "ok" | "err"; text: string } | null
-  >(null)
+  const [testResult, setTestResult] = useState<{
+    kind: "ok" | "err"
+    text: string
+  } | null>(null)
 
   const [syncing, setSyncing] = useState(false)
   const [syncReport, setSyncReport] = useState<DbSyncReport | null>(null)
@@ -123,7 +131,10 @@ export default function SyncSection() {
     setSyncError(null)
     setSyncReport(null)
     try {
-      const report = await actions.syncDbNow(selectedLibraryId, selectedBackendId)
+      const report = await actions.syncDbNow(
+        selectedLibraryId,
+        selectedBackendId,
+      )
       setSyncReport(report)
     } catch (err) {
       setSyncError(describeError(err))
@@ -194,9 +205,18 @@ export default function SyncSection() {
               type="button"
               variant="default"
               size="sm"
-              disabled={!selectedBackendId || !selectedLibraryId || syncing || isLocalDirect}
+              disabled={
+                !selectedBackendId ||
+                !selectedLibraryId ||
+                syncing ||
+                isLocalDirect
+              }
               onClick={handleSyncDbNow}
-              title={isLocalDirect ? "本地直读模式无需 DB 同步" : "立即推拉数据库变更"}
+              title={
+                isLocalDirect
+                  ? "本地直读模式无需 DB 同步"
+                  : "立即推拉数据库变更"
+              }
             >
               {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
               立即同步数据库
@@ -258,7 +278,9 @@ export default function SyncSection() {
               <GroupListEmpty>请选择书库</GroupListEmpty>
             ) : fileStates.length === 0 ? (
               <GroupListEmpty>
-                {fileStatesLoading ? "加载中…" : "暂无跟踪的文件（首次下载或推送后将出现在这里）"}
+                {fileStatesLoading
+                  ? "加载中…"
+                  : "暂无跟踪的文件（首次下载或推送后将出现在这里）"}
               </GroupListEmpty>
             ) : (
               fileStates.map((row) => (
@@ -343,7 +365,9 @@ function FileStateRowView({
   return (
     <GroupListItem className="flex flex-wrap items-center justify-between gap-3 bg-card hover:bg-muted/40">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-[12.5px] text-foreground">{row.path}</p>
+        <p className="truncate font-mono text-[12.5px] text-foreground">
+          {row.path}
+        </p>
         <p className="text-[11px] text-muted-foreground">
           {row.localState}
           {row.localSize != null ? ` · ${formatBytes(row.localSize)}` : ""}

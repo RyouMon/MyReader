@@ -75,7 +75,10 @@ export function useReadingChrome(
     }
 
     /** capture：尽量在事件落到 iframe 前收到，否则从顶栏移入正文时父窗口可能收不到 move，顶栏会一直亮。 */
-    document.addEventListener("pointermove", onMove, { passive: true, capture: true })
+    document.addEventListener("pointermove", onMove, {
+      passive: true,
+      capture: true,
+    })
     return () => {
       document.removeEventListener("pointermove", onMove, { capture: true })
       clearHideTimer()

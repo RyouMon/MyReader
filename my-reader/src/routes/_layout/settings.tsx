@@ -1,7 +1,5 @@
-import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
-
-import type { SettingsSection } from "@/types/settings"
+import { useState } from "react"
 import SettingsNav from "@/components/settings/SettingsNav"
 import AboutSection from "@/components/settings/sections/AboutSection"
 import AppearanceSection from "@/components/settings/sections/AppearanceSection"
@@ -9,6 +7,7 @@ import DataSourcesSection from "@/components/settings/sections/DataSourcesSectio
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
 import ReadingSection from "@/components/settings/sections/ReadingSection"
 import SyncSection from "@/components/settings/sections/SyncSection"
+import type { SettingsSection } from "@/types/settings"
 
 export const Route = createFileRoute("/_layout/settings")({
   component: SettingsPage,

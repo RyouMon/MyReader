@@ -11,7 +11,10 @@ function directoryUrlWithSlash(dirUrl: string): string {
 /**
  * Encode each path segment for use in a URL path (ZIP names may contain spaces, `#`, etc.).
  */
-function toAbsoluteResourceUrl(baseDirUrl: string, relativePath: string): string {
+function toAbsoluteResourceUrl(
+  baseDirUrl: string,
+  relativePath: string,
+): string {
   const base = directoryUrlWithSlash(baseDirUrl)
   const encodedPath = relativePath
     .replace(/\\/g, "/")
@@ -43,7 +46,9 @@ export function buildDivinaManifestJson(params: {
       return isImagePath(p)
     })
     .map((p) => p.replace(/\\/g, "/"))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    )
 
   if (pages.length === 0) return null
 

@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
 import { useEffect } from "react"
+import { api } from "@/lib/tauri-api"
 
 import { useAppUiStore } from "@/stores/appUiStore"
 import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
@@ -10,7 +10,9 @@ import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
  * 非 Tauri 环境仅标记 hydrated，使用内存默认值。
  */
 export function AppUiPreferencesSync() {
-  const hydrateReaderPreferences = useAppUiStore((s) => s.hydrateReaderPreferences)
+  const hydrateReaderPreferences = useAppUiStore(
+    (s) => s.hydrateReaderPreferences,
+  )
   const markReaderPreferencesHydrated = useAppUiStore(
     (s) => s.markReaderPreferencesHydrated,
   )

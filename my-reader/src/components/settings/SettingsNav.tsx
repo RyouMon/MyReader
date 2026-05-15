@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   Database,
@@ -8,6 +7,7 @@ import {
   Palette,
   RefreshCw,
 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 import { cn } from "@/lib/utils"
 import type { SettingsSection } from "@/types/settings"
@@ -39,7 +39,7 @@ export default function SettingsNav({
   activeSection,
   onSectionChange,
 }: SettingsNavProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
     <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav">
       <div className="shrink-0 border-b border-border px-4 py-[18px] pb-3">

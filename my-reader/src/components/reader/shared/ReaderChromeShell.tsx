@@ -1,8 +1,8 @@
+import type { ReactNode, PointerEvent as ReactPointerEvent, Ref } from "react"
 import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
-import { ReadingChromeEdgeZones } from "@/components/reader/shared/ReadingChromeEdgeZones"
 import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
+import { ReadingChromeEdgeZones } from "@/components/reader/shared/ReadingChromeEdgeZones"
 import { cn } from "@/lib/utils"
-import type { PointerEvent as ReactPointerEvent, ReactNode, Ref } from "react"
 
 const READER_ROOT_LAYOUT =
   "relative flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-background"

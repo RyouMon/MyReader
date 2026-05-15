@@ -44,7 +44,11 @@ type ReaderSidePanelHeaderProps = {
   onClose?: () => void
 }
 
-export function ReaderSidePanelHeader({ title, icon: Icon, onClose }: ReaderSidePanelHeaderProps) {
+export function ReaderSidePanelHeader({
+  title,
+  icon: Icon,
+  onClose,
+}: ReaderSidePanelHeaderProps) {
   return (
     <div className="font-serif flex min-h-[52px] items-center justify-between gap-2 border-b border-reader-chrome-border px-4 py-3 text-[15px] font-semibold text-reader-chrome-fg sm:px-5">
       <div className="flex min-w-0 items-center gap-2.5">

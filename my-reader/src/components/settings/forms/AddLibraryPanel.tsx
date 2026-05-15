@@ -1,12 +1,17 @@
 import { useForm } from "@tanstack/react-form"
 import { open } from "@tauri-apps/plugin-dialog"
 import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
+import type { DataSource } from "my-reader-tools/store/data-source"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
-
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { Button } from "@/components/ui/button"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -16,13 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
 import {
   LOCAL_LIBRARY_DATA_SOURCE_ID,
   LOCAL_LIBRARY_DATA_SOURCE_NAME,
 } from "@/constants/local-library-data-source"
+import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "my-reader-tools/store/data-source"
 
 const addLibrarySchema = z.object({
   dataSourceId: z.string().trim().min(1, "请先选择数据源"),
@@ -108,7 +112,10 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
       setSubmitError(null)
       pathInputRef.current?.focus()
     } catch (error) {
-      console.error("Failed to open directory picker for library path. error:", error)
+      console.error(
+        "Failed to open directory picker for library path. error:",
+        error,
+      )
     }
   }
 
@@ -116,7 +123,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
     <div
       className={cn(
         "overflow-hidden rounded-[var(--radius)] transition-colors",
-        addPanelOpen ? "border border-primary" : "border border-dashed border-border",
+        addPanelOpen
+          ? "border border-primary"
+          : "border border-dashed border-border",
       )}
     >
       <AddPanelButton
@@ -135,7 +144,8 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
             <FieldGroup>
               <addLibraryForm.Field name="dataSourceId">
                 {(field) => {
-                  const isLocalPick = field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
+                  const isLocalPick =
+                    field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
                   const selectedWebdav = resolveSelectedWebdavSource(
                     field.state.value,
                     availableWebdavSources,
@@ -182,7 +192,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                           当前选中 WebDAV，暂不支持目录浏览。
                         </p>
                       )}
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
                       <addLibraryForm.Field name="path">
                         {(pathField) => {
                           const isPathInvalid =
@@ -190,7 +202,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                             !pathField.state.meta.isValid
                           return (
                             <Field data-invalid={isPathInvalid}>
-                              <FieldLabel htmlFor={pathField.name}>书库路径</FieldLabel>
+                              <FieldLabel htmlFor={pathField.name}>
+                                书库路径
+                              </FieldLabel>
                               <div className="flex items-center gap-2">
                                 <Input
                                   ref={pathInputRef}
@@ -214,7 +228,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                                   variant="secondary"
                                   size="sm"
                                   className="shrink-0 gap-1.5"
-                                  onClick={() => void openLocalDirectoryPicker()}
+                                  onClick={() =>
+                                    void openLocalDirectoryPicker()
+                                  }
                                   disabled={browseDisabled}
                                 >
                                   <FolderSearch className="size-[13px]" />
@@ -222,7 +238,9 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                                 </Button>
                               </div>
                               {isPathInvalid && (
-                                <FieldError errors={pathField.state.meta.errors} />
+                                <FieldError
+                                  errors={pathField.state.meta.errors}
+                                />
                               )}
                             </Field>
                           )
@@ -247,7 +265,12 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
                 >
                   取消
                 </Button>
-                <Button type="submit" size="sm" className="gap-1.5" disabled={adding}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={adding}
+                >
                   {adding ? (
                     <Loader2 className="size-[13px] animate-spin" />
                   ) : (

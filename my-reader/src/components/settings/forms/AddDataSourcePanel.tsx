@@ -1,9 +1,9 @@
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
+import type { DataSource } from "my-reader-tools/store/data-source"
 import { useState } from "react"
 import { z } from "zod"
-
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
-import type { DataSource } from "my-reader-tools/store/data-source"
 
 const addWebdavSchema = z.object({
   type: z.literal("webdav"),
@@ -162,7 +161,12 @@ interface WebdavDataSourceFormProps {
   onTestConnection: (datasource: DataSource) => Promise<void>
 }
 
-type WebdavFieldName = "endpoint" | "port" | "username" | "password" | "rootPath"
+type WebdavFieldName =
+  | "endpoint"
+  | "port"
+  | "username"
+  | "password"
+  | "rootPath"
 
 /**
  * WebDAV 输入表单，保留常见最小连接参数，便于后续接入校验与探活。

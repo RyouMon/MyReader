@@ -2,8 +2,8 @@ import { CheckCircle2, Download, Loader2, Trash2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { useSyncActions } from "@/hooks/sync/useSyncActions"
 import type { FileStateRow } from "@/hooks/sync/useSyncActions"
+import { useSyncActions } from "@/hooks/sync/useSyncActions"
 import { cn } from "@/lib/utils"
 
 export type DownloadButtonState = FileStateRow["localState"]
@@ -177,10 +177,7 @@ export default function DownloadButton({
       </Button>
 
       {error && (
-        <span
-          className="text-[11px] text-destructive"
-          title={error}
-        >
+        <span className="text-[11px] text-destructive" title={error}>
           失败
         </span>
       )}

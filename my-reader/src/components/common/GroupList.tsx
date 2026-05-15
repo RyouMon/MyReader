@@ -12,7 +12,12 @@ interface GroupListProps {
  */
 export function GroupList({ className, children }: GroupListProps) {
   return (
-    <div className={cn("overflow-hidden rounded-[var(--radius)] border border-border bg-card", className)}>
+    <div
+      className={cn(
+        "overflow-hidden rounded-[var(--radius)] border border-border bg-card",
+        className,
+      )}
+    >
       {children}
     </div>
   )

@@ -1,20 +1,20 @@
+import type { Locator } from "@readium/shared"
+import { useNavigate } from "@tanstack/react-router"
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ReadiumDivinaReader } from "@/components/reader/readium/ReadiumDivinaReader"
 import { ReadiumEpubReader } from "@/components/reader/readium/ReadiumEpubReader"
 import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
 import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
 import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
 import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
-import { parseSavedLocator } from "@/lib/readium/locator"
-import { resolveReadFormat } from "@/lib/readFormats"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
-import { useLibrary } from "@/stores/libraryStore"
-import { useNavigate } from "@tanstack/react-router"
-import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
+import { resolveReadFormat } from "@/lib/readFormats"
+import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import type { Locator } from "@readium/shared"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useLibrary } from "@/stores/libraryStore"
 
 export type ReadBookPageProps = {
   bookId: string
@@ -90,7 +90,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const progressP: Promise<ReadingProgressDto | null> =
           isTauri() && activeLibraryId
-            ? api.getReadingProgress(activeLibraryId, Number(bookId), fmt).catch(() => null)
+            ? api
+                .getReadingProgress(activeLibraryId, Number(bookId), fmt)
+                .catch(() => null)
             : Promise.resolve(null)
 
         const [row, preparedSource] = await Promise.all([
@@ -128,12 +130,14 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])
 
   const readiumPub = useReadiumPublication({
-    assetBaseUrl: format === "EPUB" ? bookPayload?.source.extractedDirPath ?? null : null,
+    assetBaseUrl:
+      format === "EPUB" ? (bookPayload?.source.extractedDirPath ?? null) : null,
     enabled: format === "EPUB" && Boolean(bookPayload?.source.extractedDirPath),
   })
 
   const divinaPub = useReadiumDivinaPublication({
-    extractedDirUrl: format === "CBZ" ? bookPayload?.source.extractedDirPath ?? null : null,
+    extractedDirUrl:
+      format === "CBZ" ? (bookPayload?.source.extractedDirPath ?? null) : null,
     bookTitle,
     extractedEntries: bookPayload?.source.extractedEntries ?? [],
     enabled: format === "CBZ" && Boolean(bookPayload?.source.extractedDirPath),

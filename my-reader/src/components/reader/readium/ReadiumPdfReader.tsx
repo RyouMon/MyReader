@@ -1,22 +1,25 @@
-import { ReadiumTocPanel, type ReadiumTocRow } from "@/components/reader/readium/ReadiumTocPanel"
+import { Locator, LocatorLocations } from "@readium/shared"
+import { Settings } from "lucide-react"
+import type { PDFDocumentProxy } from "pdfjs-dist"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  ReadiumTocPanel,
+  type ReadiumTocRow,
+} from "@/components/reader/readium/ReadiumTocPanel"
+import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
+import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
+import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
-import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
-import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import { useAppUiStore } from "@/stores/appUiStore"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
-import type { PDFDocumentProxy } from "pdfjs-dist"
-import { Locator, LocatorLocations } from "@readium/shared"
-import { Settings } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useAppUiStore } from "@/stores/appUiStore"
 
 const PDF_RENDER_BASE = 1.25
 const PDF_SCALE_MIN = 0.75
@@ -78,11 +81,10 @@ export function ReadiumPdfReader({
 }: ReadiumPdfReaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } = useReaderPanels()
-  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } = useReadingChrome(
-    false,
-    tocOpen || settingsOpen,
-  )
+  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
+    useReaderPanels()
+  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
+    useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageNum, setPageNum] = useState(1)
@@ -117,7 +119,11 @@ export function ReadiumPdfReader({
   }, [fileUrl, pageNum, totalPages])
 
   useLocatorProgressSync({
-    enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0 && totalPages > 0,
+    enabled:
+      progressSyncEnabled &&
+      Boolean(libraryId) &&
+      format.length > 0 &&
+      totalPages > 0,
     libraryId,
     bookId,
     format,
@@ -180,7 +186,6 @@ export function ReadiumPdfReader({
     [totalPages],
   )
 
-  const isRtl = direction === "rtl"
   const edgeTurnActive = totalPages > 0 && !error && !tocOpen && !settingsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
     edgeTurnActive,
@@ -228,8 +233,7 @@ export function ReadiumPdfReader({
     )
   }
 
-  const chapterTitle =
-    totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : ""
+  const chapterTitle = totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : ""
 
   return (
     <ReaderChromeShell
@@ -258,7 +262,11 @@ export function ReadiumPdfReader({
       }
       settingsPanel={
         <ReaderSidePanelFrame visible={settingsOpen} side="right">
-          <ReaderSidePanelHeader title="设置" icon={Settings} onClose={closePanels} />
+          <ReaderSidePanelHeader
+            title="设置"
+            icon={Settings}
+            onClose={closePanels}
+          />
           <div className="reader-chrome-muted space-y-4 px-4 py-3 text-xs leading-relaxed">
             <section className="space-y-2">
               <Label
@@ -300,8 +308,12 @@ export function ReadiumPdfReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
-          leftText={totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : undefined}
-          progress={totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0}
+          leftText={
+            totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : undefined
+          }
+          progress={
+            totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
+          }
         />
       }
       main={

@@ -1,12 +1,12 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { api } from "@/lib/tauri-api"
-import i18n from "@/i18n"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
   DataSourceStore,
 } from "my-reader-tools/store/data-source"
 import { create } from "zustand"
+import i18n from "@/i18n"
+import { api } from "@/lib/tauri-api"
 
 function formatTauriError(error: unknown): string {
   const raw =

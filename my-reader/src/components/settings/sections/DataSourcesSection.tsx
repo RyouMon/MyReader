@@ -1,17 +1,12 @@
-import { AppRow } from "@/components/common/AppRow"
-import {
-  GroupList,
-  GroupListItem
-} from "@/components/common/GroupList"
-import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
-import {
-  LOCAL_LIBRARY_DATA_SOURCE_NAME,
-} from "@/constants/local-library-data-source"
-import { cn } from "@/lib/utils"
-import { useDataSourceStore } from "@/stores/dataSourceStore"
 import { Trash2, Unplug } from "lucide-react"
 import type { DataSource } from "my-reader-tools/store/data-source"
 import { useEffect, useMemo, useState } from "react"
+import { AppRow } from "@/components/common/AppRow"
+import { GroupList, GroupListItem } from "@/components/common/GroupList"
+import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
+import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/constants/local-library-data-source"
+import { cn } from "@/lib/utils"
+import { useDataSourceStore } from "@/stores/dataSourceStore"
 
 /**
  * 在设置页提供数据源增删管理，帮助后续同步层复用统一连接配置。
@@ -52,7 +47,7 @@ export default function DataSourcesSection() {
 
   const listHint = useMemo(() => {
     if (loading) return "数据源加载中…"
-    return `${dataSources.length+1} 个已添加连接`
+    return `${dataSources.length + 1} 个已添加连接`
   }, [dataSources.length, loading])
 
   return (
@@ -75,17 +70,17 @@ export default function DataSourcesSection() {
 
           <GroupList>
             <LocalStorageStaticRow />
-            {dataSources.length === 0 && !loading ? null : (
-              dataSources.map((source) => (
-                <DataSourceCard
-                  key={source.id}
-                  source={source}
-                  isPendingDelete={pendingDeleteId === source.id}
-                  isRemoving={removingId === source.id}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
+            {dataSources.length === 0 && !loading
+              ? null
+              : dataSources.map((source) => (
+                  <DataSourceCard
+                    key={source.id}
+                    source={source}
+                    isPendingDelete={pendingDeleteId === source.id}
+                    isRemoving={removingId === source.id}
+                    onDelete={handleDelete}
+                  />
+                ))}
           </GroupList>
         </section>
 
@@ -147,7 +142,8 @@ function DataSourceCard({
       className={cn(
         "bg-card transition-[opacity,transform,background-color]",
         "hover:bg-muted/40",
-        isRemoving && "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
+        isRemoving &&
+          "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}
     >
       <AppRow
