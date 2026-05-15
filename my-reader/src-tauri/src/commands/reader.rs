@@ -1,4 +1,4 @@
-use log::{error, info};
+use tracing::{error, info};
 use tauri::{AppHandle, Manager, State};
 
 use crate::commands::{AppState, PreparedBookSource};
@@ -34,7 +34,7 @@ pub async fn prepare_book_source(
     );
 
     let (lib_id, lib_path) = {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         let (id, path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         (id, path)
@@ -91,7 +91,7 @@ pub fn get_reader_ui_preferences(
 ) -> Result<ReaderUiPreferences, AppError> {
     info!("Start to get reader UI preferences.");
     let result = (|| {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         Ok(ReaderService::get_reader_ui_preferences(&config))
     })();
     match &result {
@@ -119,7 +119,7 @@ pub fn set_reader_ui_preferences(
         prefs.fixed_layout.display_mode
     );
     let result = (|| {
-        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut config = state.blocking_lock();
         ReaderService::set_reader_ui_preferences(&mut config, prefs);
 
         let config_path = app.path().app_data_dir()?.join("config.json");

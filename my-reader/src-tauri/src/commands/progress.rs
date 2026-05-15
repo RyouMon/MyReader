@@ -1,4 +1,4 @@
-use log::{error, info};
+use tracing::{error, info};
 use tauri::State;
 
 use crate::commands::AppState;
@@ -17,7 +17,7 @@ pub fn get_reading_progress(
 ) -> Result<Option<ReadingProgressDto>, AppError> {
     info!("Start to get reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{format}\"");
     let result = (|| {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         let (lib_id, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         ProgressService::get_reading_progress(&lib_path, &lib_id, book_id, &format)
@@ -53,7 +53,7 @@ pub fn set_reading_progress(
         format
     );
     let result = (|| {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         ProgressService::set_reading_progress(&lib_path, book_id, &format, &locator.0)

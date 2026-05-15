@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use log::info;
+use tracing::info;
 use zip::ZipArchive;
 
 use crate::error::AppError;

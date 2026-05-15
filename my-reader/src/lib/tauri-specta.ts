@@ -40,7 +40,9 @@ export const commands = {
   switchLibrary: (id: string) =>
     typedError<null, ErrorKind>(__TAURI_INVOKE("switch_library", { id })),
   getActiveLibraryId: () =>
-    __TAURI_INVOKE<string | null>("get_active_library_id"),
+    typedError<string | null, ErrorKind>(
+      __TAURI_INVOKE("get_active_library_id"),
+    ),
   getBooks: (libraryId: string | null) =>
     typedError<BookEntry[], ErrorKind>(
       __TAURI_INVOKE("get_books", { libraryId }),
@@ -105,10 +107,6 @@ export const commands = {
         format,
         locator,
       }),
-    ),
-  getBookCover: (libraryId: string, bookPath: string) =>
-    typedError<string | null, ErrorKind>(
-      __TAURI_INVOKE("get_book_cover", { libraryId, bookPath }),
     ),
   getReaderUiPreferences: () =>
     typedError<ReaderUiPreferences_Serialize, ErrorKind>(

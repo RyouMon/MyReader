@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use log::info;
+use tracing::info;
 
 use crate::error::AppError;
 use crate::models::AppConfig;

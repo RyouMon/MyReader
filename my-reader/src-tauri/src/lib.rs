@@ -14,12 +14,12 @@ pub mod streamer;
 pub mod sync;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 
-use log::{error, info, LevelFilter};
+use log::LevelFilter;
+use tracing::{error, info};
 use tauri::Manager;
 use time::{macros::format_description, OffsetDateTime};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use commands::AppState;
 use streamer::StreamerState;
@@ -50,7 +50,6 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::get_series_books,
             commands::progress::get_reading_progress,
             commands::progress::set_reading_progress,
-            commands::book::get_book_cover,
             commands::reader::get_reader_ui_preferences,
             commands::reader::set_reader_ui_preferences,
             commands::reader::prepare_book_source,
@@ -70,9 +69,12 @@ pub fn run() -> Result<(), tauri::Error> {
         ]);
 
     #[cfg(debug_assertions)]
-    specta_builder
-        .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
-        .expect("failed to export tauri-specta types");
+    if let Err(e) = specta_builder.export(
+        specta_typescript::Typescript::default(),
+        "../src/lib/tauri-specta.ts",
+    ) {
+        eprintln!("Failed to export tauri-specta types: {e}");
+    }
 
     let base = tauri::Builder::default()
         .plugin(
@@ -97,7 +99,6 @@ pub fn run() -> Result<(), tauri::Error> {
                 })
                 .build(),
         )
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_window_state::Builder::default().build());
 
@@ -113,7 +114,7 @@ pub fn run() -> Result<(), tauri::Error> {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
-            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config;
+            *app.state::<AppState>().blocking_lock() = config;
             if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",

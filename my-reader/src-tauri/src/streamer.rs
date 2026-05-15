@@ -6,6 +6,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::Filter;
 
+use crate::error::AppError;
+
 /// Active EPUB streamers keyed by a session identifier.
 pub type StreamerState = Arc<RwLock<HashMap<String, EpubStreamer>>>;
 
@@ -19,8 +21,9 @@ pub struct EpubStreamer {
 impl EpubStreamer {
     /// Start serving the given directory over HTTP on a random available port.
     /// Returns the streamer instance and the base URL (e.g., "http://127.0.0.1:12345").
-    pub async fn serve_dir(dir: PathBuf) -> Result<(Self, String), String> {
-        let port = portpicker::pick_unused_port().ok_or("No available port")?;
+    pub async fn serve_dir(dir: PathBuf) -> Result<(Self, String), AppError> {
+        let port = portpicker::pick_unused_port()
+            .ok_or_else(|| AppError::Config("NO_AVAILABLE_PORT".into()))?;
         let addr: SocketAddr = ([127, 0, 0, 1], port).into();
         let base_url = format!("http://127.0.0.1:{}", port);
 

@@ -9,8 +9,6 @@
     "core:path:default",
     "core:window:default",
     "core:webview:default",
-    "dialog:default",
-    "opener:default",
     "log:default"
   ]
 }

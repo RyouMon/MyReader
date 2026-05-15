@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 use rusqlite::Connection;
 
 use crate::error::AppError;

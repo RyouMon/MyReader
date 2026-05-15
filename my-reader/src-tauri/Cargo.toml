@@ -19,7 +19,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-mcp-bridge = "0.10"
@@ -34,6 +33,7 @@ base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 log = "0.4"
 tauri-plugin-log = "2"
+tracing = "0.1"
 time = { version = "0.3", features = ["macros", "formatting"] }
 zip = "2"
 keyring = "3"

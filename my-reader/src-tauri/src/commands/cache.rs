@@ -8,7 +8,7 @@ use crate::services::cache_service::CacheService;
 #[specta::specta]
 pub fn get_cache_usage(state: State<'_, AppState>) -> Result<CacheUsageDto, AppError> {
     let max_mb = {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         config.reader_ui.cache.max_cache_size_mb
     };
     CacheService::get_cache_usage(max_mb)
@@ -24,7 +24,7 @@ pub fn clear_cache() -> Result<(), AppError> {
 #[specta::specta]
 pub fn enforce_cache_limit(state: State<'_, AppState>) -> Result<(), AppError> {
     let max_mb = {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        let config = state.blocking_lock();
         config.reader_ui.cache.max_cache_size_mb
     };
     CacheService::enforce_cache_limit(max_mb)
