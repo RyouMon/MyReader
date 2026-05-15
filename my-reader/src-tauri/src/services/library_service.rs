@@ -39,7 +39,7 @@ impl LibraryService {
             )));
         }
 
-        let lib_name = name.map(|n| n.to_string()).unwrap_or_else(|| {
+        let lib_name = name.map(ToString::to_string).unwrap_or_else(|| {
             canon_path
                 .file_name()
                 .and_then(|n| n.to_str())
@@ -140,7 +140,7 @@ impl LibraryService {
         config: &AppConfig,
     ) -> Result<(String, String), AppError> {
         let lib_id = library_id
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .or_else(|| config.active_library_id.clone())
             .ok_or_else(|| AppError::NotFound("NO_ACTIVE_LIBRARY".into()))?;
 

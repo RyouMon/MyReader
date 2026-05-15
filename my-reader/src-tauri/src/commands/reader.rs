@@ -90,10 +90,10 @@ pub fn get_reader_ui_preferences(
     state: State<'_, AppState>,
 ) -> Result<ReaderUiPreferences, AppError> {
     info!("Start to get reader UI preferences.");
-    let result = (|| {
+    let result = {
         let config = state.blocking_lock();
         Ok(ReaderService::get_reader_ui_preferences(&config))
-    })();
+    };
     match &result {
         Ok(prefs) => info!(
             "Success to get reader UI preferences. version: {}",

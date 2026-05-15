@@ -145,6 +145,7 @@ impl Default for ReflowTtsDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct ReflowableReaderPreferencesDto {
     #[serde(default)]
     pub settings: ReaderSettingsDto,
@@ -152,14 +153,6 @@ pub struct ReflowableReaderPreferencesDto {
     pub tts: ReflowTtsDto,
 }
 
-impl Default for ReflowableReaderPreferencesDto {
-    fn default() -> Self {
-        Self {
-            settings: ReaderSettingsDto::default(),
-            tts: ReflowTtsDto::default(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

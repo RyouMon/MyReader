@@ -315,6 +315,7 @@
 
 /* Active sidebar item indicator */
 [data-sidebar="menu-button"][data-active="true"] {
+  /* biome-ignore lint/complexity/noImportantStyles: override shadcn/ui sidebar base styles */
   background-color: color-mix(
     in srgb,
     var(--primary) 12%,

@@ -25,7 +25,7 @@ pub fn get_books(
     match &result {
         Ok(books) => info!("Success to get books. count: {}", books.len()),
         Err(err) => {
-            error!("Failed to get books. requested library id: {library_id:?}, error: {err}")
+            error!("Failed to get books. requested library id: {library_id:?}, error: {err}");
         }
     }
 
@@ -59,7 +59,7 @@ pub fn get_books_page(
             page.total
         ),
         Err(err) => {
-            error!("Failed to get books page. requested library id: {library_id:?}, error: {err}")
+            error!("Failed to get books page. requested library id: {library_id:?}, error: {err}");
         }
     }
 

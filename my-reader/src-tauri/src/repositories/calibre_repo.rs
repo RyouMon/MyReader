@@ -120,7 +120,7 @@ impl BookRepository for CalibreBookRepository {
         let sql = format!("SELECT {BOOK_SELECT_COLUMNS} FROM books b ORDER BY b.sort");
         let mut stmt = self.conn.prepare(&sql)?;
         let books = stmt
-            .query_map([], |row| map_book_row(row))?
+            .query_map([], map_book_row)?
             .collect::<Result<Vec<_>, _>>()?;
         info!("Success to load all books from Calibre. count: {}", books.len());
         Ok(books)
@@ -179,10 +179,10 @@ impl BookRepository for CalibreBookRepository {
 
         let mut stmt = self.conn.prepare(&sql)?;
         let books = if let Some(ref p) = pattern {
-            let rows = stmt.query_map([p.as_str()], |row| map_book_row(row))?;
+            let rows = stmt.query_map([p.as_str()], map_book_row)?;
             rows.collect::<Result<Vec<_>, _>>()?
         } else {
-            let rows = stmt.query_map([], |row| map_book_row(row))?;
+            let rows = stmt.query_map([], map_book_row)?;
             rows.collect::<Result<Vec<_>, _>>()?
         };
 
@@ -198,7 +198,7 @@ impl BookRepository for CalibreBookRepository {
         info!("Start to load book by id. book id: {book_id}");
         let sql = format!("SELECT {BOOK_SELECT_COLUMNS} FROM books b WHERE b.id = ?1");
         let mut stmt = self.conn.prepare(&sql)?;
-        let mut rows = stmt.query_map([book_id], |row| map_book_row(row))?;
+        let mut rows = stmt.query_map([book_id], map_book_row)?;
         let result = match rows.next() {
             Some(Ok(book)) => {
                 info!(
@@ -245,10 +245,10 @@ impl BookRepository for CalibreBookRepository {
         let mut stmt = self.conn.prepare(&sql)?;
 
         let books = if let Some(eid) = exclude_book_id {
-            stmt.query_map(rusqlite::params![series_name, eid], |row| map_book_row(row))?
+            stmt.query_map(rusqlite::params![series_name, eid], map_book_row)?
                 .collect::<Result<Vec<_>, _>>()?
         } else {
-            stmt.query_map([series_name], |row| map_book_row(row))?
+            stmt.query_map([series_name], map_book_row)?
                 .collect::<Result<Vec<_>, _>>()?
         };
 

@@ -95,7 +95,7 @@ pub fn run() -> Result<(), tauri::Error> {
                         record.target(),
                         record.level(),
                         message
-                    ))
+                    ));
                 })
                 .build(),
         )
@@ -115,7 +115,7 @@ pub fn run() -> Result<(), tauri::Error> {
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
             *app.state::<AppState>().blocking_lock() = config;
-            if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
+            if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle()) {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",
                     e

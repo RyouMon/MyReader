@@ -178,7 +178,7 @@ impl LwwProvider {
         let incoming_ts = change
             .value
             .get("updated_at")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.0);
 
         let key_clause = spec

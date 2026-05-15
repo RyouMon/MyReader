@@ -13,7 +13,7 @@ pub fn sync_for_reader_libraries(app: &AppHandle) -> tauri::Result<()> {
     scope.allow_directory(std::env::temp_dir(), true)?;
     let state = app.state::<AppState>();
     let config = state.blocking_lock();
-    for lib in config.libraries.iter() {
+    for lib in &config.libraries {
         let p = Path::new(&lib.path);
         if p.is_dir() {
             scope.allow_directory(p, true)?;

@@ -71,10 +71,10 @@ pub fn list_data_sources(
     state: State<'_, AppState>,
 ) -> Result<Vec<DataSourceDto>, AppError> {
     info!("Start to list data sources.");
-    let result = (|| {
+    let result = {
         let config = state.blocking_lock();
         Ok(DataSourceService::list_data_sources(&config))
-    })();
+    };
     match &result {
         Ok(sources) => info!("Success to list data sources. count: {}", sources.len()),
         Err(err) => error!("Failed to list data sources. error: {err}"),

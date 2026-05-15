@@ -120,12 +120,12 @@ fn guess_mime_type(path: &std::path::Path) -> &'static str {
         return "application/webpub+json";
     }
     match path.extension().and_then(|e| e.to_str()) {
-        Some("html") | Some("htm") | Some("xhtml") => "application/xhtml+xml",
+        Some("html" | "htm" | "xhtml") => "application/xhtml+xml",
         Some("css") => "text/css",
         Some("js") => "application/javascript",
         Some("json") => "application/json",
         Some("xml") => "application/xml",
-        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("jpg" | "jpeg") => "image/jpeg",
         Some("png") => "image/png",
         Some("gif") => "image/gif",
         Some("svg") => "image/svg+xml",

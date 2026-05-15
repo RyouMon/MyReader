@@ -11,10 +11,10 @@ use crate::services::library_service::LibraryService;
 #[specta::specta]
 pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
     info!("Start to list libraries.");
-    let result = (|| {
+    let result = {
         let config = state.blocking_lock();
         LibraryService::list_libraries(&config)
-    })();
+    };
     match &result {
         Ok(infos) => info!("Success to list libraries. count: {}", infos.len()),
         Err(err) => error!("Failed to list libraries. error: {err}"),
