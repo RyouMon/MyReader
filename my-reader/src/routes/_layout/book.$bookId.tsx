@@ -603,11 +603,9 @@ function BookDetailPage() {
                   !synopsisExpanded && "max-h-[7.5em]",
                 )}
               >
-                <div
-                  className="text-[14.5px] leading-[1.85] whitespace-pre-line"
-                  // biome-ignore lint/security/noDangerouslySetInnerHtml: Calibre stores HTML comments
-                  dangerouslySetInnerHTML={{ __html: stripHtml(book.comment) }}
-                />
+                <div className="text-[14.5px] leading-[1.85] whitespace-pre-line">
+                  {stripHtml(book.comment)}
+                </div>
                 {!synopsisExpanded && (
                   <div
                     className="pointer-events-none absolute inset-x-0 bottom-0 h-12"

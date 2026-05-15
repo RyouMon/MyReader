@@ -10,7 +10,11 @@ type Result<T> =
 
 function unwrap<T>(promise: Promise<Result<T>>): Promise<T> {
   return promise.then((r) => {
-    if (r.status === "error") throw r.error
+    if (r.status === "error") {
+      const err = new Error(r.error.message)
+      ;(err as Error & { kind: string }).kind = r.error.kind
+      throw err
+    }
     return r.data
   })
 }
