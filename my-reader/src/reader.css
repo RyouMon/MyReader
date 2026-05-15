@@ -166,10 +166,6 @@
   min-height: 0 !important;
 }
 
-/* Range 分页模式：单屏一列 */
-.reader-paginated-container.reader-paginated-range-page {
-}
-
 /* EPUB 内联 CSS 中 html/body 选择器经 scope 后落在此容器上，勿删类名 */
 .reader-epub-scope {
   min-height: 0;
@@ -440,4 +436,4 @@
     color: var(--reader-chrome-active);
     font-weight: 500;
   }
-
+}

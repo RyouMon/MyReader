@@ -172,7 +172,7 @@ export function ReadiumPdfReader({
       canvas.height = vp.height
       await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
     })()
-  }, [pageNum, totalPages, renderScale])
+  }, [pageNum, renderScale])
 
   const go = useCallback(
     (delta: number) => {

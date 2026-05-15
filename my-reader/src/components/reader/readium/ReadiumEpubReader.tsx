@@ -646,7 +646,9 @@ export function ReadiumEpubReader({
     observer.observe(container, { childList: true, subtree: true })
     return () => {
       observer.disconnect()
-      cleanups.forEach((fn) => fn())
+      cleanups.forEach((fn) => {
+        fn()
+      })
     }
   }, [readerSettings.readingLayout, isFixedLayout, readerSettings.paddingX])
 
@@ -671,19 +673,7 @@ export function ReadiumEpubReader({
       )
       await nav.resizeHandler()
     })()
-  }, [
-    readerPreferencesHydrated,
-    isFixedLayout,
-    spreadMode,
-    readerSettings.theme,
-    readerSettings.fontSize,
-    readerSettings.lineHeight,
-    readerSettings.fontFamily,
-    readerSettings.readingLayout,
-    readerSettings.paddingX,
-    readerSettings.textAlign,
-    readerSettings.colCount,
-  ])
+  }, [readerPreferencesHydrated, isFixedLayout, spreadMode, readerSettings])
 
   useEffect(() => {
     if (!containerRef.current) return

@@ -10,12 +10,12 @@ const READER_TOP_BAR_HEIGHT_PX = 52
  */
 export function ReaderPanelsBackdrop({ onClose }: ReaderPanelsBackdropProps) {
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: 全屏蒙层
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Esc 关闭侧栏
-    <div
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-[55] bg-overlay transition-opacity duration-300"
+    <button
+      type="button"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-[55] border-none bg-overlay p-0 transition-opacity duration-300"
       style={{ top: READER_TOP_BAR_HEIGHT_PX }}
       onClick={onClose}
+      aria-label="关闭侧栏"
     />
   )
 }

@@ -20,7 +20,6 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::book::get_series_books,
             my_reader_lib::commands::progress::get_reading_progress,
             my_reader_lib::commands::progress::set_reading_progress,
-            my_reader_lib::commands::book::get_book_cover,
             my_reader_lib::commands::reader::get_reader_ui_preferences,
             my_reader_lib::commands::reader::set_reader_ui_preferences,
             my_reader_lib::commands::reader::prepare_book_source,

@@ -22,6 +22,7 @@ export function usePaginatedBooks(
     setRefreshKey((k) => k + 1)
   }, [])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional trigger state for manual refetch
   useEffect(() => {
     const epoch = ++epochRef.current
     loadedPagesRef.current = new Set([0])
