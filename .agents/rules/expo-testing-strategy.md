@@ -54,7 +54,7 @@ import type { Config } from 'jest';
 
 const config: Config = {
   preset: 'jest-expo',
-  setupFilesAfterEnv: ['<rootDir>/jest-setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)' +
       '|expo(nent)?|@expo(nent)?/.*' +
@@ -70,14 +70,28 @@ const config: Config = {
 export default config;
 ```
 
-**jest-setup.ts**
+**jest.setup.js**
 
-```typescript
+```javascript
 import '@testing-library/react-native/extend-expect';
 
 jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock'),
 );
+```
+
+### 文件组织
+
+单元测试与被测代码并列放置（`*.test.ts` / `*.test.tsx`），不使用顶层 `tests/` 目录。Jest 默认 `testMatch` 即可发现。示例：
+
+```
+src/
+  store/
+    app-store.constants.ts
+    app-store.constants.test.ts
+  sync/
+    download-store.ts
+    download-store.test.ts
 ```
 
 ### 编写规则
@@ -123,6 +137,7 @@ expo-router/testing-library  (renderRouter)
 - **不写BDD**：纯技术测试，`renderRouter` API足够声明式，不需要Gherkin
 - **覆盖范围**：屏幕间导航、认证流程重定向、Deep Linking、Tab/Drawer布局
 - **运行环境**：Node.js，无需构建原生binary
+- **文件位置**：`src/app/__tests__/navigation.test.tsx`，与路由入口并列
 
 ### 测试示例
 

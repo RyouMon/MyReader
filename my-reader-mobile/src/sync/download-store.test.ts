@@ -1,4 +1,4 @@
-jest.mock("../src/sync/connectivity", () => ({
+jest.mock("./connectivity", () => ({
   checkLibraryConnectivity: jest.fn(() => Promise.resolve()),
 }));
 
@@ -6,20 +6,20 @@ import {
   __downloadStoreTestApi,
   cancel,
   enqueue,
-} from "../src/sync/download-store";
+} from "./download-store";
 import {
   completeNativeDownload,
   recoverNativeDownloads,
   type NativeDownloadRecoveredHandlers,
-} from "../src/sync/native-download";
-import { finalizeRecoveredDownload } from "../src/sync/download-service";
+} from "./native-download";
+import { finalizeRecoveredDownload } from "./download-service";
 
-jest.mock("../src/sync/download-service", () => ({
+jest.mock("./download-service", () => ({
   downloadLibraryFile: jest.fn(() => Promise.resolve({ blake3: null, size: 1, mtimeMs: 1 })),
   finalizeRecoveredDownload: jest.fn(() => Promise.resolve({ blake3: null, size: 100, mtimeMs: 1 })),
 }));
 
-jest.mock("../src/sync/native-download", () => ({
+jest.mock("./native-download", () => ({
   cancelNativeDownload: jest.fn(),
   completeNativeDownload: jest.fn(),
   isNativeCancel: jest.fn((error: string, errorCode: number) => errorCode === -999 || error.includes("cancel")),
