@@ -84,6 +84,7 @@ describe("useDataSourceStore", () => {
       password: "secret",
       rootPath: "/books",
       enabled: true,
+      hasPassword: true,
     })
 
     expect(created.id).toBe("source-created")
@@ -138,6 +139,7 @@ describe("useDataSourceStore", () => {
         password: "secret",
         rootPath: "/books",
         enabled: true,
+        hasPassword: true,
       })
 
     expect(result).toEqual({ ok: true, message: "OK" })

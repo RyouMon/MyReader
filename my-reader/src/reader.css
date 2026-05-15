@@ -162,7 +162,9 @@
 
 /* 测量分页用：高度随内容，避免继承 h-full 导致 scrollHeight 失真 */
 .reader-measure-paginate {
+  /* biome-ignore lint/complexity/noImportantStyles: must override Tailwind h-full during scrollHeight measurement */
   height: auto !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must override Tailwind h-full during scrollHeight measurement */
   min-height: 0 !important;
 }
 
@@ -311,14 +313,6 @@
   .reader-edge-turn-btn:hover {
     background: color-mix(in srgb, var(--reader-chrome-bg) 95%, transparent);
     color: var(--reader-chrome-fg);
-  }
-
-  .reader-chrome-footer-bar {
-    background-color: var(--reader-chrome-bg);
-    border-top: 1px solid var(--reader-chrome-border);
-    color: var(--reader-chrome-fg);
-    box-shadow: 0 -4px 16px
-      color-mix(in srgb, var(--reader-chrome-bg) 40%, transparent);
   }
 
   .reader-chrome-icon-btn {

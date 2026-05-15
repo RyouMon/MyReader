@@ -186,6 +186,7 @@ export function ReadiumPdfReader({
     [totalPages],
   )
 
+  const isRtl = direction === "rtl"
   const edgeTurnActive = totalPages > 0 && !error && !tocOpen && !settingsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
     edgeTurnActive,

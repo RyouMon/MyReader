@@ -14,7 +14,7 @@ function setUserAgentForModuleLoad(userAgent: string): void {
  * Decode base64url payload back to the original UTF-8 book path.
  */
 function decodeBookPathFromCoverUrl(url: string): string {
-  const encoded = url.split("/").at(-1)
+  const encoded = url.split("/").slice(-1)[0]
   if (!encoded) {
     throw new Error(`invalid cover url: ${url}`)
   }

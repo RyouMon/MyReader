@@ -298,6 +298,7 @@
   .detail-anim-7,
   .detail-anim-8,
   .detail-tag {
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-duration: 0.01ms !important;
   }
 }
@@ -307,8 +308,11 @@
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: accessibility override for reduced motion */
     transition-duration: 0.01ms !important;
   }
 }
@@ -321,6 +325,7 @@
     var(--primary) 12%,
     transparent
   ) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: override shadcn/ui sidebar base styles */
   color: var(--primary) !important;
   position: relative;
 }
