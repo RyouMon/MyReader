@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { useTranslation } from "react-i18next"
 
 import {
   Sidebar,
@@ -38,6 +39,7 @@ type LibMenuRect = { top: number; left: number; width: number }
  * 应用主侧边栏，包含书库切换、筛选与设置入口。
  */
 export default function AppSidebar() {
+  const { t } = useTranslation()
   const { libraries, activeLibrary, switchLibrary } = useLibrary()
   const location = useLocation()
   const [libMenuOpen, setLibMenuOpen] = useState(false)
@@ -121,7 +123,7 @@ export default function AppSidebar() {
             )}
           >
             <span className="sr-only">
-              {activeLibrary ? "已连接" : "未连接"}
+              {activeLibrary ? t("sidebar.connected") : t("sidebar.disconnected")}
             </span>
             <span
               aria-hidden="true"
@@ -133,7 +135,7 @@ export default function AppSidebar() {
               )}
             />
             <span className="flex-1 truncate text-start">
-              {activeLibrary?.name ?? "未选择书库"}
+              {activeLibrary?.name ?? t("sidebar.noLibrary")}
             </span>
             <ChevronsUpDown className="size-3 opacity-50" />
           </button>
@@ -157,7 +159,7 @@ export default function AppSidebar() {
                 >
                   {libraries.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">
-                      暂无书库
+                      {t("sidebar.noLibraries")}
                     </div>
                   ) : (
                     libraries.map((lib) => (
@@ -179,7 +181,7 @@ export default function AppSidebar() {
                           {lib.name}
                         </span>
                         <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-                          {lib.bookCount} 本
+                          {t("sidebar.booksCount", { count: lib.bookCount })}
                         </span>
                         {lib.id === activeLibrary?.id && (
                           <Check className="size-3 shrink-0 text-primary" />
@@ -204,11 +206,11 @@ export default function AppSidebar() {
                 <SidebarMenuButton
                   asChild
                   isActive={isLibraryActive}
-                  tooltip="全部"
+                  tooltip={t("sidebar.all")}
                 >
                   <Link to="/">
                     <Library />
-                    <span>全部</span>
+                    <span>{t("sidebar.all")}</span>
                   </Link>
                 </SidebarMenuButton>
                 <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
@@ -217,16 +219,16 @@ export default function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="最近阅读">
+                <SidebarMenuButton tooltip={t("sidebar.recent")}>
                   <Clock />
-                  <span>最近阅读</span>
+                  <span>{t("sidebar.recent")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="收藏">
+                <SidebarMenuButton tooltip={t("sidebar.favorites")}>
                   <Star />
-                  <span>收藏</span>
+                  <span>{t("sidebar.favorites")}</span>
                 </SidebarMenuButton>
                 <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
                   0
@@ -239,27 +241,27 @@ export default function AppSidebar() {
         <SidebarSeparator />
 
         <SidebarGroup>
-          <SidebarGroupLabel>分类浏览</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("sidebar.browse")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="标签">
+                <SidebarMenuButton tooltip={t("sidebar.tags")}>
                   <Tags />
-                  <span>标签</span>
+                  <span>{t("sidebar.tags")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="丛书">
+                <SidebarMenuButton tooltip={t("sidebar.series")}>
                   <BookCopy />
-                  <span>丛书</span>
+                  <span>{t("sidebar.series")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="作者">
+                <SidebarMenuButton tooltip={t("sidebar.authors")}>
                   <User />
-                  <span>作者</span>
+                  <span>{t("sidebar.authors")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -272,12 +274,12 @@ export default function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="设置"
+              tooltip={t("sidebar.settings")}
               isActive={isSettingsActive}
             >
               <Link to="/settings">
                 <Settings />
-                <span>设置</span>
+                <span>{t("sidebar.settings")}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

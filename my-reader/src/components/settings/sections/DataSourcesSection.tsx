@@ -1,10 +1,10 @@
 import { Trash2, Unplug } from "lucide-react"
 import type { DataSource } from "my-reader-tools/store/data-source"
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
-import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/constants/local-library-data-source"
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
 
@@ -12,6 +12,7 @@ import { useDataSourceStore } from "@/stores/dataSourceStore"
  * 在设置页提供数据源增删管理，帮助后续同步层复用统一连接配置。
  */
 export default function DataSourcesSection() {
+  const { t } = useTranslation()
   const dataSources = useDataSourceStore((s) => s.dataSources)
   const loading = useDataSourceStore((s) => s.loading)
   const hydrated = useDataSourceStore((s) => s.hydrated)
@@ -46,16 +47,18 @@ export default function DataSourcesSection() {
   }
 
   const listHint = useMemo(() => {
-    if (loading) return "数据源加载中…"
-    return `${dataSources.length + 1} 个已添加连接`
-  }, [dataSources.length, loading])
+    if (loading) return t("settings.dataSources.loading")
+    return t("settings.dataSources.count", {
+      count: dataSources.length + 1,
+    })
+  }, [dataSources.length, loading, t])
 
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border px-7 py-5 pb-4">
-        <h1 className="text-xl font-semibold">数据源管理</h1>
+        <h1 className="text-xl font-semibold">{t("settings.dataSources.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          管理桌面端可访问的数据来源，当前支持本地存储与 WebDAV
+          {t("settings.dataSources.description")}
         </p>
       </div>
 
@@ -63,7 +66,7 @@ export default function DataSourcesSection() {
         <section className="mb-5">
           <div className="mb-2.5 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-              已配置数据源
+              {t("settings.dataSources.configured")}
             </p>
             <p className="text-xs text-muted-foreground">{listHint}</p>
           </div>
@@ -91,20 +94,21 @@ export default function DataSourcesSection() {
 }
 
 function LocalStorageStaticRow() {
+  const { t } = useTranslation()
   return (
     <GroupListItem className="bg-card transition-[opacity,transform,background-color] hover:bg-muted/40">
       <AppRow
         icon="hardDrive"
-        body={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-        detail="当前设备本地文件系统"
+        body={t("constants.localDataSourceName")}
+        detail={t("settings.dataSources.localDetail")}
         detailClassName="font-mono"
         tail={
           <div className="flex items-center gap-2">
             <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              本机
+              {t("settings.dataSources.localLabel")}
             </span>
             <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-              内置
+              {t("settings.dataSources.builtIn")}
             </span>
           </div>
         }
@@ -134,6 +138,7 @@ function DataSourceCard({
   isRemoving,
   onDelete,
 }: DataSourceCardProps) {
+  const { t } = useTranslation()
   const rowIcon = "database"
   const secondaryText = `${source.endpoint} · ${source.username}`
 
@@ -158,12 +163,12 @@ function DataSourceCard({
             </span>
             {source.readonly && (
               <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-                内置
+                {t("settings.dataSources.builtIn")}
               </span>
             )}
             {isPendingDelete && !source.readonly ? (
               <span className="hidden text-[11px] text-destructive md:inline">
-                再次点击确认
+                {t("settings.dataSources.confirmDelete")}
               </span>
             ) : null}
           </div>
@@ -183,7 +188,7 @@ function DataSourceCard({
                   ? "border-destructive/30 bg-destructive/10 text-destructive"
                   : "border-transparent text-muted-foreground hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive",
               )}
-              title="删除数据源"
+              title={t("settings.dataSources.deleteTitle")}
             >
               <Trash2 className="size-3.5" />
             </button>

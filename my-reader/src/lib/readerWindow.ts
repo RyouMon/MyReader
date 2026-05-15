@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
+import i18n from "@/i18n"
 
 function readerWindowLabel(bookId: string): string {
   return `reader-${bookId}`
@@ -18,7 +19,7 @@ export async function openReaderInNewWindow(
 ): Promise<void> {
   if (!isTauri()) return
 
-  const windowTitle = bookTitle?.trim() || "阅读"
+  const windowTitle = bookTitle?.trim() || i18n.t("reader.defaultTitle")
 
   const label = readerWindowLabel(bookId)
   console.info(

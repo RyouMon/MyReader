@@ -1,7 +1,3 @@
-import { Locator, LocatorLocations } from "@readium/shared"
-import { Settings } from "lucide-react"
-import type { PDFDocumentProxy } from "pdfjs-dist"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ReadiumTocPanel,
   type ReadiumTocRow,
@@ -20,6 +16,11 @@ import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 import { useAppUiStore } from "@/stores/appUiStore"
+import { Locator, LocatorLocations } from "@readium/shared"
+import { Settings } from "lucide-react"
+import type { PDFDocumentProxy } from "pdfjs-dist"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 const PDF_RENDER_BASE = 1.25
 const PDF_SCALE_MIN = 0.75
@@ -79,6 +80,7 @@ export function ReadiumPdfReader({
   format,
   progressSyncEnabled,
 }: ReadiumPdfReaderProps) {
+  const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
@@ -96,7 +98,7 @@ export function ReadiumPdfReader({
     if (totalPages < 1) return []
     return Array.from({ length: totalPages }, (_, i) => ({
       depth: 0,
-      title: `第 ${i + 1} 页`,
+      title: t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
       href: `page-${i + 1}`,
       type: "application/pdf",
     }))
@@ -108,7 +110,7 @@ export function ReadiumPdfReader({
     return new Locator({
       href: fileUrl,
       type: "application/pdf",
-      title: `第 ${pageNum} 页`,
+      title: t("reader.pageCount", { current: pageNum, total: "" }).replace(" / ", ""),
       locations: new LocatorLocations({
         fragments: [pdfPageFragment(pageNum)],
         position: pageNum,
@@ -227,14 +229,14 @@ export function ReadiumPdfReader({
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">PDF 加载失败</p>
+          <p className="text-destructive font-medium mb-2">{t("reader.loadFailed")}</p>
           <p className="text-sm text-muted-foreground max-w-md">{error}</p>
         </div>
       </div>
     )
   }
 
-  const chapterTitle = totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : ""
+  const chapterTitle = totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : ""
 
   return (
     <ReaderChromeShell
@@ -264,7 +266,7 @@ export function ReadiumPdfReader({
       settingsPanel={
         <ReaderSidePanelFrame visible={settingsOpen} side="right">
           <ReaderSidePanelHeader
-            title="设置"
+            title={t("reader.settingsShort")}
             icon={Settings}
             onClose={closePanels}
           />
@@ -274,7 +276,7 @@ export function ReadiumPdfReader({
                 htmlFor="pdf-render-scale"
                 className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
               >
-                渲染缩放
+                {t("reader.renderScale")}
               </Label>
               <input
                 id="pdf-render-scale"
@@ -287,11 +289,11 @@ export function ReadiumPdfReader({
                 className="mt-1 w-full accent-primary"
               />
               <p className="text-[11px] tabular-nums text-reader-chrome-fg/70">
-                {renderScale.toFixed(2)}×（方向键与左右边缘翻页）
+                {renderScale.toFixed(2)}× ({t("reader.renderScaleNote", { scale: renderScale.toFixed(2) }).replace("{{scale}}", renderScale.toFixed(2))})
               </p>
             </section>
             <p className="text-[11px] text-reader-chrome-fg/55">
-              连续滚动与手势缩放将另行接入 pdf.js 管线。
+              {t("reader.scrollZoomNote")}
             </p>
           </div>
         </ReaderSidePanelFrame>
@@ -302,15 +304,15 @@ export function ReadiumPdfReader({
           nearRight={isRtl ? nearLeft : nearRight}
           onPrev={onPdfEdgePrev}
           onNext={onPdfEdgeNext}
-          prevLabel="上一页"
-          nextLabel="下一页"
+          prevLabel={t("reader.prevPage")}
+          nextLabel={t("reader.nextPage")}
         />
       }
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
           leftText={
-            totalPages > 0 ? `第 ${pageNum} / ${totalPages} 页` : undefined
+            totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : undefined
           }
           progress={
             totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
@@ -320,7 +322,7 @@ export function ReadiumPdfReader({
       main={
         <div className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-auto bg-muted/30 p-4">
           {totalPages < 1 ? (
-            <div className="text-sm text-muted-foreground">正在加载 PDF…</div>
+            <div className="text-sm text-muted-foreground">{t("reader.loadingPdf")}</div>
           ) : (
             <canvas
               ref={canvasRef}

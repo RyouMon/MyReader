@@ -2,6 +2,7 @@ import { EpubNavigator } from "@readium/navigator"
 import { Locator, LocatorLocations, type Publication } from "@readium/shared"
 import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   ReadiumTocPanel,
   type ReadiumTocRow,
@@ -48,6 +49,7 @@ export function ReadiumDivinaReader({
   format,
   progressSyncEnabled,
 }: ReadiumDivinaReaderProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
@@ -88,7 +90,7 @@ export function ReadiumDivinaReader({
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     return publication.readingOrder.items.map((item, i) => ({
       depth: 0,
-      title: item.title?.trim() || `第 ${i + 1} 页`,
+      title: item.title?.trim() || t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
       href: item.href,
       type: item.type,
     }))
@@ -202,8 +204,8 @@ export function ReadiumDivinaReader({
             positionChanged: (locator) => {
               setCurrentLocator(locator)
               const idx = (locator.locations?.position ?? 1) - 1
-              const t = items[idx]?.title?.trim()
-              setChapterTitle(t || `第 ${locator.locations?.position ?? 1} 页`)
+              const itemTitle = items[idx]?.title?.trim()
+              setChapterTitle(itemTitle || t("reader.pageCount", { current: locator.locations?.position ?? 1, total: "" }).replace(" / ", ""))
             },
             tap: () => {
               showChrome()
@@ -280,7 +282,7 @@ export function ReadiumDivinaReader({
         setReadiumNavReady(true)
         setCurrentLocator(nav.currentLocator)
         const p0 = nav.currentLocator.locations?.position ?? 1
-        setChapterTitle(items[p0 - 1]?.title?.trim() || `第 ${p0} 页`)
+        setChapterTitle(items[p0 - 1]?.title?.trim() || t("reader.pageCount", { current: p0, total: "" }).replace(" / ", ""))
       } catch (e) {
         console.error("[ReadiumDivina]", e)
         setInitError(String(e))
@@ -301,7 +303,7 @@ export function ReadiumDivinaReader({
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">漫画加载失败</p>
+          <p className="text-destructive font-medium mb-2">{t("reader.loadComicFailed")}</p>
           <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
       </div>
@@ -336,21 +338,21 @@ export function ReadiumDivinaReader({
       settingsPanel={
         <ReaderSidePanelFrame visible={settingsOpen} side="right">
           <ReaderSidePanelHeader
-            title="设置"
+            title={t("reader.settingsShort")}
             icon={Settings}
             onClose={closePanels}
           />
           <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                版面
+                {t("reader.layout")}
               </Label>
               <div className="flex flex-col gap-1">
                 {(
                   [
-                    ["auto", "自动（横屏双页）"],
-                    ["single", "始终单页"],
-                    ["double", "始终双页"],
+                    ["auto", t("reader.layoutOptions.auto")],
+                    ["single", t("reader.layoutOptions.single")],
+                    ["double", t("reader.layoutOptions.double")],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -371,14 +373,14 @@ export function ReadiumDivinaReader({
             </section>
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                画布背景
+                {t("reader.canvasBg")}
               </Label>
               <div className="flex flex-col gap-1">
                 {(
                   [
-                    ["black", "纯黑"],
-                    ["dim", "深灰"],
-                    ["paper", "纸色"],
+                    ["black", t("reader.canvasBgOptions.black")],
+                    ["dim", t("reader.canvasBgOptions.dim")],
+                    ["paper", t("reader.canvasBgOptions.paper")],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -414,8 +416,8 @@ export function ReadiumDivinaReader({
           nearRight={isRtl ? nearLeft : nearRight}
           onPrev={onReadiumEdgePrev}
           onNext={onReadiumEdgeNext}
-          prevLabel="上一页"
-          nextLabel="下一页"
+          prevLabel={t("reader.prevPage")}
+          nextLabel={t("reader.nextPage")}
         />
       }
       bottomStatusBar={
@@ -423,7 +425,7 @@ export function ReadiumDivinaReader({
           visible={chromeVisible}
           leftText={
             positions.length > 0
-              ? `第 ${currentLocator?.locations?.position ?? 1} / ${positions.length} 页`
+              ? `t("reader.pageCount", { current: currentLocator?.locations?.position ?? 1, total: positions.length })`
               : undefined
           }
           progress={

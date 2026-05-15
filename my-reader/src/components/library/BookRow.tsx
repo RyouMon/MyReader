@@ -1,6 +1,7 @@
 import { BookOpen, Ellipsis } from "lucide-react"
 import type { CalibreBook } from "my-reader-tools/types/book"
 import { type KeyboardEvent, memo } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -14,20 +15,18 @@ interface BookRowProps {
   progress?: BookProgressSnapshot
 }
 
-/**
- * Returns the row badge text from an optional progress snapshot.
- */
-function getProgressLabel(progress?: BookProgressSnapshot) {
+function useProgressLabel(progress?: BookProgressSnapshot) {
+  const { t } = useTranslation()
   if (progress?.statusLabel) {
     return progress.statusLabel
   }
   if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return "未读"
+    return t("bookRow.unread")
   }
   if (progress.percent >= 100) {
-    return "已读完"
+    return t("bookRow.finished")
   }
-  return "阅读中"
+  return t("bookRow.reading")
 }
 
 /**
@@ -40,11 +39,12 @@ const BookRow = memo(function BookRow({
   onMore,
   progress,
 }: BookRowProps) {
+  const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
   const primaryFormat = book.formats[0] ?? ""
   const hasProgress = typeof progress?.percent === "number"
   const isUnread = !hasProgress || (progress.percent ?? 0) <= 0
-  const readLabel = isUnread ? "开始阅读" : "继续阅读"
+  const readLabel = isUnread ? t("bookCard.startReading") : t("bookCard.continueReading")
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" && event.key !== " ") {
@@ -62,7 +62,7 @@ const BookRow = memo(function BookRow({
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
-      aria-label={`打开《${book.title}》`}
+      aria-label={t("bookCard.openBook", { title: book.title })}
     >
       <BookCover
         book={book}
@@ -90,7 +90,7 @@ const BookRow = memo(function BookRow({
                 : "bg-accent-ui text-primary",
             )}
           >
-            {getProgressLabel(progress)}
+            {useProgressLabel(progress)}
           </Badge>
           {hasProgress ? (
             <span className="text-[10px] text-muted-foreground">
@@ -139,8 +139,8 @@ const BookRow = memo(function BookRow({
           type="button"
           variant="ghost"
           size="icon-sm"
-          title="更多操作"
-          aria-label="更多操作"
+          title={t("bookCard.moreActions")}
+          aria-label={t("bookCard.moreActions")}
           className="size-7 text-muted-foreground hover:bg-hover-bg hover:text-foreground"
           onClick={(event) => {
             event.stopPropagation()

@@ -70,7 +70,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       if (libraryLoading) return
       if (!activeLibraryId) {
         if (!cancelled) {
-          setFetchError("没有活动书库。请先在主窗口选择书库后再阅读")
+          setFetchError(t("reader.noActiveLibrary"))
         }
         return
       }
@@ -86,7 +86,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const fmt = resolveReadFormat(detail.formats, formatFromSearch)
         if (!fmt) {
-          setFetchError("该书籍没有可阅读的格式。需要 EPUB、CBZ 或 PDF")
+          setFetchError(t("reader.noReadableFormat"))
           return
         }
         setFormat(fmt)
@@ -158,32 +158,32 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   }, [navigate, bookId])
 
   if (mainHandoff) {
-    return <ReadBookLoading message="正在打开阅读窗口…" />
+    return <ReadBookLoading message={t("reader.openWindow")} />
   }
 
   if (fetchError) {
     return (
       <ReadBookError
         message={fetchError}
-        actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+        actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
         onAction={handleErrorClose}
       />
     )
   }
 
   if (!bookPayload) {
-    return <ReadBookLoading message="正在加载书籍…" />
+    return <ReadBookLoading message={t("reader.loadingBook")} />
   }
 
   if (format === "EPUB") {
     if (readiumPub.loading) {
-      return <ReadBookLoading message="正在加载 Readium 书籍…" />
+      return <ReadBookLoading message={t("reader.loadingReadium")} />
     }
     if (readiumPub.error || !readiumPub.publication) {
       return (
         <ReadBookError
-          message={readiumPub.error ?? "无法加载 EPUB"}
-          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          message={readiumPub.error ?? t("reader.loadEpubFailed")}
+          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
           onAction={handleErrorClose}
         />
       )
@@ -205,20 +205,20 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     if (!bookPayload.source.extractedDirPath) {
       return (
         <ReadBookError
-          message="漫画解压目录不可用"
-          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          message={t("reader.comicDirUnavailable")}
+          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
           onAction={handleErrorClose}
         />
       )
     }
     if (divinaPub.loading) {
-      return <ReadBookLoading message="正在加载漫画…" />
+      return <ReadBookLoading message={t("reader.loadingComic")} />
     }
     if (divinaPub.error || !divinaPub.publication) {
       return (
         <ReadBookError
-          message={divinaPub.error ?? "无法加载漫画"}
-          actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+          message={divinaPub.error ?? t("reader.loadComicFailed")}
+          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
           onAction={handleErrorClose}
         />
       )
@@ -252,8 +252,8 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   return (
     <ReadBookError
-      message="不支持的格式"
-      actionLabel={isTauri() ? "关闭窗口" : "返回书籍详情"}
+      message={t("reader.unsupportedFormat")}
+      actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
       onAction={handleErrorClose}
     />
   )
@@ -286,9 +286,10 @@ function ReadBookError({
   actionLabel: string
   onAction: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-background px-4 text-center">
-      <p className="font-medium text-destructive">加载失败</p>
+      <p className="font-medium text-destructive">{t("reader.loadFailed")}</p>
       <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <button
         type="button"

@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { useCallback } from "react"
+import i18n from "@/i18n"
 import { api } from "@/lib/tauri-api"
 
 export interface SyncBackendInfo {
@@ -44,7 +45,7 @@ function normalizeRow(raw: BackendFileStateRow): FileStateRow {
 
 function assertTauri(): void {
   if (!isTauri()) {
-    throw new Error("当前环境不支持同步操作（仅桌面 Tauri）")
+    throw new Error(i18n.t("stores.syncNotSupported"))
   }
 }
 

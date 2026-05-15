@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { BookX } from "lucide-react"
 import type { CalibreBook } from "my-reader-tools/types/book"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_layout/")({
 })
 
 function LibraryPage() {
+  const { t } = useTranslation()
   const {
     activeLibrary,
     activeLibraryId,
@@ -56,10 +58,10 @@ function LibraryPage() {
 
   const sectionLabel =
     activeView === "all"
-      ? "全部书籍"
+      ? t("library.title")
       : activeView === "favorites"
-        ? "收藏书籍"
-        : "最近阅读"
+        ? t("library.favoritesTitle")
+        : t("library.recentTitle")
 
   function handleRead(book: CalibreBook) {
     navigate({
@@ -74,7 +76,7 @@ function LibraryPage() {
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
       <h2 className="font-serif text-xl font-semibold">{sectionLabel}</h2>
       <span className="text-sm text-muted-foreground font-normal">
-        {total} 本
+        {t("library.booksCount", { count: total })}
       </span>
     </div>
   )
@@ -95,7 +97,7 @@ function LibraryPage() {
 
       {!loading && error && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
-          <p className="text-base font-medium">加载失败</p>
+          <p className="text-base font-medium">{t("library.loadingFailed")}</p>
           <p className="text-sm opacity-80 max-w-md">{error}</p>
         </div>
       )}
@@ -103,16 +105,16 @@ function LibraryPage() {
       {!loading && !error && hasNoLibrary && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
           <BookX className="size-12 opacity-40" />
-          <p className="text-base font-medium">尚未添加书库</p>
+          <p className="text-base font-medium">{t("library.empty.noLibraryTitle")}</p>
           <p className="text-sm opacity-60">
-            请前往设置 → 书库管理添加 Calibre 书库目录
+            {t("library.empty.noLibraryDesc")}
           </p>
           <button
             type="button"
             onClick={() => navigate({ to: "/settings" })}
             className="mt-2 text-sm text-primary hover:underline"
           >
-            前往设置
+            {t("library.empty.goToSettings")}
           </button>
         </div>
       )}
@@ -131,17 +133,17 @@ function LibraryPage() {
 
       {!loading && !error && !hasNoLibrary && total === 0 && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center text-muted-foreground">
-          <p className="text-base">没有找到匹配的书籍</p>
+          <p className="text-base">{t("library.empty.noBooks")}</p>
           <p className="text-sm mt-1 opacity-60">
-            {searchQuery ? "试试其他关键词" : "书库中暂无书籍"}
+            {searchQuery ? t("library.empty.tryOtherKeywords") : t("library.empty.noBooksInLibrary")}
           </p>
         </div>
       )}
 
       <footer className="flex items-center justify-between px-6 py-2 text-xs text-muted-foreground shrink-0 border-t border-border bg-background">
         <span>
-          📚 {activeLibrary?.name ?? "未选择书库"} ·{" "}
-          {(activeLibrary?.bookCount ?? 0).toLocaleString()} 本
+          📚 {activeLibrary?.name ?? t("sidebar.noLibrary")} ·{" "}
+          {t("sidebar.booksCount", { count: activeLibrary?.bookCount ?? 0 })}
         </span>
         <div className="flex items-center gap-1.5">
           <span
@@ -152,7 +154,7 @@ function LibraryPage() {
                 : "bg-library-indicator-off",
             )}
           />
-          {activeLibrary ? "已连接" : "未连接"}
+          {activeLibrary ? t("sidebar.connected") : t("sidebar.disconnected")}
         </div>
       </footer>
     </>

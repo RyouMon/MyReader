@@ -18,6 +18,7 @@ import {
   TextInitial,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   ReadiumTocPanel,
   type ReadiumTocRow,
@@ -183,6 +184,7 @@ function EpubSettingsPanel({
   isFixedLayout,
   onClose,
 }: EpubSettingsPanelProps) {
+  const { t } = useTranslation()
   const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
   const patchFixedLayout = useAppUiStore((s) => s.patchFixedLayout)
   const readerSettings = useAppUiStore((s) => s.reflowable.settings)
@@ -208,7 +210,7 @@ function EpubSettingsPanel({
   return (
     <ReaderSidePanelFrame visible={visible} side="right">
       <ReaderSidePanelHeader
-        title="阅读设置"
+        title={t("reader.settings")}
         icon={Settings}
         onClose={onClose}
       />
@@ -216,17 +218,17 @@ function EpubSettingsPanel({
         {isFixedLayout ? (
           <section className="space-y-2">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-              固定版面 · 双页
+              {t("reader.fixedLayout")}
             </Label>
             <p className="text-[11px] text-reader-chrome-fg/60">
-              与 Thorium 类似：偏好写入本机配置，下次打开仍生效。
+              {t("reader.fixedLayoutNote")}
             </p>
             <div className="flex flex-col gap-1">
               {(
                 [
-                  ["auto", "自动（横屏双页）"],
-                  ["single", "始终单页"],
-                  ["double", "始终双页"],
+                  ["auto", t("reader.layoutOptions.auto")],
+                  ["single", t("reader.layoutOptions.single")],
+                  ["double", t("reader.layoutOptions.double")],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -249,19 +251,19 @@ function EpubSettingsPanel({
           <>
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                主题
+                {t("reader.theme")}
               </Label>
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    ["neutral", "纯白", "#fefefe", "#000000"],
-                    ["paper", "羊皮纸", "#E9DDC8", "#000000"],
-                    ["sepia", "护眼米黄", "#faf4e8", "#000000"],
-                    ["green", "护眼绿色", "#C5E7CD", "#000000"],
-                    ["ocean", "深海", "#181842", "#ffffff"],
-                    ["night", "夜间", "#121212", "#ffffff"],
-                    ["contrast1", "高对比度 1", "#000000", "#ffffff"],
-                    ["contrast2", "高对比度 2", "#000000", "#FFFF00"],
+                    ["neutral", t("reader.themes.neutral"), "#fefefe", "#000000"],
+                    ["paper", t("reader.themes.paper"), "#E9DDC8", "#000000"],
+                    ["sepia", t("reader.themes.sepia"), "#faf4e8", "#000000"],
+                    ["green", t("reader.themes.green"), "#C5E7CD", "#000000"],
+                    ["ocean", t("reader.themes.ocean"), "#181842", "#ffffff"],
+                    ["night", t("reader.themes.night"), "#121212", "#ffffff"],
+                    ["contrast1", t("reader.themes.contrast1"), "#000000", "#ffffff"],
+                    ["contrast2", t("reader.themes.contrast2"), "#000000", "#FFFF00"],
                   ] as const
                 ).map(([value, label, bg, fg]) => (
                   <button
@@ -301,7 +303,7 @@ function EpubSettingsPanel({
                   htmlFor="readium-font-size"
                   className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
                 >
-                  字号
+                  {t("reader.fontSize")}
                 </Label>
                 <Label
                   htmlFor="readium-font-size"
@@ -332,7 +334,7 @@ function EpubSettingsPanel({
                   htmlFor="readium-page-margin"
                   className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
                 >
-                  页边距
+                  {t("reader.margin")}
                 </Label>
                 <Label
                   htmlFor="readium-page-margin"
@@ -359,7 +361,7 @@ function EpubSettingsPanel({
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                行距
+                {t("reader.lineHeight")}
               </Label>
               <div className="flex gap-1">
                 {([1.35, 1.5, 1.65, 1.85, 2] as const).map((lh) => (
@@ -382,13 +384,13 @@ function EpubSettingsPanel({
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                版式
+                {t("reader.readingMode")}
               </Label>
               <div className="flex gap-1">
                 {(
                   [
-                    ["paginate", "分页", BookOpen],
-                    ["scroll", "连续滚动", ScrollText],
+                    ["paginate", t("reader.readingModeOptions.paginate"), BookOpen],
+                    ["scroll", t("reader.readingModeOptions.scroll"), ScrollText],
                   ] as const
                 ).map(([value, label, Icon]) => (
                   <button
@@ -415,14 +417,14 @@ function EpubSettingsPanel({
 
             <section className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                排版
+                {t("reader.typography")}
               </Label>
               <div className="flex gap-1">
                 {(
                   [
-                    ["auto", "自动", TextInitial],
-                    ["justify", "两端对齐", AlignJustify],
-                    ["start", "左对齐", AlignLeft],
+                    ["auto", t("reader.typographyOptions.auto"), TextInitial],
+                    ["justify", t("reader.typographyOptions.justify"), AlignJustify],
+                    ["start", t("reader.typographyOptions.start"), AlignLeft],
                   ] as const
                 ).map(([value, label, Icon]) => (
                   <button
@@ -448,14 +450,14 @@ function EpubSettingsPanel({
             {readerSettings.readingLayout !== "scroll" && (
               <section className="space-y-2">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
-                  栏
+                  {t("reader.column")}
                 </Label>
                 <div className="flex gap-1">
                   {(
                     [
-                      ["auto", "自动", PanelLeftRightDashed],
-                      ["1", "单栏", Square],
-                      ["2", "双栏", Columns2],
+                      ["auto", t("reader.columnOptions.auto"), PanelLeftRightDashed],
+                      ["1", t("reader.columnOptions.1"), Square],
+                      ["2", t("reader.columnOptions.2"), Columns2],
                     ] as const
                   ).map(([value, label, Icon]) => (
                     <button
@@ -504,6 +506,7 @@ export function ReadiumEpubReader({
   format,
   progressSyncEnabled,
 }: ReadiumEpubReaderProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
@@ -846,7 +849,7 @@ export function ReadiumEpubReader({
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
           <p className="text-destructive font-medium mb-2">
-            Readium 初始化失败
+            {t("reader.loadFailed")}
           </p>
           <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
@@ -910,8 +913,8 @@ export function ReadiumEpubReader({
             nearRight={isRtl ? nearLeft : nearRight}
             onPrev={onReadiumEdgePrev}
             onNext={onReadiumEdgeNext}
-            prevLabel="上一页"
-            nextLabel="下一页"
+            prevLabel={t("reader.prevPage")}
+            nextLabel={t("reader.nextPage")}
           />
         ) : null
       }
@@ -920,7 +923,7 @@ export function ReadiumEpubReader({
           visible={chromeVisible}
           leftText={
             isFixedLayout
-              ? `第 ${currentLocator?.locations?.position ?? 1} / ${publication.readingOrder.items.length} 页`
+              ? `t("reader.pageCount", { current: currentLocator?.locations?.position ?? 1, total: publication.readingOrder.items.length })`
               : currentLocator?.locations?.progression != null
                 ? `${Math.round((currentLocator.locations.progression ?? 0) * 100)}%`
                 : undefined

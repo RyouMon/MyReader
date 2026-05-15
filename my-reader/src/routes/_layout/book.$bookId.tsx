@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -54,39 +55,45 @@ const FORMAT_TONES: Record<string, string> = {
   FB2: "bg-primary/75 text-primary-foreground",
 }
 
-const FORMAT_LABELS: Record<string, string> = {
-  EPUB: "可重排版",
-  PDF: "固定版式",
-  MOBI: "Kindle 格式",
-  AZW3: "Kindle 格式",
-  TXT: "纯文本",
-  CBZ: "漫画归档",
-  DJVU: "扫描文档",
-  FB2: "FictionBook",
-}
-
-const IDENTIFIER_LABELS: Record<string, string> = {
-  isbn: "ISBN",
-  goodreads: "Goodreads",
-  douban: "豆瓣",
-  amazon: "Amazon",
-  google: "Google",
-  barnesnoble: "B&N",
-}
-
-function formatLanguage(code: string): string {
-  const map: Record<string, string> = {
-    zho: "中文",
-    chi: "中文",
-    eng: "English",
-    jpn: "日本語",
-    kor: "한국어",
-    fra: "Français",
-    deu: "Deutsch",
-    spa: "Español",
-    rus: "Русский",
+function useFormatLabels(): Record<string, string> {
+  const { t } = useTranslation()
+  return {
+    EPUB: t("bookDetail.formats.EPUB"),
+    PDF: t("bookDetail.formats.PDF"),
+    MOBI: t("bookDetail.formats.MOBI"),
+    AZW3: t("bookDetail.formats.AZW3"),
+    TXT: t("bookDetail.formats.TXT"),
+    CBZ: t("bookDetail.formats.CBZ"),
+    DJVU: t("bookDetail.formats.DJVU"),
+    FB2: t("bookDetail.formats.FB2"),
   }
-  return map[code] ?? code
+}
+
+function useIdentifierLabels(): Record<string, string> {
+  const { t } = useTranslation()
+  return {
+    isbn: t("bookDetail.identifiers.isbn"),
+    goodreads: t("bookDetail.identifiers.goodreads"),
+    douban: t("bookDetail.identifiers.douban"),
+    amazon: t("bookDetail.identifiers.amazon"),
+    google: t("bookDetail.identifiers.google"),
+    barnesnoble: t("bookDetail.identifiers.barnesnoble"),
+  }
+}
+
+function useLanguageMap(): Record<string, string> {
+  const { t } = useTranslation()
+  return {
+    zho: t("bookDetail.languages.zho"),
+    chi: t("bookDetail.languages.chi"),
+    eng: t("bookDetail.languages.eng"),
+    jpn: t("bookDetail.languages.jpn"),
+    kor: t("bookDetail.languages.kor"),
+    fra: t("bookDetail.languages.fra"),
+    deu: t("bookDetail.languages.deu"),
+    spa: t("bookDetail.languages.spa"),
+    rus: t("bookDetail.languages.rus"),
+  }
 }
 
 function formatDate(dateStr: string | null): string {
@@ -124,9 +131,13 @@ function getFormatTone(format: string): string {
 const brokenCovers = new Set<string>()
 
 function BookDetailPage() {
+  const { t } = useTranslation()
   const { bookId } = useParams({ from: "/_layout/book/$bookId" })
   const navigate = useNavigate()
   const { activeLibraryId, activeLibrary } = useLibrary()
+  const formatLabels = useFormatLabels()
+  const identifierLabels = useIdentifierLabels()
+  const languageMap = useLanguageMap()
 
   const [book, setBook] = useState<BookDetail | null>(null)
   const [seriesBooks, setSeriesBooks] = useState<CalibreBook[]>([])
@@ -250,7 +261,7 @@ function BookDetailPage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
         <div className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary" />
-        <p className="text-sm">加载书籍详情…</p>
+        <p className="text-sm">{t("bookDetail.loading")}</p>
       </div>
     )
   }
@@ -258,7 +269,7 @@ function BookDetailPage() {
   if (error || !book) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
-        <p className="text-base font-medium">加载失败</p>
+        <p className="text-base font-medium">{t("bookDetail.loadFailed")}</p>
         <p className="max-w-md text-sm opacity-80">{error}</p>
         <Button
           variant="link"
@@ -266,7 +277,7 @@ function BookDetailPage() {
           onClick={() => navigate({ to: "/" })}
           className="mt-2 px-0 text-sm"
         >
-          返回书库
+          {t("bookDetail.backToLibrary")}
         </Button>
       </div>
     )
@@ -278,7 +289,7 @@ function BookDetailPage() {
     : null
   const year = extractYear(book.pubdate)
   const displayAuthors = book.authors.join(", ")
-  const langDisplay = book.languages.map(formatLanguage).join(", ")
+  const langDisplay = book.languages.map((code) => languageMap[code] ?? code).join(", ")
   const ratingStars = book.rating ? Math.round(book.rating / 2) : 0
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null
   const formatSizeMap = new Map(
@@ -289,7 +300,10 @@ function BookDetailPage() {
 
   const seriesLabel =
     book.series && book.seriesIndex
-      ? `${book.series} · 第 ${Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1)} 部`
+      ? t("bookDetail.series", {
+          series: book.series,
+          index: Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1),
+        })
       : book.series
 
   return (
@@ -311,7 +325,7 @@ function BookDetailPage() {
             data-icon="inline-start"
             className="transition-transform group-hover/back:-translate-x-0.5 rtl:group-hover/back:translate-x-0.5"
           />
-          返回书库
+          {t("bookDetail.backToLibrary")}
         </Button>
 
         <div className="ms-auto flex items-center gap-0.5">
@@ -322,7 +336,7 @@ function BookDetailPage() {
               "size-8",
               isFavorite && "text-primary hover:text-primary",
             )}
-            title={isFavorite ? "取消收藏" : "收藏"}
+            title={isFavorite ? t("bookDetail.unfavorite") : t("bookDetail.favorite")}
             onClick={() => setIsFavorite(!isFavorite)}
           >
             <Star
@@ -334,11 +348,11 @@ function BookDetailPage() {
             variant="ghost"
             size="icon"
             className="size-8"
-            title="打开文件位置"
+            title={t("bookDetail.openFileLocation")}
           >
             <FolderOpen className="size-[18px]" />
           </Button>
-          <Button variant="ghost" size="icon" className="size-8" title="更多">
+          <Button variant="ghost" size="icon" className="size-8" title={t("bookDetail.more")}>
             <EllipsisVertical className="size-[18px]" />
           </Button>
         </div>
@@ -478,7 +492,7 @@ function BookDetailPage() {
                 <BookOpen className="size-[15px] text-primary opacity-80" />
                 <Progress value={0} className="h-[5px] max-w-[200px]" />
                 <span className="text-[13px] tabular-nums text-muted-foreground">
-                  未开始
+                  {t("library.notAdded")}
                 </span>
               </div>
 
@@ -500,7 +514,7 @@ function BookDetailPage() {
                       data-icon="inline-start"
                       className="size-[18px]"
                     />
-                    <span>开始阅读</span>
+                    <span>{t("bookCard.startReading")}</span>
                     {selectedFormat && (
                       <span className="ms-0.5 text-[13px] font-normal opacity-80">
                         ({selectedFormat})
@@ -522,7 +536,7 @@ function BookDetailPage() {
                     {formatDropdownOpen && (
                       <div className="animate-in fade-in-0 slide-in-from-top-1 absolute top-[calc(100%+6px)] end-0 z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg duration-150">
                         <div className="border-b border-border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          选择阅读格式
+                          {t("bookDetail.selectFormat")}
                         </div>
                         {readableFormats.map((fmt) => (
                           <button
@@ -552,8 +566,8 @@ function BookDetailPage() {
                               <div className="font-semibold">{fmt}</div>
                               <div className="mt-px text-[12px] text-muted-foreground">
                                 {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
-                                {FORMAT_LABELS[fmt]
-                                  ? ` · ${FORMAT_LABELS[fmt]}`
+                                {formatLabels[fmt]
+                                  ? ` · ${formatLabels[fmt]}`
                                   : ""}
                               </div>
                             </div>
@@ -583,7 +597,7 @@ function BookDetailPage() {
                   ) : (
                     <Plus className="size-4" />
                   )}
-                  {onShelf ? "已加入书架" : "加入书架"}
+                  {onShelf ? t("bookDetail.onShelf") : t("bookDetail.addToShelf")}
                 </Button>
 
                 <Button variant="outline" className="gap-[5px] px-3.5">
@@ -596,7 +610,7 @@ function BookDetailPage() {
 
           {/* Synopsis */}
           {book.comment && (
-            <DetailSection title="简介">
+            <DetailSection title={t("bookDetail.synopsis")}>
               <div
                 className={cn(
                   "detail-synopsis-wrap relative overflow-hidden transition-[max-height] duration-300 ease-in-out",
@@ -622,7 +636,7 @@ function BookDetailPage() {
                 className="mt-2 h-auto gap-1 px-0 text-[13px] font-medium"
                 onClick={() => setSynopsisExpanded(!synopsisExpanded)}
               >
-                {synopsisExpanded ? "收起" : "展开全文"}
+                {synopsisExpanded ? t("bookDetail.collapse") : t("bookDetail.expand")}
                 <ChevronDown
                   className={cn(
                     "size-3.5 transition-transform duration-300",
@@ -635,15 +649,15 @@ function BookDetailPage() {
 
           {/* Formats Table */}
           {book.formats.length > 0 && (
-            <DetailSection title="文件格式">
+            <DetailSection title={t("bookDetail.fileFormats")}>
               <div className="overflow-hidden rounded-t-md">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-muted text-start text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      <th className="rounded-ts-md px-3.5 py-2">格式</th>
-                      <th className="px-3.5 py-2">大小</th>
+                      <th className="rounded-ts-md px-3.5 py-2">{t("bookDetail.format")}</th>
+                      <th className="px-3.5 py-2">{t("bookDetail.size")}</th>
                       <th className="rounded-te-md px-3.5 py-2 text-end">
-                        操作
+                        {t("bookDetail.action")}
                       </th>
                     </tr>
                   </thead>
@@ -681,11 +695,11 @@ function BookDetailPage() {
                                 onClick={() => navigateToRead(book.id, fmt)}
                               >
                                 <BookOpen className="size-3" />
-                                阅读
+                                {t("bookCard.startReading")}
                               </Button>
                             ) : (
                               <span className="pe-2 text-[12px] text-muted-foreground">
-                                不支持
+                                {t("bookDetail.notSupported")}
                               </span>
                             )}
                             <Button
@@ -714,7 +728,7 @@ function BookDetailPage() {
 
           {/* Identifiers */}
           {book.identifiers.length > 0 && (
-            <DetailSection title="标识符">
+            <DetailSection title={t("bookDetail.identifiersTitle")}>
               <div className="flex flex-wrap gap-2.5">
                 {book.identifiers.map((id) => (
                   <div
@@ -722,7 +736,7 @@ function BookDetailPage() {
                     className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-[13px]"
                   >
                     <span className="text-[11px] font-semibold uppercase text-muted-foreground">
-                      {IDENTIFIER_LABELS[id.idType] ?? id.idType}
+                      {identifierLabels[id.idType] ?? id.idType}
                     </span>
                     <span className="font-mono text-[12.5px]">{id.value}</span>
                   </div>
@@ -732,17 +746,17 @@ function BookDetailPage() {
           )}
 
           {/* File Details */}
-          <DetailSection title="书库信息">
+          <DetailSection title={t("bookDetail.libraryInfo")}>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
-              <InfoCard label="添加日期" value={formatDate(book.timestamp)} />
-              <InfoCard label="出版日期" value={formatDate(book.pubdate)} />
+              <InfoCard label={t("bookDetail.addedDate")} value={formatDate(book.timestamp)} />
+              <InfoCard label={t("bookDetail.pubDate")} value={formatDate(book.pubdate)} />
               <InfoCard
-                label="最后修改"
+                label={t("bookDetail.lastModified")}
                 value={formatDate(book.lastModified)}
               />
               {book.uuid && (
                 <InfoCard
-                  label="UUID"
+                  label={t("bookDetail.uuid")}
                   value={
                     book.uuid.length > 16
                       ? `${book.uuid.slice(0, 8)}…${book.uuid.slice(-4)}`
@@ -751,14 +765,14 @@ function BookDetailPage() {
                   mono
                 />
               )}
-              <InfoCard label="库中路径" value={book.path} mono />
-              <InfoCard label="排序标题" value={book.authorSort} />
+              <InfoCard label={t("bookDetail.path")} value={book.path} mono />
+              <InfoCard label={t("bookDetail.sortTitle")} value={book.authorSort} />
             </div>
           </DetailSection>
 
           {/* Related Books (same series) */}
           {seriesBooks.length > 0 && book.series && (
-            <DetailSection title={`同系列 · ${book.series}`} className="mb-4">
+            <DetailSection title={t("bookDetail.seriesSection", { series: book.series })} className="mb-4">
               <div className="flex gap-[18px] overflow-x-auto pb-2">
                 {seriesBooks.map((rb) => (
                   <RelatedBookCard
@@ -782,7 +796,7 @@ function BookDetailPage() {
       {/* Status Bar */}
       <footer className="flex shrink-0 items-center justify-between border-t border-border bg-background px-7 py-2 text-[12.5px] text-muted-foreground">
         <span>
-          {book.title} · {book.formats.length} 种格式 · {book.path}
+          {book.title} · {t("bookDetail.formatCount", { count: book.formats.length })} · {book.path}
         </span>
         <div className="flex items-center gap-1.5">
           <span
@@ -793,7 +807,7 @@ function BookDetailPage() {
                 : "bg-library-indicator-off",
             )}
           />
-          {activeLibrary ? "已同步" : "未连接"}
+          {activeLibrary ? t("bookDetail.synced") : t("bookDetail.notConnected")}
         </div>
       </footer>
     </>

@@ -2,7 +2,8 @@ import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
 import type { DataSource } from "my-reader-tools/store/data-source"
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { StatusNotice } from "@/components/common/StatusNotice"
@@ -25,23 +26,6 @@ import {
 import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
 
-const addWebdavSchema = z.object({
-  type: z.literal("webdav"),
-  endpoint: z.string().trim().url("请输入合法的 WebDAV 地址"),
-  port: z
-    .string()
-    .trim()
-    .regex(/^\d*$/, "端口必须为数字")
-    .refine(
-      (value) =>
-        value.length === 0 || (Number(value) >= 1 && Number(value) <= 65535),
-      "端口范围应为 1-65535",
-    ),
-  username: z.string().trim().min(1, "请输入用户名"),
-  password: z.string().min(1, "请输入密码或应用专用密码"),
-  rootPath: z.string().trim(),
-})
-
 interface AddDataSourcePanelProps {
   onCreateDataSource: (datasource: DataSource) => Promise<unknown>
 }
@@ -52,6 +36,7 @@ interface AddDataSourcePanelProps {
 export function AddDataSourcePanel({
   onCreateDataSource,
 }: AddDataSourcePanelProps) {
+  const { t } = useTranslation()
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -90,7 +75,7 @@ export function AddDataSourcePanel({
       )}
     >
       <AddPanelButton
-        label="添加数据源"
+        label={t("addDataSourceForm.label")}
         onClick={() => {
           setAddPanelOpen((open) => !open)
           clearMessages()
@@ -109,7 +94,7 @@ export function AddDataSourcePanel({
               if (!isTauri()) {
                 setTestFeedback({
                   tone: "error",
-                  message: "仅桌面端支持测试连接",
+                  message: t("addDataSourceForm.testDesktopOnly"),
                 })
                 return
               }
@@ -121,7 +106,7 @@ export function AddDataSourcePanel({
                 if (result.ok) {
                   setTestFeedback({
                     tone: "success",
-                    message: "连接成功，可正常访问 WebDAV。",
+                    message: t("addDataSourceForm.testSuccess"),
                   })
                 } else {
                   setTestFeedback({
@@ -178,6 +163,29 @@ function WebdavDataSourceForm({
   onClearMessages,
   onTestConnection,
 }: WebdavDataSourceFormProps) {
+  const { t } = useTranslation()
+
+  const addWebdavSchema = useMemo(
+    () =>
+      z.object({
+        type: z.literal("webdav"),
+        endpoint: z.string().trim().url(t("addDataSourceForm.validation.url")),
+        port: z
+          .string()
+          .trim()
+          .regex(/^\d*$/, t("addDataSourceForm.validation.portNumber"))
+          .refine(
+            (value) =>
+              value.length === 0 || (Number(value) >= 1 && Number(value) <= 65535),
+            t("addDataSourceForm.validation.portRange"),
+          ),
+        username: z.string().trim().min(1, t("addDataSourceForm.validation.username")),
+        password: z.string().min(1, t("addDataSourceForm.validation.password")),
+        rootPath: z.string().trim(),
+      }),
+    [t],
+  )
+
   function normalizeRootPath(path: string): string {
     const trimmed = path.trim()
     if (!trimmed) return "/"
@@ -309,7 +317,7 @@ function WebdavDataSourceForm({
         <webdavForm.Field name="type">
           {(field) => (
             <Field>
-              <FieldLabel htmlFor={field.name}>数据源类型</FieldLabel>
+              <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.typeLabel")}</FieldLabel>
               <Select
                 name={field.name}
                 value={field.state.value}
@@ -325,7 +333,7 @@ function WebdavDataSourceForm({
                   className="w-full"
                   onBlur={field.handleBlur}
                 >
-                  <SelectValue placeholder="选择数据源类型" />
+                  <SelectValue placeholder={t("addDataSourceForm.selectType")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -344,7 +352,7 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.endpoint)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>服务器地址</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.endpointLabel")}</FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -355,7 +363,7 @@ function WebdavDataSourceForm({
                       clearTestValidationErrors()
                       onClearMessages()
                     }}
-                    placeholder="https://dav.example.com"
+                    placeholder={t("addDataSourceForm.endpointPlaceholder")}
                     disabled={loading}
                     aria-invalid={isInvalid}
                   />
@@ -378,7 +386,7 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.port)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>端口</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.portLabel")}</FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -389,7 +397,7 @@ function WebdavDataSourceForm({
                       clearTestValidationErrors()
                       onClearMessages()
                     }}
-                    placeholder="443"
+                    placeholder={t("addDataSourceForm.portPlaceholder")}
                     inputMode="numeric"
                     disabled={loading}
                     aria-invalid={isInvalid}
@@ -415,7 +423,7 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.username)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>用户名</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.usernameLabel")}</FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -426,7 +434,7 @@ function WebdavDataSourceForm({
                       clearTestValidationErrors()
                       onClearMessages()
                     }}
-                    placeholder="用户名"
+                    placeholder={t("addDataSourceForm.usernamePlaceholder")}
                     disabled={loading}
                     aria-invalid={isInvalid}
                   />
@@ -449,7 +457,7 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.password)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>密码</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.passwordLabel")}</FieldLabel>
                   <Input
                     type="password"
                     id={field.name}
@@ -461,7 +469,7 @@ function WebdavDataSourceForm({
                       clearTestValidationErrors()
                       onClearMessages()
                     }}
-                    placeholder="密码"
+                    placeholder={t("addDataSourceForm.passwordPlaceholder")}
                     disabled={loading}
                     aria-invalid={isInvalid}
                   />
@@ -481,7 +489,7 @@ function WebdavDataSourceForm({
         <webdavForm.Field name="rootPath">
           {(field) => (
             <Field>
-              <FieldLabel htmlFor={field.name}>远程根路径（可选）</FieldLabel>
+              <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.rootPathLabel")}</FieldLabel>
               <Input
                 id={field.name}
                 name={field.name}
@@ -492,7 +500,7 @@ function WebdavDataSourceForm({
                   clearTestValidationErrors()
                   onClearMessages()
                 }}
-                placeholder="/"
+                placeholder={t("addDataSourceForm.rootPathPlaceholder")}
                 disabled={loading}
               />
             </Field>
@@ -506,7 +514,7 @@ function WebdavDataSourceForm({
             onClick={() => void handleTestConnection()}
             disabled={loading || testing}
           >
-            {testing ? "测试中…" : "测试连接"}
+            {testing ? t("addDataSourceForm.testing") : t("addDataSourceForm.testConnection")}
           </Button>
           <Button
             size="sm"
@@ -519,7 +527,7 @@ function WebdavDataSourceForm({
             ) : (
               <PlusCircle className="size-[13px]" />
             )}
-            添加数据源
+            {t("addDataSourceForm.label")}
           </Button>
         </div>
       </FieldGroup>

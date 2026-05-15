@@ -1,5 +1,6 @@
 import { Loader2, PlugZap, RefreshCw } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   GroupList,
   GroupListEmpty,
@@ -23,6 +24,7 @@ import { useLibraryStore } from "@/stores/libraryStore"
  * 本期（阶段 1）仅支持 LocalDirect 与 WebDAV；对 LocalDirect 自动短路 DB 同步并隐藏下载/释放按钮。
  */
 export default function SyncSection() {
+  const { t } = useTranslation()
   const actions = useSyncActions()
   const libraries = useLibraryStore((s) => s.libraries)
   const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
@@ -117,7 +119,7 @@ export default function SyncSection() {
     setTestResult(null)
     try {
       await actions.testBackend(selectedBackendId)
-      setTestResult({ kind: "ok", text: "数据源连接通过" })
+      setTestResult({ kind: "ok", text: t("settings.sync.connectionOk") })
     } catch (err) {
       setTestResult({ kind: "err", text: describeError(err) })
     } finally {
@@ -146,35 +148,39 @@ export default function SyncSection() {
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border px-7 py-5 pb-4">
-        <h1 className="text-xl font-semibold">同步与下载</h1>
+        <h1 className="text-xl font-semibold">{t("settings.sync.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          管理 Calibre/MyReader 书库的 DB 同步与文件下载、释放、删除
+          {t("settings.sync.description")}
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-7 py-5">
         <section className="mb-5">
           <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-            选择书库与数据源
+            {t("settings.sync.selectLibraryAndDataSource")}
           </p>
           <div className="grid grid-cols-1 gap-3 rounded-[var(--radius)] border border-border bg-card p-4 md:grid-cols-2">
             <LabelledSelect
-              label="书库"
+              label={t("settings.sync.libraryLabel")}
               value={selectedLibraryId ?? ""}
               onChange={(v) => setSelectedLibraryId(v || null)}
               options={libraries.map((l) => ({ value: l.id, label: l.name }))}
-              placeholder="未选择书库"
+              placeholder={t("settings.sync.libraryPlaceholder")}
               disabled={libraries.length === 0}
             />
             <LabelledSelect
-              label="数据源"
+              label={t("settings.sync.dataSourceLabel")}
               value={selectedBackendId ?? ""}
               onChange={(v) => setSelectedBackendId(v || null)}
               options={backends.map((b) => ({
                 value: b.id,
                 label: `${b.name} · ${b.kind}`,
               }))}
-              placeholder={backendsLoading ? "加载中…" : "未选择数据源"}
+              placeholder={
+                backendsLoading
+                  ? t("settings.sync.dataSourcePlaceholderLoading")
+                  : t("settings.sync.dataSourcePlaceholder")
+              }
               disabled={backends.length === 0}
             />
           </div>
@@ -188,7 +194,7 @@ export default function SyncSection() {
 
         <section className="mb-5">
           <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-            连接与数据库同步
+            {t("settings.sync.connectionAndSync")}
           </p>
           <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius)] border border-border bg-card p-4">
             <Button
@@ -199,7 +205,7 @@ export default function SyncSection() {
               onClick={handleTestBackend}
             >
               {testing ? <Loader2 className="animate-spin" /> : <PlugZap />}
-              测试连通
+              {t("settings.sync.testConnection")}
             </Button>
             <Button
               type="button"
@@ -214,12 +220,12 @@ export default function SyncSection() {
               onClick={handleSyncDbNow}
               title={
                 isLocalDirect
-                  ? "本地直读模式无需 DB 同步"
-                  : "立即推拉数据库变更"
+                  ? t("settings.sync.localDirectNoSync")
+                  : t("settings.sync.syncNow")
               }
             >
               {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-              立即同步数据库
+              {t("settings.sync.syncDb")}
             </Button>
 
             {testResult && (
@@ -237,7 +243,10 @@ export default function SyncSection() {
 
             {syncReport && (
               <span className="text-xs text-muted-foreground">
-                push {syncReport.pushed} / pull {syncReport.pulled}
+                {t("settings.sync.pushPullReport", {
+                  pushed: syncReport.pushed,
+                  pulled: syncReport.pulled,
+                })}
               </span>
             )}
             {syncError && (
@@ -247,7 +256,7 @@ export default function SyncSection() {
 
           {isLocalDirect && (
             <StatusNotice className="mt-3">
-              本地直读数据源：DB 同步已跳过，文件仅支持「彻底删除」。
+              {t("settings.sync.localDirectHint")}
             </StatusNotice>
           )}
         </section>
@@ -255,7 +264,7 @@ export default function SyncSection() {
         <section>
           <div className="mb-2.5 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-              本地文件状态（file_state）
+              {t("settings.sync.fileStates")}
             </p>
             <Button
               type="button"
@@ -269,18 +278,20 @@ export default function SyncSection() {
               ) : (
                 <RefreshCw />
               )}
-              刷新
+              {t("settings.sync.refresh")}
             </Button>
           </div>
 
           <GroupList>
             {!selectedLibraryId ? (
-              <GroupListEmpty>请选择书库</GroupListEmpty>
+              <GroupListEmpty>
+                {t("settings.sync.pleaseSelectLibrary")}
+              </GroupListEmpty>
             ) : fileStates.length === 0 ? (
               <GroupListEmpty>
                 {fileStatesLoading
-                  ? "加载中…"
-                  : "暂无跟踪的文件（首次下载或推送后将出现在这里）"}
+                  ? t("common.loading")
+                  : t("settings.sync.fileStatesEmpty")}
               </GroupListEmpty>
             ) : (
               fileStates.map((row) => (
@@ -319,6 +330,7 @@ function LabelledSelect({
   placeholder,
   disabled,
 }: LabelledSelectProps) {
+  const { t } = useTranslation()
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
@@ -334,7 +346,7 @@ function LabelledSelect({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
       >
-        <option value="">{placeholder ?? "请选择"}</option>
+        <option value="">{placeholder ?? t("common.pleaseSelect")}</option>
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
@@ -362,6 +374,7 @@ function FileStateRowView({
   isLocalDirect,
   onChanged,
 }: FileStateRowViewProps) {
+  const { t } = useTranslation()
   return (
     <GroupListItem className="flex flex-wrap items-center justify-between gap-3 bg-card hover:bg-muted/40">
       <div className="min-w-0 flex-1">
@@ -376,7 +389,9 @@ function FileStateRowView({
       </div>
 
       {disabled ? (
-        <span className="text-[11px] text-muted-foreground">请选择数据源</span>
+        <span className="text-[11px] text-muted-foreground">
+          {t("settings.sync.selectDataSourceHint")}
+        </span>
       ) : (
         <DownloadButton
           libraryId={libraryId}

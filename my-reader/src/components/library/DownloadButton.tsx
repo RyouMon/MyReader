@@ -1,5 +1,6 @@
 import { CheckCircle2, Download, Loader2, Trash2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
 import type { FileStateRow } from "@/hooks/sync/useSyncActions"
@@ -38,6 +39,7 @@ export default function DownloadButton({
   onStateChange,
   className,
 }: DownloadButtonProps) {
+  const { t } = useTranslation()
   const [state, setState] = useState<DownloadButtonState>(initialState)
   const [busy, setBusy] = useState<"download" | "evict" | "delete" | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -126,14 +128,14 @@ export default function DownloadButton({
           variant="outline"
           disabled={busy !== null}
           onClick={handleDownload}
-          title="下载整文件"
+          title={t("downloadButton.downloadFile")}
         >
           {busy === "download" ? (
             <Loader2 className="animate-spin" />
           ) : (
             <Download />
           )}
-          {busy === "download" ? "下载中" : "下载"}
+          {busy === "download" ? t("downloadButton.downloading") : t("downloadButton.download")}
         </Button>
       )}
 
@@ -141,10 +143,10 @@ export default function DownloadButton({
         <>
           <span
             className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
-            title="已下载到本地"
+            title={t("downloadButton.downloadedLocal")}
           >
             <CheckCircle2 className="size-3.5" />
-            已下载
+            {t("downloadButton.downloaded")}
           </span>
           <Button
             type="button"
@@ -152,10 +154,10 @@ export default function DownloadButton({
             variant="ghost"
             disabled={busy !== null}
             onClick={handleEvict}
-            title="释放本地空间（保留云端）"
+            title={t("downloadButton.evictLocal")}
           >
             {busy === "evict" ? <Loader2 className="animate-spin" /> : <X />}
-            释放
+            {t("downloadButton.evict")}
           </Button>
         </>
       )}
@@ -168,17 +170,17 @@ export default function DownloadButton({
         onClick={handleDelete}
         title={
           isLocalDirect
-            ? "从本地书库彻底删除该文件"
-            : "同时删除本地与云端，并从 manifest 移除"
+            ? t("downloadButton.deleteLocal")
+            : t("downloadButton.deleteEverywhere")
         }
       >
         {busy === "delete" ? <Loader2 className="animate-spin" /> : <Trash2 />}
-        {confirmDelete ? "再次点击确认删除" : "删除"}
+        {confirmDelete ? t("downloadButton.confirmDelete") : t("downloadButton.delete")}
       </Button>
 
       {error && (
         <span className="text-[11px] text-destructive" title={error}>
-          失败
+          {t("downloadButton.failed")}
         </span>
       )}
     </div>

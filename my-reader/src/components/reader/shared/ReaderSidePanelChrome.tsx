@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import { X } from "lucide-react"
 import type { ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
 type ReaderSidePanelFrameProps = {
@@ -49,6 +50,7 @@ export function ReaderSidePanelHeader({
   icon: Icon,
   onClose,
 }: ReaderSidePanelHeaderProps) {
+  const { t } = useTranslation()
   return (
     <div className="font-serif flex min-h-[52px] items-center justify-between gap-2 border-b border-reader-chrome-border px-4 py-3 text-[15px] font-semibold text-reader-chrome-fg sm:px-5">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -59,8 +61,8 @@ export function ReaderSidePanelHeader({
         <button
           type="button"
           className="reader-chrome-icon-btn shrink-0"
-          title="关闭"
-          aria-label="关闭"
+          title={t("reader.closePanel")}
+          aria-label={t("reader.closePanel")}
           onClick={onClose}
         >
           <X className="size-[18px]" />
