@@ -116,12 +116,17 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Err(_) => return not_found(),
     };
 
-    let repo = match CalibreBookRepository::open(&lib.path) {
+    let lib_path_str = match lib_path.to_str() {
+        Some(s) => s,
+        None => return not_found(),
+    };
+
+    let repo = match CalibreBookRepository::open(lib_path_str) {
         Ok(r) => r,
         Err(_) => return not_found(),
     };
 
-    let file_path = match repo.get_book_file_path(&lib.path, book_id, format) {
+    let file_path = match repo.get_book_file_path(lib_path_str, book_id, format) {
         Ok(Some(p)) => p,
         _ => return not_found(),
     };
@@ -137,7 +142,8 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         Ok(data) => {
             let content_type = match format.to_uppercase().as_str() {
                 "EPUB" => "application/epub+zip",
-                "CBZ" | "CBR" => "application/zip",
+                "CBZ" => "application/zip",
+                "CBR" => "application/x-rar-compressed",
                 "PDF" => "application/pdf",
                 _ => "application/octet-stream",
             };
