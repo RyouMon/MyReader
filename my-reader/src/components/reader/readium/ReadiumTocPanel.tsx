@@ -37,10 +37,10 @@ export function ReadiumTocPanel({
               <button
                 type="button"
                 className={cn(
-                  "reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-left text-sm text-reader-chrome-fg transition-colors",
+                  "reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-start text-sm text-reader-chrome-fg transition-colors",
                   activeHref === row.href.split("#")[0] && "bg-reader-chrome-muted/35",
                 )}
-                style={{ paddingLeft: `${8 + row.depth * 12}px` }}
+                style={{ paddingInlineStart: `${8 + row.depth * 12}px` }}
                 onClick={() => onSelect(row)}
               >
                 {row.title}

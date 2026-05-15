@@ -104,7 +104,7 @@ const BookCard = memo(function BookCard({
         {primaryFormat ? (
           <Badge
             variant="secondary"
-            className="absolute left-2 top-2 rounded-sm border-0 bg-overlay px-1.5 py-0 text-[9px] uppercase tracking-wide text-ink-inverse/85 backdrop-blur-sm"
+            className="absolute start-2 top-2 rounded-sm border-0 bg-overlay px-1.5 py-0 text-[9px] uppercase tracking-wide text-ink-inverse/85 backdrop-blur-sm"
           >
             {primaryFormat}
           </Badge>

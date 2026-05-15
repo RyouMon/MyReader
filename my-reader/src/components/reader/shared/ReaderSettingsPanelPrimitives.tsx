@@ -57,7 +57,7 @@ export function ReaderSettingSlider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-      <span className="min-w-[28px] text-right font-mono text-xs text-reader-chrome-muted">
+      <span className="min-w-[28px] text-end font-mono text-xs text-reader-chrome-muted">
         {displayValue}
       </span>
       {rightHint != null && (

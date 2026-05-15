@@ -112,7 +112,7 @@ export default function BookGrid({
             style={{
               position: "absolute",
               top: vRow.start,
-              left: 0,
+              insetInlineStart: 0,
               width: "100%",
               height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
             }}

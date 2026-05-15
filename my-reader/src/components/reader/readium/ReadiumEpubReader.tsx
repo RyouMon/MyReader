@@ -118,7 +118,7 @@ function injectScrollPadding(docs: Document[], paddingX: number): void {
       doc.head.appendChild(style)
     }
     const px = Math.round(paddingX * 10)
-    style.textContent = `body { padding-left: ${px}px !important; padding-right: ${px}px !important; }`
+    style.textContent = `body { padding-inline-start: ${px}px !important; padding-inline-end: ${px}px !important; }`
   })
 }
 
@@ -180,7 +180,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                   type="button"
                   onClick={() => onSpreadChange(value)}
                   className={cn(
-                    "rounded-md border px-3 py-2 text-left text-[13px] transition-colors",
+                    "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
                     spreadMode === value
                       ? "border-primary bg-primary/10 text-reader-chrome-fg"
                       : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
@@ -215,7 +215,7 @@ function EpubSettingsPanel({ visible, isFixedLayout, onClose }: EpubSettingsPane
                     type="button"
                     onClick={() => onReflowThemeChange(value)}
                     className={cn(
-                      "relative flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-left text-[12px] transition-all shadow-sm",
+                      "relative flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-start text-[12px] transition-all shadow-sm",
                       reflowThemeActive === value
                         ? "border-reader-chrome-active"
                         : "border-transparent hover:brightness-95",

@@ -313,7 +313,7 @@ function BookDetailPage() {
           返回书库
         </Button>
 
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ms-auto flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
@@ -385,7 +385,7 @@ function BookDetailPage() {
 
                 {/* Format badges on cover */}
                 {book.formats.length > 0 && (
-                  <div className="absolute right-3 bottom-3 left-3 z-[2] flex flex-wrap gap-[5px]">
+                  <div className="absolute end-3 bottom-3 start-3 z-[2] flex flex-wrap gap-[5px]">
                 {book.formats.map((fmt) => (
                   <Badge
                     key={fmt}
@@ -494,7 +494,7 @@ function BookDetailPage() {
                     <BookOpen data-icon="inline-start" className="size-[18px]" />
                     <span>开始阅读</span>
                     {selectedFormat && (
-                      <span className="ml-0.5 text-[13px] font-normal opacity-80">
+                      <span className="ms-0.5 text-[13px] font-normal opacity-80">
                         ({selectedFormat})
                       </span>
                     )}
@@ -503,7 +503,7 @@ function BookDetailPage() {
                     <Button
                       variant="ghost"
                       disabled={!canReadInApp}
-                      className="h-full rounded-none border-0 border-l border-white/20 bg-transparent px-3 text-primary-foreground hover:bg-primary/90"
+                      className="h-full rounded-none border-0 border-s border-white/20 bg-transparent px-3 text-primary-foreground hover:bg-primary/90"
                       onClick={(e) => {
                         e.stopPropagation()
                         setFormatDropdownOpen(!formatDropdownOpen)
@@ -512,7 +512,7 @@ function BookDetailPage() {
                       <ChevronDown className="size-[14px]" />
                     </Button>
                     {formatDropdownOpen && (
-                      <div className="animate-in fade-in-0 slide-in-from-top-1 absolute top-[calc(100%+6px)] right-0 z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg duration-150">
+                      <div className="animate-in fade-in-0 slide-in-from-top-1 absolute top-[calc(100%+6px)] end-0 z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg duration-150">
                         <div className="border-b border-border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           选择阅读格式
                         </div>
@@ -540,7 +540,7 @@ function BookDetailPage() {
                             >
                               {fmt}
                             </div>
-                            <div className="min-w-0 flex-1 text-left">
+                            <div className="min-w-0 flex-1 text-start">
                               <div className="font-semibold">{fmt}</div>
                               <div className="mt-px text-[12px] text-muted-foreground">
                                 {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
@@ -633,10 +633,10 @@ function BookDetailPage() {
               <div className="overflow-hidden rounded-t-md">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-muted text-left text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      <th className="rounded-tl-md px-3.5 py-2">格式</th>
+                    <tr className="bg-muted text-start text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <th className="rounded-ts-md px-3.5 py-2">格式</th>
                       <th className="px-3.5 py-2">大小</th>
-                      <th className="rounded-tr-md px-3.5 py-2 text-right">
+                      <th className="rounded-te-md px-3.5 py-2 text-end">
                         操作
                       </th>
                     </tr>
@@ -665,7 +665,7 @@ function BookDetailPage() {
                         <td className="px-3.5 py-3 text-[13.5px]">
                           {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
                         </td>
-                        <td className="px-3.5 py-3 text-right">
+                        <td className="px-3.5 py-3 text-end">
                           <div className="flex justify-end gap-1">
                             {isReadableInAppFormat(fmt) ? (
                               <Button
@@ -678,7 +678,7 @@ function BookDetailPage() {
                                 阅读
                               </Button>
                             ) : (
-                              <span className="pr-2 text-[12px] text-muted-foreground">
+                              <span className="pe-2 text-[12px] text-muted-foreground">
                                 不支持
                               </span>
                             )}
@@ -860,7 +860,7 @@ function RelatedBookCard({
     <button
       type="button"
       onClick={onClick}
-      className="group/related w-[120px] shrink-0 text-left"
+      className="group/related w-[120px] shrink-0 text-start"
     >
       <div className="aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-card transition-all duration-200 group-hover/related:-translate-y-[3px]">
         {coverSrc ? (

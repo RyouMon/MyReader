@@ -132,7 +132,7 @@ export default function AppSidebar() {
                   : "bg-library-indicator-off",
               )}
             />
-            <span className="flex-1 truncate text-left">
+            <span className="flex-1 truncate text-start">
               {activeLibrary?.name ?? "未选择书库"}
             </span>
             <ChevronsUpDown className="size-3 opacity-50" />
@@ -175,7 +175,7 @@ export default function AppSidebar() {
                             "font-medium text-primary",
                         )}
                       >
-                        <span className="min-w-0 flex-1 truncate text-left">
+                        <span className="min-w-0 flex-1 truncate text-start">
                           {lib.name}
                         </span>
                         <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">

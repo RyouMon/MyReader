@@ -50,21 +50,21 @@ export default function Toolbar({
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
+      <SidebarTrigger className="-ms-1" />
+      <Separator orientation="vertical" className="me-2 h-4" />
 
       {/* Search */}
       <div className="relative flex-1 max-w-sm">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="搜索书名、作者、标签…"
-          className="pl-8 h-8 bg-card border-border"
+          className="ps-8 h-8 bg-card border-border"
         />
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ms-auto flex items-center gap-1">
         {/* View toggle */}
         <Button
           variant="ghost"

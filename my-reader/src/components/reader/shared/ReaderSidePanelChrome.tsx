@@ -24,8 +24,8 @@ export function ReaderSidePanelFrame({
       className={cn(
         "reader-chrome-panel-aside absolute inset-y-0 z-[60] flex w-[300px] flex-col transition-transform duration-300 ease-out",
         isLeft
-          ? "reader-chrome-panel-shadow-l left-0 border-r border-reader-chrome-border"
-          : "reader-chrome-panel-shadow-r right-0 overflow-y-auto border-l border-reader-chrome-border",
+          ? "reader-chrome-panel-shadow-l start-0 border-e border-reader-chrome-border"
+          : "reader-chrome-panel-shadow-r end-0 overflow-y-auto border-s border-reader-chrome-border",
         visible
           ? "translate-x-0"
           : isLeft

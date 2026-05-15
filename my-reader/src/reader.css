@@ -298,7 +298,7 @@
 }
 .reader-progress-thumb {
   position: absolute;
-  left: calc(var(--reader-book-progress, 0) * 1%);
+  inset-inline-start: calc(var(--reader-book-progress, 0) * 1%);
   top: 50%;
   transform: translate(-50%, -50%) scale(0);
   width: 14px;
@@ -334,13 +334,14 @@
 .toc-item-active::before {
   content: "";
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
   background: var(--reader-chrome-active);
-  border-radius: 0 3px 3px 0;
+  border-start-end-radius: 3px;
+  border-end-end-radius: 3px;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -652,6 +653,13 @@
     box-shadow: -8px 0 24px oklch(0.35 0.04 55 / 0.1);
   }
 
+  [dir="rtl"] .reader-chrome-panel-shadow-l {
+    box-shadow: -8px 0 24px oklch(0.35 0.04 55 / 0.1);
+  }
+  [dir="rtl"] .reader-chrome-panel-shadow-r {
+    box-shadow: 8px 0 24px oklch(0.35 0.04 55 / 0.1);
+  }
+
   .reader-chrome-panel-shadow-up {
     box-shadow: 0 -4px 16px oklch(0.35 0.04 55 / 0.08);
   }
@@ -677,19 +685,19 @@
     gap: 0.625rem;
     border-style: none;
     padding: 0.625rem 1.25rem;
-    text-align: left;
+    text-align: start;
     font-size: 0.84375rem;
     font-family: inherit;
     color: var(--reader-chrome-fg);
     background: transparent;
     transition:
       background-color 150ms ease,
-      padding-left 150ms ease,
+      padding-inline-start 150ms ease,
       color 150ms ease;
   }
   .reader-toc-row:hover:not(.toc-item-active) {
     background: var(--reader-chrome-hover);
-    padding-left: 1.375rem;
+    padding-inline-start: 1.375rem;
   }
   .reader-toc-row.toc-item-active {
     font-weight: 600;

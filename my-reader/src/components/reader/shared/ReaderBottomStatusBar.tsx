@@ -28,7 +28,7 @@ export function ReaderBottomStatusBar({
         <div className="absolute inset-0 bg-reader-chrome-border/40" />
         {typeof progress === "number" ? (
           <div
-            className="absolute left-0 top-0 h-full bg-reader-chrome-active/60 transition-[width] duration-300"
+            className="absolute start-0 top-0 h-full bg-reader-chrome-active/60 transition-[width] duration-300"
             style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
           />
         ) : null}
