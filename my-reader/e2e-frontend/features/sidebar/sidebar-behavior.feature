@@ -1,0 +1,57 @@
+@regression @sidebar
+Feature: 侧边栏行为
+  作为 MyReader 用户
+  我希望侧边栏能根据窗口宽度选择展开方式，并支持手动折叠和展开
+  以便在不同屏幕尺寸下都能高效浏览书库
+
+  Rule: 桌面端侧边栏以实际宽度展开
+
+    Background:
+      Given 用户访问书库首页
+      And 窗口宽度足够显示侧边栏
+
+    @positive @smoke
+    Scenario: 侧边栏默认展开显示完整内容
+      Then 侧边栏应该处于展开状态
+
+    @positive
+    Scenario: 点击折叠按钮后侧边栏折叠
+      When 用户点击侧边栏折叠按钮
+      Then 侧边栏应该处于折叠状态
+
+    @positive
+    Scenario: 点击展开按钮后侧边栏恢复展开
+      Given 侧边栏已折叠
+      When 用户点击侧边栏展开按钮
+      Then 侧边栏应该处于展开状态
+
+  Rule: 移动端侧边栏以叠加层展开
+
+    Background:
+      Given 用户访问书库首页
+
+    @positive
+    Scenario: 窗口缩窄至移动端宽度后侧边栏自动折叠
+      Given 窗口宽度足够显示侧边栏
+      When 窗口宽度调整为移动端宽度
+      Then 侧边栏应该处于折叠状态
+
+    @positive
+    Scenario: 在移动端宽度下点击展开按钮侧边栏以叠加层展开
+      Given 窗口宽度调整为移动端宽度
+      When 用户点击侧边栏展开按钮
+      Then 侧边栏应该以叠加层形式展开
+
+    @positive
+    Scenario: 在叠加层模式下点击空白区域侧边栏关闭
+      Given 窗口宽度调整为移动端宽度
+      And 侧边栏已以叠加层形式展开
+      When 用户点击叠加层外的空白区域
+      Then 侧边栏叠加层应该关闭
+
+    @positive
+    Scenario: 在叠加层模式下点击折叠按钮侧边栏关闭
+      Given 窗口宽度调整为移动端宽度
+      And 侧边栏已以叠加层形式展开
+      When 用户点击侧边栏折叠按钮
+      Then 侧边栏叠加层应该关闭
