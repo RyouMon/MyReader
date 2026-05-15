@@ -35,10 +35,10 @@ npm run lint                  # ESLint (expo lint)
 ```bash
 npm run test:ci               # Jest in CI mode (jest-expo preset)
 npm run test                  # Jest watch mode
-npm run e2e:maestro:home      # Maestro E2E home flow
-npm run e2e:maestro:settings  # Maestro E2E settings flow
-npm run e2e:build:android:local   # EAS local Android build (e2e-test profile)
-npm run e2e:build:ios:local       # EAS local iOS build (e2e-test profile)
+npm run test:e2e              # Maestro E2E (runs all flows in e2e/maestro/)
+  # Note: dev-build E2E requires a running Expo dev server (npx expo start)
+npm run build:dev:android     # EAS local Android build (development profile)
+npm run build:dev:ios         # EAS local iOS build (development profile)
 ```
 
 ## Testing

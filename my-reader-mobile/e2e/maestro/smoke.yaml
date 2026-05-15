@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+---
+# Feature: 应用冒烟测试
+# Scenario: 应用启动并显示主页
+
+# When 用户启动应用
+- runFlow: ../steps/shared/when/user_launches_app.yaml
+
+# When 关闭开发启动器（开发构建时可能出现，发布构建时跳过）
+- runFlow: ../steps/shared/when/dismiss_dev_launcher.yaml
+
+# Then 主页应可见
+- runFlow: ../steps/shared/then/home_page_should_be_visible.yaml

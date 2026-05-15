@@ -45,6 +45,12 @@
           "android": {}
         }
       ],
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent"
+        }
+      ],
       "./plugins/with-readium-ios",
       "./plugins/with-android-desugaring",
       "./plugins/with-android-debug-network-config",

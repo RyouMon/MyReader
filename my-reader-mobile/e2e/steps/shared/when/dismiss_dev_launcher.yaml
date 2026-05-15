@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Dismiss dev launcher (dev builds only)
+---
+# In dev builds, the Expo Dev Launcher may appear if no dev server is running.
+# This step is a no-op in release builds (element not found = condition not met).
+- runFlow:
+    when:
+      visible: "Enter URL manually"
+    commands:
+      - back

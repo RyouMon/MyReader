@@ -40,6 +40,9 @@ Jest + jest-expo preset + @testing-library/react-native
 cd my-reader-mobile
 npm run test:ci               # Jest in CI mode（jest-expo preset）
 npm run test                  # Jest watch mode
+npm run test:e2e              # Maestro E2E（runs all flows in e2e/maestro/）
+npm run build:dev:android     # EAS local Android build（development profile）
+npm run build:dev:ios         # EAS local iOS build（development profile）
 ```
 
 ### 核心配置
@@ -163,11 +166,12 @@ describe('auth navigation', () => {
 
 ```bash
 cd my-reader-mobile
-npm run e2e:maestro:home      # Maestro home flow
-npm run e2e:maestro:settings  # Maestro settings flow
-npm run e2e:build:android:local   # EAS local Android build（e2e-test profile）
-npm run e2e:build:ios:local       # EAS local iOS build（e2e-test profile）
+npm run test:e2e              # Maestro E2E（runs all flows in e2e/maestro/）
+npm run build:dev:android     # EAS local Android build（development profile）
+npm run build:dev:ios         # EAS local iOS build（development profile）
 ```
+
+> **Dev-build E2E 前置条件**：使用 development build 运行 E2E 测试时，需先启动 Expo 开发服务器（`npx expo start`），否则 dev client 会弹出 "Enter URL manually" 提示。
 
 ### 架构概述
 
@@ -187,7 +191,7 @@ E2E层采用 **Maestro + BDD** 架构：
 build:
   type: build
   params:
-    profile: e2e-test
+    profile: development
 
 maestro:
   type: maestro
@@ -225,10 +229,10 @@ it('renders LoginForm within baseline', async () => {
 | 层级 | 工具 | 版本 | 职责 |
 |---|---|---|---|
 | 单元测试 | Jest | ^29.7.0 | 测试运行器 |
-| 单元测试 | jest-expo | ~53.0.0 | Expo预设配置 |
+| 单元测试 | jest-expo | ~55.0.0 | Expo预设配置 |
 | 单元测试 | @testing-library/react-native | ^13.3.0 | 组件测试 |
 | 单元测试 | MSW | ^2.7.0 | API Mock |
-| 导航集成 | expo-router/testing-library | ~5.0.0 | renderRouter |
+| 导航集成 | expo-router/testing-library | ~55.0.0 | renderRouter |
 | E2E | Maestro CLI | latest | E2E执行引擎 |
 | E2E | Maestro Cloud | — | CI云执行 |
 | 性能 | Reassure | ^1.3.0 | 渲染性能回归 |

@@ -28,8 +28,7 @@ e2e/
 │       ├── when/
 │       └── then/
 └── maestro/                           ← L2（生成目录）
-    └── {domain}/
-        └── {feature}.yaml
+    └── {feature}.yaml
 ```
 
 ---
@@ -40,7 +39,7 @@ e2e/
 |---|---|---|
 | Feature | `kebab-case.feature` | `login.feature` |
 | Step | `{action}.yaml` | `user_launches_app.yaml` |
-| 生成Flow | `{feature}.yaml` | `login.yaml` |
+| 生成Flow | `{feature}.yaml` | `smoke.yaml` |
 
 Step文件名使用英文snake_case，不加when/then/given前缀（由父目录表达行为类型）：
 - `user_launches_app` — 用户操作
@@ -106,7 +105,7 @@ appId: ${APP_ID}
 1. 读取Feature所在domain对应的 `steps/{domain}/` 目录
 2. 按Scenario顺序遍历每个步骤
 3. 按第六节规则将Gherkin步骤转为group+文件名
-4. 生成 `runFlow: ../../steps/{domain}/{group}/{action}.yaml`
+4. 生成 `runFlow: ../steps/{domain}/{group}/{action}.yaml`
 5. 展开Scenario Outline的Examples
 
 约束：不创造新逻辑，不修改已有step文件。
@@ -173,8 +172,7 @@ e2e/
 │           ├── home_page_should_be_visible.yaml
 │           └── welcome_message_should_be_displayed.yaml
 └── maestro/
-    └── auth/
-        └── login.yaml
+    └── login.yaml
 ```
 
 ---
@@ -262,7 +260,7 @@ appId: ${APP_ID}
 
 ## L2: 生成的可执行 Flow
 
-`maestro/auth/login.yaml`
+`maestro/login.yaml`
 
 ```yaml
 appId: ${APP_ID}
@@ -271,26 +269,26 @@ appId: ${APP_ID}
 # Scenario: 使用有效手机号和验证码登录成功
 
 # Given 用户已注册账户 "13800138000"
-- runFlow: ../../steps/auth/given/user_has_registered_account.yaml
+- runFlow: ../steps/auth/given/user_has_registered_account.yaml
   env:
     phone: "13800138000"
 
 # When 用户输入手机号 "13800138000"
-- runFlow: ../../steps/auth/when/user_inputs_phone_number.yaml
+- runFlow: ../steps/auth/when/user_inputs_phone_number.yaml
   env:
     phone: "13800138000"
 
 # And 用户输入验证码 "123456"
-- runFlow: ../../steps/auth/when/user_inputs_verification_code.yaml
+- runFlow: ../steps/auth/when/user_inputs_verification_code.yaml
   env:
     code: "123456"
 
 # And 用户点击登录按钮
-- runFlow: ../../steps/auth/when/user_taps_login_button.yaml
+- runFlow: ../steps/auth/when/user_taps_login_button.yaml
 
 # Then 应跳转到首页
-- runFlow: ../../steps/auth/then/home_page_should_be_visible.yaml
+- runFlow: ../steps/auth/then/home_page_should_be_visible.yaml
 
 # And 应显示欢迎提示
-- runFlow: ../../steps/auth/then/welcome_message_should_be_displayed.yaml
+- runFlow: ../steps/auth/then/welcome_message_should_be_displayed.yaml
 ```
