@@ -16,7 +16,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
         Response::builder()
             .status(404)
             .body(Vec::new())
-            .unwrap()
+            .expect("infallible hardcoded response")
     };
 
     let raw_path = request.uri().path();
@@ -35,7 +35,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.lock().unwrap();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
@@ -68,7 +68,7 @@ pub fn bookcover_handler<R: tauri::Runtime>(
                 .header("access-control-allow-origin", "*")
                 .header("cache-control", "max-age=604800, immutable")
                 .body(data)
-                .unwrap()
+                .expect("infallible hardcoded response")
         }
         Err(_) => not_found(),
     }
@@ -85,7 +85,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
             .status(404)
             .header("access-control-allow-origin", "*")
             .body(Vec::new())
-            .unwrap()
+            .expect("infallible hardcoded response")
     };
 
     let raw_path = request.uri().path();
@@ -105,7 +105,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
 
     let app = ctx.app_handle();
     let state = app.state::<AppState>();
-    let config = state.lock().unwrap();
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
 
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
@@ -161,7 +161,7 @@ pub fn bookfile_handler<R: tauri::Runtime>(
                 .header("content-type", content_type)
                 .header("access-control-allow-origin", "*")
                 .body(data)
-                .unwrap()
+                .expect("infallible hardcoded response")
         }
         Err(_) => not_found(),
     }

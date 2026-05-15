@@ -72,7 +72,7 @@ pub fn list_data_sources(
 ) -> Result<Vec<DataSourceDto>, AppError> {
     info!("Start to list data sources.");
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         Ok(DataSourceService::list_data_sources(&config))
     })();
     match &result {
@@ -97,7 +97,7 @@ pub fn add_local_data_source(
         name, root_path
     );
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         let dto = DataSourceService::add_local_data_source(name, root_path, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");
@@ -132,7 +132,7 @@ pub fn add_webdav_data_source(
         name, endpoint, username
     );
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         let dto = DataSourceService::add_webdav_data_source(
             name, endpoint, username, password, root_path, &mut config,
         )?;
@@ -161,7 +161,7 @@ pub fn remove_data_source(
 ) -> Result<(), AppError> {
     info!("Start to remove data source. id: \"{id}\"");
     let result = (|| {
-        let mut config = state.lock().unwrap();
+        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
         DataSourceService::remove_data_source(&id, &mut config)?;
 
         let config_path = app.path().app_data_dir()?.join("config.json");

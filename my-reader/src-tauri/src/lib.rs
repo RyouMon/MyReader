@@ -72,7 +72,7 @@ pub fn run() -> Result<(), tauri::Error> {
     #[cfg(debug_assertions)]
     specta_builder
         .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
-        .unwrap();
+        .expect("failed to export tauri-specta types");
 
     let base = tauri::Builder::default()
         .plugin(
@@ -113,7 +113,7 @@ pub fn run() -> Result<(), tauri::Error> {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
-            *app.state::<AppState>().lock().unwrap() = config;
+            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config;
             if let Err(e) = asset_scope::sync_for_reader_libraries(&app.handle()) {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",

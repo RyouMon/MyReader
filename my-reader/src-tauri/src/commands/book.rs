@@ -15,7 +15,7 @@ pub fn get_books(
 ) -> Result<Vec<BookEntry>, AppError> {
     info!("Start to get books. library id: {library_id:?}");
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         BookService::get_books(&lib_path)
@@ -45,7 +45,7 @@ pub fn get_books_page(
         "Start to get books page. library id: {library_id:?}, offset: {offset}, limit: {limit}, sort by: {sort_by:?}, search: {search:?}"
     );
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         BookService::get_books_page(&lib_path, offset, limit, sort_by.as_deref(), search.as_deref())
@@ -74,7 +74,7 @@ pub fn get_book_detail(
 ) -> Result<BookDetail, AppError> {
     info!("Start to get book detail. library id: {library_id:?}, book id: {book_id}");
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         BookService::get_book_detail(&lib_path, book_id)
@@ -109,7 +109,7 @@ pub fn get_series_books(
         series_name
     );
     let result = (|| {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
         drop(config);
         BookService::get_series_books(&lib_path, &series_name, exclude_book_id)
@@ -143,7 +143,7 @@ pub async fn get_book_cover(
     );
 
     let lib_path = {
-        let config = state.lock().unwrap();
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let lib = config
             .libraries
             .iter()
