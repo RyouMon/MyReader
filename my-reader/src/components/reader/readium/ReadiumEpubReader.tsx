@@ -31,7 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { EpubNavigator } from "@readium/navigator"
-import { Layout, Links, Locator, LocatorLocations, type Publication } from "@readium/shared"
+import { Layout, type Links, Locator, LocatorLocations, type Publication } from "@readium/shared"
 import { AlignJustify, AlignLeft, BookOpen, Columns2, PanelLeftRightDashed, ScrollText, Settings, Square, TextInitial } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
@@ -85,7 +85,7 @@ function injectReaderScrollbarStyles(): void {
 function setupIframeWindow(
   wnd: Window,
   opts: { isScrollMode: boolean; paddingX: number; getChromeVisible: () => boolean },
-): void {
+): (() => void) | undefined {
   const iframe = wnd.frameElement as HTMLIFrameElement | null
   const alreadySetup = iframe?.dataset.myreaderSetup === "1"
   if (iframe) iframe.dataset.myreaderSetup = "1"
@@ -106,7 +106,9 @@ function setupIframeWindow(
       doc.documentElement.classList.toggle("reader-scrollbar-visible", opts.getChromeVisible() || nearRight)
     }
     wnd.addEventListener("pointermove", onMove)
+    return () => wnd.removeEventListener("pointermove", onMove)
   }
+  return undefined
 }
 
 function injectScrollPadding(docs: Document[], paddingX: number): void {
@@ -531,17 +533,20 @@ export function ReadiumEpubReader({
     const container = containerRef.current
     const isScrollMode = readerSettings.readingLayout === "scroll" && !isFixedLayout
 
+    const cleanups: (() => void)[] = []
+
     const trySetup = (iframe: HTMLIFrameElement) => {
       if (iframe.dataset.myreaderSetup === "1") return
       const doSetup = () => {
         try {
           const wnd = iframe.contentWindow
           if (!wnd) return
-          setupIframeWindow(wnd, {
+          const cleanup = setupIframeWindow(wnd, {
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
           })
+          if (cleanup) cleanups.push(cleanup)
         } catch {
           // cross-origin or not ready
         }
@@ -565,7 +570,10 @@ export function ReadiumEpubReader({
       }
     })
     observer.observe(container, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cleanups.forEach((fn) => fn())
+    }
   }, [readerSettings.readingLayout, isFixedLayout, readerSettings.paddingX])
 
   useLocatorProgressSync({
