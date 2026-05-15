@@ -499,6 +499,7 @@ export function ReadiumEpubReader({
     [isFixedLayout, publication, closePanels],
   )
 
+  const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError && readerSettings.readingLayout !== "scroll"
   const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
@@ -684,10 +685,11 @@ export function ReadiumEpubReader({
               if (!nav2) return
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
+              const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
               if (key === "ArrowRight" || key === "PageDown" || rec.keyCode === 39) {
-                nav2.goForward(false, () => {})
+                isRtl ? nav2.goBackward(false, () => {}) : nav2.goForward(false, () => {})
               } else if (key === "ArrowLeft" || key === "PageUp" || rec.keyCode === 37) {
-                nav2.goBackward(false, () => {})
+                isRtl ? nav2.goForward(false, () => {}) : nav2.goBackward(false, () => {})
               }
             },
           },
@@ -799,8 +801,8 @@ export function ReadiumEpubReader({
       edgeTurnOverlays={
         readerSettings.readingLayout !== "scroll" ? (
           <ReaderPaginateEdgeTurnStrips
-            nearLeft={nearLeft}
-            nearRight={nearRight}
+            nearLeft={isRtl ? nearRight : nearLeft}
+            nearRight={isRtl ? nearLeft : nearRight}
             onPrev={onReadiumEdgePrev}
             onNext={onReadiumEdgeNext}
             prevLabel="上一页"

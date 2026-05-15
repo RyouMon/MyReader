@@ -120,6 +120,7 @@ export function ReadiumDivinaReader({
     [publication, closePanels, goToIndex],
   )
 
+  const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError
   const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
@@ -215,10 +216,11 @@ export function ReadiumDivinaReader({
             peripheral: (ev) => {
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
+              const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
               if (key === "ArrowRight" || key === "PageDown" || rec.keyCode === 39) {
-                stepBy(1)
+                stepBy(isRtl ? -1 : 1)
               } else if (key === "ArrowLeft" || key === "PageUp" || rec.keyCode === 37) {
-                stepBy(-1)
+                stepBy(isRtl ? 1 : -1)
               }
             },
           },
@@ -383,8 +385,8 @@ export function ReadiumDivinaReader({
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
-          nearLeft={nearLeft}
-          nearRight={nearRight}
+          nearLeft={isRtl ? nearRight : nearLeft}
+          nearRight={isRtl ? nearLeft : nearRight}
           onPrev={onReadiumEdgePrev}
           onNext={onReadiumEdgeNext}
           prevLabel="上一页"

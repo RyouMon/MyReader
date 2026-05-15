@@ -11,6 +11,7 @@ import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import { useAppUiStore } from "@/stores/appUiStore"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 import type { PDFDocumentProxy } from "pdfjs-dist"
 import { Locator, LocatorLocations } from "@readium/shared"
@@ -87,6 +88,7 @@ export function ReadiumPdfReader({
   const [pageNum, setPageNum] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [renderScale, setRenderScale] = useState(PDF_RENDER_BASE)
+  const direction = useAppUiStore((s) => s.fixedLayout.direction)
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     if (totalPages < 1) return []
@@ -178,9 +180,12 @@ export function ReadiumPdfReader({
     [totalPages],
   )
 
-  const edgeTurnActive =
-    totalPages > 0 && !error && !tocOpen && !settingsOpen
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(edgeTurnActive, readerRootRef)
+  const isRtl = direction === "rtl"
+  const edgeTurnActive = totalPages > 0 && !error && !tocOpen && !settingsOpen
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   const onPdfEdgePrev = useCallback(() => {
     go(-1)
@@ -201,12 +206,16 @@ export function ReadiumPdfReader({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === "PageDown") go(1)
-      else if (e.key === "ArrowLeft" || e.key === "PageUp") go(-1)
+      const isRtl = direction === "rtl"
+      if (e.key === "ArrowRight" || e.key === "PageDown") {
+        go(isRtl ? -1 : 1)
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        go(isRtl ? 1 : -1)
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [go])
+  }, [go, direction])
 
   if (error) {
     return (
@@ -280,8 +289,8 @@ export function ReadiumPdfReader({
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
-          nearLeft={nearLeft}
-          nearRight={nearRight}
+          nearLeft={isRtl ? nearRight : nearLeft}
+          nearRight={isRtl ? nearLeft : nearRight}
           onPrev={onPdfEdgePrev}
           onNext={onPdfEdgeNext}
           prevLabel="上一页"

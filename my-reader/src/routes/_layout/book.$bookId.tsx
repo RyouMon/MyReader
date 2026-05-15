@@ -308,7 +308,7 @@ function BookDetailPage() {
         >
           <ArrowLeft
             data-icon="inline-start"
-            className="transition-transform group-hover/back:-translate-x-0.5"
+            className="transition-transform group-hover/back:-translate-x-0.5 rtl:group-hover/back:translate-x-0.5"
           />
           返回书库
         </Button>

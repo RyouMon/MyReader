@@ -117,7 +117,7 @@ function LibraryCard({
       className={cn(
         "bg-card transition-[opacity,transform,background-color]",
         "hover:bg-muted/40",
-        isRemoving && "pointer-events-none translate-x-2 opacity-0",
+        isRemoving && "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >

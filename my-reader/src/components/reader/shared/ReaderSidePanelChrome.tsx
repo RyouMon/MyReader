@@ -29,8 +29,8 @@ export function ReaderSidePanelFrame({
         visible
           ? "translate-x-0"
           : isLeft
-            ? "pointer-events-none -translate-x-full"
-            : "pointer-events-none translate-x-full",
+            ? "pointer-events-none ltr:-translate-x-full rtl:translate-x-full"
+            : "pointer-events-none ltr:translate-x-full rtl:-translate-x-full",
       )}
     >
       {children}
