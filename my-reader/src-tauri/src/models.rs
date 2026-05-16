@@ -9,6 +9,12 @@ pub struct LibraryConfig {
     pub id: String,
     pub name: String,
     pub path: String,
+    #[serde(default)]
+    pub source_type: Option<String>,
+    #[serde(default)]
+    pub data_source_id: Option<String>,
+    #[serde(default)]
+    pub source_path: Option<String>,
 }
 
 /// 数据源配置；用于在本机保存可连接的数据位置（如本地目录、WebDAV）。
@@ -179,6 +185,16 @@ pub struct LibraryInfo {
     pub name: String,
     pub path: String,
     pub book_count: usize,
+    pub source_type: Option<String>,
+    pub data_source_id: Option<String>,
+    pub source_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WebdavFolderEntry {
+    pub name: String,
+    pub path: String,
 }
 
 /// `get_reading_progress` 返回：Readium `Locator` 的 JSON（与 `@readium/shared` 一致）。

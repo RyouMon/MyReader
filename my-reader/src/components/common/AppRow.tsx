@@ -1,5 +1,6 @@
 import {
   BookCopy,
+  Cloud,
   Database,
   Folder,
   HardDrive,
@@ -18,6 +19,7 @@ const ROW_ICONS = {
   tag: Tag,
   series: BookCopy,
   author: User,
+  cloud: Cloud,
 } as const
 
 export type AppRowIconName = keyof typeof ROW_ICONS

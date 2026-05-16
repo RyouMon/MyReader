@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MyReader · 书库管理 — 添加书库（含 WebDAV 浏览）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="settings_theme.css" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --background:        #F7F3EC;
+    --foreground:        #1C1714;
+    --card:              #FFFFFF;
+    --card-foreground:   #1C1714;
+    --primary:           #C4622D;
+    --primary-foreground:#FAF6F0;
+    --secondary:         #F5F1EA;
+    --secondary-foreground:#1C1714;
+    --muted:             #EDE8DF;
+    --muted-foreground:  #5C5349;
+    --accent:            #F5E8DF;
+    --accent-foreground: #1C1714;
+    --destructive:       #B53A2F;
+    --border:            rgba(28,23,20,0.10);
+    --input:             rgba(28,23,20,0.06);
+    --ring:              #C4622D;
+    --sidebar-bg:        #EDE8DF;
+    --sidebar-fg:        #1C1714;
+    --sidebar-border:    rgba(28,23,20,0.10);
+    --settings-nav-bg:   #F5F1EA;
+    --font-sans:  'Noto Sans SC', 'DM Sans', system-ui, sans-serif;
+    --font-serif: 'Noto Serif SC', 'Lora', serif;
+    --font-mono:  'JetBrains Mono', monospace;
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-lg: 12px;
+  }
+
+  html, body {
+    height: 100% !important;
+    overflow: hidden !important;
+    background: var(--background) !important;
+    color: var(--foreground) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif) !important;
+  }
+
+  /* ── Layout ─────────────────────────────────────── */
+  .app-shell {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* ── Column 1: App Sidebar ───────────────────────── */
+  .app-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--sidebar-bg) !important;
+    border-right: 1px solid var(--sidebar-border);
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 12px 10px;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  .app-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    margin-bottom: 6px;
+  }
+
+  .logo-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #C4622D, #7a2e3b);
+    color: #faf5ef;
+    font-family: var(--font-serif) !important;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .app-name {
+    font-family: var(--font-serif) !important;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sidebar-fg);
+    letter-spacing: -0.01em;
+  }
+
+  .library-selector {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 150ms;
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+  .library-selector:hover { background: #e2d8c8; }
+
+  .lib-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6dae54;
+    flex-shrink: 0;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px;
+  }
+
+  .sidebar-group { margin-bottom: 4px; }
+
+  .sidebar-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    padding: 6px 10px 4px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--sidebar-fg);
+    transition: background 120ms, color 120ms;
+    position: relative;
+    user-select: none;
+  }
+  .sidebar-item:hover { background: #e2d8c8; }
+  .sidebar-item.active {
+    background: color-mix(in srgb, #C4622D 12%, transparent);
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .sidebar-item .item-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.75;
+  }
+  .sidebar-item.active .item-icon { opacity: 1; }
+
+  .sidebar-badge {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .sidebar-sep {
+    height: 1px;
+    background: var(--sidebar-border);
+    margin: 6px 8px;
+  }
+
+  .sidebar-footer {
+    padding: 8px;
+    border-top: 1px solid var(--sidebar-border);
+  }
+
+  /* ── Column 2: Settings Nav ──────────────────────── */
+  .settings-nav {
+    width: 192px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--settings-nav-bg) !important;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .settings-nav-header {
+    padding: 18px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-nav-title {
+    font-family: var(--font-serif) !important;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .settings-nav-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--foreground);
+    transition: background 120ms;
+    user-select: none;
+    position: relative;
+  }
+  .settings-nav-item:hover { background: #e5ddd0; }
+  .settings-nav-item.active {
+    background: color-mix(in srgb, #C4622D 10%, transparent);
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .settings-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .settings-nav-item .nav-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .settings-nav-item.active .nav-icon { opacity: 1; }
+
+  /* ── Column 3: Settings Content ─────────────────── */
+  .settings-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--background) !important;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .content-header {
+    padding: 20px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .content-title {
+    font-family: var(--font-serif) !important;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .content-subtitle {
+    font-size: 13px;
+    color: var(--muted-foreground);
+    margin-top: 3px;
+  }
+
+  .content-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 28px 28px;
+  }
+
+  .content-body::-webkit-scrollbar { width: 5px; }
+  .content-body::-webkit-scrollbar-track { background: transparent; }
+  .content-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Library Cards ───────────────────────────────── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    margin-bottom: 10px;
+  }
+
+  .library-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--card) !important;
+  }
+
+  .library-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    background: var(--card) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    transition: background 120ms;
+    animation: card-in 250ms ease-out both;
+  }
+  .library-card:last-child { border-bottom: none; }
+  .library-card:hover { background: color-mix(in srgb, var(--muted) 40%, var(--card)) !important; }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .library-card:nth-child(1) { animation-delay: 0ms; }
+  .library-card:nth-child(2) { animation-delay: 60ms; }
+  .library-card:nth-child(3) { animation-delay: 120ms; }
+
+  .lib-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--primary);
+  }
+
+  .lib-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .lib-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--foreground);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lib-path {
+    font-family: var(--font-mono) !important;
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lib-count {
+    font-size: 12px;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .lib-type-badge {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+  .lib-type-badge.local {
+    background: var(--muted);
+    color: var(--muted-foreground);
+  }
+  .lib-type-badge.webdav {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+  }
+
+  .delete-btn {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted-foreground);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 120ms, color 120ms, border-color 120ms;
+  }
+  .delete-btn:hover {
+    background: color-mix(in srgb, var(--destructive) 10%, transparent);
+    color: var(--destructive);
+    border-color: color-mix(in srgb, var(--destructive) 20%, transparent);
+  }
+  .delete-btn.confirming {
+    background: color-mix(in srgb, var(--destructive) 14%, transparent);
+    color: var(--destructive);
+    border-color: color-mix(in srgb, var(--destructive) 30%, transparent);
+  }
+
+  /* ── Add Library Panel ───────────────────────────── */
+  .add-panel {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 150ms;
+    animation: card-in 250ms ease-out 180ms both;
+  }
+  .add-panel:focus-within {
+    border-color: var(--primary);
+    border-style: solid;
+  }
+
+  .add-panel-trigger {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
+    transition: background 120ms;
+    user-select: none;
+  }
+  .add-panel-trigger:hover {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+  }
+
+  .add-panel-body {
+    padding: 16px;
+    background: var(--card) !important;
+    border-top: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .add-panel-body.open {
+    display: flex;
+    animation: expand-in 250ms ease-out;
+  }
+
+  @keyframes expand-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Type Selector Cards ─────────────────────────── */
+  .type-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .type-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 150ms, background 150ms, box-shadow 150ms;
+    background: var(--card) !important;
+    user-select: none;
+  }
+  .type-card:hover {
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    background: color-mix(in srgb, var(--primary) 3%, var(--card)) !important;
+  }
+  .type-card.selected {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 5%, var(--card)) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+
+  .type-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .type-card.local .type-card-icon {
+    background: var(--muted);
+    color: var(--muted-foreground);
+  }
+  .type-card.webdav .type-card-icon {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+  }
+  .type-card.selected.local .type-card-icon {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+  .type-card.selected.webdav .type-card-icon {
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+  }
+
+  .type-card-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .type-card-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--foreground);
+    margin-bottom: 1px;
+  }
+  .type-card-desc {
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+    line-height: 1.4;
+  }
+
+  .type-card-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 150ms, background 150ms;
+  }
+  .type-card.selected .type-card-check {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+  .type-card.selected .type-card-check svg {
+    color: var(--primary-foreground);
+  }
+
+  /* ── Form Fields ─────────────────────────────────── */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .field-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .field-hint {
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+    line-height: 1.5;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .path-input {
+    flex: 1;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input) !important;
+    color: var(--foreground) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .path-input::placeholder { color: var(--muted-foreground); font-family: var(--font-sans) !important; }
+  .path-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+  }
+
+  .select-input {
+    flex: 1;
+    height: 36px;
+    padding: 0 32px 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--input) !important;
+    color: var(--foreground) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 12.5px;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235C5349' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    cursor: pointer;
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .select-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+  }
+
+  .btn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 120ms, box-shadow 120ms, transform 80ms;
+    white-space: nowrap;
+    font-family: var(--font-sans) !important;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-secondary {
+    background: var(--secondary) !important;
+    color: var(--foreground) !important;
+    border-color: var(--border);
+  }
+  .btn-secondary:hover {
+    background: #ddd3be !important;
+    box-shadow: 0 1px 4px rgba(28,23,20,0.10);
+  }
+
+  .btn-primary {
+    background: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-color: transparent;
+  }
+  .btn-primary:hover {
+    background: #a85520 !important;
+    box-shadow: 0 2px 8px rgba(196,98,45,0.30);
+  }
+
+  .btn-ghost {
+    background: transparent !important;
+    color: var(--muted-foreground) !important;
+    border-color: transparent;
+  }
+  .btn-ghost:hover {
+    background: var(--muted) !important;
+    color: var(--foreground) !important;
+  }
+
+  .action-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* ── Hint ────────────────────────────────────────── */
+  .hint-box {
+    display: flex;
+    gap: 9px;
+    padding: 11px 14px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 15%, transparent);
+    margin-top: 16px;
+    animation: card-in 250ms ease-out 240ms both;
+  }
+
+  .hint-icon { color: var(--primary); flex-shrink: 0; margin-top: 1px; }
+
+  .hint-text {
+    font-size: 12.5px;
+    color: var(--muted-foreground);
+    line-height: 1.6;
+  }
+
+  /* ── Confirm tooltip ─────────────────────────────── */
+  .confirm-tip {
+    font-size: 11.5px;
+    color: var(--destructive);
+    opacity: 0;
+    transform: translateX(4px);
+    transition: opacity 150ms, transform 150ms;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .confirm-tip.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* ── Delete animation ────────────────────────────── */
+  @keyframes card-out {
+    to { opacity: 0; transform: translateX(8px) scaleY(0.9); }
+  }
+  .library-card.removing {
+    animation: card-out 200ms ease-in forwards;
+    pointer-events: none;
+  }
+
+  /* ── WebDAV Browser Modal ────────────────────────── */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(28, 23, 20, 0.40);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    animation: overlay-in 200ms ease-out;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .modal-panel {
+    width: 480px;
+    max-height: 520px;
+    background: var(--card) !important;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(28,23,20,0.18), 0 2px 8px rgba(28,23,20,0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modal-in 250ms ease-out;
+  }
+
+  @keyframes modal-in {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .modal-title {
+    font-family: var(--font-serif) !important;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .modal-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted-foreground);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 120ms, color 120ms;
+  }
+  .modal-close:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+
+  .modal-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted-foreground);
+    flex-shrink: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .modal-breadcrumb::-webkit-scrollbar { display: none; }
+
+  .breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 120ms, color 120ms;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .breadcrumb-item:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+  .breadcrumb-item.current {
+    color: var(--foreground);
+    font-weight: 500;
+    cursor: default;
+  }
+  .breadcrumb-item.current:hover {
+    background: transparent;
+    color: var(--foreground);
+  }
+
+  .breadcrumb-sep {
+    color: var(--border);
+    flex-shrink: 0;
+  }
+
+  .modal-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .modal-list::-webkit-scrollbar { width: 4px; }
+  .modal-list::-webkit-scrollbar-track { background: transparent; }
+  .modal-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .folder-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background 120ms;
+    user-select: none;
+  }
+  .folder-item:hover {
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+  }
+  .folder-item.selected {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+  }
+
+  .folder-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+  }
+  .folder-item.selected .folder-icon {
+    color: var(--primary);
+  }
+
+  .folder-name {
+    font-size: 13px;
+    color: var(--foreground);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .folder-item.selected .folder-name {
+    font-weight: 500;
+    color: var(--primary);
+  }
+
+  .folder-enter-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+    opacity: 0;
+    transition: opacity 120ms;
+  }
+  .folder-item:hover .folder-enter-icon {
+    opacity: 0.6;
+  }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .modal-selected-path {
+    font-family: var(--font-mono) !important;
+    font-size: 11.5px;
+    color: var(--muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ── Loading spinner in modal ────────────────────── */
+  .folder-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 0;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .spin-icon {
+    animation: spin 1s linear infinite;
+  }
+
+  /* ── Empty folder state ──────────────────────────── */
+  .folder-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 0;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    gap: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- COL 1: App Sidebar                         -->
+  <!-- ═══════════════════════════════════════════ -->
+  <aside class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="app-logo">
+        <div class="logo-mark">M</div>
+        <span class="app-name">MyReader</span>
+      </div>
+      <div class="library-selector">
+        <span class="lib-dot"></span>
+        <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">我的书库</span>
+        <i data-lucide="chevrons-up-down" style="width:12px;height:12px;opacity:0.5;"></i>
+      </div>
+    </div>
+
+    <div class="sidebar-content">
+      <div class="sidebar-group">
+        <div class="sidebar-item">
+          <i data-lucide="library" class="item-icon"></i>
+          <span>全部</span>
+          <span class="sidebar-badge">142</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="clock" class="item-icon"></i>
+          <span>最近阅读</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="star" class="item-icon"></i>
+          <span>收藏</span>
+          <span class="sidebar-badge">12</span>
+        </div>
+      </div>
+
+      <div class="sidebar-sep"></div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-group-label">分类浏览</div>
+        <div class="sidebar-item">
+          <i data-lucide="tags" class="item-icon"></i>
+          <span>标签</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="book-copy" class="item-icon"></i>
+          <span>丛书</span>
+        </div>
+        <div class="sidebar-item">
+          <i data-lucide="user" class="item-icon"></i>
+          <span>作者</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-item active">
+        <i data-lucide="settings" class="item-icon"></i>
+        <span>设置</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- COL 2: Settings Nav                        -->
+  <!-- ═══════════════════════════════════════════ -->
+  <nav class="settings-nav">
+    <div class="settings-nav-header">
+      <div class="settings-nav-title">设置</div>
+    </div>
+    <div class="settings-nav-content">
+      <div class="settings-nav-item active">
+        <i data-lucide="folder-open" class="nav-icon"></i>
+        <span>书库管理</span>
+      </div>
+      <div class="settings-nav-item">
+        <i data-lucide="database" class="nav-icon"></i>
+        <span>数据源</span>
+      </div>
+      <div class="settings-nav-item">
+        <i data-lucide="refresh-cw" class="nav-icon"></i>
+        <span>同步</span>
+      </div>
+      <div class="settings-nav-item">
+        <i data-lucide="palette" class="nav-icon"></i>
+        <span>外观</span>
+      </div>
+      <div class="settings-nav-item">
+        <i data-lucide="book-open" class="nav-icon"></i>
+        <span>阅读偏好</span>
+      </div>
+      <div class="settings-nav-item">
+        <i data-lucide="info" class="nav-icon"></i>
+        <span>关于</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- COL 3: Settings Content                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <main class="settings-content">
+
+    <div style="display:flex;flex-direction:column;height:100%;">
+      <div class="content-header">
+        <h1 class="content-title">书库管理</h1>
+        <p class="content-subtitle">管理应用扫描书籍的目录，支持本地路径与 WebDAV 远程存储</p>
+      </div>
+      <div class="content-body">
+        <div class="section-label">已添加的书库</div>
+
+        <div class="library-list" id="library-list">
+
+          <!-- Card 1: Local library -->
+          <div class="library-card" data-id="lib-1">
+            <div class="lib-icon-wrap">
+              <i data-lucide="folder" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="lib-info">
+              <div class="lib-name">我的书库</div>
+              <div class="lib-path">/Users/me/Documents/Books</div>
+            </div>
+            <span class="lib-type-badge local">本地</span>
+            <span class="lib-count confirm-tip" id="tip-lib-1">再次点击确认删除</span>
+            <span class="lib-count" id="count-lib-1">142 本</span>
+            <button class="delete-btn" onclick="handleDelete(this,'lib-1')" title="删除书库">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+
+          <!-- Card 2: Local library (external) -->
+          <div class="library-card" data-id="lib-2">
+            <div class="lib-icon-wrap">
+              <i data-lucide="hard-drive" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="lib-info">
+              <div class="lib-name">外部硬盘</div>
+              <div class="lib-path">/Volumes/ExternalDrive/Library</div>
+            </div>
+            <span class="lib-type-badge local">本地</span>
+            <span class="lib-count confirm-tip" id="tip-lib-2">再次点击确认删除</span>
+            <span class="lib-count" id="count-lib-2">87 本</span>
+            <button class="delete-btn" onclick="handleDelete(this,'lib-2')" title="删除书库">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+
+          <!-- Card 3: WebDAV library -->
+          <div class="library-card" data-id="lib-3">
+            <div class="lib-icon-wrap">
+              <i data-lucide="cloud" style="width:18px;height:18px;"></i>
+            </div>
+            <div class="lib-info">
+              <div class="lib-name">坚果云书库</div>
+              <div class="lib-path">https://dav.jianguoyun.com/dav/books</div>
+            </div>
+            <span class="lib-type-badge webdav">WebDAV</span>
+            <span class="lib-count confirm-tip" id="tip-lib-3">再次点击确认删除</span>
+            <span class="lib-count" id="count-lib-3">56 本</span>
+            <button class="delete-btn" onclick="handleDelete(this,'lib-3')" title="删除书库">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Add Library Panel -->
+        <div class="add-panel" id="add-panel">
+          <div class="add-panel-trigger" onclick="toggleAddPanel()">
+            <i data-lucide="plus-circle" style="width:15px;height:15px;"></i>
+            <span id="add-trigger-text">添加书库</span>
+          </div>
+          <div class="add-panel-body" id="add-panel-body">
+
+            <!-- Type Selector -->
+            <div class="field-group">
+              <div class="field-label">数据源类型</div>
+              <div class="type-selector">
+                <div class="type-card local selected" onclick="selectType('local')" id="type-local">
+                  <div class="type-card-icon">
+                    <i data-lucide="folder" style="width:20px;height:20px;"></i>
+                  </div>
+                  <div class="type-card-text">
+                    <div class="type-card-title">本地</div>
+                    <div class="type-card-desc">本机文件系统</div>
+                  </div>
+                  <div class="type-card-check">
+                    <i data-lucide="check" style="width:12px;height:12px;"></i>
+                  </div>
+                </div>
+                <div class="type-card webdav" onclick="selectType('webdav')" id="type-webdav">
+                  <div class="type-card-icon">
+                    <i data-lucide="cloud" style="width:20px;height:20px;"></i>
+                  </div>
+                  <div class="type-card-text">
+                    <div class="type-card-title">WebDAV</div>
+                    <div class="type-card-desc">网络存储服务</div>
+                  </div>
+                  <div class="type-card-check">
+                    <i data-lucide="check" style="width:12px;height:12px;"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Local form -->
+            <div id="form-local">
+              <div class="field-group">
+                <div class="field-label">书库路径</div>
+                <div class="input-row">
+                  <input
+                    type="text"
+                    class="path-input"
+                    id="path-input-local"
+                    placeholder="输入书库路径，例如 /Users/me/Books"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button class="btn btn-secondary" onclick="browseLocalPath()" style="gap:5px;">
+                    <i data-lucide="folder-search" style="width:13px;height:13px;"></i>
+                    浏览
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- WebDAV form -->
+            <div id="form-webdav" style="display:none;">
+              <div class="field-group">
+                <div class="field-label">数据源</div>
+                <select class="select-input" id="webdav-source-select">
+                  <option value="" disabled selected>选择已配置的 WebDAV 数据源</option>
+                  <option value="ds-1">坚果云</option>
+                  <option value="ds-2">自建 NAS</option>
+                </select>
+                <div class="field-hint">WebDAV 数据源可在「数据源」设置中添加与配置</div>
+              </div>
+              <div class="field-group">
+                <div class="field-label">书库路径</div>
+                <div class="input-row">
+                  <input
+                    type="text"
+                    class="path-input"
+                    id="path-input-webdav"
+                    placeholder="浏览或输入 WebDAV 上的文件夹路径"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button class="btn btn-secondary" onclick="browseWebdavPath()" style="gap:5px;">
+                    <i data-lucide="folder-search" style="width:13px;height:13px;"></i>
+                    浏览
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-row">
+              <button class="btn btn-secondary" onclick="closeAddPanel()">取消</button>
+              <button class="btn btn-primary" onclick="confirmAdd()">
+                <i data-lucide="plus" style="width:13px;height:13px;"></i>
+                确认添加
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hint -->
+        <div class="hint-box">
+          <i data-lucide="info" class="hint-icon" style="width:14px;height:14px;"></i>
+          <p class="hint-text">
+            添加书库后，应用将自动扫描目录内所有支持格式的电子书（EPUB、PDF、MOBI 等）。
+            删除书库不会删除磁盘上的文件。WebDAV 书库需要先在「数据源」中配置连接。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── WebDAV File Browser Modal ────────────── -->
+    <div class="modal-overlay hidden" id="webdav-modal" onclick="closeWebdavModal(event)">
+      <div class="modal-panel" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="modal-header">
+          <div class="modal-title">选择文件夹</div>
+          <button class="modal-close" onclick="closeWebdavModal()" title="关闭">
+            <i data-lucide="x" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="modal-breadcrumb" id="modal-breadcrumb">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Folder List -->
+        <div class="modal-list" id="modal-folder-list">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Footer -->
+        <div class="modal-footer">
+          <div class="modal-selected-path" id="modal-selected-path">/</div>
+          <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeWebdavModal()">取消</button>
+            <button class="btn btn-primary" onclick="confirmWebdavSelection()" id="btn-select-folder">
+              <i data-lucide="check" style="width:13px;height:13px;"></i>
+              选择此文件夹
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  /* ── Init icons ─────────────────────────────── */
+  lucide.createIcons();
+
+  /* ── State ──────────────────────────────────── */
+  let addPanelOpen = false;
+  let selectedType = 'local';
+  let libCounter = 4;
+
+  /* WebDAV browser state */
+  const webdavTree = {
+    '/': {
+      folders: [
+        { name: 'documents', path: '/documents' },
+        { name: 'books', path: '/books' },
+        { name: 'photos', path: '/photos' },
+        { name: 'music', path: '/music' },
+      ]
+    },
+    '/documents': {
+      folders: [
+        { name: 'work', path: '/documents/work' },
+        { name: 'personal', path: '/documents/personal' },
+      ]
+    },
+    '/documents/work': {
+      folders: [
+        { name: 'reports', path: '/documents/work/reports' },
+        { name: 'contracts', path: '/documents/work/contracts' },
+      ]
+    },
+    '/documents/work/reports': { folders: [] },
+    '/documents/work/contracts': { folders: [] },
+    '/documents/personal': { folders: [] },
+    '/books': {
+      folders: [
+        { name: 'fiction', path: '/books/fiction' },
+        { name: 'non-fiction', path: '/books/non-fiction' },
+        { name: 'technical', path: '/books/technical' },
+        { name: 'magazines', path: '/books/magazines' },
+      ]
+    },
+    '/books/fiction': { folders: [] },
+    '/books/non-fiction': { folders: [] },
+    '/books/technical': { folders: [] },
+    '/books/magazines': { folders: [] },
+    '/photos': {
+      folders: [
+        { name: '2024', path: '/photos/2024' },
+        { name: '2025', path: '/photos/2025' },
+      ]
+    },
+    '/photos/2024': { folders: [] },
+    '/photos/2025': { folders: [] },
+    '/music': { folders: [] },
+  };
+
+  let currentWebdavPath = '/';
+  let selectedFolderPath = null;
+
+  /* ── Add panel ──────────────────────────────── */
+  function toggleAddPanel() {
+    addPanelOpen ? closeAddPanel() : openAddPanel();
+  }
+
+  function openAddPanel() {
+    addPanelOpen = true;
+    document.getElementById('add-panel-body').classList.add('open');
+    document.getElementById('path-input-local').focus();
+    lucide.createIcons();
+  }
+
+  function closeAddPanel() {
+    addPanelOpen = false;
+    document.getElementById('add-panel-body').classList.remove('open');
+    document.getElementById('path-input-local').value = '';
+    document.getElementById('path-input-webdav').value = '';
+    selectType('local');
+  }
+
+  /* ── Type selector ──────────────────────────── */
+  function selectType(type) {
+    selectedType = type;
+    const localCard = document.getElementById('type-local');
+    const webdavCard = document.getElementById('type-webdav');
+    const formLocal = document.getElementById('form-local');
+    const formWebdav = document.getElementById('form-webdav');
+
+    localCard.classList.toggle('selected', type === 'local');
+    webdavCard.classList.toggle('selected', type === 'webdav');
+
+    formLocal.style.display = type === 'local' ? '' : 'none';
+    formWebdav.style.display = type === 'webdav' ? '' : 'none';
+
+    lucide.createIcons();
+  }
+
+  /* ── Browse actions ─────────────────────────── */
+  function browseLocalPath() {
+    /* Simulated local directory picker */
+    document.getElementById('path-input-local').value = '/Users/me/Downloads/NewBooks';
+    document.getElementById('path-input-local').focus();
+  }
+
+  function browseWebdavPath() {
+    /* Open WebDAV file browser modal */
+    currentWebdavPath = '/';
+    selectedFolderPath = '/';
+    renderWebdavBrowser();
+    document.getElementById('webdav-modal').classList.remove('hidden');
+  }
+
+  /* ── WebDAV Browser ─────────────────────────── */
+  function renderWebdavBrowser() {
+    renderBreadcrumb();
+    renderFolderList();
+    updateSelectedPath();
+    lucide.createIcons();
+  }
+
+  function renderBreadcrumb() {
+    const container = document.getElementById('modal-breadcrumb');
+    const parts = currentWebdavPath.split('/').filter(Boolean);
+    let html = '';
+
+    /* Root */
+    html += `<div class="breadcrumb-item ${parts.length === 0 ? 'current' : ''}" onclick="navigateWebdav('/')">
+      <i data-lucide="server" style="width:12px;height:12px;"></i>
+      <span>/</span>
+    </div>`;
+
+    parts.forEach((part, i) => {
+      const path = '/' + parts.slice(0, i + 1).join('/');
+      const isCurrent = i === parts.length - 1;
+      html += `<span class="breadcrumb-sep">/</span>`;
+      html += `<div class="breadcrumb-item ${isCurrent ? 'current' : ''}" onclick="navigateWebdav('${path}')">
+        <span>${part}</span>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderFolderList() {
+    const container = document.getElementById('modal-folder-list');
+    const node = webdavTree[currentWebdavPath];
+
+    if (!node) {
+      container.innerHTML = `<div class="folder-empty">
+        <i data-lucide="folder-x" style="width:24px;height:24px;opacity:0.4;"></i>
+        <span>此文件夹为空</span>
+      </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    /* Parent folder (..) if not at root */
+    let html = '';
+    if (currentWebdavPath !== '/') {
+      const parentPath = '/' + currentWebdavPath.split('/').filter(Boolean).slice(0, -1).join('/');
+      if (!parentPath || parentPath === '/') {
+        var parentResolved = '/';
+      } else {
+        var parentResolved = parentPath;
+      }
+      html += `<div class="folder-item" onclick="navigateWebdav('${parentResolved}')">
+        <i data-lucide="corner-left-up" class="folder-icon" style="width:16px;height:16px;"></i>
+        <span class="folder-name" style="color:var(--muted-foreground);">..</span>
+      </div>`;
+    }
+
+    node.folders.forEach(folder => {
+      const isSelected = selectedFolderPath === folder.path;
+      html += `<div class="folder-item ${isSelected ? 'selected' : ''}" onclick="selectFolder('${folder.path}')">
+        <i data-lucide="folder" class="folder-icon"></i>
+        <span class="folder-name">${folder.name}</span>
+        <i data-lucide="chevron-right" class="folder-enter-icon"></i>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+    lucide.createIcons();
+  }
+
+  function updateSelectedPath() {
+    const el = document.getElementById('modal-selected-path');
+    el.textContent = selectedFolderPath || '/';
+  }
+
+  function navigateWebdav(path) {
+    currentWebdavPath = path;
+    selectedFolderPath = path;
+    renderWebdavBrowser();
+  }
+
+  function selectFolder(path) {
+    selectedFolderPath = path;
+    renderWebdavBrowser();
+  }
+
+  function confirmWebdavSelection() {
+    if (selectedFolderPath) {
+      document.getElementById('path-input-webdav').value = selectedFolderPath;
+    }
+    closeWebdavModal();
+  }
+
+  function closeWebdavModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('webdav-modal').classList.add('hidden');
+  }
+
+  /* ── Confirm add ────────────────────────────── */
+  function confirmAdd() {
+    const inputId = selectedType === 'local' ? 'path-input-local' : 'path-input-webdav';
+    const input = document.getElementById(inputId);
+    const path = input.value.trim();
+
+    if (!path) {
+      input.style.borderColor = 'var(--destructive)';
+      input.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--destructive) 15%, transparent)';
+      input.focus();
+      setTimeout(() => {
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+      }, 1400);
+      return;
+    }
+
+    const id = 'lib-' + libCounter++;
+    const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
+    const isWebdav = selectedType === 'webdav';
+    const icon = isWebdav ? 'cloud' : 'folder';
+    const typeBadge = isWebdav
+      ? '<span class="lib-type-badge webdav">WebDAV</span>'
+      : '<span class="lib-type-badge local">本地</span>';
+
+    const list = document.getElementById('library-list');
+    const card = document.createElement('div');
+    card.className = 'library-card';
+    card.setAttribute('data-id', id);
+    card.style.animationDelay = '0ms';
+    card.innerHTML = `
+      <div class="lib-icon-wrap">
+        <i data-lucide="${icon}" style="width:18px;height:18px;"></i>
+      </div>
+      <div class="lib-info">
+        <div class="lib-name">${escapeHtml(name)}</div>
+        <div class="lib-path">${escapeHtml(path)}</div>
+      </div>
+      ${typeBadge}
+      <span class="lib-count confirm-tip" id="tip-${id}">再次点击确认删除</span>
+      <span class="lib-count" id="count-${id}">扫描中…</span>
+      <button class="delete-btn" onclick="handleDelete(this,'${id}')" title="删除书库">
+        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+      </button>
+    `;
+    list.appendChild(card);
+    lucide.createIcons();
+
+    closeAddPanel();
+
+    /* Simulate scan complete */
+    setTimeout(() => {
+      const el = document.getElementById('count-' + id);
+      if (el) el.textContent = '0 本';
+    }, 1200);
+  }
+
+  /* ── Delete with confirm ────────────────────── */
+  const pendingDelete = {};
+
+  function handleDelete(btn, id) {
+    if (pendingDelete[id]) {
+      clearTimeout(pendingDelete[id]);
+      delete pendingDelete[id];
+      const card = document.querySelector(`[data-id="${id}"]`);
+      btn.classList.remove('confirming');
+      const tip = document.getElementById('tip-' + id);
+      const count = document.getElementById('count-' + id);
+      if (tip) tip.classList.remove('visible');
+      if (count) count.style.display = '';
+      if (card) {
+        card.classList.add('removing');
+        setTimeout(() => card.remove(), 200);
+      }
+    } else {
+      btn.classList.add('confirming');
+      const tip = document.getElementById('tip-' + id);
+      const count = document.getElementById('count-' + id);
+      if (tip) tip.classList.add('visible');
+      if (count) count.style.display = 'none';
+      pendingDelete[id] = setTimeout(() => {
+        btn.classList.remove('confirming');
+        if (tip) tip.classList.remove('visible');
+        if (count) count.style.display = '';
+        delete pendingDelete[id];
+      }, 3000);
+    }
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

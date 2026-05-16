@@ -1,6 +1,8 @@
 import type { CalibreBook } from "my-reader-tools/types/book"
-import { memo, useCallback, useState } from "react"
-import { buildCoverUrl } from "@/lib/cover"
+import { isTauri } from "@tauri-apps/api/core"
+import { listen } from "@tauri-apps/api/event"
+import { memo, useCallback, useEffect, useState } from "react"
+import { buildCoverUrl, bumpCoverVersion } from "@/lib/cover"
 import { cn } from "@/lib/utils"
 
 export interface BookProgressSnapshot {
@@ -21,6 +23,12 @@ export function generateCoverGradient(title: string): string {
   }
   const hue = Math.abs(hash) % 360
   return `linear-gradient(148deg, hsl(${hue}, 32%, 30%) 0%, hsl(${(hue + 24) % 360}, 28%, 18%) 100%)`
+}
+
+/** Clear the broken-covers cache and bump version so covers re-render. */
+export function resetBrokenCovers() {
+  brokenCovers.clear()
+  bumpCoverVersion()
 }
 
 interface BookCoverProps {
@@ -50,6 +58,17 @@ export const BookCover = memo(function BookCover({
   showProgress = true,
 }: BookCoverProps) {
   const [imgFailed, setImgFailed] = useState(() => brokenCovers.has(book.path))
+  // When WebDAV covers finish downloading, clear broken state so covers re-render
+  useEffect(() => {
+    if (!isTauri()) return
+    const unlisten = listen<string>("webdav-covers-downloaded", () => {
+      brokenCovers.delete(book.path)
+      setImgFailed(false)
+    })
+    return () => {
+      unlisten.then((fn) => fn())
+    }
+  }, [book.path])
   const coverSrc =
     book.hasCover && libraryId && !imgFailed
       ? buildCoverUrl(libraryId, book.path)

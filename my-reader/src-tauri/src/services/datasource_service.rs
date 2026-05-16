@@ -1,6 +1,12 @@
+use tracing::info;
+
 use crate::error::AppError;
-use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, DataSourceDto};
+use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, DataSourceDto, WebdavFolderEntry};
 use crate::sync::credentials;
+use crate::utils::http::{
+    build_client, build_list_url, build_test_url, extract_credentials, map_status_error,
+    parse_propfind_response,
+};
 
 pub struct DataSourceService;
 
@@ -27,10 +33,8 @@ impl DataSourceService {
 
         let method = reqwest::Method::from_bytes(b"PROPFIND")
             .map_err(|err| AppError::Config(err.to_string()))?;
-        let target_url = build_webdav_test_url(endpoint, root_path)?;
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()?;
+        let target_url = build_test_url(endpoint, root_path)?;
+        let client = build_client(10)?;
 
         let response = client
             .request(method, target_url.clone())
@@ -56,25 +60,7 @@ impl DataSourceService {
         if status == reqwest::StatusCode::OK || status == reqwest::StatusCode::MULTI_STATUS {
             return Ok(());
         }
-        if status == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(AppError::Config(format!(
-                "WEBDAV_UNAUTHORIZED: {target_url}"
-            )));
-        }
-        if status == reqwest::StatusCode::FORBIDDEN {
-            return Err(AppError::Config(format!(
-                "WEBDAV_FORBIDDEN: {target_url}"
-            )));
-        }
-        if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(AppError::Config(format!(
-                "WEBDAV_NOT_FOUND: {target_url}"
-            )));
-        }
-        Err(AppError::Config(format!(
-            "WEBDAV_UNEXPECTED_STATUS: {}: {target_url}",
-            status.as_u16()
-        )))
+        Err(map_status_error(status, &target_url))
     }
 
     pub fn add_local_data_source(
@@ -201,39 +187,78 @@ impl DataSourceService {
 
         Ok(())
     }
-}
 
-/// 将用户输入的根路径规整为以 `/` 开头的绝对路径。
-pub fn normalize_webdav_root_path(root_path: Option<&str>) -> String {
-    let trimmed = root_path.unwrap_or("/").trim();
-    if trimmed.is_empty() {
-        return "/".to_string();
-    }
-    if trimmed.starts_with('/') {
-        return trimmed.to_string();
-    }
-    format!("/{}", trimmed)
-}
+    pub async fn list_webdav_folders(
+        data_source_id: &str,
+        rel_path: &str,
+        config: &AppConfig,
+    ) -> Result<Vec<WebdavFolderEntry>, AppError> {
+        let source = config
+            .data_sources
+            .iter()
+            .find(|s| s.id == data_source_id)
+            .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id)))?;
 
-/// 根据 endpoint 与 rootPath 组装用于探活的 WebDAV URL。
-pub fn build_webdav_test_url(
-    endpoint: &str,
-    root_path: Option<&str>,
-) -> Result<reqwest::Url, AppError> {
-    let mut url = reqwest::Url::parse(endpoint.trim())
-        .map_err(|err| AppError::Config(format!("INVALID_WEBDAV_ENDPOINT: {err}")))?;
-    let normalized_root = normalize_webdav_root_path(root_path);
-    let mut base_path = url.path().trim_end_matches('/').to_string();
-    if base_path.is_empty() {
-        base_path = "/".to_string();
+        let creds = extract_credentials(source)?;
+
+        let target_url = build_list_url(
+            &creds.endpoint,
+            creds.root_path.as_deref(),
+            rel_path,
+        )?;
+
+        info!(
+            "WebDAV PROPFIND. url: \"{target_url}\", data_source_id: \"{data_source_id}\", rel_path: \"{rel_path}\""
+        );
+
+        let method = reqwest::Method::from_bytes(b"PROPFIND")
+            .map_err(|err| AppError::Config(err.to_string()))?;
+
+        let client = build_client(15)?;
+
+        let response = client
+            .request(method, target_url.clone())
+            .header("Depth", "1")
+            .header("Content-Type", "application/xml; charset=utf-8")
+            .basic_auth(&creds.username, Some(&creds.password))
+            .body(
+                r#"<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:allprop /></d:propfind>"#,
+            )
+            .send()
+            .await
+            .map_err(|err| {
+                if err.is_timeout() {
+                    return AppError::Config(format!(
+                        "WEBDAV_TIMEOUT: request did not complete within 15s ({target_url})"
+                    ));
+                }
+                if err.is_connect() {
+                    return AppError::Config(format!(
+                        "WEBDAV_CONNECT_FAILED: check server address, port or network ({target_url})"
+                    ));
+                }
+                AppError::Config(format!("WEBDAV_REQUEST_FAILED: {err} ({target_url})"))
+            })?;
+
+        let status = response.status();
+        if status != reqwest::StatusCode::OK && status != reqwest::StatusCode::MULTI_STATUS {
+            return Err(AppError::Config(format!(
+                "WEBDAV_UNEXPECTED_STATUS: {}: {target_url}",
+                status.as_u16()
+            )));
+        }
+
+        let xml_body = response.text().await.map_err(|err| {
+            AppError::Config(format!("WEBDAV_READ_BODY_FAILED: {err}"))
+        })?;
+
+        let entries = parse_propfind_response(&xml_body, creds.root_path.as_deref(), rel_path)?;
+
+        info!(
+            "WebDAV folder listing. folder count: {}, data_source_id: \"{data_source_id}\", rel_path: \"{rel_path}\"",
+            entries.len()
+        );
+
+        Ok(entries)
     }
-    let final_path = if normalized_root == "/" {
-        base_path
-    } else if base_path == "/" {
-        normalized_root
-    } else {
-        format!("{base_path}{normalized_root}")
-    };
-    url.set_path(&final_path);
-    Ok(url)
 }

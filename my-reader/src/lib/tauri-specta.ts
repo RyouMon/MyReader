@@ -10,7 +10,9 @@ export const commands = {
 	/**  使用真实 WebDAV 请求进行连接测试，成功返回 `Ok(())`。 */
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
+	addWebdavLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_webdav_library", { dataSourceId, remotePath, name })),
 	refreshLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_library", { id })),
+	refreshWebdavLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_webdav_library", { id })),
 	/**  新增本地目录类型数据源。 */
 	addLocalDataSource: (input: NewLocalDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_local_data_source", { input })),
 	/**  新增 WebDAV 类型数据源。 */
@@ -20,6 +22,8 @@ export const commands = {
 	removeDataSource: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_data_source", { id })),
 	switchLibrary: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("switch_library", { id })),
 	getActiveLibraryId: () => typedError<string | null, ErrorKind>(__TAURI_INVOKE("get_active_library_id")),
+	/**  列出指定 WebDAV 数据源中某个路径下的所有文件夹。 */
+	webdavListFolders: (dataSourceId: string, path: string) => typedError<WebdavFolderEntry[], ErrorKind>(__TAURI_INVOKE("webdav_list_folders", { dataSourceId, path })),
 	getBooks: (libraryId: string | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_books", { libraryId })),
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
@@ -151,6 +155,9 @@ export type LibraryInfo = {
 	name: string,
 	path: string,
 	bookCount: number,
+	sourceType: string | null,
+	dataSourceId: string | null,
+	sourcePath: string | null,
 };
 
 export type NewLocalDataSourceInput = {
@@ -247,6 +254,11 @@ export type TestWebdavConnectionInput = {
 	username: string,
 	password: string,
 	rootPath: string | null,
+};
+
+export type WebdavFolderEntry = {
+	name: string,
+	path: string,
 };
 
 /* Tauri Specta runtime */

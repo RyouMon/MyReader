@@ -13,12 +13,9 @@ import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
 import { useLibrary } from "@/stores/libraryStore"
 
-/**
- * 书库设置分区，负责展示、添加与删除书库引用。
- */
 export default function LibrariesSection() {
   const { t } = useTranslation()
-  const { libraries, addLibrary, removeLibrary, activeLibraryId } = useLibrary()
+  const { libraries, addLibrary, addWebdavLibrary, removeLibrary, activeLibraryId } = useLibrary()
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -73,7 +70,7 @@ export default function LibrariesSection() {
           )}
         </GroupList>
 
-        <AddLibraryPanel onAddLibrary={addLibrary} />
+        <AddLibraryPanel onAddLibrary={addLibrary} onAddWebdavLibrary={addWebdavLibrary} />
 
         {/* Hint */}
         <StatusNotice className="mt-4">
@@ -93,9 +90,6 @@ interface LibraryCardProps {
   onDeleteClick: (id: string) => void
 }
 
-/**
- * 书库卡片行，采用统一 Row 结构承载状态与动作。
- */
 function LibraryCard({
   lib,
   index,
@@ -105,10 +99,8 @@ function LibraryCard({
   onDeleteClick,
 }: LibraryCardProps) {
   const { t } = useTranslation()
-  const isExternal =
-    lib.path.toLowerCase().includes("volume") ||
-    lib.path.toLowerCase().includes("external")
-  const rowIcon = isExternal ? "hardDrive" : "folder"
+  const isWebdav = lib.sourceType === "webdav"
+  const rowIcon = isWebdav ? "cloud" : "folder"
 
   return (
     <GroupListItem
@@ -127,6 +119,16 @@ function LibraryCard({
         detailClassName="font-mono"
         tail={
           <div className="flex items-center gap-2">
+            {isWebdav && (
+              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-primary">
+                WebDAV
+              </span>
+            )}
+            {!isWebdav && (
+              <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
+                {t("addLibraryForm.typeLocal")}
+              </span>
+            )}
             {isActive && (
               <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                 {t("settings.libraries.current")}

@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use std::path::PathBuf;
 use tracing::{debug, error};
 use tauri::http::Response;
 use tauri::Manager;
@@ -46,38 +47,63 @@ pub fn bookcover_handler<R: tauri::Runtime>(
         return not_found();
     };
 
-    let lib_path = match dunce::canonicalize(&lib.path) {
-        Ok(p) => p,
-        Err(_) => return not_found(),
-    };
-    let cover_file = lib_path.join(&book_path).join("cover.jpg");
-    let cover_file = match dunce::canonicalize(&cover_file) {
-        Ok(p) => p,
-        Err(_) => return not_found(),
-    };
-    if !cover_file.starts_with(&lib_path) {
-        return not_found();
-    }
-
-    match std::fs::read(&cover_file) {
-        Ok(data) => {
-            debug!(
-                "Success to serve book cover. library id: \"{}\", cover file: \"{}\", bytes: {}",
-                lib_id,
-                cover_file.display(),
-                data.len()
-            );
-            build_response(
-                200,
-                vec![
-                    ("content-type", "image/jpeg"),
-                    ("access-control-allow-origin", "*"),
-                    ("cache-control", "max-age=604800, immutable"),
-                ],
-                data,
-            )
+    // WebDAV libraries: covers are cached locally at {lib.path}/{book_path}/cover.jpg
+    if lib.source_type.as_deref() == Some("webdav") {
+        let cover_file = PathBuf::from(&lib.path).join(&book_path).join("cover.jpg");
+        match std::fs::read(&cover_file) {
+            Ok(data) => {
+                debug!(
+                    "Success to serve WebDAV cached cover. library id: \"{}\", cover file: \"{}\", bytes: {}",
+                    lib_id,
+                    cover_file.display(),
+                    data.len()
+                );
+                build_response(
+                    200,
+                    vec![
+                        ("content-type", "image/jpeg"),
+                        ("access-control-allow-origin", "*"),
+                        ("cache-control", "max-age=604800, immutable"),
+                    ],
+                    data,
+                )
+            }
+            Err(_) => not_found(),
         }
-        Err(_) => not_found(),
+    } else {
+        let lib_path = match dunce::canonicalize(&lib.path) {
+            Ok(p) => p,
+            Err(_) => return not_found(),
+        };
+        let cover_file = lib_path.join(&book_path).join("cover.jpg");
+        let cover_file = match dunce::canonicalize(&cover_file) {
+            Ok(p) => p,
+            Err(_) => return not_found(),
+        };
+        if !cover_file.starts_with(&lib_path) {
+            return not_found();
+        }
+
+        match std::fs::read(&cover_file) {
+            Ok(data) => {
+                debug!(
+                    "Success to serve book cover. library id: \"{}\", cover file: \"{}\", bytes: {}",
+                    lib_id,
+                    cover_file.display(),
+                    data.len()
+                );
+                build_response(
+                    200,
+                    vec![
+                        ("content-type", "image/jpeg"),
+                        ("access-control-allow-origin", "*"),
+                        ("cache-control", "max-age=604800, immutable"),
+                    ],
+                    data,
+                )
+            }
+            Err(_) => not_found(),
+        }
     }
 }
 
@@ -113,6 +139,11 @@ pub fn bookfile_handler<R: tauri::Runtime>(
     let Some(lib) = config.libraries.iter().find(|l| l.id == lib_id) else {
         return not_found();
     };
+
+    // WebDAV libraries don't have local book files yet
+    if lib.source_type.as_deref() == Some("webdav") {
+        return not_found();
+    }
 
     let lib_path = match dunce::canonicalize(&lib.path) {
         Ok(p) => p,

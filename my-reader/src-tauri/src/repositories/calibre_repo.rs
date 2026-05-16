@@ -6,6 +6,13 @@ use rusqlite::Connection;
 use crate::error::AppError;
 use crate::models::BookEntry;
 
+/// Lightweight summary for cover download — avoids joining all book columns.
+pub struct CoverSummary {
+    pub id: i64,
+    pub path: String,
+    pub has_cover: bool,
+}
+
 const BOOK_SELECT_COLUMNS: &str = "b.id, b.title, b.sort, b.author_sort, b.timestamp, b.pubdate,
      b.series_index, b.last_modified, b.path, b.has_cover, b.uuid,
      (SELECT GROUP_CONCAT(a.name, '||')
@@ -111,6 +118,21 @@ impl CalibreBookRepository {
 
     pub fn validate_library(library_path: &str) -> bool {
         Path::new(library_path).join("metadata.db").is_file()
+    }
+
+    /// Return lightweight (id, path, has_cover) for every book — used by bulk cover download.
+    pub fn get_cover_summaries(&self) -> Result<Vec<CoverSummary>, AppError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT b.id, b.path, b.has_cover FROM books b",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(CoverSummary {
+                id: row.get(0)?,
+                path: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                has_cover: row.get::<_, i64>(2).unwrap_or(0) != 0,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
     }
 }
 

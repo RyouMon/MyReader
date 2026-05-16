@@ -1,11 +1,12 @@
 import { useForm } from "@tanstack/react-form"
 import { open } from "@tauri-apps/plugin-dialog"
 import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
-import type { DataSource } from "my-reader-tools/store/data-source"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
+import { DataSourceTypeSelector, type DataSourceType } from "@/components/settings/DataSourceTypeSelector"
+import { WebdavFolderBrowser } from "@/components/settings/WebdavFolderBrowser"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -28,12 +29,10 @@ import { useDataSourceStore } from "@/stores/dataSourceStore"
 
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
+  onAddWebdavLibrary: (dataSourceId: string, remotePath: string) => Promise<unknown>
 }
 
-/**
- * 统一“添加书库”入口按钮与表单面板，便于在设置页复用与维护。
- */
-export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
+export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibraryPanelProps) {
   const { t } = useTranslation()
   const dataSources = useDataSourceStore((s) => s.dataSources)
   const hydrated = useDataSourceStore((s) => s.hydrated)
@@ -43,6 +42,8 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [selectedType, setSelectedType] = useState<DataSourceType>("local")
+  const [webdavBrowserOpen, setWebdavBrowserOpen] = useState(false)
   const pathInputRef = useRef<HTMLInputElement>(null)
   const availableWebdavSources = dataSources.filter((row) => row.enabled)
 
@@ -72,7 +73,11 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
       setAdding(true)
       setSubmitError(null)
       try {
-        await onAddLibrary(value.path.trim())
+        if (selectedType === "webdav") {
+          await onAddWebdavLibrary(value.dataSourceId, value.path.trim())
+        } else {
+          await onAddLibrary(value.path.trim())
+        }
         handleClosePanel()
       } catch (error) {
         setSubmitError(String(error))
@@ -85,6 +90,7 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
   function handleOpenPanel() {
     setAddPanelOpen(true)
     setSubmitError(null)
+    setSelectedType("local")
     addLibraryForm.setFieldValue("dataSourceId", LOCAL_LIBRARY_DATA_SOURCE_ID)
     setTimeout(() => pathInputRef.current?.focus(), 50)
   }
@@ -93,13 +99,19 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
     setAddPanelOpen(false)
     setSubmitError(null)
     addLibraryForm.reset()
+    setSelectedType("local")
   }
 
-  function resolveSelectedWebdavSource(
-    id: string,
-    rows: DataSource[],
-  ): DataSource | undefined {
-    return rows.find((row) => row.id === id)
+  function handleTypeChange(type: DataSourceType) {
+    setSelectedType(type)
+    setSubmitError(null)
+    if (type === "local") {
+      addLibraryForm.setFieldValue("dataSourceId", LOCAL_LIBRARY_DATA_SOURCE_ID)
+    } else if (availableWebdavSources.length > 0) {
+      addLibraryForm.setFieldValue("dataSourceId", availableWebdavSources[0].id)
+    } else {
+      addLibraryForm.setFieldValue("dataSourceId", "")
+    }
   }
 
   async function openLocalDirectoryPicker() {
@@ -121,6 +133,16 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
       )
     }
   }
+
+  function handleWebdavFolderSelect(path: string) {
+    addLibraryForm.setFieldValue("path", path)
+    setSubmitError(null)
+    pathInputRef.current?.focus()
+  }
+
+  const selectedWebdavSource = availableWebdavSources.find(
+    (s) => s.id === addLibraryForm.state.values.dataSourceId,
+  )
 
   return (
     <div
@@ -145,114 +167,178 @@ export function AddLibraryPanel({ onAddLibrary }: AddLibraryPanelProps) {
             }}
           >
             <FieldGroup>
-              <addLibraryForm.Field name="dataSourceId">
-                {(field) => {
-                  const isLocalPick =
-                    field.state.value === LOCAL_LIBRARY_DATA_SOURCE_ID
-                  const selectedWebdav = resolveSelectedWebdavSource(
-                    field.state.value,
-                    availableWebdavSources,
-                  )
-                  const isInvalid =
-                    field.state.meta.isTouched && !field.state.meta.isValid
-                  const browseDisabled =
-                    adding || loadingDataSources || !isLocalPick
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>{t("addLibraryForm.dataSourceLabel")}</FieldLabel>
-                      <Select
-                        name={field.name}
-                        value={field.state.value}
-                        onValueChange={(value) => {
-                          field.handleChange(value)
-                          setSubmitError(null)
-                        }}
-                        disabled={adding || loadingDataSources}
-                      >
-                        <SelectTrigger
-                          id={field.name}
-                          className="w-full"
-                          onBlur={field.handleBlur}
-                          aria-invalid={isInvalid}
-                        >
-                          <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectItem value={LOCAL_LIBRARY_DATA_SOURCE_ID}>
-                              {t("constants.localDataSourceName")}
-                            </SelectItem>
-                            {availableWebdavSources.map((source) => (
-                              <SelectItem key={source.id} value={source.id}>
-                                {source.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      {selectedWebdav && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("addLibraryForm.webdavNoBrowse")}
-                        </p>
-                      )}
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
-                      <addLibraryForm.Field name="path">
-                        {(pathField) => {
-                          const isPathInvalid =
-                            pathField.state.meta.isTouched &&
-                            !pathField.state.meta.isValid
-                          return (
-                            <Field data-invalid={isPathInvalid}>
-                              <FieldLabel htmlFor={pathField.name}>
-                                {t("addLibraryForm.pathLabel")}
-                              </FieldLabel>
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  ref={pathInputRef}
-                                  id={pathField.name}
-                                  name={pathField.name}
-                                  value={pathField.state.value}
-                                  onBlur={pathField.handleBlur}
-                                  onChange={(event) => {
-                                    pathField.handleChange(event.target.value)
-                                    setSubmitError(null)
-                                  }}
-                                  placeholder={t("addLibraryForm.pathPlaceholder")}
-                                  className="h-9 flex-1 font-mono text-xs"
-                                  spellCheck={false}
-                                  autoComplete="off"
-                                  disabled={adding}
-                                  aria-invalid={isPathInvalid}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="sm"
-                                  className="shrink-0 gap-1.5"
-                                  onClick={() =>
-                                    void openLocalDirectoryPicker()
-                                  }
-                                  disabled={browseDisabled}
-                                >
-                                  <FolderSearch className="size-[13px]" />
-                                  {t("addLibraryForm.browse")}
-                                </Button>
-                              </div>
-                              {isPathInvalid && (
-                                <FieldError
-                                  errors={pathField.state.meta.errors}
-                                />
-                              )}
-                            </Field>
-                          )
-                        }}
-                      </addLibraryForm.Field>
-                    </Field>
-                  )
-                }}
-              </addLibraryForm.Field>
+              {/* Type selector */}
+              <Field>
+                <FieldLabel>{t("addLibraryForm.typeLabel")}</FieldLabel>
+                <DataSourceTypeSelector
+                  value={selectedType}
+                  onChange={handleTypeChange}
+                  disabled={adding || loadingDataSources}
+                />
+              </Field>
+
+              {/* Local: path input + browse */}
+              {selectedType === "local" && (
+                <addLibraryForm.Field name="path">
+                  {(pathField) => {
+                    const isPathInvalid =
+                      pathField.state.meta.isTouched &&
+                      !pathField.state.meta.isValid
+                    return (
+                      <Field data-invalid={isPathInvalid}>
+                        <FieldLabel htmlFor={pathField.name}>
+                          {t("addLibraryForm.pathLabel")}
+                        </FieldLabel>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            ref={pathInputRef}
+                            id={pathField.name}
+                            name={pathField.name}
+                            value={pathField.state.value}
+                            onBlur={pathField.handleBlur}
+                            onChange={(event) => {
+                              pathField.handleChange(event.target.value)
+                              setSubmitError(null)
+                            }}
+                            placeholder={t("addLibraryForm.pathPlaceholder")}
+                            className="h-9 flex-1 font-mono text-xs"
+                            spellCheck={false}
+                            autoComplete="off"
+                            disabled={adding}
+                            aria-invalid={isPathInvalid}
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="shrink-0 gap-1.5"
+                            onClick={() => void openLocalDirectoryPicker()}
+                            disabled={adding}
+                          >
+                            <FolderSearch className="size-[13px]" />
+                            {t("addLibraryForm.browse")}
+                          </Button>
+                        </div>
+                        {isPathInvalid && (
+                          <FieldError errors={pathField.state.meta.errors} />
+                        )}
+                      </Field>
+                    )
+                  }}
+                </addLibraryForm.Field>
+              )}
+
+              {/* WebDAV: data source select + path input + browse */}
+              {selectedType === "webdav" && (
+                <>
+                  <addLibraryForm.Field name="dataSourceId">
+                    {(field) => {
+                      const isInvalid =
+                        field.state.meta.isTouched && !field.state.meta.isValid
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            {t("addLibraryForm.dataSourceLabel")}
+                          </FieldLabel>
+                          <Select
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              setSubmitError(null)
+                            }}
+                            disabled={adding || loadingDataSources}
+                          >
+                            <SelectTrigger
+                              id={field.name}
+                              className="w-full"
+                              onBlur={field.handleBlur}
+                              aria-invalid={isInvalid}
+                            >
+                              <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {availableWebdavSources.map((source) => (
+                                  <SelectItem key={source.id} value={source.id}>
+                                    {source.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {t("addLibraryForm.webdavSourceHint")}
+                          </p>
+                        </Field>
+                      )
+                    }}
+                  </addLibraryForm.Field>
+
+                  <addLibraryForm.Field name="path">
+                    {(pathField) => {
+                      const isPathInvalid =
+                        pathField.state.meta.isTouched &&
+                        !pathField.state.meta.isValid
+                      const browseDisabled =
+                        adding || !selectedWebdavSource
+                      return (
+                        <Field data-invalid={isPathInvalid}>
+                          <FieldLabel htmlFor={pathField.name}>
+                            {t("addLibraryForm.pathLabel")}
+                          </FieldLabel>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              ref={pathInputRef}
+                              id={pathField.name}
+                              name={pathField.name}
+                              value={pathField.state.value}
+                              onBlur={pathField.handleBlur}
+                              onChange={(event) => {
+                                pathField.handleChange(event.target.value)
+                                setSubmitError(null)
+                              }}
+                              placeholder="Browse or enter a folder path on WebDAV"
+                              className="h-9 flex-1 font-mono text-xs"
+                              spellCheck={false}
+                              autoComplete="off"
+                              disabled={adding}
+                              aria-invalid={isPathInvalid}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="shrink-0 gap-1.5"
+                              onClick={() => setWebdavBrowserOpen(true)}
+                              disabled={browseDisabled}
+                            >
+                              <FolderSearch className="size-[13px]" />
+                              {t("addLibraryForm.browse")}
+                            </Button>
+                          </div>
+                          {isPathInvalid && (
+                            <FieldError errors={pathField.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </addLibraryForm.Field>
+
+                  {selectedWebdavSource && (
+                    <WebdavFolderBrowser
+                      dataSourceId={selectedWebdavSource.id}
+                      open={webdavBrowserOpen}
+                      onOpenChange={setWebdavBrowserOpen}
+                      onSelect={handleWebdavFolderSelect}
+                    />
+                  )}
+                </>
+              )}
+
               {submitError && (
                 <p className="text-xs text-destructive animate-in fade-in-0 duration-150">
                   {submitError}

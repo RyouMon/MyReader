@@ -12,6 +12,7 @@ pub mod services;
 mod storage_paths;
 pub mod streamer;
 pub mod sync;
+mod utils;
 
 use std::collections::HashMap;
 
@@ -37,13 +38,16 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::source::list_data_sources,
             commands::source::test_webdav_connection,
             commands::library::add_library,
+            commands::library::add_webdav_library,
             commands::library::refresh_library,
+            commands::library::refresh_webdav_library,
             commands::source::add_local_data_source,
             commands::source::add_webdav_data_source,
             commands::library::remove_library,
             commands::source::remove_data_source,
             commands::library::switch_library,
             commands::library::get_active_library_id,
+            commands::source::webdav_list_folders,
             commands::book::get_books,
             commands::book::get_books_page,
             commands::book::get_book_detail,

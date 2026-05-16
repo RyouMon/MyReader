@@ -32,7 +32,13 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     if (!isTauri()) return
     console.info(`Start to refresh library. id: "${id}"`)
     try {
-      await api.refreshLibrary(id)
+      const libs = get().libraries
+      const lib = libs.find((l) => l.id === id)
+      if (lib?.sourceType === "webdav") {
+        await api.refreshWebdavLibrary(id)
+      } else {
+        await api.refreshLibrary(id)
+      }
       await get().refreshLibraries()
       console.info(`Success to refresh library. id: "${id}"`)
     } catch (e) {
@@ -84,6 +90,26 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     }
   },
 
+  addWebdavLibrary: async (dataSourceId?: string, remotePath?: string, name?: string) => {
+    if (!dataSourceId || !remotePath) return null
+    console.info(
+      `Start to add WebDAV library. dataSourceId: "${dataSourceId}", remotePath: "${remotePath}", name: "${name ?? ""}"`,
+    )
+    try {
+      const info = await api.addWebdavLibrary(dataSourceId, remotePath, name ?? null)
+      await get().refreshLibraries()
+      const newId = await api.getActiveLibraryId()
+      if (newId) set({ activeLibraryId: newId })
+      console.info(
+        `Success to add WebDAV library. id: "${info.id}", name: "${info.name}", book count: ${info.bookCount}`,
+      )
+      return info
+    } catch (e) {
+      console.error(`Failed to add WebDAV library. dataSourceId: "${dataSourceId}", remotePath: "${remotePath}", error:`, e)
+      throw e
+    }
+  },
+
   removeLibrary: async (id) => {
     console.info(`Start to remove library. id: "${id}"`)
     try {
@@ -128,6 +154,7 @@ export function useLibrary() {
   const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
   const loading = useLibraryStore((s) => s.loading)
   const addLibrary = useLibraryStore((s) => s.addLibrary)
+  const addWebdavLibrary = useLibraryStore((s) => s.addWebdavLibrary)
   const removeLibrary = useLibraryStore((s) => s.removeLibrary)
   const switchLibrary = useLibraryStore((s) => s.switchLibrary)
   const refreshLibraries = useLibraryStore((s) => s.refreshLibraries)
@@ -144,6 +171,7 @@ export function useLibrary() {
     activeLibrary,
     loading,
     addLibrary,
+    addWebdavLibrary,
     removeLibrary,
     switchLibrary,
     refreshLibraries,

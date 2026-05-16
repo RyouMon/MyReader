@@ -3,7 +3,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::models::DataSourceDto;
+use crate::models::{DataSourceDto, WebdavFolderEntry};
 use crate::config;
 use crate::services::datasource_service::DataSourceService;
 
@@ -171,6 +171,34 @@ pub fn remove_data_source(
     match &result {
         Ok(()) => info!("Success to remove data source. id: \"{id}\""),
         Err(err) => error!("Failed to remove data source. id: \"{id}\", error: {err}"),
+    }
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+/// 列出指定 WebDAV 数据源中某个路径下的所有文件夹。
+pub async fn webdav_list_folders(
+    state: State<'_, AppState>,
+    data_source_id: String,
+    path: String,
+) -> Result<Vec<WebdavFolderEntry>, AppError> {
+    info!(
+        "Start to list WebDAV folders. data_source_id: \"{data_source_id}\", path: \"{path}\""
+    );
+    let config = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
+    };
+    let result = DataSourceService::list_webdav_folders(&data_source_id, &path, &config).await;
+    match &result {
+        Ok(folders) => info!(
+            "Success to list WebDAV folders. data_source_id: \"{data_source_id}\", count: {}",
+            folders.len()
+        ),
+        Err(err) => error!(
+            "Failed to list WebDAV folders. data_source_id: \"{data_source_id}\", error: {err}"
+        ),
     }
     result
 }
