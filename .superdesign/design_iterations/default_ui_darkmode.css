@@ -1,42 +1,61 @@
 /* ========================================
-   Dark Mode UI Framework
-   A beautiful dark mode design system
+   MyReader Dark Mode UI Framework
+   Warm editorial palette — not generic gray.
+   Aligned with DESIGN.md + colors_and_type.css
    ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ========================================
    CSS Variables & Theme
    ======================================== */
 :root {
-    /* Dark Mode Color Palette */
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    
-    /* Spacing & Layout */
-    --radius: 0.625rem;
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 0.75rem;
-    --spacing-lg: 1rem;
-    --spacing-xl: 1.5rem;
-    --spacing-2xl: 2rem;
-    --spacing-3xl: 3rem;
-    
-    /* Typography */
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* MyReader Warm Palette */
+    --background: #F7F3EC;
+    --foreground: #1C1714;
+    --card: #FFFFFF;
+    --card-foreground: #1C1714;
+    --primary: #C4622D;
+    --primary-foreground: #FAF6F0;
+    --secondary: #F5F1EA;
+    --secondary-foreground: #1C1714;
+    --muted: #EDE8DF;
+    --muted-foreground: #5C5349;
+    --accent: #F5E8DF;
+    --accent-foreground: #1C1714;
+    --destructive: #B53A2F;
+    --destructive-foreground: #FAF6F0;
+    --border: rgba(28, 23, 20, 0.10);
+    --border-strong: rgba(28, 23, 20, 0.20);
+    --border-subtle: rgba(28, 23, 20, 0.06);
+    --input: rgba(28, 23, 20, 0.06);
+    --ring: #C4622D;
+    --success: #3A7D5A;
+    --warning: #C4922D;
+    --danger: #B53A2F;
+    --accent-soft: #F5E8DF;
+    --accent-muted: #E8C9B5;
+    --ink-inverse: #FAF6F0;
+
+    /* Spacing — 4pt grid from DESIGN.md */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --spacing-3xl: 64px;
+
+    /* Typography — aligned with DESIGN.md */
+    --font-sans: 'Noto Sans SC', 'DM Sans', system-ui, sans-serif;
+    --font-serif: 'Noto Serif SC', 'Lora', serif;
+    --font-mono: 'JetBrains Mono', monospace;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
@@ -45,6 +64,47 @@
     --font-size-2xl: 1.5rem;
     --font-size-3xl: 1.875rem;
     --font-size-4xl: 2.25rem;
+
+    /* Shadows — warm-tinted from DESIGN.md */
+    --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08);
+    --shadow-md: 0 2px 8px rgba(28, 23, 20, 0.10), 0 8px 24px rgba(28, 23, 20, 0.07);
+    --shadow-lg: 0 4px 16px rgba(28, 23, 20, 0.12), 0 24px 64px rgba(28, 23, 20, 0.14);
+}
+
+/* ========================================
+   Dark Mode Overrides — aligned with colors_and_type.css
+   ======================================== */
+html.dark,
+[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #1C1814;
+    --foreground: #F0EBE1;
+    --card: #26211D;
+    --card-foreground: #F0EBE1;
+    --primary: #D4703A;
+    --primary-foreground: #1C1714;
+    --secondary: color-mix(in srgb, #26211D 72%, black);
+    --secondary-foreground: #F0EBE1;
+    --muted: color-mix(in srgb, #26211D 82%, black);
+    --muted-foreground: #B8AFA6;
+    --accent: color-mix(in srgb, #D4703A 12%, #26211D);
+    --accent-foreground: #F0EBE1;
+    --destructive: #D46060;
+    --destructive-foreground: #FAF6F0;
+    --border: rgba(240, 235, 225, 0.10);
+    --border-strong: rgba(240, 235, 225, 0.20);
+    --border-subtle: rgba(240, 235, 225, 0.06);
+    --input: color-mix(in srgb, #26211D 84%, black);
+    --ring: #D4703A;
+    --success: #5AAD7E;
+    --warning: #D4A844;
+    --danger: #D46060;
+    --accent-soft: color-mix(in srgb, #D4703A 12%, #26211D);
+    --accent-muted: color-mix(in srgb, #D4703A 20%, #26211D);
+    --ink-inverse: #1C1714;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.40), 0 24px 64px rgba(0, 0, 0, 0.35);
 }
 
 /* ========================================
@@ -59,13 +119,9 @@
 body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--font-family);
+    font-family: var(--font-sans);
     line-height: 1.6;
     min-height: 100vh;
-}
-
-html.dark {
-    color-scheme: dark;
 }
 
 /* ========================================
@@ -77,18 +133,10 @@ html.dark {
     padding: var(--spacing-2xl) var(--spacing-lg);
 }
 
-.container-sm {
-    max-width: 42rem;
-}
+.container-sm { max-width: 42rem; }
+.container-lg { max-width: 80rem; }
 
-.container-lg {
-    max-width: 80rem;
-}
-
-.grid {
-    display: grid;
-}
-
+.grid { display: grid; }
 .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -99,29 +147,12 @@ html.dark {
 .gap-lg { gap: var(--spacing-lg); }
 .gap-xl { gap: var(--spacing-xl); }
 
-.flex {
-    display: flex;
-}
-
-.flex-col {
-    flex-direction: column;
-}
-
-.items-center {
-    align-items: center;
-}
-
-.justify-center {
-    justify-content: center;
-}
-
-.justify-between {
-    justify-content: space-between;
-}
-
-.text-center {
-    text-align: center;
-}
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.text-center { text-align: center; }
 
 /* ========================================
    Card Components
@@ -129,19 +160,19 @@ html.dark {
 .card {
     background-color: var(--card);
     color: var(--card-foreground);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: calc(var(--radius) + 4px);
-    padding: var(--spacing-xl);
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease;
 }
 
 .card:hover {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-md);
 }
 
 /* ========================================
-   Button Components
+   Button Components — aligned with DESIGN.md
    ======================================== */
 .btn {
     display: inline-flex;
@@ -149,14 +180,14 @@ html.dark {
     justify-content: center;
     gap: var(--spacing-sm);
     white-space: nowrap;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-weight: 500;
     transition: all 0.2s;
     border: none;
     cursor: pointer;
-    padding: var(--spacing-sm) var(--spacing-lg);
-    min-height: 2.25rem;
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 32px;
     outline: none;
     text-decoration: none;
 }
@@ -172,7 +203,16 @@ html.dark {
 }
 
 .btn-primary:hover {
-    background-color: rgba(236, 236, 236, 0.9);
+    filter: brightness(1.08);
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+}
+
+.btn-secondary:hover {
+    filter: brightness(0.96);
 }
 
 .btn-outline {
@@ -196,30 +236,30 @@ html.dark {
 
 .btn-destructive {
     background-color: var(--destructive);
-    color: white;
+    color: var(--destructive-foreground);
 }
 
 .btn-destructive:hover {
-    background-color: rgba(220, 38, 38, 0.9);
+    filter: brightness(1.08);
 }
 
 /* Button Sizes */
 .btn-sm {
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-sm);
     font-size: var(--font-size-xs);
-    min-height: 2rem;
+    min-height: 28px;
 }
 
 .btn-lg {
-    padding: var(--spacing-md) var(--spacing-xl);
+    padding: var(--spacing-sm) var(--spacing-lg);
     font-size: var(--font-size-base);
-    min-height: 2.75rem;
+    min-height: 40px;
 }
 
 .btn-icon {
     padding: var(--spacing-sm);
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2rem;
+    height: 2rem;
 }
 
 /* ========================================
@@ -227,19 +267,19 @@ html.dark {
    ======================================== */
 .form-input {
     width: 100%;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--input);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     padding: var(--spacing-sm) var(--spacing-md);
     color: var(--foreground);
     font-size: var(--font-size-sm);
     outline: none;
-    transition: all 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-input:focus {
     border-color: var(--ring);
-    box-shadow: 0 0 0 3px rgba(136, 136, 136, 0.5);
+    box-shadow: 0 0 0 3px rgba(196, 98, 45, 0.15);
 }
 
 .form-input::placeholder {
@@ -247,13 +287,13 @@ html.dark {
 }
 
 /* ========================================
-   Badge Components
+   Badge Components — semantic tokens only
    ======================================== */
 .badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius);
+    border-radius: var(--radius-xs);
     border: 1px solid;
     padding: 0.125rem var(--spacing-sm);
     font-size: var(--font-size-xs);
@@ -261,23 +301,22 @@ html.dark {
     white-space: nowrap;
 }
 
-/* Priority Badge Variants */
-.badge-priority-high {
-    background: rgba(127, 29, 29, 0.3);
-    color: rgb(252, 165, 165);
-    border: 1px solid rgba(153, 27, 27, 0.5);
+.badge-success {
+    background: color-mix(in srgb, var(--success) 12%, var(--card));
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 22%, transparent);
 }
 
-.badge-priority-medium {
-    background: rgba(120, 53, 15, 0.3);
-    color: rgb(252, 211, 77);
-    border: 1px solid rgba(146, 64, 14, 0.5);
+.badge-warning {
+    background: color-mix(in srgb, var(--warning) 12%, var(--card));
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 22%, transparent);
 }
 
-.badge-priority-low {
-    background: rgba(20, 83, 45, 0.3);
-    color: rgb(134, 239, 172);
-    border: 1px solid rgba(22, 101, 52, 0.5);
+.badge-danger {
+    background: color-mix(in srgb, var(--danger) 12%, var(--card));
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 22%, transparent);
 }
 
 /* ========================================
@@ -286,37 +325,32 @@ html.dark {
 .tab-list {
     display: flex;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
 }
 
 .tab-button {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--foreground);
-    text-transform: capitalize;
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
     font-weight: 500;
     transition: all 0.2s ease;
     padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: var(--font-size-sm);
 }
 
 .tab-button:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--accent);
+    color: var(--foreground);
+    border-color: var(--border-strong);
 }
 
 .tab-button.active {
-    background-color: #f8f9fa !important;
-    color: #1a1a1a !important;
-    border-color: #f8f9fa !important;
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-color: var(--primary) !important;
     font-weight: 600;
-}
-
-.tab-button.active:hover {
-    background-color: #e9ecef !important;
-    border-color: #e9ecef !important;
 }
 
 /* ========================================
@@ -340,13 +374,6 @@ html.dark {
 .text-muted { color: var(--muted-foreground); }
 .text-destructive { color: var(--destructive); }
 
-.gradient-text {
-    background: linear-gradient(to right, var(--primary), rgba(236, 236, 236, 0.6));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
 /* ========================================
    Icon System
    ======================================== */
@@ -369,10 +396,10 @@ html.dark {
     width: 1rem;
     height: 1rem;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     position: relative;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--input);
     transition: all 0.2s;
 }
 
@@ -381,17 +408,17 @@ html.dark {
 }
 
 .checkbox.checked {
-    background-color: rgb(22, 163, 74);
-    border-color: rgb(22, 163, 74);
+    background-color: var(--primary);
+    border-color: var(--primary);
 }
 
 .checkbox.checked::after {
-    content: '✓';
+    content: '\2713';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: white;
+    color: var(--primary-foreground);
     font-size: 0.75rem;
     font-weight: bold;
 }
@@ -404,12 +431,12 @@ html.dark {
     align-items: center;
     gap: var(--spacing-lg);
     padding: var(--spacing-lg);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
     transition: background-color 0.2s;
 }
 
 .list-item:hover {
-    background-color: rgba(255, 255, 255, 0.025);
+    background-color: var(--accent);
 }
 
 .list-item:last-child {
@@ -441,7 +468,6 @@ html.dark {
    ======================================== */
 .hidden { display: none; }
 .block { display: block; }
-.flex { display: flex; }
 .inline-flex { display: inline-flex; }
 
 .w-full { width: 100%; }
@@ -463,21 +489,19 @@ html.dark {
     .container {
         padding: var(--spacing-lg);
     }
-    
+
     .grid-cols-auto {
         grid-template-columns: 1fr;
     }
-    
+
     .flex-col-mobile {
         flex-direction: column;
     }
-    
+
     .text-center-mobile {
         text-align: center;
     }
-    
-    .gap-sm-mobile { gap: var(--spacing-sm); }
-    
+
     .hidden-mobile { display: none; }
     .block-mobile { display: block; }
 }
@@ -486,7 +510,7 @@ html.dark {
     .text-2xl { font-size: var(--font-size-xl); }
     .text-3xl { font-size: var(--font-size-2xl); }
     .text-4xl { font-size: var(--font-size-3xl); }
-    
+
     .container {
         padding: var(--spacing-lg) var(--spacing-sm);
     }

@@ -1,72 +1,74 @@
 /* ═══════════════════════════════════════════════════════════
    MyReader · Reader Interface Theme
-   Extends the warm-paper / amber / burgundy design system.
+   Aligned with DESIGN.md: warm paper, terracotta accent, ink tiers.
    Covers: reader shell chrome, four content themes,
    TTS highlight tokens, and comic/PDF viewer tokens.
    ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+Pro:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
-  /* ─── App Shell (inherited from library/detail theme) ─── */
-  --background:              oklch(0.97 0.012 80) !important;
-  --foreground:              oklch(0.22 0.035 50) !important;
-  --card:                    oklch(0.96 0.015 78) !important;
-  --card-foreground:         oklch(0.22 0.035 50) !important;
-  --popover:                 oklch(0.975 0.01 82) !important;
-  --popover-foreground:      oklch(0.22 0.035 50) !important;
-  --primary:                 oklch(0.62 0.14 48)  !important;
-  --primary-foreground:      oklch(0.975 0.008 80) !important;
-  --secondary:               oklch(0.92 0.025 72) !important;
-  --secondary-foreground:    oklch(0.30 0.04 50)  !important;
-  --muted:                   oklch(0.93 0.015 70) !important;
-  --muted-foreground:        oklch(0.50 0.03 55)  !important;
-  --accent:                  oklch(0.45 0.12 18)  !important;
-  --accent-foreground:       oklch(0.97 0.01 80)  !important;
-  --destructive:             oklch(0.55 0.20 28)  !important;
-  --destructive-foreground:  oklch(0.97 0.01 80)  !important;
-  --border:                  oklch(0.89 0.02 72)  !important;
-  --input:                   oklch(0.91 0.018 74) !important;
-  --ring:                    oklch(0.62 0.14 48)  !important;
-  --progress:                oklch(0.62 0.14 48)  !important;
-  --progress-track:          oklch(0.91 0.018 74) !important;
+  /* ─── App Shell — aligned with DESIGN.md ─── */
+  --background:              #F7F3EC !important;
+  --foreground:              #1C1714 !important;
+  --card:                    #FFFFFF !important;
+  --card-foreground:         #1C1714 !important;
+  --popover:                 #FFFFFF !important;
+  --popover-foreground:      #1C1714 !important;
+  --primary:                 #C4622D !important;
+  --primary-foreground:      #FAF6F0 !important;
+  --secondary:               #F5F1EA !important;
+  --secondary-foreground:    #1C1714 !important;
+  --muted:                   #EDE8DF !important;
+  --muted-foreground:        #5C5349 !important;
+  --accent:                  #F5E8DF !important;
+  --accent-foreground:       #1C1714 !important;
+  --destructive:             #B53A2F !important;
+  --destructive-foreground:  #FAF6F0 !important;
+  --border:                  rgba(28, 23, 20, 0.10) !important;
+  --input:                   rgba(28, 23, 20, 0.06) !important;
+  --ring:                    #C4622D !important;
+  --progress:                #C4622D !important;
+  --progress-track:          rgba(28, 23, 20, 0.06) !important;
 
-  /* ─── Typography ─── */
-  --font-sans:   'DM Sans', 'Noto Sans SC', system-ui, sans-serif !important;
-  --font-serif:  'Lora', 'Noto Serif SC', serif !important;
+  /* ─── Typography — aligned with DESIGN.md ─── */
+  --font-sans:   'Noto Sans SC', 'DM Sans', system-ui, sans-serif !important;
+  --font-serif:  'Noto Serif SC', 'Lora', serif !important;
   --font-mono:   'JetBrains Mono', monospace !important;
+  --font-reading: 'Merriweather', 'Noto Serif SC', Georgia, serif !important;
   --spacing:     0.25rem !important;
 
-  /* ─── Radii ─── */
-  --radius:    0.75rem !important;
-  --radius-sm: calc(var(--radius) - 4px) !important;
-  --radius-md: calc(var(--radius) - 2px) !important;
-  --radius-lg: var(--radius) !important;
-  --radius-xl: calc(var(--radius) + 4px) !important;
+  /* ─── Radii — aligned with DESIGN.md ─── */
+  --radius-xs:  2px !important;
+  --radius-sm:  4px !important;
+  --radius-md:  8px !important;
+  --radius-lg:  12px !important;
+  --radius-xl:  20px !important;
+  --radius-full: 9999px !important;
 
-  /* ─── Warm-tinted shadows ─── */
-  --shadow-xs:  0 1px 3px 0 oklch(0.35 0.04 55 / 0.06) !important;
-  --shadow-sm:  0 1px 3px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 2px -1px oklch(0.35 0.04 55 / 0.06) !important;
-  --shadow:     0 2px 6px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 3px -1px oklch(0.35 0.04 55 / 0.06) !important;
-  --shadow-md:  0 4px 8px -1px oklch(0.35 0.04 55 / 0.10), 0 2px 4px -2px oklch(0.35 0.04 55 / 0.06) !important;
-  --shadow-lg:  0 8px 16px -2px oklch(0.35 0.04 55 / 0.12), 0 4px 6px -3px oklch(0.35 0.04 55 / 0.06) !important;
+  /* ─── Shadows — warm-tinted from DESIGN.md ─── */
+  --shadow-xs:  0 1px 3px rgba(28, 23, 20, 0.06) !important;
+  --shadow-sm:  0 1px 3px rgba(28, 23, 20, 0.08), 0 1px 2px rgba(28, 23, 20, 0.06) !important;
+  --shadow:     0 2px 6px rgba(28, 23, 20, 0.08), 0 1px 3px rgba(28, 23, 20, 0.06) !important;
+  --shadow-md:  0 4px 8px rgba(28, 23, 20, 0.10), 0 2px 4px rgba(28, 23, 20, 0.06) !important;
+  --shadow-lg:  0 8px 16px rgba(28, 23, 20, 0.12), 0 4px 6px rgba(28, 23, 20, 0.06) !important;
 
   /* ═══════════════════════════════════════════════════════
      READER SHELL — toolbar, bottom bar, panels
      ═══════════════════════════════════════════════════════ */
-  --reader-chrome-bg:          oklch(0.97 0.012 80)  !important;
-  --reader-chrome-fg:          oklch(0.22 0.035 50)  !important;
-  --reader-chrome-muted:       oklch(0.50 0.03 55)   !important;
-  --reader-chrome-border:      oklch(0.89 0.02 72)   !important;
-  --reader-chrome-hover:       oklch(0.92 0.025 72)  !important;
-  --reader-chrome-active:      oklch(0.62 0.14 48)   !important;
+  --reader-chrome-bg:          #F7F3EC !important;
+  --reader-chrome-fg:          #1C1714 !important;
+  --reader-chrome-muted:       #5C5349 !important;
+  --reader-chrome-border:      rgba(28, 23, 20, 0.10) !important;
+  --reader-chrome-hover:       #F5F1EA !important;
+  --reader-chrome-active:      #C4622D !important;
   --reader-chrome-blur:        12px !important;
   --reader-chrome-opacity:     0.92 !important;
 
   /* ─── TOC / Settings panel ─── */
-  --reader-panel-bg:           oklch(0.96 0.015 78)  !important;
+  --reader-panel-bg:           #FFFFFF !important;
   --reader-panel-width:        300px !important;
-  --reader-panel-shadow:       8px 0 24px oklch(0.35 0.04 55 / 0.10) !important;
+  --reader-panel-shadow:       8px 0 24px rgba(28, 23, 20, 0.10) !important;
 
   /* ─── Bottom bar ─── */
   --reader-bar-height:         64px !important;
@@ -76,18 +78,18 @@
   /* ═══════════════════════════════════════════════════════
      READING CONTENT — text defaults (paper theme active)
      ═══════════════════════════════════════════════════════ */
-  --reader-content-bg:         #f5efe6 !important;
-  --reader-content-fg:         #3b2f2f !important;
-  --reader-content-font:       'Lora', 'Noto Serif SC', serif !important;
+  --reader-content-bg:         #F5EFE6 !important;
+  --reader-content-fg:         #1C1714 !important;
+  --reader-content-font:       'Merriweather', 'Noto Serif SC', serif !important;
   --reader-content-size:       18px !important;
-  --reader-content-line-h:     1.85 !important;
+  --reader-content-line-h:     1.8 !important;
   --reader-content-letter-sp:  0.01em !important;
   --reader-content-max-w:      100% !important;
   --reader-content-padding-x:  2.5rem !important;
   --reader-content-padding-y:  3rem !important;
 
   /* Chapter heading */
-  --reader-chapter-font:       'Lora', 'Noto Serif SC', serif !important;
+  --reader-chapter-font:       'Noto Serif SC', 'Lora', serif !important;
   --reader-chapter-size:       1.75em !important;
   --reader-chapter-weight:     700 !important;
   --reader-chapter-margin-b:   2em !important;
@@ -100,31 +102,31 @@
   /* ═══════════════════════════════════════════════════════
      TTS TOKENS
      ═══════════════════════════════════════════════════════ */
-  --tts-highlight-bg:          oklch(0.88 0.10 70 / 0.35)  !important;
-  --tts-highlight-border:      oklch(0.62 0.14 48 / 0.50)  !important;
+  --tts-highlight-bg:          rgba(196, 98, 45, 0.35) !important;
+  --tts-highlight-border:      rgba(196, 98, 45, 0.50) !important;
   --tts-highlight-radius:      4px !important;
   --tts-highlight-padding:     2px 4px !important;
-  --tts-panel-bg:              oklch(0.96 0.015 78) !important;
-  --tts-panel-border:          oklch(0.89 0.02 72) !important;
-  --tts-panel-shadow:          0 -4px 16px oklch(0.35 0.04 55 / 0.08) !important;
+  --tts-panel-bg:              #FFFFFF !important;
+  --tts-panel-border:          rgba(28, 23, 20, 0.10) !important;
+  --tts-panel-shadow:          0 -4px 16px rgba(28, 23, 20, 0.08) !important;
   --tts-btn-size:              40px !important;
   --tts-play-btn-size:         48px !important;
-  --tts-play-btn-bg:           oklch(0.62 0.14 48) !important;
-  --tts-play-btn-fg:           oklch(0.975 0.008 80) !important;
-  --tts-slider-track:          oklch(0.89 0.02 72) !important;
-  --tts-slider-fill:           oklch(0.62 0.14 48) !important;
-  --tts-slider-thumb:          oklch(0.62 0.14 48) !important;
+  --tts-play-btn-bg:           #C4622D !important;
+  --tts-play-btn-fg:           #FAF6F0 !important;
+  --tts-slider-track:          rgba(28, 23, 20, 0.10) !important;
+  --tts-slider-fill:           #C4622D !important;
+  --tts-slider-thumb:          #C4622D !important;
 
   /* ═══════════════════════════════════════════════════════
      COMIC / PDF VIEWER TOKENS
      ═══════════════════════════════════════════════════════ */
-  --viewer-bg:                 oklch(0.18 0.005 60) !important;
+  --viewer-bg:                 #1C1714 !important;
   --viewer-page-shadow:        0 4px 24px rgba(0,0,0,0.30) !important;
   --viewer-page-gap:           16px !important;
   --viewer-page-radius:        2px !important;
-  --viewer-thumb-bg:           oklch(0.22 0.01 60) !important;
-  --viewer-thumb-border:       oklch(0.30 0.015 60) !important;
-  --viewer-thumb-active:       oklch(0.62 0.14 48) !important;
+  --viewer-thumb-bg:           #26211D !important;
+  --viewer-thumb-border:       rgba(28, 23, 20, 0.20) !important;
+  --viewer-thumb-active:       #C4622D !important;
 }
 
 
@@ -135,46 +137,46 @@
 
 /* ── Theme: Light ── */
 [data-reader-theme="light"] {
-  --reader-content-bg:     #ffffff !important;
-  --reader-content-fg:     #1a1a1a !important;
-  --tts-highlight-bg:      oklch(0.92 0.08 85 / 0.40) !important;
-  --tts-highlight-border:  oklch(0.62 0.14 48 / 0.45) !important;
+  --reader-content-bg:     #FFFFFF !important;
+  --reader-content-fg:     #1C1714 !important;
+  --tts-highlight-bg:      rgba(196, 98, 45, 0.40) !important;
+  --tts-highlight-border:  rgba(196, 98, 45, 0.45) !important;
 }
 
 /* ── Theme: Paper (default) ── */
 [data-reader-theme="paper"] {
-  --reader-content-bg:     #f5efe6 !important;
-  --reader-content-fg:     #3b2f2f !important;
-  --tts-highlight-bg:      oklch(0.88 0.10 70 / 0.35) !important;
-  --tts-highlight-border:  oklch(0.62 0.14 48 / 0.50) !important;
+  --reader-content-bg:     #F5EFE6 !important;
+  --reader-content-fg:     #1C1714 !important;
+  --tts-highlight-bg:      rgba(196, 98, 45, 0.35) !important;
+  --tts-highlight-border:  rgba(196, 98, 45, 0.50) !important;
 }
 
 /* ── Theme: Eye-care ── */
 [data-reader-theme="green"] {
-  --reader-content-bg:     #e8f0e4 !important;
-  --reader-content-fg:     #2a3328 !important;
-  --tts-highlight-bg:      oklch(0.85 0.08 140 / 0.30) !important;
-  --tts-highlight-border:  oklch(0.55 0.10 145 / 0.45) !important;
+  --reader-content-bg:     #E8F0E4 !important;
+  --reader-content-fg:     #2A3328 !important;
+  --tts-highlight-bg:      rgba(58, 125, 90, 0.30) !important;
+  --tts-highlight-border:  rgba(58, 125, 90, 0.45) !important;
 }
 
 /* ── Theme: Dark ── */
 [data-reader-theme="dark"] {
-  --reader-content-bg:     #1e1e1e !important;
-  --reader-content-fg:     #d4d0c8 !important;
-  --tts-highlight-bg:      oklch(0.35 0.08 48 / 0.40) !important;
-  --tts-highlight-border:  oklch(0.55 0.12 48 / 0.50) !important;
+  --reader-content-bg:     #1E1E1E !important;
+  --reader-content-fg:     #D4D0C8 !important;
+  --tts-highlight-bg:      rgba(212, 112, 58, 0.40) !important;
+  --tts-highlight-border:  rgba(212, 112, 58, 0.50) !important;
 
-  --reader-chrome-bg:      oklch(0.16 0.008 60) !important;
-  --reader-chrome-fg:      oklch(0.85 0.01 70)  !important;
-  --reader-chrome-muted:   oklch(0.55 0.01 60)  !important;
-  --reader-chrome-border:  oklch(0.25 0.01 60)  !important;
-  --reader-chrome-hover:   oklch(0.22 0.012 60) !important;
-  --reader-chrome-active:  oklch(0.65 0.13 48)  !important;
+  --reader-chrome-bg:      #1C1814 !important;
+  --reader-chrome-fg:      #F0EBE1 !important;
+  --reader-chrome-muted:   #B8AFA6 !important;
+  --reader-chrome-border:  rgba(240, 235, 225, 0.10) !important;
+  --reader-chrome-hover:   #26211D !important;
+  --reader-chrome-active:  #D4703A !important;
 
-  --tts-panel-bg:          oklch(0.20 0.01 60) !important;
-  --tts-panel-border:      oklch(0.28 0.01 60) !important;
+  --tts-panel-bg:          #26211D !important;
+  --tts-panel-border:      rgba(240, 235, 225, 0.10) !important;
   --tts-panel-shadow:      0 -4px 16px rgba(0,0,0,0.25) !important;
 
-  --reader-panel-bg:       oklch(0.18 0.008 60) !important;
+  --reader-panel-bg:       #1C1814 !important;
   --reader-panel-shadow:   8px 0 24px rgba(0,0,0,0.30) !important;
 }

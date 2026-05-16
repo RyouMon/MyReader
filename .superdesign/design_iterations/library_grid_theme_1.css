@@ -1,90 +1,90 @@
 /* MyReader Library Grid Theme — Warm Reading Atmosphere */
-/* Inspired by: old bookshops, parchment paper, candlelit reading rooms */
+/* Aligned with DESIGN.md: warm paper bg, terracotta accent, ink tiers */
 
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* ─── Core Palette ─── */
-  --background: oklch(0.9700 0.0120 80);
-  --foreground: oklch(0.2200 0.0350 50);
+  /* ─── Surfaces ─── */
+  --background: #F7F3EC;
+  --foreground: #1C1714;
 
-  --card: oklch(0.9600 0.0150 78);
-  --card-foreground: oklch(0.2200 0.0350 50);
+  --card: #FFFFFF;
+  --card-foreground: #1C1714;
 
-  --popover: oklch(0.9750 0.0100 82);
-  --popover-foreground: oklch(0.2200 0.0350 50);
+  --popover: #FFFFFF;
+  --popover-foreground: #1C1714;
 
-  /* ─── Primary: Amber / Terracotta ─── */
-  --primary: oklch(0.6200 0.1400 48);
-  --primary-foreground: oklch(0.9750 0.0080 80);
+  /* ─── Primary: Terracotta accent ─── */
+  --primary: #C4622D;
+  --primary-foreground: #FAF6F0;
 
-  /* ─── Secondary: Warm Sand ─── */
-  --secondary: oklch(0.9200 0.0250 72);
-  --secondary-foreground: oklch(0.3000 0.0400 50);
+  /* ─── Secondary: Warm sand ─── */
+  --secondary: #F5F1EA;
+  --secondary-foreground: #1C1714;
 
-  /* ─── Muted: Warm Gray ─── */
-  --muted: oklch(0.9300 0.0150 70);
-  --muted-foreground: oklch(0.5000 0.0300 55);
+  /* ─── Muted ─── */
+  --muted: #EDE8DF;
+  --muted-foreground: #5C5349;
 
-  /* ─── Accent: Deep Burgundy / Wine ─── */
-  --accent: oklch(0.4500 0.1200 18);
-  --accent-foreground: oklch(0.9700 0.0100 80);
+  /* ─── Accent: Terracotta soft ─── */
+  --accent: #F5E8DF;
+  --accent-foreground: #1C1714;
 
   /* ─── Destructive ─── */
-  --destructive: oklch(0.5500 0.2000 28);
-  --destructive-foreground: oklch(0.9700 0.0100 80);
+  --destructive: #B53A2F;
+  --destructive-foreground: #FAF6F0;
 
   /* ─── Borders & Inputs ─── */
-  --border: oklch(0.8900 0.0200 72);
-  --input: oklch(0.9100 0.0180 74);
-  --ring: oklch(0.6200 0.1400 48);
+  --border: rgba(28, 23, 20, 0.10);
+  --input: rgba(28, 23, 20, 0.06);
+  --ring: #C4622D;
 
   /* ─── Chart Colors (warm spectrum) ─── */
-  --chart-1: oklch(0.6200 0.1400 48);
-  --chart-2: oklch(0.5500 0.1100 35);
-  --chart-3: oklch(0.4500 0.1200 18);
-  --chart-4: oklch(0.6800 0.1200 65);
-  --chart-5: oklch(0.5800 0.0800 45);
+  --chart-1: #C4622D;
+  --chart-2: #A87E62;
+  --chart-3: #E8C9B5;
+  --chart-4: #3A7D5A;
+  --chart-5: #C4922D;
 
   /* ─── Sidebar ─── */
-  --sidebar: oklch(0.9400 0.0180 76);
-  --sidebar-foreground: oklch(0.2500 0.0350 50);
-  --sidebar-primary: oklch(0.6200 0.1400 48);
-  --sidebar-primary-foreground: oklch(0.9750 0.0080 80);
-  --sidebar-accent: oklch(0.4500 0.1200 18);
-  --sidebar-accent-foreground: oklch(0.9700 0.0100 80);
-  --sidebar-border: oklch(0.8800 0.0220 70);
-  --sidebar-ring: oklch(0.6200 0.1400 48);
+  --sidebar: #EDE8DF;
+  --sidebar-foreground: #1C1714;
+  --sidebar-primary: #C4622D;
+  --sidebar-primary-foreground: #FAF6F0;
+  --sidebar-accent: #F5E8DF;
+  --sidebar-accent-foreground: #1C1714;
+  --sidebar-border: rgba(28, 23, 20, 0.10);
+  --sidebar-ring: #C4622D;
 
   /* ─── Progress bar ─── */
-  --progress: oklch(0.6200 0.1400 48);
-  --progress-track: oklch(0.9100 0.0180 74);
+  --progress: #C4622D;
+  --progress-track: rgba(28, 23, 20, 0.06);
 
   /* ─── Typography ─── */
-  /* Latin chars render with Lora/DM Sans; CJK falls through to Noto SC */
-  --font-sans: 'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
-  --font-serif: 'Lora', 'Noto Serif SC', serif;
+  --font-sans: 'Noto Sans SC', 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Noto Serif SC', 'Lora', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* ─── Spacing ─── */
   --spacing: 0.25rem;
 
-  /* ─── Border Radius ─── */
-  --radius: 0.75rem;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* ─── Border Radius (from DESIGN.md rounded tokens) ─── */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
 
-  /* ─── Shadows (warm-tinted) ─── */
-  --shadow-2xs: 0 1px 2px 0 oklch(0.35 0.04 55 / 0.04);
-  --shadow-xs: 0 1px 3px 0 oklch(0.35 0.04 55 / 0.06);
-  --shadow-sm: 0 1px 3px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 2px -1px oklch(0.35 0.04 55 / 0.06);
-  --shadow: 0 2px 6px 0 oklch(0.35 0.04 55 / 0.08), 0 1px 3px -1px oklch(0.35 0.04 55 / 0.06);
-  --shadow-md: 0 4px 8px -1px oklch(0.35 0.04 55 / 0.10), 0 2px 4px -2px oklch(0.35 0.04 55 / 0.06);
-  --shadow-lg: 0 8px 16px -2px oklch(0.35 0.04 55 / 0.12), 0 4px 6px -3px oklch(0.35 0.04 55 / 0.06);
-  --shadow-xl: 0 16px 32px -4px oklch(0.35 0.04 55 / 0.14), 0 8px 12px -4px oklch(0.35 0.04 55 / 0.06);
-  --shadow-2xl: 0 24px 48px -8px oklch(0.35 0.04 55 / 0.20);
+  /* ─── Shadows (warm-tinted, from DESIGN.md elevation) ─── */
+  --shadow-2xs: 0 1px 2px rgba(28, 23, 20, 0.04);
+  --shadow-xs: 0 1px 3px rgba(28, 23, 20, 0.06);
+  --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08), 0 1px 2px rgba(28, 23, 20, 0.06);
+  --shadow: 0 2px 6px rgba(28, 23, 20, 0.08), 0 1px 3px rgba(28, 23, 20, 0.06);
+  --shadow-md: 0 4px 8px rgba(28, 23, 20, 0.10), 0 2px 4px rgba(28, 23, 20, 0.06);
+  --shadow-lg: 0 8px 16px rgba(28, 23, 20, 0.12), 0 4px 6px rgba(28, 23, 20, 0.06);
+  --shadow-xl: 0 16px 32px rgba(28, 23, 20, 0.14), 0 8px 12px rgba(28, 23, 20, 0.06);
+  --shadow-2xl: 0 24px 48px rgba(28, 23, 20, 0.20);
 
   /* ─── Letter Spacing ─── */
   --tracking-normal: 0em;

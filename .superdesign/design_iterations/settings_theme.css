@@ -1,50 +1,57 @@
+/* MyReader Settings — theme
+ * Aligned with DESIGN.md: warm paper bg, terracotta accent, ink tiers.
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* === Colors === */
-  --background:        #f5efe6;
-  --foreground:        #3b2f2f;
-  --card:              #f0e8db;
-  --card-foreground:   #3b2f2f;
-  --popover:           #f7f1e8;
-  --popover-foreground:#3b2f2f;
-  --primary:           #b5651d;
-  --primary-foreground:#faf5ef;
-  --secondary:         #e8dcc8;
-  --secondary-foreground:#4a3c2e;
-  --muted:             #ebe3d5;
-  --muted-foreground:  #7a6b5d;
-  --accent:            #ede5d8;
-  --accent-foreground: #3b2f2f;
-  --destructive:       #b44a3a;
-  --destructive-fg:    #faf5ef;
-  --border:            #ddd2c0;
-  --input:             #e3d8c8;
-  --ring:              #b5651d;
+  /* === Colors — aligned with DESIGN.md === */
+  --background:        #F7F3EC;
+  --foreground:        #1C1714;
+  --card:              #FFFFFF;
+  --card-foreground:   #1C1714;
+  --popover:           #FFFFFF;
+  --popover-foreground:#1C1714;
+  --primary:           #C4622D;
+  --primary-foreground:#FAF6F0;
+  --secondary:         #F5F1EA;
+  --secondary-foreground:#1C1714;
+  --muted:             #EDE8DF;
+  --muted-foreground:  #5C5349;
+  --accent:            #F5E8DF;
+  --accent-foreground: #1C1714;
+  --destructive:       #B53A2F;
+  --destructive-foreground: #FAF6F0;
+  --border:            rgba(28, 23, 20, 0.10);
+  --input:             rgba(28, 23, 20, 0.06);
+  --ring:              #C4622D;
 
   /* Sidebar (app nav column) */
-  --sidebar-bg:        #ebe3d3;
-  --sidebar-fg:        #3e3228;
-  --sidebar-active-bg: color-mix(in srgb, #b5651d 12%, transparent);
-  --sidebar-active-fg: #b5651d;
-  --sidebar-hover-bg:  #e2d8c8;
-  --sidebar-border:    #d9cebb;
+  --sidebar-bg:        #EDE8DF;
+  --sidebar-fg:        #1C1714;
+  --sidebar-active-bg: color-mix(in srgb, #C4622D 12%, transparent);
+  --sidebar-active-fg: #C4622D;
+  --sidebar-hover-bg:  #F5F1EA;
+  --sidebar-border:    rgba(28, 23, 20, 0.10);
 
   /* Settings nav column */
-  --settings-nav-bg:   #ede7dc;
-  --settings-nav-border: #ddd2c0;
+  --settings-nav-bg:   #F5F1EA;
+  --settings-nav-border: rgba(28, 23, 20, 0.10);
 
-  /* === Typography === */
-  --font-sans:  'DM Sans', 'Noto Sans SC', system-ui, sans-serif;
-  --font-serif: 'Lora', 'Noto Serif SC', serif;
+  /* === Typography — aligned with DESIGN.md === */
+  --font-sans:  'Noto Sans SC', 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Noto Serif SC', 'Lora', serif;
   --font-mono:  'JetBrains Mono', monospace;
 
-  /* === Spacing & Shape === */
-  --radius:    0.75rem;
-  --radius-sm: 0.5rem;
-  --radius-lg: 1rem;
+  /* === Spacing & Shape — aligned with DESIGN.md === */
+  --radius-xs:  2px;
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
 
-  /* === Shadows === */
-  --shadow-card: 0 1px 3px rgba(59,47,47,0.08), 0 1px 2px rgba(59,47,47,0.04);
-  --shadow-hover: 0 4px 12px rgba(59,47,47,0.12), 0 2px 4px rgba(59,47,47,0.06);
+  /* === Shadows — warm-tinted from DESIGN.md === */
+  --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08), 0 1px 2px rgba(28, 23, 20, 0.04);
+  --shadow-md: 0 2px 8px rgba(28, 23, 20, 0.10), 0 8px 24px rgba(28, 23, 20, 0.07);
 }
