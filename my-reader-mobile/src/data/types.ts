@@ -1,5 +1,5 @@
-import type { DataSource, DataSourceWebdav } from "my-reader-tools/store/data-source";
-import type { Library } from "my-reader-tools/store/library";
+import type { DataSource, DataSourceWebdav } from "@my-reader/tools/store/data-source";
+import type { Library } from "@my-reader/tools/store/library";
 
 export type BookItem = {
   id: string;

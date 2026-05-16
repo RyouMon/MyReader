@@ -1,6 +1,6 @@
 /**
  * foliate-js / pdfjs-dist assume browser globals during module evaluation.
- * Hermes does not provide these; install minimal stubs before any import of my-reader-tools.
+ * Hermes does not provide these; install minimal stubs before any import of @my-reader/tools.
  */
 
 type PromiseWithResolversResult<T> = {

@@ -1,4 +1,4 @@
-import type { TocItem } from "my-reader-tools/types";
+import type { TocItem } from "@my-reader/tools/types";
 import type { ReaderTocItem } from "./types";
 
 function buildTocItemId(prefix: string, path: readonly number[], rawHref: string | undefined) {

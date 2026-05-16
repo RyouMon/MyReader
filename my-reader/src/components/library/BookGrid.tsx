@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual"
-import type { CalibreBook } from "my-reader-tools/types/book"
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"

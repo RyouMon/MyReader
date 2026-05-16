@@ -42,7 +42,7 @@
     "fflate": "^0.8.2",
     "i18next": "^26.1.0",
     "lucide-react": "^1.7.0",
-    "my-reader-tools": "file:../my-reader-tools",
+    "@my-reader/tools": "workspace:*",
     "p-timeout": "^7.0.1",
     "pdfjs-dist": "^5.5.207",
     "radix-ui": "^1.4.3",

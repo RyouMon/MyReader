@@ -4,3 +4,6 @@
 .claude/scheduled_tasks.lock
 .gitnexus
 node_modules
+.pnpm-store
+
+coverage/

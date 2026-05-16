@@ -1,4 +1,4 @@
-import type { CalibreBook } from "my-reader-tools/types/book"
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import { isTauri } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import { memo, useCallback, useEffect, useState } from "react"

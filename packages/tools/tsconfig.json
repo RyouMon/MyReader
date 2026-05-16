@@ -10,7 +10,7 @@
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "my-reader-tools/*": ["./src/*"]
+      "@my-reader/tools/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "src/**/*.d.ts", "tests/**/*.ts"]

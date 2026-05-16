@@ -12,6 +12,7 @@ function syncPdfJsWorkerToPublic(): void {
   const dest = path.join(__dirname, "public", "pdf.worker.min.mjs")
   const src = path.join(
     __dirname,
+    "..",
     "node_modules",
     "pdfjs-dist",
     "build",
@@ -29,7 +30,7 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "pdfjs-dist": path.resolve(__dirname, "./node_modules/pdfjs-dist"),
+      "pdfjs-dist": path.resolve(__dirname, "../node_modules/pdfjs-dist"),
     },
   },
   plugins: [

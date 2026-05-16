@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile",
     "eas-build-post-install": "rm -rf node_modules/.cache",
     "postinstall": "patch-package",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
@@ -16,8 +17,7 @@
     "test:update-snapshots": "jest -u --coverage=false",
     "test:e2e": "maestro test e2e/maestro -e APP_ID=ryoumon.myreadermobile",
     "build:dev:android": "npx eas-cli@latest build --platform android --profile development --local",
-    "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local",
-    "prepare": "cd .. && husky || true"
+    "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
@@ -57,7 +57,7 @@
     "expo-system-ui": "~55.0.15",
     "ky": "^2.0.2",
     "lightningcss": "1.30.1",
-    "my-reader-tools": "file:../my-reader-tools",
+    "@my-reader/tools": "workspace:*",
     "nativewind": "^5.0.0-preview.2",
     "pdfjs-dist": "^5.5.207",
     "react": "19.2.0",
@@ -94,7 +94,6 @@
     "@types/react": "~19.2.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.0",
-    "husky": "^9.1.7",
     "jest": "~29.7.0",
     "jest-expo": "~55.0.16",
     "lint-staged": "^17.0.4",
@@ -112,7 +111,7 @@
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
-      "^my-reader-tools/(.*)$": "<rootDir>/../my-reader-tools/src/$1",
+      "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
       "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1"
     },
     "transformIgnorePatterns": [

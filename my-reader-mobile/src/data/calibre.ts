@@ -1,7 +1,7 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 
-import type { BookDetail, BookIdentifier, FormatSize } from "my-reader-tools/types/book";
+import type { BookDetail, BookIdentifier, FormatSize } from "@my-reader/tools/types/book";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 
 import {

@@ -15,11 +15,11 @@ Apply these when writing, reviewing, or refactoring code:
 
 ## Project Overview
 
-MyReader is a local-first, cross-platform e-book reader based on Calibre library browsing. It has three independent packages (not a workspace monorepo):
+MyReader is a local-first, cross-platform e-book reader based on Calibre library browsing. It is a pnpm workspaces monorepo with three packages:
 
 - **`my-reader/`** — Desktop app (Tauri 2 + React 18 + Vite + Tailwind CSS 4)
 - **`my-reader-mobile/`** — Mobile app (Expo SDK 55 + React Native 0.83 + NativeWind)
-- **`my-reader-tools/`** — Shared types and utils.
+- **`packages/tools/`** — Shared types and utils (`@my-reader/tools`).
 
 ---
 

@@ -1,5 +1,5 @@
 import { Trash2, Unplug } from "lucide-react"
-import type { DataSource } from "my-reader-tools/store/data-source"
+import type { DataSource } from "@my-reader/tools/store/data-source"
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"

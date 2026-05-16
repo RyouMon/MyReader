@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Feather from "@expo/vector-icons/Feather";
 import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { pickReadableFormat } from "my-reader-tools/utils";
+import { pickReadableFormat } from "@my-reader/tools/utils";
 import { Share } from "react-native";
 
 import { useTheme } from "@/src/design/tokens";
@@ -18,7 +18,7 @@ import { useAppStore } from "@/src/store/app-store";
 import { useLibraryStore } from "@/src/store/library-store";
 
 type DetailCacheEntry = {
-  detail: import("my-reader-tools/types/book").BookDetail | null;
+  detail: import("@my-reader/tools/types/book").BookDetail | null;
   error: string | null;
   loading: boolean;
 };

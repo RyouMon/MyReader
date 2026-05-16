@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react"
-import type { Library } from "my-reader-tools/store/library"
+import type { Library } from "@my-reader/tools/store/library"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"

@@ -1,5 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core"
-import type { LibraryStore } from "my-reader-tools/store/library"
+import type { LibraryStore } from "@my-reader/tools/store/library"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 import { api } from "@/lib/tauri-api"

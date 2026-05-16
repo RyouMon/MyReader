@@ -3,7 +3,7 @@ import type {
   DataSource,
   DataSourceConnectionTestResult,
   DataSourceStore,
-} from "my-reader-tools/store/data-source"
+} from "@my-reader/tools/store/data-source"
 import { create } from "zustand"
 import i18n from "@/i18n"
 import { api } from "@/lib/tauri-api"

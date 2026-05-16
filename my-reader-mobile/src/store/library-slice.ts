@@ -1,4 +1,4 @@
-import type { LibraryStore } from "my-reader-tools/store/library";
+import type { LibraryStore } from "@my-reader/tools/store/library";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";

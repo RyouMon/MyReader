@@ -1,5 +1,5 @@
 {
-  "name": "my-reader-tools",
+  "name": "@my-reader/tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,18 +8,13 @@
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",
-    "./store/*": "./src/store/*.ts",
-    "./state/data-source": "./src/state/data-source.ts"
-  },
-  "dependencies": {
-    "pdfjs-dist": "^5.5.207"
+    "./store/*": "./src/store/*.ts"
   },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@types/react": "~19.2.0",
     "@vitest/ui": "^4.1.5",
     "jsdom": "^29.1.1",
     "vitest": "^4.1.5"

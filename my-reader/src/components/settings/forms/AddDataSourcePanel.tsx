@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
-import type { DataSource } from "my-reader-tools/store/data-source"
+import type { DataSource } from "@my-reader/tools/store/data-source"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"

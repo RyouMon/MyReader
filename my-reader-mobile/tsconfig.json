@@ -17,8 +17,8 @@
       "@/*": [
         "./*"
       ],
-      "my-reader-tools/*": [
-        "../my-reader-tools/src/*"
+      "@my-reader/tools/*": [
+        "../packages/tools/src/*"
       ]
     }
   },
@@ -28,7 +28,7 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts",
-    "../my-reader-tools/src/types/foliate-epub.d.ts"
+    "../packages/tools/src/types/foliate-epub.d.ts"
   ],
   "exclude": [
     "app-example"

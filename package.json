@@ -1,0 +1,18 @@
+{
+  "name": "my-reader-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:desktop": "pnpm --filter my-reader tauri dev",
+    "dev:mobile": "pnpm --filter my-reader-mobile start",
+    "build:desktop": "pnpm --filter my-reader build",
+    "test:tools": "pnpm --filter @my-reader/tools test",
+    "test:desktop": "pnpm --filter my-reader test",
+    "test:mobile": "pnpm --filter my-reader-mobile test",
+    "sync:design-tokens": "node scripts/sync-design-tokens.mjs",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

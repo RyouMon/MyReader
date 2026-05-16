@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^my-reader-tools\/(.+)$/,
+        find: /^@my-reader\/tools\/(.+)$/,
         replacement: path.resolve(__dirname, "./src/$1"),
       },
     ],

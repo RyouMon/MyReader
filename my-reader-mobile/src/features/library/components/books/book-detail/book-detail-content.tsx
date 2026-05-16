@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { isReadableInAppFormat, pickReadableFormat } from "my-reader-tools/utils";
+import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
 import { Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
@@ -27,7 +27,7 @@ import {
   IDENTIFIER_LABELS,
   resolveCoverForDetail,
 } from "@/src/utils/book-detail";
-import type { BookDetail } from "my-reader-tools/types/book";
+import type { BookDetail } from "@my-reader/tools/types/book";
 import type { DetailColors, InfoCardItem } from "./types";
 import { HeroSection } from "./hero-section";
 import { FormatSection } from "./format-section";

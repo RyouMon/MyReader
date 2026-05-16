@@ -4,10 +4,9 @@ const READIUM_SOURCES = `source 'https://github.com/readium/podspecs'
 source 'https://cdn.cocoapods.org/'
 `;
 
-const READIUM_LOAD = `
-load File.join(__dir__, '..', 'node_modules', '@ryoumon/react-native-readium', 'scripts', 'readium_pods.rb')
-load File.join(__dir__, '..', 'node_modules', '@ryoumon/react-native-readium', 'scripts', 'readium_post_install.rb')
-`;
+const READIUM_LOAD = `readium_root = File.dirname(\`node --print "require.resolve('@ryoumon/react-native-readium/package.json')"\`.strip)
+load File.join(readium_root, 'scripts', 'readium_pods.rb')
+load File.join(readium_root, 'scripts', 'readium_post_install.rb')`;
 
 /**
  * @param {import('@expo/config-plugins').ExpoConfig} config

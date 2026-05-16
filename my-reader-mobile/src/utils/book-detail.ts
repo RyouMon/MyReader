@@ -1,4 +1,4 @@
-import type { BookDetail } from "my-reader-tools/types/book";
+import type { BookDetail } from "@my-reader/tools/types/book";
 
 import { buildCoverUri } from "../data/calibre";
 import type { BookItem, Library, WebDavDataSource } from "../data/types";

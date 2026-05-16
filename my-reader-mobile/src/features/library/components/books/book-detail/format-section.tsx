@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import type { BookDetail } from "my-reader-tools/types/book";
+import type { BookDetail } from "@my-reader/tools/types/book";
 
 import { Pressable, ScrollView, Text, View } from "@/tw";
 import { Button } from "@/src/components/ui";

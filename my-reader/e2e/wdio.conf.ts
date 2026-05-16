@@ -28,7 +28,7 @@ function stopProcessTree(processRef: ReturnType<typeof spawn> | undefined) {
 function ensureFoliateEpubStub() {
   const foliateDir = path.resolve(
     projectRoot,
-    "node_modules/my-reader-tools/src/foliate-js",
+    "../node_modules/@my-reader/tools/src/foliate-js",
   )
   const epubEntry = path.join(foliateDir, "epub.js")
   if (fs.existsSync(epubEntry)) return
@@ -68,7 +68,7 @@ async function waitForPreviewServerReady() {
 
 async function startPreviewServer() {
   webServerProcess = spawn(
-    "npm",
+    "pnpm",
     ["run", "preview", "--", "--port", `${webServerPort}`, "--host", previewServerHost, "--strictPort"],
     { cwd: projectRoot, stdio: [null, process.stdout, process.stderr], shell: true },
   )

@@ -1,5 +1,5 @@
 import { BookOpen, Ellipsis } from "lucide-react"
-import type { CalibreBook } from "my-reader-tools/types/book"
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"

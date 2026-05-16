@@ -12,7 +12,7 @@ import {
   Send,
   Star,
 } from "lucide-react"
-import type { BookDetail, CalibreBook } from "my-reader-tools/types/book"
+import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"

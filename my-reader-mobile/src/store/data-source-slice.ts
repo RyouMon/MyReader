@@ -1,5 +1,5 @@
 import { NetworkError, TimeoutError } from "ky";
-import type { DataSource, DataSourceStore } from "my-reader-tools/store/data-source";
+import type { DataSource, DataSourceStore } from "@my-reader/tools/store/data-source";
 import { testWebDavConnection as probeWebDav } from "../data/webdav";
 import { mergeDataSources, persistableDataSources } from "./app-store.constants";
 import type { AppState, AppStateSlice } from "./app-store.types";

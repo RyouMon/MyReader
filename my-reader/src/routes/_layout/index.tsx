@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { BookX } from "lucide-react"
-import type { CalibreBook } from "my-reader-tools/types/book"
+import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"

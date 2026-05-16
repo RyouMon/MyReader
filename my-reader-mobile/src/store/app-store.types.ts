@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand";
 
-import type { DataSourceStore } from "my-reader-tools/store/data-source";
-import type { LibraryStore } from "my-reader-tools/store/library";
+import type { DataSourceStore } from "@my-reader/tools/store/data-source";
+import type { LibraryStore } from "@my-reader/tools/store/library";
 
 import type { BookItem, Library } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
