@@ -1,4 +1,4 @@
-import { localCachedFileUri, toNativeFilesystemPath } from "../src/utils/io";
+import { localCachedFileUri, toNativeFilesystemPath } from "./io";
 
 describe("io path helpers", () => {
   test("builds local cache file URIs without double encoding", () => {

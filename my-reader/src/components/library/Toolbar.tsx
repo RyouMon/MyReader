@@ -12,7 +12,6 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
 export type SortOption = "recent" | "title" | "author" | "progress"
@@ -57,9 +56,6 @@ export default function Toolbar({
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-      <SidebarTrigger className="-ms-1" />
-      <Separator orientation="vertical" className="me-2 h-4" />
-
       {/* Search */}
       <div className="relative flex-1 max-w-sm">
         <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />

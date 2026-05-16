@@ -1,5 +1,5 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
-import { mergeDataSources, persistableDataSources } from "@/src/store/app-store.constants";
+import { mergeDataSources, persistableDataSources } from "./app-store.constants";
 
 describe("mergeDataSources", () => {
   test("filters out builtin local data source id", () => {

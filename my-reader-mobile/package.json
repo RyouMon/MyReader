@@ -11,7 +11,7 @@
     "android": "expo run:android --device",
     "ios": "expo run:ios --device",
     "lint": "expo lint",
-    "test": "jest --watch",
+    "test": "jest",
     "test:ci": "jest --runInBand",
     "test:update-snapshots": "jest -u --coverage=false",
     "test:e2e": "maestro test e2e/maestro -e APP_ID=ryoumon.myreadermobile",
@@ -108,8 +108,6 @@
       "<rootDir>/jest.setup.js"
     ],
     "testMatch": [
-      "<rootDir>/tests/**/*-test.ts",
-      "<rootDir>/tests/**/*-test.tsx",
       "**/?(*.)+(spec|test).[tj]s?(x)"
     ],
     "moduleNameMapper": {
@@ -123,10 +121,6 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "npx tsc --noEmit",
-      "npm run lint -- --max-warnings=0"
-    ],
-    "tests/**/*.{ts,tsx}": [
       "npx tsc --noEmit",
       "npm run lint -- --max-warnings=0"
     ]
