@@ -1,0 +1,85 @@
+# Layer 4: Playwright E2E — settings page behavior
+@regression @settings
+Feature: 设置页面
+  作为一位 MyReader 用户
+  我希望在设置页面切换不同分区
+  这样我可以管理应用的各项配置
+
+  Background:
+    Given 用户已导航到设置页面
+
+  @smoke
+  Scenario: 设置页面显示导航菜单
+    Then 设置页面应显示导航菜单
+    And 导航菜单应包含 "书库管理" 项
+    And 导航菜单应包含 "数据源管理" 项
+    And 导航菜单应包含 "同步与下载" 项
+    And 导航菜单应包含 "外观" 项
+    And 导航菜单应包含 "阅读偏好" 项
+    And 导航菜单应包含 "关于" 项
+
+  @smoke
+  Scenario: 默认显示书库管理分区
+    Then 应显示 "书库管理" 分区
+
+  @nav
+  Scenario: 切换到数据源管理分区
+    When 用户点击 "数据源管理" 导航项
+    Then 应显示 "数据源管理" 分区
+
+  @nav
+  Scenario: 切换到同步与下载分区
+    When 用户点击 "同步与下载" 导航项
+    Then 应显示 "同步与下载" 分区
+
+  @nav
+  Scenario: 切换到外观分区
+    When 用户点击 "外观" 导航项
+    Then 应显示 "外观" 分区
+
+  @nav
+  Scenario: 切换到阅读偏好分区
+    When 用户点击 "阅读偏好" 导航项
+    Then 应显示 "阅读偏好" 分区
+
+  @nav
+  Scenario: 切换到关于分区
+    When 用户点击 "关于" 导航项
+    Then 应显示 "关于" 分区
+
+  @sync
+  Scenario: 同步与下载显示书库和数据源选择器
+    Given 用户在 "同步与下载" 分区
+    Then 应显示书库选择器
+    And 应显示数据源选择器
+
+  @sync
+  Scenario: 未选择书库和数据源时禁用操作按钮
+    Given 用户在 "同步与下载" 分区
+    Then "测试连接" 按钮应禁用
+    And "同步数据库" 按钮应禁用
+
+  @reading
+  Scenario: 阅读偏好显示缓存管理
+    Given 用户在 "阅读偏好" 分区
+    Then 应显示缓存占用信息
+    And 应显示缓存容量输入框
+    And 应显示 "保存容量上限" 按钮
+    And 应显示 "全部清理缓存" 按钮
+
+  @reading
+  Scenario: 修改缓存容量上限
+    Given 用户在 "阅读偏好" 分区
+    When 用户修改缓存容量为 "1024"
+    And 用户点击 "保存容量上限" 按钮
+    Then 缓存容量上限应更新为 1024 MB
+
+  @appearance
+  Scenario: 外观分区显示即将推出提示
+    Given 用户在 "外观" 分区
+    Then 应显示 "即将推出" 提示
+
+  @about
+  Scenario: 关于分区显示版本信息
+    Given 用户在 "关于" 分区
+    Then 应显示应用版本号
