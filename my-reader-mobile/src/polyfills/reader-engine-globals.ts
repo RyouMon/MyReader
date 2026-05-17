@@ -1,5 +1,5 @@
 /**
- * foliate-js / pdfjs-dist assume browser globals during module evaluation.
+ * pdfjs-dist and other reader dependencies assume browser globals during module evaluation.
  * Hermes does not provide these; install minimal stubs before any import of @my-reader/tools.
  */
 

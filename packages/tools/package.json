@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./reader-core/*": "./src/reader-core/*.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",

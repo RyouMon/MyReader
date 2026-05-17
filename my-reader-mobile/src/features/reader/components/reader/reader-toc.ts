@@ -1,5 +1,11 @@
-import type { TocItem } from "@my-reader/tools/types";
 import type { ReaderTocItem } from "./types";
+
+interface TocItem {
+  label: string
+  href: string
+  index: number
+  subitems?: TocItem[]
+}
 
 function buildTocItemId(prefix: string, path: readonly number[], rawHref: string | undefined) {
   const pathPart = path.join(".");

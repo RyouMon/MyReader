@@ -25,21 +25,6 @@ function stopProcessTree(processRef: ReturnType<typeof spawn> | undefined) {
   processRef.kill()
 }
 
-function ensureFoliateEpubStub() {
-  const foliateDir = path.resolve(
-    projectRoot,
-    "../node_modules/@my-reader/tools/src/foliate-js",
-  )
-  const epubEntry = path.join(foliateDir, "epub.js")
-  if (fs.existsSync(epubEntry)) return
-  fs.mkdirSync(foliateDir, { recursive: true })
-  fs.writeFileSync(
-    epubEntry,
-    `export class EPUB {}\nexport default EPUB;\n`,
-    "utf8",
-  )
-}
-
 function ensureEdgeDriverBinary() {
   if (fs.existsSync(edgeDriverBinaryPath)) return
   const downloadResult = spawnSync("msedgedriver-tool", [], {
@@ -119,7 +104,6 @@ export const config = {
 
   onPrepare: async () => {
     cleanupProcesses()
-    ensureFoliateEpubStub()
     ensureEdgeDriverBinary()
     const frontendBuildResult = spawnSync(
       "npm",

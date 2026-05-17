@@ -121,7 +121,7 @@ graph TB
 
 | 类别 | 技术 | 说明 |
 |------|------|------|
-| EPUB 解析 | epub.js (foliate-js) + JSZip/fflate | 三级 ZIP 解压降级策略 |
+| EPUB 解析 | Readium (r2-shared-js) + JSZip/fflate | OPF spine 解析，CFI 定位 |
 | MOBI/AZW 解析 | mobi.js | Kindle 格式支持 |
 | PDF 渲染 | PDF.js | 按需渲染可见页 |
 | DOCX 转换 | Mammoth | DOCX → HTML |
