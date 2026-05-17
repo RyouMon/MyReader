@@ -5,10 +5,9 @@
   "scripts": {
     "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile",
     "eas-build-post-install": "rm -rf node_modules/.cache",
-    "postinstall": "patch-package",
+    "postinstall": "cd .. && patch-package --patch-dir my-reader-mobile/patches",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android --device",
     "ios": "expo run:ios --device",
     "lint": "expo lint",
@@ -98,7 +97,7 @@
     "jest-expo": "~55.0.16",
     "lint-staged": "^17.0.4",
     "patch-package": "^8.0.1",
-    "react-test-renderer": "^19.2.0",
+    "react-test-renderer": "19.2.0",
     "typescript": "~5.9.2"
   },
   "jest": {
@@ -112,7 +111,7 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
       "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
-      "^@babel/runtime/(.*)$": "<rootDir>/node_modules/@babel/runtime/$1"
+      "^@babel/runtime/(.*)$": "<rootDir>/../node_modules/@babel/runtime/$1"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
