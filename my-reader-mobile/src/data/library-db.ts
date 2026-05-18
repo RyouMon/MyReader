@@ -17,6 +17,7 @@ export type LibraryDbHandle = {
 };
 
 const dbCache = new Map<string, LibraryDbHandle>();
+const dbInitPromise = new Map<string, Promise<LibraryDbHandle>>();
 
 function getLibraryRootUri(library: Library): string {
   return resolveLibraryBooksDir(library.id);
@@ -48,8 +49,10 @@ function uriToNativePath(uri: string): string {
  * Path: {cacheDir}/book-downloads/{libraryId}/.myreader/myreader.db
  *
  * Applies Drizzle migrations on first access.
+ * Concurrent callers for the same database await the same init promise
+ * to avoid "database is locked" on Android.
  */
-export function getLibraryDatabase(library: Library): LibraryDbHandle {
+export async function getLibraryDatabase(library: Library): Promise<LibraryDbHandle> {
   const rootUri = getLibraryRootUri(library);
   const dbUri = libraryDbUri(rootUri);
   const cacheKey = dbUri;
@@ -57,19 +60,28 @@ export function getLibraryDatabase(library: Library): LibraryDbHandle {
   const cached = dbCache.get(cacheKey);
   if (cached) return cached;
 
-  const nativePath = uriToNativePath(dbUri);
-  const lastSlash = nativePath.lastIndexOf("/");
-  const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : ".";
-  const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath;
+  const inFlight = dbInitPromise.get(cacheKey);
+  if (inFlight) return inFlight;
 
-  const raw = open({ name, location });
-  const db = drizzle(raw, { schema });
+  const promise = (async () => {
+    const nativePath = uriToNativePath(dbUri);
+    const lastSlash = nativePath.lastIndexOf("/");
+    const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : ".";
+    const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath;
 
-  migrate(db, migrations);
+    const raw = open({ name, location });
+    const db = drizzle(raw, { schema });
 
-  const handle = { raw, db };
-  dbCache.set(cacheKey, handle);
-  return handle;
+    await migrate(db, migrations);
+
+    const handle = { raw, db };
+    dbCache.set(cacheKey, handle);
+    dbInitPromise.delete(cacheKey);
+    return handle;
+  })();
+
+  dbInitPromise.set(cacheKey, promise);
+  return promise;
 }
 
 /**

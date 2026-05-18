@@ -45,7 +45,7 @@ export async function upsertFileState(
     localMtime?: number | null;
   },
 ): Promise<void> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   const updatedAt = Date.now();
   const id = uuid();
   await db
@@ -76,7 +76,7 @@ export async function getFileState(
   library: Library,
   path: string,
 ): Promise<FileStateRow | null> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   const rows = await db
     .select()
     .from(fileState)
@@ -85,7 +85,7 @@ export async function getFileState(
 }
 
 export async function listFileStates(library: Library): Promise<FileStateRow[]> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   return db.select().from(fileState).orderBy(fileState.path);
 }
 
@@ -93,13 +93,13 @@ export async function deleteFileState(
   library: Library,
   path: string,
 ): Promise<void> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   await db.delete(fileState).where(eq(fileState.path, path));
   emitFileStateChanged();
 }
 
 export async function clearFileStatesForLibrary(library: Library): Promise<void> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   await db.delete(fileState);
   emitFileStateChanged();
 }

@@ -46,7 +46,7 @@ async function pushDbChanges(
   const cursorStr = await getSyncMeta(library, cursorKey);
   const sinceMs = cursorStr ? parseFloat(cursorStr) : 0;
 
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   const rows = await db
     .select({
       bookId: readingProgress.bookId,
@@ -143,7 +143,7 @@ async function pullDbChanges(
         if (!bookId || !format || !locatorJson || incomingTs <= 0) continue;
 
         // LWW: only apply if incoming timestamp is newer.
-        const { db } = getLibraryDatabase(library);
+        const { db } = await getLibraryDatabase(library);
         const existing = await db
           .select({ updatedAt: readingProgress.updatedAt })
           .from(readingProgress)

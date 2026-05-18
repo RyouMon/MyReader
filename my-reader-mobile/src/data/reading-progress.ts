@@ -49,7 +49,7 @@ export async function getReadingProgress(
   console.info(`[${LOG_TARGET}] get:start`, { bookId, format: fmt });
 
   try {
-    const { db } = getLibraryDatabase(library);
+    const { db } = await getLibraryDatabase(library);
     const rows = await db
       .select()
       .from(readingProgress)
@@ -108,7 +108,7 @@ export async function setReadingProgress(
   });
 
   try {
-    const { db } = getLibraryDatabase(library);
+    const { db } = await getLibraryDatabase(library);
     await db
       .insert(readingProgress)
       .values({ id, bookId, format: fmt, locatorJson: json, updatedAt })

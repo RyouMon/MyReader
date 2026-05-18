@@ -6,7 +6,7 @@ import { getLibraryDatabase } from "./library-db";
 import type { Library } from "./types";
 
 export async function getSyncMeta(library: Library, key: string): Promise<string | null> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   const rows = await db
     .select()
     .from(syncMeta)
@@ -21,7 +21,7 @@ export async function setSyncMeta(
   key: string,
   value: string | null,
 ): Promise<void> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   if (value === null) {
     await db.delete(syncMeta).where(eq(syncMeta.key, key));
     return;
@@ -37,6 +37,6 @@ export async function setSyncMeta(
 }
 
 export async function clearSyncMeta(library: Library): Promise<void> {
-  const { db } = getLibraryDatabase(library);
+  const { db } = await getLibraryDatabase(library);
   await db.delete(syncMeta);
 }
