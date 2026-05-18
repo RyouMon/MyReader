@@ -1,7 +1,26 @@
 import { Directory, File as FSFile, Paths } from "expo-file-system";
 import { Platform } from "react-native";
+import { eq, and, sql } from "drizzle-orm";
 
 import type { BookDetail, BookIdentifier, FormatSize } from "@my-reader/tools/types/book";
+import {
+  books,
+  authors,
+  booksAuthorsLink,
+  tags,
+  booksTagsLink,
+  series,
+  booksSeriesLink,
+  data,
+  comments,
+  publishers,
+  booksPublishersLink,
+  languages,
+  booksLanguagesLink,
+  ratings,
+  booksRatingsLink,
+  identifiers,
+} from "@my-reader/db/schema/calibre";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 
 import {
@@ -13,7 +32,7 @@ import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
 } from "./cache";
-import { openDatabaseFromUri } from "./sqlite";
+import { openCalibreDatabase } from "./calibre-db";
 import { localCachedFileUri } from "../utils/io";
 
 type PickedDirectoryLike = {
@@ -21,112 +40,6 @@ type PickedDirectoryLike = {
   name?: string;
   list?: () => unknown[];
 };
-
-type RawBookRow = {
-  id: number;
-  title: string | null;
-  author_sort: string | null;
-  authors: string | null;
-  path: string | null;
-  has_cover: number | null;
-  timestamp: string | null;
-};
-
-type BookDetailRow = {
-  id: number;
-  title: string | null;
-  author_sort: string | null;
-  timestamp: string | null;
-  pubdate: string | null;
-  series_index: number | null;
-  last_modified: string | null;
-  path: string | null;
-  has_cover: number | null;
-  uuid: string | null;
-  authors: string | null;
-  tags: string | null;
-  series: string | null;
-  formats: string | null;
-  comment: string | null;
-  publisher: string | null;
-  languages: string | null;
-  rating: number | null;
-};
-
-const BOOK_DETAIL_QUERY = `
-  SELECT
-    b.id,
-    b.title,
-    b.author_sort,
-    b.timestamp,
-    b.pubdate,
-    b.series_index,
-    b.last_modified,
-    b.path,
-    b.has_cover,
-    b.uuid,
-    (
-      SELECT GROUP_CONCAT(a.name, '||')
-      FROM authors a
-      JOIN books_authors_link bal ON a.id = bal.author
-      WHERE bal.book = b.id
-    ) AS authors,
-    (
-      SELECT GROUP_CONCAT(t.name, '||')
-      FROM tags t
-      JOIN books_tags_link btl ON t.id = btl.tag
-      WHERE btl.book = b.id
-    ) AS tags,
-    (
-      SELECT s.name FROM series s
-      JOIN books_series_link bsl ON s.id = bsl.series
-      WHERE bsl.book = b.id LIMIT 1
-    ) AS series,
-    (
-      SELECT GROUP_CONCAT(d.format, '||')
-      FROM data d WHERE d.book = b.id
-    ) AS formats,
-    (
-      SELECT c.text FROM comments c
-      WHERE c.book = b.id LIMIT 1
-    ) AS comment,
-    (
-      SELECT p.name FROM publishers p
-      JOIN books_publishers_link bpl ON p.id = bpl.publisher
-      WHERE bpl.book = b.id LIMIT 1
-    ) AS publisher,
-    (
-      SELECT GROUP_CONCAT(l.lang_code, '||')
-      FROM languages l
-      JOIN books_languages_link bll ON l.id = bll.lang_code
-      WHERE bll.book = b.id
-    ) AS languages,
-    (
-      SELECT r.rating FROM ratings r
-      JOIN books_ratings_link brl ON r.id = brl.rating
-      WHERE brl.book = b.id LIMIT 1
-    ) AS rating
-  FROM books b
-  WHERE b.id = ?
-`;
-
-const BOOKS_QUERY = `
-  SELECT
-    b.id,
-    b.title,
-    b.author_sort,
-    b.path,
-    b.has_cover,
-    b.timestamp,
-    (
-      SELECT GROUP_CONCAT(a.name, '||')
-      FROM authors a
-      JOIN books_authors_link bal ON a.id = bal.author
-      WHERE bal.book = b.id
-    ) AS authors
-  FROM books b
-  ORDER BY b.sort COLLATE NOCASE ASC
-`;
 
 function splitConcat(value: string | null) {
   return value ? value.split("||").filter(Boolean) : [];
@@ -292,10 +205,6 @@ export async function ensureLibraryMetadataCached(library: Library): Promise<Lib
   };
 }
 
-/**
- * Forcefully re-copy metadata.db from the original directory to the app cache,
- * overwriting any existing cached copy. Used by "refresh library".
- */
 export async function forceRefreshLibraryMetadata(library: Library): Promise<Library> {
   if (library.sourceType === "webdav") {
     return library;
@@ -338,9 +247,6 @@ export async function readBookCountFromLibrary(library: Library) {
   };
 }
 
-/**
- * Resolves a readable metadata.db URI and surfaces a user-facing recovery hint on failure.
- */
 async function resolveMetadataUriForRead(library: Library): Promise<string | null> {
   if (library.sourceType === "webdav") {
     const currentMetadata = new FSFile(library.metadataUri!);
@@ -369,18 +275,23 @@ async function resolveMetadataUriForRead(library: Library): Promise<string | nul
 }
 
 export async function readBookCountFromMetadata(metadataUri: string) {
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
 
   try {
-    const row = await db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM books"
-    );
-    return row ? Number(row.count) : 0;
+    const result = await handle.db
+      .select({ count: sql<number>`count(*)` })
+      .from(books)
+      .get();
+    return result ? Number(result.count) : 0;
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }
 
+/**
+ * Fetches all related data for a single book and assembles a BookDetail.
+ * Each relation is a simple query — no GROUP_CONCAT or sub-selects.
+ */
 export async function readBookDetailFromMetadata(
   library: Library,
   calibreBookId: number
@@ -389,92 +300,150 @@ export async function readBookDetailFromMetadata(
   if (!metadataUri) {
     return null;
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
 
   try {
-    const row = await db.getFirstAsync<BookDetailRow>(BOOK_DETAIL_QUERY, calibreBookId);
-    if (!row) {
+    // 1. Main book row
+    const book = await handle.db
+      .select()
+      .from(books)
+      .where(eq(books.id, calibreBookId))
+      .get();
+
+    if (!book) {
       return null;
     }
 
-    const formatRows = await db.getAllAsync<{ format: string; uncompressed_size: number | null }>(
-      "SELECT format, uncompressed_size FROM data WHERE book = ? ORDER BY format",
-      calibreBookId
-    );
+    // 2. Authors via link table
+    const authorRows = await handle.db
+      .select({ name: authors.name })
+      .from(booksAuthorsLink)
+      .innerJoin(authors, eq(authors.id, booksAuthorsLink.author))
+      .where(eq(booksAuthorsLink.book, calibreBookId))
+      .all();
 
-    const identifierRows = await db.getAllAsync<{ type: string; val: string }>(
-      "SELECT type, val FROM identifiers WHERE book = ? ORDER BY type",
-      calibreBookId
-    );
+    // 3. Tags via link table
+    const tagRows = await handle.db
+      .select({ name: tags.name })
+      .from(booksTagsLink)
+      .innerJoin(tags, eq(tags.id, booksTagsLink.tag))
+      .where(eq(booksTagsLink.book, calibreBookId))
+      .all();
 
-    const authors = splitConcat(row.authors);
-    const tags = splitConcat(row.tags);
-    const rawFormats = splitConcat(row.formats);
-    const formats = rawFormats.map((f) => f.toUpperCase());
-    const languages = splitConcat(row.languages);
+    // 4. Series via link table (at most one)
+    const seriesRow = await handle.db
+      .select({ name: series.name })
+      .from(booksSeriesLink)
+      .innerJoin(series, eq(series.id, booksSeriesLink.series))
+      .where(eq(booksSeriesLink.book, calibreBookId))
+      .get();
 
-    const seriesIndexRaw = row.series_index;
+    // 5. Formats from data table
+    const formatRows = await handle.db
+      .select({
+        format: data.format,
+        uncompressedSize: data.uncompressedSize,
+      })
+      .from(data)
+      .where(eq(data.book, calibreBookId))
+      .orderBy(data.format)
+      .all();
+
+    // 6. Comment (at most one)
+    const commentRow = await handle.db
+      .select({ text: comments.text })
+      .from(comments)
+      .where(eq(comments.book, calibreBookId))
+      .get();
+
+    // 7. Publisher via link table (at most one)
+    const publisherRow = await handle.db
+      .select({ name: publishers.name })
+      .from(booksPublishersLink)
+      .innerJoin(publishers, eq(publishers.id, booksPublishersLink.publisher))
+      .where(eq(booksPublishersLink.book, calibreBookId))
+      .get();
+
+    // 8. Languages via link table
+    const languageRows = await handle.db
+      .select({ langCode: languages.langCode })
+      .from(booksLanguagesLink)
+      .innerJoin(languages, eq(languages.id, booksLanguagesLink.langCode))
+      .where(eq(booksLanguagesLink.book, calibreBookId))
+      .all();
+
+    // 9. Rating via link table (at most one)
+    const ratingRow = await handle.db
+      .select({ rating: ratings.rating })
+      .from(booksRatingsLink)
+      .innerJoin(ratings, eq(ratings.id, booksRatingsLink.rating))
+      .where(eq(booksRatingsLink.book, calibreBookId))
+      .get();
+
+    // 10. Identifiers
+    const identifierRows = await handle.db
+      .select({
+        type: identifiers.type,
+        val: identifiers.val,
+      })
+      .from(identifiers)
+      .where(eq(identifiers.book, calibreBookId))
+      .orderBy(identifiers.type)
+      .all();
+
+    // Assemble
+    const bookAuthors = authorRows.map((r) => r.name ?? "").filter(Boolean);
+    const bookTags = tagRows.map((r) => r.name ?? "").filter(Boolean);
+    const bookLanguages = languageRows.map((r) => r.langCode ?? "").filter(Boolean);
+    const formats = formatRows.map((r) => (r.format ?? "").toUpperCase());
+
+    const seriesIndexRaw = book.seriesIndex;
     const seriesIndex =
       seriesIndexRaw !== null && seriesIndexRaw !== undefined && !Number.isNaN(Number(seriesIndexRaw))
         ? Number(seriesIndexRaw)
         : null;
 
     const formatSizes: FormatSize[] = formatRows.map((r) => ({
-      format: r.format.toUpperCase(),
-      sizeBytes: Math.trunc(Number(r.uncompressed_size ?? 0)),
+      format: (r.format ?? "").toUpperCase(),
+      sizeBytes: Math.trunc(Number(r.uncompressedSize ?? 0)),
     }));
 
-    const identifiers: BookIdentifier[] = identifierRows.map((r) => ({
-      idType: r.type,
+    const bookIdentifiers: BookIdentifier[] = identifierRows.map((r) => ({
+      idType: r.type ?? "isbn",
       value: r.val,
     }));
 
-    const ratingRaw = row.rating;
+    const ratingRaw = ratingRow?.rating;
     const rating =
       ratingRaw !== null && ratingRaw !== undefined && !Number.isNaN(Number(ratingRaw))
         ? Math.round(Number(ratingRaw))
         : null;
 
     return {
-      id: row.id,
-      title: row.title || "未命名书籍",
-      authorSort: row.author_sort ?? "",
-      authors,
-      tags,
-      series: row.series,
+      id: book.id,
+      title: book.title || "未命名书籍",
+      authorSort: book.authorSort ?? "",
+      authors: bookAuthors,
+      tags: bookTags,
+      series: seriesRow?.name ?? null,
       seriesIndex,
       formats,
-      hasCover: (row.has_cover ?? 0) !== 0,
-      path: row.path ?? "",
-      timestamp: row.timestamp,
-      pubdate: row.pubdate,
-      lastModified: row.last_modified,
-      comment: row.comment,
-      publisher: row.publisher,
-      languages,
+      hasCover: (book.hasCover ?? 0) !== 0,
+      path: book.path ?? "",
+      timestamp: book.timestamp,
+      pubdate: book.pubdate,
+      lastModified: book.lastModified,
+      comment: commentRow?.text ?? null,
+      publisher: publisherRow?.name ?? null,
+      languages: bookLanguages,
       rating,
-      uuid: row.uuid,
+      uuid: book.uuid,
       formatSizes,
-      identifiers,
+      identifiers: bookIdentifiers,
     } satisfies BookDetail;
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
-}
-
-/**
- * Reads a book file from a local Calibre library and returns raw bytes.
- *
- * Calibre stores files at: `{library.path}/{book.path}/{data.name}.{format_lower}`
- * where `data.name` comes from the `data` table (typically matches the book title).
- */
-export async function readBookFileBytes(
-  library: Library,
-  calibreBookId: number,
-  format: string
-): Promise<Uint8Array> {
-  const bookFile = await resolveBookFile(library, calibreBookId, format);
-  return bookFile.bytes();
 }
 
 async function lookupBookFileLocation(
@@ -486,25 +455,30 @@ async function lookupBookFileLocation(
   if (!metadataUri) {
     throw new Error("metadata.db 不可用");
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
 
   try {
-    const row = await db.getFirstAsync<{ path: string; name: string }>(
-      "SELECT b.path, d.name FROM books b JOIN data d ON d.book = b.id WHERE b.id = ? AND UPPER(d.format) = ?",
-      [calibreBookId, format.toUpperCase()]
-    );
+    const row = await handle.db
+      .select({
+        path: books.path,
+        name: data.name,
+      })
+      .from(books)
+      .innerJoin(data, eq(data.book, books.id))
+      .where(and(eq(books.id, calibreBookId), sql`UPPER(${data.format}) = ${format.toUpperCase()}`))
+      .get();
 
     if (!row) {
       throw new Error(`格式 ${format} 在书库中未找到 (bookId=${calibreBookId})`);
     }
 
     return {
-      rowPath: row.path,
+      rowPath: row.path ?? "",
       fileName: `${row.name}.${format.toLowerCase()}`,
-      segments: row.path.split("/").filter(Boolean),
+      segments: (row.path ?? "").split("/").filter(Boolean),
     };
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }
 
@@ -516,25 +490,36 @@ export async function getBookFormatPaths(
   if (!metadataUri) {
     return [];
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
   try {
-    const rows = await db.getAllAsync<{ fmt: string; path: string; name: string }>(
-      `SELECT UPPER(d.format) AS fmt, b.path, d.name
-       FROM books b JOIN data d ON d.book = b.id WHERE b.id = ?`,
-      [calibreBookId],
-    );
-    return rows.map((r) => ({
-      format: r.fmt,
-      relativePath: `${r.path}/${r.name}.${r.fmt.toLowerCase()}`,
+    const bookPathRow = await handle.db
+      .select({ path: books.path })
+      .from(books)
+      .where(eq(books.id, calibreBookId))
+      .get();
+
+    if (!bookPathRow?.path) {
+      return [];
+    }
+
+    const formatRows = await handle.db
+      .select({
+        format: data.format,
+        name: data.name,
+      })
+      .from(data)
+      .where(eq(data.book, calibreBookId))
+      .all();
+
+    return formatRows.map((r) => ({
+      format: (r.format ?? "").toUpperCase(),
+      relativePath: `${bookPathRow.path}/${r.name}.${(r.format ?? "").toLowerCase()}`,
     }));
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }
 
-/**
- * Returns every downloadable format path keyed by Calibre book id.
- */
 export async function getLibraryBookFormatPathMap(
   library: Library,
 ): Promise<Record<string, string[]>> {
@@ -542,26 +527,32 @@ export async function getLibraryBookFormatPathMap(
   if (!metadataUri) {
     return {};
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
   try {
-    const rows = await db.getAllAsync<{ book_id: number; fmt: string; path: string; name: string }>(
-      `SELECT b.id AS book_id, UPPER(d.format) AS fmt, b.path, d.name
-       FROM books b JOIN data d ON d.book = b.id`,
-    );
-    return rows.reduce<Record<string, string[]>>((mapped, row) => {
-      const bookId = String(row.book_id);
-      mapped[bookId] = mapped[bookId] ?? [];
-      mapped[bookId].push(`${row.path}/${row.name}.${row.fmt.toLowerCase()}`);
+    const allBooks = await handle.db
+      .select({ id: books.id, path: books.path })
+      .from(books)
+      .all();
+
+    const allData = await handle.db
+      .select({ book: data.book, format: data.format, name: data.name })
+      .from(data)
+      .all();
+
+    const bookPathMap = new Map(allBooks.map((b) => [b.id, b.path ?? ""]));
+
+    return allData.reduce<Record<string, string[]>>((mapped, row) => {
+      const bookIdKey = String(row.book);
+      const bookPath = bookPathMap.get(row.book) ?? "";
+      mapped[bookIdKey] = mapped[bookIdKey] ?? [];
+      mapped[bookIdKey].push(`${bookPath}/${row.name}.${(row.format ?? "").toLowerCase()}`);
       return mapped;
     }, {});
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }
 
-/**
- * Returns all readable formats keyed by Calibre book id.
- */
 export async function getAllBookFormats(
   library: Library,
 ): Promise<Record<string, string[]>> {
@@ -569,22 +560,27 @@ export async function getAllBookFormats(
   if (!metadataUri) {
     return {};
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
   try {
-    const rows = await db.getAllAsync<{ book_id: number; fmt: string }>(
-      `SELECT b.id AS book_id, UPPER(d.format) AS fmt
-       FROM books b JOIN data d ON d.book = b.id`,
-    );
+    const rows = await handle.db
+      .select({
+        bookId: data.book,
+        fmt: data.format,
+      })
+      .from(data)
+      .all();
+
     return rows.reduce<Record<string, string[]>>((mapped, row) => {
-      const bookId = String(row.book_id);
-      mapped[bookId] = mapped[bookId] ?? [];
-      if (!mapped[bookId].includes(row.fmt)) {
-        mapped[bookId].push(row.fmt);
+      const bookIdKey = String(row.bookId);
+      mapped[bookIdKey] = mapped[bookIdKey] ?? [];
+      const upper = (row.fmt ?? "").toUpperCase();
+      if (!mapped[bookIdKey].includes(upper)) {
+        mapped[bookIdKey].push(upper);
       }
       return mapped;
     }, {});
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }
 
@@ -696,9 +692,6 @@ export async function materializeBookFileToCache(
   return cachedFile;
 }
 
-/**
- * Removes cached local-copy files related to a library.
- */
 export function clearLocalCopyCacheByLibrary(libraryId: string): void {
   ensureReaderCacheDirectories();
   if (!READER_LOCAL_COPY_CACHE_DIR.exists) return;
@@ -739,10 +732,59 @@ export async function readBooksFromLibrary(library: Library): Promise<BookItem[]
   if (!metadataUri) {
     return [];
   }
-  const db = await openDatabaseFromUri(metadataUri);
+  const handle = openCalibreDatabase(metadataUri);
 
   try {
-    const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
+    // 1. All books (main table only)
+    const bookRows = await handle.db
+      .select({
+        id: books.id,
+        title: books.title,
+        authorSort: books.authorSort,
+        path: books.path,
+        hasCover: books.hasCover,
+        timestamp: books.timestamp,
+      })
+      .from(books)
+      .orderBy(sql`${books.sort} COLLATE NOCASE ASC`)
+      .all();
+
+    if (bookRows.length === 0) {
+      return [];
+    }
+
+    // 2. All author links + author names
+    const authorLinks = await handle.db
+      .select({ book: booksAuthorsLink.book, name: authors.name })
+      .from(booksAuthorsLink)
+      .innerJoin(authors, eq(authors.id, booksAuthorsLink.author))
+      .all();
+
+    // Build bookId -> author names map
+    const authorMap = new Map<number, string[]>();
+    for (const link of authorLinks) {
+      const list = authorMap.get(link.book) ?? [];
+      if (link.name) {
+        list.push(link.name);
+      }
+      authorMap.set(link.book, list);
+    }
+
+    // 3. Assemble BookItem[]
+    const mapRow = (row: typeof bookRows[number]) => {
+      const bookAuthors = authorMap.get(row.id) ?? [];
+
+      return {
+        id: `${row.id}`,
+        calibreId: row.id,
+        title: row.title || "未命名书籍",
+        author: bookAuthors[0] || row.authorSort || "未知作者",
+        authors: bookAuthors,
+        path: row.path || undefined,
+        hasCover: (row.hasCover ?? 0) !== 0,
+        timestamp: row.timestamp,
+      };
+    };
 
     if (library.securityScopedBookmark) {
       const { result: coverRootPath, refreshedLibrary } = await withSecurityScopedLibraryAccess(
@@ -751,48 +793,26 @@ export async function readBooksFromLibrary(library: Library): Promise<BookItem[]
       );
       const effectiveLibrary = refreshedLibrary ?? library;
 
-      return rows.map((row) => {
-        const authors = splitConcat(row.authors);
-
-        return {
-          id: `${row.id}`,
-          calibreId: row.id,
-          title: row.title || "未命名书籍",
-          author: authors[0] || row.author_sort || "未知作者",
-          authors,
-          path: row.path || undefined,
-          hasCover: (row.has_cover ?? 0) !== 0,
-          timestamp: row.timestamp,
-          coverUri: buildCoverUri(
-            effectiveLibrary,
-            row.path,
-            (row.has_cover ?? 0) !== 0,
-            coverRootPath
-          ),
-        } satisfies BookItem;
-      });
+      return bookRows.map((row) => ({
+        ...mapRow(row),
+        coverUri: buildCoverUri(
+          effectiveLibrary,
+          row.path,
+          (row.hasCover ?? 0) !== 0,
+          coverRootPath
+        ),
+      } satisfies BookItem));
     }
 
-    return rows.map((row) => {
-      const authors = splitConcat(row.authors);
-
-      return {
-        id: `${row.id}`,
-        calibreId: row.id,
-        title: row.title || "未命名书籍",
-        author: authors[0] || row.author_sort || "未知作者",
-        authors,
-        path: row.path || undefined,
-        hasCover: (row.has_cover ?? 0) !== 0,
-        timestamp: row.timestamp,
-        coverUri: buildCoverUri(
-          library,
-          row.path,
-          (row.has_cover ?? 0) !== 0
-        ),
-      } satisfies BookItem;
-    });
+    return bookRows.map((row) => ({
+      ...mapRow(row),
+      coverUri: buildCoverUri(
+        library,
+        row.path,
+        (row.hasCover ?? 0) !== 0
+      ),
+    } satisfies BookItem));
   } finally {
-    await db.closeAsync();
+    await handle.raw.closeAsync();
   }
 }

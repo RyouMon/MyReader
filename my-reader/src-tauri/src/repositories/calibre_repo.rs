@@ -1,9 +1,17 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use sea_orm::{
+    ColumnTrait, Database, DatabaseConnection, EntityTrait, ExprTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect,
+};
 use tracing::{debug, info};
-use sqlx::{Row as _, SqlitePool};
-use sqlx::sqlite::SqlitePoolOptions;
 
+use crate::entities::calibre::{
+    authors, books, books_authors_link, books_languages_link, books_publishers_link,
+    books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers,
+    languages, publishers, ratings, series, tags,
+};
 use crate::error::AppError;
 use crate::models::BookEntry;
 
@@ -12,59 +20,6 @@ pub struct CoverSummary {
     pub id: i64,
     pub path: String,
     pub has_cover: bool,
-}
-
-const BOOK_SELECT_COLUMNS: &str = "b.id, b.title, b.sort, b.author_sort, b.timestamp, b.pubdate,
-     b.series_index, b.last_modified, b.path, b.has_cover, b.uuid,
-     (SELECT GROUP_CONCAT(a.name, '||')
-      FROM authors a JOIN books_authors_link bal ON a.id = bal.author
-      WHERE bal.book = b.id),
-     (SELECT GROUP_CONCAT(t.name, '||')
-      FROM tags t JOIN books_tags_link btl ON t.id = btl.tag
-      WHERE btl.book = b.id),
-     (SELECT s.name FROM series s
-      JOIN books_series_link bsl ON s.id = bsl.series
-      WHERE bsl.book = b.id LIMIT 1),
-     (SELECT GROUP_CONCAT(d.format, '||')
-      FROM data d WHERE d.book = b.id),
-     (SELECT c.text FROM comments c
-      WHERE c.book = b.id LIMIT 1),
-     (SELECT p.name FROM publishers p
-      JOIN books_publishers_link bpl ON p.id = bpl.publisher
-      WHERE bpl.book = b.id LIMIT 1),
-     (SELECT GROUP_CONCAT(l.lang_code, '||')
-      FROM languages l JOIN books_languages_link bll ON l.id = bll.lang_code
-      WHERE bll.book = b.id),
-     (SELECT r.rating FROM ratings r
-      JOIN books_ratings_link brl ON r.id = brl.rating
-      WHERE brl.book = b.id LIMIT 1)";
-
-fn map_book_row(row: &sqlx::sqlite::SqliteRow) -> Result<BookEntry, AppError> {
-    Ok(BookEntry {
-        id: row.try_get::<i64, _>(0).unwrap_or(0),
-        title: row.try_get::<String, _>(1).unwrap_or_default(),
-        author_sort: row.try_get::<Option<String>, _>(3).ok().flatten().unwrap_or_default(),
-        authors: split_concat(row.try_get::<Option<String>, _>(11).ok().flatten()),
-        tags: split_concat(row.try_get::<Option<String>, _>(12).ok().flatten()),
-        series: row.try_get::<Option<String>, _>(13).ok().flatten(),
-        series_index: row.try_get::<Option<f64>, _>(6).ok().flatten(),
-        formats: split_concat(row.try_get::<Option<String>, _>(14).ok().flatten()),
-        has_cover: row.try_get::<Option<i64>, _>(9).ok().flatten().unwrap_or(0) != 0,
-        path: row.try_get::<Option<String>, _>(8).ok().flatten().unwrap_or_default(),
-        timestamp: row.try_get::<Option<String>, _>(4).ok().flatten(),
-        pubdate: row.try_get::<Option<String>, _>(5).ok().flatten(),
-        last_modified: row.try_get::<Option<String>, _>(7).ok().flatten(),
-        comment: row.try_get::<Option<String>, _>(15).ok().flatten(),
-        publisher: row.try_get::<Option<String>, _>(16).ok().flatten(),
-        languages: split_concat(row.try_get::<Option<String>, _>(17).ok().flatten()),
-        rating: row.try_get::<Option<i32>, _>(18).ok().flatten(),
-        uuid: row.try_get::<Option<String>, _>(10).ok().flatten(),
-    })
-}
-
-fn split_concat(s: Option<String>) -> Vec<String> {
-    s.map(|s| s.split("||").map(String::from).collect())
-        .unwrap_or_default()
 }
 
 /// Repository trait for Calibre book metadata access.
@@ -96,9 +51,9 @@ pub trait BookRepository {
     ) -> Result<Option<PathBuf>, AppError>;
 }
 
-/// Read-only Calibre metadata.db repository using sqlx.
+/// Read-only Calibre metadata.db repository using SeaORM.
 pub struct CalibreBookRepository {
-    pool: SqlitePool,
+    db: DatabaseConnection,
     library_path: String,
 }
 
@@ -108,11 +63,11 @@ impl CalibreBookRepository {
         let db_path = Path::new(library_path).join("metadata.db");
         let url = format!(
             "sqlite://{}?mode=ro",
-            db_path.to_str().ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
+            db_path
+                .to_str()
+                .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
         );
-        let pool = SqlitePoolOptions::new()
-            .max_connections(3)
-            .connect(&url)
+        let db = Database::connect(&url)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
         info!(
@@ -120,7 +75,7 @@ impl CalibreBookRepository {
             db_path.display()
         );
         Ok(Self {
-            pool,
+            db,
             library_path: library_path.to_string(),
         })
     }
@@ -131,34 +86,280 @@ impl CalibreBookRepository {
 
     /// Return lightweight (id, path, has_cover) for every book — used by bulk cover download.
     pub async fn get_cover_summaries(&self) -> Result<Vec<CoverSummary>, AppError> {
-        let rows = sqlx::query("SELECT b.id, b.path, b.has_cover FROM books b")
-            .fetch_all(&self.pool)
+        let rows = books::Entity::find()
+            .select_only()
+            .column(books::Column::Id)
+            .column(books::Column::Path)
+            .column(books::Column::HasCover)
+            .all(&self.db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
         Ok(rows
-            .iter()
-            .map(|row| CoverSummary {
-                id: row.try_get::<i64, _>(0).unwrap_or(0),
-                path: row.try_get::<Option<String>, _>(1).ok().flatten().unwrap_or_default(),
-                has_cover: row.try_get::<Option<i64>, _>(2).ok().flatten().unwrap_or(0) != 0,
+            .into_iter()
+            .map(|m| CoverSummary {
+                id: m.id,
+                path: m.path.unwrap_or_default(),
+                has_cover: m.has_cover.unwrap_or(0) != 0,
             })
             .collect())
     }
+}
+
+/// Fetch all related data for a list of book IDs and assemble BookEntry objects.
+async fn assemble_book_entries(
+    db: &DatabaseConnection,
+    book_models: Vec<books::Model>,
+) -> Result<Vec<BookEntry>, AppError> {
+    if book_models.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let book_ids: Vec<i64> = book_models.iter().map(|b| b.id).collect();
+
+    // Authors: books_authors_link JOIN authors
+    let author_links = books_authors_link::Entity::find()
+        .filter(books_authors_link::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let author_ids: Vec<i64> = author_links.iter().map(|l| l.author).collect();
+    let author_models = if author_ids.is_empty() {
+        Vec::new()
+    } else {
+        authors::Entity::find()
+            .filter(authors::Column::Id.is_in(author_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let author_map: HashMap<i64, String> = author_models
+        .into_iter()
+        .map(|a| (a.id, a.name))
+        .collect();
+
+    let mut book_authors_map: HashMap<i64, Vec<String>> = HashMap::new();
+    for link in &author_links {
+        if let Some(name) = author_map.get(&link.author) {
+            book_authors_map
+                .entry(link.book)
+                .or_default()
+                .push(name.clone());
+        }
+    }
+
+    // Tags: books_tags_link JOIN tags
+    let tag_links = books_tags_link::Entity::find()
+        .filter(books_tags_link::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let tag_ids: Vec<i64> = tag_links.iter().map(|l| l.tag).collect();
+    let tag_models = if tag_ids.is_empty() {
+        Vec::new()
+    } else {
+        tags::Entity::find()
+            .filter(tags::Column::Id.is_in(tag_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let tag_map: HashMap<i64, String> = tag_models.into_iter().map(|t| (t.id, t.name)).collect();
+
+    let mut book_tags_map: HashMap<i64, Vec<String>> = HashMap::new();
+    for link in &tag_links {
+        if let Some(name) = tag_map.get(&link.tag) {
+            book_tags_map
+                .entry(link.book)
+                .or_default()
+                .push(name.clone());
+        }
+    }
+
+    // Series: books_series_link JOIN series
+    let series_links = books_series_link::Entity::find()
+        .filter(books_series_link::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let series_ids: Vec<i64> = series_links.iter().map(|l| l.series).collect();
+    let series_models = if series_ids.is_empty() {
+        Vec::new()
+    } else {
+        series::Entity::find()
+            .filter(series::Column::Id.is_in(series_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let series_map: HashMap<i64, String> = series_models
+        .into_iter()
+        .map(|s| (s.id, s.name))
+        .collect();
+
+    let mut book_series_map: HashMap<i64, String> = HashMap::new();
+    for link in &series_links {
+        if let Some(name) = series_map.get(&link.series) {
+            book_series_map.insert(link.book, name.clone());
+        }
+    }
+
+    // Formats: data table
+    let data_rows = data::Entity::find()
+        .filter(data::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let mut book_formats_map: HashMap<i64, Vec<String>> = HashMap::new();
+    for d in &data_rows {
+        book_formats_map
+            .entry(d.book)
+            .or_default()
+            .push(d.format.clone());
+    }
+
+    // Comments
+    let comment_rows = comments::Entity::find()
+        .filter(comments::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let mut book_comment_map: HashMap<i64, String> = comment_rows
+        .into_iter()
+        .map(|c| (c.book, c.text))
+        .collect();
+
+    // Publishers: books_publishers_link JOIN publishers
+    let pub_links = books_publishers_link::Entity::find()
+        .filter(books_publishers_link::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let pub_ids: Vec<i64> = pub_links.iter().map(|l| l.publisher).collect();
+    let pub_models = if pub_ids.is_empty() {
+        Vec::new()
+    } else {
+        publishers::Entity::find()
+            .filter(publishers::Column::Id.is_in(pub_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let pub_map: HashMap<i64, String> = pub_models.into_iter().map(|p| (p.id, p.name)).collect();
+
+    let mut book_publisher_map: HashMap<i64, String> = HashMap::new();
+    for link in &pub_links {
+        if let Some(name) = pub_map.get(&link.publisher) {
+            book_publisher_map.insert(link.book, name.clone());
+        }
+    }
+
+    // Languages: books_languages_link JOIN languages
+    let lang_links = books_languages_link::Entity::find()
+        .filter(books_languages_link::Column::Book.is_in(book_ids.clone()))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let lang_ids: Vec<i64> = lang_links.iter().map(|l| l.lang_code).collect();
+    let lang_models = if lang_ids.is_empty() {
+        Vec::new()
+    } else {
+        languages::Entity::find()
+            .filter(languages::Column::Id.is_in(lang_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let lang_map: HashMap<i64, String> = lang_models
+        .into_iter()
+        .map(|l| (l.id, l.lang_code))
+        .collect();
+
+    let mut book_languages_map: HashMap<i64, Vec<String>> = HashMap::new();
+    for link in &lang_links {
+        if let Some(code) = lang_map.get(&link.lang_code) {
+            book_languages_map
+                .entry(link.book)
+                .or_default()
+                .push(code.clone());
+        }
+    }
+
+    // Ratings: books_ratings_link JOIN ratings
+    let rating_links = books_ratings_link::Entity::find()
+        .filter(books_ratings_link::Column::Book.is_in(book_ids))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let rating_ids: Vec<i64> = rating_links.iter().map(|l| l.rating).collect();
+    let rating_models = if rating_ids.is_empty() {
+        Vec::new()
+    } else {
+        ratings::Entity::find()
+            .filter(ratings::Column::Id.is_in(rating_ids))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+    };
+    let rating_map: HashMap<i64, i64> = rating_models
+        .into_iter()
+        .map(|r| (r.id, r.rating))
+        .collect();
+
+    let mut book_rating_map: HashMap<i64, i32> = HashMap::new();
+    for link in &rating_links {
+        if let Some(r) = rating_map.get(&link.rating) {
+            book_rating_map.insert(link.book, *r as i32);
+        }
+    }
+
+    // Assemble BookEntry objects
+    Ok(book_models
+        .into_iter()
+        .map(|b| BookEntry {
+            id: b.id,
+            title: b.title.unwrap_or_default(),
+            author_sort: b.author_sort.unwrap_or_default(),
+            authors: book_authors_map.remove(&b.id).unwrap_or_default(),
+            tags: book_tags_map.remove(&b.id).unwrap_or_default(),
+            series: book_series_map.remove(&b.id),
+            series_index: b.series_index,
+            formats: book_formats_map.remove(&b.id).unwrap_or_default(),
+            has_cover: b.has_cover.unwrap_or(0) != 0,
+            path: b.path.unwrap_or_default(),
+            timestamp: b.timestamp,
+            pubdate: b.pubdate,
+            last_modified: b.last_modified,
+            comment: book_comment_map.remove(&b.id),
+            publisher: book_publisher_map.remove(&b.id),
+            languages: book_languages_map.remove(&b.id).unwrap_or_default(),
+            rating: book_rating_map.remove(&b.id),
+            uuid: b.uuid,
+        })
+        .collect())
 }
 
 #[async_trait::async_trait]
 impl BookRepository for CalibreBookRepository {
     async fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError> {
         info!("Start to load all books from Calibre.");
-        let rows = sqlx::query(&format!(
-            "SELECT {BOOK_SELECT_COLUMNS} FROM books b ORDER BY b.sort"
-        ))
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        let books: Vec<BookEntry> = rows.iter().filter_map(|r| map_book_row(r).ok()).collect();
-        info!("Success to load all books from Calibre. count: {}", books.len());
-        Ok(books)
+        let book_models = books::Entity::find()
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let result = assemble_book_entries(&self.db, book_models).await?;
+        info!(
+            "Success to load all books from Calibre. count: {}",
+            result.len()
+        );
+        Ok(result)
     }
 
     async fn get_books_page(
@@ -171,84 +372,159 @@ impl BookRepository for CalibreBookRepository {
         info!(
             "Start to query books page. offset: {offset}, limit: {limit}, sort by: {sort_by}, search: {search:?}"
         );
-        let order = match sort_by {
-            "author" => "b.author_sort COLLATE NOCASE ASC",
-            "recent" | "progress" => "b.timestamp DESC",
-            _ => "b.sort COLLATE NOCASE ASC",
-        };
 
         let search_filter = search.filter(|s| !s.is_empty());
-        let pattern = search_filter.map(|s| format!("%{s}%"));
 
-        let where_sql = if search_filter.is_some() {
-            " WHERE (b.sort LIKE ?1 COLLATE NOCASE \
-             OR b.title LIKE ?1 COLLATE NOCASE \
-             OR b.author_sort LIKE ?1 COLLATE NOCASE \
-             OR EXISTS (SELECT 1 FROM authors a \
-                        JOIN books_authors_link bal ON a.id = bal.author \
-                        WHERE bal.book = b.id AND a.name LIKE ?1 COLLATE NOCASE) \
-             OR EXISTS (SELECT 1 FROM tags t \
-                        JOIN books_tags_link btl ON t.id = btl.tag \
-                        WHERE btl.book = b.id AND t.name LIKE ?1 COLLATE NOCASE))"
-        } else {
-            ""
-        };
+        if let Some(keyword) = search_filter {
+            // Split-query search: find matching author/tag IDs first, then filter books in code.
+            let keyword: &str = keyword;
 
-        let total = if let Some(ref p) = pattern {
-            let row: (i64,) = sqlx::query_as(&format!(
-                "SELECT COUNT(*) FROM books b{where_sql}"
-            ))
-            .bind(p)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-            row.0 as usize
-        } else {
-            let row: (i64,) = sqlx::query_as(&format!(
-                "SELECT COUNT(*) FROM books b{where_sql}"
-            ))
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-            row.0 as usize
-        };
+            // 1. Find author IDs whose name matches (case-insensitive)
+            let matching_author_ids: Vec<i64> = authors::Entity::find()
+                .filter(authors::Column::Name.contains(keyword))
+                .all(&self.db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?
+                .into_iter()
+                .map(|a| a.id)
+                .collect();
 
-        let sql = format!(
-            "SELECT {BOOK_SELECT_COLUMNS} FROM books b{where_sql} ORDER BY {order} LIMIT {limit} OFFSET {offset}"
-        );
-        let books: Vec<BookEntry> = if let Some(ref p) = pattern {
-            let rows = sqlx::query(&sql)
-                .bind(p)
-                .fetch_all(&self.pool)
+            // 2. Find book IDs linked to those authors
+            let author_book_ids: Vec<i64> = if matching_author_ids.is_empty() {
+                Vec::new()
+            } else {
+                books_authors_link::Entity::find()
+                    .filter(books_authors_link::Column::Author.is_in(matching_author_ids))
+                    .all(&self.db)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?
+                    .into_iter()
+                    .map(|l| l.book)
+                    .collect()
+            };
+
+            // 3. Find tag IDs whose name matches (case-insensitive)
+            let matching_tag_ids: Vec<i64> = tags::Entity::find()
+                .filter(tags::Column::Name.contains(keyword))
+                .all(&self.db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?
+                .into_iter()
+                .map(|t| t.id)
+                .collect();
+
+            // 4. Find book IDs linked to those tags
+            let tag_book_ids: Vec<i64> = if matching_tag_ids.is_empty() {
+                Vec::new()
+            } else {
+                books_tags_link::Entity::find()
+                    .filter(books_tags_link::Column::Tag.is_in(matching_tag_ids))
+                    .all(&self.db)
+                    .await
+                    .map_err(|e| AppError::Database(e.to_string()))?
+                    .into_iter()
+                    .map(|l| l.book)
+                    .collect()
+            };
+
+            // 5. Combine: books where sort/title/author_sort contains keyword OR book is in author/tag match sets
+            let all_books = books::Entity::find()
+                .filter(
+                    books::Column::Sort.contains(keyword)
+                        .or(books::Column::Title.contains(keyword))
+                        .or(books::Column::AuthorSort.contains(keyword)),
+                )
+                .all(&self.db)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
-        } else {
-            let rows = sqlx::query(&sql)
-                .fetch_all(&self.pool)
+
+            let mut matched_ids: std::collections::HashSet<i64> =
+                all_books.into_iter().map(|b| b.id).collect();
+            for id in author_book_ids {
+                matched_ids.insert(id);
+            }
+            for id in tag_book_ids {
+                matched_ids.insert(id);
+            }
+
+            let total = matched_ids.len();
+
+            // 6. Fetch matched books with ordering and pagination
+            let matched_ids_vec: Vec<i64> = matched_ids.into_iter().collect();
+
+            if matched_ids_vec.is_empty() {
+                info!("Success to query books page. returned count: 0, total: 0");
+                return Ok((Vec::new(), 0));
+            }
+
+            let (order_expr, order_dir) = match sort_by {
+                "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
+                "recent" | "progress" => ("timestamp", sea_orm::Order::Desc),
+                _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
+            };
+            let book_models = books::Entity::find()
+                .filter(books::Column::Id.is_in(matched_ids_vec))
+                .order_by(sea_orm::sea_query::Expr::cust(order_expr), order_dir)
+                .offset(offset as u64)
+                .limit(limit as u64)
+                .all(&self.db)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
-        };
 
+            let result = assemble_book_entries(&self.db, book_models).await?;
+            info!(
+                "Success to query books page. returned count: {}, total: {}",
+                result.len(),
+                total
+            );
+            return Ok((result, total));
+        }
+
+        // Non-search path: use SeaORM query builder directly
+        let total = books::Entity::find()
+            .count(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let (order_expr, order_dir) = match sort_by {
+            "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
+            "recent" | "progress" => ("timestamp", sea_orm::Order::Desc),
+            _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
+        };
+        let book_models = books::Entity::find()
+            .order_by(
+                sea_orm::sea_query::Expr::cust(order_expr),
+                order_dir,
+            )
+            .offset(offset as u64)
+            .limit(limit as u64)
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let result = assemble_book_entries(&self.db, book_models).await?;
         info!(
             "Success to query books page. returned count: {}, total: {}",
-            books.len(),
+            result.len(),
             total
         );
-        Ok((books, total))
+        Ok((result, total as usize))
     }
 
     async fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError> {
         info!("Start to load book by id. book id: {book_id}");
-        let row = sqlx::query(&format!(
-            "SELECT {BOOK_SELECT_COLUMNS} FROM books b WHERE b.id = ?1"
-        ))
-        .bind(book_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
-        Ok(row.as_ref().and_then(|r| map_book_row(r).ok()))
+        let book_model = books::Entity::find_by_id(book_id)
+            .one(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        match book_model {
+            Some(m) => {
+                let entries = assemble_book_entries(&self.db, vec![m]).await?;
+                Ok(entries.into_iter().next())
+            }
+            None => Ok(None),
+        }
     }
 
     async fn get_books_by_series(
@@ -259,83 +535,97 @@ impl BookRepository for CalibreBookRepository {
         info!(
             "Start to load books by series. series name: \"{series_name}\", exclude book id: {exclude_book_id:?}"
         );
-        let sql = format!(
-            "SELECT {BOOK_SELECT_COLUMNS} FROM books b \
-             WHERE EXISTS ( \
-               SELECT 1 FROM series s \
-               JOIN books_series_link bsl ON s.id = bsl.series \
-               WHERE bsl.book = b.id AND s.name = ?1 \
-             ) \
-             {} \
-             ORDER BY b.series_index",
-            if exclude_book_id.is_some() { "AND b.id != ?2" } else { "" }
-        );
-        let books: Vec<BookEntry> = if let Some(eid) = exclude_book_id {
-            let rows = sqlx::query(&sql)
-                .bind(series_name)
-                .bind(eid)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
-            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
-        } else {
-            let rows = sqlx::query(&sql)
-                .bind(series_name)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
-            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
+
+        // Find series by name
+        let series_model = series::Entity::find()
+            .filter(series::Column::Name.eq(series_name))
+            .one(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let Some(series_model) = series_model else {
+            return Ok(Vec::new());
         };
+
+        // Find book IDs via link table
+        let mut query = books_series_link::Entity::find()
+            .filter(books_series_link::Column::Series.eq(series_model.id));
+
+        if let Some(eid) = exclude_book_id {
+            query = query.filter(books_series_link::Column::Book.ne(eid));
+        }
+
+        let links = query.all(&self.db).await.map_err(|e| AppError::Database(e.to_string()))?;
+        let book_ids: Vec<i64> = links.iter().map(|l| l.book).collect();
+
+        if book_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Fetch full book models ordered by series_index
+        let book_models = books::Entity::find()
+            .filter(books::Column::Id.is_in(book_ids))
+            .order_by_asc(books::Column::SeriesIndex)
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let result = assemble_book_entries(&self.db, book_models).await?;
         info!(
             "Success to load books by series. series name: \"{series_name}\", count: {}",
-            books.len()
+            result.len()
         );
-        Ok(books)
+        Ok(result)
     }
 
     async fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError> {
         debug!("Start to load book format sizes. book id: {book_id}");
-        let rows = sqlx::query_as::<_, (String, i64)>(
-            "SELECT format, uncompressed_size FROM data WHERE book = ?1 ORDER BY format",
-        )
-        .bind(book_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let rows = data::Entity::find()
+            .filter(data::Column::Book.eq(book_id))
+            .order_by_asc(data::Column::Format)
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let result: Vec<(String, i64)> = rows
+            .into_iter()
+            .map(|d| (d.format, d.uncompressed_size))
+            .collect();
         debug!(
             "Success to load book format sizes. book id: {}, count: {}",
             book_id,
-            rows.len()
+            result.len()
         );
-        Ok(rows)
+        Ok(result)
     }
 
     async fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError> {
         debug!("Start to load book identifiers. book id: {book_id}");
-        let rows = sqlx::query_as::<_, (String, String)>(
-            "SELECT type, val FROM identifiers WHERE book = ?1 ORDER BY type",
-        )
-        .bind(book_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let rows = identifiers::Entity::find()
+            .filter(identifiers::Column::Book.eq(book_id))
+            .order_by_asc(identifiers::Column::Type)
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let result: Vec<(String, String)> = rows
+            .into_iter()
+            .map(|i| (i.r#type.unwrap_or_default(), i.val))
+            .collect();
         debug!(
             "Success to load book identifiers. book id: {}, count: {}",
             book_id,
-            rows.len()
+            result.len()
         );
-        Ok(rows)
+        Ok(result)
     }
 
     async fn get_book_count(&self) -> Result<usize, AppError> {
         debug!("Start to count books in Calibre.");
-        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM books")
-            .fetch_one(&self.pool)
+        let count = books::Entity::find()
+            .count(&self.db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
-        let count = row.0 as usize;
         debug!("Success to count books in Calibre. count: {count}");
-        Ok(count)
+        Ok(count as usize)
     }
 
     fn get_book_cover_path(&self, book_path: &str) -> Result<Option<PathBuf>, AppError> {
@@ -354,7 +644,9 @@ impl BookRepository for CalibreBookRepository {
             );
             return Ok(None);
         }
-        let cover = Path::new(&self.library_path).join(book_path).join("cover.jpg");
+        let cover = Path::new(&self.library_path)
+            .join(book_path)
+            .join("cover.jpg");
         let result = cover.exists().then_some(cover);
         debug!(
             "Success to resolve book cover path. library path: \"{}\", book path: \"{book_path}\", found: {}",
@@ -373,22 +665,36 @@ impl BookRepository for CalibreBookRepository {
         info!(
             "Start to resolve book file path. library path: \"{library_path}\", book id: {book_id}, format: \"{format}\""
         );
-        let row: Option<(String, String, String)> = sqlx::query_as(
-            "SELECT b.path, d.name, d.format \
-             FROM books b JOIN data d ON d.book = b.id \
-             WHERE b.id = ?1 AND UPPER(d.format) = UPPER(?2)",
-        )
-        .bind(book_id)
-        .bind(format)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let result = match row {
-            Some((book_path, file_name, fmt)) => {
+        // Find book's path
+        let book_model = books::Entity::find_by_id(book_id)
+            .one(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let Some(book_model) = book_model else {
+            info!(
+                "Success to resolve book file path. found: false, book id: {book_id}, format: \"{format}\""
+            );
+            return Ok(None);
+        };
+
+        // Find data row matching format (case-insensitive)
+        let data_rows = data::Entity::find()
+            .filter(data::Column::Book.eq(book_id))
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let data_match = data_rows
+            .into_iter()
+            .find(|d| d.format.eq_ignore_ascii_case(format));
+
+        let result = match data_match {
+            Some(d) => {
                 let full = Path::new(library_path)
-                    .join(&book_path)
-                    .join(format!("{}.{}", file_name, fmt.to_lowercase()));
+                    .join(book_model.path.unwrap_or_default())
+                    .join(format!("{}.{}", d.name, d.format.to_lowercase()));
                 info!(
                     "Success to resolve book file path. found: true, path: \"{}\"",
                     full.display()
