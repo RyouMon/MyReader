@@ -12,12 +12,13 @@ use crate::{cache, db};
 pub struct LibraryService;
 
 impl LibraryService {
-    pub fn list_libraries(config: &AppConfig) -> Result<Vec<LibraryInfo>, AppError> {
+    pub async fn list_libraries(config: &AppConfig) -> Result<Vec<LibraryInfo>, AppError> {
         let mut infos = Vec::new();
         for lib in &config.libraries {
-            let book_count = CalibreBookRepository::open(&lib.path)
-                .and_then(|repo| repo.get_book_count())
-                .unwrap_or(0);
+            let book_count = match CalibreBookRepository::open(&lib.path).await {
+                Ok(repo) => repo.get_book_count().await.unwrap_or(0),
+                Err(_) => 0,
+            };
             infos.push(LibraryInfo {
                 id: lib.id.clone(),
                 name: lib.name.clone(),
@@ -31,7 +32,7 @@ impl LibraryService {
         Ok(infos)
     }
 
-    pub fn add_library(
+    pub async fn add_library(
         path: &str,
         name: Option<&str>,
         config: &mut AppConfig,
@@ -63,9 +64,10 @@ impl LibraryService {
 
         db::ensure_library_data_dir(&canon_str)?;
 
-        let book_count = CalibreBookRepository::open(&canon_str)
-            .and_then(|repo| repo.get_book_count())
-            .unwrap_or(0);
+        let book_count = match CalibreBookRepository::open(&canon_str).await {
+            Ok(repo) => repo.get_book_count().await.unwrap_or(0),
+            Err(_) => 0,
+        };
 
         config.libraries.push(LibraryConfig {
             id: id.clone(),
@@ -130,9 +132,10 @@ impl LibraryService {
 
         db::ensure_library_data_dir(&cache_str)?;
 
-        let book_count = CalibreBookRepository::open(&cache_str)
-            .and_then(|repo| repo.get_book_count())
-            .unwrap_or(0);
+        let book_count = match CalibreBookRepository::open(&cache_str).await {
+            Ok(repo) => repo.get_book_count().await.unwrap_or(0),
+            Err(_) => 0,
+        };
 
         config.libraries.push(LibraryConfig {
             id: id.clone(),
@@ -190,9 +193,9 @@ impl LibraryService {
         download_metadata_db(source, remote_path, &db_path).await?;
 
         let cache_str = cache_dir.to_string_lossy().to_string();
-        let repo = CalibreBookRepository::open(&cache_str)?;
-        let book_count = repo.get_book_count()?;
-        let book_ids: Vec<i64> = repo.get_all_books()?.iter().map(|b| b.id).collect();
+        let repo = CalibreBookRepository::open(&cache_str).await?;
+        let book_count = repo.get_book_count().await?;
+        let book_ids: Vec<i64> = repo.get_all_books().await?.iter().map(|b| b.id).collect();
 
         cache::clear_orphaned_library_cache_files(id, &book_ids)?;
 
@@ -215,7 +218,7 @@ impl LibraryService {
         })
     }
 
-    pub fn refresh_library(id: &str, config: &AppConfig) -> Result<LibraryInfo, AppError> {
+    pub async fn refresh_library(id: &str, config: &AppConfig) -> Result<LibraryInfo, AppError> {
         let lib = config
             .libraries
             .iter()
@@ -240,8 +243,8 @@ impl LibraryService {
             )));
         }
 
-        let repo = CalibreBookRepository::open(&lib_path_str)?;
-        let books = repo.get_all_books()?;
+        let repo = CalibreBookRepository::open(&lib_path_str).await?;
+        let books = repo.get_all_books().await?;
         let book_count = books.len();
         let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 
@@ -342,14 +345,14 @@ impl LibraryService {
             let source = source.unwrap();
 
             let cache_dir = PathBuf::from(&cache_dir_str);
-         let repo = match CalibreBookRepository::open(&cache_dir_str) {
+            let repo = match CalibreBookRepository::open(&cache_dir_str).await {
                 Ok(r) => r,
                 Err(e) => {
                     warn!("Skipping cover download: cannot open metadata.db: {e}");
                     return;
                 }
             };
-            let summaries = match repo.get_cover_summaries() {
+            let summaries = match repo.get_cover_summaries().await {
                 Ok(s) => s,
                 Err(e) => {
                     warn!("Skipping cover download: cannot query covers: {e}");

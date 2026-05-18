@@ -31,6 +31,7 @@ export default defineConfig(async () => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "pdfjs-dist": path.resolve(__dirname, "../node_modules/pdfjs-dist"),
+      "@my-reader/db": path.resolve(__dirname, "../packages/db/src"),
     },
   },
   plugins: [

@@ -155,12 +155,16 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         None => return not_found(),
     };
 
-    let repo = match CalibreBookRepository::open(lib_path_str) {
+    let repo = match tokio::task::block_in_place(|| {
+        tauri::async_runtime::block_on(CalibreBookRepository::open(lib_path_str))
+    }) {
         Ok(r) => r,
         Err(_) => return not_found(),
     };
 
-    let file_path = match repo.get_book_file_path(lib_path_str, book_id, format) {
+    let file_path = match tokio::task::block_in_place(|| {
+        tauri::async_runtime::block_on(repo.get_book_file_path(lib_path_str, book_id, format))
+    }) {
         Ok(Some(p)) => p,
         _ => return not_found(),
     };

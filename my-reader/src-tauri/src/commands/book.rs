@@ -10,17 +10,16 @@ use crate::services::library_service::LibraryService;
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_books(
+pub async fn get_books(
     state: State<'_, AppState>,
     library_id: Option<String>,
 ) -> Result<Vec<BookEntry>, AppError> {
     info!("Start to get books. library id: {library_id:?}");
-    let result = (|| {
+    let (_, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
-        drop(config);
-        BookService::get_books(&lib_path)
-    })();
+        LibraryService::resolve_library_path(library_id.as_deref(), &config)?
+    };
+    let result = BookService::get_books(&lib_path).await;
 
     match &result {
         Ok(books) => info!("Success to get books. count: {}", books.len()),
@@ -34,7 +33,7 @@ pub fn get_books(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_books_page(
+pub async fn get_books_page(
     state: State<'_, AppState>,
     library_id: Option<String>,
     offset: usize,
@@ -45,12 +44,11 @@ pub fn get_books_page(
     info!(
         "Start to get books page. library id: {library_id:?}, offset: {offset}, limit: {limit}, sort by: {sort_by:?}, search: {search:?}"
     );
-    let result = (|| {
+    let (_, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
-        drop(config);
-        BookService::get_books_page(&lib_path, offset, limit, sort_by.as_deref(), search.as_deref())
-    })();
+        LibraryService::resolve_library_path(library_id.as_deref(), &config)?
+    };
+    let result = BookService::get_books_page(&lib_path, offset, limit, sort_by.as_deref(), search.as_deref()).await;
 
     match &result {
         Ok(page) => info!(
@@ -68,18 +66,17 @@ pub fn get_books_page(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_book_detail(
+pub async fn get_book_detail(
     state: State<'_, AppState>,
     library_id: Option<String>,
     book_id: i64,
 ) -> Result<BookDetail, AppError> {
     info!("Start to get book detail. library id: {library_id:?}, book id: {book_id}");
-    let result = (|| {
+    let (_, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
-        drop(config);
-        BookService::get_book_detail(&lib_path, book_id)
-    })();
+        LibraryService::resolve_library_path(library_id.as_deref(), &config)?
+    };
+    let result = BookService::get_book_detail(&lib_path, book_id).await;
 
     match &result {
         Ok(detail) => info!(
@@ -99,7 +96,7 @@ pub fn get_book_detail(
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_series_books(
+pub async fn get_series_books(
     state: State<'_, AppState>,
     library_id: Option<String>,
     series_name: String,
@@ -109,12 +106,11 @@ pub fn get_series_books(
         "Start to get series books. library id: {library_id:?}, series name: \"{}\", exclude book id: {exclude_book_id:?}",
         series_name
     );
-    let result = (|| {
+    let (_, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (_, lib_path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
-        drop(config);
-        BookService::get_series_books(&lib_path, &series_name, exclude_book_id)
-    })();
+        LibraryService::resolve_library_path(library_id.as_deref(), &config)?
+    };
+    let result = BookService::get_series_books(&lib_path, &series_name, exclude_book_id).await;
 
     match &result {
         Ok(books) => info!(
@@ -130,4 +126,3 @@ pub fn get_series_books(
 
     result
 }
-

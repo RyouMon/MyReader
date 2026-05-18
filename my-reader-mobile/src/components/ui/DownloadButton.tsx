@@ -5,12 +5,12 @@ import { Text, View } from "@/tw";
 
 import { Button } from "./button";
 
+import type { FileStateRow } from "@/src/data/file_state";
 import {
   enqueue,
   useDownloadStatusTasks,
   useDownloadTaskForPath,
 } from "@/src/sync/download-store";
-import type { FileStateRow } from "@/src/sync/file_state";
 import { useSyncActions } from "@/src/sync/useSyncActions";
 
 export type DownloadButtonState = FileStateRow["localState"];

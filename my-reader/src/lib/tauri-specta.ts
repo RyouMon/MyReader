@@ -37,7 +37,7 @@ export const commands = {
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
 	getReaderUiPreferences: () => typedError<ReaderUiPreferences_Serialize, ErrorKind>(__TAURI_INVOKE("get_reader_ui_preferences")),
-	setReaderUiPreferences: (prefs: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { prefs })),
+	setReaderUiPreferences: (preferences: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { preferences })),
 	prepareBookSource: (libraryId: string | null, bookId: number, format: string) => typedError<PreparedBookSource, ErrorKind>(__TAURI_INVOKE("prepare_book_source", { libraryId, bookId, format })),
 	writeEpubReadiumManifest: (dirPath: string, manifest: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("write_epub_readium_manifest", { dirPath, manifest })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
@@ -50,19 +50,7 @@ export const commands = {
 	syncDownloadFile: (libraryId: string, dataSourceId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_download_file", { libraryId, dataSourceId, relativePath })),
 	syncEvictLocalFile: (libraryId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_evict_local_file", { libraryId, relativePath })),
 	syncDeleteFileEverywhere: (libraryId: string, dataSourceId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_delete_file_everywhere", { libraryId, dataSourceId, relativePath })),
-	/**
-	 *  对指定 library + 数据源做一次 DB changes push→pull 循环。
-	 * 
-	 *  阶段 1 使用 `LwwProvider`（行级 LWW by `updated_at`）；后续接入 cr-sqlite 时，
-	 *  调用方代码无需变化（`SyncProvider` trait 即可替换）。
-	 */
 	syncDbNow: (libraryId: string, dataSourceId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_now", { libraryId, dataSourceId })),
-	/**
-	 *  为当前书库执行 DB 同步。
-	 * 
-	 *  直接以书库根目录构建 `fs` Operator，无需配置独立的本地数据源。
-	 *  对 iCloud 书库，写入 `.myreader/changes/` 的文件会被 iCloud 自动同步到其他设备。
-	 */
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
 };
 
@@ -243,7 +231,6 @@ export type SyncBackendInfo = {
 	name: string,
 	enabled: boolean,
 	kind: string,
-	/**  Local 直读时指向本地根目录；WebDAV 为 `endpoint` 去掉敏感参数后的展示串。 */
 	summary: string,
 	isLocalDirect: boolean,
 };

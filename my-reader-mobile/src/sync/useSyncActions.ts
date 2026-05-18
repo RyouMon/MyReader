@@ -1,9 +1,10 @@
 import { useCallback, useMemo } from "react";
 
-import { useAppStore } from "../store/app-store";
 import type { Library } from "../data/types";
 import { AppInvariantError } from "../errors";
+import { useAppStore } from "../store/app-store";
 
+import type { FileStateRow } from "../data/file_state";
 import {
   deleteFileEverywhere,
   downloadFile,
@@ -13,8 +14,6 @@ import {
   openSyncContext,
   reconcileFileStates,
 } from "./actions";
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import type { FileStateRow } from "./file_state";
 
 export type SyncTargetInfo = {
   libraryId: string;
@@ -87,8 +86,7 @@ export function useSyncActions(): SyncActions {
       },
       async evictLocal(libraryId, relativePath) {
         const library = findLibrary(libraryId);
-        const dataSourceId = library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID;
-        await evictLocalFileOfflineSafe(libraryId, dataSourceId, relativePath);
+        await evictLocalFileOfflineSafe(library, relativePath);
       },
       async deleteEverywhere(libraryId, relativePath) {
         const ctx = await openSyncContext(findLibrary(libraryId), dataSources);

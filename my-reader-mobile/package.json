@@ -23,6 +23,8 @@
     "@expo/metro-runtime": "~55.0.9",
     "@expo/vector-icons": "^15.0.3",
     "@kesha-antonov/react-native-background-downloader": "^4.5.4",
+    "@my-reader/db": "workspace:*",
+    "@my-reader/tools": "workspace:*",
     "@noble/hashes": "^2.2.0",
     "@op-engineering/op-sqlite": "^15.2.11",
     "@react-native-menu/menu": "^2.0.0",
@@ -35,8 +37,10 @@
     "@tailwindcss/postcss": "^4.2.2",
     "@tanstack/react-form": "^1.29.0",
     "@tanstack/react-query": "^5.100.10",
+    "babel-plugin-inline-import": "^3.0.0",
     "base-64": "^1.0.0",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.40.0",
     "expo": "~55.0.13",
     "expo-build-properties": "^55.0.13",
     "expo-constants": "~55.0.13",
@@ -56,7 +60,6 @@
     "expo-system-ui": "~55.0.15",
     "ky": "^2.0.2",
     "lightningcss": "1.30.1",
-    "@my-reader/tools": "workspace:*",
     "nativewind": "^5.0.0-preview.2",
     "pdfjs-dist": "^5.5.207",
     "react": "19.2.0",
@@ -83,7 +86,7 @@
     "lightningcss": "1.30.1"
   },
   "op-sqlite": {
-    "crsqlite": true,
+    "crsqlite": false,
     "performanceMode": true
   },
   "devDependencies": {
@@ -110,6 +113,7 @@
     ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
+      "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
       "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
       "^@babel/runtime/(.*)$": "<rootDir>/../node_modules/@babel/runtime/$1"
     },

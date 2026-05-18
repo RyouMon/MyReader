@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use tracing::{debug, error, info};
-use rusqlite::Connection;
+use tracing::{debug, info};
+use sqlx::{Row as _, SqlitePool};
+use sqlx::sqlite::SqlitePoolOptions;
 
 use crate::error::AppError;
 use crate::models::BookEntry;
@@ -38,26 +39,26 @@ const BOOK_SELECT_COLUMNS: &str = "b.id, b.title, b.sort, b.author_sort, b.times
       JOIN books_ratings_link brl ON r.id = brl.rating
       WHERE brl.book = b.id LIMIT 1)";
 
-fn map_book_row(row: &rusqlite::Row) -> rusqlite::Result<BookEntry> {
+fn map_book_row(row: &sqlx::sqlite::SqliteRow) -> Result<BookEntry, AppError> {
     Ok(BookEntry {
-        id: row.get(0)?,
-        title: row.get(1)?,
-        author_sort: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
-        authors: split_concat(row.get(11)?),
-        tags: split_concat(row.get(12)?),
-        series: row.get(13)?,
-        series_index: row.get::<_, f64>(6).ok(),
-        formats: split_concat(row.get(14)?),
-        has_cover: row.get::<_, i64>(9).unwrap_or(0) != 0,
-        path: row.get::<_, Option<String>>(8)?.unwrap_or_default(),
-        timestamp: row.get(4)?,
-        pubdate: row.get(5)?,
-        last_modified: row.get(7)?,
-        comment: row.get(15)?,
-        publisher: row.get(16)?,
-        languages: split_concat(row.get(17)?),
-        rating: row.get(18)?,
-        uuid: row.get(10)?,
+        id: row.try_get::<i64, _>(0).unwrap_or(0),
+        title: row.try_get::<String, _>(1).unwrap_or_default(),
+        author_sort: row.try_get::<Option<String>, _>(3).ok().flatten().unwrap_or_default(),
+        authors: split_concat(row.try_get::<Option<String>, _>(11).ok().flatten()),
+        tags: split_concat(row.try_get::<Option<String>, _>(12).ok().flatten()),
+        series: row.try_get::<Option<String>, _>(13).ok().flatten(),
+        series_index: row.try_get::<Option<f64>, _>(6).ok().flatten(),
+        formats: split_concat(row.try_get::<Option<String>, _>(14).ok().flatten()),
+        has_cover: row.try_get::<Option<i64>, _>(9).ok().flatten().unwrap_or(0) != 0,
+        path: row.try_get::<Option<String>, _>(8).ok().flatten().unwrap_or_default(),
+        timestamp: row.try_get::<Option<String>, _>(4).ok().flatten(),
+        pubdate: row.try_get::<Option<String>, _>(5).ok().flatten(),
+        last_modified: row.try_get::<Option<String>, _>(7).ok().flatten(),
+        comment: row.try_get::<Option<String>, _>(15).ok().flatten(),
+        publisher: row.try_get::<Option<String>, _>(16).ok().flatten(),
+        languages: split_concat(row.try_get::<Option<String>, _>(17).ok().flatten()),
+        rating: row.try_get::<Option<i32>, _>(18).ok().flatten(),
+        uuid: row.try_get::<Option<String>, _>(10).ok().flatten(),
     })
 }
 
@@ -67,26 +68,27 @@ fn split_concat(s: Option<String>) -> Vec<String> {
 }
 
 /// Repository trait for Calibre book metadata access.
+#[async_trait::async_trait]
 pub trait BookRepository {
-    fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError>;
-    fn get_books_page(
+    async fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError>;
+    async fn get_books_page(
         &self,
         offset: usize,
         limit: usize,
         sort_by: &str,
         search: Option<&str>,
     ) -> Result<(Vec<BookEntry>, usize), AppError>;
-    fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError>;
-    fn get_books_by_series(
+    async fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError>;
+    async fn get_books_by_series(
         &self,
         series_name: &str,
         exclude_book_id: Option<i64>,
     ) -> Result<Vec<BookEntry>, AppError>;
-    fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError>;
-    fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError>;
-    fn get_book_count(&self) -> Result<usize, AppError>;
+    async fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError>;
+    async fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError>;
+    async fn get_book_count(&self) -> Result<usize, AppError>;
     fn get_book_cover_path(&self, book_path: &str) -> Result<Option<PathBuf>, AppError>;
-    fn get_book_file_path(
+    async fn get_book_file_path(
         &self,
         library_path: &str,
         book_id: i64,
@@ -94,24 +96,31 @@ pub trait BookRepository {
     ) -> Result<Option<PathBuf>, AppError>;
 }
 
-/// Read-only Calibre metadata.db repository.
+/// Read-only Calibre metadata.db repository using sqlx.
 pub struct CalibreBookRepository {
-    conn: Connection,
+    pool: SqlitePool,
     library_path: String,
 }
 
 impl CalibreBookRepository {
-    pub fn open(library_path: &str) -> Result<Self, AppError> {
+    pub async fn open(library_path: &str) -> Result<Self, AppError> {
         info!("Start to open Calibre database. library path: \"{library_path}\"");
         let db_path = Path::new(library_path).join("metadata.db");
-        let conn =
-            Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        let url = format!(
+            "sqlite://{}?mode=ro",
+            db_path.to_str().ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
+        );
+        let pool = SqlitePoolOptions::new()
+            .max_connections(3)
+            .connect(&url)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
         info!(
             "Success to open Calibre database. db path: \"{}\"",
             db_path.display()
         );
         Ok(Self {
-            conn,
+            pool,
             library_path: library_path.to_string(),
         })
     }
@@ -121,34 +130,38 @@ impl CalibreBookRepository {
     }
 
     /// Return lightweight (id, path, has_cover) for every book — used by bulk cover download.
-    pub fn get_cover_summaries(&self) -> Result<Vec<CoverSummary>, AppError> {
-        let mut stmt = self.conn.prepare(
-            "SELECT b.id, b.path, b.has_cover FROM books b",
-        )?;
-        let rows = stmt.query_map([], |row| {
-            Ok(CoverSummary {
-                id: row.get(0)?,
-                path: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                has_cover: row.get::<_, i64>(2).unwrap_or(0) != 0,
+    pub async fn get_cover_summaries(&self) -> Result<Vec<CoverSummary>, AppError> {
+        let rows = sqlx::query("SELECT b.id, b.path, b.has_cover FROM books b")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(rows
+            .iter()
+            .map(|row| CoverSummary {
+                id: row.try_get::<i64, _>(0).unwrap_or(0),
+                path: row.try_get::<Option<String>, _>(1).ok().flatten().unwrap_or_default(),
+                has_cover: row.try_get::<Option<i64>, _>(2).ok().flatten().unwrap_or(0) != 0,
             })
-        })?.collect::<Result<Vec<_>, _>>()?;
-        Ok(rows)
+            .collect())
     }
 }
 
+#[async_trait::async_trait]
 impl BookRepository for CalibreBookRepository {
-    fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError> {
+    async fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError> {
         info!("Start to load all books from Calibre.");
-        let sql = format!("SELECT {BOOK_SELECT_COLUMNS} FROM books b ORDER BY b.sort");
-        let mut stmt = self.conn.prepare(&sql)?;
-        let books = stmt
-            .query_map([], map_book_row)?
-            .collect::<Result<Vec<_>, _>>()?;
+        let rows = sqlx::query(&format!(
+            "SELECT {BOOK_SELECT_COLUMNS} FROM books b ORDER BY b.sort"
+        ))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+        let books: Vec<BookEntry> = rows.iter().filter_map(|r| map_book_row(r).ok()).collect();
         info!("Success to load all books from Calibre. count: {}", books.len());
         Ok(books)
     }
 
-    fn get_books_page(
+    async fn get_books_page(
         &self,
         offset: usize,
         limit: usize,
@@ -182,30 +195,40 @@ impl BookRepository for CalibreBookRepository {
         };
 
         let total = if let Some(ref p) = pattern {
-            self.conn.query_row(
-                &format!("SELECT COUNT(*) FROM books b{where_sql}"),
-                [p.as_str()],
-                |row| row.get::<_, i64>(0).map(|c| c as usize),
-            )?
+            let row: (i64,) = sqlx::query_as(&format!(
+                "SELECT COUNT(*) FROM books b{where_sql}"
+            ))
+            .bind(p)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+            row.0 as usize
         } else {
-            self.conn.query_row(
-                &format!("SELECT COUNT(*) FROM books b{where_sql}"),
-                [],
-                |row| row.get::<_, i64>(0).map(|c| c as usize),
-            )?
+            let row: (i64,) = sqlx::query_as(&format!(
+                "SELECT COUNT(*) FROM books b{where_sql}"
+            ))
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+            row.0 as usize
         };
 
         let sql = format!(
             "SELECT {BOOK_SELECT_COLUMNS} FROM books b{where_sql} ORDER BY {order} LIMIT {limit} OFFSET {offset}"
         );
-
-        let mut stmt = self.conn.prepare(&sql)?;
-        let books = if let Some(ref p) = pattern {
-            let rows = stmt.query_map([p.as_str()], map_book_row)?;
-            rows.collect::<Result<Vec<_>, _>>()?
+        let books: Vec<BookEntry> = if let Some(ref p) = pattern {
+            let rows = sqlx::query(&sql)
+                .bind(p)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
         } else {
-            let rows = stmt.query_map([], map_book_row)?;
-            rows.collect::<Result<Vec<_>, _>>()?
+            let rows = sqlx::query(&sql)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
         };
 
         info!(
@@ -216,32 +239,19 @@ impl BookRepository for CalibreBookRepository {
         Ok((books, total))
     }
 
-    fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError> {
+    async fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError> {
         info!("Start to load book by id. book id: {book_id}");
-        let sql = format!("SELECT {BOOK_SELECT_COLUMNS} FROM books b WHERE b.id = ?1");
-        let mut stmt = self.conn.prepare(&sql)?;
-        let mut rows = stmt.query_map([book_id], map_book_row)?;
-        let result = match rows.next() {
-            Some(Ok(book)) => {
-                info!(
-                    "Success to load book by id. found: true, title: \"{}\"",
-                    book.title
-                );
-                Ok(Some(book))
-            }
-            Some(Err(e)) => {
-                error!("Failed to load book by id. book id: {book_id}, error: {e}");
-                Err(e.into())
-            }
-            None => {
-                info!("Success to load book by id. found: false, book id: {book_id}");
-                Ok(None)
-            }
-        };
-        result
+        let row = sqlx::query(&format!(
+            "SELECT {BOOK_SELECT_COLUMNS} FROM books b WHERE b.id = ?1"
+        ))
+        .bind(book_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(row.as_ref().and_then(|r| map_book_row(r).ok()))
     }
 
-    fn get_books_by_series(
+    async fn get_books_by_series(
         &self,
         series_name: &str,
         exclude_book_id: Option<i64>,
@@ -258,22 +268,24 @@ impl BookRepository for CalibreBookRepository {
              ) \
              {} \
              ORDER BY b.series_index",
-            if exclude_book_id.is_some() {
-                "AND b.id != ?2"
-            } else {
-                ""
-            }
+            if exclude_book_id.is_some() { "AND b.id != ?2" } else { "" }
         );
-        let mut stmt = self.conn.prepare(&sql)?;
-
-        let books = if let Some(eid) = exclude_book_id {
-            stmt.query_map(rusqlite::params![series_name, eid], map_book_row)?
-                .collect::<Result<Vec<_>, _>>()?
+        let books: Vec<BookEntry> = if let Some(eid) = exclude_book_id {
+            let rows = sqlx::query(&sql)
+                .bind(series_name)
+                .bind(eid)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
         } else {
-            stmt.query_map([series_name], map_book_row)?
-                .collect::<Result<Vec<_>, _>>()?
+            let rows = sqlx::query(&sql)
+                .bind(series_name)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            rows.iter().filter_map(|r| map_book_row(r).ok()).collect()
         };
-
         info!(
             "Success to load books by series. series name: \"{series_name}\", count: {}",
             books.len()
@@ -281,14 +293,15 @@ impl BookRepository for CalibreBookRepository {
         Ok(books)
     }
 
-    fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError> {
+    async fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError> {
         debug!("Start to load book format sizes. book id: {book_id}");
-        let mut stmt = self.conn.prepare(
+        let rows = sqlx::query_as::<_, (String, i64)>(
             "SELECT format, uncompressed_size FROM data WHERE book = ?1 ORDER BY format",
-        )?;
-        let rows = stmt
-            .query_map([book_id], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .collect::<Result<Vec<_>, _>>()?;
+        )
+        .bind(book_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
         debug!(
             "Success to load book format sizes. book id: {}, count: {}",
             book_id,
@@ -297,13 +310,15 @@ impl BookRepository for CalibreBookRepository {
         Ok(rows)
     }
 
-    fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError> {
+    async fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError> {
         debug!("Start to load book identifiers. book id: {book_id}");
-        let mut stmt =
-            self.conn.prepare("SELECT type, val FROM identifiers WHERE book = ?1 ORDER BY type")?;
-        let rows = stmt
-            .query_map([book_id], |row| Ok((row.get(0)?, row.get(1)?)))?
-            .collect::<Result<Vec<_>, _>>()?;
+        let rows = sqlx::query_as::<_, (String, String)>(
+            "SELECT type, val FROM identifiers WHERE book = ?1 ORDER BY type",
+        )
+        .bind(book_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
         debug!(
             "Success to load book identifiers. book id: {}, count: {}",
             book_id,
@@ -312,13 +327,13 @@ impl BookRepository for CalibreBookRepository {
         Ok(rows)
     }
 
-    fn get_book_count(&self) -> Result<usize, AppError> {
+    async fn get_book_count(&self) -> Result<usize, AppError> {
         debug!("Start to count books in Calibre.");
-        let count = self
-            .conn
-            .query_row("SELECT COUNT(*) FROM books", [], |row| {
-                row.get::<_, i64>(0).map(|c| c as usize)
-            })?;
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM books")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let count = row.0 as usize;
         debug!("Success to count books in Calibre. count: {count}");
         Ok(count)
     }
@@ -349,7 +364,7 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    fn get_book_file_path(
+    async fn get_book_file_path(
         &self,
         library_path: &str,
         book_id: i64,
@@ -358,44 +373,35 @@ impl BookRepository for CalibreBookRepository {
         info!(
             "Start to resolve book file path. library path: \"{library_path}\", book id: {book_id}, format: \"{format}\""
         );
-        let mut stmt = self.conn.prepare(
+        let row: Option<(String, String, String)> = sqlx::query_as(
             "SELECT b.path, d.name, d.format \
              FROM books b JOIN data d ON d.book = b.id \
              WHERE b.id = ?1 AND UPPER(d.format) = UPPER(?2)",
-        )?;
+        )
+        .bind(book_id)
+        .bind(format)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let result = stmt.query_row(rusqlite::params![book_id, format], |row| {
-            let book_path: String = row.get(0)?;
-            let file_name: String = row.get(1)?;
-            let fmt: String = row.get(2)?;
-            Ok((book_path, file_name, fmt))
-        });
-
-        match result {
-            Ok((book_path, file_name, fmt)) => {
-                let full = Path::new(library_path).join(&book_path).join(format!(
-                    "{}.{}",
-                    file_name,
-                    fmt.to_lowercase()
-                ));
+        let result = match row {
+            Some((book_path, file_name, fmt)) => {
+                let full = Path::new(library_path)
+                    .join(&book_path)
+                    .join(format!("{}.{}", file_name, fmt.to_lowercase()));
                 info!(
                     "Success to resolve book file path. found: true, path: \"{}\"",
                     full.display()
                 );
-                Ok(Some(full))
+                Some(full)
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
+            None => {
                 info!(
                     "Success to resolve book file path. found: false, book id: {book_id}, format: \"{format}\""
                 );
-                Ok(None)
+                None
             }
-            Err(e) => {
-                error!(
-                    "Failed to resolve book file path. book id: {book_id}, format: \"{format}\", error: {e}"
-                );
-                Err(e.into())
-            }
-        }
+        };
+        Ok(result)
     }
 }

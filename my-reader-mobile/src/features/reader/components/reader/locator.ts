@@ -73,7 +73,7 @@ export function pageIndexFromFixedLocator(
   return fallback;
 }
 
-/** 解析 `reading_progress.anchor_json` 列为 {@link Locator}。 */
+/** 解析 `reading_progress.locator_json` 列为 {@link Locator}。 */
 export function parseStoredLocator(raw: unknown): Locator | null {
   if (!isPlainObject(raw)) return null;
   const { href, type } = raw;

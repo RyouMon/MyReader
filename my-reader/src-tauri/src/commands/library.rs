@@ -9,12 +9,13 @@ use crate::services::library_service::LibraryService;
 
 #[tauri::command]
 #[specta::specta]
-pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
+pub async fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
     info!("Start to list libraries.");
-    let result = {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        LibraryService::list_libraries(&config)
+    let config = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
     };
+    let result = LibraryService::list_libraries(&config).await;
     match &result {
         Ok(infos) => info!("Success to list libraries. count: {}", infos.len()),
         Err(err) => error!("Failed to list libraries. error: {err}"),
@@ -24,36 +25,37 @@ pub fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, Ap
 
 #[tauri::command]
 #[specta::specta]
-pub fn add_library(
+pub async fn add_library(
     app: AppHandle,
     state: State<'_, AppState>,
     path: String,
     name: Option<String>,
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to add library. path: \"{path}\", requested name: {name:?}");
-    let result = (|| {
-        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let info = LibraryService::add_library(&path, name.as_deref(), &mut config)?;
+    let mut config = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
+    };
 
-        let config_path = app.path().app_data_dir()?.join("config.json");
-        config::save_config(&config_path, &config)?;
-        drop(config);
+    let info = LibraryService::add_library(&path, name.as_deref(), &mut config).await?;
 
-        if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
-            error!(
-                "Failed to extend asset protocol scope after adding library. error: {e}"
-            );
-        }
-        Ok(info)
-    })();
-    match &result {
-        Ok(info_item) => info!(
-            "Success to add library. id: \"{}\", name: \"{}\", book count: {}",
-            info_item.id, info_item.name, info_item.book_count
-        ),
-        Err(err) => error!("Failed to add library. path: \"{path}\", error: {err}"),
+    let config_path = app.path().app_data_dir()?.join("config.json");
+    {
+        let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        *guard = config.clone();
+        config::save_config(&config_path, &guard)?;
     }
-    result
+
+    if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
+        error!(
+            "Failed to extend asset protocol scope after adding library. error: {e}"
+        );
+    }
+    info!(
+        "Success to add library. id: \"{}\", name: \"{}\", book count: {}",
+        info.id, info.name, info.book_count
+    );
+    Ok(info)
 }
 
 #[tauri::command]
@@ -152,25 +154,23 @@ pub async fn refresh_webdav_library(
 
 #[tauri::command]
 #[specta::specta]
-pub fn refresh_library(
+pub async fn refresh_library(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to refresh library. id: \"{id}\"");
-    let result = (|| {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let info = LibraryService::refresh_library(&id, &config)?;
-        drop(config);
-        Ok(info)
-    })();
-    match &result {
-        Ok(info_item) => info!(
-            "Success to refresh library. id: \"{}\", name: \"{}\", book count: {}",
-            info_item.id, info_item.name, info_item.book_count
-        ),
-        Err(err) => error!("Failed to refresh library. id: \"{id}\", error: {err}"),
-    }
-    result
+    let config = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
+    };
+
+    let info = LibraryService::refresh_library(&id, &config).await?;
+
+    info!(
+        "Success to refresh library. id: \"{}\", name: \"{}\", book count: {}",
+        info.id, info.name, info.book_count
+    );
+    Ok(info)
 }
 
 #[tauri::command]

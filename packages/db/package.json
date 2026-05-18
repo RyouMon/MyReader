@@ -1,0 +1,20 @@
+{
+  "name": "@my-reader/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./schema": "./src/schema/index.ts",
+    "./types": "./src/types.ts",
+    "./drizzle/migrations": "./drizzle/migrations.js"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.40.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0"
+  }
+}

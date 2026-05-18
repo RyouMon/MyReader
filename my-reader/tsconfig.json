@@ -22,7 +22,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@my-reader/tools/*": ["../packages/tools/src/*"]
+      "@my-reader/tools/*": ["../packages/tools/src/*"],
+      "@my-reader/db/*": ["../packages/db/src/*"]
     }
   },
   "include": ["src"],

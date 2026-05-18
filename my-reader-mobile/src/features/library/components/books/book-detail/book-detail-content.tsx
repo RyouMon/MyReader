@@ -2,17 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
 import { Alert } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AnimatedScrollView, Text, View } from "@/tw";
 import { Button, EmptyState } from "@/src/components/ui";
-import { FONT_UI } from "@/src/design/typography";
 import { getBookFormatPaths } from "@/src/data/calibre";
+import { getFileState, useFileStateRevision, type LocalState } from "@/src/data/file_state";
 import type { BookItem, Library, WebDavDataSource } from "@/src/data/types";
+import { FONT_UI } from "@/src/design/typography";
 import { describeDownloadError } from "@/src/errors";
-import { getFileState, useFileStateRevision, type LocalState } from "@/src/sync/file_state";
-import { useSyncActions } from "@/src/sync/useSyncActions";
 import {
   dismissTasksForPath,
   enqueue,
@@ -20,6 +18,7 @@ import {
   markTaskErrorAlerted,
   useDownloadStatusTasks,
 } from "@/src/sync/download-store";
+import { useSyncActions } from "@/src/sync/useSyncActions";
 import {
   extractYear,
   formatDate,
@@ -27,12 +26,13 @@ import {
   IDENTIFIER_LABELS,
   resolveCoverForDetail,
 } from "@/src/utils/book-detail";
+import { AnimatedScrollView, Text, View } from "@/tw";
 import type { BookDetail } from "@my-reader/tools/types/book";
-import type { DetailColors, InfoCardItem } from "./types";
-import { HeroSection } from "./hero-section";
 import { FormatSection } from "./format-section";
-import { SynopsisSection } from "./synopsis-section";
+import { HeroSection } from "./hero-section";
 import { InfoRowSection } from "./info-row-section";
+import { SynopsisSection } from "./synopsis-section";
+import type { DetailColors, InfoCardItem } from "./types";
 
 type FormatInfo = { relativePath: string; localState: LocalState | null };
 
@@ -112,13 +112,11 @@ export function BookDetailContent({
       return;
     }
     let cancelled = false;
-    const scope = { dataSourceId: activeLibrary.dataSourceId, libraryId: activeLibrary.id };
-
     void getBookFormatPaths(activeLibrary, detail.id)
       .then(async (paths) => {
         const map: Record<string, FormatInfo> = {};
         for (const { format, relativePath } of paths) {
-          const row = await getFileState(scope, relativePath);
+          const row = await getFileState(activeLibrary, relativePath);
           map[format] = { relativePath, localState: row?.localState ?? null };
         }
         if (cancelled) return;

@@ -4,6 +4,7 @@ import type { Library } from "../data/types";
 import { AppInvariantError, DataIntegrityError } from "../errors";
 import { useAppStore } from "../store/app-store";
 
+import { upsertFileState } from "../data/file_state";
 import { openSyncContext, type SyncTargetContext } from "./actions";
 import { localFileUriFor } from "./backend";
 import {
@@ -11,7 +12,6 @@ import {
   type BackgroundDownloadOptions,
   type DownloadOutcome,
 } from "./file_ops";
-import { upsertFileState } from "./file_state";
 
 export type DownloadProgressHandler = (received: number, total: number) => void;
 
@@ -88,23 +88,12 @@ export async function commitDownloadOutcome(
   relativePath: string,
   outcome: DownloadOutcome,
 ): Promise<void> {
-  console.info("Start to save file state after download, params:", {
-    libraryId: ctx.libraryId,
-    dataSourceId: ctx.dataSourceId,
-    relativePath,
+  await upsertFileState(ctx.library, relativePath, {
     localState: "present",
-    size: outcome.size,
+    localBlake3: outcome.blake3,
+    localSize: outcome.size,
+    localMtime: outcome.mtimeMs,
   });
-  await upsertFileState(
-    { dataSourceId: ctx.dataSourceId, libraryId: ctx.libraryId },
-    relativePath,
-    {
-      localState: "present",
-      localBlake3: outcome.blake3,
-      localSize: outcome.size,
-      localMtime: outcome.mtimeMs,
-    },
-  );
 }
 
 /**

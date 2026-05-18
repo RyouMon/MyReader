@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffectiveFormat } from "@/src/data/book-formats";
 import { getAllBookFormats } from "@/src/data/calibre";
+import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "@/src/data/file_state";
 import type { BookItem, Library } from "@/src/data/types";
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 import { useDownloadStatusTasks, type DownloadStatusTask } from "@/src/sync/download-store";
-import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "@/src/sync/file_state";
 
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
 
@@ -56,10 +56,9 @@ export function useLibraryBookMeta(
     }
 
     let cancelled = false;
-    void listFileStates({
-      dataSourceId: selectedLibrary.dataSourceId,
-      libraryId: selectedLibrary.id,
-    }).then((rows) => {
+    void listFileStates(
+      selectedLibrary,
+    ).then((rows) => {
       if (cancelled) return;
       const statuses: BookFileStateMap = {};
       const rowsByBook: BookFileStateRowMap = {};

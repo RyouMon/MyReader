@@ -79,6 +79,29 @@ function positionIndexForLocator(positions: Locator[], locator: Locator): number
 }
 
 /**
+ * Find a platform-native locator from positions list that matches a stored locator.
+ * Uses href first (with rough matching for EPUB), then position, then progression.
+ */
+function resolveNativeLocator(positions: Locator[], stored: Locator): Locator | undefined {
+  if (positions.length === 0) return undefined;
+  // 1. Match by href (rough matching handles fragment differences)
+  const byHref = positions.find((p) => hrefRoughlyMatches(p.href, stored.href));
+  if (byHref) return byHref;
+  // 2. Match by position
+  const position = stored.locations?.position;
+  if (typeof position === "number" && position >= 1 && position <= positions.length) {
+    return positions[position - 1];
+  }
+  // 3. Match by progression
+  const prog = stored.locations?.totalProgression ?? stored.locations?.progression;
+  if (prog != null && Number.isFinite(prog)) {
+    const idx = Math.max(0, Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))));
+    return positions[idx];
+  }
+  return undefined;
+}
+
+/**
  * Readium `Preferences.theme` 使用 light / dark / sepia（见库类型定义）。
  */
 function toReadiumThemeToken(theme: ReaderTheme): "light" | "dark" | "sepia" {
@@ -166,19 +189,20 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     const readiumRef = useRef<ReadiumViewRef>(null);
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
-    const currentLocatorRef = useRef<Locator | null>(initialLocator ?? null);
+    const currentLocatorRef = useRef<Locator | null>(null);
     const touchStartRef = useRef<TouchSnapshot | null>(null);
 
     useImperativeHandle(ref, () => ({
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
     }));
 
+    // Don't pass initialLocator as initialLocation — its href may not match
+    // the native publication format. Instead, navigate after publicationReady.
     const file = useMemo<ReadiumFile>(
       () => ({
         url: epubPath,
-        initialLocation: initialLocator,
       }),
-      [epubPath, initialLocator],
+      [epubPath],
     );
 
     const preferences = useMemo(
@@ -200,10 +224,18 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
         onTocReady(tocItems);
 
         const totalPages = Math.max(1, event.positions.length);
-        const startLocator = initialLocator ?? currentLocatorRef.current ?? event.positions[0];
-        if (startLocator) {
-          currentLocatorRef.current = startLocator;
+
+        // Resolve initial position using position/progression from stored locator,
+        // then find the matching native locator from positions list.
+        let startLocator: Locator | undefined = event.positions[0];
+        if (initialLocator) {
+          const resolved = resolveNativeLocator(event.positions, initialLocator);
+          if (resolved) startLocator = resolved;
+        } else if (currentLocatorRef.current) {
+          const resolved = resolveNativeLocator(event.positions, currentLocatorRef.current);
+          if (resolved) startLocator = resolved;
         }
+        currentLocatorRef.current = startLocator ?? null;
 
         const currentPage = startLocator
           ? positionIndexForLocator(event.positions, startLocator)
@@ -220,8 +252,13 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
           chapterTitle: event.metadata.title,
           loading: false,
           error: null,
-          locator: startLocator ?? undefined,
+          locator: startLocator,
         });
+
+        // Navigate to the resolved position after the view is ready
+        if (startLocator && startLocator !== event.positions[0]) {
+          readiumRef.current?.goTo(startLocator);
+        }
       },
       [initialLocator, onTocReady, onStateChange],
     );

@@ -56,6 +56,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@my-reader/db": "workspace:*",
     "@biomejs/biome": "2.4.9",
     "@playwright/test": "^1.60.0",
     "@tanstack/router-plugin": "^1.167.8",

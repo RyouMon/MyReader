@@ -9,15 +9,17 @@
  * Both sides use millisecond timestamps for updated_at.
  */
 
-import type { DB } from "@op-engineering/op-sqlite";
+import { and, eq, gt } from "drizzle-orm";
 
-import type { DataSource, Library } from "../data/types";
 import { getLibraryDatabase } from "../data/library-db";
 import { withSecurityScopedLibraryAccess } from "../data/security-scoped-bookmarks";
-import { getOrCreateDeviceId } from "./device";
-import { getSyncMeta, setSyncMeta } from "./sync_meta";
-import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
+import { getSyncMeta, setSyncMeta } from "../data/sync_meta";
+import type { DataSource, Library } from "../data/types";
+import { uuid } from "../utils/common";
+import { readingProgress } from "@my-reader/db/schema";
 import { buildBackend, type SyncBackend } from "./backend";
+import { getOrCreateDeviceId } from "./device";
+import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
 
 const LOG_TARGET = "db-sync";
 
@@ -26,10 +28,6 @@ type ChangeRow = {
   k: Record<string, unknown>;
   v: Record<string, unknown>;
 };
-
-function dbSyncScope(dataSourceId: string, libraryId: string): string {
-  return `db_sync::${dataSourceId}::${libraryId}`;
-}
 
 function lastPushCursorKey(deviceId: string): string {
   return `last_push_cursor::${deviceId}`;
@@ -40,40 +38,36 @@ function lastPullCursorKey(deviceId: string, remoteDevice: string): string {
 }
 
 async function pushDbChanges(
-  db: DB,
   backend: SyncBackend,
+  library: Library,
   deviceId: string,
-  scope: string,
 ): Promise<number> {
   const cursorKey = lastPushCursorKey(deviceId);
-  const cursorStr = await getSyncMeta(scope, cursorKey);
+  const cursorStr = await getSyncMeta(library, cursorKey);
   const sinceMs = cursorStr ? parseFloat(cursorStr) : 0;
 
-  const result = await db.execute(
-    `SELECT book_id, format, locator_json, updated_at
-     FROM reading_progress
-     WHERE updated_at > ?
-     ORDER BY updated_at`,
-    [sinceMs],
-  );
-
-  const rows = result.rows as {
-    book_id: number;
-    format: string;
-    locator_json: string;
-    updated_at: number;
-  }[];
+  const { db } = getLibraryDatabase(library);
+  const rows = await db
+    .select({
+      bookId: readingProgress.bookId,
+      format: readingProgress.format,
+      locatorJson: readingProgress.locatorJson,
+      updatedAt: readingProgress.updatedAt,
+    })
+    .from(readingProgress)
+    .where(gt(readingProgress.updatedAt, sinceMs))
+    .orderBy(readingProgress.updatedAt);
 
   if (rows.length === 0) return 0;
 
   let maxTs = sinceMs;
   const lines: string[] = [];
   for (const row of rows) {
-    if (row.updated_at > maxTs) maxTs = row.updated_at;
+    if (row.updatedAt > maxTs) maxTs = row.updatedAt;
     const change: ChangeRow = {
       t: "reading_progress",
-      k: { book_id: row.book_id, format: row.format },
-      v: { locator_json: row.locator_json, updated_at: row.updated_at },
+      k: { book_id: row.bookId, format: row.format },
+      v: { locator_json: row.locatorJson, updated_at: row.updatedAt },
     };
     lines.push(JSON.stringify(change));
   }
@@ -84,19 +78,17 @@ async function pushDbChanges(
 
   console.info(`[${LOG_TARGET}] push: ${rows.length} rows → ${objectPath}`);
   await backend.writeBytes(objectPath, new TextEncoder().encode(payload));
-  await setSyncMeta(scope, cursorKey, String(maxTs));
+  await setSyncMeta(library, cursorKey, String(maxTs));
 
   return rows.length;
 }
 
 async function pullDbChanges(
-  db: DB,
   backend: SyncBackend,
+  library: Library,
   deviceId: string,
-  scope: string,
 ): Promise<number> {
   const deviceDirs = await backend.listRemote(".myreader/changes/");
-  // listRemote returns [] when .myreader/changes/ doesn't exist yet.
   if (deviceDirs.length === 0) return 0;
 
   let applied = 0;
@@ -114,10 +106,9 @@ async function pullDbChanges(
     }
 
     const pullKey = lastPullCursorKey(deviceId, remoteDevice);
-    const lastSeqStr = await getSyncMeta(scope, pullKey);
+    const lastSeqStr = await getSyncMeta(library, pullKey);
     const lastSeq = lastSeqStr ? parseInt(lastSeqStr, 10) : 0;
 
-    // Sort by seq ascending so we process files in order.
     const sortedFiles = files
       .filter((f) => f.endsWith(".jsonl"))
       .map((f) => ({ name: f, seq: parseInt(f.replace(/\.jsonl$/, ""), 10) }))
@@ -152,28 +143,38 @@ async function pullDbChanges(
         if (!bookId || !format || !locatorJson || incomingTs <= 0) continue;
 
         // LWW: only apply if incoming timestamp is newer.
-        const existingResult = await db.execute(
-          `SELECT updated_at FROM reading_progress
-           WHERE book_id = ? AND format = ?`,
-          [bookId, format],
-        );
-        const existingTs =
-          existingResult.rows[0]
-            ? Number((existingResult.rows[0] as { updated_at: number }).updated_at)
-            : -1;
+        const { db } = getLibraryDatabase(library);
+        const existing = await db
+          .select({ updatedAt: readingProgress.updatedAt })
+          .from(readingProgress)
+          .where(
+            and(
+              eq(readingProgress.bookId, bookId),
+              eq(readingProgress.format, format),
+            ),
+          );
+
+        const existingTs = existing[0] ? Number(existing[0].updatedAt) : -1;
 
         if (incomingTs <= existingTs) continue;
 
-        await db.execute(
-          `INSERT OR REPLACE INTO reading_progress
-           (book_id, format, locator_json, updated_at)
-           VALUES (?, ?, ?, ?)`,
-          [bookId, format, locatorJson, incomingTs],
-        );
+        await db
+          .insert(readingProgress)
+          .values({
+            id: uuid(),
+            bookId,
+            format,
+            locatorJson,
+            updatedAt: incomingTs,
+          })
+          .onConflictDoUpdate({
+            target: [readingProgress.bookId, readingProgress.format],
+            set: { locatorJson, updatedAt: incomingTs },
+          });
         applied++;
       }
 
-      await setSyncMeta(scope, pullKey, String(seq));
+      await setSyncMeta(library, pullKey, String(seq));
     }
   }
 
@@ -189,14 +190,6 @@ export type DbSyncReport = {
 /**
  * Run a full DB sync cycle (push → pull) using an already-resolved sync
  * target.
- *
- * Local-direct + iOS security-scoped bookmark (iCloud): wraps the sync
- * inside `withSecurityScopedLibraryAccess` so expo-file-system can write
- * change files to the iCloud library directory. The DB itself (myreader.db)
- * stays in app docs and is always writable by op-sqlite.
- *
- * Local-direct without a security-scoped bookmark (Android): skipped —
- * no cross-device sync available.
  */
 export async function syncDbFromContext(
   library: Library,
@@ -206,14 +199,12 @@ export async function syncDbFromContext(
     if (!library.securityScopedBookmark) {
       return { pushed: 0, pulled: 0 };
     }
-    const deviceId = await getOrCreateDeviceId();
-    const db = getLibraryDatabase(library);
-    const scope = dbSyncScope(ctx.dataSourceId, ctx.libraryId);
+    const deviceId = await getOrCreateDeviceId(library);
 
     const { result } = await withSecurityScopedLibraryAccess(library, async (resolvedUri) => {
       const backend = buildBackend({ kind: "local-direct", libraryRootUri: resolvedUri });
-      const pushed = await pushDbChanges(db, backend, deviceId, scope);
-      const pulled = await pullDbChanges(db, backend, deviceId, scope);
+      const pushed = await pushDbChanges(backend, library, deviceId);
+      const pulled = await pullDbChanges(backend, library, deviceId);
       return { pushed, pulled };
     });
 
@@ -221,20 +212,17 @@ export async function syncDbFromContext(
     return result;
   }
 
-  const deviceId = await getOrCreateDeviceId();
-  const db = getLibraryDatabase(library);
-  const scope = dbSyncScope(ctx.dataSourceId, ctx.libraryId);
+  const deviceId = await getOrCreateDeviceId(library);
 
-  const pushed = await pushDbChanges(db, ctx.backend, deviceId, scope);
-  const pulled = await pullDbChanges(db, ctx.backend, deviceId, scope);
+  const pushed = await pushDbChanges(ctx.backend, library, deviceId);
+  const pulled = await pullDbChanges(ctx.backend, library, deviceId);
 
   console.info(`[${LOG_TARGET}] sync done: pushed=${pushed}, pulled=${pulled}`);
   return { pushed, pulled };
 }
 
 /**
- * Convenience wrapper that resolves the sync target itself. Prefer
- * `syncDbFromContext` inside loops where the target is already resolved.
+ * Convenience wrapper that resolves the sync target itself.
  */
 export async function syncDbNow(
   library: Library,

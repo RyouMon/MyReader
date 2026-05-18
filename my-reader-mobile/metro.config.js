@@ -19,6 +19,9 @@ config.cacheStores = [
   }),
 ];
 
+// Support .sql file imports for Drizzle migrations
+config.resolver.sourceExts.push("sql");
+
 module.exports = withNativewind(config, {
   inlineVariables: false,
   globalClassNamePolyfill: false,

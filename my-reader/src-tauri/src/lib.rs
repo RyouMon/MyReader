@@ -3,6 +3,7 @@ pub mod cache;
 pub mod commands;
 mod config;
 mod db;
+mod entities;
 mod error;
 pub mod models;
 mod protocols;

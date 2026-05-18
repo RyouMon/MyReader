@@ -1,5 +1,9 @@
 import { Directory, File } from "expo-file-system";
 import { open, type DB } from "@op-engineering/op-sqlite";
+import { drizzle } from "drizzle-orm/op-sqlite";
+import { migrate } from "drizzle-orm/op-sqlite/migrator";
+import * as schema from "@my-reader/db/schema";
+import migrations from "@my-reader/db/drizzle/migrations";
 
 import type { Library } from "./types";
 import { resolveLibraryBooksDir } from "../sync/backend";
@@ -7,23 +11,14 @@ import { resolveLibraryBooksDir } from "../sync/backend";
 const LIBRARY_DB_DIR_NAME = ".myreader";
 const LIBRARY_DB_FILE_NAME = "myreader.db";
 
-const READING_PROGRESS_SCHEMA = `
-CREATE TABLE IF NOT EXISTS reading_progress (
-  book_id     INTEGER NOT NULL,
-  format      TEXT NOT NULL COLLATE NOCASE,
-  locator_json TEXT NOT NULL,
-  updated_at  REAL NOT NULL,
-  PRIMARY KEY (book_id, format)
-);
-`;
+export type LibraryDbHandle = {
+  raw: DB;
+  db: ReturnType<typeof drizzle<typeof schema>>;
+};
 
-const dbCache = new Map<string, DB>();
+const dbCache = new Map<string, LibraryDbHandle>();
 
 function getLibraryRootUri(library: Library): string {
-  // op-sqlite uses POSIX C file I/O and cannot write to iOS security-scoped
-  // bookmark paths. Always keep myreader.db in app docs dir. For iCloud sync,
-  // change files are written to the library directory via expo-file-system
-  // inside withSecurityScopedLibraryAccess in db_sync.ts.
   return resolveLibraryBooksDir(library.id);
 }
 
@@ -41,7 +36,6 @@ function libraryDbUri(libraryRootUri: string): string {
   return file.uri;
 }
 
-
 function uriToNativePath(uri: string): string {
   if (uri.startsWith("file://")) {
     return decodeURIComponent(uri.slice(7));
@@ -50,12 +44,12 @@ function uriToNativePath(uri: string): string {
 }
 
 /**
- * 返回书库级数据库的 process-wide handle。
- * 路径：{cacheDir}/book-downloads/{libraryId}/.myreader/myreader.db
+ * Returns a process-wide handle to the library-wide database.
+ * Path: {cacheDir}/book-downloads/{libraryId}/.myreader/myreader.db
  *
- * 首次打开时自动创建 schema，并对 reading_progress 表执行 crsql_as_crr。
+ * Applies Drizzle migrations on first access.
  */
-export function getLibraryDatabase(library: Library): DB {
+export function getLibraryDatabase(library: Library): LibraryDbHandle {
   const rootUri = getLibraryRootUri(library);
   const dbUri = libraryDbUri(rootUri);
   const cacheKey = dbUri;
@@ -68,30 +62,23 @@ export function getLibraryDatabase(library: Library): DB {
   const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : ".";
   const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath;
 
-  const db = open({ name, location });
+  const raw = open({ name, location });
+  const db = drizzle(raw, { schema });
 
-  db.executeSync(READING_PROGRESS_SCHEMA);
+  migrate(db, migrations);
 
-  try {
-    db.executeSync(`SELECT crsql_as_crr('reading_progress');`);
-  } catch (e) {
-    console.warn(
-      "[library-db] crsql_as_crr failed for reading_progress; sync may not work.",
-      e,
-    );
-  }
-
-  dbCache.set(cacheKey, db);
-  return db;
+  const handle = { raw, db };
+  dbCache.set(cacheKey, handle);
+  return handle;
 }
 
 /**
- * 关闭并清空所有缓存的书库级数据库连接。主要用于测试。
+ * Close and clear all cached library database connections.
  */
 export async function closeAllLibraryDatabases(): Promise<void> {
-  for (const [uri, db] of dbCache) {
+  for (const [uri, handle] of dbCache) {
     try {
-      await db.closeAsync();
+      await handle.raw.closeAsync();
     } catch (e) {
       console.warn("[library-db] close failed:", uri, e);
     }

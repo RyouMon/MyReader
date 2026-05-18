@@ -1,37 +1,9 @@
-//! 本地文件三态表：复用现有书库数据库（`.myreader/myreader.db`），避免再引入新库。
-//!
-//! 三态（外加 `dirty_push` 等中间态）：
-//!
-//! - `remote_only`：云端 manifest 有条目，本地无文件；UI 显示"下载"
-//! - `present`：本地有完整文件且哈希匹配
-//! - `local_only`：只在本地有（还未推到云端或 LocalDirect 模式）
-//! - `dirty_push`：本地改过，等待上推
-
-use rusqlite::{params, Connection};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::Serialize;
 use specta::Type;
 
+use crate::entities::file_state;
 use crate::error::AppError;
-
-pub const SCHEMA: &str = "
-CREATE TABLE IF NOT EXISTS file_state (
-  path          TEXT PRIMARY KEY,
-  local_state   TEXT NOT NULL CHECK(local_state IN ('remote_only','present','local_only','dirty_push')),
-  local_blake3  TEXT,
-  local_size    INTEGER,
-  local_mtime   INTEGER,
-  updated_at    INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-);
-CREATE INDEX IF NOT EXISTS idx_file_state_local_state
-  ON file_state(local_state);
-";
-
-/// 调用方负责传入已由 `reading_progress::initialize_schema` 初始化过的连接；
-/// 本函数只在该连接上追加 `file_state` 表。
-pub fn initialize_schema(conn: &Connection) -> Result<(), AppError> {
-    conn.execute_batch(SCHEMA)
-        .map_err(|e| AppError::Database(e.to_string()))
-}
 
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -43,84 +15,113 @@ pub struct FileStateRow {
     pub local_mtime: Option<i64>,
 }
 
-pub fn upsert(
-    conn: &Connection,
+fn model_to_row(m: file_state::Model) -> FileStateRow {
+    FileStateRow {
+        path: m.path,
+        local_state: m.local_state,
+        local_blake3: m.local_blake3,
+        local_size: m.local_size,
+        local_mtime: m.local_mtime,
+    }
+}
+
+pub async fn upsert(
+    db: &DatabaseConnection,
     path: &str,
     local_state: &str,
     local_blake3: Option<&str>,
     local_size: Option<i64>,
     local_mtime: Option<i64>,
 ) -> Result<(), AppError> {
-    conn.execute(
-        "INSERT INTO file_state (path, local_state, local_blake3, local_size, local_mtime, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, strftime('%s','now'))
-         ON CONFLICT(path) DO UPDATE SET
-           local_state  = excluded.local_state,
-           local_blake3 = excluded.local_blake3,
-           local_size   = excluded.local_size,
-           local_mtime  = excluded.local_mtime,
-           updated_at   = excluded.updated_at",
-        params![path, local_state, local_blake3, local_size, local_mtime],
-    )
-    .map(|_| ())
-    .map_err(|e| AppError::Database(e.to_string()))
-}
-
-pub fn get(conn: &Connection, path: &str) -> Result<Option<FileStateRow>, AppError> {
-    let row = conn.query_row(
-        "SELECT path, local_state, local_blake3, local_size, local_mtime
-           FROM file_state WHERE path = ?1",
-        params![path],
-        |row| {
-            Ok(FileStateRow {
-                path: row.get(0)?,
-                local_state: row.get(1)?,
-                local_blake3: row.get(2)?,
-                local_size: row.get(3)?,
-                local_mtime: row.get(4)?,
-            })
-        },
-    );
-    match row {
-        Ok(r) => Ok(Some(r)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(AppError::Database(e.to_string())),
-    }
-}
-
-pub fn list_by_state(conn: &Connection, state: &str) -> Result<Vec<FileStateRow>, AppError> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT path, local_state, local_blake3, local_size, local_mtime
-               FROM file_state WHERE local_state = ?1 ORDER BY path",
-        )
+    let existing = file_state::Entity::find()
+        .filter(file_state::Column::Path.eq(path))
+        .one(db)
+        .await
         .map_err(|e| AppError::Database(e.to_string()))?;
-    let rows = stmt
-        .query_map(params![state], |row| {
-            Ok(FileStateRow {
-                path: row.get(0)?,
-                local_state: row.get(1)?,
-                local_blake3: row.get(2)?,
-                local_size: row.get(3)?,
-                local_mtime: row.get(4)?,
-            })
-        })
-        .map_err(|e| AppError::Database(e.to_string()))?;
-    let mut out = Vec::new();
-    for r in rows {
-        out.push(r.map_err(|e| AppError::Database(e.to_string()))?);
+
+    if let Some(model) = existing {
+        let mut active: file_state::ActiveModel = model.into();
+        active.local_state = Set(local_state.to_string());
+        active.local_blake3 = Set(local_blake3.map(|s| s.to_string()));
+        active.local_size = Set(local_size);
+        active.local_mtime = Set(local_mtime);
+        active.updated_at = Set(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64(),
+        );
+        active.update(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+    } else {
+        let id = uuid::Uuid::new_v4().as_simple().to_string();
+        let active = file_state::ActiveModel {
+            id: Set(id),
+            path: Set(path.to_string()),
+            local_state: Set(local_state.to_string()),
+            local_blake3: Set(local_blake3.map(|s| s.to_string())),
+            local_size: Set(local_size),
+            local_mtime: Set(local_mtime),
+            updated_at: Set(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs_f64(),
+            ),
+        };
+        active.insert(db).await.map_err(|e| AppError::Database(e.to_string()))?;
     }
-    Ok(out)
+    Ok(())
 }
 
-pub fn delete(conn: &Connection, path: &str) -> Result<(), AppError> {
-    conn.execute("DELETE FROM file_state WHERE path = ?1", params![path])
-        .map(|_| ())
-        .map_err(|e| AppError::Database(e.to_string()))
+pub async fn get(db: &DatabaseConnection, path: &str) -> Result<Option<FileStateRow>, AppError> {
+    let model = file_state::Entity::find()
+        .filter(file_state::Column::Path.eq(path))
+        .one(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    Ok(model.map(model_to_row))
 }
 
-pub fn clear(conn: &Connection) -> Result<(), AppError> {
-    conn.execute("DELETE FROM file_state", [])
-        .map(|_| ())
-        .map_err(|e| AppError::Database(e.to_string()))
+pub async fn list_all(db: &DatabaseConnection) -> Result<Vec<FileStateRow>, AppError> {
+    let models = file_state::Entity::find()
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    Ok(models.into_iter().map(model_to_row).collect())
+}
+
+pub async fn list_by_state(
+    db: &DatabaseConnection,
+    state: &str,
+) -> Result<Vec<FileStateRow>, AppError> {
+    let models = file_state::Entity::find()
+        .filter(file_state::Column::LocalState.eq(state))
+        .all(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    Ok(models.into_iter().map(model_to_row).collect())
+}
+
+pub async fn delete(db: &DatabaseConnection, path: &str) -> Result<(), AppError> {
+    let model = file_state::Entity::find()
+        .filter(file_state::Column::Path.eq(path))
+        .one(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    if let Some(m) = model {
+        file_state::Entity::delete_by_id(m.id)
+            .exec(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+    }
+    Ok(())
+}
+
+pub async fn clear(db: &DatabaseConnection) -> Result<(), AppError> {
+    file_state::Entity::delete_many()
+        .exec(db)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    Ok(())
 }

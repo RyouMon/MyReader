@@ -1,10 +1,34 @@
 import type { Locator } from "@ryoumon/react-native-readium";
+import { and, eq } from "drizzle-orm";
 
 import { parseStoredLocator } from "@/src/features/reader/components/reader/locator";
-import type { Library } from "./types";
+import { uuid } from "@/src/utils/common";
+import { readingProgress } from "@my-reader/db/schema";
 import { getLibraryDatabase } from "./library-db";
+import type { Library } from "./types";
 
 const LOG_TARGET = "reading-progress";
+
+/**
+ * Strip platform-specific prefix from href for cross-platform storage.
+ * Desktop CBZ/PDF hrefs contain `asset://localhost/<extracted-dir>/` which
+ * is invalid on mobile. We keep only the relative path suffix.
+ */
+function normalizeHrefForStorage(href: string): string {
+  if (!href.startsWith("asset://localhost/")) return href;
+  try {
+    const url = new URL(href);
+    const decoded = decodeURIComponent(url.pathname);
+    const match = decoded.match(/\/extracted\/[^/]+\//);
+    if (match) {
+      const relativePath = decoded.slice((match.index ?? 0) + match[0].length);
+      if (relativePath) return relativePath;
+    }
+  } catch {
+    // URL parsing failed — return as-is
+  }
+  return href;
+}
 
 function summarizeLocator(locator: Locator): Record<string, unknown> {
   return {
@@ -15,7 +39,7 @@ function summarizeLocator(locator: Locator): Record<string, unknown> {
   };
 }
 
-/** 按书籍 id、格式读取一条进度；format 大小写不敏感。 */
+/** Read reading progress by book id and format (case-insensitive). */
 export async function getReadingProgress(
   library: Library,
   bookId: number,
@@ -25,22 +49,31 @@ export async function getReadingProgress(
   console.info(`[${LOG_TARGET}] get:start`, { bookId, format: fmt });
 
   try {
-    const db = getLibraryDatabase(library);
-    const result = await db.execute(
-      `SELECT locator_json FROM reading_progress WHERE book_id = ? AND format = ?`,
-      [bookId, fmt],
-    );
+    const { db } = getLibraryDatabase(library);
+    const rows = await db
+      .select()
+      .from(readingProgress)
+      .where(
+        and(
+          eq(readingProgress.bookId, bookId),
+          eq(readingProgress.format, fmt),
+        ),
+      );
 
-    const row = result.rows[0] as { locator_json: string } | undefined;
+    const row = rows[0];
     if (!row) {
       console.info(`[${LOG_TARGET}] get:miss`, { bookId, format: fmt });
       return null;
     }
 
-    const raw: unknown = JSON.parse(row.locator_json);
+    const raw: unknown = JSON.parse(row.locatorJson);
     const locator = parseStoredLocator(raw);
     if (locator) {
-      console.info(`[${LOG_TARGET}] get:hit`, { bookId, format: fmt, ...summarizeLocator(locator) });
+      console.info(`[${LOG_TARGET}] get:hit`, {
+        bookId,
+        format: fmt,
+        ...summarizeLocator(locator),
+      });
     } else {
       console.info(`[${LOG_TARGET}] get:unparseable`, { bookId, format: fmt });
     }
@@ -51,7 +84,7 @@ export async function getReadingProgress(
   }
 }
 
-/** 保存或更新阅读进度，主键 (book_id, format)。持久化为 Readium Locator JSON。 */
+/** Save or update reading progress. Uses UUID4 id as primary key. */
 export async function setReadingProgress(
   library: Library,
   bookId: number,
@@ -60,7 +93,12 @@ export async function setReadingProgress(
 ): Promise<void> {
   const fmt = format.toUpperCase();
   const updatedAt = Date.now();
-  const json = JSON.stringify(locator);
+  const normalized: Locator = {
+    ...locator,
+    href: normalizeHrefForStorage(locator.href),
+  };
+  const json = JSON.stringify(normalized);
+  const id = uuid();
 
   console.info(`[${LOG_TARGET}] set:start`, {
     bookId,
@@ -70,13 +108,14 @@ export async function setReadingProgress(
   });
 
   try {
-    const db = getLibraryDatabase(library);
-    await db.execute(
-      `INSERT OR REPLACE INTO reading_progress
-       (book_id, format, locator_json, updated_at)
-       VALUES (?, ?, ?, ?)`,
-      [bookId, fmt, json, updatedAt],
-    );
+    const { db } = getLibraryDatabase(library);
+    await db
+      .insert(readingProgress)
+      .values({ id, bookId, format: fmt, locatorJson: json, updatedAt })
+      .onConflictDoUpdate({
+        target: [readingProgress.bookId, readingProgress.format],
+        set: { locatorJson: json, updatedAt },
+      });
     console.info(`[${LOG_TARGET}] set:ok`, { bookId, format: fmt });
   } catch (e) {
     console.error(`[${LOG_TARGET}] set:error`, { bookId, format: fmt, error: e });

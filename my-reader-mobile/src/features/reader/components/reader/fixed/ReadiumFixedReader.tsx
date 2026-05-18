@@ -76,6 +76,30 @@ function positionIndexForLocator(positions: Locator[], locator: Locator): number
   return 0;
 }
 
+/**
+ * Find a platform-native locator from positions list that matches a stored locator.
+ * Uses position first, then href, then progression — ensuring the returned locator
+ * has a href that matches the native publication format.
+ */
+function resolveNativeLocator(positions: Locator[], stored: Locator): Locator | undefined {
+  if (positions.length === 0) return undefined;
+  // 1. Match by position (most reliable for cross-platform sync)
+  const position = stored.locations?.position;
+  if (typeof position === "number" && position >= 1 && position <= positions.length) {
+    return positions[position - 1];
+  }
+  // 2. Match by href (works for same-platform locators)
+  const byHref = positions.find((p) => p.href === stored.href);
+  if (byHref) return byHref;
+  // 3. Match by progression
+  const prog = stored.locations?.totalProgression ?? stored.locations?.progression;
+  if (prog != null && Number.isFinite(prog)) {
+    const idx = Math.max(0, Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))));
+    return positions[idx];
+  }
+  return undefined;
+}
+
 const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderProps>(
   function ReadiumFixedReader(
     {
@@ -93,19 +117,20 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
     const readiumRef = useRef<ReadiumViewRef>(null);
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
-    const currentLocatorRef = useRef<Locator | null>(initialLocator ?? null);
+    const currentLocatorRef = useRef<Locator | null>(null);
     const touchStartRef = useRef<TouchSnapshot | null>(null);
 
     useImperativeHandle(ref, () => ({
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
     }));
 
+    // Don't pass initialLocator as initialLocation — its href may not match
+    // the native publication format. Instead, navigate after publicationReady.
     const file = useMemo<ReadiumFile>(
       () => ({
         url: filePath,
-        initialLocation: initialLocator,
       }),
-      [filePath, initialLocator],
+      [filePath],
     );
 
     const preferences = useMemo(() => {
@@ -130,10 +155,19 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
         onTocReady(tocItems);
 
         const totalPages = Math.max(1, event.positions.length);
-        const startLocator = initialLocator ?? currentLocatorRef.current ?? event.positions[0];
-        if (startLocator) {
-          currentLocatorRef.current = startLocator;
+
+        // Resolve initial position using position/progression from stored locator,
+        // then find the matching native locator from positions list.
+        // This ensures the href matches the platform-native format.
+        let startLocator: Locator | undefined = event.positions[0];
+        if (initialLocator) {
+          const resolved = resolveNativeLocator(event.positions, initialLocator);
+          if (resolved) startLocator = resolved;
+        } else if (currentLocatorRef.current) {
+          const resolved = resolveNativeLocator(event.positions, currentLocatorRef.current);
+          if (resolved) startLocator = resolved;
         }
+        currentLocatorRef.current = startLocator ?? null;
 
         const currentPage = startLocator
           ? positionIndexForLocator(event.positions, startLocator)
@@ -150,8 +184,13 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
           chapterTitle: event.metadata.title,
           loading: false,
           error: null,
-          locator: startLocator ?? undefined,
+          locator: startLocator,
         });
+
+        // Navigate to the resolved position after the view is ready
+        if (startLocator && startLocator !== event.positions[0]) {
+          readiumRef.current?.goTo(startLocator);
+        }
       },
       [initialLocator, onTocReady, onStateChange],
     );

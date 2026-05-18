@@ -30,16 +30,17 @@ impl ReaderService {
         Ok(())
     }
 
-    pub fn prepare_book_source(
+    pub async fn prepare_book_source(
         lib_id: &str,
         lib_path: &str,
         book_id: i64,
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
         cache::ensure_reader_cache_dirs()?;
-        let repo = CalibreBookRepository::open(lib_path)?;
+        let repo = CalibreBookRepository::open(lib_path).await?;
         let file_path = repo
-            .get_book_file_path(lib_path, book_id, format)?
+            .get_book_file_path(lib_path, book_id, format)
+            .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!(
                     "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"

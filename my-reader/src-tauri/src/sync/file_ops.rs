@@ -6,10 +6,9 @@
 //! - `evict_local` 只触及本地磁盘，不读云；
 //! - 所有路径参数都使用相对 library root 的 POSIX 风格相对路径。
 //!
-//! 本模块**不直接访问 SQLite**：`rusqlite::Connection` 并非 `Send`，与
-//! `tauri::command + async` 的 `Send` 要求冲突，因此 DB 侧（`file_state`）的
-//! 写入由调用方在 `spawn_blocking` 或同步上下文中完成。本模块只负责 I/O 并
-//! 返回结果信息，方便上层维护状态一致性。
+//! 本模块**不直接访问 SQLite**：DB 侧（`file_state`）的写入由调用方
+//! 在 async 上下文中完成。本模块只负责 I/O 并返回结果信息，方便上层
+//! 维护状态一致性。
 
 use std::path::{Path, PathBuf};
 

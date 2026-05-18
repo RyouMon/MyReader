@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import { File } from "expo-file-system";
-import type { Locator } from "@ryoumon/react-native-readium";
-import { resolveReadFormat } from "@my-reader/tools/utils";
-import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
+import { enforceReaderCacheLimit } from "@/src/data/cache";
 import {
   buildCoverUri,
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/data/calibre";
-import { enforceReaderCacheLimit } from "@/src/data/cache";
+import { getFileState, type LocalState } from "@/src/data/file_state";
 import { getReadingProgress } from "@/src/data/reading-progress";
 import type { Library, WebDavDataSource } from "@/src/data/types";
-import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
-import { getFileState, type LocalState } from "@/src/sync/file_state";
+import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { useAppStore } from "@/src/store/app-store";
+import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
+import { resolveReadFormat } from "@my-reader/tools/utils";
+import type { Locator } from "@ryoumon/react-native-readium";
+import { File } from "expo-file-system";
+import { useEffect, useRef, useState } from "react";
 
 const INITIAL_READER_PAGE = 0;
 
@@ -58,7 +58,7 @@ async function resolveDownloadedWebDavBookFile(input: {
   if (!match) return null;
 
   const state = await getFileState(
-    { dataSourceId: input.dataSourceId, libraryId: input.libraryId },
+    input.library,
     match.relativePath,
   );
   if (!isDownloadedLocalState(state?.localState)) return null;

@@ -9,6 +9,7 @@
     "test:desktop": "pnpm --filter my-reader test",
     "test:mobile": "pnpm --filter my-reader-mobile test",
     "sync:design-tokens": "node scripts/sync-design-tokens.mjs",
+    "db:generate": "pnpm --filter @my-reader/db generate && bash scripts/generate-seaorm-entities.sh",
     "prepare": "husky || true"
   },
   "devDependencies": {

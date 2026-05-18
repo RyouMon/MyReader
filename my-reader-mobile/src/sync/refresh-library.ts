@@ -1,7 +1,6 @@
 import { File } from "expo-file-system";
 
 import type { DataSource } from "@my-reader/tools/store/data-source";
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import {
   forceRefreshLibraryMetadata,
   readBookCountFromMetadata,
@@ -112,14 +111,12 @@ export async function refreshLibrary(
   const diff = diffBooks(oldSummaries, newSummaries);
 
   // 5. Clean up removed books' files
-  const effectiveDataSourceId = library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID;
   for (const book of diff.removed) {
     if (!book.path) continue;
     // Evict cover
     try {
       await evictLocalFileOfflineSafe(
-        library.id,
-        effectiveDataSourceId,
+        library,
         `${book.path}/cover.jpg`
       );
     } catch {
@@ -129,8 +126,7 @@ export async function refreshLibrary(
     for (const format of book.formats) {
       try {
         await evictLocalFileOfflineSafe(
-          library.id,
-          effectiveDataSourceId,
+          library,
           `${book.path}/${format}.${format.toLowerCase()}`
         );
       } catch {
@@ -164,8 +160,7 @@ export async function refreshLibrary(
         if (oldBook.path && oldBook.path !== newBook.path) {
           try {
             await evictLocalFileOfflineSafe(
-              library.id,
-              effectiveDataSourceId,
+              library,
               `${oldBook.path}/cover.jpg`
             );
           } catch {

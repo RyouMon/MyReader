@@ -1,8 +1,8 @@
 import { randomUUID } from "expo-crypto";
 
-import { getSyncMeta, setSyncMeta } from "./sync_meta";
+import { getSyncMeta, setSyncMeta } from "../data/sync_meta";
+import type { Library } from "../data/types";
 
-const DEVICE_SCOPE = "device";
 const DEVICE_KEY = "id";
 
 /**
@@ -11,10 +11,10 @@ const DEVICE_KEY = "id";
  * Kept in `sync_meta` so it is durable across app launches and survives
  * across sync targets — manifests on every backend share the same id.
  */
-export async function getOrCreateDeviceId(): Promise<string> {
-  const existing = await getSyncMeta(DEVICE_SCOPE, DEVICE_KEY);
+export async function getOrCreateDeviceId(library: Library): Promise<string> {
+  const existing = await getSyncMeta(library, DEVICE_KEY);
   if (existing && existing.length > 0) return existing;
   const id = randomUUID();
-  await setSyncMeta(DEVICE_SCOPE, DEVICE_KEY, id);
+  await setSyncMeta(library, DEVICE_KEY, id);
   return id;
 }

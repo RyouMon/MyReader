@@ -1,7 +1,7 @@
 use tracing::{error, info};
 use tauri::{AppHandle, Manager, State};
 
-use crate::commands::{AppState, PreparedBookSource};
+use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::JsonAny;
 use crate::reader_ui_prefs::ReaderUiPreferences;
@@ -27,12 +27,10 @@ pub async fn prepare_book_source(
     library_id: Option<String>,
     book_id: i64,
     format: String,
-) -> Result<PreparedBookSource, AppError> {
+) -> Result<crate::commands::PreparedBookSource, AppError> {
     info!(
-        "Start to prepare book source. library id: {:?}, book id: {}, format: \"{}\"",
-        library_id, book_id, format
+        "Start to prepare book source. library id: {library_id:?}, book id: {book_id}, format: \"{format}\""
     );
-
     let (lib_id, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
         let (id, path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
@@ -40,25 +38,18 @@ pub async fn prepare_book_source(
         (id, path)
     };
 
-    let lib_id_clone = lib_id.clone();
-    let format_clone = format.clone();
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        ReaderService::prepare_book_source(&lib_id_clone, &lib_path, book_id, &format_clone
-        )
-    })
-    .await
-    .map_err(|e| AppError::Task(e.to_string()))?;
+    let result = ReaderService::prepare_book_source(&lib_id, &lib_path, book_id, &format).await;
 
     match &result {
-        Ok(source) => info!(
+        Ok(src) => info!(
             "Success to prepare book source. format: \"{}\", has extracted dir: {}, entries: {}",
-            source.format,
-            source.extracted_dir_path.is_some(),
-            source.extracted_entries.len()
+            src.format,
+            src.extracted_dir_path.is_some(),
+            src.extracted_entries.len()
         ),
         Err(err) => error!(
-            "Failed to prepare book source. library id: {:?}, book id: {}, format: \"{}\", error: {err}",
-            library_id, book_id, format
+            "Failed to prepare book source. library id: {library_id:?}, book id: {book_id}, format: \"{}\", error: {err}",
+            format
         ),
     }
     result
@@ -90,18 +81,10 @@ pub fn get_reader_ui_preferences(
     state: State<'_, AppState>,
 ) -> Result<ReaderUiPreferences, AppError> {
     info!("Start to get reader UI preferences.");
-    let result = {
-        let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        Ok(ReaderService::get_reader_ui_preferences(&config))
-    };
-    match &result {
-        Ok(prefs) => info!(
-            "Success to get reader UI preferences. version: {}",
-            prefs.version
-        ),
-        Err(err) => error!("Failed to get reader UI preferences. error: {err}"),
-    }
-    result
+    let config = state.lock().unwrap_or_else(|e| e.into_inner());
+    let prefs = ReaderService::get_reader_ui_preferences(&config);
+    info!("Success to get reader UI preferences.");
+    Ok(prefs)
 }
 
 #[tauri::command]
@@ -109,28 +92,13 @@ pub fn get_reader_ui_preferences(
 pub fn set_reader_ui_preferences(
     app: AppHandle,
     state: State<'_, AppState>,
-    prefs: ReaderUiPreferences,
+    preferences: ReaderUiPreferences,
 ) -> Result<(), AppError> {
-    info!(
-        "Start to set reader UI preferences. version: {}, theme: \"{}\", font size: {}, fixed layout mode: \"{}\"",
-        prefs.version,
-        prefs.reflowable.settings.theme,
-        prefs.reflowable.settings.font_size,
-        prefs.fixed_layout.display_mode
-    );
-    let result = (|| {
-        let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
-        ReaderService::set_reader_ui_preferences(&mut config, prefs);
-
-        let config_path = app.path().app_data_dir()?.join("config.json");
-        config::save_config(&config_path, &config)?;
-        Ok(())
-    })();
-
-    match &result {
-        Ok(()) => info!("Success to set reader UI preferences."),
-        Err(err) => error!("Failed to set reader UI preferences. error: {err}"),
-    }
-
-    result
+    info!("Start to set reader UI preferences.");
+    let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
+    ReaderService::set_reader_ui_preferences(&mut config, preferences);
+    let config_path = app.path().app_data_dir()?.join("config.json");
+    config::save_config(&config_path, &config)?;
+    info!("Success to set reader UI preferences.");
+    Ok(())
 }
