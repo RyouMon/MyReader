@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./schema": "./src/schema/index.ts",
+    "./schema/calibre": "./src/schema/calibre/index.ts",
     "./types": "./src/types.ts",
     "./drizzle/migrations": "./drizzle/migrations.js"
   },
