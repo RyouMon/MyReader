@@ -1,5 +1,6 @@
 import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Pressable, Text, View } from "@/tw";
+import { useTranslation } from "react-i18next";
 
 import type { ThemeOption } from "./readerChromeConstants";
 import { chromeSegmentSurfaceStyle, chromeThemeCardSurfaceStyle } from "./readerChromePalette";
@@ -49,6 +50,7 @@ export function SettingThemeCard({
   active: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Pressable
       className="min-w-[72px] items-center gap-2 rounded-2xl border px-2 py-2.5"
@@ -65,7 +67,7 @@ export function SettingThemeCard({
         className="text-xs font-semibold"
         style={{ color: active ? READER_CHROME.textStrong : READER_CHROME.textSecondary }}
       >
-        {option.label}
+        {t(option.label)}
       </Text>
     </Pressable>
   );

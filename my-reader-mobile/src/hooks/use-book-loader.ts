@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+
 import { enforceReaderCacheLimit } from "@/src/data/cache";
 import {
   buildCoverUri,
@@ -97,11 +99,11 @@ export function useBookLoader(
 ) {
   const [loadState, setLoadState] = useState<LoadState>({
     status: "loading",
-    message: "正在加载书籍…",
+    message: i18n.t("bookLoader.loadingBook"),
   });
   const [coverUri, setCoverUri] = useState<string | undefined>(undefined);
   const [bookTitle, setBookTitle] = useState<string | undefined>(undefined);
-  const loadStateRef = useRef<LoadState>({ status: "loading", message: "正在加载书籍…" });
+  const loadStateRef = useRef<LoadState>({ status: "loading", message: i18n.t("bookLoader.loadingBook") });
 
   useEffect(() => {
     loadStateRef.current = loadState;
@@ -122,7 +124,7 @@ export function useBookLoader(
       });
       setLoadState({
         status: "error",
-        message: !id ? "缺少书籍参数" : "未选择书库",
+        message: !id ? i18n.t("bookLoader.missingParam") : i18n.t("bookLoader.noLibrary"),
       });
       return;
     }
@@ -146,7 +148,7 @@ export function useBookLoader(
     const currentLibrary = state.libraries.find((l) => l.id === activeLibraryId) ?? null;
     if (!currentLibrary) {
       console.error("[mobile-reader] effect:library-not-found", { activeLibraryId });
-      setLoadState({ status: "error", message: "未选择书库" });
+      setLoadState({ status: "error", message: i18n.t("bookLoader.noLibrary") });
       return;
     }
     const lib = currentLibrary;
@@ -169,7 +171,7 @@ export function useBookLoader(
           libraryId: lib.id,
           sourceType: lib.sourceType,
         });
-        setLoadState({ status: "loading", message: "正在读取书籍信息…" });
+        setLoadState({ status: "loading", message: i18n.t("bookLoader.readingBookInfo") });
 
         // 优先从已有的 books 列表中获取封面和标题，减少等待感
         const bookItem = useAppStore.getState().books.find((b) => b.id === id);
@@ -183,7 +185,7 @@ export function useBookLoader(
         const calibreId = Number(id);
         if (!Number.isFinite(calibreId) || calibreId <= 0) {
           console.error("[mobile-reader] load:invalid-book-id", { id, calibreId });
-          setLoadState({ status: "error", message: "无效的书籍 ID" });
+          setLoadState({ status: "error", message: i18n.t("bookLoader.invalidId") });
           return;
         }
 
@@ -194,7 +196,7 @@ export function useBookLoader(
             calibreId,
             libraryId: lib.id,
           });
-          setLoadState({ status: "error", message: "在书库中未找到该书" });
+          setLoadState({ status: "error", message: i18n.t("bookLoader.notFoundInLibrary") });
           return;
         }
 
@@ -220,7 +222,7 @@ export function useBookLoader(
           });
           setLoadState({
             status: "error",
-            message: `该书没有可阅读的格式（需要 EPUB、CBZ 或 PDF）`,
+            message: i18n.t("bookLoader.noReadableFormat"),
           });
           return;
         }
@@ -233,7 +235,7 @@ export function useBookLoader(
 
         setLoadState({
           status: "loading",
-          message: currentWebDavSource ? "正在从 WebDAV 下载书籍…" : "正在加载书籍文件…",
+          message: currentWebDavSource ? i18n.t("bookLoader.downloadingFromWebdav") : i18n.t("bookLoader.loadingBookFile"),
         });
 
         const detailLayoutMode =
@@ -278,7 +280,7 @@ export function useBookLoader(
         if (requiredWebDavFile && !downloadedWebDavBookFile) {
           setLoadState({
             status: "error",
-            message: "请先在书籍详情中下载该格式，再打开阅读。",
+            message: i18n.t("bookLoader.downloadFirst"),
           });
           return;
         }

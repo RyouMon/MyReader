@@ -16,6 +16,7 @@ import {
   type NativeUploadOptions,
 } from "./native-download";
 import { parentDirectoryUriForFileUri } from "../utils/io";
+import i18n from "@/src/i18n";
 
 export type DownloadOutcome = {
   blake3: string | null;
@@ -66,13 +67,13 @@ async function blake3HexFile(file: File): Promise<string> {
 
 function assertSafeRelative(relativePath: string): void {
   if (!relativePath) {
-    throw new AppInvariantError("同步路径不能为空");
+    throw new AppInvariantError(i18n.t("sync.syncPathEmpty"));
   }
   if (relativePath.includes("..")) {
-    throw new AppInvariantError(`同步路径不能包含 ..: ${relativePath}`);
+    throw new AppInvariantError(i18n.t("sync.syncPathTraversal", { path: relativePath }));
   }
   if (relativePath.startsWith("/")) {
-    throw new AppInvariantError(`同步路径不能是绝对路径: ${relativePath}`);
+    throw new AppInvariantError(i18n.t("sync.syncPathAbsolute", { path: relativePath }));
   }
 }
 
@@ -103,11 +104,11 @@ function hasNonEmptyFileBytes(file: File): boolean {
  */
 function outcomeFromNativeDownload(file: File, bytesDownloaded: number, relativePath: string): DownloadOutcome {
   if (!file.exists) {
-    throw new DataIntegrityError(`原生下载已完成，但缓存文件不存在: ${relativePath}`);
+    throw new DataIntegrityError(i18n.t("sync.nativeDownloadMissing", { path: relativePath }));
   }
   const size = file.size ?? 0;
   if (size <= 0) {
-    throw new DataIntegrityError(`原生下载已完成，但缓存文件为空: ${relativePath}`);
+    throw new DataIntegrityError(i18n.t("sync.nativeDownloadEmpty", { path: relativePath }));
   }
   if (bytesDownloaded > 0 && size !== bytesDownloaded) {
     console.warn("Native download byte count differs from filesystem size:", {
@@ -144,7 +145,7 @@ function downloadWithBackgroundTask(
 ): Promise<number> {
   const request = backend.getDownloadRequest(relativePath);
   if (!request) {
-    throw new AppInvariantError(`当前后端不支持原生后台下载: ${backend.kind}`);
+    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: backend.kind }));
   }
 
   console.info("Start to download remote file with native adapter, params:", {
@@ -173,7 +174,7 @@ async function uploadWithBackgroundTask(
 ): Promise<number> {
   const request = backend.getUploadRequest(relativePath);
   if (!request) {
-    throw new AppInvariantError(`当前后端不支持原生后台上传: ${backend.kind}`);
+    throw new AppInvariantError(i18n.t("sync.nativeUploadNotSupported", { kind: backend.kind }));
   }
 
   await backend.prepareUpload?.(relativePath);
@@ -209,7 +210,7 @@ export async function downloadFile(
   assertSafeRelative(relativePath);
   const entry = findEntry(manifest, relativePath);
   if (!entry) {
-    throw new AppInvariantError(`manifest 中未登记该路径: ${relativePath}`);
+    throw new AppInvariantError(i18n.t("sync.manifestNotRegistered", { path: relativePath }));
   }
 
   const destUri = localFileUriFor(libraryCacheDirUri, relativePath);
@@ -247,7 +248,7 @@ export async function downloadFile(
   const hex = await blake3HexFile(written);
   if (hex !== entry.blake3) {
     await deleteFileIfExists(written);
-    throw new DataIntegrityError(`下载后哈希不匹配: 期望 ${entry.blake3}，实际 ${hex}`);
+    throw new DataIntegrityError(i18n.t("sync.hashMismatch", { expected: entry.blake3, actual: hex }));
   }
   console.info("Success to write manifest file to local cache:", {
     relativePath,
@@ -389,7 +390,7 @@ export async function pushFile(
   assertSafeRelative(relativePath);
   const localFile = uriToFile(localFileUriFor(libraryCacheDirUri, relativePath));
   if (!localFile.exists) {
-    throw new DataIntegrityError(`本地文件不存在，无法上传: ${relativePath}`);
+    throw new DataIntegrityError(i18n.t("sync.localFileMissing", { path: relativePath }));
   }
   if (!backend.isLocalDirect) {
     const uploadRequest = backend.getUploadRequest(relativePath);

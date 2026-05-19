@@ -1,11 +1,13 @@
 import { Stack } from "expo-router";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { HeaderCloseButton } from "@/src/components/ui/button";
 import { useStackScreenOptions } from "@/src/hooks/use-stack-screen-options";
 
 export default function SettingsStackLayout() {
   const screenOptions = useStackScreenOptions();
+  const { t } = useTranslation();
   const closeButton = useCallback(() => <HeaderCloseButton fallbackRoute="/settings" />, []);
 
   return (
@@ -14,7 +16,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen
         name="library/[libraryId]"
         options={{
-          title: "书库详情",
+          title: t("settings.libraryDetail"),
           presentation: "modal",
           headerLeft: closeButton,
         }}
@@ -22,7 +24,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen
         name="add-library/index"
         options={{
-          title: "添加书库",
+          title: t("settings.addLibrary"),
           presentation: "modal",
           headerLeft: closeButton,
         }}

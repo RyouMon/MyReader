@@ -19,6 +19,7 @@ type SettingsSlice = Pick<
   AppState,
   | "settings"
   | "setThemeMode"
+  | "setLanguage"
   | "setSyncEnabled"
   | "patchCacheSettings"
   | "patchReflowableReaderSettings"
@@ -29,6 +30,9 @@ const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   settings: defaultSettings,
   setThemeMode(mode) {
     set((state) => ({ settings: { ...state.settings, themeMode: mode } }));
+  },
+  setLanguage(language) {
+    set((state) => ({ settings: { ...state.settings, language } }));
   },
   setSyncEnabled(enabled) {
     set((state) => ({ settings: { ...state.settings, syncEnabled: enabled } }));

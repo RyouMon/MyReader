@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { BookItem } from "@/src/data/types";
 
-export type SortOption = "书名" | "作者" | "最近添加";
+export type SortOption = "title" | "author" | "recentlyAdded";
 export type DownloadFilterOption = "all" | "downloaded" | "notDownloaded" | "downloading";
 
 /** Compares newest Calibre additions first, falling back to id for older rows without timestamps. */
@@ -41,11 +41,11 @@ export function useLibraryBookSearch(
 
     return [...searchedBooks].sort((left, right) => {
       switch (sortBy) {
-        case "作者":
+        case "author":
           return left.author.localeCompare(right.author, "zh-CN");
-        case "最近添加":
+        case "recentlyAdded":
           return compareRecentlyAdded(left, right);
-        case "书名":
+        case "title":
         default:
           return left.title.localeCompare(right.title, "zh-CN");
       }

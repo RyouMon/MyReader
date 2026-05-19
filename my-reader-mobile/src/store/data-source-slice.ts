@@ -10,6 +10,8 @@ import {
   writeWebDavPassword,
 } from "./secure-credential-store";
 
+import i18n from "@/src/i18n";
+
 function createWebDavId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -121,7 +123,7 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
       const state = get();
 
       if (state.libraries.some((library) => library.dataSourceId === id)) {
-        throw new Error("请先移除使用该数据源的书库");
+        throw new Error(i18n.t("sync.removeLibraryFirst"));
       }
 
       await deleteWebDavPassword(id);
@@ -153,11 +155,11 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
         }
         let message = "";
         if (response.status === 401 || response.status === 403) {
-          message = "认证失败：用户名或密码错误，或当前账号无权限访问该路径。";
+          message = i18n.t("sync.authFailed");
         } else if (response.status === 404) {
-          message = "路径找不到：请检查基础路径是否正确，以及该路径下是否存在 WebDAV 目录。";
+          message = i18n.t("sync.pathNotFound");
         } else {
-          message = `服务器响应异常（HTTP ${response.status}）：请确认服务端状态与 WebDAV 配置。`;
+          message = i18n.t("sync.serverAbnormal", { status: response.status });
         }
         console.error("[WebDAV][ConnectionTest] Failed to test data source connection", {
           ...context,
@@ -168,9 +170,9 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
         const raw = error instanceof Error ? error.message : String(error);
         let message = raw;
         if (error instanceof TimeoutError) {
-          message = `连接超时：请检查网络、服务器地址、端口和 SSL 配置。原因：${raw}`;
+          message = i18n.t("sync.connectionTimeoutDetail", { reason: raw });
         } else if (error instanceof NetworkError) {
-          message = `网络请求失败：无法访问服务器，请检查网络、服务器地址、端口和 SSL 配置。原因：${raw}`;
+          message = i18n.t("sync.networkFailed", { reason: raw });
         }
         console.error("[WebDAV][ConnectionTest] Failed to test data source connection", {
           ...context,

@@ -15,6 +15,8 @@ import {
   reconcileFileStates,
 } from "./actions";
 
+import i18n from "@/src/i18n";
+
 export type SyncTargetInfo = {
   libraryId: string;
   libraryName: string;
@@ -49,7 +51,7 @@ export function useSyncActions(): SyncActions {
   const findLibrary = useCallback(
     (libraryId: string): Library => {
       const library = libraries.find((item) => item.id === libraryId);
-      if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
+      if (!library) throw new AppInvariantError(i18n.t("sync.libraryNotFound", { id: libraryId }));
       return library;
     },
     [libraries],
@@ -61,7 +63,7 @@ export function useSyncActions(): SyncActions {
         const library = findLibrary(libraryId);
         const ctx = await openSyncContext(library, dataSources);
         const summary = ctx.isLocalDirect
-          ? `本地直读 · ${library.sourcePath ?? library.path ?? library.id}`
+          ? i18n.t("sync.localDirectLabel", { path: library.sourcePath ?? library.path ?? library.id })
           : `WebDAV · ${ctx.dataSourceId}`;
         return {
           libraryId,

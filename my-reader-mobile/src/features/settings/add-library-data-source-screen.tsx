@@ -1,4 +1,5 @@
 import { Link, router } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
 import { View } from "@/tw";
@@ -8,17 +9,18 @@ import { useDataSourceStore } from "@/src/store/data-source-store";
 import { useLibraryStore } from "@/src/store/library-store";
 
 export default function AddLibraryDataSourceScreen() {
+  const { t } = useTranslation();
   const { addLibrary } = useLibraryStore();
   const { dataSources } = useDataSourceStore();
 
   return (
     <Screen>
       <View className="gap-3">
-        <SettingsSectionLabel>已有数据源</SettingsSectionLabel>
+        <SettingsSectionLabel>{t("addLibrary.existingSources")}</SettingsSectionLabel>
         <SectionCard>
           <SettingsRow
             title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-            detail="直接从本机存储中选择书库"
+            detail={t("addLibrary.localDetail")}
             onPress={() => {
               void (async () => {
                 const added = await addLibrary();
@@ -49,10 +51,10 @@ export default function AddLibraryDataSourceScreen() {
       </View>
 
       <View className="gap-3">
-        <SettingsSectionLabel>添加数据源</SettingsSectionLabel>
+        <SettingsSectionLabel>{t("addLibrary.addSources")}</SettingsSectionLabel>
         <SectionCard>
           <Link href="/settings/webdav/add" asChild>
-            <SettingsRow title="WebDAV" detail="通过 WebDAV 浏览远程文件并选择 Calibre 书库" isLast />
+            <SettingsRow title="WebDAV" detail={t("addLibrary.webdavDetail")} isLast />
           </Link>
         </SectionCard>
       </View>

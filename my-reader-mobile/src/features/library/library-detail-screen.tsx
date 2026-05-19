@@ -4,6 +4,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
@@ -17,10 +18,6 @@ import { Screen } from "@/src/components/ui/screen";
 import { Button } from "@/src/components/ui/button";
 import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
 import { useLibraryStore } from "@/src/store/library-store";
-
-function formatBookCount(count: number) {
-  return `${count.toLocaleString("zh-CN")} 本`;
-}
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -41,12 +38,12 @@ function formatDate(timestamp?: number) {
   }).format(date);
 }
 
-function getSourceTypeLabel(library: Library) {
-  return library.sourceType === "webdav" ? "WebDAV" : "本地";
+function getSourceTypeLabel(t: (key: string) => string, library: Library) {
+  return library.sourceType === "webdav" ? t("libraryDetail.typeWebdav") : t("libraryDetail.typeLocal");
 }
 
-function getLibraryTypeLabel(_library: Library) {
-  return "Calibre 书库";
+function getLibraryTypeLabel(t: (key: string) => string) {
+  return t("libraryDetail.calibreLibrary");
 }
 
 function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
@@ -57,7 +54,7 @@ function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
   return library.path;
 }
 
-function DetailHero({ library, accent, isActive }: { library: Library; accent: string; isActive: boolean }) {
+function DetailHero({ library, accent, isActive, t }: { library: Library; accent: string; isActive: boolean; t: (key: string, options?: Record<string, unknown>) => string }) {
   const palette = useThemePalette();
 
   return (
@@ -75,9 +72,9 @@ function DetailHero({ library, accent, isActive }: { library: Library; accent: s
         }}
       >
         <SymbolView
-          accessibilityLabel="书库"
+          accessibilityLabel={t("libraryDetail.libraryLabel")}
           fallback={
-            <MaterialIcons accessibilityLabel="书库" name="auto-stories" size={80} color={accent} />
+            <MaterialIcons accessibilityLabel={t("libraryDetail.libraryLabel")} name="auto-stories" size={80} color={accent} />
           }
           name={{
             ios: "books.vertical.fill",
@@ -103,8 +100,8 @@ function DetailHero({ library, accent, isActive }: { library: Library; accent: s
           {library.name}
         </Text>
         <Text className="text-sm font-medium" style={{ color: palette.textMuted }}>
-          {formatBookCount(library.bookCount)}
-          {isActive ? " · 当前使用" : ""}
+          {t("libraryDetail.bookCount", { count: library.bookCount })}
+          {isActive ? t("libraryDetail.currentlyUsed") : ""}
         </Text>
       </View>
     </View>
@@ -112,6 +109,7 @@ function DetailHero({ library, accent, isActive }: { library: Library; accent: s
 }
 
 export default function LibraryDetailScreen() {
+  const { t } = useTranslation();
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
   const { libraries, activeLibraryId, removeLibrary, refreshLibrary, switchLibrary } = useLibraryStore();
@@ -146,12 +144,12 @@ export default function LibraryDetailScreen() {
     }
 
     showAlertWithStatusBarRestore(
-      "删除这个书库？",
-      "将从应用中移除该书库，但原始书库文件仍保留在原位置，如不再需要请手工删除。",
+      t("libraryDetail.delete.title"),
+      t("libraryDetail.delete.message"),
       [
-        { text: "取消", style: "cancel" },
+        { text: t("libraryDetail.delete.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("libraryDetail.delete.confirm"),
           style: "destructive",
           onPress: () => {
             void (async () => {
@@ -167,7 +165,7 @@ export default function LibraryDetailScreen() {
   const rightToolbar: HeaderToolbarAction[] = library
     ? [
         {
-          label: "删除书库",
+          label: t("libraryDetail.deleteLibrary"),
           onPress: confirmDelete,
           icon:
             Platform.OS === "ios" ? (
@@ -190,10 +188,10 @@ export default function LibraryDetailScreen() {
           <HeaderToolbar />
           <View className="flex-1 items-center justify-center">
             <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-              没有找到这个书库
+              {t("libraryDetail.notFound.title")}
             </Text>
             <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-              它可能已经被移除，或者当前链接参数已经失效。
+              {t("libraryDetail.notFound.detail")}
             </Text>
           </View>
         </View>
@@ -206,7 +204,7 @@ export default function LibraryDetailScreen() {
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <HeaderToolbar right={rightToolbar} />
           <View className="flex-1 gap-8">
-            <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} />
+            <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} t={t} />
             <View className="items-center">
               <View className="w-full flex-row gap-3 px-4" style={{ maxWidth: 400 }}>
                 <Button
@@ -216,7 +214,7 @@ export default function LibraryDetailScreen() {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     void switchLibrary(library.id);
                   }}
-                  title="使用该书库"
+                  title={t("libraryDetail.useLibrary")}
                   variant="primary"
                 />
                 <Button
@@ -234,17 +232,17 @@ export default function LibraryDetailScreen() {
                       }
                     })();
                   }}
-                  title={isRefreshing ? "更新中..." : "更新书库"}
+                  title={isRefreshing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
                   variant="secondary"
                 />
               </View>
             </View>
             <SectionCard>
-              <SettingsRow title="书库类型" detail={getLibraryTypeLabel(library)} />
-              <SettingsRow title="数据源类型" detail={getSourceTypeLabel(library)} />
-              <SettingsRow title="书库路径" detail={getSourcePathDetail(library, linkedDataSource)} />
-              <SettingsRow title="收录图书数量" detail={formatBookCount(library.bookCount)} />
-              <SettingsRow title="添加时间" detail={formatDate(library.addedAt)} isLast />
+              <SettingsRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
+              <SettingsRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
+              <SettingsRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
+              <SettingsRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
+              <SettingsRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
             </SectionCard>
           </View>
       </View>

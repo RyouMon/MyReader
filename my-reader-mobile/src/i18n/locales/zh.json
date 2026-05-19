@@ -1,0 +1,496 @@
+{
+  "tabs": {
+    "home": "主页",
+    "library": "书库",
+    "settings": "设置"
+  },
+  "home": {
+    "title": "我的阅读",
+    "continueReading": "继续阅读",
+    "noCover": "无封面",
+    "currentLibrary": "当前书库：{{name}} · 共 {{count}} 本",
+    "viewBooks": "查看书籍",
+    "reading": "读取中",
+    "recentReading": "最近阅读",
+    "recentAdded": "最近添加",
+    "bookCount": "{{count}} 本",
+    "noLibrary": {
+      "title": "还没有添加书库",
+      "detail": "在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"
+    },
+    "noBooks": {
+      "title": "书库中还没有图书",
+      "detail": "请确认你选择的是有效的 Calibre 书库，并且 metadata.db 中存在 books 表数据。"
+    }
+  },
+  "library": {
+    "title": "书库",
+    "addLibrary": "添加书库",
+    "switchLibrary": "切换书库",
+    "syncCurrentLibrary": "同步当前书库",
+    "searchPlaceholder": "搜索书名、作者、标签",
+    "bookCountRatio": "{{visible}} / {{total}} 本",
+    "filter": {
+      "all": "全部",
+      "downloaded": "已下载",
+      "notDownloaded": "未下载",
+      "downloading": "正在下载"
+    },
+    "sort": {
+      "title": "书名",
+      "author": "作者",
+      "recentlyAdded": "最近添加"
+    },
+    "view": {
+      "grid": "网格视图",
+      "list": "列表视图"
+    },
+    "filterLabel": "筛选",
+    "sortLabel": "排序",
+    "viewLabel": "视图",
+    "libraryActions": "书库操作",
+    "viewConfig": "视图配置",
+    "switchLibraryAlert": {
+      "title": "切换书库",
+      "message": "当前书库：{{name}}",
+      "unselected": "未选择",
+      "close": "关闭"
+    },
+    "loading": {
+      "title": "正在加载书库",
+      "detail": "正在读取本地与 WebDAV 书库配置。"
+    },
+    "notFound": {
+      "title": "没有找到这个书库",
+      "detail": "它可能已被移除，或链接参数已经失效。"
+    },
+    "noLibrary": {
+      "title": "还没有添加书库",
+      "detail": "先添加一个 Calibre 书库，之后即可在书库标签中浏览图书。"
+    },
+    "unselected": {
+      "title": "未选择书库",
+      "detail": "请选择要浏览的书库，或添加新的 Calibre 书库。"
+    },
+    "loadError": {
+      "title": "读取失败"
+    },
+    "noMatch": {
+      "title": "没有匹配的图书",
+      "detail": "请调整搜索词，或确认书库中存在图书。"
+    }
+  },
+  "libraryDetail": {
+    "libraryLabel": "书库",
+    "currentlyUsed": " · 当前使用",
+    "bookCount": "{{count}} 本",
+    "typeLocal": "本地",
+    "typeWebdav": "WebDAV",
+    "calibreLibrary": "Calibre 书库",
+    "delete": {
+      "title": "删除这个书库？",
+      "message": "将从应用中移除该书库，但原始书库文件仍保留在原位置，如不再需要请手工删除。",
+      "cancel": "取消",
+      "confirm": "删除"
+    },
+    "deleteLibrary": "删除书库",
+    "notFound": {
+      "title": "没有找到这个书库",
+      "detail": "它可能已经被移除，或者当前链接参数已经失效。"
+    },
+    "useLibrary": "使用该书库",
+    "refreshing": "更新中...",
+    "refresh": "更新书库",
+    "libraryType": "书库类型",
+    "sourceType": "数据源类型",
+    "libraryPath": "书库路径",
+    "bookCountLabel": "收录图书数量",
+    "addedAt": "添加时间"
+  },
+  "settings": {
+    "title": "设置",
+    "libraryDetail": "书库详情",
+    "addLibrary": "添加书库",
+    "librarySection": "书库",
+    "bookCountCurrent": "{{count}} 本 · 当前使用",
+    "bookCount": "{{count}} 本",
+    "dataAndSources": "数据与来源",
+    "localStorage": "本地存储",
+    "localStorageDetail": "默认数据源，无需配置",
+    "webdavDetail": "可添加并管理远程 WebDAV 数据源",
+    "readingPreferences": "阅读偏好",
+    "darkMode": "深色模式",
+    "readerStyle": "阅读器样式",
+    "readerStyleDetail": "字体、字号、页边距",
+    "cacheMaxSize": "缓存最大容量",
+    "clearAllCache": "全部清理缓存",
+    "currentUsage": "当前占用 {{size}}",
+    "themeMode": {
+      "system": "跟随设备",
+      "light": "浅色",
+      "dark": "深色"
+    },
+    "language": "语言",
+    "languageDetail": "切换界面显示语言"
+  },
+  "reader": {
+    "cannotOpen": "无法打开书籍",
+    "back": "返回",
+    "closeOverlay": "关闭弹层",
+    "mountingReader": "正在挂载阅读器…",
+    "loadFailed": "阅读器加载失败",
+    "loadFailedMessage": "阅读器遇到了意外错误，请返回重试。",
+    "toc": "目录",
+    "noToc": "此书籍没有目录",
+    "settings": "阅读设置",
+    "settingsTheme": "主题",
+    "readingMode": "阅读方式",
+    "pageDirection": "翻页方向",
+    "brightness": "亮度",
+    "fontSize": "字号",
+    "lineHeight": "行距",
+    "margin": "边距",
+    "zoom": "缩放",
+    "pinchZoomHint": "固定版式支持双指捏合缩放。",
+    "themePaper": "纸张",
+    "themeLight": "浅色",
+    "themeGreen": "护眼",
+    "themeDark": "深色",
+    "layoutScroll": "滚动",
+    "layoutPaginate": "左右翻页",
+    "navHorizontal": "左右翻页",
+    "navVertical": "上下翻页",
+    "pageLabel": "第 {{page}} 页"
+  },
+  "bookDetail": {
+    "title": "书籍详情",
+    "loadFailed": "书籍详情加载失败",
+    "loadFailedMessage": "书籍详情页面遇到了意外错误，请重试。",
+    "missingParam": {
+      "title": "缺少书籍参数",
+      "detail": "请从书库重新进入书籍详情。"
+    },
+    "noLibrary": {
+      "title": "没有当前书库",
+      "detail": "请先在设置或书库中选择要使用的 Calibre 书库。"
+    },
+    "invalidId": "无效的书籍 ID",
+    "notFoundInMeta": "在 metadata 中未找到该书",
+    "notFoundInLibrary": "在书库中未找到该书",
+    "loadingDetail": "加载书籍详情…",
+    "notFound": {
+      "title": "没有找到这本书",
+      "detail": "它可能已从当前书库移除，或页面参数已经失效。"
+    },
+    "seriesInfo": "{{series}} · 第 {{index}} 部",
+    "infoSection": "详细信息",
+    "authorSort": "排序作者",
+    "pubDate": "出版日期",
+    "language": "语言",
+    "libraryPath": "库中路径",
+    "addedAt": "添加时间",
+    "lastModified": "最后修改",
+    "downloadStarted": "已开始下载",
+    "downloadStartedDetail": "{{format}} 下载完成后即可阅读。",
+    "noReadableFormat": "无可读格式",
+    "downloadAndRead": "下载并阅读",
+    "continueReading": "继续阅读",
+    "startReading": "开始阅读",
+    "back": "返回",
+    "favorite": "收藏",
+    "share": "分享",
+    "moreActions": "更多操作：{{title}}",
+    "openBook": "打开《{{title}}》",
+    "readFileStateFailed": "读取文件状态失败",
+    "downloadFailed": "文件下载失败：{{path}}",
+    "cannotStartDownload": "无法开始下载",
+    "noFormatPath": "没有找到 {{format}} 对应的文件路径",
+    "deleteLocalFailed": "删除本地文件失败",
+    "formatSection": {
+      "title": "文件格式",
+      "count": "{{count}} 种格式",
+      "default": "默认",
+      "readable": "可阅读",
+      "unsupported": "不支持",
+      "queued": "排队中",
+      "preparing": "准备中",
+      "notStarted": "未开始阅读",
+      "cancel": "取消",
+      "cancelDownload": "取消下载 {{format}}",
+      "download": "下载",
+      "downloadFormat": "下载 {{format}}",
+      "deleteLocalFile": "删除本地文件",
+      "deleteLocalFileFormat": "删除本地文件 {{format}}",
+      "notDownloaded": "未下载"
+    },
+    "synopsis": "简介"
+  },
+  "bookRow": {
+    "unread": "未读",
+    "finished": "已读完",
+    "reading": "阅读中"
+  },
+  "downloadButton": {
+    "queued": "排队中",
+    "preparing": "准备中",
+    "downloading": "下载中",
+    "download": "下载",
+    "downloadFailed": "文件下载失败：{{path}}",
+    "downloaded": "已下载",
+    "evicting": "释放中",
+    "evict": "释放",
+    "deleting": "删除中",
+    "confirmDelete": "再次点击确认",
+    "delete": "删除",
+    "failed": "失败"
+  },
+  "addLibrary": {
+    "existingSources": "已有数据源",
+    "localDetail": "直接从本机存储中选择书库",
+    "addSources": "添加数据源",
+    "webdavDetail": "通过 WebDAV 浏览远程文件并选择 Calibre 书库"
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV 数据源",
+    "sourceDetail": "数据源详情",
+    "addSource": "添加 WebDAV 数据源",
+    "selectLibrary": "选择 WebDAV 书库",
+    "noSources": {
+      "title": "还没有 WebDAV 数据源",
+      "detail": "通过「添加 WebDAV」连接服务器后，即可浏览远程目录并选择 Calibre 书库。"
+    },
+    "delete": {
+      "title": "删除 WebDAV 数据源",
+      "confirm": "确认删除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "删除"
+    },
+    "deleteFailed": {
+      "title": "无法删除",
+      "message": "删除数据源失败。"
+    },
+    "deleteSource": "删除数据源",
+    "notFound": {
+      "title": "没有找到这个数据源",
+      "detail": "它可能已经被移除，或者当前链接参数已经失效。"
+    },
+    "type": "类型",
+    "serverAddress": "服务器地址",
+    "username": "用户名",
+    "password": "密码",
+    "passwordSaved": "已保存在本机安全存储",
+    "passwordNotSet": "未设置",
+    "basePath": "基础路径",
+    "status": "状态",
+    "enabled": "已启用",
+    "disabled": "已停用",
+    "addedAt": "添加时间",
+    "browser": {
+      "notFound": {
+        "title": "数据源不存在",
+        "detail": "请先添加一个 WebDAV 数据源。"
+      },
+      "loadFailed": {
+        "title": "浏览目录失败",
+        "message": "WebDAV 浏览器遇到了意外错误，请重试。"
+      },
+      "validating": "正在验证目录",
+      "selectDirectory": "选择当前目录为书库",
+      "currentPath": "当前路径：{{path}}",
+      "reading": {
+        "title": "正在读取目录",
+        "detail": "正在从 WebDAV 服务器获取目录列表。"
+      },
+      "readFailed": {
+        "title": "读取失败"
+      },
+      "empty": {
+        "title": "当前目录为空",
+        "detail": "当前目录下没有子目录。"
+      },
+      "notValidLibrary": {
+        "title": "目录不可用",
+        "message": "当前目录不是有效书库，未找到 metadata.db。"
+      },
+      "notCalibreLibrary": "当前目录不是有效的 Calibre 书库。",
+      "cannotReadRemote": "无法读取远程目录"
+    },
+    "add": {
+      "sourceTitle": "WebDAV 数据源",
+      "enterServerUrl": "请输入服务器地址。",
+      "portMustBeNumber": "端口必须为数字",
+      "portRange": "端口范围应为 1-65535",
+      "validationFailed": "校验失败",
+      "connectionTestFailed": "连接测试失败",
+      "reEnter": "重新填写",
+      "addAnyway": "仍然添加",
+      "addFailed": "添加失败",
+      "addFailedMessage": "操作失败，请重试。",
+      "completing": "完成中",
+      "complete": "完成",
+      "serverAddressLabel": "服务器地址",
+      "portLabel": "端口号",
+      "basePathLabel": "基础路径",
+      "usernameLabel": "用户名",
+      "usernamePlaceholder": "请输入用户名",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "请输入密码",
+      "useSSL": "使用 SSL"
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "页面遇到了意外错误",
+    "retry": "重试"
+  },
+  "common": {
+    "confirm": "确定",
+    "cancel": "取消",
+    "close": "关闭",
+    "delete": "删除",
+    "gotIt": "知道了",
+    "search": "搜索",
+    "current": "当前",
+    "localStorage": "本地存储",
+    "unnamedBook": "未命名书籍",
+    "unknownAuthor": "未知作者",
+    "unnamedLibrary": "未命名书库"
+  },
+  "bookFormats": {
+    "epub": "可重排版",
+    "pdf": "固定版式",
+    "mobi": "Kindle 格式",
+    "azw3": "Kindle 格式",
+    "txt": "纯文本",
+    "cbz": "漫画归档",
+    "djvu": "扫描文档"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "English",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "图书详情",
+    "download": "下载",
+    "downloadFormat": "下载（{{format}}）",
+    "defaultFormat": "默认阅读格式：{{format}}",
+    "deleteDownload": "删除下载文件"
+  },
+  "bookLoader": {
+    "loadingBook": "正在加载书籍…",
+    "missingParam": "缺少书籍参数",
+    "noLibrary": "未选择书库",
+    "readingBookInfo": "正在读取书籍信息…",
+    "invalidId": "无效的书籍 ID",
+    "notFoundInLibrary": "在书库中未找到该书",
+    "noReadableFormat": "该书没有可阅读的格式（需要 EPUB、CBZ 或 PDF）",
+    "downloadingFromWebdav": "正在从 WebDAV 下载书籍…",
+    "loadingBookFile": "正在加载书籍文件…",
+    "downloadFirst": "请先在书籍详情中下载该格式，再打开阅读。"
+  },
+  "sync": {
+    "localDirectRead": "本地直读：跳过同步",
+    "libraryNotFound": "未找到书库: {{id}}",
+    "localDirectLabel": "本地直读 · {{path}}",
+    "configError": "同步配置有误",
+    "webdavSourceNotFound": "当前书库关联的 WebDAV 数据源不存在。",
+    "webdavPasswordMissing": "当前 WebDAV 数据源缺少密码，请重新编辑数据源。",
+    "cannotResolveLocalPath": "无法解析本地书库根目录。",
+    "downloadCancelled": "下载已取消",
+    "downloadFailed": "后台下载失败: {{code}}",
+    "downloadStalled": "原生下载已有字节传输，但长时间没有进度更新。请检查网络、WebDAV Range 支持或系统后台限制。",
+    "downloadNotStarted": "原生下载任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生下载器配置。",
+    "uploadCancelled": "上传已取消",
+    "uploadFailed": "后台上传失败: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "后台上传失败: {{code}}",
+    "uploadStalled": "原生上传已有字节传输，但长时间没有进度更新。请检查网络、WebDAV 认证或系统后台限制。",
+    "uploadNotStarted": "原生上传任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生上传器配置。",
+    "manifestNotRegistered": "manifest 中未登记该路径: {{path}}",
+    "syncPathEmpty": "同步路径不能为空",
+    "syncPathTraversal": "同步路径不能包含 ..: {{path}}",
+    "syncPathAbsolute": "同步路径不能是绝对路径: {{path}}",
+    "nativeDownloadMissing": "原生下载已完成，但缓存文件不存在: {{path}}",
+    "nativeDownloadEmpty": "原生下载已完成，但缓存文件为空: {{path}}",
+    "nativeDownloadNotSupported": "当前后端不支持原生后台下载: {{kind}}",
+    "nativeUploadNotSupported": "当前后端不支持原生后台上传: {{kind}}",
+    "hashMismatch": "下载后哈希不匹配: 期望 {{expected}}，实际 {{actual}}",
+    "localFileMissing": "本地文件不存在，无法上传: {{path}}",
+    "libraryNotFoundShort": "未找到书库: {{id}}",
+    "connectionTimeout": "连接数据源超时（2秒），请检查网络或 WebDAV 配置",
+    "cannotParseFilePath": "无法解析文件路径: {{uri}}",
+    "metadataDbNotAvailable": "metadata.db 不可用",
+    "formatNotFoundInLibrary": "格式 {{format}} 在书库中未找到 (bookId={{id}})",
+    "bookFileNotFound": "书籍文件不存在: {{name}}",
+    "bookFileNotFoundDetail": "完整路径: {{uri}}\n书库路径: {{libraryPath}}\n书内路径: {{rowPath}}",
+    "corruptedLibrary": "书库数据已损坏",
+    "corruptedLibraryMessage": "无法恢复该书库的 metadata.db。请删除当前书库并重新添加后再试。",
+    "corruptedLibraryRedownloadMessage": "无法重新下载该书库的 metadata.db。请检查网络或 WebDAV 配置。",
+    "cannotRedownloadMeta": "无法重新下载 metadata.db",
+    "metadataNotFound": "未找到 metadata.db",
+    "metadataNotFoundDetail": "所选目录中未找到 Calibre 的 metadata.db。请选择书库根目录（该文件夹内应包含 metadata.db）。",
+    "userCancelled": "用户取消或未选择书库目录",
+    "notValidCalibreLibrary": "所选书库中未找到 metadata.db，请确认仍是有效的 Calibre 书库",
+    "loadLibraryFailed": "加载书库失败",
+    "addLibraryFailed": "添加书库失败",
+    "cannotAddDuplicate": "无法添加",
+    "alreadyAdded": "该书库已经添加过了。",
+    "readLibraryFailed": "读取书库失败",
+    "refreshLibraryFailed": "刷新书库失败",
+    "sourceUnreachable": "数据源无法连接",
+    "sourceUnreachableDetail": "无法访问 WebDAV 数据源，下载已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误",
+    "sourceUnreachableSyncDetail": "无法访问 WebDAV 数据源，同步已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误",
+    "removeLibraryFirst": "请先移除使用该数据源的书库",
+    "authFailed": "认证失败：用户名或密码错误，或当前账号无权限访问该路径。",
+    "pathNotFound": "路径找不到：请检查基础路径是否正确，以及该路径下是否存在 WebDAV 目录。",
+    "serverAbnormal": "服务器响应异常（HTTP {{status}}）：请确认服务端状态与 WebDAV 配置。",
+    "connectionTimeoutDetail": "连接超时：请检查网络、服务器地址、端口和 SSL 配置。原因：{{reason}}",
+    "networkFailed": "网络请求失败：无法访问服务器，请检查网络、服务器地址、端口和 SSL 配置。原因：{{reason}}",
+    "cannotDownload": "无法下载",
+    "noReadableFormatForDownload": "该书没有可下载的可读格式",
+    "noReadableFormat": "无可读格式",
+    "noReadableFormatDetail": "该书没有可阅读的格式",
+    "defaultFormatSet": "已设置默认格式",
+    "setDefaultFormat": "设置默认阅读格式",
+    "currentDefault": "当前默认：{{format}}",
+    "readFormatFailed": "读取格式失败",
+    "deleteDownloadFile": "删除下载文件",
+    "confirmDeleteDownload": "确定要删除《{{title}}》的本地下载文件吗？",
+    "deleteFailed": "删除失败",
+    "webdavGetFailed": "WebDAV GET 失败: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT 失败: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE 失败: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND 失败: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND 列目录失败: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL 失败: {{status}} {{path}}",
+    "localFileNotExist": "本地文件不存在: {{path}}",
+    "basicAuthNotSupported": "当前环境不支持 Basic Auth 编码",
+    "syncPathCannotBeEmpty": "同步路径不能为空"
+  },
+  "notifications": {
+    "libraryUpdated": "书库已更新",
+    "libraryUpdateFailed": "书库更新失败",
+    "downloadStart": "开始下载",
+    "downloadDone": "下载完成",
+    "downloadFailed": "下载失败",
+    "libraryRefreshing": "书库更新中"
+  },
+  "errors": {
+    "sourceUnreachable": "数据源无法连接",
+    "sourceUnreachableDetail": "无法访问 WebDAV 数据源，下载已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误",
+    "downloadFailed": "下载失败",
+    "timeout": "超时"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}}失败：目录地址无效。",
+    "invalidBookmark": "{{action}}失败：保存的书库授权信息无效，请重新选择书库。",
+    "unsupportedUrl": "{{action}}失败：当前选择的目录地址格式不受支持，请改用「文件」中可授权的本地目录重新选择。",
+    "cannotAccess": "{{action}}失败：无法访问已授权的书库目录，请重新选择书库并授权。",
+    "expired": "{{action}}失败：书库授权信息已过期，请重新选择书库。",
+    "genericError": "{{action}}失败：iOS 文件授权处理出错，请重试。",
+    "createBookmark": "创建书库授权",
+    "restoreBookmark": "恢复书库授权",
+    "accessDirectory": "访问书库目录",
+    "refreshBookmark": "刷新书库授权"
+  }
+}

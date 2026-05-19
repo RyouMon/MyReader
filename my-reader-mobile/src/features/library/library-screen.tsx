@@ -5,6 +5,7 @@ import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useTranslation } from "react-i18next";
 import { Platform, View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
@@ -39,18 +40,22 @@ import { useSyncActions } from "@/src/sync/useSyncActions";
 import { useBookActions } from "./hooks/useBookActions";
 
 const downloadFilterOptions = [
-  { value: "all", label: "全部" },
-  { value: "downloaded", label: "已下载" },
-  { value: "notDownloaded", label: "未下载" },
-  { value: "downloading", label: "正在下载" },
+  { value: "all", labelKey: "library.filter.all" as const },
+  { value: "downloaded", labelKey: "library.filter.downloaded" as const },
+  { value: "notDownloaded", labelKey: "library.filter.notDownloaded" as const },
+  { value: "downloading", labelKey: "library.filter.downloading" as const },
 ] as const;
-const sortOptions = ["书名", "作者", "最近添加"] as const;
-const viewOptions: { value: LibraryViewMode; label: string }[] = [
-  { value: "grid", label: "网格视图" },
-  { value: "list", label: "列表视图" },
+const sortOptions: { value: SortOption; labelKey: string }[] = [
+  { value: "title", labelKey: "library.sort.title" },
+  { value: "author", labelKey: "library.sort.author" },
+  { value: "recentlyAdded", labelKey: "library.sort.recentlyAdded" },
+];
+const viewOptions: { value: LibraryViewMode; labelKey: string }[] = [
+  { value: "grid", labelKey: "library.view.grid" },
+  { value: "list", labelKey: "library.view.list" },
 ];
 
-const defaultSortOption: SortOption = "最近添加";
+const defaultSortOption: SortOption = "recentlyAdded";
 const GRID_MIN_CARD_WIDTH = 150;
 const GRID_MIN_COLUMNS = 2;
 const GRID_MAX_COLUMNS = 6;
@@ -60,8 +65,9 @@ type LibraryScreenProps = {
 };
 
 /** Returns the display label for the active download-state filter. */
-function getDownloadFilterLabel(option: DownloadFilterOption) {
-  return downloadFilterOptions.find((item) => item.value === option)?.label ?? "全部";
+function getDownloadFilterLabel(t: (key: string) => string, option: DownloadFilterOption) {
+  const item = downloadFilterOptions.find((item) => item.value === option);
+  return item ? t(item.labelKey) : t("library.filter.all");
 }
 
 /** Computes responsive grid columns so larger screens can show more books per row. */
@@ -79,6 +85,7 @@ const SeparatorList = memo(function SeparatorList() {
 });
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
   const GRID_GAP = 12;
@@ -154,17 +161,17 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   /** Opens a platform-neutral library picker menu without navigation. */
   const openLibrarySwitchMenu = useCallback(() => {
     showAlertWithStatusBarRestore(
-      "切换书库",
-      `当前书库：${selectedLibrary?.name ?? "未选择"}`,
+      t("library.switchLibrary"),
+      t("library.switchLibraryAlert.message", { name: selectedLibrary?.name ?? t("library.switchLibraryAlert.unselected") }),
       [
         ...libraries.map((library) => ({
           text: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
           onPress: () => applyLibrarySelection(library.id),
         })),
-        { text: "关闭", style: "cancel" },
+        { text: t("library.switchLibraryAlert.close"), style: "cancel" },
       ]
     );
-  }, [applyLibrarySelection, effectiveLibraryId, libraries, selectedLibrary]);
+  }, [applyLibrarySelection, effectiveLibraryId, libraries, selectedLibrary, t]);
 
   const handleSyncCurrentLibrary = useCallback(() => {
     if (!selectedLibrary) return;
@@ -187,47 +194,47 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const androidLeftMenuActions = useMemo(
     () => [
-      { id: "refreshLibrary", title: "同步当前书库" },
+      { id: "refreshLibrary", title: t("library.syncCurrentLibrary") },
       {
         id: "switchLibrary",
-        title: "切换书库",
+        title: t("library.switchLibrary"),
         subactions: libraries.map((library) => ({
           id: `switchLibrary:${library.id}`,
           title: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
         })),
       },
     ],
-    [libraries, effectiveLibraryId],
+    [libraries, effectiveLibraryId, t],
   );
 
   const androidRightMenuActions = useMemo(
     () => [
       {
         id: "filter",
-        title: "筛选",
+        title: t("library.filterLabel"),
         subactions: downloadFilterOptions.map((option) => ({
           id: `filter:${option.value}`,
-          title: `${downloadFilter === option.value ? "✓ " : ""}${option.label}`,
+          title: `${downloadFilter === option.value ? "✓ " : ""}${t(option.labelKey)}`,
         })),
       },
       {
         id: "sort",
-        title: "排序",
+        title: t("library.sortLabel"),
         subactions: sortOptions.map((option) => ({
-          id: `sort:${option}`,
-          title: `${sortBy === option ? "✓ " : ""}${option}`,
+          id: `sort:${option.value}`,
+          title: `${sortBy === option.value ? "✓ " : ""}${t(option.labelKey)}`,
         })),
       },
       {
         id: "view",
-        title: "视图",
+        title: t("library.viewLabel"),
         subactions: viewOptions.map((option) => ({
           id: `view:${option.value}`,
-          title: `${viewMode === option.value ? "✓ " : ""}${option.label}`,
+          title: `${viewMode === option.value ? "✓ " : ""}${t(option.labelKey)}`,
         })),
       },
     ],
-    [downloadFilter, sortBy, viewMode],
+    [downloadFilter, sortBy, viewMode, t],
   );
 
   function handleAndroidLeftMenuAction(event: string) {
@@ -288,7 +295,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
     {
-      label: "添加书库",
+      label: t("library.addLibrary"),
       onPress: () => router.push("/settings/add-library"),
       icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
       iosSfSymbol: "plus",
@@ -297,13 +304,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const unselectedLibraryToolbarRight: HeaderToolbarAction[] = [
     {
-      label: "切换书库",
+      label: t("library.switchLibrary"),
       onPress: openLibrarySwitchMenu,
       icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
       iosSfSymbol: "arrow.left.arrow.right",
     },
     {
-      label: "添加书库",
+      label: t("library.addLibrary"),
       onPress: () => router.push("/settings/add-library"),
       icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
       iosSfSymbol: "plus",
@@ -386,12 +393,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <>
         <Stack.Screen
           options={{
-            title: "书库",
+            title: t("library.title"),
             headerLargeTitle: true,
           }}
         />
         <Screen>
-          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+          <EmptyState title={t("library.loading.title")} detail={t("library.loading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
       </>
     );
@@ -408,12 +415,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <>
         <Stack.Screen
           options={{
-            title: "书库",
+            title: t("library.title"),
             headerLargeTitle: true,
           }}
         />
         <Screen>
-          <EmptyState title="没有找到这个书库" detail="它可能已被移除，或链接参数已经失效。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+          <EmptyState title={t("library.notFound.title")} detail={t("library.notFound.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </Screen>
       </>
     );
@@ -424,7 +431,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <>
         <Stack.Screen
           options={{
-            title: "书库",
+            title: t("library.title"),
             headerLargeTitle: true,
             headerLargeTitleShadowVisible: false,
           }}
@@ -432,9 +439,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         <HeaderToolbar right={emptyLibrariesToolbarRight} />
         <Screen>
           <EmptyState
-            title="还没有添加书库"
-            detail="先添加一个 Calibre 书库，之后即可在书库标签中浏览图书。"
-            action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
+            title={t("library.noLibrary.title")}
+            detail={t("library.noLibrary.detail")}
+            action={<PrimaryButton title={t("library.addLibrary")} onPress={() => router.push("/settings/add-library")} />}
             icon={{ ios: "books.vertical.fill", android: "library-books" }}
           />
         </Screen>
@@ -447,12 +454,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <>
         <Stack.Screen
           options={{
-            title: "书库",
+            title: t("library.title"),
             headerLargeTitle: true,
           }}
         />
         <Screen>
-          <EmptyState title="正在加载书库" detail="正在读取本地与 WebDAV 书库配置。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+          <EmptyState title={t("library.loading.title")} detail={t("library.loading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
       </>
     );
@@ -463,18 +470,18 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <>
         <Stack.Screen
           options={{
-            title: "书库",
+            title: t("library.title"),
             headerLargeTitle: true,
           }}
         />
         <HeaderToolbar right={unselectedLibraryToolbarRight} />
         <Screen>
           <EmptyState
-            title="未选择书库"
-            detail="请选择要浏览的书库，或添加新的 Calibre 书库。"
+            title={t("library.unselected.title")}
+            detail={t("library.unselected.detail")}
             action={
               <RoundIconButton
-                label="切换书库"
+                label={t("library.switchLibrary")}
                 onPress={openLibrarySwitchMenu}
                 icon={<MaterialIcons name="swap-horiz" size={22} color={palette.text} />}
               />
@@ -488,10 +495,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const listHeader = (
     <View className="gap-5" style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
-      <SearchField placeholder="搜索书名、作者、标签" value={query} onChangeText={setQuery} />
+      <SearchField placeholder={t("library.searchPlaceholder")} value={query} onChangeText={setQuery} />
       <SectionHeading
-        title={getDownloadFilterLabel(downloadFilter)}
-        detail={`${visibleBooks.length} / ${books.length} 本`}
+        title={getDownloadFilterLabel(t, downloadFilter)}
+        detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
       />
     </View>
   );
@@ -517,7 +524,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                     <AndroidMenuRippleButton
                       menuRef={leftMenuRef}
                       icon={<MaterialIcons name="more-vert" size={22} color={palette.text} />}
-                      accessibilityLabel="书库操作"
+                      accessibilityLabel={t("library.libraryActions")}
                     />
                   </View>
                 )
@@ -538,7 +545,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
                     <AndroidMenuRippleButton
                       menuRef={rightMenuRef}
                       icon={<MaterialIcons name="tune" size={22} color={palette.text} />}
-                      accessibilityLabel="视图配置"
+                      accessibilityLabel={t("library.viewConfig")}
                     />
                   </View>
                 )
@@ -549,9 +556,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         <Stack.Toolbar placement="left">
           <Stack.Toolbar.Menu icon="ellipsis">
             <Stack.Toolbar.MenuAction onPress={handleSyncCurrentLibrary}>
-              同步当前书库
+              {t("library.syncCurrentLibrary")}
             </Stack.Toolbar.MenuAction>
-            <Stack.Toolbar.Menu inline title="切换书库">
+            <Stack.Toolbar.Menu inline title={t("library.switchLibrary")}>
               {libraries.map((library) => (
                 <Stack.Toolbar.MenuAction
                   key={`library-${library.id}`}
@@ -568,32 +575,32 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       {Platform.OS === "ios" ? (
         <Stack.Toolbar placement="right">
           <Stack.Toolbar.Menu icon="line.3.horizontal.decrease">
-            <Stack.Toolbar.Menu inline title="筛选">
+            <Stack.Toolbar.Menu inline title={t("library.filterLabel")}>
               {downloadFilterOptions.map((option) => (
                 <Stack.Toolbar.MenuAction
                   key={`download-filter-${option.value}`}
                   isOn={downloadFilter === option.value}
                   onPress={() => setDownloadFilter(option.value)}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
-            <Stack.Toolbar.Menu inline title="排序">
+            <Stack.Toolbar.Menu inline title={t("library.sortLabel")}>
               {sortOptions.map((option) => (
-                <Stack.Toolbar.MenuAction key={`sort-${option}`} isOn={sortBy === option} onPress={() => setSortBy(option)}>
-                  {option}
+                <Stack.Toolbar.MenuAction key={`sort-${option.value}`} isOn={sortBy === option.value} onPress={() => setSortBy(option.value)}>
+                  {t(option.labelKey)}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
-            <Stack.Toolbar.Menu inline title="视图">
+            <Stack.Toolbar.Menu inline title={t("library.viewLabel")}>
               {viewOptions.map((option) => (
                 <Stack.Toolbar.MenuAction
                   key={`view-${option.value}`}
                   isOn={viewMode === option.value}
                   onPress={() => setViewMode(option.value)}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
@@ -626,9 +633,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               listPaddingH={LIST_PADDING_H}
             />
           ) : error ? (
-            <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+            <EmptyState title={t("library.loadError.title")} detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
           ) : (
-            <EmptyState title="没有匹配的图书" detail="请调整搜索词，或确认书库中存在图书。" icon={{ ios: "magnifyingglass", android: "search" }} />
+            <EmptyState title={t("library.noMatch.title")} detail={t("library.noMatch.detail")} icon={{ ios: "magnifyingglass", android: "search" }} />
           )
         }
         renderItem={renderItem}

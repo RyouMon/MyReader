@@ -21,6 +21,7 @@ import {
   booksRatingsLink,
   identifiers,
 } from "@my-reader/db/schema/calibre";
+import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 
 import {
@@ -90,7 +91,7 @@ async function refreshCachedMetadataFromDirectory(library: Library, directoryUri
   const metadataFile = getMetadataFileFromDirectory({ uri: directoryUri });
 
   if (!metadataFile) {
-    throw new Error("所选书库中未找到 metadata.db，请确认仍是有效的 Calibre 书库");
+    throw new Error(i18n.t("sync.notValidCalibreLibrary"));
   }
 
   return copyMetadataToCache(metadataFile.uri, library.id);
@@ -137,12 +138,12 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
   try {
     directory = await Directory.pickDirectoryAsync();
   } catch (error) {
-    console.info("[MyReader] 用户取消或未选择书库目录", error);
+    console.info("[MyReader] " + i18n.t("sync.userCancelled"), error);
     return null;
   }
 
   if (directory == null) {
-    console.info("[MyReader] 用户取消或未选择书库目录（无返回目录）");
+    console.info("[MyReader] " + i18n.t("sync.userCancelled"));
     return null;
   }
 
@@ -150,9 +151,9 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
 
   if (!metadataFile) {
     showAlertWithStatusBarRestore(
-      "未找到 metadata.db",
-      "所选目录中未找到 Calibre 的 metadata.db。请选择书库根目录（该文件夹内应包含 metadata.db）。",
-      [{ text: "知道了" }]
+      i18n.t("sync.metadataNotFound"),
+      i18n.t("sync.metadataNotFoundDetail"),
+      [{ text: i18n.t("common.gotIt") }]
     );
     return null;
   }
@@ -167,7 +168,7 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
 
   return {
     id,
-    name: libraryRoot.name || new Directory(libraryRoot.uri).name || "未命名书库",
+    name: libraryRoot.name || new Directory(libraryRoot.uri).name || i18n.t("common.unnamedLibrary"),
     path: resolvedPath,
     metadataUri: cachedMetadataUri,
     bookCount,
@@ -266,9 +267,9 @@ async function resolveMetadataUriForRead(library: Library): Promise<string | nul
     return cachedLibrary.metadataUri!;
   } catch {
     showAlertWithStatusBarRestore(
-      "书库数据已损坏",
-      "无法恢复该书库的 metadata.db。请删除当前书库并重新添加后再试。",
-      [{ text: "知道了" }],
+      i18n.t("sync.corruptedLibrary"),
+      i18n.t("sync.corruptedLibraryMessage"),
+      [{ text: i18n.t("common.gotIt") }],
     );
     return null;
   }
@@ -421,7 +422,7 @@ export async function readBookDetailFromMetadata(
 
     return {
       id: book.id,
-      title: book.title || "未命名书籍",
+      title: book.title || i18n.t("common.unnamedBook"),
       authorSort: book.authorSort ?? "",
       authors: bookAuthors,
       tags: bookTags,
@@ -453,7 +454,7 @@ async function lookupBookFileLocation(
 ): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
   const metadataUri = await resolveMetadataUriForRead(library);
   if (!metadataUri) {
-    throw new Error("metadata.db 不可用");
+    throw new Error(i18n.t("sync.metadataDbNotAvailable"));
   }
   const handle = openCalibreDatabase(metadataUri);
 
@@ -469,7 +470,7 @@ async function lookupBookFileLocation(
       .get();
 
     if (!row) {
-      throw new Error(`格式 ${format} 在书库中未找到 (bookId=${calibreBookId})`);
+      throw new Error(i18n.t("sync.formatNotFoundInLibrary", { format, id: calibreBookId }));
     }
 
     return {
@@ -596,10 +597,7 @@ function assertBookFileExists(
 ) {
   if (!bookFile.exists) {
     throw new Error(
-      `书籍文件不存在: ${fileName}\n` +
-        `完整路径: ${bookFile.uri}\n` +
-        `书库路径: ${libraryPath}\n` +
-        `书内路径: ${rowPath}`
+      i18n.t("sync.bookFileNotFoundDetail", { uri: bookFile.uri, libraryPath, rowPath })
     );
   }
 }
@@ -777,8 +775,8 @@ export async function readBooksFromLibrary(library: Library): Promise<BookItem[]
       return {
         id: `${row.id}`,
         calibreId: row.id,
-        title: row.title || "未命名书籍",
-        author: bookAuthors[0] || row.authorSort || "未知作者",
+        title: row.title || i18n.t("common.unnamedBook"),
+        author: bookAuthors[0] || row.authorSort || i18n.t("common.unknownAuthor"),
         authors: bookAuthors,
         path: row.path || undefined,
         hasCover: (row.hasCover ?? 0) !== 0,

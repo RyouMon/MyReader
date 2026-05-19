@@ -5,6 +5,7 @@ import { lazy, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StatusBar } from "react-native";
 import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import {
   ReaderBottomBar,
@@ -42,6 +43,7 @@ const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator;
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border;
 
 export default function ReaderScreen() {
+  const { t } = useTranslation();
   const { id, format: formatParam } = useLocalSearchParams<{
     id?: string;
     format?: string;
@@ -208,20 +210,20 @@ export default function ReaderScreen() {
           style={{ backgroundColor: READER_CHROME.errorCardBg, borderColor: READER_CHROME.errorCardBorder }}
         >
           <Text className="text-center text-lg font-bold mb-3" style={{ color: READER_CHROME.textStrong }}>
-            无法打开书籍
+            {t("reader.cannotOpen")}
           </Text>
           <Text className="text-center text-[15px] leading-[22px]" style={{ color: READER_CHROME.textSecondary }}>
             {loadState.message}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="返回"
+            accessibilityLabel={t("reader.back")}
             className="mt-[22px] py-3 px-7 rounded-full border"
             style={{ backgroundColor: READER_CHROME.surfaceIdle, borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
             onPress={handleBack}
           >
             <Text className="text-[15px] font-semibold" style={{ color: READER_CHROME.textStrong }}>
-              返回
+              {t("reader.back")}
             </Text>
           </Pressable>
         </View>
@@ -268,7 +270,7 @@ export default function ReaderScreen() {
         translucent={false}
       />
 
-      <ErrorBoundary title="阅读器加载失败" message="阅读器遇到了意外错误，请返回重试。" onRetry={handleBack}>
+      <ErrorBoundary title={t("reader.loadFailed")} message={t("reader.loadFailedMessage")} onRetry={handleBack}>
         <View className="absolute inset-0">
           {isReflowSurface ? (
             loadState.epubFileUri ? (
@@ -341,7 +343,7 @@ export default function ReaderScreen() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="关闭弹层"
+            accessibilityLabel={t("reader.closeOverlay")}
             className="absolute inset-0"
             onPress={handleDismissOverlay}
           />
@@ -383,6 +385,7 @@ const DomReaderFallback = memo(function DomReaderFallback({
   title: string | null;
   coverUri?: string;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     console.info("[mobile-reader] dom-fallback:mounted", {
       format,
@@ -413,7 +416,7 @@ const DomReaderFallback = memo(function DomReaderFallback({
       ) : null}
       <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
       <Text className="mt-4 text-sm" style={{ color: READER_CHROME.textSecondary }}>
-        正在挂载阅读器…
+        {t("reader.mountingReader")}
       </Text>
       <Text className="mt-2 text-center text-xs" style={{ color: READER_CHROME.textMuted }}>
         {format ? `format=${format}` : "format=unknown"}

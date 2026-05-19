@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Animated, Platform, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -8,6 +9,7 @@ import { useAppStore } from "@/src/store/app-store";
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56;
 
 export function LibraryRefreshPill() {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
   const isRefreshing = useAppStore((state) => state.refreshingLibraryId !== null);
@@ -45,7 +47,7 @@ export function LibraryRefreshPill() {
       ]}
     >
       <ActivityIndicator size="small" color={palette.primary} />
-      <Text style={[styles.label, { color: palette.text }]}>书库更新中</Text>
+      <Text style={[styles.label, { color: palette.text }]}>{t("notifications.libraryRefreshing")}</Text>
     </Animated.View>
   );
 }

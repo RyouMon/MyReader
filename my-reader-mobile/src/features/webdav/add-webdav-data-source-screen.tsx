@@ -2,6 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useForm, useStore } from "@tanstack/react-form";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
@@ -20,15 +21,15 @@ import { useDataSourceStore } from "@/src/store/data-source-store";
 
 const addWebDavMobileSchema = z
   .object({
-    serverUrl: z.string().trim().min(1, "请输入服务器地址。"),
+    serverUrl: z.string().trim().min(1, "webdav.add.enterServerUrl"),
     port: z
       .string()
       .trim()
-      .regex(/^\d*$/, "端口必须为数字")
+      .regex(/^\d*$/, "webdav.add.portMustBeNumber")
       .refine(
         (value) =>
           value.length === 0 || (Number(value) >= 1 && Number(value) <= 65535),
-        "端口范围应为 1-65535",
+        "webdav.add.portRange",
       ),
     basePath: z.string().trim(),
     username: z.string().trim(),
@@ -63,25 +64,25 @@ function deriveWebDavDataSourceName(endpoint: string): string {
   try {
     let normalized = endpoint.trim();
     if (!normalized) {
-      return "WebDAV 数据源";
+      return "WebDAV Source";
     }
     if (!/^https?:\/\//i.test(normalized)) {
       normalized = `https://${normalized}`;
     }
     const { hostname } = new URL(normalized);
-    return hostname || "WebDAV 数据源";
+    return hostname || "WebDAV Source";
   } catch {
-    return "WebDAV 数据源";
+    return "WebDAV Source";
   }
 }
 
 function buildDraft(values: WebDavFormInput): DataSource {
   const parsed = addWebDavMobileSchema.safeParse(values);
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "校验失败");
+    throw new Error(parsed.error.issues[0]?.message ?? "webdav.add.validationFailed");
   }
   if (parsed.data === undefined) {
-    throw new Error("校验失败");
+    throw new Error("webdav.add.validationFailed");
   }
   const d = parsed.data;
   const rootPath = d.basePath.trim() ? d.basePath.trim() : null;
@@ -99,6 +100,7 @@ function buildDraft(values: WebDavFormInput): DataSource {
 }
 
 export default function AddWebDavDataSourceScreen() {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const { createDataSource, testDataSourceConnection } = useDataSourceStore();
   const [saving, setSaving] = useState(false);
@@ -142,7 +144,7 @@ export default function AddWebDavDataSourceScreen() {
       const errors: Record<string, string> = {};
       for (const issue of parseResult.error.issues) {
         const key = String(issue.path[0]);
-        if (!errors[key]) errors[key] = issue.message;
+        if (!errors[key]) errors[key] = t(issue.message);
       }
       setFieldErrors(errors);
       return;
@@ -156,12 +158,12 @@ export default function AddWebDavDataSourceScreen() {
       const testResult = await testDataSourceConnection(draft);
       if (!testResult.ok) {
         Alert.alert(
-          "连接测试失败",
+          t("webdav.add.connectionTestFailed"),
           testResult.message,
           [
-            { text: "重新填写", style: "cancel" },
+            { text: t("webdav.add.reEnter"), style: "cancel" },
             {
-              text: "仍然添加",
+              text: t("webdav.add.addAnyway"),
               onPress: () => {
                 setSaving(true);
                 void persistDataSource(draft).finally(() => setSaving(false));
@@ -174,7 +176,7 @@ export default function AddWebDavDataSourceScreen() {
 
       await persistDataSource(draft);
     } catch (caught) {
-      Alert.alert("添加失败", caught instanceof Error ? caught.message : "操作失败，请重试。");
+      Alert.alert(t("webdav.add.addFailed"), caught instanceof Error ? caught.message : t("webdav.add.addFailedMessage"));
     } finally {
       setSaving(false);
     }
@@ -183,7 +185,7 @@ export default function AddWebDavDataSourceScreen() {
   const inputClassName = "border-0 bg-transparent py-1 text-[15px]";
   const rightToolbar: HeaderToolbarAction[] = [
     {
-      label: saving ? "完成中" : "完成",
+      label: saving ? t("webdav.add.completing") : t("webdav.add.complete"),
       onPress: () => void handleSave(),
       icon: <MaterialIcons name="check" size={18} color={palette.primary} />,
       iosSfSymbol: "checkmark",
@@ -195,7 +197,8 @@ export default function AddWebDavDataSourceScreen() {
   ];
 
   function fieldError(name: string): string | undefined {
-    return fieldErrors[name];
+    const raw = fieldErrors[name];
+    return raw ? t(raw) : undefined;
   }
 
   return (
@@ -207,7 +210,7 @@ export default function AddWebDavDataSourceScreen() {
           <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
             <form.Field name="serverUrl">
               {(field) => (
-                <FormLabeledFieldRow label="服务器地址" required error={fieldError("serverUrl")}>
+                <FormLabeledFieldRow label={t("webdav.add.serverAddressLabel")} required error={fieldError("serverUrl")}>
                   <TextInput
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
@@ -228,7 +231,7 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="port">
               {(field) => (
-                <FormLabeledFieldRow label="端口号" error={fieldError("port")}>
+                <FormLabeledFieldRow label={t("webdav.add.portLabel")} error={fieldError("port")}>
                   <RNTextInput
                     ref={portRef}
                     value={field.state.value}
@@ -249,7 +252,7 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="basePath">
               {(field) => (
-                <FormLabeledFieldRow label="基础路径" error={fieldError("basePath")}>
+                <FormLabeledFieldRow label={t("webdav.add.basePathLabel")} error={fieldError("basePath")}>
                   <RNTextInput
                     ref={basePathRef}
                     value={field.state.value}
@@ -271,13 +274,13 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="username">
               {(field) => (
-                <FormLabeledFieldRow label="用户名" error={fieldError("username")}>
+                <FormLabeledFieldRow label={t("webdav.add.usernameLabel")} error={fieldError("username")}>
                   <RNTextInput
                     ref={usernameRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
                     onBlur={field.handleBlur}
-                    placeholder="请输入用户名"
+                    placeholder={t("webdav.add.usernamePlaceholder")}
                     placeholderTextColor={palette.textMuted}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -293,13 +296,13 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="password">
               {(field) => (
-                <FormLabeledFieldRow label="密码" error={fieldError("password")}>
+                <FormLabeledFieldRow label={t("webdav.add.passwordLabel")} error={fieldError("password")}>
                   <RNTextInput
                     ref={passwordRef}
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
                     onBlur={field.handleBlur}
-                    placeholder="请输入密码"
+                    placeholder={t("webdav.add.passwordPlaceholder")}
                     placeholderTextColor={palette.textMuted}
                     secureTextEntry
                     underlineColorAndroid="transparent"
@@ -314,7 +317,7 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="useSsl">
               {(field) => (
-                <FormLabeledFieldRow label="使用 SSL">
+                <FormLabeledFieldRow label={t("webdav.add.useSSL")}>
                   <FormFieldSwitch value={field.state.value} onValueChange={(next) => field.handleChange(next)} />
                 </FormLabeledFieldRow>
               )}

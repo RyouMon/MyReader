@@ -1,6 +1,7 @@
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 
 import type { ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { READER_CHROME } from "@/src/design/reader-tokens";
@@ -60,6 +61,7 @@ export function ReaderTocSheet({
   activeColor,
   onSelectPage,
 }: ReaderTocSheetProps) {
+  const { t } = useTranslation();
   return (
     <Animated.View
       entering={SlideInDown.duration(280)}
@@ -85,7 +87,7 @@ export function ReaderTocSheet({
         className="px-5 py-3 text-base font-bold"
         style={{ color: READER_CHROME.textIdle }}
       >
-        目录
+        {t("reader.toc")}
       </Text>
       <View className="flex-1 px-4">
         {toc.length > 0 ? (
@@ -106,7 +108,7 @@ export function ReaderTocSheet({
           />
         ) : (
           <View className="flex-1 items-center justify-center">
-            <Text className="text-sm text-white/40">此书籍没有目录</Text>
+            <Text className="text-sm text-white/40">{t("reader.noToc")}</Text>
           </View>
         )}
       </View>

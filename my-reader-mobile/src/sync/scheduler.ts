@@ -9,6 +9,7 @@ import {
   type SyncTargetContext,
 } from "./actions";
 import { syncDbFromContext } from "./db_sync";
+import i18n from "@/src/i18n";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";
 
@@ -133,7 +134,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
 
         if (ctx.isLocalDirect) {
           entry.skipped = true;
-          entry.skipReason = "本地直读：跳过同步";
+          entry.skipReason = i18n.t("sync.localDirectRead");
           results.push(entry);
           continue;
         }

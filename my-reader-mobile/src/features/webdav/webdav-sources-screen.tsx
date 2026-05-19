@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
@@ -18,13 +19,14 @@ import {
 import { useDataSourceStore } from "@/src/store/data-source-store";
 
 export default function WebDavSourcesScreen() {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const { dataSources } = useDataSourceStore();
 
   const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);
   const rightToolbar: HeaderToolbarAction[] = [
     {
-      label: "添加 WebDAV 数据源",
+      label: t("webdav.addSource"),
       onPress: handleAdd,
       icon: <MaterialIcons name="add" size={18} color={palette.primary} />,
       iosSfSymbol: "plus",
@@ -46,7 +48,7 @@ export default function WebDavSourcesScreen() {
     <>
       <Stack.Screen
         options={{
-          title: "WebDAV 数据源",
+          title: t("webdav.sourcesTitle"),
           headerShadowVisible: false,
         }}
       />
@@ -57,9 +59,9 @@ export default function WebDavSourcesScreen() {
           <View className="gap-3">
             {webdavSources.length === 0 ? (
               <EmptyState
-                title="还没有 WebDAV 数据源"
-                detail="通过「添加 WebDAV」连接服务器后，即可浏览远程目录并选择 Calibre 书库。"
-                action={<PrimaryButton title="添加 WebDAV 数据源" onPress={handleAdd} />}
+                title={t("webdav.noSources.title")}
+                detail={t("webdav.noSources.detail")}
+                action={<PrimaryButton title={t("webdav.addSource")} onPress={handleAdd} />}
                 icon={{ ios: "externaldrive.fill", android: "storage" }}
               />
             ) : (

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Image, Text, View } from "@/tw";
@@ -10,6 +11,7 @@ import { useLibraryStore } from "@/src/store/library-store";
 
 export default function HomeScreen() {
   const palette = useThemePalette();
+  const { t } = useTranslation();
   const { activeLibrary, books, loadingBooks } = useLibraryStore();
 
   const currentBook = books[0];
@@ -31,9 +33,9 @@ export default function HomeScreen() {
     <Screen>
       {!activeLibrary ? (
         <EmptyState
-          title="还没有添加书库"
-          detail="在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"
-          action={<PrimaryButton title="添加书库" onPress={() => router.push("/settings/add-library")} />}
+          title={t("home.noLibrary.title")}
+          detail={t("home.noLibrary.detail")}
+          action={<PrimaryButton title={t("library.addLibrary")} onPress={() => router.push("/settings/add-library")} />}
           icon={{ ios: "books.vertical.fill", android: "library-books" }}
         />
       ) : currentBook ? (
@@ -43,7 +45,7 @@ export default function HomeScreen() {
               <View className="flex-row items-start justify-between gap-3">
                 <View className="gap-1">
                   <Text selectable className="text-[16px] leading-6" style={{ color: palette.textMuted, fontWeight: "600" }}>
-                    继续阅读
+                    {t("home.continueReading")}
                   </Text>
                   <Text
                     selectable
@@ -69,7 +71,7 @@ export default function HomeScreen() {
                 ) : (
                   <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.backgroundSecondary }}>
                     <Text className="text-sm" style={{ color: palette.textMuted, fontWeight: "600" }}>
-                      无封面
+                      {t("home.noCover")}
                     </Text>
                   </View>
                 )}
@@ -79,13 +81,13 @@ export default function HomeScreen() {
                       {currentBook.author}
                     </Text>
                     <Text selectable className="text-sm leading-6" style={{ color: palette.textMuted }}>
-                      当前书库：{activeLibrary.name} · 共 {books.length} 本
+                      {t("home.currentLibrary", { name: activeLibrary.name, count: books.length })}
                     </Text>
                   </View>
                   <ProgressBar progress={continueProgress} />
                   <View className="flex-row gap-3 pt-1">
-                    <PrimaryButton title="继续阅读" onPress={() => openBookDetail(currentBook.id)} />
-                    <SecondaryButton title={loadingBooks ? "读取中" : "查看书籍"} onPress={() => openBookDetail(currentBook.id)} />
+                    <PrimaryButton title={t("home.continueReading")} onPress={() => openBookDetail(currentBook.id)} />
+                    <SecondaryButton title={loadingBooks ? t("home.reading") : t("home.viewBooks")} onPress={() => openBookDetail(currentBook.id)} />
                   </View>
                 </View>
               </View>
@@ -93,19 +95,19 @@ export default function HomeScreen() {
           </HeroCard>
 
           <View className="gap-3">
-            <SectionHeading title="最近阅读" detail={`${Math.min(recentBooks.length, books.length)} 本`} />
+            <SectionHeading title={t("home.recentReading")} detail={t("home.bookCount", { count: Math.min(recentBooks.length, books.length) })} />
             <HorizontalBookShelf data={recentBooks} onSelectBook={(book) => openBookDetail(book.id)} />
           </View>
 
           <View className="gap-3">
-            <SectionHeading title="最近添加" />
+            <SectionHeading title={t("home.recentAdded")} />
             <HorizontalBookShelf data={addedBooks} onSelectBook={(book) => openBookDetail(book.id)} />
           </View>
         </>
       ) : (
         <EmptyState
-          title="书库中还没有图书"
-          detail="请确认你选择的是有效的 Calibre 书库，并且 metadata.db 中存在 books 表数据。"
+          title={t("home.noBooks.title")}
+          detail={t("home.noBooks.detail")}
           icon={{ ios: "book", android: "book" }}
         />
       )}

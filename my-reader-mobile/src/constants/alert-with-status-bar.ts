@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+
 import {
   Alert,
   Appearance,
@@ -46,7 +48,7 @@ function wrapButtons(buttons?: readonly AlertButton[]) {
   if (!buttons || buttons.length === 0) {
     return [
       {
-        text: "确定",
+        text: i18n.t("common.confirm"),
         onPress: restoreStatusBarStyle,
       } satisfies AlertButton,
     ];

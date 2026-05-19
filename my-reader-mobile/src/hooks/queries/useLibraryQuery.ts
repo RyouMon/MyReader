@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { readBooksFromLibrary } from "@/src/data/calibre";
@@ -19,12 +21,12 @@ export async function fetchBooksWithMeta(
       (item) => item.id === activeLibrary.dataSourceId && item.type === "webdav"
     );
     if (!source || source.type !== "webdav") {
-      throw new Error("当前书库关联的 WebDAV 数据源不存在。");
+      throw new Error(i18n.t("sync.webdavSourceNotFound"));
     }
 
     const password = source.password ?? (await readWebDavPassword(source.id)) ?? "";
     if (!password) {
-      throw new Error("当前 WebDAV 数据源缺少密码，请重新编辑数据源。");
+      throw new Error(i18n.t("sync.webdavPasswordMissing"));
     }
 
     const { books, metadataUri } = await readBooksFromWebDavLibrary(activeLibrary, {

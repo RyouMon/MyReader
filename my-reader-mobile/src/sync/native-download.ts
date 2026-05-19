@@ -9,6 +9,7 @@ import {
 } from "@kesha-antonov/react-native-background-downloader";
 
 import { toNativeFilesystemPath } from "../utils/io";
+import i18n from "@/src/i18n";
 
 export type NativeDownloadOptions = {
   taskId?: string;
@@ -145,7 +146,7 @@ export function startNativeDownload({
       if (settled) return;
       settled = true;
       finishCleanup();
-      const err = new Error("下载已取消");
+      const err = new Error(i18n.t("sync.downloadCancelled"));
       err.name = "AbortError";
       reject(err);
     }
@@ -187,7 +188,7 @@ export function startNativeDownload({
       if (settled) return;
       settled = true;
       finishCleanup();
-      const err = new Error(error || `后台下载失败: ${errorCode}`);
+      const err = new Error(error || i18n.t("sync.downloadFailed", { code: errorCode }));
       if (isNativeCancel(error, errorCode)) {
         err.name = "AbortError";
       }
@@ -203,7 +204,7 @@ export function startNativeDownload({
     function resetStalledTimer(): void {
       if (stalledTimer) clearTimeout(stalledTimer);
       stalledTimer = setTimeout(() => {
-        settleError("原生下载已有字节传输，但长时间没有进度更新。请检查网络、WebDAV Range 支持或系统后台限制。", 0);
+        settleError(i18n.t("sync.downloadStalled"), 0);
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4);
     }
 
@@ -249,7 +250,7 @@ export function startNativeDownload({
       task.start();
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return;
-        settleError("原生下载任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生下载器配置。", 0);
+        settleError(i18n.t("sync.downloadNotStarted"), 0);
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS);
     } catch (err) {
       settled = true;
@@ -300,7 +301,7 @@ export function startNativeUpload({
       if (settled) return;
       settled = true;
       finishCleanup();
-      const err = new Error("上传已取消");
+      const err = new Error(i18n.t("sync.uploadCancelled"));
       err.name = "AbortError";
       reject(err);
     }
@@ -331,7 +332,7 @@ export function startNativeUpload({
     ): void {
       if (settled) return;
       if (responseCode < 200 || responseCode >= 300) {
-        settleError(`后台上传失败: HTTP ${responseCode} ${responseBody}`, responseCode);
+        settleError(i18n.t("sync.uploadFailed", { status: responseCode, body: responseBody }), responseCode);
         return;
       }
       settled = true;
@@ -352,7 +353,7 @@ export function startNativeUpload({
       if (settled) return;
       settled = true;
       finishCleanup();
-      const err = new Error(error || `后台上传失败: ${errorCode}`);
+      const err = new Error(error || i18n.t("sync.uploadFailedCode", { code: errorCode }));
       if (isNativeCancel(error, errorCode)) {
         err.name = "AbortError";
       }
@@ -368,7 +369,7 @@ export function startNativeUpload({
     function resetStalledTimer(): void {
       if (stalledTimer) clearTimeout(stalledTimer);
       stalledTimer = setTimeout(() => {
-        settleError("原生上传已有字节传输，但长时间没有进度更新。请检查网络、WebDAV 认证或系统后台限制。", 0);
+        settleError(i18n.t("sync.uploadStalled"), 0);
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4);
     }
 
@@ -414,7 +415,7 @@ export function startNativeUpload({
       task.start();
       startTimer = setTimeout(() => {
         if (settled || hasNativeBegin) return;
-        settleError("原生上传任务已创建，但没有开始传输。请检查 WebDAV URL、认证或原生上传器配置。", 0);
+        settleError(i18n.t("sync.uploadNotStarted"), 0);
       }, NATIVE_DOWNLOAD_START_TIMEOUT_MS);
     } catch (err) {
       settled = true;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -40,6 +41,7 @@ export function DownloadButton({
   isLocalDirect = false,
   onStateChange,
 }: DownloadButtonProps) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const actions = useSyncActions();
   const downloadTask = useDownloadTaskForPath(libraryId, relativePath);
@@ -114,14 +116,14 @@ export function DownloadButton({
     downloadTask?.status === "downloading";
   const downloadLabel =
     downloadTask?.status === "queued"
-      ? "排队中"
+      ? t("downloadButton.queued")
       : downloadTask?.status === "starting"
-        ? "准备中"
+        ? t("downloadButton.preparing")
         : downloadTask?.status === "downloading"
-          ? "下载中"
+          ? t("downloadButton.downloading")
           : busy === "download"
-            ? "下载中"
-            : "下载";
+            ? t("downloadButton.downloading")
+            : t("downloadButton.download");
 
   useEffect(() => {
     if (isDownloadActive && downloadTask) {
@@ -139,7 +141,7 @@ export function DownloadButton({
     }
     if (downloadStatusTask.status === "error") {
       observedDownloadTaskIdRef.current = null;
-      setErrorMessage(downloadStatusTask.error ?? `文件下载失败：${relativePath}`);
+      setErrorMessage(downloadStatusTask.error ?? t("downloadButton.downloadFailed", { path: relativePath }));
       setBusy(null);
       return;
     }
@@ -147,7 +149,7 @@ export function DownloadButton({
       observedDownloadTaskIdRef.current = null;
       setBusy(null);
     }
-  }, [commit, downloadStatusTask, relativePath, state]);
+  }, [commit, downloadStatusTask, relativePath, state, t]);
 
   const handleDownload = useCallback(async () => {
     if (busy || isDownloadActive) return;
@@ -182,10 +184,10 @@ export function DownloadButton({
       {!isLocalDirect && isPresent && (
         <>
           <Text className="text-[12px]" style={{ color: palette.success, fontWeight: "700" }}>
-            已下载
+            {t("downloadButton.downloaded")}
           </Text>
           <Pill
-            label={busy === "evict" ? "释放中" : "释放"}
+            label={busy === "evict" ? t("downloadButton.evicting") : t("downloadButton.evict")}
             onPress={handleEvict}
             disabled={busy !== null}
             busy={busy === "evict"}
@@ -197,7 +199,7 @@ export function DownloadButton({
       )}
 
       <Pill
-        label={busy === "delete" ? "删除中" : confirmDelete ? "再次点击确认" : "删除"}
+        label={busy === "delete" ? t("downloadButton.deleting") : confirmDelete ? t("downloadButton.confirmDelete") : t("downloadButton.delete")}
         onPress={handleDelete}
         disabled={busy !== null}
         busy={busy === "delete"}
@@ -212,7 +214,7 @@ export function DownloadButton({
           numberOfLines={1}
           style={{ color: palette.error }}
         >
-          失败
+          {t("downloadButton.failed")}
         </Text>
       ) : null}
     </View>

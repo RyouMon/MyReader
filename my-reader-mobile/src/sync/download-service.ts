@@ -13,6 +13,8 @@ import {
   type DownloadOutcome,
 } from "./file_ops";
 
+import i18n from "@/src/i18n";
+
 export type DownloadProgressHandler = (received: number, total: number) => void;
 
 export type LibraryDownloadRequest = {
@@ -28,7 +30,7 @@ export type LibraryDownloadRequest = {
 export async function openDownloadContextForLibrary(libraryId: string): Promise<SyncTargetContext> {
   const { libraries, dataSources } = useAppStore.getState();
   const library = libraries.find((item: Library) => item.id === libraryId);
-  if (!library) throw new AppInvariantError(`未找到书库: ${libraryId}`);
+  if (!library) throw new AppInvariantError(i18n.t("sync.libraryNotFound", { id: libraryId }));
   return openSyncContext(library, dataSources);
 }
 
@@ -102,7 +104,7 @@ export async function commitDownloadOutcome(
 function readCachedDownloadOutcome(ctx: SyncTargetContext, relativePath: string): DownloadOutcome {
   const file = new File(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
   if (!file.exists) {
-    throw new DataIntegrityError(`原生下载已完成，但缓存文件不存在: ${relativePath}`);
+    throw new DataIntegrityError(i18n.t("sync.nativeDownloadMissing", { path: relativePath }));
   }
   return {
     blake3: null,

@@ -2,6 +2,7 @@ import { AppState } from "react-native";
 import { Notifier } from "react-native-notifier";
 
 import { InAppNotification } from "./in-app-notification";
+import i18n from "@/src/i18n";
 
 type DownloadNotificationKind = "start" | "done" | "error";
 
@@ -22,7 +23,7 @@ export function notifyLibraryRefresh(kind: "done" | "error", detail?: string): v
   if (AppState.currentState !== "active") return;
 
   Notifier.showNotification({
-    title: kind === "done" ? "书库已更新" : "书库更新失败",
+    title: kind === "done" ? i18n.t("notifications.libraryUpdated") : i18n.t("notifications.libraryUpdateFailed"),
     description: detail,
     duration: 2800,
     showAnimationDuration: 260,
@@ -39,7 +40,7 @@ export function notifyDownloadState(kind: DownloadNotificationKind, label: strin
   if (!initialized) return;
   if (AppState.currentState !== "active") return;
 
-  const title = kind === "start" ? "开始下载" : kind === "done" ? "下载完成" : "下载失败";
+  const title = kind === "start" ? i18n.t("notifications.downloadStart") : kind === "done" ? i18n.t("download.complete") : i18n.t("download.failed");
   const notifKind = kind === "done" ? "success" : kind === "error" ? "error" : "info";
 
   Notifier.showNotification({

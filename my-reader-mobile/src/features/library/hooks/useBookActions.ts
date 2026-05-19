@@ -13,6 +13,7 @@ import {
   enqueue as enqueueDownload,
 } from "@/src/sync/download-store";
 import type { SyncActions } from "@/src/sync/useSyncActions";
+import i18n from "@/src/i18n";
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"]);
 
@@ -67,7 +68,7 @@ export function useBookActions(
         ? readableFormats.find((item) => item === normalizedTarget)
         : resolveEffectiveFormat(readableFormats, formatById[book.id]);
       if (!format) {
-        showAlertWithStatusBarRestore("无法下载", "该书没有可下载的可读格式");
+        showAlertWithStatusBarRestore(i18n.t("sync.cannotDownload"), i18n.t("sync.noReadableFormatForDownload"));
         return;
       }
       const match = paths.find((p) => p.format.toUpperCase() === format);
@@ -96,7 +97,7 @@ export function useBookActions(
       const readableFormats = getReadableFormats(paths.map((path) => path.format));
 
       if (readableFormats.length === 0) {
-        showAlertWithStatusBarRestore("无可读格式", "该书没有可阅读的格式");
+        showAlertWithStatusBarRestore(i18n.t("sync.noReadableFormat"), i18n.t("sync.noReadableFormatDetail"));
         return;
       }
       const setFormat = stateRef.current.setSelectedFormatById;
@@ -104,15 +105,15 @@ export function useBookActions(
         if (setFormat) {
           setFormat((prev) => ({ ...prev, [book.id]: readableFormats[0]! }));
         }
-        showAlertWithStatusBarRestore("已设置默认格式", readableFormats[0]);
+        showAlertWithStatusBarRestore(i18n.t("sync.defaultFormatSet"), readableFormats[0]);
         return;
       }
 
       const current = formatById[book.id];
       const effectiveFormat = resolveEffectiveFormat(readableFormats, current);
       showAlertWithStatusBarRestore(
-        "设置默认阅读格式",
-        `当前默认：${effectiveFormat ?? "-"}`,
+        i18n.t("sync.setDefaultFormat"),
+        i18n.t("sync.currentDefault", { format: effectiveFormat ?? "-" }),
         [
           ...readableFormats.map((fmt) => ({
             text: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
@@ -122,11 +123,11 @@ export function useBookActions(
               }
             },
           })),
-          { text: "取消", style: "cancel" },
+          { text: i18n.t("common.cancel"), style: "cancel" },
         ],
       );
     } catch (e) {
-      showAlertWithStatusBarRestore("读取格式失败", e instanceof Error ? e.message : String(e));
+      showAlertWithStatusBarRestore(i18n.t("sync.readFormatFailed"), e instanceof Error ? e.message : String(e));
     }
   }, []);
 
@@ -197,12 +198,12 @@ export function useBookActions(
         const sync = latest.syncActions;
         if (!lib || !sync) return;
         showAlertWithStatusBarRestore(
-          "删除下载文件",
-          `确定要删除《${book.title}》的本地下载文件吗？`,
+          i18n.t("sync.deleteDownloadFile"),
+          i18n.t("sync.confirmDeleteDownload", { title: book.title }),
           [
-            { text: "取消", style: "cancel" },
+            { text: i18n.t("common.cancel"), style: "cancel" },
             {
-              text: "删除",
+              text: i18n.t("common.delete"),
               style: "destructive",
               onPress: () => {
                 void (async () => {
@@ -212,7 +213,7 @@ export function useBookActions(
                       dismissTasksForPath(lib.id, row.path);
                     }
                   } catch (err) {
-                    showAlertWithStatusBarRestore("删除失败", err instanceof Error ? err.message : String(err));
+                    showAlertWithStatusBarRestore(i18n.t("sync.deleteFailed"), err instanceof Error ? err.message : String(err));
                   }
                 })();
               },

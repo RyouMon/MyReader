@@ -8,6 +8,7 @@ export const STORE_NAME = "myreader-mobile-app-state";
 
 export const defaultSettings: ReaderSettings = {
   themeMode: "system",
+  language: "",
   syncEnabled: true,
   cache: {
     maxCacheSizeMB: 2048,

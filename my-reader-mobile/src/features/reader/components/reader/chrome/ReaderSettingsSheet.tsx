@@ -1,4 +1,5 @@
 import { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 
 import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Animated, AnimatedScrollView, Text, View } from "@/tw";
@@ -40,6 +41,7 @@ export function ReaderSettingsSheet({
   onPatchReflowableReaderSettings,
   onPatchFixedReaderSettings,
 }: ReaderSettingsSheetProps) {
+  const { t } = useTranslation();
   return (
     <Animated.View
       entering={SlideInDown.duration(280)}
@@ -65,14 +67,14 @@ export function ReaderSettingsSheet({
         className="px-5 py-3 text-base font-bold"
         style={{ color: READER_CHROME.textIdle }}
       >
-        阅读设置
+        {t("reader.settings")}
       </Text>
       <AnimatedScrollView
         className="px-4"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="pb-5"
       >
-        <SettingSectionLabel label="主题" />
+        <SettingSectionLabel label={t("reader.settingsTheme")} />
         <View className="mb-1 flex-row flex-wrap gap-2.5">
           {READER_THEME_OPTIONS.map((themeOption) => {
             const active = isReflowSurface
@@ -92,13 +94,13 @@ export function ReaderSettingsSheet({
           })}
         </View>
 
-        <SettingSectionLabel label="阅读方式" />
+        <SettingSectionLabel label={t("reader.readingMode")} />
         <View className="mb-1 flex-row gap-2.5">
           {READING_LAYOUT_OPTIONS.map((layout) => (
             <SettingSegment
               key={layout.key}
               active={activeReadingLayout === layout.key}
-              label={layout.label}
+              label={t(layout.label)}
               onPress={() => {
                 if (isReflowSurface) onPatchReflowableReaderSettings({ readingLayout: layout.key });
                 else onPatchFixedReaderSettings({ readingLayout: layout.key });
@@ -109,13 +111,13 @@ export function ReaderSettingsSheet({
 
         {isFixedSurface && activeReadingLayout === "paginate" ? (
           <>
-            <SettingSectionLabel label="翻页方向" />
+            <SettingSectionLabel label={t("reader.pageDirection")} />
             <View className="mb-1 flex-row gap-2.5">
               {FIXED_NAVIGATION_OPTIONS.map((mode) => (
                 <SettingSegment
                   key={mode.key}
                   active={fixedSettings.navigationMode === mode.key}
-                  label={mode.label}
+                  label={t(mode.label)}
                   onPress={() => onPatchFixedReaderSettings({ navigationMode: mode.key })}
                 />
               ))}
@@ -123,7 +125,7 @@ export function ReaderSettingsSheet({
           </>
         ) : null}
 
-        <SettingSectionLabel label="亮度" />
+        <SettingSectionLabel label={t("reader.brightness")} />
         <SettingStepper
           value={`${isReflowSurface ? reflowSettings.brightness : fixedSettings.brightness}%`}
           onDecrease={() => {
@@ -144,14 +146,14 @@ export function ReaderSettingsSheet({
 
         {isReflowSurface ? (
           <>
-            <SettingSectionLabel label="字号" />
+            <SettingSectionLabel label={t("reader.fontSize")} />
             <SettingStepper
               value={`${reflowSettings.fontSize}px`}
               onDecrease={() => onPatchReflowableReaderSettings({ fontSize: Math.max(14, reflowSettings.fontSize - 1) })}
               onIncrease={() => onPatchReflowableReaderSettings({ fontSize: Math.min(28, reflowSettings.fontSize + 1) })}
             />
 
-            <SettingSectionLabel label="行距" />
+            <SettingSectionLabel label={t("reader.lineHeight")} />
             <SettingStepper
               value={reflowSettings.lineHeight.toFixed(2)}
               onDecrease={() =>
@@ -166,7 +168,7 @@ export function ReaderSettingsSheet({
               }
             />
 
-            <SettingSectionLabel label="边距" />
+            <SettingSectionLabel label={t("reader.margin")} />
             <SettingStepper
               value={`${reflowSettings.paddingX}px`}
               onDecrease={() => onPatchReflowableReaderSettings({ paddingX: Math.max(12, reflowSettings.paddingX - 4) })}
@@ -175,7 +177,7 @@ export function ReaderSettingsSheet({
           </>
         ) : (
           <>
-            <SettingSectionLabel label="缩放" />
+            <SettingSectionLabel label={t("reader.zoom")} />
             <SettingStepper
               value={`${Math.round(fixedSettings.zoomScale * 100)}%`}
               onDecrease={() =>
@@ -186,7 +188,7 @@ export function ReaderSettingsSheet({
               }
             />
             <Text className="-mt-0.5 mb-2 text-xs leading-[18px] text-white/[0.42]">
-              固定版式支持双指捏合缩放。
+              {t("reader.pinchZoomHint")}
             </Text>
           </>
         )}

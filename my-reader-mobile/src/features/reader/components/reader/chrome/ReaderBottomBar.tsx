@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FadeIn, FadeOut } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 
 import { READER_CHROME } from "@/src/design/reader-tokens";
 import { Animated, Pressable, Text, View } from "@/tw";
@@ -24,6 +25,7 @@ export function ReaderBottomBar({
   onOpenToc,
   onOpenSettings,
 }: ReaderBottomBarProps) {
+  const { t } = useTranslation();
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
@@ -75,7 +77,7 @@ export function ReaderBottomBar({
               className="text-sm font-semibold"
               style={{ color: READER_CHROME.textIdle }}
             >
-              目录
+              {t("reader.toc")}
             </Text>
           </Pressable>
           <Pressable

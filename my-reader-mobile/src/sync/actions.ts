@@ -26,6 +26,7 @@ import {
   type ManifestEntry,
 } from "./manifest";
 import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
+import i18n from "@/src/i18n";
 
 export type SyncTargetContext = ResolvedSyncTarget & {
   manifest: Manifest;
@@ -85,7 +86,7 @@ export async function downloadFile(
       libraryId: ctx.libraryId,
       relativePath,
     });
-    throw new AppInvariantError(`manifest 中未登记该路径: ${relativePath}`);
+    throw new AppInvariantError(i18n.t("sync.manifestNotRegistered", { path: relativePath }));
   }
   const outcome = await fileOpsDownload(
     ctx.backend,

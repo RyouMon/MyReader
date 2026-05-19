@@ -16,6 +16,7 @@ import { fetchBooksWithMeta, libraryQueryKeys } from "../hooks/queries/useLibrar
 import { queryClient } from "../hooks/queries/queryClient";
 import { mergeDataSources } from "./app-store.constants";
 import type { AppState, AppStateSlice } from "./app-store.types";
+import i18n from "@/src/i18n";
 
 function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   return libraries.map((library) =>
@@ -72,7 +73,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
           activeLibraryId: null,
           books: [],
           loading: false,
-          error: caught instanceof Error ? caught.message : "加载书库失败",
+          error: caught instanceof Error ? caught.message : i18n.t("sync.loadLibraryFailed"),
         });
       }
     },
@@ -104,7 +105,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
               item.metadataUri === preparedLibrary.metadataUri || item.path === preparedLibrary.path
           )
         ) {
-          showAlertWithStatusBarRestore("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+          showAlertWithStatusBarRestore(i18n.t("sync.cannotAddDuplicate"), i18n.t("sync.alreadyAdded"), [{ text: i18n.t("common.gotIt") }]);
           return null;
         }
 
@@ -119,7 +120,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         await get().refreshBooks();
         return preparedLibrary;
       } catch (caught) {
-        const message = caught instanceof Error ? caught.message : "添加书库失败";
+        const message = caught instanceof Error ? caught.message : i18n.t("sync.addLibraryFailed");
         set({ error: message });
         return null;
       }
@@ -134,7 +135,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
           (item) => item.metadataUri === prepared.metadataUri || item.path === prepared.path
         )
       ) {
-        showAlertWithStatusBarRestore("无法添加", "该书库已经添加过了。", [{ text: "知道了" }]);
+        showAlertWithStatusBarRestore(i18n.t("sync.cannotAddDuplicate"), i18n.t("sync.alreadyAdded"), [{ text: i18n.t("common.gotIt") }]);
         return false;
       }
 
@@ -211,7 +212,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         set({
           books: [],
           loadingBooks: false,
-          error: caught instanceof Error ? caught.message : "读取书库失败",
+          error: caught instanceof Error ? caught.message : i18n.t("sync.readLibraryFailed"),
         });
       }
     },
@@ -223,7 +224,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
       try {
         await checkLibraryConnectivity(library.id);
       } catch {
-        showAlertWithStatusBarRestore("数据源无法连接", "无法访问 WebDAV 数据源，同步已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误", [{ text: "知道了" }]);
+        showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
         return;
       }
       set({ refreshingLibraryId: libraryId, error: null });
@@ -254,7 +255,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         set({
           refreshingLibraryId: null,
           loadingBooks: false,
-          error: caught instanceof Error ? caught.message : "刷新书库失败",
+          error: caught instanceof Error ? caught.message : i18n.t("sync.refreshLibraryFailed"),
         });
       }
     },

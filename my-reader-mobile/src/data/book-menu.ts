@@ -1,5 +1,7 @@
 import type { MenuAction } from "@react-native-menu/menu";
 
+import i18n from "@/src/i18n";
+
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 
 import { getReadableFormats, resolveEffectiveFormat } from "./book-formats";
@@ -21,18 +23,18 @@ export function buildBookMenuActions(
   const { isWebdav, formats, selectedFormat } = menuConfig;
   const readableFormats = getReadableFormats(formats);
   const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormat);
-  const actions: MenuAction[] = [{ id: "detail", title: "图书详情" }];
+  const actions: MenuAction[] = [{ id: "detail", title: i18n.t("bookMenu.detail") }];
 
   if (isWebdav && downloadStatus !== "downloaded") {
     if (readableFormats.length === 1) {
       actions.push({
         id: `download:${readableFormats[0]}`,
-        title: `下载（${readableFormats[0]}）`,
+        title: i18n.t("bookMenu.downloadFormat", { format: readableFormats[0] }),
       });
     } else if (readableFormats.length > 1) {
       actions.push({
         id: "download",
-        title: "下载",
+        title: i18n.t("bookMenu.download"),
         subactions: readableFormats.map((fmt) => ({
           id: `download:${fmt}`,
           title: fmt,
@@ -44,7 +46,7 @@ export function buildBookMenuActions(
   if (readableFormats.length > 1) {
     actions.push({
       id: "setDefaultFormat",
-      title: `默认阅读格式：${effectiveFormat ?? "-"}`,
+      title: i18n.t("bookMenu.defaultFormat", { format: effectiveFormat ?? "-" }),
       subactions: readableFormats.map((fmt) => ({
         id: `setDefaultFormat:${fmt}`,
         title: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
@@ -55,7 +57,7 @@ export function buildBookMenuActions(
   if (isWebdav && downloadStatus === "downloaded") {
     actions.push({
       id: "deleteDownload",
-      title: "删除下载文件",
+      title: i18n.t("bookMenu.deleteDownload"),
       attributes: { destructive: true },
     });
   }

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, TextInput, View } from "@/tw";
 
@@ -10,6 +12,7 @@ export function SearchField({
   value?: string;
   onChangeText?: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
 
   return (
@@ -22,7 +25,7 @@ export function SearchField({
       }}
     >
       <Text className="text-sm font-medium" style={{ color: palette.textMuted }}>
-        搜索
+        {t("common.search")}
       </Text>
       <TextInput
         editable

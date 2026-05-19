@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, View } from "@/tw";
@@ -14,6 +15,7 @@ function ErrorFallback({
   errorMessage: string;
   onRetry: () => void;
 }) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
 
   return (
@@ -22,7 +24,7 @@ function ErrorFallback({
       style={{ backgroundColor: palette.background }}
     >
       <Text className="text-base font-semibold" style={{ color: palette.text }}>
-        {title ?? "页面遇到了意外错误"}
+        {title ?? t("errorBoundary.defaultTitle")}
       </Text>
       <Text
         className="text-sm text-center leading-5"
@@ -39,7 +41,7 @@ function ErrorFallback({
           className="text-[15px] font-semibold"
           style={{ color: palette.textOnPrimary }}
         >
-          重试
+          {t("errorBoundary.retry")}
         </Text>
       </Pressable>
     </View>

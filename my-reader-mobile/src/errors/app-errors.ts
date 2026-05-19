@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+
 export class AppError extends Error {
   constructor(message: string) {
     super(message);
@@ -27,9 +29,9 @@ export class AppInvariantError extends AppError {}
 export type DownloadErrorInfo = { title: string; message: string };
 
 const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {
-  title: "数据源无法连接",
+  title: i18n.t("errors.sourceUnreachable"),
   message:
-    "无法访问 WebDAV 数据源，下载已取消。\n\n可能的原因：\n• 当前网络连接不可用或不稳定\n• WebDAV 服务器未运行或无法访问\n• 服务器地址、端口或认证配置有误",
+    i18n.t("errors.sourceUnreachableDetail"),
 };
 
 /**
@@ -45,8 +47,8 @@ export function describeDownloadError(err: unknown): DownloadErrorInfo {
     return CONNECTIVITY_ERROR_INFO;
   }
   const message = err instanceof Error ? err.message : String(err);
-  if (message.includes("超时") || /network request failed/i.test(message)) {
+  if (message.includes(i18n.t("errors.timeout")) || /network request failed/i.test(message)) {
     return CONNECTIVITY_ERROR_INFO;
   }
-  return { title: "下载失败", message };
+  return { title: i18n.t("errors.downloadFailed"), message };
 }

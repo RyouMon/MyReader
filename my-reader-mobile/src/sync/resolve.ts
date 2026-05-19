@@ -5,6 +5,7 @@ import { parentDirectoryUriForFileUri } from "../utils/io";
 import { SyncConfigError } from "../errors";
 
 import { buildBackend, resolveLibraryBooksDir, type SyncBackend } from "./backend";
+import i18n from "@/src/i18n";
 
 export type ResolvedSyncTarget = {
   backend: SyncBackend;
@@ -35,11 +36,11 @@ export async function resolveSyncTarget(
       (item) => item.id === library.dataSourceId && item.type === "webdav",
     );
     if (!rawSource || rawSource.type !== "webdav") {
-      throw new SyncConfigError("当前书库关联的 WebDAV 数据源不存在。");
+      throw new SyncConfigError(i18n.t("sync.webdavSourceNotFound"));
     }
     const password = rawSource.password ?? (await readWebDavPassword(rawSource.id)) ?? "";
     if (!password) {
-      throw new SyncConfigError("当前 WebDAV 数据源缺少密码，请重新编辑数据源。");
+      throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"));
     }
     const source: WebDavDataSource = { ...rawSource, password };
     const backend = buildBackend({
@@ -58,7 +59,7 @@ export async function resolveSyncTarget(
 
   const libraryRootUri = parentDirectoryUriForFileUri(library.metadataUri!);
   if (!libraryRootUri) {
-    throw new SyncConfigError("无法解析本地书库根目录。");
+    throw new SyncConfigError(i18n.t("sync.cannotResolveLocalPath"));
   }
   const backend = buildBackend({ kind: "local-direct", libraryRootUri });
   return {

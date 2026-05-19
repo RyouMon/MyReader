@@ -1,6 +1,8 @@
 import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
+import i18n from "@/src/i18n";
+
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { buildHttpBasicAuthHeader } from "../utils/http";
 import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
@@ -247,9 +249,9 @@ async function ensureWebDavMetadataCached(
     return metadataFile.uri;
   } catch {
     showAlertWithStatusBarRestore(
-      "书库数据已损坏",
-      "无法恢复该书库的 metadata.db。请删除当前书库并重新添加后再试。",
-      [{ text: "知道了" }],
+      i18n.t("sync.corruptedLibrary"),
+      i18n.t("sync.corruptedLibraryMessage"),
+      [{ text: i18n.t("common.gotIt") }],
     );
     return null;
   }
@@ -273,9 +275,9 @@ export async function forceRefreshWebDavMetadata(
     return metadataFile.uri;
   } catch {
     showAlertWithStatusBarRestore(
-      "书库数据已损坏",
-      "无法重新下载该书库的 metadata.db。请检查网络或 WebDAV 配置。",
-      [{ text: "知道了" }],
+      i18n.t("sync.corruptedLibrary"),
+      i18n.t("sync.corruptedLibraryRedownloadMessage"),
+      [{ text: i18n.t("common.gotIt") }],
     );
     return null;
   }
@@ -339,8 +341,8 @@ export async function readBooksFromWebDavLibrary(
       return {
         id: `${row.id}`,
         calibreId: row.id,
-        title: row.title || "未命名书籍",
-        author: authors[0] || row.author_sort || "未知作者",
+        title: row.title || i18n.t("common.unnamedBook"),
+        author: authors[0] || row.author_sort || i18n.t("common.unknownAuthor"),
         authors,
         path: row.path || undefined,
         hasCover: (row.has_cover ?? 0) !== 0,

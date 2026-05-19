@@ -2,6 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, type Href } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { useThemePalette, type ThemePalette } from "@/src/design/tokens";
@@ -264,12 +265,13 @@ export function FilterChip({
 export function HeaderCloseButton({
   fallbackRoute = "/",
 }: HeaderCloseButtonProps) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
 
   return (
     <Pressable
       hitSlop={8}
-      accessibilityLabel="关闭"
+      accessibilityLabel={t("common.close")}
       accessibilityRole="button"
       onPress={() => {
         if (router.canGoBack()) {

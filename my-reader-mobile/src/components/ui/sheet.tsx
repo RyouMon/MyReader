@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal, Pressable as RNPressable } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
@@ -48,6 +49,7 @@ export function SheetOption({
   active?: boolean;
   onPress?: () => void;
 }) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
 
   return (
@@ -62,7 +64,7 @@ export function SheetOption({
       </Text>
       {active ? (
         <Text className="text-sm font-semibold" style={{ color: palette.primary }}>
-          当前
+          {t("common.current")}
         </Text>
       ) : null}
     </Pressable>

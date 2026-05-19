@@ -7,6 +7,8 @@ import type {
   ReadiumFile,
   ReadiumViewRef,
 } from "@ryoumon/react-native-readium";
+import { useTranslation } from "react-i18next";
+import i18n from "@/src/i18n";
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
@@ -51,7 +53,7 @@ function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
     const p = positions[i]!;
     items.push({
       id: buildTocItemId("cbz", [i]),
-      label: p.title ?? `第 ${i + 1} 页`,
+      label: p.title ?? i18n.t("reader.pageLabel", { page: i + 1 }),
       pageIndex: i,
       chapterIndex: i,
       href: p.href,
@@ -114,6 +116,7 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
     },
     ref,
   ) {
+    const { t } = useTranslation();
     const readiumRef = useRef<ReadiumViewRef>(null);
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
@@ -206,7 +209,7 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
         const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER);
 
         const currentPage = positionIndexForLocator(positions, locator);
-        const chapterTitle = locator.title ?? `第 ${currentPage + 1} 页`;
+        const chapterTitle = locator.title ?? t("reader.pageLabel", { page: currentPage + 1 });
 
         onStateChange({
           ready: true,

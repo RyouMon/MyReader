@@ -1,0 +1,496 @@
+{
+  "tabs": {
+    "home": "Home",
+    "library": "Library",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "My Reader",
+    "continueReading": "Continue Reading",
+    "noCover": "No Cover",
+    "currentLibrary": "Library: {{name}} · {{count}} books",
+    "viewBooks": "View Books",
+    "reading": "Reading",
+    "recentReading": "Recent Reading",
+    "recentAdded": "Recently Added",
+    "bookCount": "{{count}} books",
+    "noLibrary": {
+      "title": "No library added yet",
+      "detail": "Add a local Calibre library in Settings, then your reading progress and recently added books will appear here."
+    },
+    "noBooks": {
+      "title": "No books in this library",
+      "detail": "Make sure you selected a valid Calibre library with books in its metadata.db."
+    }
+  },
+  "library": {
+    "title": "Library",
+    "addLibrary": "Add Library",
+    "switchLibrary": "Switch Library",
+    "syncCurrentLibrary": "Sync Current Library",
+    "searchPlaceholder": "Search title, author, tags",
+    "bookCountRatio": "{{visible}} / {{total}} books",
+    "filter": {
+      "all": "All",
+      "downloaded": "Downloaded",
+      "notDownloaded": "Not Downloaded",
+      "downloading": "Downloading"
+    },
+    "sort": {
+      "title": "Title",
+      "author": "Author",
+      "recentlyAdded": "Recently Added"
+    },
+    "view": {
+      "grid": "Grid View",
+      "list": "List View"
+    },
+    "filterLabel": "Filter",
+    "sortLabel": "Sort",
+    "viewLabel": "View",
+    "libraryActions": "Library Actions",
+    "viewConfig": "View Config",
+    "switchLibraryAlert": {
+      "title": "Switch Library",
+      "message": "Current: {{name}}",
+      "unselected": "Not selected",
+      "close": "Close"
+    },
+    "loading": {
+      "title": "Loading Library",
+      "detail": "Reading local and WebDAV library configurations."
+    },
+    "notFound": {
+      "title": "Library not found",
+      "detail": "It may have been removed or the link parameters are no longer valid."
+    },
+    "noLibrary": {
+      "title": "No library added yet",
+      "detail": "Add a Calibre library first, then browse books in the Library tab."
+    },
+    "unselected": {
+      "title": "No library selected",
+      "detail": "Select a library to browse, or add a new Calibre library."
+    },
+    "loadError": {
+      "title": "Load Failed"
+    },
+    "noMatch": {
+      "title": "No matching books",
+      "detail": "Adjust your search terms or confirm the library has books."
+    }
+  },
+  "libraryDetail": {
+    "libraryLabel": "Library",
+    "currentlyUsed": " · In use",
+    "bookCount": "{{count}} books",
+    "typeLocal": "Local",
+    "typeWebdav": "WebDAV",
+    "calibreLibrary": "Calibre Library",
+    "delete": {
+      "title": "Delete this library?",
+      "message": "The library will be removed from the app. Original files remain in place — delete them manually if needed.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "deleteLibrary": "Delete Library",
+    "notFound": {
+      "title": "Library not found",
+      "detail": "It may have been removed or the link parameters are no longer valid."
+    },
+    "useLibrary": "Use This Library",
+    "refreshing": "Refreshing...",
+    "refresh": "Refresh Library",
+    "libraryType": "Library Type",
+    "sourceType": "Source Type",
+    "libraryPath": "Library Path",
+    "bookCountLabel": "Book Count",
+    "addedAt": "Added At"
+  },
+  "settings": {
+    "title": "Settings",
+    "libraryDetail": "Library Details",
+    "addLibrary": "Add Library",
+    "librarySection": "Library",
+    "bookCountCurrent": "{{count}} books · In use",
+    "bookCount": "{{count}} books",
+    "dataAndSources": "Data & Sources",
+    "localStorage": "Local Storage",
+    "localStorageDetail": "Default data source, no configuration needed",
+    "webdavDetail": "Add and manage remote WebDAV data sources",
+    "readingPreferences": "Reading Preferences",
+    "darkMode": "Dark Mode",
+    "readerStyle": "Reader Style",
+    "readerStyleDetail": "Font, font size, margins",
+    "cacheMaxSize": "Cache Max Size",
+    "clearAllCache": "Clear All Cache",
+    "currentUsage": "Currently using {{size}}",
+    "themeMode": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": "Language",
+    "languageDetail": "Change display language"
+  },
+  "reader": {
+    "cannotOpen": "Cannot open book",
+    "back": "Back",
+    "closeOverlay": "Close overlay",
+    "mountingReader": "Mounting reader…",
+    "loadFailed": "Reader load failed",
+    "loadFailedMessage": "The reader encountered an unexpected error. Please go back and retry.",
+    "toc": "Table of Contents",
+    "noToc": "This book has no table of contents",
+    "settings": "Reading Settings",
+    "settingsTheme": "Theme",
+    "readingMode": "Reading Mode",
+    "pageDirection": "Page Direction",
+    "brightness": "Brightness",
+    "fontSize": "Font Size",
+    "lineHeight": "Line Height",
+    "margin": "Margin",
+    "zoom": "Zoom",
+    "pinchZoomHint": "Fixed-layout supports pinch-to-zoom.",
+    "themePaper": "Paper",
+    "themeLight": "Light",
+    "themeGreen": "Eye Care",
+    "themeDark": "Dark",
+    "layoutScroll": "Scroll",
+    "layoutPaginate": "Paginate",
+    "navHorizontal": "Horizontal",
+    "navVertical": "Vertical",
+    "pageLabel": "Page {{page}}"
+  },
+  "bookDetail": {
+    "title": "Book Details",
+    "loadFailed": "Book details load failed",
+    "loadFailedMessage": "The book details page encountered an unexpected error. Please retry.",
+    "missingParam": {
+      "title": "Missing book parameter",
+      "detail": "Please re-enter book details from the library."
+    },
+    "noLibrary": {
+      "title": "No current library",
+      "detail": "Please select a Calibre library in Settings or Library first."
+    },
+    "invalidId": "Invalid book ID",
+    "notFoundInMeta": "Book not found in metadata",
+    "notFoundInLibrary": "Book not found in library",
+    "loadingDetail": "Loading book details…",
+    "notFound": {
+      "title": "Book not found",
+      "detail": "It may have been removed from the library or the page parameters are invalid."
+    },
+    "seriesInfo": "{{series}} · #{{index}}",
+    "infoSection": "Details",
+    "authorSort": "Author Sort",
+    "pubDate": "Pub Date",
+    "language": "Language",
+    "libraryPath": "Library Path",
+    "addedAt": "Added At",
+    "lastModified": "Last Modified",
+    "downloadStarted": "Download started",
+    "downloadStartedDetail": "{{format}} will be ready to read once downloaded.",
+    "noReadableFormat": "No readable format",
+    "downloadAndRead": "Download & Read",
+    "continueReading": "Continue Reading",
+    "startReading": "Start Reading",
+    "back": "Back",
+    "favorite": "Favorite",
+    "share": "Share",
+    "moreActions": "More actions: {{title}}",
+    "openBook": "Open \"{{title}}\"",
+    "readFileStateFailed": "Failed to read file state",
+    "downloadFailed": "File download failed: {{path}}",
+    "cannotStartDownload": "Cannot start download",
+    "noFormatPath": "No file path found for {{format}}",
+    "deleteLocalFailed": "Failed to delete local file",
+    "formatSection": {
+      "title": "File Formats",
+      "count": "{{count}} formats",
+      "default": "Default",
+      "readable": "Readable",
+      "unsupported": "Unsupported",
+      "queued": "Queued",
+      "preparing": "Preparing",
+      "notStarted": "Not started",
+      "cancel": "Cancel",
+      "cancelDownload": "Cancel {{format}} download",
+      "download": "Download",
+      "downloadFormat": "Download {{format}}",
+      "deleteLocalFile": "Delete local file",
+      "deleteLocalFileFormat": "Delete local file {{format}}",
+      "notDownloaded": "Not downloaded"
+    },
+    "synopsis": "Synopsis"
+  },
+  "bookRow": {
+    "unread": "Unread",
+    "finished": "Finished",
+    "reading": "Reading"
+  },
+  "downloadButton": {
+    "queued": "Queued",
+    "preparing": "Preparing",
+    "downloading": "Downloading",
+    "download": "Download",
+    "downloadFailed": "File download failed: {{path}}",
+    "downloaded": "Downloaded",
+    "evicting": "Evicting",
+    "evict": "Evict",
+    "deleting": "Deleting",
+    "confirmDelete": "Tap again to confirm",
+    "delete": "Delete",
+    "failed": "Failed"
+  },
+  "addLibrary": {
+    "existingSources": "Existing Sources",
+    "localDetail": "Select a library from local storage",
+    "addSources": "Add Sources",
+    "webdavDetail": "Browse remote files via WebDAV and select a Calibre library"
+  },
+  "webdav": {
+    "sourcesTitle": "WebDAV Sources",
+    "sourceDetail": "Source Details",
+    "addSource": "Add WebDAV Source",
+    "selectLibrary": "Select WebDAV Library",
+    "noSources": {
+      "title": "No WebDAV sources yet",
+      "detail": "Connect to a server via \"Add WebDAV\" to browse remote directories and select a Calibre library."
+    },
+    "delete": {
+      "title": "Delete WebDAV Source",
+      "confirm": "Delete \"{{name}}\"?",
+      "cancel": "Cancel",
+      "confirmButton": "Delete"
+    },
+    "deleteFailed": {
+      "title": "Cannot Delete",
+      "message": "Failed to delete the source."
+    },
+    "deleteSource": "Delete Source",
+    "notFound": {
+      "title": "Source not found",
+      "detail": "It may have been removed or the link parameters are invalid."
+    },
+    "type": "Type",
+    "serverAddress": "Server Address",
+    "username": "Username",
+    "password": "Password",
+    "passwordSaved": "Saved in secure storage",
+    "passwordNotSet": "Not set",
+    "basePath": "Base Path",
+    "status": "Status",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "addedAt": "Added At",
+    "browser": {
+      "notFound": {
+        "title": "Source not found",
+        "detail": "Please add a WebDAV source first."
+      },
+      "loadFailed": {
+        "title": "Browse Failed",
+        "message": "The WebDAV browser encountered an unexpected error. Please retry."
+      },
+      "validating": "Validating directory",
+      "selectDirectory": "Select current directory as library",
+      "currentPath": "Current path: {{path}}",
+      "reading": {
+        "title": "Reading directory",
+        "detail": "Fetching directory listing from the WebDAV server."
+      },
+      "readFailed": {
+        "title": "Read Failed"
+      },
+      "empty": {
+        "title": "Empty directory",
+        "detail": "No subdirectories in the current directory."
+      },
+      "notValidLibrary": {
+        "title": "Invalid directory",
+        "message": "Not a valid library — metadata.db not found."
+      },
+      "notCalibreLibrary": "Not a valid Calibre library.",
+      "cannotReadRemote": "Cannot read remote directory"
+    },
+    "add": {
+      "sourceTitle": "WebDAV Source",
+      "enterServerUrl": "Please enter the server address.",
+      "portMustBeNumber": "Port must be a number",
+      "portRange": "Port must be 1-65535",
+      "validationFailed": "Validation failed",
+      "connectionTestFailed": "Connection test failed",
+      "reEnter": "Re-enter",
+      "addAnyway": "Add Anyway",
+      "addFailed": "Add Failed",
+      "addFailedMessage": "Operation failed. Please retry.",
+      "completing": "Completing",
+      "complete": "Complete",
+      "serverAddressLabel": "Server Address",
+      "portLabel": "Port",
+      "basePathLabel": "Base Path",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "Enter username",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter password",
+      "useSSL": "Use SSL"
+    }
+  },
+  "errorBoundary": {
+    "defaultTitle": "An unexpected error occurred",
+    "retry": "Retry"
+  },
+  "common": {
+    "confirm": "OK",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "gotIt": "Got it",
+    "search": "Search",
+    "current": "Current",
+    "localStorage": "Local Storage",
+    "unnamedBook": "Unnamed Book",
+    "unknownAuthor": "Unknown Author",
+    "unnamedLibrary": "Unnamed Library"
+  },
+  "bookFormats": {
+    "epub": "Reflowable",
+    "pdf": "Fixed-layout",
+    "mobi": "Kindle Format",
+    "azw3": "Kindle Format",
+    "txt": "Plain Text",
+    "cbz": "Comic Archive",
+    "djvu": "Scanned Document"
+  },
+  "bookLang": {
+    "zho": "中文",
+    "chi": "中文",
+    "eng": "English",
+    "jpn": "日本語"
+  },
+  "bookMenu": {
+    "detail": "Book Details",
+    "download": "Download",
+    "downloadFormat": "Download ({{format}})",
+    "defaultFormat": "Default reading format: {{format}}",
+    "deleteDownload": "Delete downloaded file"
+  },
+  "bookLoader": {
+    "loadingBook": "Loading book…",
+    "missingParam": "Missing book parameter",
+    "noLibrary": "No library selected",
+    "readingBookInfo": "Reading book info…",
+    "invalidId": "Invalid book ID",
+    "notFoundInLibrary": "Book not found in library",
+    "noReadableFormat": "No readable format (EPUB, CBZ, or PDF required)",
+    "downloadingFromWebdav": "Downloading book from WebDAV…",
+    "loadingBookFile": "Loading book file…",
+    "downloadFirst": "Please download the format in book details before reading."
+  },
+  "sync": {
+    "localDirectRead": "Local direct read: sync skipped",
+    "libraryNotFound": "Library not found: {{id}}",
+    "localDirectLabel": "Local · {{path}}",
+    "configError": "Sync configuration error",
+    "webdavSourceNotFound": "The WebDAV source associated with this library does not exist.",
+    "webdavPasswordMissing": "The current WebDAV source is missing a password. Please re-edit the source.",
+    "cannotResolveLocalPath": "Cannot resolve local library root directory.",
+    "downloadCancelled": "Download cancelled",
+    "downloadFailed": "Background download failed: {{code}}",
+    "downloadStalled": "Native download has transferred bytes but stalled. Check network, WebDAV Range support, or system background restrictions.",
+    "downloadNotStarted": "Native download task created but no transfer started. Check WebDAV URL, auth, or native downloader config.",
+    "uploadCancelled": "Upload cancelled",
+    "uploadFailed": "Background upload failed: HTTP {{status}} {{body}}",
+    "uploadFailedCode": "Background upload failed: {{code}}",
+    "uploadStalled": "Native upload has transferred bytes but stalled. Check network, WebDAV auth, or system background restrictions.",
+    "uploadNotStarted": "Native upload task created but no transfer started. Check WebDAV URL, auth, or native uploader config.",
+    "manifestNotRegistered": "Path not registered in manifest: {{path}}",
+    "syncPathEmpty": "Sync path cannot be empty",
+    "syncPathTraversal": "Sync path cannot contain ..: {{path}}",
+    "syncPathAbsolute": "Sync path cannot be absolute: {{path}}",
+    "nativeDownloadMissing": "Native download completed but cache file missing: {{path}}",
+    "nativeDownloadEmpty": "Native download completed but cache file is empty: {{path}}",
+    "nativeDownloadNotSupported": "Native background download not supported: {{kind}}",
+    "nativeUploadNotSupported": "Native background upload not supported: {{kind}}",
+    "hashMismatch": "Hash mismatch after download: expected {{expected}}, got {{actual}}",
+    "localFileMissing": "Local file does not exist, cannot upload: {{path}}",
+    "libraryNotFoundShort": "Library not found: {{id}}",
+    "connectionTimeout": "Connection timeout (2s). Check network or WebDAV config.",
+    "cannotParseFilePath": "Cannot parse file path: {{uri}}",
+    "metadataDbNotAvailable": "metadata.db not available",
+    "formatNotFoundInLibrary": "Format {{format}} not found in library (bookId={{id}})",
+    "bookFileNotFound": "Book file not found: {{name}}",
+    "bookFileNotFoundDetail": "Full path: {{uri}}\nLibrary path: {{libraryPath}}\nIn-book path: {{rowPath}}",
+    "corruptedLibrary": "Library data corrupted",
+    "corruptedLibraryMessage": "Cannot recover metadata.db for this library. Please remove and re-add the library.",
+    "corruptedLibraryRedownloadMessage": "Cannot re-download metadata.db for this library. Check network or WebDAV config.",
+    "cannotRedownloadMeta": "Cannot re-download metadata.db",
+    "metadataNotFound": "metadata.db not found",
+    "metadataNotFoundDetail": "Calibre metadata.db not found in the selected directory. Select the library root directory (should contain metadata.db).",
+    "userCancelled": "User cancelled or no directory selected",
+    "notValidCalibreLibrary": "metadata.db not found in the selected library. Confirm it is a valid Calibre library.",
+    "loadLibraryFailed": "Failed to load library",
+    "addLibraryFailed": "Failed to add library",
+    "cannotAddDuplicate": "Cannot add",
+    "alreadyAdded": "This library has already been added.",
+    "readLibraryFailed": "Failed to read library",
+    "refreshLibraryFailed": "Failed to refresh library",
+    "sourceUnreachable": "Source unreachable",
+    "sourceUnreachableDetail": "Cannot access WebDAV source. Download cancelled.\n\nPossible causes:\n• Network unavailable or unstable\n• WebDAV server not running or unreachable\n• Server address, port, or auth misconfigured",
+    "sourceUnreachableSyncDetail": "Cannot access WebDAV source. Sync cancelled.\n\nPossible causes:\n• Network unavailable or unstable\n• WebDAV server not running or unreachable\n• Server address, port, or auth misconfigured",
+    "removeLibraryFirst": "Please remove libraries using this source first",
+    "authFailed": "Auth failed: incorrect username or password, or insufficient permissions.",
+    "pathNotFound": "Path not found: check the base path and that the WebDAV directory exists.",
+    "serverAbnormal": "Server error (HTTP {{status}}): check server status and WebDAV config.",
+    "connectionTimeoutDetail": "Connection timeout: check network, server address, port, and SSL config. Reason: {{reason}}",
+    "networkFailed": "Network request failed: cannot reach server. Check network, address, port, and SSL. Reason: {{reason}}",
+    "cannotDownload": "Cannot download",
+    "noReadableFormatForDownload": "No readable format available for download",
+    "noReadableFormat": "No readable format",
+    "noReadableFormatDetail": "This book has no readable format",
+    "defaultFormatSet": "Default format set",
+    "setDefaultFormat": "Set default reading format",
+    "currentDefault": "Current default: {{format}}",
+    "readFormatFailed": "Failed to read formats",
+    "deleteDownloadFile": "Delete downloaded file",
+    "confirmDeleteDownload": "Delete the local download for \"{{title}}\"?",
+    "deleteFailed": "Delete failed",
+    "webdavGetFailed": "WebDAV GET failed: {{status}} {{path}}",
+    "webdavPutFailed": "WebDAV PUT failed: {{status}} {{path}}",
+    "webdavDeleteFailed": "WebDAV DELETE failed: {{status}} {{path}}",
+    "webdavPropfindFailed": "WebDAV PROPFIND failed: {{status}} {{path}}",
+    "webdavPropfindListFailed": "WebDAV PROPFIND list failed: {{status}} {{path}}",
+    "webdavMkcolFailed": "WebDAV MKCOL failed: {{status}} {{path}}",
+    "localFileNotExist": "Local file does not exist: {{path}}",
+    "basicAuthNotSupported": "Basic Auth encoding not supported in this environment",
+    "syncPathCannotBeEmpty": "Sync path cannot be empty"
+  },
+  "notifications": {
+    "libraryUpdated": "Library updated",
+    "libraryUpdateFailed": "Library update failed",
+    "downloadStart": "Download started",
+    "downloadDone": "Download complete",
+    "downloadFailed": "Download failed",
+    "libraryRefreshing": "Library refreshing"
+  },
+  "errors": {
+    "sourceUnreachable": "Source unreachable",
+    "sourceUnreachableDetail": "Cannot access WebDAV source. Download cancelled.\n\nPossible causes:\n• Network unavailable or unstable\n• WebDAV server not running or unreachable\n• Server address, port, or auth misconfigured",
+    "downloadFailed": "Download failed",
+    "timeout": "Timeout"
+  },
+  "securityBookmarks": {
+    "invalidUrl": "{{action}} failed: invalid directory URL.",
+    "invalidBookmark": "{{action}} failed: saved bookmark is invalid. Please re-select the library.",
+    "unsupportedUrl": "{{action}} failed: directory URL format not supported. Please select a local directory from the Files app instead.",
+    "cannotAccess": "{{action}} failed: cannot access the authorized library directory. Please re-select and authorize.",
+    "expired": "{{action}} failed: bookmark authorization expired. Please re-select the library.",
+    "genericError": "{{action}} failed: iOS file authorization error. Please retry.",
+    "createBookmark": "Create bookmark",
+    "restoreBookmark": "Restore bookmark",
+    "accessDirectory": "Access directory",
+    "refreshBookmark": "Refresh bookmark"
+  }
+}

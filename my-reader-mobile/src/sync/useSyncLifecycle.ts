@@ -7,10 +7,11 @@ import { SyncConfigError } from "../errors";
 import { InAppNotification } from "../notifications/in-app-notification";
 
 import { runSync } from "./scheduler";
+import i18n from "@/src/i18n";
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({
-    title: "同步配置有误",
+    title: i18n.t("sync.configError"),
     description: message,
     duration: 6000,
     hideOnPress: true,

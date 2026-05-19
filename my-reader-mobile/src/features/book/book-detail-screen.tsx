@@ -5,6 +5,7 @@ import type { NativeStackNavigationOptions } from "@react-navigation/native-stac
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { pickReadableFormat } from "@my-reader/tools/utils";
 import { Share } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
@@ -24,6 +25,7 @@ type DetailCacheEntry = {
 };
 
 export default function BookDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { colorScheme, palette } = useTheme();
   const { books, activeLibrary, activeLibraryId } = useLibraryStore();
@@ -73,7 +75,7 @@ export default function BookDetailScreen() {
         ...prev,
         [currentId]: {
           detail: null,
-          error: "无效的书籍 ID",
+          error: t("bookDetail.invalidId"),
           loading: false,
         },
       }));
@@ -97,7 +99,7 @@ export default function BookDetailScreen() {
           ...prev,
           [currentId]: {
             detail: next,
-            error: next ? null : "在 metadata 中未找到该书",
+            error: next ? null : t("bookDetail.notFoundInMeta"),
             loading: false,
           },
         }));
@@ -127,7 +129,7 @@ export default function BookDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeLibrary, currentId]);
+  }, [activeLibrary, currentId, t]);
 
   const currentEntry = currentId ? detailCache[currentId] : undefined;
   const currentDetail = currentEntry?.detail ?? null;
@@ -154,7 +156,7 @@ export default function BookDetailScreen() {
   const headerLeftActions = useMemo<HeaderToolbarAction[]>(
     () => [
       {
-        label: "返回",
+        label: t("bookDetail.back"),
         onPress: handleGoBack,
         icon: <Feather name="arrow-left" size={20} color={palette.text} />,
         iosSfSymbol: "chevron.left",
@@ -162,14 +164,14 @@ export default function BookDetailScreen() {
         color: palette.text,
       },
     ],
-    [handleGoBack, palette.text]
+    [handleGoBack, palette.text, t]
   );
 
   const headerRightActions = useMemo<HeaderToolbarAction[] | undefined>(() => {
     if (!currentDetail) return undefined;
     return [
       {
-        label: "收藏",
+        label: t("bookDetail.favorite"),
         onPress: noop,
         icon: <Feather name="star" size={20} color={detailColors.muted} />,
         iosSfSymbol: "star",
@@ -177,7 +179,7 @@ export default function BookDetailScreen() {
         color: detailColors.muted,
       },
       {
-        label: "分享",
+        label: t("bookDetail.share"),
         onPress: handleShare,
         icon: <Feather name="share-2" size={19} color={detailColors.muted} />,
         iosSfSymbol: "square.and.arrow.up",
@@ -185,11 +187,11 @@ export default function BookDetailScreen() {
         color: detailColors.muted,
       },
     ];
-  }, [currentDetail, detailColors.muted, handleShare, noop]);
+  }, [currentDetail, detailColors.muted, handleShare, noop, t]);
 
   const screenOptions = useMemo<NativeStackNavigationOptions>(
     () => ({
-      title: "书籍详情",
+      title: t("bookDetail.title"),
       headerShown: true,
       headerLargeTitle: false,
       headerLargeTitleShadowVisible: false,
@@ -199,7 +201,7 @@ export default function BookDetailScreen() {
       headerStyle: { backgroundColor: palette.background },
       headerTintColor: palette.text,
     }),
-    [palette.background, palette.text]
+    [palette.background, palette.text, t]
   );
 
   const getListBook = useCallback(
@@ -230,7 +232,7 @@ export default function BookDetailScreen() {
         <Stack.Screen options={screenOptions} />
         <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-          <EmptyState title="缺少书籍参数" detail="请从书库重新进入书籍详情。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+          <EmptyState title={t("bookDetail.missingParam.title")} detail={t("bookDetail.missingParam.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
       </>
     );
@@ -242,7 +244,7 @@ export default function BookDetailScreen() {
         <Stack.Screen options={screenOptions} />
         <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
-          <EmptyState title="没有当前书库" detail="请先在设置或书库中选择要使用的 Calibre 书库。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+          <EmptyState title={t("bookDetail.noLibrary.title")} detail={t("bookDetail.noLibrary.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
       </>
     );
@@ -253,8 +255,8 @@ export default function BookDetailScreen() {
       <Stack.Screen options={screenOptions} />
       <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
       <ErrorBoundary
-        title="书籍详情加载失败"
-        message="书籍详情页面遇到了意外错误，请重试。"
+        title={t("bookDetail.loadFailed")}
+        message={t("bookDetail.loadFailedMessage")}
         onRetry={() => {
           if (currentId) {
             loadingIdsRef.current.delete(currentId);

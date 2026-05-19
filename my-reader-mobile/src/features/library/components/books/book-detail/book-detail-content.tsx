@@ -4,6 +4,7 @@ import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/util
 import { Alert } from "react-native";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/data/calibre";
@@ -63,6 +64,7 @@ export function BookDetailContent({
   selectedFormat,
   webDavSource,
 }: BookDetailContentProps) {
+  const { t } = useTranslation();
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -124,13 +126,13 @@ export function BookDetailContent({
       })
       .catch((err) => {
         if (!cancelled) {
-          Alert.alert("读取文件状态失败", err instanceof Error ? err.message : String(err));
+          Alert.alert(t("bookDetail.readFileStateFailed"), err instanceof Error ? err.message : String(err));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [activeLibrary, bookId, detail, fileStateRevision]);
+  }, [activeLibrary, bookId, detail, fileStateRevision, t]);
 
   useEffect(() => {
     if (!detail) return;
@@ -145,7 +147,7 @@ export function BookDetailContent({
     for (const task of relevantTasks) {
       if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
         markTaskErrorAlerted(task.id);
-        const { title, message } = describeDownloadError(task.error ?? `文件下载失败：${task.relativePath}`);
+        const { title, message } = describeDownloadError(task.error ?? t("bookDetail.downloadFailed", { path: task.relativePath }));
         Alert.alert(title, message);
       }
     }
@@ -184,13 +186,13 @@ export function BookDetailContent({
       }
       return changed ? next : prev;
     });
-  }, [activeLibrary.id, bookId, detail, downloadStatusTasks]);
+  }, [activeLibrary.id, bookId, detail, downloadStatusTasks, t]);
 
   const handleDownloadFormat = useCallback(
     async (format: string) => {
       const info = formatInfoMap[format];
       if (!info || !detail) {
-        Alert.alert("无法开始下载", `没有找到 ${format} 对应的文件路径`);
+        Alert.alert(t("bookDetail.cannotStartDownload"), t("bookDetail.noFormatPath", { format }));
         return;
       }
       try {
@@ -207,7 +209,7 @@ export function BookDetailContent({
         Alert.alert(title, message);
       }
     },
-    [formatInfoMap, activeLibrary.id, bookId, detail]
+    [formatInfoMap, activeLibrary.id, bookId, detail, t]
   );
 
   const handleDeleteFormat = useCallback(
@@ -239,10 +241,10 @@ export function BookDetailContent({
           [format]: { ...prev[format]!, localState: "present" },
         }));
         deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
-        Alert.alert("删除本地文件失败", err instanceof Error ? err.message : String(err));
+        Alert.alert(t("bookDetail.deleteLocalFailed"), err instanceof Error ? err.message : String(err));
       }
     },
-    [formatInfoMap, downloadStatusTasks, activeLibrary.id, syncActions]
+    [formatInfoMap, downloadStatusTasks, activeLibrary.id, syncActions, t]
   );
 
   const handleSetDefaultFormat = useCallback(
@@ -256,7 +258,7 @@ export function BookDetailContent({
     return (
       <View className="flex-1 items-center justify-center px-4" style={{ backgroundColor: colors.background }}>
         <Text className="text-sm" style={{ color: colors.palette.textMuted }}>
-          加载书籍详情…
+          {t("bookDetail.loadingDetail")}
         </Text>
       </View>
     );
@@ -266,8 +268,8 @@ export function BookDetailContent({
     return (
       <View className="flex-1 px-4 pt-4" style={{ backgroundColor: colors.background }}>
         <EmptyState
-          title="没有找到这本书"
-          detail={detailError ?? "它可能已从当前书库移除，或页面参数已经失效。"}
+          title={t("bookDetail.notFound.title")}
+          detail={detailError ?? t("bookDetail.notFound.detail")}
         />
       </View>
     );
@@ -280,19 +282,19 @@ export function BookDetailContent({
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null;
   const seriesLabel =
     book.series && book.seriesIndex !== null && book.seriesIndex !== undefined
-      ? `${book.series} · 第 ${Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1)} 部`
+      ? t("bookDetail.seriesInfo", { series: book.series, index: Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1) })
       : book.series;
   const synopsisText = book.comment ? stripHtml(book.comment) : "";
   const readableSelectedFormat = selectedFormat ?? pickReadableFormat(book.formats);
   const canReadInApp = readableFormats.length > 0;
   const metaLine = [year, book.publisher, langDisplay].filter(Boolean).join(" · ");
   const bookInfoRows: InfoCardItem[] = [
-    { label: "排序作者", value: book.authorSort || "—" },
-    { label: "出版日期", value: formatDate(book.pubdate) },
-    { label: "语言", value: langDisplay || "—" },
-    { label: "库中路径", value: book.path || "—", mono: true },
-    { label: "添加时间", value: formatDate(book.timestamp) },
-    { label: "最后修改", value: formatDate(book.lastModified) },
+    { label: t("bookDetail.authorSort"), value: book.authorSort || "—" },
+    { label: t("bookDetail.pubDate"), value: formatDate(book.pubdate) },
+    { label: t("bookDetail.language"), value: langDisplay || "—" },
+    { label: t("bookDetail.libraryPath"), value: book.path || "—", mono: true },
+    { label: t("bookDetail.addedAt"), value: formatDate(book.timestamp) },
+    { label: t("bookDetail.lastModified"), value: formatDate(book.lastModified) },
     ...(book.uuid ? [{ label: "UUID", value: book.uuid, mono: true }] : []),
     ...book.identifiers.map((ident) => ({
       label: IDENTIFIER_LABELS[ident.idType] ?? ident.idType,
@@ -310,7 +312,7 @@ export function BookDetailContent({
     if (!canReadInApp || !readableSelectedFormat) return;
     if (activeLibrary.sourceType === "webdav" && !isSelectedFormatPresent) {
       handleDownloadFormat(readableSelectedFormat);
-      Alert.alert("已开始下载", `${readableSelectedFormat} 下载完成后即可阅读。`);
+      Alert.alert(t("bookDetail.downloadStarted"), t("bookDetail.downloadStartedDetail", { format: readableSelectedFormat }));
       return;
     }
     onOpenReader(bookId, readableSelectedFormat);
@@ -318,12 +320,12 @@ export function BookDetailContent({
 
   const readButtonTitle =
     !canReadInApp || !readableSelectedFormat
-      ? "无可读格式"
+      ? t("bookDetail.noReadableFormat")
       : activeLibrary.sourceType === "webdav" && !isSelectedFormatPresent
-        ? "下载并阅读"
+        ? t("bookDetail.downloadAndRead")
         : progress > 0
-          ? "继续阅读"
-          : "开始阅读";
+          ? t("bookDetail.continueReading")
+          : t("bookDetail.startReading");
 
   return (
     <View className="flex-1">
@@ -368,7 +370,7 @@ export function BookDetailContent({
             <SynopsisSection colors={colors} text={synopsisText} />
           ) : null}
 
-          <InfoRowSection colors={colors} items={bookInfoRows} title="详细信息" />
+          <InfoRowSection colors={colors} items={bookInfoRows} title={t("bookDetail.infoSection")} />
         </View>
       </AnimatedScrollView>
 

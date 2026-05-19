@@ -1,5 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
 import type { BookDetail } from "@my-reader/tools/types/book";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/src/components/ui";
 import { FONT_UI } from "@/src/design/typography";
@@ -44,12 +45,13 @@ export function FormatSection({
   progressLabel,
   readableFormats,
 }: FormatSectionProps) {
+  const { t } = useTranslation();
   const readableFormatSet = new Set(readableFormats.map((format) => format.toUpperCase()));
   const defaultFormatKey = defaultFormat?.toUpperCase() ?? null;
 
   return (
     <SectionFrame colors={colors}>
-      <SectionHeader colors={colors} detail={`${book.formats.length} 种格式`} title="文件格式" />
+      <SectionHeader colors={colors} detail={t("bookDetail.formatSection.count", { count: book.formats.length })} title={t("bookDetail.formatSection.title")} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
         {book.formats.map((format) => {
           const upper = format.toUpperCase();
@@ -113,6 +115,7 @@ function FormatCard({
   relativePath: string | undefined;
   size: number;
 }) {
+  const { t } = useTranslation();
   const taskByPath = useDownloadTaskForPath(libraryId, relativePath ?? "");
   const taskByFormat = useDownloadTaskForBookFormat(libraryId, bookId, format);
   const candidateTask = taskByPath ?? taskByFormat;
@@ -162,7 +165,7 @@ function FormatCard({
               fontWeight: "600",
             }}
           >
-            {isReadable ? (isDefault ? "默认" : "可阅读") : "不支持"}
+            {isReadable ? (isDefault ? t("bookDetail.formatSection.default") : t("bookDetail.formatSection.readable")) : t("bookDetail.formatSection.unsupported")}
           </Text>
         </View>
       </View>
@@ -191,9 +194,9 @@ function FormatCard({
               style={{ color: colors.tertiary, fontFamily: FONT_UI }}
             >
               {activeTask?.status === "queued"
-                ? "排队中"
+                ? t("bookDetail.formatSection.queued")
                 : activeTask?.status === "starting"
-                  ? "准备中"
+                  ? t("bookDetail.formatSection.preparing")
                   : `${Math.round(downloadProgress * 100)}%`}
             </Text>
           </View>
@@ -218,13 +221,13 @@ function FormatCard({
         </View>
       ) : (
         <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-          未开始阅读
+          {t("bookDetail.formatSection.notStarted")}
         </Text>
       )}
 
       {isDownloading ? (
         <Pressable
-          accessibilityLabel={`取消下载 ${format}`}
+          accessibilityLabel={t("bookDetail.formatSection.cancelDownload", { format })}
           accessibilityRole="button"
           className="items-center rounded-xl border py-3"
           onPress={(e) => {
@@ -237,7 +240,7 @@ function FormatCard({
             className="text-base"
             style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "500" }}
           >
-            取消
+            {t("bookDetail.formatSection.cancel")}
           </Text>
         </Pressable>
       ) : showDownload ? (
@@ -249,7 +252,7 @@ function FormatCard({
           }}
         >
           <Button
-            accessibilityLabel={`下载 ${format}`}
+            accessibilityLabel={t("bookDetail.formatSection.downloadFormat", { format })}
             className="rounded-xl"
             colors={{
               backgroundColor: colors.accent,
@@ -260,13 +263,13 @@ function FormatCard({
             onPress={onDownload}
             size="lg"
             textStyle={{ fontFamily: FONT_UI }}
-            title="下载"
+            title={t("bookDetail.formatSection.download")}
             variant="primary"
           />
         </Pressable>
       ) : isPresent ? (
         <Pressable
-          accessibilityLabel={`删除本地文件 ${format}`}
+          accessibilityLabel={t("bookDetail.formatSection.deleteLocalFileFormat", { format })}
           accessibilityRole="button"
           className="items-center rounded-xl border py-3"
           onPress={(e) => {
@@ -276,13 +279,13 @@ function FormatCard({
           style={{ borderColor: colors.border }}
         >
           <Text className="text-sm" style={{ color: colors.muted, fontFamily: FONT_UI }}>
-            删除本地文件
+            {t("bookDetail.formatSection.deleteLocalFile")}
           </Text>
         </Pressable>
       ) : (
         <View className="items-center rounded-xl border py-3" style={{ borderColor: colors.border }}>
           <Text className="text-sm" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-            未下载
+            {t("bookDetail.formatSection.notDownloaded")}
           </Text>
         </View>
       )}

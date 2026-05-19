@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import i18n from "@/src/i18n";
+
 import type { Library } from "./types";
 import type { ResolveBookmarkResult } from "../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
 
@@ -67,26 +69,26 @@ function isNativeErrorMessage(error: unknown, pattern: RegExp) {
  */
 function mapBookmarkErrorToChinese(action: string, error: unknown) {
   if (isNativeErrorMessage(error, /Invalid URI/i)) {
-    return `${action}失败：目录地址无效。`;
+    return i18n.t("securityBookmarks.invalidUrl", { action });
   }
 
   if (isNativeErrorMessage(error, /Invalid security-scoped bookmark data/i)) {
-    return `${action}失败：保存的书库授权信息无效，请重新选择书库。`;
+    return i18n.t("securityBookmarks.invalidBookmark", { action });
   }
 
   if (isNativeErrorMessage(error, /Unsupported URI scheme for bookmark creation/i)) {
-    return `${action}失败：当前选择的目录地址格式不受支持，请改用“文件”中可授权的本地目录重新选择。`;
+    return i18n.t("securityBookmarks.unsupportedUrl", { action });
   }
 
   if (isNativeErrorMessage(error, /Unable to start accessing security-scoped resource/i)) {
-    return `${action}失败：无法访问已授权的书库目录，请重新选择书库并授权。`;
+    return i18n.t("securityBookmarks.cannotAccess", { action });
   }
 
   if (isNativeErrorMessage(error, /bookmark.*stale|stale/i)) {
-    return `${action}失败：书库授权信息已过期，请重新选择书库。`;
+    return i18n.t("securityBookmarks.expired", { action });
   }
 
-  return `${action}失败：iOS 文件授权处理出错，请重试。`;
+  return i18n.t("securityBookmarks.genericError", { action });
 }
 
 /**
@@ -116,7 +118,7 @@ export async function createSecurityScopedBookmark(uri: string) {
   try {
     return await securityScopedBookmarksModule.createBookmarkForDirectoryAsync(uri);
   } catch (error) {
-    throw createBookmarkOperationError("创建书库授权", error);
+    throw createBookmarkOperationError(i18n.t("securityBookmarks.createBookmark"), error);
   }
 }
 
@@ -135,7 +137,7 @@ export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
   try {
     return await securityScopedBookmarksModule.resolveBookmarkAsync(bookmarkBase64);
   } catch (error) {
-    throw createBookmarkOperationError("恢复书库授权", error);
+    throw createBookmarkOperationError(i18n.t("securityBookmarks.restoreBookmark"), error);
   }
 }
 
@@ -164,7 +166,7 @@ export async function withSecurityScopedLibraryAccess<T>(
       bookmark.bookmarkBase64
     );
   } catch (error) {
-    throw createBookmarkOperationError("访问书库目录", error);
+    throw createBookmarkOperationError(i18n.t("securityBookmarks.accessDirectory"), error);
   }
 
   let refreshedLibrary: Library | undefined;
@@ -181,7 +183,7 @@ export async function withSecurityScopedLibraryAccess<T>(
           };
         }
       } catch (error) {
-        throw createBookmarkOperationError("刷新书库授权", error);
+        throw createBookmarkOperationError(i18n.t("securityBookmarks.refreshBookmark"), error);
       }
     }
 

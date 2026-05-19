@@ -1,6 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
@@ -40,6 +41,7 @@ function isMissingMetadataDbError(error: unknown) {
 }
 
 export default function WebDavBrowserScreen() {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const { dataSourceId, currentPath: currentPathParam } = useLocalSearchParams<{
     dataSourceId?: string;
@@ -109,7 +111,7 @@ export default function WebDavBrowserScreen() {
         }
       } catch (caught) {
         if (active) {
-          setError(caught instanceof Error ? caught.message : "无法读取远程目录");
+          setError(caught instanceof Error ? caught.message : t("webdav.browser.cannotReadRemote"));
         }
       } finally {
         if (active) {
@@ -123,7 +125,7 @@ export default function WebDavBrowserScreen() {
     return () => {
       active = false;
     };
-  }, [currentPath, source]);
+  }, [currentPath, source, t]);
 
   async function handleChooseCurrentPath() {
     if (!source) {
@@ -141,10 +143,10 @@ export default function WebDavBrowserScreen() {
       }
     } catch (caught) {
       if (isMissingMetadataDbError(caught)) {
-        showAlertWithStatusBarRestore("目录不可用", "当前目录不是有效书库，未找到 metadata.db。");
+        showAlertWithStatusBarRestore(t("webdav.browser.notValidLibrary.title"), t("webdav.browser.notValidLibrary.message"));
         return;
       }
-      setError(caught instanceof Error ? caught.message : "当前目录不是有效的 Calibre 书库。");
+      setError(caught instanceof Error ? caught.message : t("webdav.browser.notCalibreLibrary"));
     } finally {
       setSaving(false);
     }
@@ -169,7 +171,7 @@ export default function WebDavBrowserScreen() {
   if (!source) {
     return (
       <Screen>
-        <EmptyState title="数据源不存在" detail="请先添加一个 WebDAV 数据源。" icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+        <EmptyState title={t("webdav.browser.notFound.title")} detail={t("webdav.browser.notFound.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
       </Screen>
     );
   }
@@ -177,8 +179,8 @@ export default function WebDavBrowserScreen() {
   return (
     <Screen>
       <ErrorBoundary
-        title="浏览目录失败"
-        message="WebDAV 浏览器遇到了意外错误，请重试。"
+        title={t("webdav.browser.loadFailed.title")}
+        message={t("webdav.browser.loadFailed.message")}
         onRetry={() => {
           setLoading(true);
           setError(null);
@@ -187,7 +189,7 @@ export default function WebDavBrowserScreen() {
         <HeaderToolbar
           right={[
             {
-              label: saving ? "正在验证目录" : "选择当前目录为书库",
+              label: saving ? t("webdav.browser.validating") : t("webdav.browser.selectDirectory"),
               onPress: () => void handleChooseCurrentPath(),
               icon: <MaterialIcons name="check" size={22} color={palette.primary} />,
               iosSfSymbol: "checkmark",
@@ -201,15 +203,15 @@ export default function WebDavBrowserScreen() {
         />
 
         <Text className="px-1 text-sm leading-6" style={{ color: palette.textMuted }}>
-          当前路径：{currentPath}
+          {t("webdav.browser.currentPath", { path: currentPath })}
         </Text>
 
         {loading ? (
-          <EmptyState title="正在读取目录" detail="正在从 WebDAV 服务器获取目录列表。" icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+          <EmptyState title={t("webdav.browser.reading.title")} detail={t("webdav.browser.reading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         ) : error ? (
-          <EmptyState title="读取失败" detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+          <EmptyState title={t("webdav.browser.readFailed.title")} detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         ) : entries.length === 0 ? (
-          <EmptyState title="当前目录为空" detail="当前目录下没有子目录。" icon={{ ios: "folder", android: "folder-open" }} />
+          <EmptyState title={t("webdav.browser.empty.title")} detail={t("webdav.browser.empty.detail")} icon={{ ios: "folder", android: "folder-open" }} />
         ) : (
           <SectionCard>
             {entries.map((entry, index) => (

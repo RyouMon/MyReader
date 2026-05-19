@@ -12,6 +12,8 @@ import {
   type RecoveredNativeDownload,
 } from "./native-download";
 
+import i18n from "@/src/i18n";
+
 export type DownloadTaskStatus =
   | "queued"
   | "starting"
@@ -410,7 +412,7 @@ function _runNext(): void {
   }
   for (let i = 0; i < Math.min(slots, queued.length); i++) {
     _startTask(queued[i]!.id).catch((err) => {
-      console.error("[DownloadStore] _startTask 意外抛出（try-catch 外）:", err);
+      console.error("[DownloadStore] _startTask unexpected throw (outside try-catch):", err);
     });
   }
 }
@@ -584,7 +586,7 @@ async function initializeExistingDownloadTasks(): Promise<void> {
       initializedExistingTasks = true;
     })
     .catch((err) => {
-      console.error("[DownloadStore] 恢复下载任务失败:", err);
+      console.error("[DownloadStore] Failed to recover download tasks:", err);
       initializedExistingTasks = true;
     })
     .finally(() => {

@@ -1,5 +1,7 @@
 import type { BookDetail } from "@my-reader/tools/types/book";
 
+import i18n from "@/src/i18n";
+
 import { buildCoverUri } from "../data/calibre";
 import type { BookItem, Library, WebDavDataSource } from "../data/types";
 import { buildWebDavBookCoverUri } from "../data/webdav";
@@ -7,29 +9,29 @@ import { buildWebDavBookCoverUri } from "../data/webdav";
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
   goodreads: "Goodreads",
-  douban: "豆瓣",
+  douban: "Douban",
   amazon: "Amazon",
   google: "Google",
   barnesnoble: "B&N",
 };
 
 export const FORMAT_LABELS: Record<string, string> = {
-  EPUB: "可重排版",
-  PDF: "固定版式",
-  MOBI: "Kindle 格式",
-  AZW3: "Kindle 格式",
-  TXT: "纯文本",
-  CBZ: "漫画归档",
-  DJVU: "扫描文档",
+  EPUB: i18n.t("bookFormats.epub"),
+  PDF: i18n.t("bookFormats.pdf"),
+  MOBI: i18n.t("bookFormats.mobi"),
+  AZW3: i18n.t("bookFormats.azw3"),
+  TXT: i18n.t("bookFormats.txt"),
+  CBZ: i18n.t("bookFormats.cbz"),
+  DJVU: i18n.t("bookFormats.djvu"),
   FB2: "FictionBook",
 };
 
 export function formatLanguage(code: string): string {
   const map: Record<string, string> = {
-    zho: "中文",
-    chi: "中文",
-    eng: "English",
-    jpn: "日本語",
+    zho: i18n.t("bookLang.zho"),
+    chi: i18n.t("bookLang.chi"),
+    eng: i18n.t("bookLang.eng"),
+    jpn: i18n.t("bookLang.jpn"),
     kor: "한국어",
     fra: "Français",
     deu: "Deutsch",
@@ -50,7 +52,7 @@ export function formatDate(dateStr: string | null): string {
   try {
     const d = new Date(dateStr);
     if (d.getFullYear() <= 100) return "—";
-    return d.toLocaleDateString("zh-CN", {
+    return d.toLocaleDateString(i18n.language === "zh" ? "zh-CN" : undefined, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

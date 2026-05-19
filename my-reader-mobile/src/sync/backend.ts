@@ -8,6 +8,7 @@ import {
   parentDirectoryUriForFileUri,
 } from "../utils/io";
 import { AppInvariantError, DataIntegrityError, NetworkError } from "../errors";
+import i18n from "@/src/i18n";
 
 export type BackendKind = "webdav" | "local-direct";
 
@@ -58,7 +59,7 @@ function encodeBasicAuth(username: string, password: string): string {
   if (typeof globalThis.btoa === "function") {
     return globalThis.btoa(`${username}:${password}`);
   }
-  throw new AppInvariantError("当前环境不支持 Basic Auth 编码");
+  throw new AppInvariantError(i18n.t("sync.basicAuthNotSupported"));
 }
 
 // ---------------------------- WebDAV backend ----------------------------
@@ -108,7 +109,7 @@ class WebDavBackend implements SyncBackend {
       headers: this.authHeader(),
     });
     if (!response.ok) {
-      throw new NetworkError(`WebDAV GET 失败: ${response.status} ${relativePath}`, response.status);
+      throw new NetworkError(i18n.t("sync.webdavGetFailed", { status: response.status, path: relativePath }), response.status);
     }
     return new Uint8Array(await response.arrayBuffer());
   }
@@ -124,7 +125,7 @@ class WebDavBackend implements SyncBackend {
       body: bytes as unknown as BodyInit,
     });
     if (!response.ok) {
-      throw new NetworkError(`WebDAV PUT 失败: ${response.status} ${relativePath}`, response.status);
+      throw new NetworkError(i18n.t("sync.webdavPutFailed", { status: response.status, path: relativePath }), response.status);
     }
   }
 
@@ -139,7 +140,7 @@ class WebDavBackend implements SyncBackend {
     });
     // 404 is fine — the end-state is "file not there".
     if (!response.ok && response.status !== 404) {
-      throw new NetworkError(`WebDAV DELETE 失败: ${response.status} ${relativePath}`, response.status);
+      throw new NetworkError(i18n.t("sync.webdavDeleteFailed", { status: response.status, path: relativePath }), response.status);
     }
   }
 
@@ -152,7 +153,7 @@ class WebDavBackend implements SyncBackend {
       return { size: 0, mtimeMs: 0, exists: false };
     }
     if (!response.ok) {
-      throw new NetworkError(`WebDAV PROPFIND 失败: ${response.status} ${relativePath}`, response.status);
+      throw new NetworkError(i18n.t("sync.webdavPropfindFailed", { status: response.status, path: relativePath }), response.status);
     }
     const xml = await response.text();
     const size = Number(xml.match(/<[^>]*getcontentlength[^>]*>(\d+)</i)?.[1] ?? 0);
@@ -171,7 +172,7 @@ class WebDavBackend implements SyncBackend {
     if (response.status === 404) return [];
     if (!response.ok) {
       throw new NetworkError(
-        `WebDAV PROPFIND 列目录失败: ${response.status} ${normalizedPrefix}`,
+        i18n.t("sync.webdavPropfindListFailed", { status: response.status, path: normalizedPrefix }),
         response.status,
       );
     }
@@ -218,7 +219,7 @@ class WebDavBackend implements SyncBackend {
       });
       // 201 = created, 405 = exists, 301 = collection already at path.
       if (!response.ok && ![201, 301, 405].includes(response.status)) {
-        throw new NetworkError(`WebDAV MKCOL 失败: ${response.status} ${cursor}`, response.status);
+        throw new NetworkError(i18n.t("sync.webdavMkcolFailed", { status: response.status, path: cursor }), response.status);
       }
     }
   }
@@ -248,7 +249,7 @@ class LocalDirectBackend implements SyncBackend {
   async readBytes(relativePath: string): Promise<Uint8Array> {
     const file = this.fileFor(relativePath);
     if (!file.exists) {
-      throw new DataIntegrityError(`本地文件不存在: ${relativePath}`);
+      throw new DataIntegrityError(i18n.t("sync.localFileNotExist", { path: relativePath }));
     }
     return file.bytes();
   }

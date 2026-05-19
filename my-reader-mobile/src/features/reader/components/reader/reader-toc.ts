@@ -1,4 +1,5 @@
 import type { ReaderTocItem } from "./types";
+import i18n from "@/src/i18n";
 
 interface TocItem {
   label: string
@@ -45,7 +46,7 @@ export function flattenFixedToc(toc: TocItem[], totalPages: number): ReaderTocIt
   if (totalPages <= 20) {
     const fallback = Array.from({ length: totalPages }, (_, i) => ({
       id: buildTocItemId("fixed-fallback", [i], undefined),
-      label: `第 ${i + 1} 页`,
+      label: i18n.t("reader.pageLabel", { page: i + 1 }),
       pageIndex: i,
       chapterIndex: i,
     }));

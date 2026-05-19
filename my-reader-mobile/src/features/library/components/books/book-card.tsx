@@ -4,6 +4,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { buildBookMenuActions } from "@/src/data/book-menu";
 import type { BookItem } from "@/src/data/types";
@@ -69,6 +70,7 @@ function BookCardImpl({
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookCardProps) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const coverHeight = Math.round(width * 1.43);
   const progressValue = typeof progress?.percent === "number" ? Math.max(0, Math.min(100, progress.percent)) / 100 : undefined;
@@ -116,7 +118,7 @@ function BookCardImpl({
   const moreButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`更多操作：${book.title}`}
+      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
@@ -132,7 +134,7 @@ function BookCardImpl({
   const menuTrigger = (
     <View
       accessibilityRole="button"
-      accessibilityLabel={`更多操作：${book.title}`}
+      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
@@ -153,7 +155,7 @@ function BookCardImpl({
       <View className="relative">
         <TouchableHighlight
           accessibilityRole={onPress ? "button" : undefined}
-          accessibilityLabel={`打开《${book.title}》`}
+          accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
           onPress={handlePress}
           activeOpacity={0.78}
           underlayColor={palette.backgroundSecondary}

@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
 
@@ -7,6 +8,7 @@ const Trigger = NativeTabs.Trigger;
 
 export default function TabsLayout() {
   const palette = useThemePalette();
+  const { t } = useTranslation();
 
   return (
     <NativeTabs tintColor={palette.primary} backgroundColor={palette.surface}>
@@ -22,7 +24,7 @@ export default function TabsLayout() {
             ),
           }}
         />
-        <Trigger.Label>主页</Trigger.Label>
+        <Trigger.Label>{t("tabs.home")}</Trigger.Label>
       </Trigger>
       <Trigger name="library">
         <Trigger.Icon
@@ -42,7 +44,7 @@ export default function TabsLayout() {
             ),
           }}
         />
-        <Trigger.Label>书库</Trigger.Label>
+        <Trigger.Label>{t("tabs.library")}</Trigger.Label>
       </Trigger>
       <Trigger name="settings">
         <Trigger.Icon
@@ -52,7 +54,7 @@ export default function TabsLayout() {
             selected: <Trigger.VectorIcon family={MaterialIcons} name="settings" />,
           }}
         />
-        <Trigger.Label>设置</Trigger.Label>
+        <Trigger.Label>{t("tabs.settings")}</Trigger.Label>
       </Trigger>
     </NativeTabs>
   );

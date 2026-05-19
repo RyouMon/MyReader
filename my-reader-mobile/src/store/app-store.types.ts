@@ -30,6 +30,7 @@ export type FixedReaderSettings = {
 
 export type ReaderSettings = {
   themeMode: ThemeMode;
+  language: string;
   syncEnabled: boolean;
   cache: {
     maxCacheSizeMB: number;
@@ -78,6 +79,7 @@ export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "ac
     error: string | null;
     setHydrated: (value: boolean) => void;
     setThemeMode: (mode: ThemeMode) => void;
+    setLanguage: (language: string) => void;
     setLibraryViewMode: (mode: LibraryViewMode) => void;
     setSyncEnabled: (enabled: boolean) => void;
     patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;

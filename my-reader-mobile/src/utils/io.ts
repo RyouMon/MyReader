@@ -15,6 +15,8 @@
  * - **WebDAV URL 路径**：用 {@link encodeUrlPathFromChunks}，在明文片段上对每个 segment **只**做一次 `encodeURIComponent`。
  */
 
+import i18n from "@/src/i18n";
+
 /** 单一路径段内 `%` 序列的最大解码轮数（覆盖 `%25xx` 叠多层）。 */
 export const IO_PATH_MAX_PERCENT_DECODE_ROUNDS = 8;
 
@@ -149,7 +151,7 @@ export function fileUriToNativeDirAndName(fileUri: string): { dir: string; name:
   const nativePath = toNativeFilesystemPath(fileUri).replace(/\/+$/, "");
   const lastSlash = nativePath.lastIndexOf("/");
   if (lastSlash <= 0) {
-    throw new Error(`无法解析文件路径: ${fileUri}`);
+    throw new Error(i18n.t("sync.cannotParseFilePath", { uri: fileUri }));
   }
   return {
     dir: nativePath.slice(0, lastSlash),

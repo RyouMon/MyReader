@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -33,6 +34,7 @@ function formatDate(timestamp?: number) {
 }
 
 function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent: string }) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
 
   return (
@@ -50,9 +52,9 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
         }}
       >
         <SymbolView
-          accessibilityLabel="WebDAV 数据源"
+          accessibilityLabel={t("webdav.sourcesTitle")}
           fallback={
-            <MaterialIcons accessibilityLabel="WebDAV 数据源" name="cloud" size={80} color={accent} />
+            <MaterialIcons accessibilityLabel={t("webdav.sourcesTitle")} name="cloud" size={80} color={accent} />
           }
           name={{
             ios: "cloud.fill",
@@ -87,6 +89,7 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
 }
 
 export default function WebDavDataSourceDetailScreen() {
+  const { t } = useTranslation();
   const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
   const palette = useThemePalette();
   const { dataSources, deleteDataSource } = useDataSourceStore();
@@ -113,10 +116,10 @@ export default function WebDavDataSourceDetailScreen() {
       return;
     }
 
-    showAlertWithStatusBarRestore("删除 WebDAV 数据源", `确认删除“${webdavSource.name}”？`, [
-      { text: "取消", style: "cancel" },
+    showAlertWithStatusBarRestore(t("webdav.delete.title"), t("webdav.delete.confirm", { name: webdavSource.name }), [
+      { text: t("webdav.delete.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("webdav.delete.confirmButton"),
         style: "destructive",
         onPress: () => {
           void (async () => {
@@ -125,8 +128,8 @@ export default function WebDavDataSourceDetailScreen() {
               handleBack();
             } catch (caught) {
               showAlertWithStatusBarRestore(
-                "无法删除",
-                caught instanceof Error ? caught.message : "删除数据源失败。"
+                t("webdav.deleteFailed.title"),
+                caught instanceof Error ? caught.message : t("webdav.deleteFailed.message")
               );
             }
           })();
@@ -138,7 +141,7 @@ export default function WebDavDataSourceDetailScreen() {
   const rightToolbar: HeaderToolbarAction[] = webdavSource
     ? [
         {
-          label: "删除数据源",
+          label: t("webdav.deleteSource"),
           onPress: confirmDelete,
           icon:
             Platform.OS === "ios" ? (
@@ -161,10 +164,10 @@ export default function WebDavDataSourceDetailScreen() {
           <HeaderToolbar />
           <View className="flex-1 items-center justify-center">
             <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-              没有找到这个数据源
+              {t("webdav.notFound.title")}
             </Text>
             <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-              它可能已经被移除，或者当前链接参数已经失效。
+              {t("webdav.notFound.detail")}
             </Text>
           </View>
         </View>
@@ -179,16 +182,16 @@ export default function WebDavDataSourceDetailScreen() {
         <View className="flex-1 gap-8">
           <WebDavDetailHero source={webdavSource} accent={accent} />
           <SectionCard>
-            <SettingsRow title="类型" detail="WebDAV" />
-            <SettingsRow title="服务器地址" detail={webdavSource.endpoint} />
-            <SettingsRow title="用户名" detail={webdavSource.username} />
+            <SettingsRow title={t("webdav.type")} detail="WebDAV" />
+            <SettingsRow title={t("webdav.serverAddress")} detail={webdavSource.endpoint} />
+            <SettingsRow title={t("webdav.username")} detail={webdavSource.username} />
             <SettingsRow
-              title="密码"
-              detail={webdavSource.hasPassword ? "已保存在本机安全存储" : "未设置"}
+              title={t("webdav.password")}
+              detail={webdavSource.hasPassword ? t("webdav.passwordSaved") : t("webdav.passwordNotSet")}
             />
-            <SettingsRow title="基础路径" detail={webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"} />
-            <SettingsRow title="状态" detail={webdavSource.enabled ? "已启用" : "已停用"} />
-            <SettingsRow title="添加时间" detail={formatDate(webdavSource.createdAt)} isLast />
+            <SettingsRow title={t("webdav.basePath")} detail={webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"} />
+            <SettingsRow title={t("webdav.status")} detail={webdavSource.enabled ? t("webdav.enabled") : t("webdav.disabled")} />
+            <SettingsRow title={t("webdav.addedAt")} detail={formatDate(webdavSource.createdAt)} isLast />
           </SectionCard>
         </View>
       </View>

@@ -14,6 +14,7 @@ import { clearReaderCachesForBook } from "../data/cache";
 import { evictLocalFileOfflineSafe } from "./actions";
 import { diffBooks, type BookDiff, type BookSummary } from "./book-diff";
 import { downloadLibraryFile } from "./download-service";
+import i18n from "@/src/i18n";
 
 type RawBookSummaryRow = {
   id: number;
@@ -83,7 +84,7 @@ export async function refreshLibrary(
       (item) => item.id === library.dataSourceId && item.type === "webdav"
     );
     if (!source || source.type !== "webdav") {
-      throw new Error("当前书库关联的 WebDAV 数据源不存在。");
+      throw new Error(i18n.t("sync.webdavSourceNotFound"));
     }
     const password =
       source.password ?? (await readWebDavPassword(source.id)) ?? "";
@@ -93,7 +94,7 @@ export async function refreshLibrary(
       webDavSource
     );
     if (!newMetadataUri) {
-      throw new Error("无法重新下载 metadata.db");
+      throw new Error(i18n.t("sync.cannotRedownloadMeta"));
     }
     newLibrary = { ...library, metadataUri: newMetadataUri };
   } else {

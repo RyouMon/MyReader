@@ -4,6 +4,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { buildBookMenuActions } from "@/src/data/book-menu";
 import type { BookItem } from "@/src/data/types";
@@ -18,17 +19,17 @@ import { DownloadProgressIndicator } from "./download-progress-indicator";
 /**
  * Returns the mobile row status label for an optional progress snapshot.
  */
-function getProgressLabel(progress?: BookProgressSnapshot) {
+function getProgressLabel(progress: BookProgressSnapshot | undefined, t: (key: string) => string) {
   if (progress?.statusLabel) {
     return progress.statusLabel;
   }
   if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return "未读";
+    return t("bookRow.unread");
   }
   if (progress.percent >= 100) {
-    return "已读完";
+    return t("bookRow.finished");
   }
-  return "阅读中";
+  return t("bookRow.reading");
 }
 
 export type BookRowProps = {
@@ -85,6 +86,7 @@ function BookRowImpl({
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookRowProps) {
+  const { t } = useTranslation();
   const palette = useThemePalette();
   const hasProgress = typeof progress?.percent === "number";
   const progressValue = hasProgress ? Math.max(0, Math.min(100, progress.percent ?? 0)) / 100 : undefined;
@@ -133,7 +135,7 @@ function BookRowImpl({
   const moreButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`更多操作：${book.title}`}
+      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
@@ -149,7 +151,7 @@ function BookRowImpl({
   const menuTrigger = (
     <View
       accessibilityRole="button"
-      accessibilityLabel={`更多操作：${book.title}`}
+      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
@@ -164,7 +166,7 @@ function BookRowImpl({
   return (
     <TouchableHighlight
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityLabel={`打开《${book.title}》`}
+      accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
       onPress={handlePress}
       underlayColor={palette.backgroundSecondary}
     >
@@ -191,7 +193,7 @@ function BookRowImpl({
                 color: isUnread ? palette.textMuted : palette.primary,
               }}
             >
-              {getProgressLabel(progress)}
+              {getProgressLabel(progress, t)}
             </Text>
             {hasProgress ? (
               <Text className="text-xs" style={{ color: palette.textMuted }}>

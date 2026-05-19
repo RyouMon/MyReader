@@ -1,12 +1,15 @@
+import { getLocales } from "expo-localization";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { router, useNavigation } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   clearAllReaderCaches,
   enforceReaderCacheLimit,
   getReaderCacheUsageSummary,
 } from "@/src/data/cache";
+import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
 
@@ -14,15 +17,24 @@ import { Screen, SectionCard, SectionHeading, SettingsRow } from "@/src/componen
 import { useAppStore } from "@/src/store/app-store";
 import { useLibraryStore } from "@/src/store/library-store";
 
-const themeModes = ["跟随设备", "浅色", "深色"];
-const themeModeMap: Record<string, ThemeMode> = { 跟随设备: "system", 浅色: "light", 深色: "dark" };
-const themeModeLabels: Record<ThemeMode, string> = { system: "跟随设备", light: "浅色", dark: "深色" };
-
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const { mode, setMode } = useTheme();
   const { libraries, activeLibraryId } = useLibraryStore();
   const navigation = useNavigation();
   const isTransitioningRef = useRef(false);
+
+  const themeModes = [t("settings.themeMode.system"), t("settings.themeMode.light"), t("settings.themeMode.dark")];
+  const themeModeMap: Record<string, ThemeMode> = {
+    [t("settings.themeMode.system")]: "system",
+    [t("settings.themeMode.light")]: "light",
+    [t("settings.themeMode.dark")]: "dark",
+  };
+  const themeModeLabels: Record<ThemeMode, string> = {
+    system: t("settings.themeMode.system"),
+    light: t("settings.themeMode.light"),
+    dark: t("settings.themeMode.dark"),
+  };
 
   useEffect(() => {
     // transitionStart/transitionEnd are Stack-specific events; the generic
@@ -52,14 +64,14 @@ export default function SettingsScreen() {
     const usage = getReaderCacheUsageSummary();
     return `${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`;
   });
-  const themeMode = useMemo(() => themeModeLabels[mode], [mode]);
+  const themeMode = useMemo(() => themeModeLabels[mode], [mode, themeModeLabels]);
   const themeMenuActions = useMemo<MenuAction[]>(
     () =>
       themeModes.map((nextMode) => ({
         id: `theme:${themeModeMap[nextMode]}`,
         title: `${nextMode === themeMode ? "✓ " : ""}${nextMode}`,
       })),
-    [themeMode]
+    [themeModes, themeMode, themeModeMap]
   );
   const cacheLimitMenuActions = useMemo<MenuAction[]>(
     () =>
@@ -70,17 +82,34 @@ export default function SettingsScreen() {
     [cacheSettings.maxCacheSizeMB]
   );
 
+  const language = useAppStore((s) => s.settings.language);
+  const setLanguage = useAppStore((s) => s.setLanguage);
+  const languageLabels: Record<string, string> = { zh: "中文", en: "English", system: t("settings.themeMode.system") };
+  const effectiveLanguage = language || "system";
+  const languageMenuActions = useMemo<MenuAction[]>(
+    () =>
+      ["system", "zh", "en"].map((lang) => ({
+        id: `lang:${lang}`,
+        title: `${effectiveLanguage === lang ? "✓ " : ""}${languageLabels[lang]}`,
+      })),
+    [effectiveLanguage, languageLabels]
+  );
+
   return (
     <>
       <Screen>
         <View className="gap-3">
-          <SectionHeading title="书库" />
+          <SectionHeading title={t("settings.librarySection")} />
           <SectionCard>
             {libraries.map((library) => (
               <SettingsRow
                 key={library.id}
                 title={library.name}
-                detail={`${library.bookCount} 本${activeLibraryId === library.id ? " · 当前使用" : ""}`}
+                detail={
+                  activeLibraryId === library.id
+                    ? t("settings.bookCountCurrent", { count: library.bookCount })
+                    : t("settings.bookCount", { count: library.bookCount })
+                }
                 onPress={() =>
                   navigateTo({
                     pathname: "/settings/library/[libraryId]",
@@ -90,26 +119,37 @@ export default function SettingsScreen() {
               />
             ))}
             <SettingsRow
-              title="添加书库"
+              title={t("settings.addLibrary")}
               isLast
               onPress={() => navigateTo("/settings/add-library")}
             />
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionHeading title="数据与来源" />
+          <SectionHeading title={t("settings.dataAndSources")} />
           <SectionCard>
-            <SettingsRow title="本地存储" detail="默认数据源，无需配置" />
+            <SettingsRow title={t("settings.localStorage")} detail={t("settings.localStorageDetail")} />
             <SettingsRow
               title="WebDAV"
-              detail="可添加并管理远程 WebDAV 数据源"
+              detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionHeading title="阅读偏好" />
+          <SectionHeading title={t("settings.readingPreferences")} />
           <SectionCard>
+            <MenuView
+              actions={languageMenuActions}
+              isAnchoredToRight
+              onPressAction={({ nativeEvent }) => {
+                const lang = nativeEvent.event.replace("lang:", "");
+                setLanguage(lang === "system" ? "" : lang);
+                changeLanguage(lang === "system" ? (getLocales()[0]?.languageCode ?? "zh") : lang);
+              }}
+            >
+              <SettingsRow title={t("settings.language")} detail={languageLabels[effectiveLanguage]} />
+            </MenuView>
             <MenuView
               actions={themeMenuActions}
               isAnchoredToRight
@@ -118,9 +158,9 @@ export default function SettingsScreen() {
                 setMode(nextMode);
               }}
             >
-              <SettingsRow title="深色模式" detail={themeMode} />
+              <SettingsRow title={t("settings.darkMode")} detail={themeMode} />
             </MenuView>
-            <SettingsRow title="阅读器样式" detail="字体、字号、页边距" />
+            <SettingsRow title={t("settings.readerStyle")} detail={t("settings.readerStyleDetail")} />
             <MenuView
               actions={cacheLimitMenuActions}
               isAnchoredToRight
@@ -133,11 +173,11 @@ export default function SettingsScreen() {
                 setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
               }}
             >
-              <SettingsRow title="缓存最大容量" detail={`${cacheSettings.maxCacheSizeMB} MB`} />
+              <SettingsRow title={t("settings.cacheMaxSize")} detail={`${cacheSettings.maxCacheSizeMB} MB`} />
             </MenuView>
             <SettingsRow
-              title="全部清理缓存"
-              detail={`当前占用 ${cacheUsageLabel}`}
+              title={t("settings.clearAllCache")}
+              detail={t("settings.currentUsage", { size: cacheUsageLabel })}
               onPress={() => {
                 clearAllReaderCaches();
                 const usage = getReaderCacheUsageSummary();
