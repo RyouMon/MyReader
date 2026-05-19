@@ -5,7 +5,7 @@
   "scripts": {
     "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile",
     "eas-build-post-install": "rm -rf node_modules/.cache",
-    "postinstall": "cd .. && patch-package --patch-dir my-reader-mobile/patches",
+    "postinstall": "patch-package",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
     "android": "expo run:android --device",

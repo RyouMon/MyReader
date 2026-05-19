@@ -2,3 +2,9 @@ packages:
   - "packages/*"
   - "my-reader"
   - "my-reader-mobile"
+allowBuilds:
+  '@sentry/cli': true
+  edgedriver: true
+  esbuild: true
+  geckodriver: true
+  unrs-resolver: true
