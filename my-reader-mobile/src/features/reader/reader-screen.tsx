@@ -5,8 +5,8 @@ import { BottomSheetModal, BottomSheetModalProvider } from "@gorhom/bottom-sheet
 import { router, useLocalSearchParams } from "expo-router";
 import { lazy, memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, StatusBar } from "react-native";
-import { FadeIn, FadeOut } from "react-native-reanimated";
+import { ActivityIndicator, StatusBar, StyleSheet } from "react-native";
+import { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
@@ -177,6 +177,26 @@ export default function ReaderScreen() {
   const fixedSettings = settings.fixed;
   void patchFixedReaderSettings;
 
+  const activeTheme = (loadState.status === "ready" && loadState.layoutMode === "reflowable") ? reflowSettings.theme : fixedSettings.theme;
+  const themeBgColor = (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg;
+  const themeBg = useSharedValue(themeBgColor);
+  const themeOverlayOpacity = useSharedValue(0);
+  const prevThemeBgRef = useRef(themeBgColor);
+  useEffect(() => {
+    if (prevThemeBgRef.current !== themeBgColor) {
+      themeBg.value = prevThemeBgRef.current;
+      themeOverlayOpacity.value = 1;
+      themeOverlayOpacity.value = withTiming(0, { duration: 350 });
+      themeBg.value = withTiming(themeBgColor, { duration: 350 });
+      prevThemeBgRef.current = themeBgColor;
+    }
+  }, [themeBgColor]);
+  const themeBgStyle = useAnimatedStyle(() => ({ backgroundColor: themeBg.value }));
+  const themeOverlayStyle = useAnimatedStyle(() => ({
+    backgroundColor: themeBg.value,
+    opacity: themeOverlayOpacity.value,
+  }));
+
   if (loadState.status === "loading") {
     const bgColor = coverUri
       ? READER_SCREEN_BACKGROUND_COLOR
@@ -244,7 +264,6 @@ export default function ReaderScreen() {
   const fmtUpper = loadState.format.toUpperCase();
   const isReflowSurface = loadState.layoutMode === "reflowable";
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
-  const activeTheme = isReflowSurface ? reflowSettings.theme : fixedSettings.theme;
   const chromePalette = useMemo<ReaderChromePalette>(() => {
     const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
     return readerChromePalette(option.fg, option.swatch, "#C4622D");
@@ -289,7 +308,7 @@ export default function ReaderScreen() {
           <View className="absolute inset-0">
             {isReflowSurface ? (
               loadState.epubFileUri ? (
-                <View style={{ paddingTop: insets.top - 8, flex: 1, backgroundColor: (READER_THEMES[reflowSettings.theme] ?? READER_THEMES.neutral).bg }}>
+                <Animated.View style={[{ paddingTop: insets.top - 8, flex: 1 }, themeBgStyle]}>
                 <ReadiumReflowReader
                   epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
                   initialLocator={loadState.initialLocator ?? undefined}
@@ -305,7 +324,7 @@ export default function ReaderScreen() {
                   paddingX={reflowSettings.paddingX}
                   brightness={reflowSettings.brightness}
                 />
-                </View>
+                </Animated.View>
               ) : null
             ) : isFixedSurface ? (
               <FixedReaderSurface
@@ -324,6 +343,8 @@ export default function ReaderScreen() {
                 brightness={fixedSettings.brightness}
               />
             ) : null}
+
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, themeOverlayStyle]} />
 
             {loadState.status === "ready" && !readerState?.ready && readerLoadingOverlay}
           </View>
