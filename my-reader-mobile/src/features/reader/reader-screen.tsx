@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { useTheme } from "@/src/design/tokens";
-import { getFallbackCoverColor } from "@/src/features/library/components/books/book-cover";
 import {
   ReaderActionsExpanded,
   ReaderChapterLabel,
@@ -27,7 +26,7 @@ import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
 import { toNativeFilesystemPath } from "@/src/utils/io";
-import { Animated, Image, Pressable, Text, View } from "@/tw";
+import { Animated, Pressable, Text, View } from "@/tw";
 
 const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));
 const ReadiumReflowReader = lazy(async () => import("@/src/features/reader/components/reader/reflow/ReadiumReflowReader"));
@@ -58,7 +57,7 @@ export default function ReaderScreen() {
   const settingsSheetRef = useRef<BottomSheetModal>(null);
 
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
-  const { loadState, coverUri, bookTitle } = useBookLoader(
+  const { loadState, bookTitle } = useBookLoader(
     id,
     formatParam,
     activeLibraryId,
@@ -138,10 +137,9 @@ export default function ReaderScreen() {
       <DomReaderFallback
         format={loadState.status === "ready" ? loadState.format : null}
         title={loadState.status === "ready" ? loadState.title : null}
-        coverUri={coverUri}
       />
     ),
-    [loadState, coverUri]
+    [loadState]
   );
 
   const readerLoadingOverlay = useMemo(
@@ -151,16 +149,6 @@ export default function ReaderScreen() {
         className="absolute inset-0 z-20 items-center justify-center"
         style={{ backgroundColor: READER_FIXED.canvasBg }}
       >
-        {coverUri ? (
-          <>
-            <Image
-              source={coverUri}
-              className="absolute inset-0 h-full w-full"
-              contentFit="cover"
-            />
-            <View className="absolute inset-0 bg-black/55" />
-          </>
-        ) : null}
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         {loadState.status === "ready" ? (
           <Text className="mt-4 px-8 text-center text-sm" style={{ color: READER_CHROME.textSecondary }} numberOfLines={2}>
@@ -169,7 +157,7 @@ export default function ReaderScreen() {
         ) : null}
       </Animated.View>
     ),
-    [coverUri, loadState]
+    [loadState]
   );
 
   const progressPercent = readerState?.progress ?? 0;
@@ -198,26 +186,9 @@ export default function ReaderScreen() {
   }));
 
   if (loadState.status === "loading") {
-    const bgColor = coverUri
-      ? READER_SCREEN_BACKGROUND_COLOR
-      : bookTitle
-        ? getFallbackCoverColor(bookTitle)
-        : READER_SCREEN_BACKGROUND_COLOR;
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: bgColor }}>
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
         <StatusBar hidden={false} barStyle="light-content" />
-
-        {coverUri ? (
-          <>
-            <Image
-              source={coverUri}
-              className="absolute inset-0 h-full w-full"
-              contentFit="cover"
-            />
-            <View className="absolute inset-0 bg-black/55" />
-          </>
-        ) : null}
-
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         {bookTitle ? (
           <Text className="mt-4 px-8 text-center text-sm" style={{ color: READER_CHROME.textSecondary }} numberOfLines={2}>
@@ -424,11 +395,9 @@ export default function ReaderScreen() {
 const DomReaderFallback = memo(function DomReaderFallback({
   format,
   title,
-  coverUri,
 }: {
   format: string | null;
   title: string | null;
-  coverUri?: string;
 }) {
   const { t } = useTranslation();
   useEffect(() => {
@@ -438,27 +407,11 @@ const DomReaderFallback = memo(function DomReaderFallback({
     });
   }, [format, title]);
 
-  const bgColor = coverUri
-    ? READER_SCREEN_BACKGROUND_COLOR
-    : title
-      ? getFallbackCoverColor(title)
-      : READER_SCREEN_BACKGROUND_COLOR;
-
   return (
     <View
       className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
     >
-      {coverUri ? (
-        <>
-          <Image
-            source={coverUri}
-            className="absolute inset-0 h-full w-full"
-            contentFit="cover"
-          />
-          <View className="absolute inset-0 bg-black/55" />
-        </>
-      ) : null}
       <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
       <Text className="mt-4 text-sm" style={{ color: READER_CHROME.textSecondary }}>
         {t("reader.mountingReader")}
