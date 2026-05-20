@@ -274,9 +274,9 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
       const tocItem = tocItemsRef.current[gotoPageCommand];
       if (!tocItem) return;
 
-      const target = tocItem.locator ?? tocItem.href
-        ? positionsRef.current.find((p) => p.href === tocItem.href)
-        : undefined;
+      const target =
+        tocItem.locator ??
+        (tocItem.href ? positionsRef.current.find((p) => p.href === tocItem.href) : undefined);
       if (target) {
         readiumRef.current?.goTo(target);
       }
