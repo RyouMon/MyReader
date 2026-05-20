@@ -103,6 +103,8 @@ function RootNavigator() {
               presentation: "fullScreenModal",
               animation: "fade",
               gestureEnabled: false,
+              headerShown: false,
+              headerTitle: "",
             }}
           />
         </Stack>

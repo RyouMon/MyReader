@@ -114,12 +114,15 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persistedState, currentState) => {
         const typedPersisted = (persistedState as Partial<PersistedAppState>) ?? {};
+        const persistedSettings = typedPersisted.settings;
 
         return {
           ...currentState,
           settings: {
             ...defaultSettings,
-            ...typedPersisted.settings,
+            ...persistedSettings,
+            reflowable: { ...defaultSettings.reflowable, ...persistedSettings?.reflowable },
+            fixed: { ...defaultSettings.fixed, ...persistedSettings?.fixed },
           },
           dataSources: mergeDataSources(
             Array.isArray(typedPersisted.dataSources) ? typedPersisted.dataSources : []

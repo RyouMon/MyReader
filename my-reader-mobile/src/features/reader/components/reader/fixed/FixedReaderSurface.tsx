@@ -47,7 +47,7 @@ export default function FixedReaderSurface({
   onToggleChrome,
   gotoPageCommand,
   fallback,
-  theme = "dark",
+  theme = "night",
   brightness = 100,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);

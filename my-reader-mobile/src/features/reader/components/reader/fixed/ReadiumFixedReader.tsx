@@ -112,7 +112,7 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
       onToggleChrome,
       gotoPageCommand,
       brightness = 100,
-      theme = "dark",
+      theme = "night",
     },
     ref,
   ) {
@@ -137,9 +137,10 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
     );
 
     const preferences = useMemo(() => {
-      const t = READER_THEMES[theme];
+      const t = READER_THEMES[theme] ?? READER_THEMES.neutral;
+      const isDarkTheme = theme === "night" || theme === "contrast2";
       return {
-        theme: (theme === "dark" ? "dark" : "light") as "light" | "dark" | "sepia",
+        theme: (isDarkTheme ? "dark" : "light") as "light" | "dark" | "sepia",
         backgroundColor: t.bg,
       };
     }, [theme]);

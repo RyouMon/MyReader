@@ -5,6 +5,7 @@ export default function ReaderLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        headerTitle: "",
         animation: "fade",
         gestureEnabled: false,
       }}

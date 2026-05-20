@@ -6,7 +6,7 @@ import type { LibraryStore } from "@my-reader/tools/store/library";
 import type { BookItem, Library } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
-export type ReaderTheme = "light" | "paper" | "green" | "dark";
+export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
 export type ReadingLayout = "scroll" | "paginate";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";

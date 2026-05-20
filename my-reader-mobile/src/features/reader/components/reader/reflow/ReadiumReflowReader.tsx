@@ -106,10 +106,14 @@ function resolveNativeLocator(positions: Locator[], stored: Locator): Locator | 
  */
 function toReadiumThemeToken(theme: ReaderTheme): "light" | "dark" | "sepia" {
   switch (theme) {
-    case "dark":
+    case "night":
+    case "contrast2":
       return "dark";
     case "paper":
+    case "sepia":
     case "green":
+    case "ocean":
+    case "contrast1":
       return "sepia";
     default:
       return "light";
@@ -123,7 +127,7 @@ function buildPreferences(
   paddingX: number,
   scroll: boolean,
 ): Preferences {
-  const t = READER_THEMES[theme];
+  const t = READER_THEMES[theme] ?? READER_THEMES.neutral;
   return {
     theme: toReadiumThemeToken(theme),
     fontSize: fontSize / 16,

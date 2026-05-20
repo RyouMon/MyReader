@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MyReader Mobile — EPUB Reader</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="mobile_reader_theme_1.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+    /* ═══════════════════════════════════════
+       PHONE FRAME
+       ═══════════════════════════════════════ */
+    .phone-frame {
+      width: 393px; height: 852px;
+      border-radius: 44px; overflow: hidden;
+      box-shadow: 0 0 0 8px #1C1714, 0 0 0 10px #3D3229, 0 20px 60px rgba(0,0,0,0.3);
+      position: relative; margin: 40px auto;
+      background: var(--reader-bg);
+    }
+
+    /* ═══════════════════════════════════════
+       READER CONTAINER
+       ═══════════════════════════════════════ */
+    .reader {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+      background: var(--reader-bg);
+      color: var(--reader-ink);
+      transition: background 350ms ease, color 350ms ease;
+    }
+
+    /* ═══════════════════════════════════════
+       HEADER — safe area + chapter title (centered) + close
+       ═══════════════════════════════════════ */
+    .reader-header {
+      padding: var(--safe-top) 20px 0 20px;
+      min-height: calc(var(--safe-top) + 28px);
+      display: flex; align-items: flex-end; justify-content: center;
+      position: relative; z-index: 10;
+    }
+    .chapter-label {
+      font-family: var(--font-ui);
+      font-size: 13px; font-weight: 500;
+      color: var(--ink-2);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-align: center; max-width: 100%;
+      line-height: 28px;
+    }
+
+    /* Close button — absolute right, same vertical position as chapter title */
+    .close-btn {
+      position: absolute; right: 16px;
+      bottom: 0;
+      width: var(--btn-size); height: var(--btn-size);
+      border-radius: var(--radius-full);
+      border: none;
+      background: color-mix(in srgb, var(--reader-ink) 12%, var(--reader-bg));
+      color: var(--reader-ink);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 350ms, transform 0.12s, color 350ms;
+      opacity: 0; pointer-events: none;
+      transform: scale(0.85);
+    }
+    .chrome-visible .close-btn {
+      opacity: 1; pointer-events: auto;
+      transform: scale(1);
+      transition: opacity 200ms ease 50ms, transform 200ms ease 50ms, background 350ms, color 350ms;
+    }
+    .close-btn:hover { background: color-mix(in srgb, var(--reader-ink) 20%, var(--reader-bg)); }
+    .close-btn:active { transform: scale(0.92); }
+
+    /* ═══════════════════════════════════════
+       CONTENT VIEWPORT
+       ═══════════════════════════════════════ */
+    .reader-content {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 24px 20px 0 20px;
+    }
+
+    .reader-paragraph {
+      font-family: var(--font-reader);
+      font-size: 17px; line-height: 1.85;
+      color: var(--reader-ink);
+      text-indent: 2em; margin-bottom: 0.8em;
+      transition: color 350ms ease;
+    }
+
+    /* ═══════════════════════════════════════
+       FOOTER — page number (centered) + more button
+       ═══════════════════════════════════════ */
+    .reader-footer {
+      padding: 0 20px var(--safe-bottom) 20px;
+      min-height: calc(var(--safe-bottom) + 28px);
+      display: flex; align-items: flex-start; justify-content: center;
+      position: relative; z-index: 10;
+    }
+    .page-label {
+      font-family: var(--font-ui);
+      font-size: 12px; font-weight: 400;
+      color: var(--ink-3);
+      line-height: 28px;
+    }
+
+    /* More actions button — absolute right, same vertical position as page label */
+    .more-btn {
+      position: absolute; right: 16px;
+      top: 0;
+      width: var(--btn-size); height: var(--btn-size);
+      border-radius: var(--radius-full);
+      border: none;
+      background: color-mix(in srgb, var(--reader-ink) 12%, var(--reader-bg));
+      color: var(--reader-ink);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 350ms, transform 0.12s, color 350ms;
+      opacity: 0; pointer-events: none;
+      transform: scale(0.85);
+    }
+    .chrome-visible .more-btn {
+      opacity: 1; pointer-events: auto;
+      transform: scale(1);
+      transition: opacity 200ms ease 50ms, transform 200ms ease 50ms, background 350ms, color 350ms;
+    }
+    .more-btn:hover { background: color-mix(in srgb, var(--reader-ink) 20%, var(--reader-bg)); }
+    .more-btn:active { transform: scale(0.92); }
+
+    /* ═══════════════════════════════════════
+       EXPANDED ACTIONS — right-bottom corner
+       ═══════════════════════════════════════ */
+    .actions-expanded {
+      position: absolute;
+      right: 16px; bottom: calc(var(--safe-bottom) + 36px);
+      z-index: 20;
+      display: flex; flex-direction: column; gap: 6px;
+      opacity: 0; pointer-events: none;
+      transform: translateY(8px) scale(0.95);
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+    .actions-expanded.visible {
+      opacity: 1; pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    .action-item {
+      display: flex; align-items: center; gap: 0;
+      padding: 14px 18px;
+      border-radius: var(--radius-xl);
+      background: color-mix(in srgb, var(--reader-ink) 10%, var(--reader-bg));
+      border: none;
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 15px; font-weight: 500;
+      color: var(--reader-ink);
+      white-space: nowrap;
+      width: calc(393px * 4 / 3 / 2 - 16px);
+      transition: background 350ms, color 350ms, transform 0.12s;
+    }
+    .action-item:hover { background: color-mix(in srgb, var(--reader-ink) 16%, var(--reader-bg)); }
+    .action-item:active { transform: scale(0.97); }
+    .action-item-text { flex: 1; text-align: left; }
+    .action-item i { color: var(--reader-ink); flex-shrink: 0; transition: color 350ms; }
+
+    /* TOC button progress */
+    .action-item-toc {
+      position: relative;
+      overflow: hidden;
+    }
+    .action-item-toc-fill {
+      position: absolute; inset: 0;
+      background: rgba(196,98,45,0.12);
+      pointer-events: none;
+      transition: background 350ms;
+    }
+    .action-item-toc .action-item-text,
+    .action-item-toc i,
+    .action-item-toc-pct {
+      position: relative; z-index: 1;
+    }
+    .action-item-toc-pct {
+      font-size: 12px; font-weight: 600;
+      color: var(--accent);
+      margin-left: 6px;
+    }
+
+    /* ═══════════════════════════════════════
+       BOTTOM SHEET — shared
+       ═══════════════════════════════════════ */
+    .bottom-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      z-index: 30;
+      background: color-mix(in srgb, var(--reader-ink) 4%, var(--reader-bg));
+      border-top-left-radius: var(--radius-xl);
+      border-top-right-radius: var(--radius-xl);
+      box-shadow: 0 -4px 24px rgba(44,36,32,0.10);
+      transform: translateY(100%);
+      transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1), background 350ms;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .bottom-sheet.visible { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 36px; height: 5px;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--reader-ink) 20%, var(--reader-bg));
+      margin: 10px auto 0;
+    }
+    .sheet-title {
+      font-family: var(--font-ui);
+      font-size: 17px; font-weight: 700;
+      color: var(--reader-ink);
+      padding: 14px 20px 10px;
+    }
+    .sheet-body {
+      flex: 1; overflow-y: auto;
+      padding: 0 20px 20px;
+      padding-bottom: calc(20px + var(--safe-bottom));
+    }
+
+    /* ═══════════════════════════════════════
+       TOC SHEET
+       ═══════════════════════════════════════ */
+    .toc-sheet { max-height: 55%; }
+
+    .toc-row {
+      padding: 12px 16px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 4px;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 15px; font-weight: 500;
+      color: var(--reader-ink);
+      transition: background 0.12s, color 350ms;
+    }
+    .toc-row:hover { background: color-mix(in srgb, var(--reader-ink) 8%, var(--reader-bg)); }
+    .toc-row.active {
+      background: rgba(196,98,45,0.12);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ═══════════════════════════════════════
+       SETTINGS SHEET
+       ═══════════════════════════════════════ */
+    .settings-sheet { max-height: 72%; }
+
+    .setting-section-label {
+      font-family: var(--font-ui);
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: color-mix(in srgb, var(--reader-ink) 55%, var(--reader-bg));
+      margin: 20px 0 10px;
+    }
+    .setting-section-label:first-child { margin-top: 4px; }
+
+    /* Theme swatches — large color blocks */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .theme-block {
+      aspect-ratio: 1;
+      border-radius: var(--radius-lg);
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-ui);
+      font-size: 13px; font-weight: 600;
+      transition: border-color 0.15s, transform 0.12s;
+      position: relative;
+    }
+    .theme-block.active {
+      border-color: var(--accent);
+    }
+    .theme-block:active { transform: scale(0.95); }
+    .theme-block-check {
+      position: absolute; top: 6px; right: 6px;
+      width: 18px; height: 18px;
+      border-radius: var(--radius-full);
+      background: var(--accent);
+      display: none; align-items: center; justify-content: center;
+    }
+    .theme-block.active .theme-block-check { display: flex; }
+
+    /* Segment control */
+    .segment-group { display: flex; gap: 8px; }
+    .segment-btn {
+      flex: 1; padding: 10px 0;
+      border-radius: var(--radius-lg);
+      border: none;
+      background: color-mix(in srgb, var(--reader-ink) 8%, var(--reader-bg));
+      font-family: var(--font-ui);
+      font-size: 14px; font-weight: 600;
+      color: var(--reader-ink); cursor: pointer;
+      text-align: center; transition: all 0.15s;
+    }
+    .segment-btn.active {
+      background: rgba(196,98,45,0.12);
+      color: var(--accent);
+    }
+
+    /* Stepper control */
+    .stepper {
+      display: flex; align-items: center; gap: 12px;
+      padding: 4px 0;
+    }
+    .stepper-btn {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-full); border: none;
+      background: color-mix(in srgb, var(--reader-ink) 10%, var(--reader-bg));
+      font-size: 18px; font-weight: 700;
+      color: var(--reader-ink); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, color 350ms;
+    }
+    .stepper-btn:hover { background: color-mix(in srgb, var(--reader-ink) 18%, var(--reader-bg)); }
+    .stepper-track {
+      flex: 1; height: 4px;
+      border-radius: var(--radius-full);
+      background: color-mix(in srgb, var(--reader-ink) 12%, var(--reader-bg));
+      position: relative;
+    }
+    .stepper-fill {
+      height: 100%; border-radius: var(--radius-full);
+      background: var(--accent);
+      transition: width 0.2s;
+    }
+    .stepper-thumb {
+      position: absolute; top: 50%;
+      width: 18px; height: 18px;
+      border-radius: var(--radius-full);
+      background: var(--accent);
+      border: 3px solid var(--reader-bg);
+      transform: translate(-50%, -50%);
+      transition: left 0.2s;
+    }
+    .stepper-value {
+      font-family: var(--font-ui);
+      font-size: 14px; font-weight: 600;
+      color: var(--reader-ink); min-width: 48px;
+      text-align: right;
+    }
+
+    /* ═══════════════════════════════════════
+       STATE INDICATOR
+       ═══════════════════════════════════════ */
+    .state-indicator {
+      position: absolute; top: 12px; left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-ui);
+      font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.5);
+      padding: 4px 12px; border-radius: var(--radius-full);
+      z-index: 100; pointer-events: none;
+      letter-spacing: 0.02em;
+    }
+
+    /* ═══════════════════════════════════════
+       CLICK ZONE — center tap toggles chrome
+       ═══════════════════════════════════════ */
+    .click-zone {
+      position: absolute; inset: 0; z-index: 5;
+    }
+    .chrome-visible .click-zone { pointer-events: auto; }
+    .sheet-active .click-zone { pointer-events: auto; z-index: 25; }
+  </style>
+</head>
+<body style="background:#1C1714; display:flex; align-items:flex-start; justify-content:center; min-height:100vh;">
+
+<div class="phone-frame">
+  <div class="reader" id="reader">
+
+    <!-- Click zone for center tap -->
+    <div class="click-zone" id="click-zone"></div>
+
+    <!-- ═══ HEADER: safe area + chapter title (centered) + close ═══ -->
+    <div class="reader-header">
+      <span class="chapter-label" id="chapter-label">第三章 · 红岸基地</span>
+      <button class="close-btn" id="close-btn" title="关闭阅读器">
+        <i data-lucide="x" style="width:20px;height:20px;"></i>
+      </button>
+    </div>
+
+    <!-- ═══ CONTENT ═══ -->
+    <main class="reader-content" id="reader-content">
+      <p class="reader-paragraph">
+        叶文洁跟着两名不苟言笑的军人，走进了那座隐藏在大兴安岭深处的军事设施。巨大的抛物面天线直指苍穹，在夕阳的映照下闪耀着冷冽的金属光泽。这就是红岸基地——一个在任何公开资料中都找不到的地方。
+      </p>
+      <p class="reader-paragraph">
+        基地坐落在雷达峰的峰顶，海拔一千五百多米。周围是一望无际的林海，在秋风中泛起金色的波浪。从这里望出去，可以看到大兴安岭绵延的山脊线在天际起伏，仿佛大地沉睡中缓缓的呼吸。
+      </p>
+      <p class="reader-paragraph">
+        叶文洁被领进一间简朴的办公室。房间不大，但窗户朝向那面巨型天线，透过玻璃可以看到它银色的弧面反射着最后一缕晚霞。一位中年军人坐在办公桌后，目光锐利而深沉。他就是雷志成，红岸基地的政委。
+      </p>
+      <p class="reader-paragraph">
+        "叶文洁同志，"雷志成开口了，声音低沉而平稳，"你的学术能力和专业背景，组织上是充分了解的。"他顿了顿，似乎在斟酌措辞。"你被调来这里，是因为红岸工程需要你的专业知识。"
+      </p>
+      <p class="reader-paragraph">
+        叶文洁没有说话。过去几年的经历已经教会了她沉默的价值。她只是静静地看着窗外那面巨大的天线，心中涌起一种奇异的感觉。那面天线就像一只仰望星空的巨眼，在暮色中显得既孤独又庄严。
+      </p>
+      <p class="reader-paragraph">
+        雷志成继续说道："红岸工程的核心任务是监听——监听来自太空的无线电信号。当然，在那个年代，这样的描述需要包装成另一种说法：对敌方军事通信进行电子侦察。"他的嘴角浮现出一丝苦笑。
+      </p>
+      <p class="reader-paragraph">
+        叶文洁终于开口了："我明白了。那我的具体工作是什么？"
+      </p>
+      <p class="reader-paragraph">
+        "信号分析与模式识别，"雷志成说，"你在清华的研究方向正是我们所需要的。宇宙中的无线电信号浩如烟海，我们需要从中找出那些……不寻常的模式。"
+      </p>
+      <p class="reader-paragraph">
+        不寻常的模式。叶文洁在心中重复着这几个字。她忽然意识到，这个藏在深山中的军事基地，所追寻的也许并不仅仅是敌人的通信信号。那面巨大的天线，正在聆听整个宇宙的低语。
+      </p>
+    </main>
+
+    <!-- ═══ FOOTER: page number (centered) + more button ═══ -->
+    <div class="reader-footer">
+      <span class="page-label">12 / 48</span>
+      <button class="more-btn" id="more-btn" title="更多操作">
+        <i data-lucide="ellipsis" style="width:20px;height:20px;"></i>
+      </button>
+    </div>
+
+    <!-- ═══ EXPANDED ACTIONS ═══ -->
+    <div class="actions-expanded" id="actions-expanded">
+      <button class="action-item action-item-toc" id="action-toc">
+        <div class="action-item-toc-fill" id="toc-fill" style="width:25%;"></div>
+        <span class="action-item-text">目录<span class="action-item-toc-pct">25%</span></span>
+        <i data-lucide="list" style="width:18px;height:18px;"></i>
+      </button>
+      <button class="action-item" id="action-settings">
+        <span class="action-item-text">阅读设置</span>
+        <i data-lucide="settings" style="width:18px;height:18px;"></i>
+      </button>
+    </div>
+
+    <!-- ═══ TOC BOTTOM SHEET ═══ -->
+    <div class="bottom-sheet toc-sheet" id="toc-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">目录</div>
+      <div class="sheet-body">
+        <div class="toc-row">封面</div>
+        <div class="toc-row">第一章 · 科学边界</div>
+        <div class="toc-row">第二章 · 台球</div>
+        <div class="toc-row active">第三章 · 红岸基地</div>
+        <div class="toc-row">第四章 · 宇宙闪烁</div>
+        <div class="toc-row">第五章 · 叛逆</div>
+        <div class="toc-row">第六章 · 射手与农场主</div>
+        <div class="toc-row">第七章 · 疯狂年代</div>
+        <div class="toc-row">第八章 · 寂静的春天</div>
+        <div class="toc-row">第九章 · 红岸之二</div>
+        <div class="toc-row">第十章 · 大史</div>
+        <div class="toc-row">第十一章 · 三体问题</div>
+        <div class="toc-row">第十二章 · 地球叛军</div>
+      </div>
+    </div>
+
+    <!-- ═══ SETTINGS BOTTOM SHEET ═══ -->
+    <div class="bottom-sheet settings-sheet" id="settings-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">阅读设置</div>
+      <div class="sheet-body">
+
+        <div class="setting-section-label">主题</div>
+        <div class="theme-grid">
+          <button class="theme-block active" data-theme="neutral"
+            style="background:#FFFFFF; color:#2C2420;"
+            onclick="setReaderTheme('neutral')">
+            <span>中性</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="paper"
+            style="background:#F5EDDF; color:#5B4636;"
+            onclick="setReaderTheme('paper')">
+            <span>纸张</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="sepia"
+            style="background:#F1E7D0; color:#5F4B37;"
+            onclick="setReaderTheme('sepia')">
+            <span>复古</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="green"
+            style="background:#CCE8CC; color:#2D4A2D;"
+            onclick="setReaderTheme('green')">
+            <span>护眼</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="ocean"
+            style="background:#D0E0F0; color:#2D3E5F;"
+            onclick="setReaderTheme('ocean')">
+            <span>海洋</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="contrast1"
+            style="background:#F5E6D3; color:#1A1A1A;"
+            onclick="setReaderTheme('contrast1')">
+            <span>暖对比</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="night"
+            style="background:#2C2420; color:#D4CBC3;"
+            onclick="setReaderTheme('night')">
+            <span>夜间</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+          <button class="theme-block" data-theme="contrast2"
+            style="background:#000000; color:#CCCCCC;"
+            onclick="setReaderTheme('contrast2')">
+            <span>暗对比</span>
+            <span class="theme-block-check"><i data-lucide="check" style="width:12px;height:12px;color:#fff;"></i></span>
+          </button>
+        </div>
+
+        <div class="setting-section-label">字体</div>
+        <div class="segment-group">
+          <button class="segment-btn active" onclick="setFont(this, 'serif')">Serif</button>
+          <button class="segment-btn" onclick="setFont(this, 'sans')">Sans</button>
+          <button class="segment-btn" onclick="setFont(this, 'system')">系统</button>
+        </div>
+
+        <div class="setting-section-label">字体大小</div>
+        <div class="stepper">
+          <button class="stepper-btn" onclick="stepFontSize(-1)">−</button>
+          <div class="stepper-track">
+            <div class="stepper-fill" id="fs-fill" style="width:33%;"></div>
+            <div class="stepper-thumb" id="fs-thumb" style="left:33%;"></div>
+          </div>
+          <span class="stepper-value" id="fs-value">18px</span>
+          <button class="stepper-btn" onclick="stepFontSize(1)">+</button>
+        </div>
+
+        <div class="setting-section-label">行间距</div>
+        <div class="stepper">
+          <button class="stepper-btn" onclick="stepLineHeight(-1)">−</button>
+          <div class="stepper-track">
+            <div class="stepper-fill" id="lh-fill" style="width:38%;"></div>
+            <div class="stepper-thumb" id="lh-thumb" style="left:38%;"></div>
+          </div>
+          <span class="stepper-value" id="lh-value">1.85</span>
+          <button class="stepper-btn" onclick="stepLineHeight(1)">+</button>
+        </div>
+
+        <div class="setting-section-label">页边距</div>
+        <div class="stepper">
+          <button class="stepper-btn" onclick="stepMargin(-1)">−</button>
+          <div class="stepper-track">
+            <div class="stepper-fill" id="mg-fill" style="width:28%;"></div>
+            <div class="stepper-thumb" id="mg-thumb" style="left:28%;"></div>
+          </div>
+          <span class="stepper-value" id="mg-value">20px</span>
+          <button class="stepper-btn" onclick="stepMargin(1)">+</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+
+  /* ═══ State ═══ */
+  // 1 = reading, 2 = chrome visible, 3 = actions expanded, 4 = toc sheet, 5 = settings sheet
+  let state = 1;
+  let fontSize = 18;
+  let lineHeight = 1.85;
+  let margin = 20;
+
+  const reader = document.getElementById('reader');
+  const clickZone = document.getElementById('click-zone');
+  const closeBtn = document.getElementById('close-btn');
+  const moreBtn = document.getElementById('more-btn');
+  const actionsExpanded = document.getElementById('actions-expanded');
+  const tocSheet = document.getElementById('toc-sheet');
+  const settingsSheet = document.getElementById('settings-sheet');
+  const stateLabel = null;
+
+  const stateNames = {
+    1: '1 · 阅读状态',
+    2: '2 · 操作按钮显示',
+    3: '3 · 操作按钮展开',
+    4: '4 · 目录展开',
+    5: '5 · 阅读设置展开',
+  };
+
+  function setState(s) {
+    state = s;
+
+    // Chrome visibility (close + more buttons)
+    reader.classList.toggle('chrome-visible', s >= 2);
+
+    // Sheet active — enables click zone to dismiss sheets
+    reader.classList.toggle('sheet-active', s === 4 || s === 5);
+
+    // Actions expanded
+    actionsExpanded.classList.toggle('visible', s === 3);
+
+    // Close button only visible when more button is visible
+    closeBtn.style.display = (s >= 3) ? 'none' : '';
+
+    // More button hidden when actions expanded or sheets open
+    moreBtn.style.display = (s >= 3) ? 'none' : '';
+
+    // Sheets
+    tocSheet.classList.toggle('visible', s === 4);
+    settingsSheet.classList.toggle('visible', s === 5);
+  }
+
+  /* ═══ Interactions ═══ */
+
+  // Click content area: dismiss sheets, or toggle chrome
+  clickZone.addEventListener('click', () => {
+    if (state === 4 || state === 5) setState(2);
+    else if (state === 1) setState(2);
+    else if (state === 2) setState(1);
+  });
+
+  // Close button: close the reader (not toggle chrome)
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // In a real app this would navigate away; here we show an alert
+    alert('关闭阅读器 → 返回上一页');
+  });
+
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setState(3);
+  });
+
+  document.getElementById('action-toc').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setState(4);
+  });
+
+  document.getElementById('action-settings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setState(5);
+  });
+
+  // Click outside expanded actions → back to state 2
+  document.addEventListener('click', (e) => {
+    if (state === 3 && !actionsExpanded.contains(e.target) && e.target !== moreBtn) {
+      setState(2);
+    }
+  });
+
+  // TOC row click → jump and close
+  document.querySelectorAll('.toc-row').forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.toc-row').forEach(r => r.classList.remove('active'));
+      row.classList.add('active');
+      const label = row.textContent;
+      document.getElementById('chapter-label').textContent = label;
+      setState(1);
+    });
+  });
+
+  /* ═══ Theme ═══ */
+  const themes = {
+    neutral:   { bg: '#FFFFFF', ink: '#2C2420' },
+    paper:     { bg: '#F5EDDF', ink: '#5B4636' },
+    sepia:     { bg: '#F1E7D0', ink: '#5F4B37' },
+    green:     { bg: '#CCE8CC', ink: '#2D4A2D' },
+    ocean:     { bg: '#D0E0F0', ink: '#2D3E5F' },
+    contrast1: { bg: '#F5E6D3', ink: '#1A1A1A' },
+    night:     { bg: '#2C2420', ink: '#D4CBC3' },
+    contrast2: { bg: '#000000', ink: '#CCCCCC' },
+  };
+
+  function setReaderTheme(theme) {
+    const t = themes[theme];
+    document.documentElement.style.setProperty('--reader-bg', t.bg);
+    document.documentElement.style.setProperty('--reader-ink', t.ink);
+    document.querySelectorAll('.theme-block').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.theme === theme);
+    });
+  }
+
+  /* ═══ Settings controls ═══ */
+  function stepFontSize(delta) {
+    fontSize = Math.max(14, Math.min(28, fontSize + delta));
+    document.getElementById('fs-value').textContent = fontSize + 'px';
+    const pct = ((fontSize - 14) / 14) * 100;
+    document.getElementById('fs-fill').style.width = pct + '%';
+    document.getElementById('fs-thumb').style.left = pct + '%';
+    document.querySelectorAll('.reader-paragraph').forEach(p => p.style.fontSize = fontSize + 'px');
+  }
+
+  function stepLineHeight(delta) {
+    lineHeight = Math.max(1.4, Math.min(2.4, Number((lineHeight + delta * 0.1).toFixed(2))));
+    document.getElementById('lh-value').textContent = lineHeight.toFixed(2);
+    const pct = ((lineHeight - 1.4) / 1.0) * 100;
+    document.getElementById('lh-fill').style.width = pct + '%';
+    document.getElementById('lh-thumb').style.left = pct + '%';
+    document.querySelectorAll('.reader-paragraph').forEach(p => p.style.lineHeight = lineHeight);
+  }
+
+  function stepMargin(delta) {
+    margin = Math.max(12, Math.min(36, margin + delta * 4));
+    document.getElementById('mg-value').textContent = margin + 'px';
+    const pct = ((margin - 12) / 24) * 100;
+    document.getElementById('mg-fill').style.width = pct + '%';
+    document.getElementById('mg-thumb').style.left = pct + '%';
+    document.getElementById('reader-content').style.paddingLeft = margin + 'px';
+    document.getElementById('reader-content').style.paddingRight = margin + 'px';
+  }
+
+  function setFont(btn, type) {
+    btn.parentElement.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const fonts = {
+      serif: "'Merriweather', 'Noto Serif SC', Georgia, serif",
+      sans: "'DM Sans', 'Noto Sans SC', system-ui, sans-serif",
+      system: "system-ui, sans-serif",
+    };
+    document.querySelectorAll('.reader-paragraph').forEach(p => p.style.fontFamily = fonts[type]);
+  }
+
+  /* ═══ Init ═══ */
+  setState(1);
+</script>
+
+</body>
+</html>

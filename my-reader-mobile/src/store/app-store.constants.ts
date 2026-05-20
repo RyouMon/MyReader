@@ -22,7 +22,7 @@ export const defaultSettings: ReaderSettings = {
     brightness: 100,
   },
   fixed: {
-    theme: "dark",
+    theme: "night",
     readingLayout: "paginate",
     navigationMode: "horizontal",
     brightness: 100,

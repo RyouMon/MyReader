@@ -1,117 +1,112 @@
-import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
-import { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import type React from "react";
+import { useCallback, forwardRef } from "react";
+import { Dimensions, StyleSheet, View as RNView } from "react-native";
+import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useTranslation } from "react-i18next";
 
+import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
 import type { ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import { READER_CHROME } from "@/src/design/reader-tokens";
-import { Animated, Pressable, Text, View } from "@/tw";
+import { Text, TouchableHighlight } from "@/tw";
 
-import { chromeTocRowContainerStyle, chromeTocRowLabelStyle } from "./readerChromePalette";
+function stripFragment(href: string): string {
+  const i = href.indexOf("#");
+  return i >= 0 ? href.slice(0, i) : href;
+}
+
+function hrefRoughlyMatches(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const na = stripFragment(a);
+  const nb = stripFragment(b);
+  return na === nb || na.endsWith(nb) || nb.endsWith(na);
+}
 
 export type ReaderTocSheetProps = {
-  insetsBottom: number;
   toc: ReaderTocItem[];
-  currentPage: number | null;
-  activeColor: string;
+  currentHref: string | null;
+  palette: ReaderChromePalette;
   onSelectPage: (pageIndex: number) => void;
+  onDismiss: () => void;
 };
 
-/** Estimated row height for FlashList recycling. */
-const TOC_ITEM_ESTIMATED_HEIGHT = 48;
+const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
+  function ReaderTocSheet({ toc, currentHref, palette, onSelectPage, onDismiss }, ref) {
+    const { t } = useTranslation();
 
-// FlashList v2.0.2 typings omit estimatedItemSize; cast to avoid TS errors.
-const FlashListFixed = FlashList as React.ComponentType<Record<string, unknown>>;
+    const renderHandle = useCallback(
+      () => (
+        <RNView style={styles.handleContainer}>
+          <RNView style={[styles.handle, { backgroundColor: palette.handle }]} />
+        </RNView>
+      ),
+      [palette.handle],
+    );
 
-function TocItemRow({
-  item,
-  isActive,
-  activeColor,
-  onSelectPage,
-}: {
-  item: ReaderTocItem;
-  isActive: boolean;
-  activeColor: string;
-  onSelectPage: (pageIndex: number) => void;
-}) {
-  return (
-    <Pressable
-      className="mb-2 rounded-2xl px-4 py-3"
-      style={chromeTocRowContainerStyle(isActive)}
-      onPress={() => onSelectPage(item.pageIndex)}
-    >
-      <Text
-        className="text-sm"
-        style={chromeTocRowLabelStyle(isActive, activeColor)}
-        numberOfLines={2}
+    return (
+      <BottomSheetModal
+        ref={ref}
+        snapPoints={["50%"]}
+        maxDynamicContentSize={Dimensions.get("window").height * 0.5}
+        enablePanDownToClose
+        backgroundStyle={[styles.background, { backgroundColor: palette.sheetSurface }]}
+        handleComponent={renderHandle}
+        onDismiss={onDismiss}
       >
-        {item.label}
-      </Text>
-    </Pressable>
-  );
-}
+        <RNView style={styles.header}>
+          <Text className="text-lg font-bold px-5 pt-3.5 pb-2.5" style={{ color: palette.text }}>
+            {t("reader.toc")}
+          </Text>
+        </RNView>
+        <BottomSheetScrollView showsVerticalScrollIndicator={false}>
+          {toc.map((item) => {
+            const isActive = currentHref !== null && item.href !== undefined && hrefRoughlyMatches(currentHref, item.href);
+            return (
+              <TouchableHighlight
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                underlayColor={palette.underlay}
+                className="mx-3 mb-0.5 rounded-xl px-5 py-[14px]"
+                style={{
+                  backgroundColor: isActive ? palette.tocRowActive : palette.tocRowIdle,
+                }}
+                onPress={() => onSelectPage(item.pageIndex)}
+              >
+                <Text
+                  className="text-[15px] flex-1"
+                  style={{ color: isActive ? palette.accentText : palette.text }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {item.label}
+                </Text>
+              </TouchableHighlight>
+            );
+          })}
+        </BottomSheetScrollView>
+      </BottomSheetModal>
+    );
+  },
+);
 
-/**
- * 底部弹出的章节目录列表。
- */
-export function ReaderTocSheet({
-  insetsBottom,
-  toc,
-  currentPage,
-  activeColor,
-  onSelectPage,
-}: ReaderTocSheetProps) {
-  const { t } = useTranslation();
-  return (
-    <Animated.View
-      entering={SlideInDown.duration(280)}
-      exiting={SlideOutDown.duration(220)}
-      className="absolute bottom-0 left-0 right-0 z-40 max-h-[55%] rounded-t-[26px]"
-      style={{
-        backgroundColor: READER_CHROME.surface,
-        borderTopWidth: 1,
-        borderTopColor: READER_CHROME.border,
-        paddingBottom: Math.max(insetsBottom, 16),
-        elevation: 18,
-        shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: -8 },
-      }}
-    >
-      <View
-        className="mb-2 mt-3 h-[5px] w-11 self-center rounded-full"
-        style={{ backgroundColor: READER_CHROME.surfaceIdle }}
-      />
-      <Text
-        className="px-5 py-3 text-base font-bold"
-        style={{ color: READER_CHROME.textIdle }}
-      >
-        {t("reader.toc")}
-      </Text>
-      <View className="flex-1 px-4">
-        {toc.length > 0 ? (
-          <FlashListFixed
-            data={toc}
-            keyExtractor={(item: ReaderTocItem) => item.id}
-            estimatedItemSize={TOC_ITEM_ESTIMATED_HEIGHT}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 16 }}
-            renderItem={({ item }: ListRenderItemInfo<ReaderTocItem>) => (
-              <TocItemRow
-                item={item}
-                isActive={currentPage != null && item.pageIndex === currentPage}
-                activeColor={activeColor}
-                onSelectPage={onSelectPage}
-              />
-            )}
-          />
-        ) : (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-sm text-white/40">{t("reader.noToc")}</Text>
-          </View>
-        )}
-      </View>
-    </Animated.View>
-  );
-}
+export default ReaderTocSheet;
+
+const styles = StyleSheet.create({
+  background: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  handleContainer: {
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  handle: {
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  header: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 4,
+  },
+});

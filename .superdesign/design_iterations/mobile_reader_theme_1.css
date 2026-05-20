@@ -1,0 +1,46 @@
+/* MyReader Mobile EPUB Reader Theme */
+/* Warm neutral palette with terracotta accent */
+
+:root {
+  /* Ink scale — text */
+  --ink-1: #2C2420;
+  --ink-2: #6B5E54;
+  --ink-3: #9E9189;
+
+  /* Surface scale — backgrounds */
+  --surface: #FAF7F4;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #F0EBE6;
+
+  /* Accent */
+  --accent: #C4622D;
+  --accent-soft: #E8A87C;
+
+  /* Reader themes */
+  --reader-bg: #FFFFFF;
+  --reader-ink: #2C2420;
+
+  /* Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --safe-top: 59px;
+  --safe-bottom: 34px;
+  --chrome-h: 44px;
+  --btn-size: 44px;
+
+  /* Typography */
+  --font-display: 'Noto Serif SC', 'Lora', Georgia, serif;
+  --font-ui: 'Noto Sans SC', 'DM Sans', system-ui, sans-serif;
+  --font-reader: 'Merriweather', Georgia, serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(44,36,32,0.06);
+  --shadow-md: 0 4px 12px rgba(44,36,32,0.08);
+  --shadow-lg: 0 8px 24px rgba(44,36,32,0.12);
+}

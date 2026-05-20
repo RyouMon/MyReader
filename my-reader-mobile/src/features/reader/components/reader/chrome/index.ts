@@ -1,18 +1,32 @@
-export { ReaderBottomBar, type ReaderBottomBarProps } from "./ReaderBottomBar";
-export { ReaderSettingsSheet, type ReaderSettingsSheetProps } from "./ReaderSettingsSheet";
-export { ReaderTocSheet, type ReaderTocSheetProps } from "./ReaderTocSheet";
-export { ReaderTopBar, type ReaderTopBarProps } from "./ReaderTopBar";
+export { ReaderChapterLabel } from "./ReaderChapterLabel";
+export type { ReaderChapterLabelProps } from "./ReaderChapterLabel";
+
+export { ReaderPageLabel } from "./ReaderPageLabel";
+export type { ReaderPageLabelProps } from "./ReaderPageLabel";
+
+export { default as ReaderCloseButton } from "./ReaderCloseButton";
+
+export { default as ReaderMoreButton } from "./ReaderMoreButton";
+
+export { default as ReaderActionsExpanded } from "./ReaderActionsExpanded";
+
+export { default as ReaderTocSheet } from "./ReaderTocSheet";
+export type { ReaderTocSheetProps } from "./ReaderTocSheet";
+
+export { default as ReaderSettingsSheet } from "./ReaderSettingsSheet";
+export type { ReaderSettingsSheetProps } from "./ReaderSettingsSheet";
+
 export {
-  FIXED_NAVIGATION_OPTIONS,
-  READER_THEME_OPTIONS,
-  READING_LAYOUT_OPTIONS,
-  type ThemeOption,
-} from "./readerChromeConstants";
-export {
-  READER_CHROME_ACCENT_HEX,
-  chromeSegmentSurfaceStyle,
-  chromeThemeCardSurfaceStyle,
-  chromeTocRowContainerStyle,
-  chromeTocRowLabelStyle,
-  chromeTopBarBookmarkIconColor,
-} from "./readerChromePalette";
+  SettingSectionLabel,
+  SettingSegment,
+  SettingThemeCard,
+  SettingStepper,
+  ThemeSwatches,
+  FontPicker,
+  SliderControl,
+  StepperControl,
+  BrightnessControl,
+} from "./SettingControls";
+
+export { READER_THEME_OPTIONS } from "./readerChromeConstants";
+export type { ThemeOption } from "./readerChromeConstants";

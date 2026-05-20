@@ -17,30 +17,14 @@ export type ReaderThemeColors = {
 };
 
 export const READER_THEMES = {
-  paper: {
-    bg: "#F5EFE6",
-    fg: "#2F261F",
-    muted: "#6C6258",
-    link: "#D97757",
-  },
-  light: {
-    bg: "#FFFFFF",
-    fg: "#222222",
-    muted: "#6B7280",
-    link: "#D97757",
-  },
-  green: {
-    bg: "#E8F0E4",
-    fg: "#253325",
-    muted: "#5F7161",
-    link: "#577A45",
-  },
-  dark: {
-    bg: "#111111",
-    fg: "rgba(255,255,255,0.92)",
-    muted: "rgba(255,255,255,0.64)",
-    link: "#C4602A",
-  },
+  neutral:   { bg: "#FFFFFF", fg: "#2C2420", muted: "#6B5E54", link: "#D97757" },
+  paper:     { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#D97757" },
+  sepia:     { bg: "#F1E7D0", fg: "#5F4B37", muted: "#8F7D6F", link: "#D97757" },
+  green:     { bg: "#CCE8CC", fg: "#2D4A2D", muted: "#5F7161", link: "#577A45" },
+  ocean:     { bg: "#D0E0F0", fg: "#2D3E5F", muted: "#5F7080", link: "#4A6A8A" },
+  contrast1: { bg: "#F5E6D3", fg: "#1A1A1A", muted: "#6B6B6B", link: "#D97757" },
+  night:     { bg: "#2C2420", fg: "#D4CBC3", muted: "#9E9189", link: "#C4602A" },
+  contrast2: { bg: "#000000", fg: "#CCCCCC", muted: "#888888", link: "#C4602A" },
 } as const satisfies Record<string, ReaderThemeColors>;
 
 export type ReaderThemeName = keyof typeof READER_THEMES;
@@ -97,10 +81,14 @@ export const READER_FIXED = {
   canvasBg: "#111111",
   /** Theme-mapped backgrounds (for PDF/fixed with light content). */
   themeBg: {
-    paper: "#F5EFE6",
-    light: "#FFFFFF",
-    green: "#E8F0E4",
-    dark: "#111111",
+    neutral: "#FFFFFF",
+    paper: "#F5EDDF",
+    sepia: "#F1E7D0",
+    green: "#CCE8CC",
+    ocean: "#D0E0F0",
+    contrast1: "#F5E6D3",
+    night: "#2C2420",
+    contrast2: "#000000",
   } as const,
 } as const;
 

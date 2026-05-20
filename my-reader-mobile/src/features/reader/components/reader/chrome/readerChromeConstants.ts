@@ -1,25 +1,19 @@
-import type { FixedNavigationMode, ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
+import type { ReaderTheme } from "@/src/store/app-store.types";
 
 export type ThemeOption = {
   key: ReaderTheme;
-  label: string;
   swatch: string;
   fg: string;
+  label: string;
 };
 
-export const READER_THEME_OPTIONS: readonly ThemeOption[] = [
-  { key: "paper", label: "reader.themePaper", swatch: "#F1E6D6", fg: "#342B23" },
-  { key: "light", label: "reader.themeLight", swatch: "#F7F7F6", fg: "#1E1E1E" },
-  { key: "green", label: "reader.themeGreen", swatch: "#DDE8D9", fg: "#24402B" },
-  { key: "dark", label: "reader.themeDark", swatch: "#1D1A17", fg: "#F4EEE6" },
-] as const;
-
-export const READING_LAYOUT_OPTIONS: readonly { key: ReadingLayout; label: string }[] = [
-  { key: "scroll", label: "reader.layoutScroll" },
-  { key: "paginate", label: "reader.layoutPaginate" },
-] as const;
-
-export const FIXED_NAVIGATION_OPTIONS: readonly { key: FixedNavigationMode; label: string }[] = [
-  { key: "horizontal", label: "reader.navHorizontal" },
-  { key: "vertical", label: "reader.navVertical" },
-] as const;
+export const READER_THEME_OPTIONS: ThemeOption[] = [
+  { key: "neutral",   swatch: "#FFFFFF", fg: "#2C2420", label: "reader.themeNeutral" },
+  { key: "paper",     swatch: "#F5EDDF", fg: "#5B4636", label: "reader.themePaper" },
+  { key: "sepia",     swatch: "#F1E7D0", fg: "#5F4B37", label: "reader.themeSepia" },
+  { key: "green",     swatch: "#CCE8CC", fg: "#2D4A2D", label: "reader.themeGreen" },
+  { key: "ocean",     swatch: "#D0E0F0", fg: "#2D3E5F", label: "reader.themeOcean" },
+  { key: "contrast1", swatch: "#F5E6D3", fg: "#1A1A1A", label: "reader.themeContrast1" },
+  { key: "night",     swatch: "#2C2420", fg: "#D4CBC3", label: "reader.themeNight" },
+  { key: "contrast2", swatch: "#000000", fg: "#CCCCCC", label: "reader.themeContrast2" },
+];
