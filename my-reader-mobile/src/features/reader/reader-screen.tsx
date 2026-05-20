@@ -10,7 +10,7 @@ import { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
-import { useThemePalette } from "@/src/design/tokens";
+import { useTheme } from "@/src/design/tokens";
 import { getFallbackCoverColor } from "@/src/features/library/components/books/book-cover";
 import {
   ReaderActionsExpanded,
@@ -44,7 +44,7 @@ export default function ReaderScreen() {
     id?: string;
     format?: string;
   }>();
-  const palette = useThemePalette();
+  const { palette, colorScheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [readerState, setReaderState] = useState<ReaderState | null>(null);
   const [toc, setToc] = useState<ReaderTocItem[]>([]);
@@ -213,7 +213,7 @@ export default function ReaderScreen() {
   if (loadState.status === "error") {
     return (
       <View className="flex-1 w-full items-center justify-center px-7" style={{ backgroundColor: palette.background }}>
-        <StatusBar hidden={false} barStyle="light-content" />
+        <StatusBar hidden={false} barStyle={colorScheme === "dark" ? "light-content" : "dark-content"} />
         <View
           className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-[20px] border"
           style={{ backgroundColor: READER_CHROME.errorCardBg, borderColor: READER_CHROME.errorCardBorder }}
@@ -269,6 +269,9 @@ export default function ReaderScreen() {
     });
   }
 
+  const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2";
+  const statusBarStyle = isDarkTheme ? "light-content" : "dark-content";
+
   return (
     <BottomSheetModalProvider>
       <Animated.View
@@ -278,7 +281,7 @@ export default function ReaderScreen() {
       >
         <StatusBar
           hidden={chromeState === ChromeState.Reading}
-          barStyle="dark-content"
+          barStyle={statusBarStyle}
           translucent={false}
         />
 
