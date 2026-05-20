@@ -1,13 +1,13 @@
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useEffect } from "react";
-import { Dimensions, StyleSheet, View as RNView } from "react-native";
+import { useTranslation } from "react-i18next";
+import { Dimensions, View as RNView, StyleSheet } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useTranslation } from "react-i18next";
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
 import { Text, TouchableHighlight } from "@/tw";
@@ -70,19 +70,29 @@ export default function ReaderActionsExpanded({
           accessibilityRole="button"
           accessibilityLabel={t("reader.toc")}
           underlayColor={palette.underlay}
-          className="rounded-[20px] px-[18px] py-[14px]"
-          style={[styles.pillShadow, { backgroundColor: palette.surface, width: ACTION_PILL_WIDTH }]}
+          className="rounded-[20px]"
+          style={[styles.pillShadow, styles.pillButton, { backgroundColor: palette.surface, width: ACTION_PILL_WIDTH }]}
           onPress={onOpenToc}
         >
           <RNView style={styles.pillInner}>
-            <RNView style={[styles.pillFill, { backgroundColor: palette.accent, opacity: progressPercent / 100 * 0.15 }]} />
+            <RNView style={styles.pillFill} pointerEvents="none">
+              <RNView style={[styles.pillFillBar, { backgroundColor: palette.underlay, width: `${progressPercent}%` }]} />
+            </RNView>
             <RNView style={styles.pillContent}>
-              <Text
-                className="flex-1 text-[15px] font-semibold"
-                style={{ color: palette.text }}
-              >
-                {progressPercent}%
-              </Text>
+              <RNView style={styles.tocLabelGroup}>
+                <Text
+                  className="text-[15px] font-semibold"
+                  style={{ color: palette.text }}
+                >
+                  {t("reader.toc")}
+                </Text>
+                <Text
+                  className="text-[12px] font-semibold"
+                  style={{ color: palette.text }}
+                >
+                  {progressPercent}%
+                </Text>
+              </RNView>
               <MaterialIcons
                 name="list"
                 size={18}
@@ -131,8 +141,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 6,
   },
+  pillButton: {
+    position: "relative",
+    overflow: "hidden",
+  },
   pillInner: {
     borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   pillFill: {
     position: "absolute",
@@ -141,10 +157,20 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 20,
+    overflow: "hidden",
+  },
+  pillFillBar: {
+    height: "100%",
   },
   pillContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  tocLabelGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
   },
 });
