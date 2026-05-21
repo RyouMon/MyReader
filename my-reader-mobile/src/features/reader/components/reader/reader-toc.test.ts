@@ -1,3 +1,5 @@
+import i18n from "@/src/i18n";
+
 import { flattenFixedToc, flattenReflowToc } from "./reader-toc";
 
 describe("flattenFixedToc", () => {
@@ -44,13 +46,13 @@ describe("flattenFixedToc", () => {
     expect(result).toEqual([
       {
         id: "fixed-fallback-0-no-href",
-        label: "第 1 页",
+        label: i18n.t("reader.pageLabel", { page: 1 }),
         pageIndex: 0,
         chapterIndex: 0,
       },
       {
         id: "fixed-fallback-1-no-href",
-        label: "第 2 页",
+        label: i18n.t("reader.pageLabel", { page: 2 }),
         pageIndex: 1,
         chapterIndex: 1,
       },

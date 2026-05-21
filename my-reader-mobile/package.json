@@ -119,12 +119,8 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
       "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
-      "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
-      "^@babel/runtime/(.*)$": "<rootDir>/../node_modules/@babel/runtime/$1"
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))"
-    ]
+      "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1"
+    }
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
