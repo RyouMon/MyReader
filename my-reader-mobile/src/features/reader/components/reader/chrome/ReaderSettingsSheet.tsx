@@ -1,17 +1,17 @@
-import { forwardRef, useCallback } from "react";
-import { Dimensions, StyleSheet, View as RNView } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { forwardRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Dimensions, View as RNView, StyleSheet } from "react-native";
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
 import type { ReaderTheme } from "@/src/store/app-store.types";
+import { Text, View } from "@/tw";
 import {
   BrightnessControl,
   FontPicker,
   SliderControl,
   ThemeSwatches,
 } from "./SettingControls";
-import { Text, View } from "@/tw";
 
 export type ReaderSettingsSheetProps = {
   palette: ReaderChromePalette;

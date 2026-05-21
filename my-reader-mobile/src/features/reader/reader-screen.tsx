@@ -237,7 +237,7 @@ export default function ReaderScreen() {
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
   const chromePalette = useMemo<ReaderChromePalette>(() => {
     const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
-    return readerChromePalette(option.fg, option.swatch, "#C4622D");
+    return readerChromePalette(option.fg, option.swatch);
   }, [activeTheme]);
   const activeReadingLayout: ReadingLayout = isReflowSurface
     ? reflowSettings.readingLayout

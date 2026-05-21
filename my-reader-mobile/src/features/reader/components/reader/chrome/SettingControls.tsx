@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Slider from "@react-native-community/slider";
 import { StyleSheet } from "react-native";
 import { mixInk } from "@/src/design/reader-chrome-palette";
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
+import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
 import { Text, View, TouchableHighlight } from "@/tw";
 import { useTranslation } from "react-i18next";
 
@@ -108,7 +108,7 @@ export function FontPicker({
           return (
             <TouchableHighlight
               key={opt.key}
-              underlayColor={palette.underlay}
+              underlayColor={underlayFromSurface(active ? palette.segmentActive : palette.segmentIdle, palette.bg)}
               className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
               style={{
                 backgroundColor: active ? palette.segmentActive : palette.segmentIdle,

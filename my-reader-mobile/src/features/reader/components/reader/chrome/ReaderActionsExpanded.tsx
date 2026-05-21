@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
+import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
 import { Text, TouchableHighlight } from "@/tw";
 
 const ACTION_PILL_WIDTH = Dimensions.get("window").width * 0.55;
@@ -66,64 +66,75 @@ export default function ReaderActionsExpanded({
       pointerEvents={visible ? "auto" : "none"}
     >
       <RNView style={styles.pillContainer}>
-        <TouchableHighlight
-          accessibilityRole="button"
-          accessibilityLabel={t("reader.toc")}
-          underlayColor={palette.underlay}
-          className="rounded-[20px]"
-          style={[styles.pillShadow, styles.pillButton, { backgroundColor: palette.surface, width: ACTION_PILL_WIDTH }]}
-          onPress={onOpenToc}
-        >
-          <RNView style={styles.pillInner}>
-            <RNView style={styles.pillFill} pointerEvents="none">
-              <RNView style={[styles.pillFillBar, { backgroundColor: palette.underlay, width: `${progressPercent}%` }]} />
-            </RNView>
-            <RNView style={styles.pillContent}>
-              <RNView style={styles.tocLabelGroup}>
-                <Text
-                  className="text-[15px] font-semibold"
-                  style={{ color: palette.text }}
-                >
-                  {t("reader.toc")}
-                </Text>
-                <Text
-                  className="text-[12px] font-semibold"
-                  style={{ color: palette.text }}
-                >
-                  {progressPercent}%
-                </Text>
+        <RNView style={styles.pillShadow}>
+          <TouchableHighlight
+            accessibilityRole="button"
+            accessibilityLabel={t("reader.toc")}
+            underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
+            className="rounded-[20px]"
+            style={[styles.pillButton, { backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
+            onPress={onOpenToc}
+          >
+            <RNView style={styles.pillInner}>
+              <RNView style={styles.pillFill} pointerEvents="none">
+                <RNView style={[styles.pillFillBar, { backgroundColor: palette.progressFill, width: `${progressPercent}%` }]} />
               </RNView>
+              {/* actionText layer — full width background text */}
+              <RNView style={styles.pillContent}>
+                <RNView style={styles.tocLabelGroup}>
+                  <Text className="text-[15px] font-semibold" style={{ color: palette.actionText }}>
+                    {t("reader.toc")}
+                  </Text>
+                  <Text className="text-[12px] font-semibold" style={{ color: palette.actionText }}>
+                    {progressPercent}%
+                  </Text>
+                </RNView>
+                <MaterialIcons name="list" size={18} color={palette.actionText} />
+              </RNView>
+              {/* progressText layer — clipped to progress width, using pixel value to match pillFill baseline */}
+              <RNView style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: ACTION_PILL_WIDTH * progressPercent / 100, overflow: "hidden" }} pointerEvents="none">
+                <RNView style={{ width: ACTION_PILL_WIDTH, paddingHorizontal: 18, paddingVertical: 14 }}>
+                  <RNView style={styles.pillContent}>
+                    <RNView style={styles.tocLabelGroup}>
+                      <Text className="text-[15px] font-semibold" style={{ color: palette.progressText }}>
+                        {t("reader.toc")}
+                      </Text>
+                      <Text className="text-[12px] font-semibold" style={{ color: palette.progressText }}>
+                        {progressPercent}%
+                      </Text>
+                    </RNView>
+                    <MaterialIcons name="list" size={18} color={palette.progressText} />
+                  </RNView>
+                </RNView>
+              </RNView>
+            </RNView>
+          </TouchableHighlight>
+        </RNView>
+
+        <RNView style={styles.pillShadow}>
+          <TouchableHighlight
+            accessibilityRole="button"
+            accessibilityLabel={t("reader.settings")}
+            underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
+            className="rounded-[20px] px-[18px] py-[14px]"
+            style={[{ backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
+            onPress={onOpenSettings}
+          >
+            <RNView style={styles.pillContent}>
+              <Text
+                className="text-[15px] font-semibold"
+                style={{ color: palette.actionText }}
+              >
+                {t("reader.settings")}
+              </Text>
               <MaterialIcons
-                name="list"
+                name="tune"
                 size={18}
-                color={palette.text}
+                color={palette.actionText}
               />
             </RNView>
-          </RNView>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          accessibilityRole="button"
-          accessibilityLabel={t("reader.settings")}
-          underlayColor={palette.underlay}
-          className="rounded-[20px] px-[18px] py-[14px]"
-          style={[styles.pillShadow, { backgroundColor: palette.surface, width: ACTION_PILL_WIDTH }]}
-          onPress={onOpenSettings}
-        >
-          <RNView style={styles.pillContent}>
-            <Text
-              className="text-[15px] font-semibold"
-              style={{ color: palette.text }}
-            >
-              {t("reader.settings")}
-            </Text>
-            <MaterialIcons
-              name="tune"
-              size={18}
-              color={palette.text}
-            />
-          </RNView>
-        </TouchableHighlight>
+          </TouchableHighlight>
+        </RNView>
       </RNView>
     </Animated.View>
   );

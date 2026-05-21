@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
+import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
 import { TouchableHighlight } from "@/tw";
 
 type Props = {
@@ -62,10 +62,10 @@ export default function ReaderCloseButton({ insetsTop, visible, palette, onPress
         accessibilityRole="button"
         accessibilityLabel="Close reader"
         hitSlop={4}
-        underlayColor={palette.underlay}
+        underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
         className="h-[44px] w-[44px] items-center justify-center rounded-full"
       >
-        <MaterialIcons name="close" size={ICON_SIZE} color={palette.text} />
+        <MaterialIcons name="close" size={ICON_SIZE} color={palette.actionText} />
       </TouchableHighlight>
     </Animated.View>
   );

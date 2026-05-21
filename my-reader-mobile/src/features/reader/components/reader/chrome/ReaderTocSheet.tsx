@@ -3,7 +3,7 @@ import { Dimensions, StyleSheet, View as RNView } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useTranslation } from "react-i18next";
 
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
+import { underlayFromSurface, type ReaderChromePalette } from "@/src/design/reader-chrome-palette";
 import type { ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { Text, TouchableHighlight } from "@/tw";
 
@@ -63,7 +63,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
                 key={item.id}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
-                underlayColor={palette.underlay}
+                underlayColor={underlayFromSurface(isActive ? palette.tocRowActive : palette.tocRowIdle, palette.bg)}
                 className="mx-3 mb-0.5 rounded-xl px-5 py-[14px]"
                 style={{
                   backgroundColor: isActive ? palette.tocRowActive : palette.tocRowIdle,
