@@ -5,6 +5,16 @@ name: Dismiss dev launcher (dev builds only)
 # This step is a no-op in release builds (element not found = condition not met).
 - runFlow:
     when:
-      visible: "Enter URL manually"
+      visible: "DEVELOPMENT SERVERS"
     commands:
-      - back
+      - assertNotVisible: "No development servers found"
+      - tapOn: "Forward"
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+      - scrollUntilVisible:
+          element: "Tools button"
+      - tapOn: "1"
+      - tapOn: "Close"
