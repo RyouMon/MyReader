@@ -72,7 +72,7 @@ function ensureMetadataCacheDirectory() {
   return directory;
 }
 
-function copyMetadataToCache(sourceUri: string, libraryId: string) {
+export function copyMetadataToCache(sourceUri: string, libraryId: string) {
   ensureMetadataCacheDirectory();
 
   const source = new FSFile(sourceUri);
@@ -630,7 +630,10 @@ export async function materializeBookFileToCache(
   if (cachedFile.exists) {
     cachedFile.delete();
   }
-  cachedFile.create({ overwrite: true, intermediates: true });
+  // For the iOS bytes-write path, we need an empty file to write into.
+  // For the local copy path, File.copy() requires the destination to NOT exist.
+  // So we only create the file for the bytes-write path (iOS security-scoped).
+  // The local path will skip this and let copy() create the file.
 
   console.info("[mobile-reader] calibre:materialize-cache:start", {
     libraryId: library.id,
@@ -645,6 +648,7 @@ export async function materializeBookFileToCache(
   });
 
   if (Platform.OS === "ios" && library.securityScopedBookmark) {
+    cachedFile.create({ intermediates: true });
     const { result: sourceBytes } = await withSecurityScopedLibraryAccess(library, async (resolvedPath) => {
       const sourceFile = createBookFile(resolvedPath, segments, fileName);
       assertBookFileExists(sourceFile, resolvedPath, rowPath, fileName);
