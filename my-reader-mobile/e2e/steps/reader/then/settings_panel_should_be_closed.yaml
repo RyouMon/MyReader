@@ -1,0 +1,3 @@
+appId: ${APP_ID}
+---
+- assertNotVisible: "阅读设置"

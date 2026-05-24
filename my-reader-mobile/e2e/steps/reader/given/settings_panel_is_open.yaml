@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+---
+- tapOn:
+    point: "50%,50%"
+- assertVisible: "More actions"
+- tapOn: "More actions"
+- assertVisible: "阅读设置"
+- tapOn: "阅读设置"

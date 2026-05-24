@@ -1,0 +1,13 @@
+appId: com.wenliang.myreader.dev
+name: Confirm open link
+tags:
+  - shared
+---
+
+# On iOS, openLink shows a system "Open" confirmation dialog.
+# On Android, the link opens directly — this flow is a no-op.
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"

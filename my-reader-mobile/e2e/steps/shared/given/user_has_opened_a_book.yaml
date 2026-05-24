@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+---
+# Seed library and confirm open link
+- openLink: myreadermobile://seed-library
+- runFlow: ../flow/confirm-open-link.yaml
+
+# Open The Brothers Karamazov (book ID 1) in reader
+- openLink: myreadermobile://reader/1
+- runFlow: ../flow/confirm-open-link.yaml

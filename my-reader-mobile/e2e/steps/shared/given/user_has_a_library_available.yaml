@@ -1,3 +1,4 @@
 appId: ${APP_ID}
 ---
 - openLink: myreadermobile://seed-library
+- runFlow: ../flow/confirm-open-link.yaml

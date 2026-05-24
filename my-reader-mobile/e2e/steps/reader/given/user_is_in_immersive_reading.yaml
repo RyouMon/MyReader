@@ -1,0 +1,4 @@
+appId: ${APP_ID}
+---
+# Immersive reading is the default state after opening a book
+- assertNotVisible: "More actions"

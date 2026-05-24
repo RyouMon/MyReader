@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- openLink: myreadermobile://seed-library
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- openLink: myreadermobile://reader/${book_id}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"

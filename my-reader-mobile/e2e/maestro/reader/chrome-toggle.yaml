@@ -1,0 +1,145 @@
+appId: ${APP_ID}
+---
+# Feature: 阅读器界面切换
+# Scenario: 沉浸阅读时点击内容显示界面
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 用户正在沉浸阅读
+- runFlow: ../../steps/reader/given/user_is_in_immersive_reading.yaml
+
+# When 用户点击阅读内容区域
+- runFlow: ../../steps/reader/when/user_taps_reading_content.yaml
+
+# Then 应显示阅读器界面控件
+- runFlow: ../../steps/reader/then/reader_chrome_should_be_visible.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 界面可见时点击内容进入沉浸阅读
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 阅读器界面控件已显示
+- runFlow: ../../steps/reader/given/reader_chrome_is_visible.yaml
+
+# When 用户点击阅读内容区域
+- runFlow: ../../steps/reader/when/user_taps_reading_content.yaml
+
+# Then 应进入沉浸阅读状态
+- runFlow: ../../steps/reader/then/reader_should_be_in_immersive_reading.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 界面展开时点击内容进入沉浸阅读
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 操作按钮已展开
+- runFlow: ../../steps/reader/given/reader_actions_are_expanded.yaml
+
+# When 用户点击阅读内容区域
+- runFlow: ../../steps/reader/when/user_taps_reading_content.yaml
+
+# Then 应进入沉浸阅读状态
+- runFlow: ../../steps/reader/then/reader_should_be_in_immersive_reading.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 操作按钮展开时点击目录打开目录面板
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 操作按钮已展开
+- runFlow: ../../steps/reader/given/reader_actions_are_expanded.yaml
+
+# When 用户点击目录按钮
+- runFlow: ../../steps/reader/when/user_taps_toc_button.yaml
+
+# Then 应打开目录面板
+- runFlow: ../../steps/reader/then/toc_panel_should_be_open.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 操作按钮展开时点击设置打开设置面板
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 操作按钮已展开
+- runFlow: ../../steps/reader/given/reader_actions_are_expanded.yaml
+
+# When 用户点击设置按钮
+- runFlow: ../../steps/reader/when/user_taps_settings_button.yaml
+
+# Then 应打开设置面板
+- runFlow: ../../steps/reader/then/settings_panel_should_be_open.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 目录面板打开时点击内容关闭面板
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 目录面板已打开
+- runFlow: ../../steps/reader/given/toc_panel_is_open.yaml
+
+# When 用户点击阅读内容区域
+- runFlow: ../../steps/reader/when/user_taps_reading_content.yaml
+
+# Then 应关闭目录面板
+- runFlow: ../../steps/reader/then/toc_panel_should_be_closed.yaml
+
+# And 应显示阅读器界面控件
+- runFlow: ../../steps/reader/then/reader_chrome_should_be_visible.yaml
+
+---
+
+# Feature: 阅读器界面切换
+# Scenario: 设置面板打开时点击内容关闭面板
+
+# Given 用户正在阅读 The Brothers Karamazov (book_id: 1)
+- runFlow:
+    file: ../../steps/reader/given/user_is_reading_a_book.yaml
+    env:
+      book_id: "1"
+
+# Given 设置面板已打开
+- runFlow: ../../steps/reader/given/settings_panel_is_open.yaml
+
+# When 用户点击阅读内容区域
+- runFlow: ../../steps/reader/when/user_taps_reading_content.yaml
+
+# Then 应关闭设置面板
+- runFlow: ../../steps/reader/then/settings_panel_should_be_closed.yaml
+
+# And 应显示阅读器界面控件
+- runFlow: ../../steps/reader/then/reader_chrome_should_be_visible.yaml
