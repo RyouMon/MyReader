@@ -294,6 +294,8 @@ export default function ReaderScreen() {
                   lineHeight={reflowSettings.lineHeight}
                   paddingX={reflowSettings.paddingX}
                   brightness={reflowSettings.brightness}
+                  textAlign={reflowSettings.textAlign}
+                  columnCount={reflowSettings.columnCount}
                 />
                 </Animated.View>
               ) : null
@@ -381,11 +383,12 @@ export default function ReaderScreen() {
           onMarginChange={(v) => patchReflowableReaderSettings({ paddingX: v })}
           marginMin={12}
           marginMax={36}
-          brightness={isReflowSurface ? reflowSettings.brightness : fixedSettings.brightness}
-          onBrightnessChange={(v) => {
-            if (isReflowSurface) patchReflowableReaderSettings({ brightness: v });
-            else patchFixedReaderSettings({ brightness: v });
-          }}
+          textAlign={reflowSettings.textAlign}
+          onTextAlignChange={(v) => patchReflowableReaderSettings({ textAlign: v })}
+          columnCount={reflowSettings.columnCount}
+          onColumnCountChange={(v) => patchReflowableReaderSettings({ columnCount: v })}
+          readingLayout={reflowSettings.readingLayout}
+          onReadingLayoutChange={(v) => patchReflowableReaderSettings({ readingLayout: v })}
         />
       </Animated.View>
     </BottomSheetModalProvider>

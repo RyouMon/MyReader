@@ -20,6 +20,8 @@ export const defaultSettings: ReaderSettings = {
     paddingX: 20,
     readingLayout: "scroll",
     brightness: 100,
+    textAlign: "auto",
+    columnCount: "auto",
   },
   fixed: {
     theme: "night",

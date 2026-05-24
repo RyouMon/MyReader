@@ -12,7 +12,7 @@ import type {
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
+import type { ReaderTheme, ReadingLayout, TextAlignment, ColumnCount } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 const TAP_MAX_DRIFT = 12;
@@ -45,6 +45,8 @@ export type ReadiumReflowReaderProps = {
   lineHeight?: number;
   paddingX?: number;
   brightness?: number;
+  textAlign?: TextAlignment;
+  columnCount?: ColumnCount;
 };
 
 function stripFragment(href: string): string {
@@ -126,9 +128,11 @@ function buildPreferences(
   lineHeight: number,
   paddingX: number,
   scroll: boolean,
+  textAlign: TextAlignment,
+  columnCount: ColumnCount,
 ): Preferences {
   const t = READER_THEMES[theme] ?? READER_THEMES.neutral;
-  return {
+  const prefs: Preferences = {
     theme: toReadiumThemeToken(theme),
     fontSize: fontSize / 16,
     lineHeight,
@@ -138,6 +142,13 @@ function buildPreferences(
     backgroundColor: t.bg,
     publisherStyles: false,
   };
+  if (textAlign !== "auto") {
+    prefs.textAlign = textAlign === "justify" ? "justify" : "start";
+  }
+  if (columnCount !== "auto") {
+    prefs.columnCount = columnCount;
+  }
+  return prefs;
 }
 
 function buildTocItemId(prefix: string, path: readonly number[], rawHref: string | undefined) {
@@ -187,6 +198,8 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
       fontSize = 18,
       lineHeight = 1.85,
       paddingX = 20,
+      textAlign = "auto",
+      columnCount = "auto",
     },
     ref,
   ) {
@@ -210,8 +223,8 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     );
 
     const preferences = useMemo(
-      () => buildPreferences(theme, fontSize, lineHeight, paddingX, readingLayout === "scroll"),
-      [theme, fontSize, lineHeight, paddingX, readingLayout],
+      () => buildPreferences(theme, fontSize, lineHeight, paddingX, readingLayout === "scroll", textAlign, columnCount),
+      [theme, fontSize, lineHeight, paddingX, readingLayout, textAlign, columnCount],
     );
 
     const handlePublicationReady = useCallback(

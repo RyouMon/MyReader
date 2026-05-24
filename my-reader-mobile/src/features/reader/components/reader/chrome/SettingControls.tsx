@@ -80,6 +80,54 @@ export function ThemeSwatches({
 }
 
 /* ═══════════════════════════════════════
+   Segment picker — multi-option row
+   ═══════════════════════════════════════ */
+
+export function SegmentPicker<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  palette,
+}: {
+  label?: string;
+  options: readonly { key: T; label: string }[];
+  value: T;
+  onChange: (key: T) => void;
+  palette: ReaderChromePalette;
+}) {
+  return (
+    <>
+      {label ? <SectionLabel label={label} color={palette.textMuted} /> : null}
+      <View className="flex-row gap-2.5">
+        {options.map((opt) => {
+          const active = value === opt.key;
+          return (
+            <TouchableHighlight
+              key={opt.key}
+              underlayColor={underlayFromSurface(active ? palette.segmentActive : palette.segmentIdle, palette.bg)}
+              className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
+              style={{
+                backgroundColor: active ? palette.segmentActive : palette.segmentIdle,
+                borderColor: active ? palette.border : "transparent",
+              }}
+              onPress={() => onChange(opt.key)}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: active ? palette.accentText : palette.textMuted }}
+              >
+                {opt.label}
+              </Text>
+            </TouchableHighlight>
+          );
+        })}
+      </View>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════
    Font family segment control
    ═══════════════════════════════════════ */
 

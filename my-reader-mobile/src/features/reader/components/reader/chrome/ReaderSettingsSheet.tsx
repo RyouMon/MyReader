@@ -4,14 +4,30 @@ import { useTranslation } from "react-i18next";
 import { Dimensions, View as RNView, StyleSheet } from "react-native";
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
-import type { ReaderTheme } from "@/src/store/app-store.types";
+import type { ColumnCount, ReaderTheme, ReadingLayout, TextAlignment } from "@/src/store/app-store.types";
 import { Text, View } from "@/tw";
 import {
-  BrightnessControl,
   FontPicker,
+  SegmentPicker,
   SliderControl,
   ThemeSwatches,
 } from "./SettingControls";
+
+const ALIGNMENT_OPTIONS = [
+  { key: "auto", labelKey: "reader.alignmentAuto" },
+  { key: "justify", labelKey: "reader.alignmentJustify" },
+  { key: "start", labelKey: "reader.alignmentStart" },
+] as const satisfies { key: TextAlignment; labelKey: string }[];
+
+const COLUMN_OPTIONS = [
+  { key: "1", labelKey: "reader.column1" },
+  { key: "auto", labelKey: "reader.columnAuto" },
+] as const satisfies { key: ColumnCount; labelKey: string }[];
+
+const PAGINATION_OPTIONS = [
+  { key: "paginate", labelKey: "reader.paginationPaginate" },
+  { key: "scroll", labelKey: "reader.paginationScroll" },
+] as const satisfies { key: ReadingLayout; labelKey: string }[];
 
 export type ReaderSettingsSheetProps = {
   palette: ReaderChromePalette;
@@ -32,8 +48,12 @@ export type ReaderSettingsSheetProps = {
   onMarginChange: (v: number) => void;
   marginMin: number;
   marginMax: number;
-  brightness: number;
-  onBrightnessChange: (v: number) => void;
+  textAlign: TextAlignment;
+  onTextAlignChange: (v: TextAlignment) => void;
+  columnCount: ColumnCount;
+  onColumnCountChange: (v: ColumnCount) => void;
+  readingLayout: ReadingLayout;
+  onReadingLayoutChange: (v: ReadingLayout) => void;
 };
 
 const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProps>(
@@ -57,8 +77,12 @@ const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProp
       onMarginChange,
       marginMin,
       marginMax,
-      brightness,
-      onBrightnessChange,
+      textAlign,
+      onTextAlignChange,
+      columnCount,
+      onColumnCountChange,
+      readingLayout,
+      onReadingLayoutChange,
     },
     ref,
   ) {
@@ -76,8 +100,8 @@ const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProp
     return (
       <BottomSheetModal
         ref={ref}
-        snapPoints={["50%"]}
-        maxDynamicContentSize={Dimensions.get("window").height * 0.5}
+        snapPoints={["60%"]}
+        maxDynamicContentSize={Dimensions.get("window").height * 0.6}
         enablePanDownToClose
         backgroundStyle={[styles.background, { backgroundColor: palette.sheetSurface }]}
         handleComponent={renderHandle}
@@ -122,9 +146,25 @@ const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProp
             formatValue={(v) => `${v}px`}
             palette={palette}
           />
-          <BrightnessControl
-            value={brightness}
-            onChange={onBrightnessChange}
+          <SegmentPicker
+            label={t("reader.alignment")}
+            options={ALIGNMENT_OPTIONS.map((o) => ({ key: o.key, label: t(o.labelKey) }))}
+            value={textAlign}
+            onChange={onTextAlignChange}
+            palette={palette}
+          />
+          <SegmentPicker
+            label={t("reader.column")}
+            options={COLUMN_OPTIONS.map((o) => ({ key: o.key, label: t(o.labelKey) }))}
+            value={columnCount}
+            onChange={onColumnCountChange}
+            palette={palette}
+          />
+          <SegmentPicker
+            label={t("reader.pagination")}
+            options={PAGINATION_OPTIONS.map((o) => ({ key: o.key, label: t(o.labelKey) }))}
+            value={readingLayout}
+            onChange={onReadingLayoutChange}
             palette={palette}
           />
         </View>

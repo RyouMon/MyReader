@@ -11,6 +11,9 @@ export type ReadingLayout = "scroll" | "paginate";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";
 
+export type TextAlignment = "auto" | "justify" | "start";
+export type ColumnCount = "1" | "auto";
+
 export type ReflowableReaderSettings = {
   theme: ReaderTheme;
   fontSize: number;
@@ -18,6 +21,8 @@ export type ReflowableReaderSettings = {
   paddingX: number;
   readingLayout: ReadingLayout;
   brightness: number;
+  textAlign: TextAlignment;
+  columnCount: ColumnCount;
 };
 
 export type FixedReaderSettings = {
