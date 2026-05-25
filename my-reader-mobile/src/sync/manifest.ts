@@ -1,4 +1,4 @@
-import type { SyncBackend } from "./backend";
+import type { RemoteFileOps } from "./backend";
 
 /** 与桌面端 `MANIFEST_PATH` 保持一致。 */
 export const MANIFEST_PATH = ".myreader/manifest.json";
@@ -55,7 +55,7 @@ function utf8Decode(bytes: Uint8Array): string {
  * Loads the manifest; treats NotFound as an empty manifest so the first sync
  * run can upload it fresh.
  */
-export async function loadManifest(backend: SyncBackend, device: string): Promise<Manifest> {
+export async function loadManifest(backend: RemoteFileOps, device: string): Promise<Manifest> {
   try {
     const bytes = await backend.readBytes(MANIFEST_PATH);
     if (bytes.byteLength === 0) return emptyManifest(device);
@@ -70,7 +70,7 @@ export async function loadManifest(backend: SyncBackend, device: string): Promis
   }
 }
 
-export async function saveManifest(backend: SyncBackend, manifest: Manifest): Promise<void> {
+export async function saveManifest(backend: RemoteFileOps, manifest: Manifest): Promise<void> {
   manifest.updatedAt = Date.now();
   const bytes = utf8Encode(JSON.stringify(manifest, null, 2));
   await backend.writeBytes(MANIFEST_PATH, bytes);

@@ -4,11 +4,10 @@ import { localCachedFileUri, parentDirectoryUriForFileUri } from "../../utils/io
 import { DataIntegrityError } from "../../errors";
 import i18n from "@/src/i18n";
 
-import type { BackendKind, DownloadRequest, RemoteStat, SyncBackend, UploadRequest } from "./types";
+import type { BackendKind, RemoteStat, RemoteFileOps } from "./types";
 
-export class LocalDirectBackend implements SyncBackend {
+export class LocalDirectBackend implements RemoteFileOps {
   readonly kind: BackendKind = "local-direct";
-  readonly isLocalDirect = true;
 
   constructor(private readonly libraryRootUri: string) {}
 
@@ -64,19 +63,14 @@ export class LocalDirectBackend implements SyncBackend {
     const dir = new Directory(dirUri);
     if (!dir.exists) return [];
     try {
-      return dir.list().map((item) =>
-        item instanceof Directory ? `${item.name}/` : (item.name ?? ""),
-      ).filter(Boolean);
+      return dir
+        .list()
+        .map((item) =>
+          item instanceof Directory ? `${item.name}/` : (item.name ?? ""),
+        )
+        .filter(Boolean);
     } catch {
       return [];
     }
-  }
-
-  getDownloadRequest(_relativePath: string): DownloadRequest | null {
-    return null;
-  }
-
-  getUploadRequest(_relativePath: string): UploadRequest | null {
-    return null;
   }
 }

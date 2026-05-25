@@ -1,5 +1,5 @@
 jest.mock("./connectivity", () => ({
-  checkLibraryConnectivity: jest.fn(() => Promise.resolve()),
+  checkConnectivity: jest.fn(() => Promise.resolve()),
 }));
 
 import {
@@ -15,7 +15,7 @@ import {
 import { finalizeRecoveredDownload } from "./download-service";
 
 jest.mock("./download-service", () => ({
-  downloadLibraryFile: jest.fn(() => Promise.resolve({ blake3: null, size: 1, mtimeMs: 1 })),
+  downloadLibraryFileForQueue: jest.fn(() => Promise.resolve({ blake3: null, size: 1, mtimeMs: 1 })),
   finalizeRecoveredDownload: jest.fn(() => Promise.resolve({ blake3: null, size: 100, mtimeMs: 1 })),
 }));
 

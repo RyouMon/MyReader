@@ -17,7 +17,7 @@ import { getSyncMeta, setSyncMeta } from "../data/sync_meta";
 import type { DataSource, Library } from "../data/types";
 import { uuid } from "../utils/common";
 import { readingProgress } from "@my-reader/db/schema";
-import { buildBackend, type SyncBackend } from "./backend";
+import { buildBackend, type RemoteFileOps } from "./backend";
 import { getOrCreateDeviceId } from "./device";
 import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
 
@@ -38,7 +38,7 @@ function lastPullCursorKey(deviceId: string, remoteDevice: string): string {
 }
 
 async function pushDbChanges(
-  backend: SyncBackend,
+  backend: RemoteFileOps,
   library: Library,
   deviceId: string,
 ): Promise<number> {
@@ -84,7 +84,7 @@ async function pushDbChanges(
 }
 
 async function pullDbChanges(
-  backend: SyncBackend,
+  backend: RemoteFileOps,
   library: Library,
   deviceId: string,
 ): Promise<number> {
@@ -195,7 +195,7 @@ export async function syncDbFromContext(
   library: Library,
   ctx: ResolvedSyncTarget,
 ): Promise<DbSyncReport> {
-  if (ctx.isLocalDirect) {
+  if (ctx.backend.kind === "local-direct") {
     if (!library.securityScopedBookmark) {
       return { pushed: 0, pulled: 0 };
     }
@@ -213,7 +213,6 @@ export async function syncDbFromContext(
   }
 
   const deviceId = await getOrCreateDeviceId(library);
-
   const pushed = await pushDbChanges(ctx.backend, library, deviceId);
   const pulled = await pullDbChanges(ctx.backend, library, deviceId);
 

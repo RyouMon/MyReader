@@ -4,8 +4,7 @@ import ky from "ky";
 import i18n from "@/src/i18n";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
-import { buildHttpBasicAuthHeader } from "../utils/http";
-import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";
+import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";import { WebDavUrlBuilder } from "../utils/webdav";
 import { openDatabaseFromUri } from "./sqlite";
 import type { BookItem, Library, WebDavDataSource } from "./types";
 
@@ -93,13 +92,11 @@ function normalizeHrefPath(href: string) {
 }
 
 function buildUrl(source: WebDavDataSource, path = "") {
-  const baseUrl = normalizeBaseUrl(source.endpoint);
-  const encodedPath = encodeUrlPathFromChunks(source.rootPath ?? "", path);
-  return encodedPath ? `${baseUrl}/${encodedPath}` : baseUrl;
+  return new WebDavUrlBuilder(source).urlFor(path);
 }
 
 function buildAuthHeader(source: WebDavDataSource): Record<string, string> {
-  return buildHttpBasicAuthHeader(source.username, source.password);
+  return new WebDavUrlBuilder(source).authHeaders;
 }
 
 function splitConcat(value: string | null) {

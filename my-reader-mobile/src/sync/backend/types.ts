@@ -19,26 +19,36 @@ export type UploadRequest = {
 };
 
 /**
- * Uniform surface for the two supported mobile backends.
+ * Core file operations — all backends must implement.
  *
  * Paths are always treated as **forward-slash** relative paths rooted at the
  * library; backends translate them into URLs, bookmarked directories or raw
  * filesystem paths as appropriate.
  */
-export interface SyncBackend {
+export interface RemoteFileOps {
   readonly kind: BackendKind;
-  readonly isLocalDirect: boolean;
   readBytes(relativePath: string): Promise<Uint8Array>;
   writeBytes(relativePath: string, bytes: Uint8Array): Promise<void>;
   deleteRemote(relativePath: string): Promise<void>;
   statRemote(relativePath: string): Promise<RemoteStat>;
-  /**
-   * List direct children of the given prefix. Returns names relative to the
-   * prefix — directories include a trailing `/`, files do not.
-   * Returns `[]` when the directory does not exist (404).
-   */
   listRemote(prefix: string): Promise<string[]>;
-  getDownloadRequest(relativePath: string): DownloadRequest | null;
-  getUploadRequest(relativePath: string): UploadRequest | null;
-  prepareUpload?(relativePath: string): Promise<void>;
+}
+
+/**
+ * Native transfer operations — only remote backends (WebDAV) implement.
+ * Enables background download/upload via the native adapter without loading
+ * entire file contents into JS memory.
+ */
+export interface NativeTransferOps {
+  getDownloadRequest(relativePath: string): DownloadRequest;
+  getUploadRequest(relativePath: string): UploadRequest;
+  prepareUpload(relativePath: string): Promise<void>;
+}
+
+/** Union type for backends that support native file transfer. */
+export type TransferBackend = RemoteFileOps & NativeTransferOps;
+
+/** Type guard: checks whether a backend supports native transfer. */
+export function isTransferBackend(backend: RemoteFileOps): backend is TransferBackend {
+  return "getDownloadRequest" in backend;
 }

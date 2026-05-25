@@ -6,7 +6,7 @@ import { useAppStore } from "../store/app-store";
 
 import { upsertFileState } from "../data/file_state";
 import { openSyncContext, type SyncTargetContext } from "./actions";
-import { localFileUriFor } from "./backend";
+import { isTransferBackend, localFileUriFor } from "./backend";
 import {
   downloadFileDirectWithProgress as downloadCacheFileDirectWithProgress,
   type BackgroundDownloadOptions,
@@ -56,6 +56,9 @@ export async function downloadContextFile(
   onProgress?: DownloadProgressHandler,
   options: BackgroundDownloadOptions = {},
 ): Promise<DownloadOutcome> {
+  if (!isTransferBackend(ctx.backend)) {
+    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
+  }
   const outcome = await downloadCacheFileDirectWithProgress(
     ctx.backend,
     ctx.libraryCacheDirUri,

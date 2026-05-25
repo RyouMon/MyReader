@@ -1,37 +1,25 @@
-import type { Library } from "../data/types";
-import { AppInvariantError, NetworkError } from "../errors";
-import { useAppStore } from "../store/app-store";
+import type { RemoteFileOps } from "./backend";
 
-import { resolveSyncTarget } from "./resolve";
-import i18n from "@/src/i18n";
+export type ConnectivityCheckResult = {
+  reachable: boolean;
+  latencyMs: number;
+  error?: string;
+};
 
 /**
- * Performs a lightweight connectivity probe for one app-store library.
+ * Probe the backend by stat-ing the root path.
+ * Accepts a pre-built backend so the caller controls the lifecycle.
  */
-export async function checkLibraryConnectivity(libraryId: string): Promise<void> {
-  const { libraries, dataSources } = useAppStore.getState();
-  const library = libraries.find((item: Library) => item.id === libraryId);
-  if (!library) {
-    throw new AppInvariantError(i18n.t("sync.libraryNotFound", { id: libraryId }));
+export async function checkConnectivity(backend: RemoteFileOps): Promise<ConnectivityCheckResult> {
+  const start = Date.now();
+  try {
+    await backend.statRemote(".");
+    return { reachable: true, latencyMs: Date.now() - start };
+  } catch (err) {
+    return {
+      reachable: false,
+      latencyMs: Date.now() - start,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
-  if (library.sourceType !== "webdav") {
-    return;
-  }
-
-  const resolved = await resolveSyncTarget(library, dataSources);
-  await new Promise<void>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new NetworkError(i18n.t("sync.connectionTimeout")));
-    }, 2000);
-    resolved.backend.statRemote(".").then(
-      () => {
-        clearTimeout(timeoutId);
-        resolve();
-      },
-      (err: unknown) => {
-        clearTimeout(timeoutId);
-        reject(err);
-      },
-    );
-  });
 }

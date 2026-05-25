@@ -4,17 +4,16 @@ import { readWebDavPassword } from "../store/secure-credential-store";
 import { parentDirectoryUriForFileUri } from "../utils/io";
 import { SyncConfigError } from "../errors";
 
-import { buildBackend, resolveLibraryBooksDir, type SyncBackend } from "./backend";
+import { buildBackend, resolveLibraryBooksDir, type RemoteFileOps } from "./backend";
 import i18n from "@/src/i18n";
 
 export type ResolvedSyncTarget = {
-  backend: SyncBackend;
+  backend: RemoteFileOps;
   /** Stable per-backend scope used for both manifest naming and file_state rows. */
   dataSourceId: string;
   libraryId: string;
   /** Local directory for materialized remote files. */
   libraryCacheDirUri: string;
-  isLocalDirect: boolean;
 };
 
 /**
@@ -53,7 +52,6 @@ export async function resolveSyncTarget(
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryCacheDirUri,
-      isLocalDirect: false,
     };
   }
 
@@ -67,6 +65,5 @@ export async function resolveSyncTarget(
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
     libraryCacheDirUri,
-    isLocalDirect: true,
   };
 }

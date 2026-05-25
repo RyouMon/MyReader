@@ -2,8 +2,10 @@ import { useEffect, useSyncExternalStore } from "react";
 
 import { SyncConfigError } from "../errors";
 import { notifyDownloadState } from "../notifications/download-notifications";
-import { checkLibraryConnectivity } from "./connectivity";
-import { downloadLibraryFile, finalizeRecoveredDownload } from "./download-service";
+import { checkConnectivity } from "./connectivity";
+import { downloadContextFile, finalizeRecoveredDownload, openDownloadContextForLibrary } from "./download-service";
+import { resolveSyncTarget } from "./resolve";
+import { useAppStore } from "../store/app-store";
 import {
   cancelNativeDownload,
   completeNativeDownload,
@@ -13,6 +15,14 @@ import {
 } from "./native-download";
 
 import i18n from "@/src/i18n";
+
+async function checkLibraryConnectivity(libraryId: string): Promise<void> {
+  const { libraries, dataSources } = useAppStore.getState();
+  const library = libraries.find((l) => l.id === libraryId);
+  if (!library) throw new SyncConfigError(i18n.t("sync.libraryNotFound", { id: libraryId }));
+  const target = await resolveSyncTarget(library, dataSources);
+  await checkConnectivity(target.backend);
+}
 
 export type DownloadTaskStatus =
   | "queued"
@@ -439,25 +449,14 @@ async function _startTask(taskId: string): Promise<void> {
     const afterCheck = state.tasks.find((t) => t.id === taskId);
     if (!afterCheck || afterCheck.status === "cancelled") return;
 
-    await downloadLibraryFile({
-      libraryId: task.libraryId,
-      relativePath: task.relativePath,
-      onProgress: (received, total) => {
+    const ctx = await openDownloadContextForLibrary(task.libraryId);
+    await downloadContextFile(
+      ctx,
+      task.relativePath,
+      (received, total) => {
         transitionTask(taskId, { type: "progress", received, total });
       },
-      options: {
-        taskId,
-        metadata: getTaskMetadata(task),
-        onBegin: (expectedBytes) => {
-          console.info("Start to receive download begin event:", {
-            taskId,
-            relativePath: task.relativePath,
-            expectedBytes,
-          });
-          transitionTask(taskId, { type: "begin" });
-        },
-      },
-    });
+    );
     if (state.tasks.find((t) => t.id === taskId)?.status !== "cancelled") {
       console.info("Success to finish download task:", {
         taskId,

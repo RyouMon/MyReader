@@ -132,7 +132,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
           continue;
         }
 
-        if (ctx.isLocalDirect) {
+        if (ctx.backend.kind === "local-direct") {
           entry.skipped = true;
           entry.skipReason = i18n.t("sync.localDirectRead");
           results.push(entry);

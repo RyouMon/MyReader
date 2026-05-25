@@ -1,36 +1,28 @@
-import { canonicalRelativePathSegments, encodeUrlPathFromChunks } from "../../utils/io";
-import { AppInvariantError, NetworkError } from "../../errors";
+import { canonicalRelativePathSegments } from "../../utils/io";
+import { WebDavUrlBuilder } from "../../utils/webdav";
+import { NetworkError } from "../../errors";
 import i18n from "@/src/i18n";
 
-import type { BackendKind, DownloadRequest, RemoteStat, SyncBackend, UploadRequest } from "./types";
+import type { BackendKind, DownloadRequest, UploadRequest, RemoteStat, RemoteFileOps, NativeTransferOps } from "./types";
 import type { WebDavDataSource } from "../../data/types";
 
-function encodeBasicAuth(username: string, password: string): string {
-  if (typeof globalThis.btoa === "function") {
-    return globalThis.btoa(`${username}:${password}`);
-  }
-  throw new AppInvariantError(i18n.t("sync.basicAuthNotSupported"));
-}
-
-export class WebDavBackend implements SyncBackend {
+export class WebDavBackend implements RemoteFileOps, NativeTransferOps {
   readonly kind: BackendKind = "webdav";
-  readonly isLocalDirect = false;
+  private readonly urlBuilder: WebDavUrlBuilder;
 
   constructor(
-    private readonly source: WebDavDataSource,
-    private readonly libraryRootPath: string,
-  ) {}
+    source: WebDavDataSource,
+    libraryRootPath: string,
+  ) {
+    this.urlBuilder = new WebDavUrlBuilder(source, libraryRootPath);
+  }
 
   private authHeader(): Record<string, string> {
-    return {
-      Authorization: `Basic ${encodeBasicAuth(this.source.username, this.source.password)}`,
-    };
+    return this.urlBuilder.authHeaders;
   }
 
   private urlFor(relativePath: string): string {
-    const encoded = encodeUrlPathFromChunks(this.source.rootPath ?? "", this.libraryRootPath, relativePath);
-    const root = this.source.endpoint.replace(/\/+$/, "");
-    return encoded ? `${root.replace(/\/+$/, "")}/${encoded}` : root;
+    return this.urlBuilder.urlFor(relativePath);
   }
 
   getDownloadRequest(relativePath: string): DownloadRequest {
