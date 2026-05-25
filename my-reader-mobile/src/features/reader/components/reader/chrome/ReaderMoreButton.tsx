@@ -1,3 +1,6 @@
+import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
+import { TouchableHighlight } from "@/tw";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import Animated, {
   useAnimatedStyle,
@@ -6,21 +9,17 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
-import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
-import { TouchableHighlight } from "@/tw";
 
 type Props = {
-  insetsBottom: number;
   visible: boolean;
   palette: ReaderChromePalette;
   onPress: () => void;
 };
 
-const BTN_SIZE = 44;
-const ICON_SIZE = 22;
+const BTN_SIZE = 48;
+const ICON_SIZE = 24;
 
-export default function ReaderMoreButton({ insetsBottom, visible, palette, onPress }: Props) {
+export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
   const scale = useSharedValue(0.85);
   const opacity = useSharedValue(0);
 
@@ -44,8 +43,8 @@ export default function ReaderMoreButton({ insetsBottom, visible, palette, onPre
       style={[
         {
           position: "absolute",
-          bottom: Math.max(insetsBottom, 12) + 8,
-          right: 16,
+          bottom: 32,
+          right: 32,
           width: BTN_SIZE,
           height: BTN_SIZE,
           borderRadius: BTN_SIZE / 2,

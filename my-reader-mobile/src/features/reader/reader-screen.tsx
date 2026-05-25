@@ -18,9 +18,9 @@ import {
   ReaderMoreButton,
 } from "@/src/features/reader/components/reader/chrome";
 import { chromeReducer, ChromeState } from "@/src/features/reader/components/reader/chrome/chrome-state";
+import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants";
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet";
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet";
-import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants";
 import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
 import { useAppStore } from "@/src/store/app-store";
@@ -275,23 +275,23 @@ export default function ReaderScreen() {
           <View className="absolute inset-0">
             {isReflowSurface ? (
               loadState.epubFileUri ? (
-                <Animated.View style={[{ paddingTop: insets.top - 8, flex: 1 }, themeBgStyle]}>
-                <ReadiumReflowReader
-                  epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
-                  initialLocator={loadState.initialLocator ?? undefined}
-                  onStateChange={handleStateChange}
-                  onTocReady={handleTocReady}
-                  onRequestClose={handleRequestClose}
-                  onToggleChrome={toggleChrome}
-                  gotoTocIndex={gotoPageCmd}
-                  theme={reflowSettings.theme}
-                  fontSize={reflowSettings.fontSize}
-                  lineHeight={reflowSettings.lineHeight}
-                  paddingX={reflowSettings.paddingX}
-                  brightness={reflowSettings.brightness}
-                  textAlign={reflowSettings.textAlign}
-                  columnCount={reflowSettings.columnCount}
-                />
+                <Animated.View style={[{ paddingTop: insets.top - 8, paddingBottom: insets.bottom, flex: 1 }, themeBgStyle]}>
+                  <ReadiumReflowReader
+                    epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+                    initialLocator={loadState.initialLocator ?? undefined}
+                    onStateChange={handleStateChange}
+                    onTocReady={handleTocReady}
+                    onRequestClose={handleRequestClose}
+                    onToggleChrome={toggleChrome}
+                    gotoTocIndex={gotoPageCmd}
+                    theme={reflowSettings.theme}
+                    fontSize={reflowSettings.fontSize}
+                    lineHeight={reflowSettings.lineHeight}
+                    paddingX={reflowSettings.paddingX}
+                    brightness={reflowSettings.brightness}
+                    textAlign={reflowSettings.textAlign}
+                    columnCount={reflowSettings.columnCount}
+                  />
                 </Animated.View>
               ) : null
             ) : isFixedSurface ? (
@@ -327,12 +327,23 @@ export default function ReaderScreen() {
         )}
 
         {/* Visible in all states: chapter title (top-center) */}
-        <ReaderChapterLabel insetsTop={insets.top} title={readerState?.chapterTitle} palette={chromePalette} />
+        <ReaderChapterLabel
+          insetsTop={insets.top}
+          title={readerState?.chapterTitle}
+          palette={chromePalette} />
 
         {/* State 2+: Close button (top-right circle) */}
-        <ReaderCloseButton insetsTop={insets.top} visible={chromeState >= ChromeState.Chrome} palette={chromePalette} onPress={handleRequestClose} />
+        <ReaderCloseButton
+          insetsTop={insets.top}
+          visible={chromeState >= ChromeState.Chrome}
+          palette={chromePalette}
+          onPress={handleRequestClose} />
+
         {/* State 2/4/5: More button (bottom-right circle); hidden when expanded (3) */}
-        <ReaderMoreButton insetsBottom={insets.bottom} visible={chromeState === ChromeState.Chrome || chromeState === ChromeState.TocSheet || chromeState === ChromeState.SettingsSheet} palette={chromePalette} onPress={() => dispatch({ type: "moreButtonTap" })} />
+        <ReaderMoreButton
+          visible={chromeState === ChromeState.Chrome || chromeState === ChromeState.TocSheet || chromeState === ChromeState.SettingsSheet}
+          palette={chromePalette}
+          onPress={() => dispatch({ type: "moreButtonTap" })} />
 
         {/* State 3: Expanded action pills (TOC + Settings) */}
         <ReaderActionsExpanded
@@ -365,7 +376,7 @@ export default function ReaderScreen() {
             else patchFixedReaderSettings({ theme: key as ReaderTheme });
           }}
           font="serif"
-          onFontChange={() => {}}
+          onFontChange={() => { }}
           fontSize={reflowSettings.fontSize}
           onFontSizeChange={(v) => patchReflowableReaderSettings({ fontSize: v })}
           fontSizeMin={14}

@@ -1,3 +1,6 @@
+import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
+import { TouchableHighlight } from "@/tw";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import Animated, {
   useAnimatedStyle,
@@ -6,9 +9,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { MaterialIcons } from "@expo/vector-icons";
-import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
-import { TouchableHighlight } from "@/tw";
 
 type Props = {
   insetsTop: number;
@@ -17,8 +17,8 @@ type Props = {
   onPress: () => void;
 };
 
-const BTN_SIZE = 44;
-const ICON_SIZE = 22;
+const BTN_SIZE = 48;
+const ICON_SIZE = 24;
 
 export default function ReaderCloseButton({ insetsTop, visible, palette, onPress }: Props) {
   const scale = useSharedValue(0.85);
@@ -44,8 +44,8 @@ export default function ReaderCloseButton({ insetsTop, visible, palette, onPress
       style={[
         {
           position: "absolute",
-          top: insetsTop + 8,
-          right: 16,
+          top: insetsTop,
+          right: 32,
           width: BTN_SIZE,
           height: BTN_SIZE,
           borderRadius: BTN_SIZE / 2,
