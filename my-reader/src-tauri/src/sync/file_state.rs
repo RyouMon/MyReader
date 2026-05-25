@@ -2,7 +2,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Qu
 use serde::Serialize;
 use specta::Type;
 
-use crate::entities::file_state;
+use crate::entities::app::file_state;
 use crate::error::AppError;
 
 #[derive(Debug, Clone, Serialize, Type)]

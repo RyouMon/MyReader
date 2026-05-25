@@ -17,7 +17,7 @@ pub async fn open_db(library_path: &str) -> Result<DatabaseConnection, AppError>
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-    db.get_schema_registry("my_reader_lib::entities::*")
+    db.get_schema_registry("my_reader_lib::entities::app::*")
         .sync(&db)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;

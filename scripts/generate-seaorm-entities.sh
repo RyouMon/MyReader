@@ -13,7 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMP_DB="/tmp/myreader_schema.db"
-ENTITY_DIR="$ROOT_DIR/my-reader/src-tauri/src/entities"
+ENTITY_DIR="$ROOT_DIR/my-reader/src-tauri/src/entities/app"
 
 # Find the latest Drizzle migration SQL
 MIGRATION_SQL=$(ls -1 "$ROOT_DIR/packages/db/drizzle/"*.sql 2>/dev/null | sort | tail -1)

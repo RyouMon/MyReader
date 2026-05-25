@@ -1,6 +1,6 @@
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
-use crate::entities::reading_progress;
+use crate::entities::app::reading_progress;
 use crate::error::AppError;
 use crate::models::ReadingProgressDto;
 

@@ -16,7 +16,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::entities::{reading_progress, sync_meta};
+use crate::entities::app::{reading_progress, sync_meta};
 use crate::error::AppError;
 use opendal::Operator;
 
