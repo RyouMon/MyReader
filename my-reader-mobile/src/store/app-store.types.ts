@@ -7,7 +7,6 @@ import type { BookItem, Library } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
-export type ReadingLayout = "scroll" | "paginate";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";
 
@@ -19,7 +18,6 @@ export type ReflowableReaderSettings = {
   fontSize: number;
   lineHeight: number;
   paddingX: number;
-  readingLayout: ReadingLayout;
   brightness: number;
   textAlign: TextAlignment;
   columnCount: ColumnCount;
@@ -27,7 +25,6 @@ export type ReflowableReaderSettings = {
 
 export type FixedReaderSettings = {
   theme: ReaderTheme;
-  readingLayout: ReadingLayout;
   navigationMode: FixedNavigationMode;
   brightness: number;
   zoomScale: number;

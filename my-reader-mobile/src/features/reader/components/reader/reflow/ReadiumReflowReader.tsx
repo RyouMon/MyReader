@@ -12,7 +12,7 @@ import type {
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import type { ReaderTheme, ReadingLayout, TextAlignment, ColumnCount } from "@/src/store/app-store.types";
+import type { ReaderTheme, TextAlignment, ColumnCount } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 const TAP_MAX_DRIFT = 12;
@@ -39,7 +39,6 @@ export type ReadiumReflowReaderProps = {
   onToggleChrome?: () => void;
   /** 与 {@link ReaderTocItem.pageIndex} 一致，由目录 sheet 选择触发。 */
   gotoTocIndex?: number;
-  readingLayout?: ReadingLayout;
   theme?: ReaderTheme;
   fontSize?: number;
   lineHeight?: number;
@@ -127,7 +126,6 @@ function buildPreferences(
   fontSize: number,
   lineHeight: number,
   paddingX: number,
-  scroll: boolean,
   textAlign: TextAlignment,
   columnCount: ColumnCount,
 ): Preferences {
@@ -137,7 +135,7 @@ function buildPreferences(
     fontSize: fontSize / 16,
     lineHeight,
     pageMargins: 0.5 + (paddingX / 100) * 1.5,
-    scroll,
+    scroll: false,
     textColor: t.fg,
     backgroundColor: t.bg,
     publisherStyles: false,
@@ -193,7 +191,6 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
       onTocReady,
       onToggleChrome,
       gotoTocIndex,
-      readingLayout = "scroll",
       theme = "paper",
       fontSize = 18,
       lineHeight = 1.85,
@@ -223,8 +220,8 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     );
 
     const preferences = useMemo(
-      () => buildPreferences(theme, fontSize, lineHeight, paddingX, readingLayout === "scroll", textAlign, columnCount),
-      [theme, fontSize, lineHeight, paddingX, readingLayout, textAlign, columnCount],
+      () => buildPreferences(theme, fontSize, lineHeight, paddingX, textAlign, columnCount),
+      [theme, fontSize, lineHeight, paddingX, textAlign, columnCount],
     );
 
     const handlePublicationReady = useCallback(

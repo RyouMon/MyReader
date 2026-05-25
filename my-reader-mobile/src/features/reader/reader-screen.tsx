@@ -24,7 +24,7 @@ import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/ch
 import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
 import { useAppStore } from "@/src/store/app-store";
-import type { ReaderTheme, ReadingLayout } from "@/src/store/app-store.types";
+import type { ReaderTheme } from "@/src/store/app-store.types";
 import { toNativeFilesystemPath } from "@/src/utils/io";
 import { Animated, Pressable, Text, View } from "@/tw";
 
@@ -239,10 +239,6 @@ export default function ReaderScreen() {
     const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
     return readerChromePalette(option.fg, option.swatch);
   }, [activeTheme]);
-  const activeReadingLayout: ReadingLayout = isReflowSurface
-    ? reflowSettings.readingLayout
-    : fixedSettings.readingLayout;
-  void activeReadingLayout;
 
   if (__DEV__) {
     console.info("[mobile-reader] render:ready-screen", {
@@ -288,7 +284,6 @@ export default function ReaderScreen() {
                   onRequestClose={handleRequestClose}
                   onToggleChrome={toggleChrome}
                   gotoTocIndex={gotoPageCmd}
-                  readingLayout={reflowSettings.readingLayout}
                   theme={reflowSettings.theme}
                   fontSize={reflowSettings.fontSize}
                   lineHeight={reflowSettings.lineHeight}
@@ -387,8 +382,6 @@ export default function ReaderScreen() {
           onTextAlignChange={(v) => patchReflowableReaderSettings({ textAlign: v })}
           columnCount={reflowSettings.columnCount}
           onColumnCountChange={(v) => patchReflowableReaderSettings({ columnCount: v })}
-          readingLayout={reflowSettings.readingLayout}
-          onReadingLayoutChange={(v) => patchReflowableReaderSettings({ readingLayout: v })}
         />
       </Animated.View>
     </BottomSheetModalProvider>

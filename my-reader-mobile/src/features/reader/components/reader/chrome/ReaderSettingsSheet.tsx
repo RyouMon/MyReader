@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Dimensions, View as RNView, StyleSheet } from "react-native";
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
-import type { ColumnCount, ReaderTheme, ReadingLayout, TextAlignment } from "@/src/store/app-store.types";
+import type { ColumnCount, ReaderTheme, TextAlignment } from "@/src/store/app-store.types";
 import { Text, View } from "@/tw";
 import {
   FontPicker,
@@ -23,11 +23,6 @@ const COLUMN_OPTIONS = [
   { key: "1", labelKey: "reader.column1" },
   { key: "auto", labelKey: "reader.columnAuto" },
 ] as const satisfies { key: ColumnCount; labelKey: string }[];
-
-const PAGINATION_OPTIONS = [
-  { key: "paginate", labelKey: "reader.paginationPaginate" },
-  { key: "scroll", labelKey: "reader.paginationScroll" },
-] as const satisfies { key: ReadingLayout; labelKey: string }[];
 
 export type ReaderSettingsSheetProps = {
   palette: ReaderChromePalette;
@@ -52,8 +47,6 @@ export type ReaderSettingsSheetProps = {
   onTextAlignChange: (v: TextAlignment) => void;
   columnCount: ColumnCount;
   onColumnCountChange: (v: ColumnCount) => void;
-  readingLayout: ReadingLayout;
-  onReadingLayoutChange: (v: ReadingLayout) => void;
 };
 
 const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProps>(
@@ -81,8 +74,6 @@ const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProp
       onTextAlignChange,
       columnCount,
       onColumnCountChange,
-      readingLayout,
-      onReadingLayoutChange,
     },
     ref,
   ) {
@@ -158,13 +149,6 @@ const ReaderSettingsSheet = forwardRef<BottomSheetModal, ReaderSettingsSheetProp
             options={COLUMN_OPTIONS.map((o) => ({ key: o.key, label: t(o.labelKey) }))}
             value={columnCount}
             onChange={onColumnCountChange}
-            palette={palette}
-          />
-          <SegmentPicker
-            label={t("reader.pagination")}
-            options={PAGINATION_OPTIONS.map((o) => ({ key: o.key, label: t(o.labelKey) }))}
-            value={readingLayout}
-            onChange={onReadingLayoutChange}
             palette={palette}
           />
         </View>
