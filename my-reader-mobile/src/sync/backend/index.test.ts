@@ -1,4 +1,4 @@
-import { buildBackend } from "./backend";
+import { buildBackend } from ".";
 
 describe("WebDAV upload request contract", () => {
   test("builds a native PUT upload request with auth and content type", () => {
