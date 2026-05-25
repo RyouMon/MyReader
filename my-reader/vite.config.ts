@@ -27,7 +27,6 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "pdfjs-dist": require.resolve("pdfjs-dist/package.json").replace(/\/package\.json$/, ""),
       "@my-reader/db": path.resolve(__dirname, "../packages/db/src"),
     },
   },

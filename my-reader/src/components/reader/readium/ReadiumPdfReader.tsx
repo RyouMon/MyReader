@@ -200,6 +200,13 @@ export function ReadiumPdfReader({
     return () => window.removeEventListener("keydown", onKey)
   }, [direction])
 
+  const isRtl = direction === "rtl"
+  const edgeTurnActive = readiumNavReady && !tocOpen && !settingsOpen
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
+
   if (initError) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
@@ -214,13 +221,6 @@ export function ReadiumPdfReader({
   const chapterTitle = totalPages > 0
     ? t("reader.pageCount", { current: pageNum, total: totalPages })
     : ""
-
-  const isRtl = direction === "rtl"
-  const edgeTurnActive = readiumNavReady && !tocOpen && !settingsOpen
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
-    edgeTurnActive,
-    readerRootRef,
-  )
 
   return (
     <ReaderChromeShell
