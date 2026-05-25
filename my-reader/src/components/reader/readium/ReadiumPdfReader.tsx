@@ -14,55 +14,24 @@ import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import { ensurePdfJsWorker } from "@/lib/pdfWorker"
+import {
+  PdfNavigator,
+  PDF_RENDER_BASE,
+  PDF_SCALE_MIN,
+  PDF_SCALE_MAX,
+  type SpreadMode,
+} from "@/lib/readium/PdfNavigator"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { Locator, LocatorLocations } from "@readium/shared"
+import { Locator } from "@readium/shared"
 import { Settings } from "lucide-react"
-import type { PDFDocumentProxy } from "pdfjs-dist"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { cn } from "@/lib/utils"
 
-const PDF_RENDER_BASE = 1.25
-const PDF_SCALE_MIN = 0.75
-const PDF_SCALE_MAX = 3
-
-/** RFC 3778 / Readium locators: page fragments live in `locations.fragments`, not in `href`. */
-function pdfPageFragment(page: number): string {
-  return `page=${Math.max(1, Math.floor(page))}`
-}
-
-/** Resolve initial page from persisted Readium locator (new `page=` fragments or legacy `page-N` href). */
-function parsePdfStartPage(
-  loc: Locator | null,
-  numPages: number,
-): number | null {
-  if (!loc || numPages < 1) return null
-  const frags = loc.locations?.fragments
-  if (frags?.length) {
-    for (const f of frags) {
-      const m = /^page=(\d+)$/i.exec(String(f).trim())
-      if (m) {
-        const n = Number(m[1])
-        if (n >= 1 && n <= numPages) return n
-      }
-    }
-  }
-  const pos = loc.locations?.position
-  if (typeof pos === "number") {
-    const n = Math.floor(pos)
-    if (n >= 1 && n <= numPages) return n
-  }
-  const legacy = /^page-(\d+)$/i.exec(loc.href)
-  if (legacy) {
-    const n = Number(legacy[1])
-    if (n >= 1 && n <= numPages) return n
-  }
-  return null
-}
+type PdfSurface = "black" | "dim" | "paper"
 
 export type ReadiumPdfReaderProps = {
   bookTitle: string
-  /** Tauri asset URL or file URL for pdf.js */
   fileUrl: string
   initialSavedLocator: Locator | null
   libraryId: string | null
@@ -82,43 +51,34 @@ export function ReadiumPdfReader({
 }: ReadiumPdfReaderProps) {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const pdfRef = useRef<PDFDocumentProxy | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<PdfNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
     useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
     useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pageNum, setPageNum] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
+  const [initError, setInitError] = useState<string | null>(null)
+  const [readiumNavReady, setReadiumNavReady] = useState(false)
+  const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
   const [renderScale, setRenderScale] = useState(PDF_RENDER_BASE)
+  const [spreadMode, setSpreadMode] = useState<SpreadMode>("auto")
+  const [surface, setSurface] = useState<PdfSurface>("black")
   const direction = useAppUiStore((s) => s.fixedLayout.direction)
 
+  const totalPages = navRef.current?.totalPages ?? 0
+  const pageNum = currentLocator?.locations?.position ?? 1
+
   const tocRows: ReadiumTocRow[] = useMemo(() => {
-    if (totalPages < 1) return []
-    return Array.from({ length: totalPages }, (_, i) => ({
+    const nav = navRef.current
+    if (!nav || nav.totalPages < 1) return []
+    return Array.from({ length: nav.totalPages }, (_, i) => ({
       depth: 0,
       title: t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
       href: `page-${i + 1}`,
       type: "application/pdf",
     }))
-  }, [totalPages])
-
-  const currentLocator = useMemo(() => {
-    if (totalPages < 1) return null
-    const prog = totalPages > 1 ? (pageNum - 1) / (totalPages - 1) : 0
-    return new Locator({
-      href: fileUrl,
-      type: "application/pdf",
-      title: t("reader.pageCount", { current: pageNum, total: "" }).replace(" / ", ""),
-      locations: new LocatorLocations({
-        fragments: [pdfPageFragment(pageNum)],
-        position: pageNum,
-        progression: prog,
-        totalProgression: prog,
-      }),
-    })
-  }, [fileUrl, pageNum, totalPages])
+  }, [readiumNavReady])
 
   useLocatorProgressSync({
     enabled:
@@ -134,79 +94,92 @@ export function ReadiumPdfReader({
 
   useEffect(() => {
     let cancelled = false
-    setError(null)
+    const nav = new PdfNavigator(fileUrl, {
+      positionChanged: (locator) => {
+        if (!cancelled) setCurrentLocator(locator)
+      },
+      tap: () => {
+        showChrome()
+        return false
+      },
+      click: () => false,
+    })
+
     void (async () => {
       try {
-        await ensurePdfJsWorker()
-        const pdfjs = await import("pdfjs-dist")
-        const task = pdfjs.getDocument({ url: fileUrl })
-        const pdf = await task.promise
+        await nav.load(initialSavedLocator)
         if (cancelled) {
-          await pdf.destroy()
+          await nav.destroy()
           return
         }
-        pdfRef.current = pdf
-        setTotalPages(pdf.numPages)
-        const parsed = parsePdfStartPage(initialSavedLocator, pdf.numPages)
-        setPageNum(parsed ?? 1)
+        navRef.current = nav
+        setReadiumNavReady(true)
+        setCurrentLocator(nav.currentLocator)
       } catch (e) {
-        if (!cancelled) setError(String(e))
+        if (!cancelled) setInitError(String(e))
       }
     })()
+
     return () => {
       cancelled = true
-      void pdfRef.current?.destroy()
-      pdfRef.current = null
+      setReadiumNavReady(false)
+      navRef.current = null
+      void nav.destroy()
     }
   }, [fileUrl, initialSavedLocator])
 
+  // Re-render when page, scale, spread mode, or container size changes
   useEffect(() => {
-    const pdf = pdfRef.current
+    const nav = navRef.current
     const canvas = canvasRef.current
-    if (!pdf || !canvas || pageNum < 1) return
+    const container = containerRef.current
+    if (!nav || !canvas || !container || !readiumNavReady) return
+    const { width, height } = container.getBoundingClientRect()
+    if (width === 0 || height === 0) return
+    void nav.renderPage(canvas, width, height)
+  }, [pageNum, renderScale, spreadMode, readiumNavReady])
 
-    void (async () => {
-      const page = await pdf.getPage(pageNum)
-      const vp = page.getViewport({ scale: renderScale })
-      const ctx = canvas.getContext("2d")
-      if (!ctx) return
-      canvas.width = vp.width
-      canvas.height = vp.height
-      await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
-    })()
-  }, [pageNum, renderScale])
-
-  const go = useCallback(
-    (delta: number) => {
-      setPageNum((p) => {
-        const next = p + delta
-        if (next < 1) return 1
-        if (totalPages > 0 && next > totalPages) return totalPages
-        return next
+  // Observe container resize (debounced to avoid flicker during chrome transitions)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !readiumNavReady) return
+    let rafId = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        const nav = navRef.current
+        const canvas = canvasRef.current
+        if (!nav || !canvas) return
+        const { width, height } = container.getBoundingClientRect()
+        if (width === 0 || height === 0) return
+        void nav.renderPage(canvas, width, height)
       })
-    },
-    [totalPages],
-  )
+    })
+    observer.observe(container)
+    return () => {
+      cancelAnimationFrame(rafId)
+      observer.disconnect()
+    }
+  }, [readiumNavReady])
 
-  const isRtl = direction === "rtl"
-  const edgeTurnActive = totalPages > 0 && !error && !tocOpen && !settingsOpen
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
-    edgeTurnActive,
-    readerRootRef,
-  )
+  const onSpreadChange = useCallback((mode: SpreadMode) => {
+    const nav = navRef.current
+    if (nav) nav.spreadMode = mode
+    setSpreadMode(mode)
+  }, [])
 
   const onPdfEdgePrev = useCallback(() => {
-    go(-1)
-  }, [go])
+    navRef.current?.goBackward()
+  }, [])
 
   const onPdfEdgeNext = useCallback(() => {
-    go(1)
-  }, [go])
+    navRef.current?.goForward()
+  }, [])
 
   const onTocSelect = useCallback(
     (row: ReadiumTocRow) => {
       const m = /^page-(\d+)$/i.exec(row.href)
-      if (m) setPageNum(Number(m[1]))
+      if (m) navRef.current?.goToPage(Number(m[1]))
       closePanels()
     },
     [closePanels],
@@ -214,29 +187,40 @@ export function ReadiumPdfReader({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const nav = navRef.current
+      if (!nav) return
       const isRtl = direction === "rtl"
       if (e.key === "ArrowRight" || e.key === "PageDown") {
-        go(isRtl ? -1 : 1)
+        isRtl ? nav.goBackward() : nav.goForward()
       } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        go(isRtl ? 1 : -1)
+        isRtl ? nav.goForward() : nav.goBackward()
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [go, direction])
+  }, [direction])
 
-  if (error) {
+  if (initError) {
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
           <p className="text-destructive font-medium mb-2">{t("reader.loadFailed")}</p>
-          <p className="text-sm text-muted-foreground max-w-md">{error}</p>
+          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
       </div>
     )
   }
 
-  const chapterTitle = totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : ""
+  const chapterTitle = totalPages > 0
+    ? t("reader.pageCount", { current: pageNum, total: totalPages })
+    : ""
+
+  const isRtl = direction === "rtl"
+  const edgeTurnActive = readiumNavReady && !tocOpen && !settingsOpen
+  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   return (
     <ReaderChromeShell
@@ -270,7 +254,63 @@ export function ReadiumPdfReader({
             icon={Settings}
             onClose={closePanels}
           />
-          <div className="reader-chrome-muted space-y-4 px-4 py-3 text-xs leading-relaxed">
+          <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
+            <section className="space-y-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+                {t("reader.layout")}
+              </Label>
+              <div className="flex flex-col gap-1">
+                {(
+                  [
+                    ["auto", t("reader.layoutOptions.auto")],
+                    ["single", t("reader.layoutOptions.single")],
+                    ["double", t("reader.layoutOptions.double")],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => onSpreadChange(value)}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
+                      spreadMode === value
+                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section className="space-y-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+                {t("reader.canvasBg")}
+              </Label>
+              <div className="flex flex-col gap-1">
+                {(
+                  [
+                    ["black", t("reader.canvasBgOptions.black")],
+                    ["dim", t("reader.canvasBgOptions.dim")],
+                    ["paper", t("reader.canvasBgOptions.paper")],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSurface(value)}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
+                      surface === value
+                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
             <section className="space-y-2">
               <Label
                 htmlFor="pdf-render-scale"
@@ -285,16 +325,17 @@ export function ReadiumPdfReader({
                 max={PDF_SCALE_MAX}
                 step={0.05}
                 value={renderScale}
-                onChange={(e) => setRenderScale(Number(e.target.value))}
+                onChange={(e) => {
+                  const scale = Number(e.target.value)
+                  setRenderScale(scale)
+                  if (navRef.current) navRef.current.renderScale = scale
+                }}
                 className="mt-1 w-full accent-primary"
               />
               <p className="text-[11px] tabular-nums text-reader-chrome-fg/70">
-                {renderScale.toFixed(2)}× ({t("reader.renderScaleNote", { scale: renderScale.toFixed(2) }).replace("{{scale}}", renderScale.toFixed(2))})
+                {renderScale.toFixed(2)}×
               </p>
             </section>
-            <p className="text-[11px] text-reader-chrome-fg/55">
-              {t("reader.scrollZoomNote")}
-            </p>
           </div>
         </ReaderSidePanelFrame>
       }
@@ -312,7 +353,9 @@ export function ReadiumPdfReader({
         <ReaderBottomStatusBar
           visible={chromeVisible}
           leftText={
-            totalPages > 0 ? `t("reader.pageCount", { current: pageNum, total: totalPages })` : undefined
+            totalPages > 0
+              ? t("reader.pageCount", { current: pageNum, total: totalPages })
+              : undefined
           }
           progress={
             totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
@@ -320,13 +363,21 @@ export function ReadiumPdfReader({
         />
       }
       main={
-        <div className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-auto bg-muted/30 p-4">
-          {totalPages < 1 ? (
+        <div
+          ref={containerRef}
+          className={cn(
+            "relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-hidden",
+            surface === "black" && "bg-black",
+            surface === "dim" && "bg-zinc-950",
+            surface === "paper" && "bg-background",
+          )}
+        >
+          {!readiumNavReady ? (
             <div className="text-sm text-muted-foreground">{t("reader.loadingPdf")}</div>
           ) : (
             <canvas
               ref={canvasRef}
-              className="shadow-md max-h-[calc(100dvh-6rem)] w-auto max-w-full"
+              className="max-h-full max-w-full"
             />
           )}
         </div>
