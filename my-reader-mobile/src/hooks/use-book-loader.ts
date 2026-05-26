@@ -2,14 +2,15 @@ import i18n from "@/src/i18n";
 
 import { enforceReaderCacheLimit } from "@/src/data/cache";
 import {
-  buildCoverUri,
+  buildCoverUri as buildLocalCoverUri,
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/data/calibre";
 import { getFileState, type LocalState } from "@/src/data/file_state";
 import { getReadingProgress } from "@/src/data/reading-progress";
-import type { Library } from "@/src/data/types";
+import { createRemoteOps } from "@/src/data/remote-library";
+import type { DataSource, Library } from "@/src/data/types";
 import { isRemoteSourceType } from "@/src/data/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { useAppStore } from "@/src/store/app-store";
@@ -20,6 +21,16 @@ import { File } from "expo-file-system";
 import { useEffect, useRef, useState } from "react";
 
 const INITIAL_READER_PAGE = 0;
+
+async function resolveRemoteCoverUri(
+  library: Library,
+  dataSources: DataSource[],
+  bookPath: string,
+  hasCover: boolean,
+) {
+  const ops = await createRemoteOps(library, dataSources);
+  return ops?.buildCoverUri(library, bookPath, hasCover);
+}
 
 function isDownloadedLocalState(state: LocalState | null | undefined): boolean {
   return state === "present" || state === "local_only" || state === "dirty_push";
@@ -196,10 +207,15 @@ export function useBookLoader(
           return;
         }
 
-        // 如果 books 列表中没有封面，用 detail 构建本地封面 URI
+        // 如果 books 列表中没有封面，用 detail 构建封面 URI
         if (!bookItem?.coverUri && detail.hasCover && detail.path) {
-          const builtCover = buildCoverUri(lib, detail.path, detail.hasCover);
-          if (builtCover) setCoverUri(builtCover);
+          let builtCover: string | { uri: string; headers?: Record<string, string> } | undefined;
+          if (isRemoteSource) {
+            builtCover = await resolveRemoteCoverUri(lib, state.dataSources, detail.path, detail.hasCover);
+          } else {
+            builtCover = buildLocalCoverUri(lib, detail.path, detail.hasCover);
+          }
+          if (builtCover) setCoverUri(typeof builtCover === "string" ? builtCover : builtCover.uri);
         }
         setBookTitle(detail.title);
 

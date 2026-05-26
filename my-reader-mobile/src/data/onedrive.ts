@@ -1,30 +1,21 @@
 import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
-import i18n from "@/src/i18n";
-
-import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { GRAPH_API_BASE } from "../constants/onedrive";
-import { openDatabaseFromUri } from "./sqlite";
-import type { BookItem, Library, OneDriveDataSource } from "./types";
+import { getValidAccessToken, refreshAccessToken } from "./onedrive-auth";
 import type { RemoteDirEntry, RemoteLibraryOps } from "./remote-library";
-import { getValidAccessToken } from "./onedrive-auth";
+import type { RemoteBackendAdapter } from "./remote-library-shared";
+import { createLibraryFromPath, readBooks, forceRefreshMetadata as sharedForceRefresh } from "./remote-library-shared";
+import type { BookItem, Library, OneDriveDataSource } from "./types";
 
-export function createOneDriveOps(source: OneDriveDataSource): RemoteLibraryOps {
-  return {
-    testConnection: () => testConnection(source.id),
-    listDirectory: (path) => listDirectory(source, path),
-    createLibraryFromPath: (remotePath) => createLibraryFromPath(source, remotePath),
-    readBooks: (library) => readBooks(library, source),
-    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
-    forceRefreshMetadata: (library) => forceRefreshMetadata(library, source),
-  };
-}
+// -- Auth helpers --
 
 async function authHeaders(dataSourceId: string): Promise<Record<string, string>> {
   const token = await getValidAccessToken(dataSourceId);
   return { Authorization: `Bearer ${token}` };
 }
+
+// -- Graph API helpers --
 
 async function graphGet(dataSourceId: string, path: string): Promise<Response> {
   return ky(`${GRAPH_API_BASE}${path}`, {
@@ -36,9 +27,6 @@ async function graphGet(dataSourceId: string, path: string): Promise<Response> {
 async function graphGetJson<T>(dataSourceId: string, path: string): Promise<T> {
   const res = await graphGet(dataSourceId, path);
   if (res.status === 401) {
-    // Token was stale; refreshAccessToken is called on 401 by getValidAccessToken,
-    // but ky doesn't retry automatically. Force a refresh and retry once.
-    const { refreshAccessToken } = await import("./onedrive-auth");
     await refreshAccessToken(dataSourceId);
     const retryRes = await ky(`${GRAPH_API_BASE}${path}`, {
       headers: await authHeaders(dataSourceId),
@@ -48,6 +36,8 @@ async function graphGetJson<T>(dataSourceId: string, path: string): Promise<T> {
   }
   return (await res.json()) as T;
 }
+
+// -- OneDrive types --
 
 type DriveItem = {
   id: string;
@@ -65,11 +55,39 @@ type DriveChildrenResponse = {
   "@odata.nextLink"?: string;
 };
 
+// -- Adapter --
+
+function onedriveAdapter(source: OneDriveDataSource): RemoteBackendAdapter {
+  return {
+    cacheKeyPrefix: "onedrive",
+    sourceType: "onedrive",
+    normalizePath: (path) => path.startsWith("/") ? path : `/${path}`,
+    downloadToCache: (remotePath, localName) => downloadToCache(source.id, remotePath, localName),
+    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
+  };
+}
+
+// -- Public ops factory --
+
+export function createOneDriveOps(source: OneDriveDataSource): RemoteLibraryOps {
+  const adapter = onedriveAdapter(source);
+  return {
+    testConnection: () => testConnection(source.id),
+    listDirectory: (path) => listDirectory(source, path),
+    createLibraryFromPath: (remotePath) => createLibraryFromPath(adapter, source.id, source.name, remotePath),
+    readBooks: (library) => readBooks(library, adapter),
+    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
+    forceRefreshMetadata: (library) => sharedForceRefresh(library, adapter),
+  };
+}
+
+// -- Standalone exports (used by external callers until migration complete) --
+
 export async function testConnection(dataSourceId: string): Promise<Response> {
   return graphGet(dataSourceId, "/me/drive/root");
 }
 
-export async function listDirectory(
+async function listDirectory(
   source: OneDriveDataSource,
   path = "",
 ): Promise<RemoteDirEntry[]> {
@@ -91,7 +109,6 @@ export async function listDirectory(
     .filter((item) => item.folder && !item.deleted)
     .map((item) => {
       const parentPath = item.parentReference?.path ?? "";
-      // parentReference.path format: "/drive/root:/Documents/Calibre"
       const relativeParent = parentPath.replace(/^\/drive\/root:/, "");
       const fullPath = relativeParent ? `${relativeParent}/${item.name}` : item.name;
 
@@ -102,38 +119,6 @@ export async function listDirectory(
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
-}
-
-type RawBookRow = {
-  id: number;
-  title: string | null;
-  author_sort: string | null;
-  authors: string | null;
-  path: string | null;
-  has_cover: number | null;
-  timestamp: string | null;
-};
-
-const BOOKS_QUERY = `
-  SELECT
-    b.id,
-    b.title,
-    b.author_sort,
-    b.path,
-    b.has_cover,
-    b.timestamp,
-    (
-      SELECT GROUP_CONCAT(a.name, '||')
-      FROM authors a
-      JOIN books_authors_link bal ON a.id = bal.author
-      WHERE bal.book = b.id
-    ) AS authors
-  FROM books b
-  ORDER BY b.sort COLLATE NOCASE ASC
-`;
-
-function splitConcat(value: string | null) {
-  return value ? value.split("||").filter(Boolean) : [];
 }
 
 async function downloadToCache(dataSourceId: string, remotePath: string, localName: string) {
@@ -153,138 +138,21 @@ async function downloadToCache(dataSourceId: string, remotePath: string, localNa
   return file;
 }
 
-async function ensureMetadataCached(
-  library: Library,
-  source: OneDriveDataSource,
-): Promise<string | null> {
-  const existingMetadata = new File(library.metadataUri!);
-  if (existingMetadata.exists) {
-    return existingMetadata.uri;
-  }
-
-  try {
-    const remoteBase = library.sourcePath ?? library.path;
-    const metadataFile = await downloadToCache(
-      source.id,
-      `${remoteBase}/metadata.db`,
-      `onedrive-${library.id}-metadata.db`,
-    );
-    return metadataFile.uri;
-  } catch {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.corruptedLibrary"),
-      i18n.t("sync.corruptedLibraryMessage"),
-      [{ text: i18n.t("common.gotIt") }],
-    );
-    return null;
-  }
-}
-
-export async function forceRefreshMetadata(
-  library: Library,
-  source: OneDriveDataSource,
-): Promise<string | null> {
-  try {
-    const remoteBase = library.sourcePath ?? library.path;
-    const metadataFile = await downloadToCache(
-      source.id,
-      `${remoteBase}/metadata.db`,
-      `onedrive-${library.id}-metadata.db`,
-    );
-    return metadataFile.uri;
-  } catch {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.corruptedLibrary"),
-      i18n.t("sync.corruptedLibraryRedownloadMessage"),
-      [{ text: i18n.t("common.gotIt") }],
-    );
-    return null;
-  }
-}
-
-export async function createLibraryFromPath(
-  source: OneDriveDataSource,
-  remoteLibraryPath: string,
-): Promise<Library> {
-  const metadataFile = await downloadToCache(
-    source.id,
-    `${remoteLibraryPath}/metadata.db`,
-    `onedrive-${source.id}-${Date.now()}-metadata.db`,
-  );
-
-  const db = await openDatabaseFromUri(metadataFile.uri);
-
-  try {
-    const row = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM books");
-    return {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      name: remoteLibraryPath.split("/").filter(Boolean).at(-1) ?? source.name,
-      path: remoteLibraryPath,
-      metadataUri: metadataFile.uri,
-      bookCount: row ? Number(row.count) : 0,
-      addedAt: Date.now(),
-      dataSourceId: source.id,
-      sourceType: "onedrive",
-      sourcePath: remoteLibraryPath,
-    };
-  } finally {
-    await db.closeAsync();
-  }
-}
-
-export async function readBooks(
-  library: Library,
-  source: OneDriveDataSource,
-): Promise<{ books: BookItem[]; metadataUri: string }> {
-  const metadataUri = await ensureMetadataCached(library, source);
-  if (!metadataUri) {
-    return { books: [], metadataUri: library.metadataUri! };
-  }
-  const db = await openDatabaseFromUri(metadataUri);
-
-  try {
-    const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
-
-    return {
-      metadataUri,
-      books: rows.map((row) => {
-        const authors = splitConcat(row.authors);
-        const remoteCoverPath =
-          row.path && (row.has_cover ?? 0) !== 0
-            ? `${library.sourcePath ?? library.path}/${row.path}/cover.jpg`
-            : undefined;
-
-        return {
-          id: `${row.id}`,
-          calibreId: row.id,
-          title: row.title || i18n.t("common.unnamedBook"),
-          author: authors[0] || row.author_sort || i18n.t("common.unknownAuthor"),
-          authors,
-          path: row.path || undefined,
-          hasCover: (row.has_cover ?? 0) !== 0,
-          timestamp: row.timestamp,
-          coverUri: remoteCoverPath ? buildCoverUri(library, source, remoteCoverPath, true) : undefined,
-        } satisfies BookItem;
-      }),
-    };
-  } finally {
-    await db.closeAsync();
-  }
-}
-
-export function buildCoverUri(
+export async function buildCoverUri(
   library: Library,
   source: OneDriveDataSource,
   bookPath: string,
   hasCover: boolean,
-): BookItem["coverUri"] {
+): Promise<BookItem["coverUri"]> {
   if (!bookPath || !hasCover) return undefined;
 
-  const encodedPath = encodeURI(bookPath.startsWith("/") ? bookPath : `/${bookPath}`);
+  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
+  const encodedPath = encodeURI(remoteCoverPath.startsWith("/") ? remoteCoverPath : `/${remoteCoverPath}`);
   const contentUrl = `${GRAPH_API_BASE}/me/drive/root:${encodedPath}:/content`;
+  const headers = await authHeaders(source.id);
 
   return {
     uri: contentUrl,
-    headers: { Authorization: `Bearer ${source.accessToken}` },
+    headers,
   };
 }

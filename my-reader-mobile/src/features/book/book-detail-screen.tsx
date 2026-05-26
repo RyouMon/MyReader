@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Feather from "@expo/vector-icons/Feather";
+import { pickReadableFormat } from "@my-reader/tools/utils";
 import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { pickReadableFormat } from "@my-reader/tools/utils";
-import { Share } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Share } from "react-native";
 
 import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
 import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
-import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/data/calibre";
-import type { DataSource, Library, WebDavDataSource } from "@/src/data/types";
-import { isRemoteSourceType } from "@/src/data/types";
+import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useAppStore } from "@/src/store/app-store";
 import { useLibraryStore } from "@/src/store/library-store";
 
@@ -36,14 +34,6 @@ export default function BookDetailScreen() {
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string | null>>({});
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
-
-  const webDavSource = useMemo(() => {
-    if (!activeLibrary || !isRemoteSourceType(activeLibrary.sourceType)) return null;
-    const found = dataSources.find(
-      (d) => d.id === activeLibrary.dataSourceId && d.type === activeLibrary.sourceType
-    );
-    return (found as WebDavDataSource | undefined) ?? null;
-  }, [activeLibrary, dataSources]);
 
   useEffect(() => {
     if (id && currentId === null) {
@@ -280,7 +270,7 @@ export default function BookDetailScreen() {
           onOpenReader={openReader}
           onSelectFormat={handleSelectFormat}
           selectedFormat={selectedFormat}
-          webDavSource={webDavSource}
+          dataSources={dataSources}
         />
       </ErrorBoundary>
     </View>

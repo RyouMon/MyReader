@@ -1,4 +1,8 @@
-import type { BookItem, Library } from "./types";
+import { readWebDavPassword } from "../store/secure-credential-store";
+import { createOneDriveOps } from "./onedrive";
+import { getValidAccessToken } from "./onedrive-auth";
+import type { BookItem, DataSource, Library, OneDriveDataSource, WebDavDataSource } from "./types";
+import { createWebDavOps } from "./webdav";
 
 /** Generic operations for a remote Calibre library hosted on a cloud backend. */
 export type RemoteLibraryOps = {
@@ -15,7 +19,7 @@ export type RemoteLibraryOps = {
   readBooks(library: Library): Promise<{ books: BookItem[]; metadataUri: string }>;
 
   /** Build a cover image URI (with auth headers if needed) for a book. */
-  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): BookItem["coverUri"];
+  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): Promise<BookItem["coverUri"]>;
 
   /** Force re-download metadata.db and return the new URI. */
   forceRefreshMetadata(library: Library): Promise<string | null>;
@@ -39,3 +43,29 @@ export type RemoteDirEntry = {
   path: string;
   isDirectory: boolean;
 };
+
+/** Resolve a RemoteLibraryOps for the given library's data source. */
+export async function createRemoteOps(
+  library: Library,
+  dataSources: DataSource[],
+): Promise<RemoteLibraryOps | null> {
+  if (library.sourceType === "webdav") {
+    const source = dataSources.find(
+      (d) => d.id === library.dataSourceId && d.type === "webdav",
+    );
+    if (!source || source.type !== "webdav") return null;
+    const password = source.password ?? (await readWebDavPassword(source.id)) ?? "";
+    return createWebDavOps({ ...source, password } satisfies WebDavDataSource);
+  }
+
+  if (library.sourceType === "onedrive") {
+    const source = dataSources.find(
+      (d) => d.id === library.dataSourceId && d.type === "onedrive",
+    );
+    if (!source || source.type !== "onedrive") return null;
+    const accessToken = await getValidAccessToken(source.id);
+    return createOneDriveOps({ ...source, accessToken } satisfies OneDriveDataSource);
+  }
+
+  return null;
+}

@@ -5,19 +5,16 @@ import {
   forceRefreshLibraryMetadata,
   readBookCountFromMetadata,
 } from "../data/calibre";
+import { createRemoteOps } from "../data/remote-library";
 import { openDatabaseFromUri } from "../data/sqlite";
-import type { Library, OneDriveDataSource, WebDavDataSource } from "../data/types";
+import type { Library } from "../data/types";
 import { isRemoteSourceType } from "../data/types";
-import { forceRefreshMetadata } from "../data/webdav";
-import { forceRefreshMetadata as forceRefreshOneDriveMetadata } from "../data/onedrive";
-import { getValidAccessToken } from "../data/onedrive-auth";
-import { readWebDavPassword } from "../store/secure-credential-store";
 
+import i18n from "@/src/i18n";
 import { clearReaderCachesForBook } from "../data/cache";
 import { evictLocalFileOfflineSafe } from "./actions";
 import { diffBooks, type BookDiff, type BookSummary } from "./book-diff";
 import { downloadLibraryFile } from "./download-service";
-import i18n from "@/src/i18n";
 
 type RawBookSummaryRow = {
   id: number;
@@ -82,34 +79,12 @@ export async function refreshLibrary(
 
   // 2. Force refresh metadata.db
   let newLibrary: Library;
-  if (library.sourceType === "webdav") {
-    const source = dataSources.find(
-      (item) => item.id === library.dataSourceId && item.type === "webdav"
-    );
-    if (!source || source.type !== "webdav") {
-      throw new Error(i18n.t("sync.webdavSourceNotFound"));
-    }
-    const password =
-      source.password ?? (await readWebDavPassword(source.id)) ?? "";
-    const webDavSource: WebDavDataSource = { ...source, password };
-    const newMetadataUri = await forceRefreshMetadata(
-      library,
-      webDavSource
-    );
-    if (!newMetadataUri) {
+  if (isRemoteSourceType(library.sourceType)) {
+    const ops = await createRemoteOps(library, dataSources);
+    if (!ops) {
       throw new Error(i18n.t("sync.cannotRedownloadMeta"));
     }
-    newLibrary = { ...library, metadataUri: newMetadataUri };
-  } else if (library.sourceType === "onedrive") {
-    const rawSource = dataSources.find(
-      (item) => item.id === library.dataSourceId && item.type === "onedrive"
-    );
-    if (!rawSource || rawSource.type !== "onedrive") {
-      throw new Error(i18n.t("sync.onedriveSourceNotFound"));
-    }
-    const accessToken = await getValidAccessToken(rawSource.id);
-    const oneDriveSource: OneDriveDataSource = { ...rawSource, accessToken };
-    const newMetadataUri = await forceRefreshOneDriveMetadata(library, oneDriveSource);
+    const newMetadataUri = await ops.forceRefreshMetadata(library);
     if (!newMetadataUri) {
       throw new Error(i18n.t("sync.cannotRedownloadMeta"));
     }
@@ -131,27 +106,17 @@ export async function refreshLibrary(
   // 5. Clean up removed books' files
   for (const book of diff.removed) {
     if (!book.path) continue;
-    // Evict cover
     try {
-      await evictLocalFileOfflineSafe(
-        library,
-        `${book.path}/cover.jpg`
-      );
-    } catch {
-      // Ignore errors for non-existent files
-    }
-    // Evict downloaded format files
+      await evictLocalFileOfflineSafe(library, `${book.path}/cover.jpg`);
+    } catch {}
     for (const format of book.formats) {
       try {
         await evictLocalFileOfflineSafe(
           library,
           `${book.path}/${format}.${format.toLowerCase()}`
         );
-      } catch {
-        // Ignore
-      }
+      } catch {}
     }
-    // Clean reader cache for this book
     clearReaderCachesForBook(library.id, book.id);
   }
 
@@ -174,18 +139,14 @@ export async function refreshLibrary(
     }
     for (const { old: oldBook, new: newBook } of diff.modified) {
       if (newBook.hasCover && newBook.path) {
-        // If path changed, delete old cover first
         if (oldBook.path && oldBook.path !== newBook.path) {
           try {
             await evictLocalFileOfflineSafe(
               library,
               `${oldBook.path}/cover.jpg`
             );
-          } catch {
-            // Ignore
-          }
+          } catch {}
         }
-        // Download new cover if needed
         if (!oldBook.hasCover || oldBook.path !== newBook.path) {
           try {
             await downloadLibraryFile({

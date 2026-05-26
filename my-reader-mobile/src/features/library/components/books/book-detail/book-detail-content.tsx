@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
+import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTranslation } from "react-i18next";
 
 import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/data/calibre";
 import { getFileState, useFileStateRevision, type LocalState } from "@/src/data/file_state";
-import type { BookItem, Library, WebDavDataSource } from "@/src/data/types";
+import type { BookItem, DataSource, Library } from "@/src/data/types";
 import { isRemoteSourceType } from "@/src/data/types";
 import { FONT_UI } from "@/src/design/typography";
 import { describeDownloadError } from "@/src/errors";
@@ -49,7 +49,7 @@ type BookDetailContentProps = {
   onOpenReader: (bookId: string, format: string | null) => void;
   onSelectFormat: (bookId: string, format: string | null) => void;
   selectedFormat: string | null;
-  webDavSource: WebDavDataSource | null;
+  dataSources: DataSource[];
 };
 
 export function BookDetailContent({
@@ -63,7 +63,7 @@ export function BookDetailContent({
   onOpenReader,
   onSelectFormat,
   selectedFormat,
-  webDavSource,
+  dataSources,
 }: BookDetailContentProps) {
   const { t } = useTranslation();
   const scrollY = useSharedValue(0);
@@ -74,13 +74,18 @@ export function BookDetailContent({
   });
   const insets = useSafeAreaInsets();
 
-  const coverUri = useMemo(
-    () =>
-      detail
-        ? resolveCoverForDetail(activeLibrary, detail, webDavSource, listBook?.coverUri)
-        : listBook?.coverUri,
-    [activeLibrary, detail, listBook?.coverUri, webDavSource]
-  );
+  const [coverUri, setCoverUri] = useState<BookItem["coverUri"] | undefined>(listBook?.coverUri);
+
+  useEffect(() => {
+    if (!detail) {
+      setCoverUri(listBook?.coverUri);
+      return;
+    }
+    let cancelled = false;
+    void resolveCoverForDetail(activeLibrary, detail, dataSources, listBook?.coverUri)
+      .then((resolved) => { if (!cancelled) setCoverUri(resolved); });
+    return () => { cancelled = true; };
+  }, [activeLibrary, detail, listBook?.coverUri, dataSources]);
 
   const progress = typeof listBook?.progress === "number" ? listBook.progress : 0;
   const progressLabel = `${Math.round(progress * 100)}%`;

@@ -3,8 +3,8 @@ import type { BookDetail } from "@my-reader/tools/types/book";
 import i18n from "@/src/i18n";
 
 import { buildCoverUri } from "../data/calibre";
-import type { BookItem, Library, WebDavDataSource } from "../data/types";
-import { buildCoverUri as buildWebDavCoverUri } from "../data/webdav";
+import { createRemoteOps } from "../data/remote-library";
+import type { BookItem, DataSource, Library } from "../data/types";
 
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
@@ -86,16 +86,17 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-export function resolveCoverForDetail(
+export async function resolveCoverForDetail(
   library: Library | null,
   detail: BookDetail,
-  webDavSource: WebDavDataSource | null,
+  dataSources: DataSource[],
   fallback?: BookItem["coverUri"]
-): BookItem["coverUri"] | undefined {
+): Promise<BookItem["coverUri"] | undefined> {
   if (fallback) return fallback;
   if (!library || !detail.path) return undefined;
-  if (library.sourceType === "webdav" && webDavSource) {
-    return buildWebDavCoverUri(library, webDavSource, detail.path, detail.hasCover);
+  if (library.sourceType === "webdav" || library.sourceType === "onedrive") {
+    const ops = await createRemoteOps(library, dataSources);
+    if (ops) return ops.buildCoverUri(library, detail.path, detail.hasCover);
   }
   return buildCoverUri(library, detail.path, detail.hasCover);
 }

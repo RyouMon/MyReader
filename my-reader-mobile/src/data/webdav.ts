@@ -1,69 +1,21 @@
 import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
-import i18n from "@/src/i18n";
-
-import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
-import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";import { WebDavUrlBuilder } from "../utils/webdav";
-import { openDatabaseFromUri } from "./sqlite";
-import type { BookItem, Library, WebDavDataSource } from "./types";
+import { canonicalRelativePath } from "../utils/io";
+import { WebDavUrlBuilder } from "../utils/webdav";
 import type { RemoteLibraryOps } from "./remote-library";
+import type { RemoteBackendAdapter } from "./remote-library-shared";
+import { createLibraryFromPath, readBooks, forceRefreshMetadata as sharedForceRefresh } from "./remote-library-shared";
+import type { BookItem, Library, WebDavDataSource } from "./types";
 
-export function buildCoverUri(
-  library: Library,
-  source: WebDavDataSource,
-  bookPath: string,
-  hasCover: boolean
-): BookItem["coverUri"] | undefined {
-  if (!bookPath || !hasCover) {
-    return undefined;
-  }
+// -- WebDAV URL helpers --
 
-  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
-
-  return {
-    uri: buildUrl(source, remoteCoverPath),
-    headers: buildAuthHeader(source),
-  };
+function buildUrl(source: WebDavDataSource, path = "") {
+  return new WebDavUrlBuilder(source).urlFor(path);
 }
 
-type WebDavEntry = {
-  href: string;
-  path: string;
-  name: string;
-  isDirectory: boolean;
-};
-
-type RawBookRow = {
-  id: number;
-  title: string | null;
-  author_sort: string | null;
-  authors: string | null;
-  path: string | null;
-  has_cover: number | null;
-  timestamp: string | null;
-};
-
-const BOOKS_QUERY = `
-  SELECT
-    b.id,
-    b.title,
-    b.author_sort,
-    b.path,
-    b.has_cover,
-    b.timestamp,
-    (
-      SELECT GROUP_CONCAT(a.name, '||')
-      FROM authors a
-      JOIN books_authors_link bal ON a.id = bal.author
-      WHERE bal.book = b.id
-    ) AS authors
-  FROM books b
-  ORDER BY b.sort COLLATE NOCASE ASC
-`;
-
-function normalizeBaseUrl(url: string) {
-  return url.trim().replace(/\/+$/, "");
+function buildAuthHeader(source: WebDavDataSource): Record<string, string> {
+  return new WebDavUrlBuilder(source).authHeaders;
 }
 
 function normalizeRemotePath(path: string) {
@@ -93,17 +45,7 @@ function normalizeHrefPath(href: string) {
   return plain ? `/${plain}` : "/";
 }
 
-function buildUrl(source: WebDavDataSource, path = "") {
-  return new WebDavUrlBuilder(source).urlFor(path);
-}
-
-function buildAuthHeader(source: WebDavDataSource): Record<string, string> {
-  return new WebDavUrlBuilder(source).authHeaders;
-}
-
-function splitConcat(value: string | null) {
-  return value ? value.split("||").filter(Boolean) : [];
-}
+// -- XML parsing helpers --
 
 function extractTagValue(xml: string, tag: string) {
   const match = xml.match(new RegExp(`<[^>]*${tag}[^>]*>([\\s\\S]*?)</[^>]*${tag}>`, "i"));
@@ -144,7 +86,7 @@ function toRemoteEntryPath(source: WebDavDataSource, href: string, isDirectory: 
   return normalizeRemotePath(normalizedPath).replace(/\/+$/, isDirectory ? "/" : "");
 }
 
-function parsePropfind(source: WebDavDataSource, xml: string): WebDavEntry[] {
+function parsePropfind(source: WebDavDataSource, xml: string) {
   const responses = xml.match(/<[^>]*response[^>]*>[\s\S]*?<\/[^>]*response>/gi) ?? [];
 
   return responses
@@ -160,10 +102,38 @@ function parsePropfind(source: WebDavDataSource, xml: string): WebDavEntry[] {
         path: remotePath,
         name: displayName || fallbackName,
         isDirectory,
-      } satisfies WebDavEntry;
+      };
     })
     .filter((entry) => entry.href);
 }
+
+// -- Adapter --
+
+function webdavAdapter(source: WebDavDataSource): RemoteBackendAdapter {
+  return {
+    cacheKeyPrefix: "webdav",
+    sourceType: "webdav",
+    normalizePath: (path) => normalizeRemotePath(path),
+    downloadToCache: (remotePath, localName) => downloadToCache(source, remotePath, localName),
+    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
+  };
+}
+
+// -- Public ops factory --
+
+export function createWebDavOps(source: WebDavDataSource): RemoteLibraryOps {
+  const adapter = webdavAdapter(source);
+  return {
+    testConnection: (timeout?: number) => testConnection(source, timeout),
+    listDirectory: (path) => listDirectory(source, path),
+    createLibraryFromPath: (remotePath) => createLibraryFromPath(adapter, source.id, source.name, remotePath),
+    readBooks: (library) => readBooks(library, adapter),
+    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
+    forceRefreshMetadata: (library) => sharedForceRefresh(library, adapter),
+  };
+}
+
+// -- Standalone exports --
 
 export async function testConnection(source: WebDavDataSource, timeout?: number | false): Promise<Response> {
   const response = await ky(buildUrl(source, ""), {
@@ -178,7 +148,7 @@ export async function testConnection(source: WebDavDataSource, timeout?: number 
   return response;
 }
 
-export async function listDirectory(
+async function listDirectory(
   source: WebDavDataSource,
   path = "",
   timeout?: number | false
@@ -191,7 +161,6 @@ export async function listDirectory(
       Depth: "1",
       "Content-Type": "application/xml; charset=utf-8",
     },
-    // Ask for allprop to stay compatible with servers that reject specific DAV properties.
     body: `<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:allprop /></d:propfind>`,
   });
 
@@ -227,147 +196,20 @@ async function downloadToCache(source: WebDavDataSource, remotePath: string, loc
   return file;
 }
 
-/**
- * Ensures WebDAV metadata.db exists in current sandbox cache, re-downloading when missing.
- */
-async function ensureWebDavMetadataCached(
+export async function buildCoverUri(
   library: Library,
   source: WebDavDataSource,
-): Promise<string | null> {
-  const existingMetadata = new File(library.metadataUri!);
-  if (existingMetadata.exists) {
-    return existingMetadata.uri;
+  bookPath: string,
+  hasCover: boolean,
+): Promise<BookItem["coverUri"]> {
+  if (!bookPath || !hasCover) {
+    return undefined;
   }
 
-  try {
-    const remoteBase = normalizeRemotePath(library.sourcePath ?? library.path);
-    const metadataFile = await downloadToCache(
-      source,
-      `${remoteBase}/metadata.db`,
-      `webdav-${library.id}-metadata.db`,
-    );
-    return metadataFile.uri;
-  } catch {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.corruptedLibrary"),
-      i18n.t("sync.corruptedLibraryMessage"),
-      [{ text: i18n.t("common.gotIt") }],
-    );
-    return null;
-  }
-}
+  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
 
-/**
- * Forcefully re-download metadata.db from WebDAV, overwriting the local cache.
- * Used by "refresh library".
- */
-export async function forceRefreshMetadata(
-  library: Library,
-  source: WebDavDataSource,
-): Promise<string | null> {
-  try {
-    const remoteBase = normalizeRemotePath(library.sourcePath ?? library.path);
-    const metadataFile = await downloadToCache(
-      source,
-      `${remoteBase}/metadata.db`,
-      `webdav-${library.id}-metadata.db`,
-    );
-    return metadataFile.uri;
-  } catch {
-    showAlertWithStatusBarRestore(
-      i18n.t("sync.corruptedLibrary"),
-      i18n.t("sync.corruptedLibraryRedownloadMessage"),
-      [{ text: i18n.t("common.gotIt") }],
-    );
-    return null;
-  }
-}
-
-export async function createLibraryFromPath(
-  source: WebDavDataSource,
-  remoteLibraryPath: string
-): Promise<Library> {
-  const normalizedPath = normalizeRemotePath(remoteLibraryPath);
-  const metadataFile = await downloadToCache(
-    source,
-    `${normalizedPath}/metadata.db`,
-    `webdav-${source.id}-${Date.now()}-metadata.db`
-  );
-
-  const db = await openDatabaseFromUri(metadataFile.uri);
-
-  try {
-    const row = await db.getFirstAsync<{ count: number }>("SELECT COUNT(*) as count FROM books");
-    return {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      name: normalizedPath.split("/").filter(Boolean).at(-1) ?? source.name,
-      path: normalizedPath,
-      metadataUri: metadataFile.uri,
-      bookCount: row ? Number(row.count) : 0,
-      addedAt: Date.now(),
-      dataSourceId: source.id,
-      sourceType: "webdav",
-      sourcePath: normalizedPath,
-    };
-  } finally {
-    await db.closeAsync();
-  }
-}
-
-export async function readBooks(
-  library: Library,
-  source: WebDavDataSource
-): Promise<{ books: BookItem[]; metadataUri: string }> {
-  const metadataUri = await ensureWebDavMetadataCached(library, source);
-  if (!metadataUri) {
-    return {
-      books: [],
-      metadataUri: library.metadataUri!,
-    };
-  }
-  const db = await openDatabaseFromUri(metadataUri);
-
-  try {
-    const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
-
-    return {
-      metadataUri,
-      books: rows.map((row) => {
-      const authors = splitConcat(row.authors);
-      const remoteCoverPath = row.path && (row.has_cover ?? 0) !== 0
-        ? `${library.sourcePath ?? library.path}/${row.path}/cover.jpg`
-        : undefined;
-
-      return {
-        id: `${row.id}`,
-        calibreId: row.id,
-        title: row.title || i18n.t("common.unnamedBook"),
-        author: authors[0] || row.author_sort || i18n.t("common.unknownAuthor"),
-        authors,
-        path: row.path || undefined,
-        hasCover: (row.has_cover ?? 0) !== 0,
-        timestamp: row.timestamp,
-        coverUri: remoteCoverPath
-          ? {
-              uri: buildUrl(source, remoteCoverPath),
-              headers: buildAuthHeader(source),
-            }
-          : undefined,
-      } satisfies BookItem;
-      }),
-    };
-  } finally {
-    await db.closeAsync();
-  }
-}
-
-export function createWebDavOps(source: WebDavDataSource): RemoteLibraryOps {
   return {
-    testConnection: (timeout?: number) => testConnection(source, timeout),
-    listDirectory: (path) => listDirectory(source, path),
-    createLibraryFromPath: (remotePath) => createLibraryFromPath(source, remotePath),
-    readBooks: (library) => readBooks(library, source),
-    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
-    forceRefreshMetadata: (library) => forceRefreshMetadata(library, source),
+    uri: buildUrl(source, remoteCoverPath),
+    headers: buildAuthHeader(source),
   };
 }
