@@ -1,4 +1,4 @@
-export type BackendKind = "webdav" | "local-direct";
+export type BackendKind = "webdav" | "local-direct" | "onedrive";
 
 export type RemoteStat = {
   size: number;

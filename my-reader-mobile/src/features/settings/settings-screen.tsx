@@ -134,6 +134,12 @@ export default function SettingsScreen() {
               detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
+            <SettingsRow
+              title="OneDrive"
+              detail={t("settings.onedriveDetail")}
+              onPress={() => navigateTo("/settings/onedrive")}
+              isLast
+            />
           </SectionCard>
         </View>
         <View className="gap-3">

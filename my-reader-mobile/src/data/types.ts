@@ -1,4 +1,4 @@
-import type { DataSource, DataSourceWebdav } from "@my-reader/tools/store/data-source";
+import type { DataSource, DataSourceWebdav, DataSourceOnedrive } from "@my-reader/tools/store/data-source";
 import type { Library } from "@my-reader/tools/store/library";
 
 export type BookItem = {
@@ -14,12 +14,19 @@ export type BookItem = {
   timestamp?: string | null;
 };
 
-export type DataSourceType = "local" | "webdav";
+export type DataSourceType = "local" | "webdav" | "onedrive";
 
-export type { DataSource, DataSourceWebdav, Library };
+export type { DataSource, DataSourceWebdav, DataSourceOnedrive, Library };
 
-/** WebDAV API 层：要求已配置密码 */
+/** WebDAV API layer: requires configured password */
 export type WebDavDataSource = DataSourceWebdav & { password: string };
+
+/** OneDrive API layer: requires valid access token */
+export type OneDriveDataSource = DataSourceOnedrive & { accessToken: string };
+
+export function isRemoteSourceType(sourceType?: string | null): boolean {
+  return sourceType === "webdav" || sourceType === "onedrive";
+}
 
 export type MobileLibrariesConfig = {
   libraries: Library[];

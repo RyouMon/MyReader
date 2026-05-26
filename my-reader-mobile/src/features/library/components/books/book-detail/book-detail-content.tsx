@@ -10,6 +10,7 @@ import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/data/calibre";
 import { getFileState, useFileStateRevision, type LocalState } from "@/src/data/file_state";
 import type { BookItem, Library, WebDavDataSource } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import { FONT_UI } from "@/src/design/typography";
 import { describeDownloadError } from "@/src/errors";
 import {
@@ -109,7 +110,7 @@ export function BookDetailContent({
   const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!detail || activeLibrary.sourceType !== "webdav" || !activeLibrary.dataSourceId) {
+    if (!detail || !isRemoteSourceType(activeLibrary.sourceType) || !activeLibrary.dataSourceId) {
       setFormatInfoMap({});
       return;
     }
@@ -310,7 +311,7 @@ export function BookDetailContent({
 
   const handleReadAction = () => {
     if (!canReadInApp || !readableSelectedFormat) return;
-    if (activeLibrary.sourceType === "webdav" && !isSelectedFormatPresent) {
+    if (isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent) {
       handleDownloadFormat(readableSelectedFormat);
       Alert.alert(t("bookDetail.downloadStarted"), t("bookDetail.downloadStartedDetail", { format: readableSelectedFormat }));
       return;
@@ -321,7 +322,7 @@ export function BookDetailContent({
   const readButtonTitle =
     !canReadInApp || !readableSelectedFormat
       ? t("bookDetail.noReadableFormat")
-      : activeLibrary.sourceType === "webdav" && !isSelectedFormatPresent
+      : isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent
         ? t("bookDetail.downloadAndRead")
         : progress > 0
           ? t("bookDetail.continueReading")
@@ -355,7 +356,7 @@ export function BookDetailContent({
               defaultFormat={readableSelectedFormat}
               formatInfoMap={formatInfoMap}
               formatSizeMap={formatSizeMap}
-              isNetworkSource={activeLibrary.sourceType === "webdav"}
+              isNetworkSource={isRemoteSourceType(activeLibrary.sourceType)}
               libraryId={activeLibrary.id}
               onDeleteFormat={(format) => void handleDeleteFormat(format)}
               onDownloadFormat={handleDownloadFormat}

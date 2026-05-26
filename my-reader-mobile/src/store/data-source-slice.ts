@@ -1,22 +1,26 @@
-import { NetworkError, TimeoutError } from "ky";
 import type { DataSource, DataSourceStore } from "@my-reader/tools/store/data-source";
-import { testWebDavConnection as probeWebDav } from "../data/webdav";
+import { NetworkError, TimeoutError } from "ky";
+import { testConnection as probeWebDav } from "../data/webdav";
+import { testConnection as probeOneDrive } from "../data/onedrive";
 import { mergeDataSources, persistableDataSources } from "./app-store.constants";
 import type { AppState, AppStateSlice } from "./app-store.types";
 import {
-  deleteWebDavPassword,
-  hydrateDataSourcesFromSecureCredentials,
-  readWebDavPassword,
-  writeWebDavPassword,
+    deleteWebDavPassword,
+    deleteOneDriveAccessToken,
+    deleteOneDriveRefreshToken,
+    hydrateDataSourcesFromSecureCredentials,
+    readWebDavPassword,
+    writeWebDavPassword,
 } from "./secure-credential-store";
 
 import i18n from "@/src/i18n";
 
-function createWebDavId() {
+function createDataSourceId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 async function resolveWebDavPassword(source: DataSource) {
+  if (source.type !== "webdav") return "";
   if (typeof source.password === "string" && source.password.length > 0) {
     return source.password;
   }
@@ -51,26 +55,46 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
     async refreshDataSources(_id: string) {},
 
     async createDataSource(datasource: DataSource) {
-      const nextPassword = datasource.password ?? "";
-      const trimmedUsername = datasource.username.trim();
+      const id = datasource.id.trim() ? datasource.id : createDataSourceId();
+      const rootPath = datasource.rootPath?.trim() ? datasource.rootPath.trim() : null;
+      const createdAt = datasource.createdAt ?? Date.now();
+
+      if (datasource.type === "webdav") {
+        const nextPassword = datasource.password ?? "";
+        const trimmedUsername = datasource.username.trim();
+        const webdavRow: DataSource = {
+          ...datasource,
+          id,
+          name: datasource.name.trim() || "WebDAV",
+          rootPath,
+          createdAt,
+          endpoint: datasource.endpoint.trim(),
+          username: trimmedUsername,
+          password: nextPassword || undefined,
+          hasPassword: Boolean(nextPassword),
+        };
+        if (!trimmedUsername && !nextPassword) {
+          await deleteWebDavPassword(webdavRow.id);
+        } else if (nextPassword) {
+          await writeWebDavPassword(webdavRow.id, nextPassword);
+        } else {
+          await deleteWebDavPassword(webdavRow.id);
+        }
+        set((state) => ({
+          dataSources: mergeDataSources([...persistableDataSources(state.dataSources), webdavRow]),
+          error: null,
+        }));
+        return webdavRow;
+      }
+
+      // OneDrive: tokens are already in SecureStore from the auth flow
       const row: DataSource = {
         ...datasource,
-        id: datasource.id.trim() ? datasource.id : createWebDavId(),
-        name: datasource.name.trim() || "WebDAV",
-        endpoint: datasource.endpoint.trim(),
-        username: trimmedUsername,
-        rootPath: datasource.rootPath?.trim() ? datasource.rootPath.trim() : null,
-        password: nextPassword || undefined,
-        hasPassword: Boolean(nextPassword),
-        createdAt: datasource.createdAt ?? Date.now(),
+        id,
+        name: datasource.name.trim() || "OneDrive",
+        rootPath,
+        createdAt,
       };
-      if (!trimmedUsername && !nextPassword) {
-        await deleteWebDavPassword(row.id);
-      } else if (nextPassword) {
-        await writeWebDavPassword(row.id, nextPassword);
-      } else {
-        await deleteWebDavPassword(row.id);
-      }
       set((state) => ({
         dataSources: mergeDataSources([...persistableDataSources(state.dataSources), row]),
         error: null,
@@ -79,43 +103,54 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
     },
 
     async updateDataSource(id: string, datasource: DataSource) {
-      let normalized = {
-        ...datasource,
-        id,
-        username: datasource.username.trim(),
-      } as DataSource;
-      if (typeof normalized.password === "string") {
-        if (!normalized.username && !normalized.password) {
-          await deleteWebDavPassword(id);
-        } else if (normalized.password) {
-          await writeWebDavPassword(id, normalized.password);
-        } else {
-          await deleteWebDavPassword(id);
-        }
-        normalized = {
-          ...normalized,
-          password: normalized.password || undefined,
-          hasPassword: Boolean(normalized.password),
+      if (datasource.type === "webdav") {
+        const normalized: DataSource & { type: "webdav" } = {
+          ...datasource,
+          id,
+          username: datasource.username.trim(),
         };
-      } else {
+        if (typeof normalized.password === "string") {
+          if (!normalized.username && !normalized.password) {
+            await deleteWebDavPassword(id);
+          } else if (normalized.password) {
+            await writeWebDavPassword(id, normalized.password);
+          } else {
+            await deleteWebDavPassword(id);
+          }
+          const withPassword: DataSource = {
+            ...normalized,
+            password: normalized.password || undefined,
+            hasPassword: Boolean(normalized.password),
+          };
+          set((state) => {
+            const next = state.dataSources.map((item) =>
+              item.id !== id ? item : withPassword,
+            );
+            return { dataSources: mergeDataSources(next), error: null };
+          });
+          return;
+        }
         const securePassword = await readWebDavPassword(id);
-        normalized = {
+        const resolved: DataSource = {
           ...normalized,
           password: securePassword ?? undefined,
           hasPassword: Boolean(securePassword),
         };
-      }
-      set((state) => {
-        const next = state.dataSources.map((item) => {
-          if (item.id !== id) {
-            return item;
-          }
-          return normalized;
+        set((state) => {
+          const next = state.dataSources.map((item) =>
+            item.id !== id ? item : resolved,
+          );
+          return { dataSources: mergeDataSources(next), error: null };
         });
-        return {
-          dataSources: mergeDataSources(next),
-          error: null,
-        };
+        return;
+      }
+
+      // OneDrive: tokens live in SecureStore, just persist the record
+      set((state) => {
+        const next = state.dataSources.map((item) =>
+          item.id !== id ? item : { ...datasource, id },
+        );
+        return { dataSources: mergeDataSources(next), error: null };
       });
     },
 
@@ -126,16 +161,40 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
         throw new Error(i18n.t("sync.removeLibraryFirst"));
       }
 
-      await deleteWebDavPassword(id);
+      const source = state.dataSources.find((s) => s.id === id);
+      if (source?.type === "webdav") {
+        await deleteWebDavPassword(id);
+      } else if (source?.type === "onedrive") {
+        await deleteOneDriveAccessToken(id);
+        await deleteOneDriveRefreshToken(id);
+      }
+
       set({
         dataSources: mergeDataSources(
-          persistableDataSources(state.dataSources).filter((source) => source.id !== id)
+          persistableDataSources(state.dataSources).filter((s) => s.id !== id)
         ),
         error: null,
       });
     },
 
     async testDataSourceConnection(datasource: DataSource) {
+      if (datasource.type === "onedrive") {
+        try {
+          const response = await probeOneDrive(datasource.id);
+          if (response.ok) {
+            return { ok: true, message: "OK" } as const;
+          }
+          const message = response.status === 401
+            ? i18n.t("sync.authFailed")
+            : i18n.t("sync.serverAbnormal", { status: response.status });
+          return { ok: false, message } as const;
+        } catch (error) {
+          const raw = error instanceof Error ? error.message : String(error);
+          return { ok: false, message: raw } as const;
+        }
+      }
+
+      // WebDAV
       const context = {
         endpoint: datasource.endpoint?.trim() ?? "",
         rootPath: datasource.rootPath?.trim() ?? "",
@@ -148,7 +207,7 @@ export const createDataSourceSlice: AppStateSlice<DataSourceSlice> = (set, get) 
         const response = await probeWebDav({
           ...datasource,
           password,
-        }, 3000);
+        } as import("../data/types").WebDavDataSource, 3000);
         if (response.ok) {
           console.info("[WebDAV][ConnectionTest] Success to test data source connection", context);
           return { ok: true, message: "OK" } as const;

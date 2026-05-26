@@ -86,6 +86,7 @@
     "bookCount": "{{count}} 本",
     "typeLocal": "本地",
     "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
     "calibreLibrary": "Calibre 书库",
     "delete": {
       "title": "删除这个书库？",
@@ -118,6 +119,7 @@
     "localStorage": "本地存储",
     "localStorageDetail": "默认数据源，无需配置",
     "webdavDetail": "可添加并管理远程 WebDAV 数据源",
+    "onedriveDetail": "可添加并管理 OneDrive 数据源",
     "readingPreferences": "阅读偏好",
     "darkMode": "深色模式",
     "readerStyle": "阅读器样式",
@@ -350,6 +352,79 @@
       "passwordLabel": "密码",
       "passwordPlaceholder": "请输入密码",
       "useSSL": "使用 SSL"
+    }
+  },
+  "onedrive": {
+    "sourcesTitle": "OneDrive 数据源",
+    "sourceDetail": "数据源详情",
+    "addSource": "添加 OneDrive 数据源",
+    "selectLibrary": "选择 OneDrive 书库",
+    "noSources": {
+      "title": "暂无 OneDrive 数据源",
+      "detail": "登录 Microsoft 账号后浏览 OneDrive，选择 Calibre 书库。"
+    },
+    "delete": {
+      "title": "删除 OneDrive 数据源",
+      "confirm": "确认删除「{{name}}」？",
+      "cancel": "取消",
+      "confirmButton": "删除"
+    },
+    "deleteFailed": {
+      "title": "无法删除",
+      "message": "删除数据源失败。"
+    },
+    "deleteSource": "删除数据源",
+    "notFound": {
+      "title": "未找到数据源",
+      "detail": "数据源可能已被删除或链接参数无效。"
+    },
+    "type": "类型",
+    "displayName": "显示名称",
+    "email": "邮箱",
+    "basePath": "根路径",
+    "authStatus": "认证状态",
+    "authenticated": "已认证",
+    "notAuthenticated": "未认证",
+    "addedAt": "添加时间",
+    "browser": {
+      "notFound": {
+        "title": "未找到数据源",
+        "detail": "请先添加 OneDrive 数据源。"
+      },
+      "loadFailed": {
+        "title": "浏览失败",
+        "message": "OneDrive 浏览器遇到意外错误，请重试。"
+      },
+      "validating": "正在验证目录",
+      "selectDirectory": "选择当前目录作为书库",
+      "currentPath": "当前路径：{{path}}",
+      "reading": {
+        "title": "正在读取目录",
+        "detail": "正在从 OneDrive 获取目录列表。"
+      },
+      "readFailed": {
+        "title": "读取失败"
+      },
+      "empty": {
+        "title": "空目录",
+        "detail": "当前目录下没有子目录。"
+      },
+      "notValidLibrary": {
+        "title": "无效目录",
+        "message": "未找到 metadata.db，不是有效的书库。"
+      },
+      "notCalibreLibrary": "不是有效的 Calibre 书库。",
+      "cannotReadRemote": "无法读取远程目录"
+    },
+    "add": {
+      "signInTitle": "登录 OneDrive",
+      "signInDetail": "连接 Microsoft 账号，浏览 OneDrive 并选择 Calibre 书库。",
+      "signInWithMicrosoft": "使用 Microsoft 登录",
+      "authenticating": "正在认证…",
+      "authFailed": "认证失败",
+      "authFailedMessage": "无法登录 OneDrive，请重试。",
+      "alreadyAdded": "账号已添加",
+      "alreadyAddedMessage": "账号 {{email}} 已连接。"
     }
   },
   "errorBoundary": {

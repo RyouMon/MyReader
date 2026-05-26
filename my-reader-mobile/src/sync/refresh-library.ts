@@ -6,8 +6,11 @@ import {
   readBookCountFromMetadata,
 } from "../data/calibre";
 import { openDatabaseFromUri } from "../data/sqlite";
-import type { Library, WebDavDataSource } from "../data/types";
-import { forceRefreshWebDavMetadata } from "../data/webdav";
+import type { Library, OneDriveDataSource, WebDavDataSource } from "../data/types";
+import { isRemoteSourceType } from "../data/types";
+import { forceRefreshMetadata } from "../data/webdav";
+import { forceRefreshMetadata as forceRefreshOneDriveMetadata } from "../data/onedrive";
+import { getValidAccessToken } from "../data/onedrive-auth";
 import { readWebDavPassword } from "../store/secure-credential-store";
 
 import { clearReaderCachesForBook } from "../data/cache";
@@ -89,10 +92,24 @@ export async function refreshLibrary(
     const password =
       source.password ?? (await readWebDavPassword(source.id)) ?? "";
     const webDavSource: WebDavDataSource = { ...source, password };
-    const newMetadataUri = await forceRefreshWebDavMetadata(
+    const newMetadataUri = await forceRefreshMetadata(
       library,
       webDavSource
     );
+    if (!newMetadataUri) {
+      throw new Error(i18n.t("sync.cannotRedownloadMeta"));
+    }
+    newLibrary = { ...library, metadataUri: newMetadataUri };
+  } else if (library.sourceType === "onedrive") {
+    const rawSource = dataSources.find(
+      (item) => item.id === library.dataSourceId && item.type === "onedrive"
+    );
+    if (!rawSource || rawSource.type !== "onedrive") {
+      throw new Error(i18n.t("sync.onedriveSourceNotFound"));
+    }
+    const accessToken = await getValidAccessToken(rawSource.id);
+    const oneDriveSource: OneDriveDataSource = { ...rawSource, accessToken };
+    const newMetadataUri = await forceRefreshOneDriveMetadata(library, oneDriveSource);
     if (!newMetadataUri) {
       throw new Error(i18n.t("sync.cannotRedownloadMeta"));
     }
@@ -139,7 +156,7 @@ export async function refreshLibrary(
   }
 
   // 6. Download covers for added / modified books
-  if (library.sourceType === "webdav") {
+  if (isRemoteSourceType(library.sourceType)) {
     for (const book of diff.added) {
       if (book.hasCover && book.path) {
         try {

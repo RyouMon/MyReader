@@ -77,6 +77,13 @@
           "project": "my-reader-mobile",
           "organization": "myself-eu"
         }
+      ],
+      "expo-web-browser",
+      [
+        "react-native-app-auth",
+        {
+          "redirectUrls": ["myreadermobile://onedrive-auth/"]
+        }
       ]
     ],
     "experiments": {

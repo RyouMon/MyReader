@@ -4,6 +4,7 @@ import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffect
 import { getAllBookFormats } from "@/src/data/calibre";
 import { listFileStates, useFileStateRevision, type FileStateRow, type LocalState } from "@/src/data/file_state";
 import type { BookItem, Library } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 import { useDownloadStatusTasks, type DownloadStatusTask } from "@/src/sync/download-store";
 
@@ -48,7 +49,7 @@ export function useLibraryBookMeta(
       return;
     }
 
-    if (selectedLibrary.sourceType !== "webdav" || !selectedLibrary.dataSourceId) {
+    if (!isRemoteSourceType(selectedLibrary.sourceType) || !selectedLibrary.dataSourceId) {
       const statuses: BookFileStateMap = {};
       for (const book of books) statuses[book.id] = "downloaded";
       setFileStateBundle({ statuses, rows: {} });
@@ -87,7 +88,7 @@ export function useLibraryBookMeta(
     return map;
   }, [books, bookFormatsById, selectedFormatById]);
 
-  const isWebdav = selectedLibrary?.sourceType === "webdav";
+  const isRemote = isRemoteSourceType(selectedLibrary?.sourceType);
   const selectedLibraryId = selectedLibrary?.id;
 
   const tasksByBookId = useMemo(() => {
@@ -140,7 +141,7 @@ export function useLibraryBookMeta(
     const { statuses, rows } = fileStateBundle;
 
     for (const book of books) {
-      if (!isWebdav) {
+      if (!isRemote) {
         next[book.id] = statuses[book.id] ?? "downloaded";
         continue;
       }
@@ -173,7 +174,7 @@ export function useLibraryBookMeta(
     }
 
     return next;
-  }, [bookFormatMetaById, books, fileStateBundle, isWebdav, tasksByBookId]);
+  }, [bookFormatMetaById, books, fileStateBundle, isRemote, tasksByBookId]);
 
   return { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById };
 }

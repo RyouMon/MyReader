@@ -1,6 +1,6 @@
 import type { DataSource, Library, WebDavDataSource } from "../data/types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import { readWebDavPassword } from "../store/secure-credential-store";
+import { readWebDavPassword, readOneDriveRefreshToken } from "../store/secure-credential-store";
 import { parentDirectoryUriForFileUri } from "../utils/io";
 import { SyncConfigError } from "../errors";
 
@@ -20,8 +20,8 @@ export type ResolvedSyncTarget = {
  * Resolve a library + its data source into a ready-to-use `SyncBackend` plus
  * the local cache directory used to stage downloaded bytes.
  *
- * Throws when the library references a WebDAV source that can't be found or
- * whose password hasn't been unlocked yet — callers should surface this to
+ * Throws when the library references a remote source that can't be found or
+ * whose credentials haven't been unlocked yet — callers should surface this to
  * the user so they can fix credentials.
  */
 export async function resolveSyncTarget(
@@ -45,6 +45,30 @@ export async function resolveSyncTarget(
     const backend = buildBackend({
       kind: "webdav",
       source,
+      libraryPath: library.sourcePath ?? library.path ?? "",
+    });
+    return {
+      backend,
+      dataSourceId: rawSource.id,
+      libraryId: library.id,
+      libraryCacheDirUri,
+    };
+  }
+
+  if (library.sourceType === "onedrive") {
+    const rawSource = dataSources.find(
+      (item) => item.id === library.dataSourceId && item.type === "onedrive",
+    );
+    if (!rawSource || rawSource.type !== "onedrive") {
+      throw new SyncConfigError(i18n.t("sync.onedriveSourceNotFound"));
+    }
+    const refreshToken = await readOneDriveRefreshToken(rawSource.id);
+    if (!refreshToken) {
+      throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"));
+    }
+    const backend = buildBackend({
+      kind: "onedrive",
+      dataSourceId: rawSource.id,
       libraryPath: library.sourcePath ?? library.path ?? "",
     });
     return {

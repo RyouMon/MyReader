@@ -1,4 +1,5 @@
 import type { LibraryStore } from "@my-reader/tools/store/library";
+import { isRemoteSourceType } from "../data/types";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
@@ -10,7 +11,9 @@ import {
   readBookCountFromLibrary,
 } from "../data/calibre";
 import type { Library } from "../data/types";
-import { checkLibraryConnectivity } from "../sync/connectivity";
+import { checkConnectivity } from "../sync/connectivity";
+import { buildBackend } from "../sync/backend/build";
+import { resolveSyncTarget } from "../sync/resolve";
 import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
 import { fetchBooksWithMeta, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
 import { queryClient } from "../hooks/queries/queryClient";
@@ -24,7 +27,17 @@ function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   );
 }
 
-type LibrarySlice = Pick<AppState, keyof LibraryStore | "books" | "loadingBooks" | "refreshingLibraryId" | "error" | "setHydrated" | "clearError" | "addResolvedLibrary" | "refreshBooks" | "refreshLibrary">;
+type LibrarySlice = Omit<LibraryStore, "addWebdavLibrary"> & {
+  books: unknown[];
+  loadingBooks: boolean;
+  refreshingLibraryId: string | null;
+  error: string | null;
+  setHydrated: (value: boolean) => void;
+  clearError: () => void;
+  addResolvedLibrary: (library: Library) => Promise<boolean>;
+  refreshBooks: () => Promise<void>;
+  refreshLibrary: (libraryId: string) => Promise<void>;
+};
 
 export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
   ({
@@ -128,7 +141,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
     async addResolvedLibrary(library: Library) {
       const state = get();
       const prepared =
-        library.sourceType === "webdav" ? library : (await readBookCountFromLibrary(library)).library;
+        isRemoteSourceType(library.sourceType) ? library : (await readBookCountFromLibrary(library)).library;
 
       if (
         state.libraries.some(
@@ -190,7 +203,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
         });
 
         const { library: refreshedLibrary, bookCount } =
-          activeLibrary.sourceType === "webdav"
+          isRemoteSourceType(activeLibrary.sourceType)
             ? {
                 library:
                   metadataUri === activeLibrary.metadataUri
@@ -222,7 +235,8 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
       const library = state.libraries.find((l) => l.id === libraryId);
       if (!library) return;
       try {
-        await checkLibraryConnectivity(library.id);
+        const { backend } = await resolveSyncTarget(library, state.dataSources);
+        await checkConnectivity(backend);
       } catch {
         showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
         return;

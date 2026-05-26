@@ -7,8 +7,9 @@ import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-ba
 import { canonicalRelativePath, encodeUrlPathFromChunks } from "../utils/io";import { WebDavUrlBuilder } from "../utils/webdav";
 import { openDatabaseFromUri } from "./sqlite";
 import type { BookItem, Library, WebDavDataSource } from "./types";
+import type { RemoteLibraryOps } from "./remote-library";
 
-export function buildWebDavBookCoverUri(
+export function buildCoverUri(
   library: Library,
   source: WebDavDataSource,
   bookPath: string,
@@ -28,6 +29,7 @@ export function buildWebDavBookCoverUri(
 
 type WebDavEntry = {
   href: string;
+  path: string;
   name: string;
   isDirectory: boolean;
 };
@@ -155,6 +157,7 @@ function parsePropfind(source: WebDavDataSource, xml: string): WebDavEntry[] {
 
       return {
         href: remotePath,
+        path: remotePath,
         name: displayName || fallbackName,
         isDirectory,
       } satisfies WebDavEntry;
@@ -162,7 +165,7 @@ function parsePropfind(source: WebDavDataSource, xml: string): WebDavEntry[] {
     .filter((entry) => entry.href);
 }
 
-export async function testWebDavConnection(source: WebDavDataSource, timeout?: number | false): Promise<Response> {
+export async function testConnection(source: WebDavDataSource, timeout?: number | false): Promise<Response> {
   const response = await ky(buildUrl(source, ""), {
     method: "PROPFIND",
     timeout,
@@ -175,7 +178,7 @@ export async function testWebDavConnection(source: WebDavDataSource, timeout?: n
   return response;
 }
 
-export async function listWebDavDirectory(
+export async function listDirectory(
   source: WebDavDataSource,
   path = "",
   timeout?: number | false
@@ -258,7 +261,7 @@ async function ensureWebDavMetadataCached(
  * Forcefully re-download metadata.db from WebDAV, overwriting the local cache.
  * Used by "refresh library".
  */
-export async function forceRefreshWebDavMetadata(
+export async function forceRefreshMetadata(
   library: Library,
   source: WebDavDataSource,
 ): Promise<string | null> {
@@ -280,7 +283,7 @@ export async function forceRefreshWebDavMetadata(
   }
 }
 
-export async function createWebDavLibraryFromPath(
+export async function createLibraryFromPath(
   source: WebDavDataSource,
   remoteLibraryPath: string
 ): Promise<Library> {
@@ -311,7 +314,7 @@ export async function createWebDavLibraryFromPath(
   }
 }
 
-export async function readBooksFromWebDavLibrary(
+export async function readBooks(
   library: Library,
   source: WebDavDataSource
 ): Promise<{ books: BookItem[]; metadataUri: string }> {
@@ -356,4 +359,15 @@ export async function readBooksFromWebDavLibrary(
   } finally {
     await db.closeAsync();
   }
+}
+
+export function createWebDavOps(source: WebDavDataSource): RemoteLibraryOps {
+  return {
+    testConnection: (timeout?: number) => testConnection(source, timeout),
+    listDirectory: (path) => listDirectory(source, path),
+    createLibraryFromPath: (remotePath) => createLibraryFromPath(source, remotePath),
+    readBooks: (library) => readBooks(library, source),
+    buildCoverUri: (library, bookPath, hasCover) => buildCoverUri(library, source, bookPath, hasCover),
+    forceRefreshMetadata: (library) => forceRefreshMetadata(library, source),
+  };
 }

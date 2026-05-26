@@ -9,6 +9,7 @@ import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import type { DataSource, Library } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";
@@ -39,7 +40,9 @@ function formatDate(timestamp?: number) {
 }
 
 function getSourceTypeLabel(t: (key: string) => string, library: Library) {
-  return library.sourceType === "webdav" ? t("libraryDetail.typeWebdav") : t("libraryDetail.typeLocal");
+  if (library.sourceType === "onedrive") return t("libraryDetail.typeOnedrive");
+  if (isRemoteSourceType(library.sourceType)) return t("libraryDetail.typeWebdav");
+  return t("libraryDetail.typeLocal");
 }
 
 function getLibraryTypeLabel(t: (key: string) => string) {
@@ -49,6 +52,10 @@ function getLibraryTypeLabel(t: (key: string) => string) {
 function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
   if (library.sourceType === "webdav" && dataSource?.type === "webdav") {
     return `${dataSource.endpoint}${library.sourcePath ?? (dataSource.rootPath ?? "")}`;
+  }
+
+  if (library.sourceType === "onedrive" && dataSource?.type === "onedrive") {
+    return library.sourcePath ?? (dataSource.rootPath ?? "");
   }
 
   return library.path;

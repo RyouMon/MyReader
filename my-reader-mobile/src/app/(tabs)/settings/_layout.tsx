@@ -36,6 +36,13 @@ export default function SettingsStackLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="onedrive"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

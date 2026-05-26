@@ -1,4 +1,5 @@
 export { LocalDirectBackend } from "./local";
+export { OneDriveBackend } from "./onedrive";
 export { WebDavBackend } from "./webdav";
 export {
   type RemoteFileOps,

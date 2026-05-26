@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
-import type { DataSource, DataSourceWebdav } from "../data/types";
+import { ONEDRIVE_ACCESS_TOKEN_KEY, ONEDRIVE_REFRESH_TOKEN_KEY } from "../constants/onedrive";
+import type { DataSource, DataSourceWebdav, DataSourceOnedrive } from "../data/types";
 
 const WEB_DAV_PASSWORD_KEY_PREFIX = "ryoumon.myreader.webdav.password.";
 
@@ -47,8 +48,40 @@ export async function deleteWebDavPassword(dataSourceId: string): Promise<void> 
   await SecureStore.deleteItemAsync(buildWebDavPasswordKey(dataSourceId));
 }
 
+// OneDrive tokens
+
+export async function readOneDriveAccessToken(id: string): Promise<string | null> {
+  if (!id) return null;
+  return SecureStore.getItemAsync(`${ONEDRIVE_ACCESS_TOKEN_KEY}.${id}`);
+}
+
+export async function writeOneDriveAccessToken(id: string, token: string): Promise<void> {
+  if (!id) return;
+  await SecureStore.setItemAsync(`${ONEDRIVE_ACCESS_TOKEN_KEY}.${id}`, token);
+}
+
+export async function deleteOneDriveAccessToken(id: string): Promise<void> {
+  if (!id) return;
+  await SecureStore.deleteItemAsync(`${ONEDRIVE_ACCESS_TOKEN_KEY}.${id}`);
+}
+
+export async function readOneDriveRefreshToken(id: string): Promise<string | null> {
+  if (!id) return null;
+  return SecureStore.getItemAsync(`${ONEDRIVE_REFRESH_TOKEN_KEY}.${id}`);
+}
+
+export async function writeOneDriveRefreshToken(id: string, token: string): Promise<void> {
+  if (!id) return;
+  await SecureStore.setItemAsync(`${ONEDRIVE_REFRESH_TOKEN_KEY}.${id}`, token);
+}
+
+export async function deleteOneDriveRefreshToken(id: string): Promise<void> {
+  if (!id) return;
+  await SecureStore.deleteItemAsync(`${ONEDRIVE_REFRESH_TOKEN_KEY}.${id}`);
+}
+
 /**
- * 依据安全存储回填数据源密码，并返回可在内存中使用的列表副本。
+ * Hydrate data sources from secure storage, filling in passwords/tokens.
  */
 export async function hydrateDataSourcesFromSecureCredentials(
   dataSources: DataSource[]
@@ -56,27 +89,42 @@ export async function hydrateDataSourcesFromSecureCredentials(
   const hydrated: DataSource[] = [];
 
   for (const source of dataSources) {
-    const securePassword = await readWebDavPassword(source.id);
-    const withPassword: DataSourceWebdav = {
-      ...source,
-      password: securePassword ?? undefined,
-      hasPassword: Boolean(securePassword),
-    };
-    hydrated.push(withPassword);
+    if (source.type === "webdav") {
+      const securePassword = await readWebDavPassword(source.id);
+      const withPassword: DataSourceWebdav = {
+        ...source,
+        password: securePassword ?? undefined,
+        hasPassword: Boolean(securePassword),
+      };
+      hydrated.push(withPassword);
+    } else if (source.type === "onedrive") {
+      const refreshToken = await readOneDriveRefreshToken(source.id);
+      const withToken: DataSourceOnedrive = {
+        ...source,
+        hasRefreshToken: Boolean(refreshToken),
+      };
+      hydrated.push(withToken);
+    } else {
+      hydrated.push(source);
+    }
   }
 
   return hydrated;
 }
 
 /**
- * 序列化前剥离敏感字段，避免密码落入普通 JSON 存储。
+ * Strip sensitive fields before serialization. Tokens live exclusively in SecureStore.
  */
 export function stripSensitiveDataSources(dataSources: DataSource[]): DataSource[] {
   return dataSources.map((source) => {
-    const { password, ...rest } = source;
-    return {
-      ...rest,
-      hasPassword: rest.hasPassword || Boolean(password),
-    } satisfies DataSourceWebdav;
+    if (source.type === "webdav") {
+      const { password, ...rest } = source;
+      return {
+        ...rest,
+        hasPassword: rest.hasPassword || Boolean(password),
+      } satisfies DataSourceWebdav;
+    }
+    // OneDrive tokens are only in SecureStore, not in the DataSource shape.
+    return source;
   });
 }

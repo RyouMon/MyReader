@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import { useAppStore } from "../store/app-store";
+import { isRemoteSourceType } from "../data/types";
 
 import {
   listBackedFiles,
@@ -118,7 +119,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
       const entry: LibrarySyncResult = {
         libraryId: library.id,
         libraryName: library.name,
-        isLocalDirect: library.sourceType !== "webdav",
+        isLocalDirect: !isRemoteSourceType(library.sourceType),
         skipped: false,
       };
       try {

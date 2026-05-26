@@ -28,6 +28,7 @@ import {
 } from "@/src/features/library/components/books";
 import { AndroidMenuRippleButton } from "@/src/components/ui/AndroidMenuRippleButton";
 import type { BookItem } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
@@ -278,7 +279,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     prevRefreshingIdRef.current = refreshingLibraryId;
   }, [refreshingLibraryId]);
 
-  const isWebdav = selectedLibrary?.sourceType === "webdav";
+  const isRemote = isRemoteSourceType(selectedLibrary?.sourceType);
   const selectedLibraryId = selectedLibrary?.id;
 
   const { handleBookPress, handleBookMenuAction } = useBookActions(
@@ -323,7 +324,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     ({ item }: { item: BookItem }) => {
       const status = bookDownloadStatusById[item.id] ?? "notDownloaded";
       const effectiveFormat = bookFormatMetaById.get(item.id)?.effectiveFormat;
-      const subscriptionLibraryId = isWebdav && status === "downloading" ? selectedLibraryId : undefined;
+      const subscriptionLibraryId = isRemote && status === "downloading" ? selectedLibraryId : undefined;
       const subscriptionFormat = subscriptionLibraryId ? effectiveFormat : undefined;
       const menuFormats = bookFormatsById[item.id];
       const menuSelectedFormat = selectedFormatById[item.id];
@@ -337,7 +338,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               width={cardWidth}
               isAnyMenuOpen={isMenuOpen}
               onPress={handleBookPress}
-              menuIsWebdav={isWebdav}
+              menuIsWebdav={isRemote}
               menuFormats={menuFormats}
               menuSelectedFormat={menuSelectedFormat}
               onMenuAction={handleBookMenuAction}
@@ -356,7 +357,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           downloadStatus={status}
           isAnyMenuOpen={isMenuOpen}
           onPress={handleBookPress}
-          menuIsWebdav={isWebdav}
+          menuIsWebdav={isRemote}
           menuFormats={menuFormats}
           menuSelectedFormat={menuSelectedFormat}
           onMenuAction={handleBookMenuAction}
@@ -380,7 +381,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       handleMenuOpen,
       isGridView,
       isMenuOpen,
-      isWebdav,
+      isRemote,
       selectedFormatById,
       selectedLibraryId,
     ],

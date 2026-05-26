@@ -14,7 +14,8 @@ import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/compo
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/data/calibre";
-import type { WebDavDataSource } from "@/src/data/types";
+import type { DataSource, Library, WebDavDataSource } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import { useAppStore } from "@/src/store/app-store";
 import { useLibraryStore } from "@/src/store/library-store";
 
@@ -37,9 +38,9 @@ export default function BookDetailScreen() {
   const loadingIdsRef = useRef(new Set<string>());
 
   const webDavSource = useMemo(() => {
-    if (!activeLibrary || activeLibrary.sourceType !== "webdav") return null;
+    if (!activeLibrary || !isRemoteSourceType(activeLibrary.sourceType)) return null;
     const found = dataSources.find(
-      (d) => d.id === activeLibrary.dataSourceId && d.type === "webdav"
+      (d) => d.id === activeLibrary.dataSourceId && d.type === activeLibrary.sourceType
     );
     return (found as WebDavDataSource | undefined) ?? null;
   }, [activeLibrary, dataSources]);

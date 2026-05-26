@@ -4,7 +4,7 @@ import i18n from "@/src/i18n";
 
 import { buildCoverUri } from "../data/calibre";
 import type { BookItem, Library, WebDavDataSource } from "../data/types";
-import { buildWebDavBookCoverUri } from "../data/webdav";
+import { buildCoverUri as buildWebDavCoverUri } from "../data/webdav";
 
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
@@ -95,7 +95,7 @@ export function resolveCoverForDetail(
   if (fallback) return fallback;
   if (!library || !detail.path) return undefined;
   if (library.sourceType === "webdav" && webDavSource) {
-    return buildWebDavBookCoverUri(library, webDavSource, detail.path, detail.hasCover);
+    return buildWebDavCoverUri(library, webDavSource, detail.path, detail.hasCover);
   }
   return buildCoverUri(library, detail.path, detail.hasCover);
 }

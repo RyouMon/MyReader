@@ -9,7 +9,8 @@ import {
 } from "@/src/data/calibre";
 import { getFileState, type LocalState } from "@/src/data/file_state";
 import { getReadingProgress } from "@/src/data/reading-progress";
-import type { Library, WebDavDataSource } from "@/src/data/types";
+import type { Library } from "@/src/data/types";
+import { isRemoteSourceType } from "@/src/data/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { useAppStore } from "@/src/store/app-store";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
@@ -153,12 +154,7 @@ export function useBookLoader(
     }
     const lib = currentLibrary;
 
-    const currentWebDavSource =
-      lib.sourceType === "webdav"
-        ? (state.dataSources.find(
-            (d) => d.id === lib.dataSourceId && d.type === "webdav"
-          ) as WebDavDataSource | undefined) ?? null
-        : null;
+    const isRemoteSource = isRemoteSourceType(lib.sourceType);
 
     let cancelled = false;
 
@@ -235,7 +231,7 @@ export function useBookLoader(
 
         setLoadState({
           status: "loading",
-          message: currentWebDavSource ? i18n.t("bookLoader.downloadingFromWebdav") : i18n.t("bookLoader.loadingBookFile"),
+          message: isRemoteSource ? i18n.t("bookLoader.downloadingFromRemote") : i18n.t("bookLoader.loadingBookFile"),
         });
 
         const detailLayoutMode =
@@ -245,9 +241,9 @@ export function useBookLoader(
         const needsPdfNativePath = fmtUpper === "PDF";
         const needsEpubExtract = fmtUpper === "EPUB";
 
-        const syncCacheDirUri = currentWebDavSource ? resolveLibraryBooksDir(lib.id) : undefined;
+        const syncCacheDirUri = isRemoteSource ? resolveLibraryBooksDir(lib.id) : undefined;
         const downloadedWebDavBookFile =
-          currentWebDavSource && syncCacheDirUri && lib.dataSourceId
+          isRemoteSource && syncCacheDirUri && lib.dataSourceId
             ? await resolveDownloadedWebDavBookFile({
                 libraryId: lib.id,
                 dataSourceId: lib.dataSourceId,
@@ -258,25 +254,25 @@ export function useBookLoader(
               })
             : null;
 
-        const localBookFile = !currentWebDavSource && needsNativeComicPath
+        const localBookFile = !isRemoteSource && needsNativeComicPath
           ? await materializeBookFileToCache(lib, calibreId, fmt, "local-comic")
           : null;
         const localEpubFile =
-          needsEpubExtract && !currentWebDavSource
+          needsEpubExtract && !isRemoteSource
             ? await materializeBookFileToCache(lib, calibreId, fmt, "local-epub")
             : null;
         const webDavEpubFile =
-          needsEpubExtract && currentWebDavSource ? downloadedWebDavBookFile : null;
-        const webDavBookFile = currentWebDavSource && needsNativeComicPath ? downloadedWebDavBookFile : null;
+          needsEpubExtract && isRemoteSource ? downloadedWebDavBookFile : null;
+        const webDavBookFile = isRemoteSource && needsNativeComicPath ? downloadedWebDavBookFile : null;
 
         const pdfLocalFile = needsPdfNativePath
-          ? currentWebDavSource
+          ? isRemoteSource
             ? downloadedWebDavBookFile
             : await materializeBookFileToCache(lib, calibreId, fmt, "local-pdf")
           : null;
 
         const epubArchiveFile = localEpubFile ?? webDavEpubFile;
-        const requiredWebDavFile = currentWebDavSource && (needsEpubExtract || needsNativeComicPath || needsPdfNativePath);
+        const requiredWebDavFile = isRemoteSource && (needsEpubExtract || needsNativeComicPath || needsPdfNativePath);
         if (requiredWebDavFile && !downloadedWebDavBookFile) {
           setLoadState({
             status: "error",
@@ -292,7 +288,7 @@ export function useBookLoader(
           format: fmtUpper,
           archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
           epubFileUri: needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
-          sourceType: currentWebDavSource ? "webdav" : "local",
+          sourceType: lib.sourceType ?? "local",
         });
 
         console.info("[mobile-reader] load:reader-input-ready", {
@@ -313,7 +309,7 @@ export function useBookLoader(
             ? `${calibreId}-${fmtUpper}-${epubArchiveFile.md5 ?? `sz${epubArchiveFile.size ?? 0}`}`
             : `${calibreId}-${fmtUpper}-nohash`;
         const bookArchiveOwned =
-          Boolean(localBookFile) || Boolean(needsPdfNativePath && !currentWebDavSource && pdfLocalFile);
+          Boolean(localBookFile) || Boolean(needsPdfNativePath && !isRemoteSource && pdfLocalFile);
 
         const initialLocator = await getReadingProgress(lib, calibreId, fmt);
         if (cancelled) return;

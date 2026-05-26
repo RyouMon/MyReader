@@ -86,6 +86,7 @@
     "bookCount": "{{count}} books",
     "typeLocal": "Local",
     "typeWebdav": "WebDAV",
+    "typeOnedrive": "OneDrive",
     "calibreLibrary": "Calibre Library",
     "delete": {
       "title": "Delete this library?",
@@ -118,6 +119,7 @@
     "localStorage": "Local Storage",
     "localStorageDetail": "Default data source, no configuration needed",
     "webdavDetail": "Add and manage remote WebDAV data sources",
+    "onedriveDetail": "Add and manage OneDrive data sources",
     "readingPreferences": "Reading Preferences",
     "darkMode": "Dark Mode",
     "readerStyle": "Reader Style",
@@ -262,7 +264,8 @@
     "existingSources": "Existing Sources",
     "localDetail": "Select a library from local storage",
     "addSources": "Add Sources",
-    "webdavDetail": "Browse remote files via WebDAV and select a Calibre library"
+    "webdavDetail": "Browse remote files via WebDAV and select a Calibre library",
+    "onedriveDetail": "Browse remote files via OneDrive and select a Calibre library"
   },
   "webdav": {
     "sourcesTitle": "WebDAV Sources",
@@ -352,6 +355,79 @@
       "useSSL": "Use SSL"
     }
   },
+  "onedrive": {
+    "sourcesTitle": "OneDrive Sources",
+    "sourceDetail": "Source Details",
+    "addSource": "Add OneDrive Source",
+    "selectLibrary": "Select OneDrive Library",
+    "noSources": {
+      "title": "No OneDrive sources yet",
+      "detail": "Sign in with Microsoft to browse your OneDrive and select a Calibre library."
+    },
+    "delete": {
+      "title": "Delete OneDrive Source",
+      "confirm": "Delete \"{{name}}\"?",
+      "cancel": "Cancel",
+      "confirmButton": "Delete"
+    },
+    "deleteFailed": {
+      "title": "Cannot Delete",
+      "message": "Failed to delete the source."
+    },
+    "deleteSource": "Delete Source",
+    "notFound": {
+      "title": "Source not found",
+      "detail": "It may have been removed or the link parameters are invalid."
+    },
+    "type": "Type",
+    "displayName": "Display Name",
+    "email": "Email",
+    "basePath": "Base Path",
+    "authStatus": "Auth Status",
+    "authenticated": "Authenticated",
+    "notAuthenticated": "Not authenticated",
+    "addedAt": "Added At",
+    "browser": {
+      "notFound": {
+        "title": "Source not found",
+        "detail": "Please add a OneDrive source first."
+      },
+      "loadFailed": {
+        "title": "Browse Failed",
+        "message": "The OneDrive browser encountered an unexpected error. Please retry."
+      },
+      "validating": "Validating directory",
+      "selectDirectory": "Select current directory as library",
+      "currentPath": "Current path: {{path}}",
+      "reading": {
+        "title": "Reading directory",
+        "detail": "Fetching directory listing from OneDrive."
+      },
+      "readFailed": {
+        "title": "Read Failed"
+      },
+      "empty": {
+        "title": "Empty directory",
+        "detail": "No subdirectories in the current directory."
+      },
+      "notValidLibrary": {
+        "title": "Invalid directory",
+        "message": "Not a valid library — metadata.db not found."
+      },
+      "notCalibreLibrary": "Not a valid Calibre library.",
+      "cannotReadRemote": "Cannot read remote directory"
+    },
+    "add": {
+      "signInTitle": "Sign in to OneDrive",
+      "signInDetail": "Connect your Microsoft account to browse OneDrive and select a Calibre library.",
+      "signInWithMicrosoft": "Sign in with Microsoft",
+      "authenticating": "Authenticating…",
+      "authFailed": "Authentication Failed",
+      "authFailedMessage": "Could not sign in to OneDrive. Please retry.",
+      "alreadyAdded": "Account Already Added",
+      "alreadyAddedMessage": "The account {{email}} is already connected."
+    }
+  },
   "errorBoundary": {
     "defaultTitle": "An unexpected error occurred",
     "retry": "Retry"
@@ -400,6 +476,7 @@
     "notFoundInLibrary": "Book not found in library",
     "noReadableFormat": "No readable format (EPUB, CBZ, or PDF required)",
     "downloadingFromWebdav": "Downloading book from WebDAV…",
+    "downloadingFromRemote": "Downloading book from remote…",
     "loadingBookFile": "Loading book file…",
     "downloadFirst": "Please download the format in book details before reading."
   },
@@ -410,6 +487,13 @@
     "configError": "Sync configuration error",
     "webdavSourceNotFound": "The WebDAV source associated with this library does not exist.",
     "webdavPasswordMissing": "The current WebDAV source is missing a password. Please re-edit the source.",
+    "onedriveSourceNotFound": "The OneDrive source associated with this library does not exist.",
+    "onedriveRefreshTokenMissing": "The current OneDrive source is missing authentication. Please re-authenticate the source.",
+    "onedriveGetFailed": "OneDrive GET failed: {{status}} {{path}}",
+    "onedrivePutFailed": "OneDrive PUT failed: {{status}} {{path}}",
+    "onedriveDeleteFailed": "OneDrive DELETE failed: {{status}} {{path}}",
+    "onedriveListFailed": "OneDrive list failed: {{status}} {{path}}",
+    "onedriveMkdirFailed": "OneDrive mkdir failed: {{status}} {{path}}",
     "cannotResolveLocalPath": "Cannot resolve local library root directory.",
     "downloadCancelled": "Download cancelled",
     "downloadFailed": "Background download failed: {{code}}",

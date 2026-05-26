@@ -29,6 +29,7 @@ import {
   withSecurityScopedLibraryAccess,
 } from "./security-scoped-bookmarks";
 import type { BookItem, Library } from "./types";
+import { isRemoteSourceType } from "./types";
 import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
@@ -178,7 +179,7 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
 }
 
 export async function ensureLibraryMetadataCached(library: Library): Promise<Library> {
-  if (library.sourceType === "webdav") {
+  if (isRemoteSourceType(library.sourceType)) {
     return library;
   }
 
@@ -207,7 +208,7 @@ export async function ensureLibraryMetadataCached(library: Library): Promise<Lib
 }
 
 export async function forceRefreshLibraryMetadata(library: Library): Promise<Library> {
-  if (library.sourceType === "webdav") {
+  if (isRemoteSourceType(library.sourceType)) {
     return library;
   }
 
@@ -249,7 +250,7 @@ export async function readBookCountFromLibrary(library: Library) {
 }
 
 async function resolveMetadataUriForRead(library: Library): Promise<string | null> {
-  if (library.sourceType === "webdav") {
+  if (isRemoteSourceType(library.sourceType)) {
     const currentMetadata = new FSFile(library.metadataUri!);
     if (currentMetadata.exists) {
       return currentMetadata.uri;
