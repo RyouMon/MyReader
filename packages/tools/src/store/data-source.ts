@@ -17,7 +17,21 @@ export type DataSourceWebdav = {
   createdAt?: number
 }
 
-export type DataSource = DataSourceWebdav
+export type DataSourceOnedrive = {
+  id: string
+  type: "onedrive"
+  name: string
+  enabled: boolean
+  clientId: string
+  displayName?: string | null
+  email?: string | null
+  rootPath?: string | null
+  hasRefreshToken: boolean
+  readonly?: boolean
+  createdAt?: number
+}
+
+export type DataSource = DataSourceWebdav | DataSourceOnedrive
 
 export type DataSourceConnectionTestResult = {
   ok: boolean
