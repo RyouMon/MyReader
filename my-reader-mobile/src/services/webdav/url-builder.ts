@@ -5,9 +5,9 @@
  * fallback logic.
  */
 
-import { buildHttpBasicAuthHeader } from "./http";
-import { encodeUrlPathFromChunks } from "./io";
-import type { WebDavDataSource } from "../data/types";
+import { buildHttpBasicAuthHeader } from "../http/auth";
+import { encodeUrlPathFromChunks } from "../fs/path";
+import type { WebDavDataSource } from "../../data/types";
 
 export class WebDavUrlBuilder {
   private readonly serverUrl: string;

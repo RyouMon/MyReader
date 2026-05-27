@@ -3,7 +3,7 @@ import { File } from "expo-file-system";
 import i18n from "@/src/i18n";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
-import { openDatabaseFromUri } from "./sqlite";
+import { openDatabaseFromUri } from "../services/db/sqlite";
 import type { BookItem, Library } from "./types";
 
 // -- Shared types (moved from onedrive.ts and webdav.ts) --

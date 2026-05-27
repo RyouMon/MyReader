@@ -8,14 +8,14 @@ import { isTransferBackend, localFileUriFor } from "./backend";
 import { AppInvariantError, DataIntegrityError } from "../errors";
 import type { Manifest } from "./manifest";
 import { findEntry, removeEntry, saveManifest } from "./manifest";
-import { clearExtractedReaderCachesForArchiveUri } from "../data/cache";
+import { clearExtractedReaderCachesForArchiveUri } from "../services/fs/cache";
 import {
   startNativeDownload,
   startNativeUpload,
   type NativeDownloadOptions,
   type NativeUploadOptions,
-} from "./native-download";
-import { parentDirectoryUriForFileUri } from "../utils/io";
+} from "../services/download/native";
+import { parentDirectoryUriForFileUri } from "../services/fs/path";
 import i18n from "@/src/i18n";
 
 export type DownloadOutcome = {

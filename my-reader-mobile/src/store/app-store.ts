@@ -10,7 +10,7 @@ import {
 } from "./app-store.constants";
 import type { AppState, AppStateSlice, LibraryViewMode, PersistedAppState } from "./app-store.types";
 import { createDataSourceSlice } from "./data-source-slice";
-import { createExpoJsonStorage } from "./json-storage";
+import { createExpoJsonStorage } from "../services/storage/json-storage";
 import { createLibrarySlice } from "./library-slice";
 
 const jsonStorage = createExpoJsonStorage();

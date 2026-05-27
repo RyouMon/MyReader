@@ -3,7 +3,7 @@ import { isRemoteSourceType } from "../data/types";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import { clearAllReaderCaches } from "../data/cache";
+import { clearAllReaderCaches } from "../services/fs/cache";
 import {
   clearLocalCopyCacheByLibrary,
   ensureLibraryMetadataCached,

@@ -13,7 +13,7 @@ import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import { createWebDavOps } from "@/src/data/webdav";
 import type { WebDavDataSource, DataSource } from "@/src/data/types";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
-import { readWebDavPassword } from "@/src/store/secure-credential-store";
+import { readWebDavPassword } from "@/src/services/storage/credentials";
 
 const resolveWebDavOps = async (candidate: DataSource) => {
   if (candidate.type !== "webdav") return null;

@@ -2,7 +2,7 @@ import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
 import { GRAPH_API_BASE } from "../constants/onedrive";
-import { getValidAccessToken, refreshAccessToken } from "./onedrive-auth";
+import { getValidAccessToken, refreshAccessToken } from "../services/auth/onedrive";
 import type { RemoteDirEntry, RemoteLibraryOps } from "./remote-library";
 import type { RemoteBackendAdapter } from "./remote-library-shared";
 import { createLibraryFromPath, readBooks, forceRefreshMetadata as sharedForceRefresh } from "./remote-library-shared";

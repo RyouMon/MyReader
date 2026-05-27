@@ -1,6 +1,6 @@
 import { Directory, File } from "expo-file-system";
 
-import { localCachedFileUri, parentDirectoryUriForFileUri } from "../../utils/io";
+import { localCachedFileUri, parentDirectoryUriForFileUri } from "../../services/fs/path";
 import { DataIntegrityError } from "../../errors";
 import i18n from "@/src/i18n";
 

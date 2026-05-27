@@ -1,7 +1,7 @@
 import type { DataSource, Library, WebDavDataSource } from "../data/types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import { readWebDavPassword, readOneDriveRefreshToken } from "../store/secure-credential-store";
-import { parentDirectoryUriForFileUri } from "../utils/io";
+import { readWebDavPassword, readOneDriveRefreshToken } from "../services/storage/credentials";
+import { parentDirectoryUriForFileUri } from "../services/fs/path";
 import { SyncConfigError } from "../errors";
 
 import { buildBackend, resolveLibraryBooksDir, type RemoteFileOps } from "./backend";

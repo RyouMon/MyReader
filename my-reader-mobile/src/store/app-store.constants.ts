@@ -1,6 +1,6 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import type { DataSource } from "../data/types";
-import { stripSensitiveDataSources } from "./secure-credential-store";
+import { stripSensitiveDataSources } from "../services/storage/credentials";
 
 import type { ReaderSettings } from "./app-store.types";
 

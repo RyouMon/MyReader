@@ -39,7 +39,7 @@ jest.mock("@kesha-antonov/react-native-background-downloader", () => ({
   getExistingUploadTasks: mockGetExistingUploadTasks,
 }));
 
-import { startNativeUpload } from "./native-download";
+import { startNativeUpload } from "./native";
 
 describe("native upload adapter", () => {
   beforeEach(() => {

@@ -27,15 +27,15 @@ import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-ba
 import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
-} from "./security-scoped-bookmarks";
+} from "../services/fs/bookmarks";
 import type { BookItem, Library } from "./types";
 import { isRemoteSourceType } from "./types";
 import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
-} from "./cache";
-import { openCalibreDatabase } from "./calibre-db";
-import { localCachedFileUri } from "../utils/io";
+} from "../services/fs/cache";
+import { openCalibreDatabase } from "../services/db/calibre-db";
+import { localCachedFileUri } from "../services/fs/path";
 
 type PickedDirectoryLike = {
   uri: string;

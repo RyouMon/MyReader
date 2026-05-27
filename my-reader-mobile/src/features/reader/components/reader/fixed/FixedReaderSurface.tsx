@@ -5,7 +5,7 @@ import type { Locator } from "@ryoumon/react-native-readium";
 import type { ReaderTheme } from "@/src/store/app-store.types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import { toNativeFilesystemPath } from "@/src/utils/io";
+import { toNativeFilesystemPath } from "@/src/services/fs/path";
 
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"));
 

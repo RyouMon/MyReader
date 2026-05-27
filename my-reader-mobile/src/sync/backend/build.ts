@@ -1,7 +1,7 @@
 import { Directory, Paths } from "expo-file-system";
 
 import type { WebDavDataSource } from "../../data/types";
-import { localCachedFileUri } from "../../utils/io";
+import { localCachedFileUri } from "../../services/fs/path";
 
 import { LocalDirectBackend } from "./local";
 import { OneDriveBackend } from "./onedrive";
@@ -37,18 +37,5 @@ export function buildBackend(options: BackendBuildOptions): RemoteFileOps | Tran
   return new LocalDirectBackend(options.libraryRootUri);
 }
 
-/**
- * Convenience helper mirroring the desktop Rust helper: returns the absolute
- * local file URI where a relative path should live for this backend.
- */
-export function localFileUriFor(libraryCacheDirUri: string, relativePath: string): string {
-  return localCachedFileUri(libraryCacheDirUri, relativePath);
-}
-
-export function resolveLibraryBooksDir(libraryId: string): string {
-  const dir = new Directory(Paths.document, "book-downloads", libraryId);
-  if (!dir.exists) {
-    dir.create({ idempotent: true, intermediates: true });
-  }
-  return dir.uri;
-}
+// Path resolution functions moved to services/fs/path for layering
+export { resolveLibraryBooksDir, localFileUriFor } from "../../services/fs/path";

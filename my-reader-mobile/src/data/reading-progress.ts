@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { parseStoredLocator } from "@/src/features/reader/components/reader/locator";
 import { uuid } from "@/src/utils/common";
 import { readingProgress } from "@my-reader/db/schema";
-import { getLibraryDatabase } from "./library-db";
+import { getLibraryDatabase } from "../services/db/library-db";
 import type { Library } from "./types";
 
 const LOG_TARGET = "reading-progress";

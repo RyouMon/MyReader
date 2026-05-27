@@ -1,5 +1,5 @@
 import { Directory, File, Paths } from "expo-file-system";
-import { toNativeFilesystemPath } from "../utils/io";
+import { toNativeFilesystemPath } from "./path";
 
 export const READER_CACHE_ROOT = new Directory(Paths.cache, "myreader");
 export const READER_EXTRACTED_CACHE_DIR = new Directory(READER_CACHE_ROOT, "extracted");

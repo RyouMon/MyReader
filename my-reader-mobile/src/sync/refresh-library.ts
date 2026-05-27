@@ -6,12 +6,12 @@ import {
   readBookCountFromMetadata,
 } from "../data/calibre";
 import { createRemoteOps } from "../data/remote-library";
-import { openDatabaseFromUri } from "../data/sqlite";
+import { openDatabaseFromUri } from "../services/db/sqlite";
 import type { Library } from "../data/types";
 import { isRemoteSourceType } from "../data/types";
 
 import i18n from "@/src/i18n";
-import { clearReaderCachesForBook } from "../data/cache";
+import { clearReaderCachesForBook } from "../services/fs/cache";
 import { evictLocalFileOfflineSafe } from "./actions";
 import { diffBooks, type BookDiff, type BookSummary } from "./book-diff";
 import { downloadLibraryFile } from "./download-service";

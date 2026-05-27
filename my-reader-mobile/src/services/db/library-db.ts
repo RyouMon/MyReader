@@ -5,8 +5,8 @@ import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import * as schema from "@my-reader/db/schema";
 import migrations from "@my-reader/db/drizzle/migrations";
 
-import type { Library } from "./types";
-import { resolveLibraryBooksDir } from "../sync/backend";
+import type { Library } from "../../data/types";
+import { resolveLibraryBooksDir } from "../fs/path";
 
 const LIBRARY_DB_DIR_NAME = ".myreader";
 const LIBRARY_DB_FILE_NAME = "myreader.db";

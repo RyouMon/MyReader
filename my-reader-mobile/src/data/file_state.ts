@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { uuid } from "@/src/utils/common";
 import { fileState } from "@my-reader/db/schema";
 import type { FileState as FileStateRow } from "@my-reader/db/types";
-import { getLibraryDatabase } from "./library-db";
+import { getLibraryDatabase } from "../services/db/library-db";
 import type { Library } from "./types";
 export type { FileState as FileStateRow } from "@my-reader/db/types";
 

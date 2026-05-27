@@ -11,7 +11,7 @@ import {
     hydrateDataSourcesFromSecureCredentials,
     readWebDavPassword,
     writeWebDavPassword,
-} from "./secure-credential-store";
+} from "../services/storage/credentials";
 
 import i18n from "@/src/i18n";
 

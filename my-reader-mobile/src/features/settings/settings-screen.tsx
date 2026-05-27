@@ -8,7 +8,7 @@ import {
   clearAllReaderCaches,
   enforceReaderCacheLimit,
   getReaderCacheUsageSummary,
-} from "@/src/data/cache";
+} from "@/src/services/fs/cache";
 import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";

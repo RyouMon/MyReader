@@ -1,6 +1,6 @@
 import i18n from "@/src/i18n";
 
-import { enforceReaderCacheLimit } from "@/src/data/cache";
+import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
 import {
   buildCoverUri as buildLocalCoverUri,
   getBookFormatPaths,

@@ -8,7 +8,7 @@ import {
   type UploadTask as BackgroundUploadTask,
 } from "@kesha-antonov/react-native-background-downloader";
 
-import { toNativeFilesystemPath } from "../utils/io";
+import { toNativeFilesystemPath } from "../fs/path";
 import i18n from "@/src/i18n";
 
 export type NativeDownloadOptions = {

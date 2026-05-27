@@ -25,7 +25,7 @@ import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReaderTheme } from "@/src/store/app-store.types";
-import { toNativeFilesystemPath } from "@/src/utils/io";
+import { toNativeFilesystemPath } from "@/src/services/fs/path";
 import { Animated, Pressable, Text, View } from "@/tw";
 
 const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));

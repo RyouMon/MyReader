@@ -5,7 +5,7 @@ import {
   ONEDRIVE_ISSUER,
   ONEDRIVE_REDIRECT_URL,
   ONEDRIVE_SCOPES,
-} from "../constants/onedrive";
+} from "../../constants/onedrive";
 import {
   deleteOneDriveAccessToken,
   deleteOneDriveRefreshToken,
@@ -13,7 +13,7 @@ import {
   readOneDriveRefreshToken,
   writeOneDriveAccessToken,
   writeOneDriveRefreshToken,
-} from "../store/secure-credential-store";
+} from "../storage/credentials";
 
 const authConfig = {
   issuer: ONEDRIVE_ISSUER,

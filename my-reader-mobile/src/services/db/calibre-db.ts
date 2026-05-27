@@ -2,7 +2,7 @@ import { open, type DB } from "@op-engineering/op-sqlite";
 import { drizzle } from "drizzle-orm/op-sqlite";
 import * as calibreSchema from "@my-reader/db/schema/calibre";
 
-import { fileUriToNativeDirAndName } from "../utils/io";
+import { fileUriToNativeDirAndName } from "../fs/path";
 
 export type CalibreDbHandle = {
   raw: DB;

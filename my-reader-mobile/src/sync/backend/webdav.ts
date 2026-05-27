@@ -1,5 +1,5 @@
-import { canonicalRelativePathSegments } from "../../utils/io";
-import { WebDavUrlBuilder } from "../../utils/webdav";
+import { canonicalRelativePathSegments } from "../../services/fs/path";
+import { WebDavUrlBuilder } from "../../services/webdav/url-builder";
 import { NetworkError } from "../../errors";
 import i18n from "@/src/i18n";
 

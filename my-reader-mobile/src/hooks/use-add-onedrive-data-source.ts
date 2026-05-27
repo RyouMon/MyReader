@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
 import type { DataSource } from "@/src/data/types";
-import { isUserCancelled, signIn } from "@/src/data/onedrive-auth";
+import { isUserCancelled, signIn } from "@/src/services/auth/onedrive";
 import { useDataSourceStore } from "@/src/store/data-source-store";
 import {
   writeOneDriveAccessToken,
   writeOneDriveRefreshToken,
-} from "@/src/store/secure-credential-store";
+} from "@/src/services/storage/credentials";
 
 export function useAddOneDriveDataSource() {
   const { t } = useTranslation();

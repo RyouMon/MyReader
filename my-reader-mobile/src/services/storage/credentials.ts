@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
-import { ONEDRIVE_ACCESS_TOKEN_KEY, ONEDRIVE_REFRESH_TOKEN_KEY } from "../constants/onedrive";
-import type { DataSource, DataSourceWebdav, DataSourceOnedrive } from "../data/types";
+import { ONEDRIVE_ACCESS_TOKEN_KEY, ONEDRIVE_REFRESH_TOKEN_KEY } from "../../constants/onedrive";
+import type { DataSource, DataSourceWebdav, DataSourceOnedrive } from "../../data/types";
 
 const WEB_DAV_PASSWORD_KEY_PREFIX = "ryoumon.myreader.webdav.password.";
 

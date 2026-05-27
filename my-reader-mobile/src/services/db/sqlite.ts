@@ -1,7 +1,7 @@
 import { File as FSFile } from "expo-file-system";
 import { open, type DB, type Scalar } from "@op-engineering/op-sqlite";
 
-import { fileUriToNativeDirAndName } from "../utils/io";
+import { fileUriToNativeDirAndName } from "../fs/path";
 
 /**
  * Lightweight adapter that mirrors the small slice of expo-sqlite's async API

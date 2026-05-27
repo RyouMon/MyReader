@@ -11,7 +11,7 @@ import {
   completeNativeDownload,
   recoverNativeDownloads,
   type NativeDownloadRecoveredHandlers,
-} from "./native-download";
+} from "../services/download/native";
 import { finalizeRecoveredDownload } from "./download-service";
 
 jest.mock("./download-service", () => ({
@@ -19,7 +19,7 @@ jest.mock("./download-service", () => ({
   finalizeRecoveredDownload: jest.fn(() => Promise.resolve({ blake3: null, size: 100, mtimeMs: 1 })),
 }));
 
-jest.mock("./native-download", () => ({
+jest.mock("../services/download/native", () => ({
   cancelNativeDownload: jest.fn(),
   completeNativeDownload: jest.fn(),
   isNativeCancel: jest.fn((error: string, errorCode: number) => errorCode === -999 || error.includes("cancel")),

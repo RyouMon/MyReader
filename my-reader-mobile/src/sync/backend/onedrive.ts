@@ -1,7 +1,7 @@
-import { canonicalRelativePathSegments } from "../../utils/io";
+import { canonicalRelativePathSegments } from "../../services/fs/path";
 import { NetworkError } from "../../errors";
 import { GRAPH_API_BASE } from "../../constants/onedrive";
-import { getValidAccessToken, refreshAccessToken } from "../../data/onedrive-auth";
+import { getValidAccessToken, refreshAccessToken } from "../../services/auth/onedrive";
 import i18n from "@/src/i18n";
 
 import type { BackendKind, DownloadRequest, UploadRequest, RemoteStat, RemoteFileOps, NativeTransferOps } from "./types";

@@ -1,6 +1,6 @@
-import { readWebDavPassword } from "../store/secure-credential-store";
+import { readWebDavPassword } from "../services/storage/credentials";
 import { createOneDriveOps } from "./onedrive";
-import { getValidAccessToken } from "./onedrive-auth";
+import { getValidAccessToken } from "../services/auth/onedrive";
 import type { BookItem, DataSource, Library, OneDriveDataSource, WebDavDataSource } from "./types";
 import { createWebDavOps } from "./webdav";
 

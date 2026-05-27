@@ -12,7 +12,7 @@ import {
   isNativeCancel,
   recoverNativeDownloads,
   type RecoveredNativeDownload,
-} from "./native-download";
+} from "../services/download/native";
 
 import i18n from "@/src/i18n";
 

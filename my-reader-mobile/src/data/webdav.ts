@@ -1,8 +1,8 @@
 import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
-import { canonicalRelativePath } from "../utils/io";
-import { WebDavUrlBuilder } from "../utils/webdav";
+import { canonicalRelativePath } from "../services/fs/path";
+import { WebDavUrlBuilder } from "../services/webdav/url-builder";
 import type { RemoteLibraryOps } from "./remote-library";
 import type { RemoteBackendAdapter } from "./remote-library-shared";
 import { createLibraryFromPath, readBooks, forceRefreshMetadata as sharedForceRefresh } from "./remote-library-shared";

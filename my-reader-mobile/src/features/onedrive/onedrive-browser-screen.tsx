@@ -11,7 +11,7 @@ import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import { createOneDriveOps } from "@/src/data/onedrive";
-import { getValidAccessToken } from "@/src/data/onedrive-auth";
+import { getValidAccessToken } from "@/src/services/auth/onedrive";
 import type { OneDriveDataSource, DataSource } from "@/src/data/types";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
 
