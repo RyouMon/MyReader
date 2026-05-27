@@ -18,6 +18,8 @@ export type UseRemoteDirectoryBrowserOpts = {
 export type RemoteDirectoryBrowserState = {
   /** No matching data source found in the store. */
   notFound: boolean;
+  /** Data source found but credentials could not be resolved. */
+  resolveFailed: boolean;
   candidateId: string | undefined;
   entries: RemoteDirEntry[];
   loading: boolean;
@@ -42,6 +44,7 @@ export function useRemoteDirectoryBrowser({
   );
 
   const [ops, setOps] = useState<RemoteLibraryOps | null>(null);
+  const [resolveFailed, setResolveFailed] = useState(false);
   const [entries, setEntries] = useState<RemoteDirEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +54,24 @@ export function useRemoteDirectoryBrowser({
     let active = true;
 
     async function resolve() {
-      if (active) {
-        setOps(null);
-      }
       if (!candidate) {
         return;
+      }
+
+      if (active) {
+        setOps(null);
+        setResolveFailed(false);
+        setLoading(true);
+        setError(null);
       }
 
       const result = await resolveOps(candidate);
       if (active) {
         setOps(result);
+        if (!result) {
+          setResolveFailed(true);
+          setLoading(false);
+        }
       }
     }
 
@@ -134,6 +145,7 @@ export function useRemoteDirectoryBrowser({
 
   return {
     notFound: candidate === null,
+    resolveFailed,
     candidateId: candidate?.id,
     entries,
     loading,

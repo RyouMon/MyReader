@@ -35,6 +35,7 @@ export default function WebDavBrowserScreen() {
 
   const {
     notFound,
+    resolveFailed,
     candidateId,
     entries,
     loading,
@@ -98,6 +99,8 @@ export default function WebDavBrowserScreen() {
 
         {loading ? (
           <EmptyState title={t("webdav.browser.reading.title")} detail={t("webdav.browser.reading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+        ) : resolveFailed ? (
+          <EmptyState title={t("webdav.browser.readFailed.title")} detail={t("webdav.browser.noCredentials")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         ) : error ? (
           <EmptyState title={t("webdav.browser.readFailed.title")} detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         ) : entries.length === 0 ? (

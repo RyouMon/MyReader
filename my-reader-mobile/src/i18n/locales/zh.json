@@ -320,6 +320,7 @@
       "readFailed": {
         "title": "读取失败"
       },
+      "noCredentials": "无法获取 WebDAV 凭据，请重新编辑数据源并设置密码。",
       "empty": {
         "title": "当前目录为空",
         "detail": "当前目录下没有子目录。"
@@ -405,6 +406,7 @@
       "readFailed": {
         "title": "读取失败"
       },
+      "noCredentials": "无法获取 OneDrive 凭据，请重新认证数据源。",
       "empty": {
         "title": "空目录",
         "detail": "当前目录下没有子目录。"

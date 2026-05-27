@@ -37,6 +37,7 @@ export default function OneDriveBrowserScreen() {
 
   const {
     notFound,
+    resolveFailed,
     candidateId,
     entries,
     loading,
@@ -100,6 +101,8 @@ export default function OneDriveBrowserScreen() {
 
         {loading ? (
           <EmptyState title={t("onedrive.browser.reading.title")} detail={t("onedrive.browser.reading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
+        ) : resolveFailed ? (
+          <EmptyState title={t("onedrive.browser.readFailed.title")} detail={t("onedrive.browser.noCredentials")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         ) : error ? (
           <EmptyState title={t("onedrive.browser.readFailed.title")} detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         ) : entries.length === 0 ? (

@@ -321,6 +321,7 @@
       "readFailed": {
         "title": "Read Failed"
       },
+      "noCredentials": "WebDAV credentials unavailable. Please edit the data source and set a password.",
       "empty": {
         "title": "Empty directory",
         "detail": "No subdirectories in the current directory."
@@ -406,6 +407,7 @@
       "readFailed": {
         "title": "Read Failed"
       },
+      "noCredentials": "OneDrive credentials unavailable. Please re-authenticate the data source.",
       "empty": {
         "title": "Empty directory",
         "detail": "No subdirectories in the current directory."
