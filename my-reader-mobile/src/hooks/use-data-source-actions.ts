@@ -4,11 +4,13 @@ import {
   deleteSecrets,
   deriveCredentialFlags,
   hydrateDataSourcesFromSecureCredentials,
+  readWebDavPassword,
   writeSecrets,
 } from "@/src/services/storage/credentials";
 import { useAppStore } from "@/src/store/app-store";
 import { uuid } from "@/src/utils/common";
 import type { DataSource, DataSourceConnectionTestResult, DataSourceWebdav } from "@my-reader/tools/types/data-source";
+import { testConnection as probeWebDav } from "../data/webdav";
 
 export function useDataSourceActions() {
   const store = useAppStore;
@@ -80,10 +82,23 @@ export function useDataSourceActions() {
   }
 
   async function testDataSourceConnection(
-    _source: DataSourceWebdav,
-    _secrets?: DataSourceSecrets,
+    source: DataSourceWebdav,
+    secrets?: DataSourceSecrets,
   ): Promise<DataSourceConnectionTestResult> {
-    return { ok: true, message: "OK" };
+    try {
+      const password = secrets?.type === "webdav" ? secrets.password : (await readWebDavPassword(source.id)) ?? "";
+      const response = await probeWebDav({ ...source, password });
+      if (response.ok || response.status === 207) {
+        return { ok: true, message: "OK" };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, message: "Authentication failed" };
+      }
+      return { ok: false, message: `HTTP ${response.status}` };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false, message: msg };
+    }
   }
 
   return {
