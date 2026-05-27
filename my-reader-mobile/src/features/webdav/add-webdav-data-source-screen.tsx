@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
-import type { DataSource, WebDavDataSource } from "@/src/data/types";
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
 import { useThemePalette } from "@/src/design/tokens";
 import { TextInput, View } from "@/tw";
 
@@ -17,7 +17,6 @@ import {
   Screen,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { useAppStore } from "@/src/store/app-store";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 
 const addWebDavMobileSchema = z
@@ -77,7 +76,7 @@ function deriveWebDavDataSourceName(endpoint: string): string {
   }
 }
 
-function buildDraft(values: WebDavFormInput): WebDavDataSource {
+function buildDraft(values: WebDavFormInput): { ds: DataSourceWebdav; password: string } {
   const parsed = addWebDavMobileSchema.safeParse(values);
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "webdav.add.validationFailed");
@@ -88,15 +87,17 @@ function buildDraft(values: WebDavFormInput): WebDavDataSource {
   const d = parsed.data;
   const rootPath = d.basePath.trim() ? d.basePath.trim() : null;
   return {
-    id: "",
-    type: "webdav",
-    name: deriveWebDavDataSourceName(d.endpoint),
-    enabled: true,
-    endpoint: d.endpoint,
-    username: d.username.trim(),
+    ds: {
+      id: "",
+      type: "webdav",
+      name: deriveWebDavDataSourceName(d.endpoint),
+      enabled: true,
+      endpoint: d.endpoint,
+      username: d.username.trim(),
+      hasPassword: d.password.length > 0,
+      rootPath,
+    },
     password: d.password,
-    hasPassword: d.password.length > 0,
-    rootPath,
   };
 }
 
@@ -128,8 +129,8 @@ export default function AddWebDavDataSourceScreen() {
 
   const useSsl = useStore(form.store, (s) => s.values.useSsl);
 
-  async function persistDataSource(draft: DataSource) {
-    await createDataSource(draft);
+  async function persistDataSource(ds: DataSourceWebdav, password: string) {
+    await createDataSource(ds, { password });
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -154,9 +155,9 @@ export default function AddWebDavDataSourceScreen() {
 
     setSaving(true);
     try {
-      const draft = buildDraft(form.store.state.values);
+      const { ds, password } = buildDraft(form.store.state.values);
 
-      const testResult = await testDataSourceConnection(draft);
+      const testResult = await testDataSourceConnection(ds, { password });
       if (!testResult.ok) {
         Alert.alert(
           t("webdav.add.connectionTestFailed"),
@@ -167,7 +168,7 @@ export default function AddWebDavDataSourceScreen() {
               text: t("webdav.add.addAnyway"),
               onPress: () => {
                 setSaving(true);
-                void persistDataSource(draft).finally(() => setSaving(false));
+                void persistDataSource(ds, password).finally(() => setSaving(false));
               },
             },
           ],
@@ -175,7 +176,7 @@ export default function AddWebDavDataSourceScreen() {
         return;
       }
 
-      await persistDataSource(draft);
+      await persistDataSource(ds, password);
     } catch (caught) {
       Alert.alert(t("webdav.add.addFailed"), caught instanceof Error ? caught.message : t("webdav.add.addFailedMessage"));
     } finally {

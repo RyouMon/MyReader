@@ -1,6 +1,5 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
 import type { DataSource } from "../data/types";
-import { stripSensitiveDataSources } from "../services/storage/credentials";
 
 import type { ReaderSettings } from "./app-store.types";
 
@@ -37,8 +36,7 @@ export function mergeDataSources(dataSources: DataSource[]) {
   return dataSources.filter((source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID);
 }
 
+/** Filter out local library source before persisting. Sensitive fields are never in DataSource shape. */
 export function persistableDataSources(dataSources: DataSource[]) {
-  return stripSensitiveDataSources(
-    dataSources.filter((source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID)
-  );
+  return dataSources.filter((source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID);
 }

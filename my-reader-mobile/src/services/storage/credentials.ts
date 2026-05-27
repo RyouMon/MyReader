@@ -110,13 +110,3 @@ export async function hydrateDataSourcesFromSecureCredentials(
 
   return hydrated;
 }
-
-/**
- * Strip sensitive fields before serialization. Tokens live exclusively in SecureStore.
- */
-export function stripSensitiveDataSources(dataSources: DataSource[]): DataSource[] {
-  return dataSources.map((source) => {
-    // Passwords/tokens are only in SecureStore, never in the DataSource shape.
-    return source;
-  });
-}
