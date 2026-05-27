@@ -4,9 +4,9 @@ import { Directory, File } from "expo-file-system";
 import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
 import type { RemoteFileOps, TransferBackend } from "./backend";
-import { isTransferBackend, localFileUriFor } from "./backend";
+import { isTransferBackend, localFileUriFor, resolveLibraryBooksDir } from "./backend";
 import { AppInvariantError, DataIntegrityError } from "../errors";
-import type { Manifest } from "./manifest";
+import type { Manifest, ManifestEntry } from "./manifest";
 import { findEntry, removeEntry, saveManifest } from "./manifest";
 import { clearExtractedReaderCachesForArchiveUri } from "../services/fs/cache";
 import {
@@ -16,12 +16,20 @@ import {
   type NativeUploadOptions,
 } from "../services/download/native";
 import { parentDirectoryUriForFileUri } from "../services/fs/path";
+import { upsertFileState, deleteFileState } from "../data/file_state";
+import type { Library } from "../data/types";
+import type { SyncTargetContext } from "./context";
 import i18n from "@/src/i18n";
 
 export type DownloadOutcome = {
   blake3: string | null;
   size: number;
   mtimeMs: number;
+};
+
+export type DownloadResult = {
+  entry: ManifestEntry;
+  outcome: DownloadOutcome;
 };
 
 export type BackgroundDownloadOptions = NativeDownloadOptions;
@@ -81,9 +89,6 @@ function uriToFile(uri: string): File {
   return new File(uri);
 }
 
-/**
- * Returns local metadata without reading the whole file into JS memory.
- */
 function outcomeFromFileWithoutHash(file: File): DownloadOutcome {
   return {
     blake3: null,
@@ -92,16 +97,10 @@ function outcomeFromFileWithoutHash(file: File): DownloadOutcome {
   };
 }
 
-/**
- * Returns whether a cached direct-download target is usable without hitting the network.
- */
 function hasNonEmptyFileBytes(file: File): boolean {
   return file.exists && (file.size ?? 0) > 0;
 }
 
-/**
- * Reads metadata after native downloader has already materialized the file.
- */
 function outcomeFromNativeDownload(file: File, bytesDownloaded: number, relativePath: string): DownloadOutcome {
   if (!file.exists) {
     throw new DataIntegrityError(i18n.t("sync.nativeDownloadMissing", { path: relativePath }));
@@ -190,12 +189,9 @@ async function uploadWithBackgroundTask(
   }).then((result) => result.bytesUploaded);
 }
 
-/**
- * Download the remote file listed in `manifest` into the library cache dir.
- *
- * If the local bytes already match the manifest blake3 we skip the fetch.
- */
-export async function downloadFile(
+// ─── Internal transfer ops (no file_state side effects) ─────────────────
+
+async function downloadFileManifest(
   backend: TransferBackend,
   manifest: Manifest,
   libraryCacheDirUri: string,
@@ -257,14 +253,7 @@ export async function downloadFile(
   };
 }
 
-/**
- * Download the remote file directly into the library cache dir without
- * requiring a manifest entry.
- *
- * Use this when the manifest may not yet contain the path (e.g. first-time
- * download from the book-detail screen before any reconcile has run).
- */
-export async function downloadFileDirect(
+async function downloadFileDirectInternal(
   backend: TransferBackend,
   libraryCacheDirUri: string,
   relativePath: string,
@@ -286,10 +275,10 @@ export async function downloadFileDirect(
     await deleteFileIfExists(destFile);
   }
 
-  return downloadFileDirectWithProgress(backend, libraryCacheDirUri, relativePath);
+  return downloadFileDirectWithProgressInternal(backend, libraryCacheDirUri, relativePath);
 }
 
-export async function downloadFileDirectWithProgress(
+async function downloadFileDirectWithProgressInternal(
   backend: TransferBackend,
   libraryCacheDirUri: string,
   relativePath: string,
@@ -336,44 +325,142 @@ export async function downloadFileDirectWithProgress(
   }
 }
 
-export async function evictLocal(libraryCacheDirUri: string, relativePath: string): Promise<void> {
+// ─── Public API (with file_state upserts) ────────────────────────────────
+
+/** Download + record `present` state so the UI button reflects reality. */
+export async function downloadFile(
+  ctx: SyncTargetContext,
+  relativePath: string,
+): Promise<DownloadResult> {
+  if (!isTransferBackend(ctx.backend)) {
+    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
+  }
+  console.info("Start to download manifest-backed file, params:", {
+    libraryId: ctx.libraryId,
+    dataSourceId: ctx.dataSourceId,
+    relativePath,
+  });
+  const entry = findEntry(ctx.manifest, relativePath);
+  if (!entry) {
+    console.error("Failed to find manifest entry before download:", {
+      libraryId: ctx.libraryId,
+      relativePath,
+    });
+    throw new AppInvariantError(i18n.t("sync.manifestNotRegistered", { path: relativePath }));
+  }
+  const outcome = await downloadFileManifest(
+    ctx.backend, ctx.manifest, ctx.libraryCacheDirUri, relativePath,
+  );
+  await upsertFileState(ctx.library, relativePath, {
+    localState: "present",
+    localBlake3: outcome.blake3,
+    localSize: outcome.size,
+    localMtime: outcome.mtimeMs,
+  });
+  console.info("Success to download manifest-backed file:", {
+    libraryId: ctx.libraryId,
+    relativePath,
+    size: outcome.size,
+    blake3: outcome.blake3,
+  });
+  return { entry, outcome };
+}
+
+/** Download a file directly without requiring a manifest entry. */
+export async function downloadFileDirect(
+  ctx: SyncTargetContext,
+  relativePath: string,
+): Promise<DownloadOutcome> {
+  if (!isTransferBackend(ctx.backend)) {
+    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
+  }
+  const outcome = await downloadFileDirectInternal(ctx.backend, ctx.libraryCacheDirUri, relativePath);
+  await upsertFileState(ctx.library, relativePath, {
+    localState: "present",
+    localBlake3: outcome.blake3,
+    localSize: outcome.size,
+    localMtime: outcome.mtimeMs,
+  });
+  return outcome;
+}
+
+export async function downloadFileDirectWithProgress(
+  ctx: SyncTargetContext,
+  relativePath: string,
+  onProgress?: (received: number, total: number) => void,
+  options: BackgroundDownloadOptions = {},
+): Promise<DownloadOutcome> {
+  if (!isTransferBackend(ctx.backend)) {
+    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
+  }
+  const outcome = await downloadFileDirectWithProgressInternal(
+    ctx.backend, ctx.libraryCacheDirUri, relativePath, onProgress, options,
+  );
+  await upsertFileState(ctx.library, relativePath, {
+    localState: "present",
+    localBlake3: outcome.blake3,
+    localSize: outcome.size,
+    localMtime: outcome.mtimeMs,
+  });
+  return outcome;
+}
+
+/** Flip a path back to `remote_only` (local file removed, manifest preserved). */
+export async function evictLocalFile(
+  ctx: SyncTargetContext,
+  relativePath: string,
+): Promise<void> {
+  assertSafeRelative(relativePath);
+  const file = uriToFile(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
+  await deleteFileIfExists(file);
+  await clearExtractedReaderCachesForArchiveUri(file.uri);
+  await upsertFileState(ctx.library, relativePath, {
+    localState: "remote_only",
+    localBlake3: null,
+    localSize: null,
+    localMtime: null,
+  });
+}
+
+/** Offline-safe variant: evict local file without touching the backend. */
+export async function evictLocalFileOfflineSafe(
+  library: Library,
+  relativePath: string,
+): Promise<void> {
+  const libraryCacheDirUri = resolveLibraryBooksDir(library.id);
   assertSafeRelative(relativePath);
   const file = uriToFile(localFileUriFor(libraryCacheDirUri, relativePath));
   await deleteFileIfExists(file);
   await clearExtractedReaderCachesForArchiveUri(file.uri);
+  await upsertFileState(library, relativePath, {
+    localState: "remote_only",
+    localBlake3: null,
+    localSize: null,
+    localMtime: null,
+  });
 }
 
-/**
- * Full delete: local cache + remote bytes + manifest entry.
- *
- * Mirrors desktop's `delete_everywhere` contract: callers are responsible for
- * clearing `file_state` for the affected path.
- */
-export async function deleteEverywhere(
-  backend: RemoteFileOps,
-  manifest: Manifest,
-  libraryCacheDirUri: string,
+/** Delete everywhere: local + remote + manifest entry + file_state row. */
+export async function deleteFileEverywhere(
+  ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<void> {
+  const backend = ctx.backend;
   assertSafeRelative(relativePath);
 
-  const localFile = uriToFile(localFileUriFor(libraryCacheDirUri, relativePath));
+  const localFile = uriToFile(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
   await deleteFileIfExists(localFile);
   await clearExtractedReaderCachesForArchiveUri(localFile.uri);
 
   await backend.deleteRemote(relativePath);
 
-  if (removeEntry(manifest, relativePath)) {
-    await saveManifest(backend, manifest);
+  if (removeEntry(ctx.manifest, relativePath)) {
+    await saveManifest(backend, ctx.manifest);
   }
+  await deleteFileState(ctx.library, relativePath);
 }
 
-/**
- * Upload a local file into the backend + refresh manifest entry.
- *
- * Skips the network round-trip for LocalDirect backends since "remote" IS the
- * local library directory in that mode.
- */
+/** Upload a local file into the backend + refresh manifest entry. */
 export async function pushFile(
   backend: RemoteFileOps,
   manifest: Manifest,

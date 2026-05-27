@@ -6,12 +6,12 @@ import { useAppStore } from "../store/app-store";
 
 import { upsertFileState } from "../data/file_state";
 import { openSyncContext, type SyncTargetContext } from "./actions";
-import { isTransferBackend, localFileUriFor } from "./backend";
+import { localFileUriFor } from "./backend";
 import {
-  downloadFileDirectWithProgress as downloadCacheFileDirectWithProgress,
+  downloadFileDirectWithProgress,
   type BackgroundDownloadOptions,
   type DownloadOutcome,
-} from "./file_ops";
+} from "./transfer";
 
 import i18n from "@/src/i18n";
 
@@ -56,18 +56,7 @@ export async function downloadContextFile(
   onProgress?: DownloadProgressHandler,
   options: BackgroundDownloadOptions = {},
 ): Promise<DownloadOutcome> {
-  if (!isTransferBackend(ctx.backend)) {
-    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
-  }
-  const outcome = await downloadCacheFileDirectWithProgress(
-    ctx.backend,
-    ctx.libraryCacheDirUri,
-    relativePath,
-    onProgress,
-    options,
-  );
-  await commitDownloadOutcome(ctx, relativePath, outcome);
-  return outcome;
+  return downloadFileDirectWithProgress(ctx, relativePath, onProgress, options);
 }
 
 /**
@@ -81,24 +70,13 @@ export async function finalizeRecoveredDownload(
   const ctx = await openDownloadContextForLibrary(libraryId);
   const outcome = readCachedDownloadOutcome(ctx, relativePath);
   onProgress?.(outcome.size, outcome.size);
-  await commitDownloadOutcome(ctx, relativePath, outcome);
-  return outcome;
-}
-
-/**
- * Persists the file_state row shared by normal and recovered downloads.
- */
-export async function commitDownloadOutcome(
-  ctx: SyncTargetContext,
-  relativePath: string,
-  outcome: DownloadOutcome,
-): Promise<void> {
   await upsertFileState(ctx.library, relativePath, {
     localState: "present",
     localBlake3: outcome.blake3,
     localSize: outcome.size,
     localMtime: outcome.mtimeMs,
   });
+  return outcome;
 }
 
 /**
