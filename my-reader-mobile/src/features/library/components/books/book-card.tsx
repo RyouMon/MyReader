@@ -6,7 +6,7 @@ import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { buildBookMenuActions } from "@/src/data/book-menu";
+import { buildBookMenuActions } from "../../utils/book-menu";
 import type { BookItem } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
