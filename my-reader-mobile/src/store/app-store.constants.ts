@@ -1,5 +1,5 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import type { DataSource } from "../data/types";
+import type { DataSource } from "@my-reader/tools/types/data-source";
 
 import type { ReaderSettings } from "./app-store.types";
 
@@ -31,12 +31,7 @@ export const defaultSettings: ReaderSettings = {
 
 export const DEFAULT_LIBRARY_VIEW_MODE = "grid";
 
-/** Store 中仅保留 WebDAV；剔除误写入的逻辑本机 id */
-export function mergeDataSources(dataSources: DataSource[]) {
-  return dataSources.filter((source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID);
-}
-
-/** Filter out local library source before persisting. Sensitive fields are never in DataSource shape. */
-export function persistableDataSources(dataSources: DataSource[]) {
+/** Exclude the local library data source id. Used in persist partialize and merge. */
+export function excludeLocalLibrarySource(dataSources: DataSource[]) {
   return dataSources.filter((source) => source.id !== LOCAL_LIBRARY_DATA_SOURCE_ID);
 }

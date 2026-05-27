@@ -1,9 +1,10 @@
 import type { StateCreator } from "zustand";
 
-import type { DataSource } from "@my-reader/tools/types/data-source";
-import type { Library } from "@my-reader/tools/types/library";
-
 import type { ThemeMode } from "../design/tokens";
+import type { StatusSlice } from "./status-slice";
+import type { DataSourceSlice } from "./data-source-slice";
+import type { LibrarySlice } from "./library-slice";
+import type { SettingsSlice, ProgramSlice } from "./settings-slice";
 
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
 export type FixedNavigationMode = "horizontal" | "vertical";
@@ -42,46 +43,12 @@ export type ReaderSettings = {
 
 export type PersistedAppState = {
   settings: ReaderSettings;
-  dataSources: DataSource[];
-  libraries: Library[];
+  dataSources: import("@my-reader/tools/types/data-source").DataSource[];
+  libraries: import("@my-reader/tools/types/library").Library[];
   activeLibraryId: string | null;
   libraryViewMode: LibraryViewMode;
 };
 
-export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "activeLibraryId"> &
-  { dataSources: DataSource[]; loading: boolean; hydrated: boolean } &
-  {
-    // DataSource setters
-    setDataSources: (dataSources: DataSource[]) => void;
-    setLoading: (loading: boolean) => void;
-    setHydrated: (value: boolean) => void;
-    upsertDataSource: (ds: DataSource) => void;
-    removeDataSourceById: (id: string) => void;
-    error: string | null;
-    setError: (error: string | null) => void;
-    clearError: () => void;
-
-    // Library setters
-    libraries: Library[];
-    activeLibraryId: string | null;
-    setLibraries: (libraries: Library[]) => void;
-    setActiveLibraryId: (id: string | null) => void;
-    setRefreshingLibraryId: (id: string | null) => void;
-    upsertLibrary: (library: Library) => void;
-    removeLibraryById: (id: string) => void;
-    refreshingLibraryId: string | null;
-    books: import("../data/types").BookItem[];
-    loadingBooks: boolean;
-
-    // Settings
-    settings: ReaderSettings;
-    setThemeMode: (mode: ThemeMode) => void;
-    setLanguage: (language: string) => void;
-    setLibraryViewMode: (mode: LibraryViewMode) => void;
-    setSyncEnabled: (enabled: boolean) => void;
-    patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
-    patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
-    patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
-  };
+export type AppState = StatusSlice & DataSourceSlice & LibrarySlice & SettingsSlice & ProgramSlice;
 
 export type AppStateSlice<TSlice> = StateCreator<AppState, [], [], TSlice>;

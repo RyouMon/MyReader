@@ -16,7 +16,7 @@ import { queryClient } from "./queries/queryClient";
 import type { Library } from "@my-reader/tools/types/library";
 import type { BookItem } from "../data/types";
 import { isRemoteSourceType } from "../data/types";
-import { mergeDataSources } from "../store/app-store.constants";
+import { excludeLocalLibrarySource } from "../store/app-store.constants";
 import i18n from "@/src/i18n";
 
 function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
@@ -50,7 +50,7 @@ export function useLibraryActions() {
         null;
 
       store.getState().setLibraries(hydratedLibraries);
-      store.getState().setDataSources(mergeDataSources(state.dataSources));
+      store.getState().setDataSources(excludeLocalLibrarySource(state.dataSources));
       store.getState().setActiveLibraryId(nextActiveLibraryId);
       store.getState().setLoading(false);
 
