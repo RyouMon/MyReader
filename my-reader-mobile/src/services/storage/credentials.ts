@@ -93,7 +93,6 @@ export async function hydrateDataSourcesFromSecureCredentials(
       const securePassword = await readWebDavPassword(source.id);
       const withPassword: DataSourceWebdav = {
         ...source,
-        password: securePassword ?? undefined,
         hasPassword: Boolean(securePassword),
       };
       hydrated.push(withPassword);
@@ -117,14 +116,7 @@ export async function hydrateDataSourcesFromSecureCredentials(
  */
 export function stripSensitiveDataSources(dataSources: DataSource[]): DataSource[] {
   return dataSources.map((source) => {
-    if (source.type === "webdav") {
-      const { password, ...rest } = source;
-      return {
-        ...rest,
-        hasPassword: rest.hasPassword || Boolean(password),
-      } satisfies DataSourceWebdav;
-    }
-    // OneDrive tokens are only in SecureStore, not in the DataSource shape.
+    // Passwords/tokens are only in SecureStore, never in the DataSource shape.
     return source;
   });
 }

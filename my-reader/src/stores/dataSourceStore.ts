@@ -2,11 +2,25 @@ import { isTauri } from "@tauri-apps/api/core"
 import type {
   DataSource,
   DataSourceConnectionTestResult,
-  DataSourceStore,
-} from "@my-reader/tools/store/data-source"
+  DataSourceWebdav,
+} from "@my-reader/tools/types/data-source"
 import { create } from "zustand"
 import i18n from "@/i18n"
 import { api } from "@/lib/tauri-api"
+
+type DataSourceState = {
+  dataSources: DataSource[]
+  loading: boolean
+  hydrated: boolean
+  hydrateFromBackend: () => Promise<void>
+  refreshDataSources: (id: string) => Promise<void>
+  createDataSource: (datasource: DataSourceWebdav & { password?: string }) => Promise<DataSource>
+  updateDataSource: (id: string, datasource: DataSource) => Promise<void>
+  deleteDataSource: (id: string) => Promise<void>
+  testDataSourceConnection: (
+    datasource: DataSourceWebdav & { password?: string },
+  ) => Promise<DataSourceConnectionTestResult>
+}
 
 function formatTauriError(error: unknown): string {
   const raw =
@@ -51,7 +65,6 @@ function mapDataSourceFromBackendJson(
       username: raw.username as string,
       hasPassword: Boolean(raw.hasPassword),
       rootPath: raw.rootPath as string | null | undefined,
-      password: raw.password as string | undefined,
       readonly: raw.readonly as boolean | undefined,
       createdAt: raw.createdAt as number | undefined,
     }
@@ -109,7 +122,7 @@ async function testWebdavConnection(input: {
   }
 }
 
-export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
+export const useDataSourceStore = create<DataSourceState>()((set, get) => ({
   dataSources: [],
   loading: true,
   hydrated: false,
@@ -134,7 +147,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
     }
   },
 
-  createDataSource: async (datasource: DataSource) => {
+  createDataSource: async (datasource) => {
     if (!isRuntimeAvailable()) {
       throw new Error(i18n.t("stores.createNotSupported"))
     }
@@ -158,7 +171,7 @@ export const useDataSourceStore = create<DataSourceStore>()((set, get) => ({
     await get().refreshDataSources(id)
   },
 
-  testDataSourceConnection: async (datasource: DataSource) => {
+  testDataSourceConnection: async (datasource) => {
     return await testWebdavConnection({
       endpoint: datasource.endpoint,
       username: datasource.username,

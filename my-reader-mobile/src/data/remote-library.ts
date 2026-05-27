@@ -54,7 +54,7 @@ export async function createRemoteOps(
       (d) => d.id === library.dataSourceId && d.type === "webdav",
     );
     if (!source || source.type !== "webdav") return null;
-    const password = source.password ?? (await readWebDavPassword(source.id)) ?? "";
+    const password = (await readWebDavPassword(source.id)) ?? "";
     return createWebDavOps({ ...source, password } satisfies WebDavDataSource);
   }
 

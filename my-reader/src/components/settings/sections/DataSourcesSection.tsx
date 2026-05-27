@@ -1,5 +1,5 @@
 import { Trash2, Unplug } from "lucide-react"
-import type { DataSource } from "@my-reader/tools/store/data-source"
+import type { DataSource, DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"
@@ -140,7 +140,9 @@ function DataSourceCard({
 }: DataSourceCardProps) {
   const { t } = useTranslation()
   const rowIcon = "database"
-  const secondaryText = `${source.endpoint} · ${source.username}`
+  const secondaryText = source.type === "webdav"
+    ? `${(source as DataSourceWebdav).endpoint} · ${(source as DataSourceWebdav).username}`
+    : source.name
 
   return (
     <GroupListItem

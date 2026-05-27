@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
-import type { DataSource } from "@my-reader/tools/store/data-source"
+import type { DataSource, DataSourceWebdav, DataSourceConnectionTestResult } from "@my-reader/tools/types/data-source"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils"
 import { useDataSourceStore } from "@/stores/dataSourceStore"
 
 interface AddDataSourcePanelProps {
-  onCreateDataSource: (datasource: DataSource) => Promise<unknown>
+  onCreateDataSource: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
 }
 
 /**
@@ -51,7 +51,7 @@ export function AddDataSourcePanel({
     setTestFeedback(null)
   }
 
-  async function handleSubmitWebdav(datasource: DataSource) {
+  async function handleSubmitWebdav(datasource: DataSourceWebdav & { password?: string }) {
     setSubmitting(true)
     clearMessages()
     try {
@@ -141,7 +141,7 @@ export function AddDataSourcePanel({
 interface WebdavDataSourceFormProps {
   loading: boolean
   testing: boolean
-  onSubmit: (datasource: DataSource) => Promise<unknown>
+  onSubmit: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
   onClearMessages: () => void
   onTestConnection: (datasource: DataSource) => Promise<void>
 }
@@ -249,7 +249,7 @@ function WebdavDataSourceForm({
 
   function buildWebdavDataSourceFromForm(
     value: z.infer<typeof addWebdavSchema>,
-  ): DataSource {
+  ): DataSourceWebdav & { password?: string } {
     const endpoint = mergeEndpointWithPort(value.endpoint, value.port)
     const trimmedRoot = value.rootPath.trim()
     return {

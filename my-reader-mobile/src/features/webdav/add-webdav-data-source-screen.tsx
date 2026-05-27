@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
-import type { DataSource } from "@/src/data/types";
+import type { DataSource, WebDavDataSource } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { TextInput, View } from "@/tw";
 
@@ -76,7 +76,7 @@ function deriveWebDavDataSourceName(endpoint: string): string {
   }
 }
 
-function buildDraft(values: WebDavFormInput): DataSource {
+function buildDraft(values: WebDavFormInput): WebDavDataSource {
   const parsed = addWebDavMobileSchema.safeParse(values);
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "webdav.add.validationFailed");

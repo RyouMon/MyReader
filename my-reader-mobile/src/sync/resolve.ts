@@ -37,7 +37,7 @@ export async function resolveSyncTarget(
     if (!rawSource || rawSource.type !== "webdav") {
       throw new SyncConfigError(i18n.t("sync.webdavSourceNotFound"));
     }
-    const password = rawSource.password ?? (await readWebDavPassword(rawSource.id)) ?? "";
+    const password = (await readWebDavPassword(rawSource.id)) ?? "";
     if (!password) {
       throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"));
     }

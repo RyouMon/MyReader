@@ -1,4 +1,5 @@
-import type { LibraryStore } from "@my-reader/tools/store/library";
+import type { Library } from "@my-reader/tools/types/library";
+import type { BookItem } from "../data/types";
 import { isRemoteSourceType } from "../data/types";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
@@ -10,9 +11,7 @@ import {
   pickCalibreLibrary,
   readBookCountFromLibrary,
 } from "../data/calibre";
-import type { Library } from "../data/types";
 import { checkConnectivity } from "../sync/connectivity";
-import { buildBackend } from "../sync/backend/build";
 import { resolveSyncTarget } from "../sync/resolve";
 import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
 import { fetchBooksWithMeta, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
@@ -27,16 +26,25 @@ function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
   );
 }
 
-type LibrarySlice = Omit<LibraryStore, "addWebdavLibrary"> & {
-  books: unknown[];
+type LibrarySlice = {
+  libraries: Library[];
+  activeLibraryId: string | null;
+  books: BookItem[];
+  loading: boolean;
   loadingBooks: boolean;
+  hydrated: boolean;
   refreshingLibraryId: string | null;
   error: string | null;
   setHydrated: (value: boolean) => void;
-  clearError: () => void;
+  hydrateFromBackend: () => Promise<void>;
+  refreshLibraries: () => Promise<void>;
+  addLibrary: (path?: string, name?: string) => Promise<Library | null>;
   addResolvedLibrary: (library: Library) => Promise<boolean>;
+  removeLibrary: (id: string) => Promise<void>;
+  switchLibrary: (id: string) => Promise<void>;
   refreshBooks: () => Promise<void>;
   refreshLibrary: (libraryId: string) => Promise<void>;
+  clearError: () => void;
 };
 
 export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
@@ -50,7 +58,7 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
     error: null,
     hydrated: false,
     setHydrated(value: boolean) {
-      set({ hydrated: value });
+      set({ hydrated: value })
     },
     async hydrateFromBackend() {
       set({ loading: true, error: null });

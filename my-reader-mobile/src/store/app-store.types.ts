@@ -1,9 +1,9 @@
 import type { StateCreator } from "zustand";
 
-import type { DataSourceStore } from "@my-reader/tools/store/data-source";
-import type { LibraryStore } from "@my-reader/tools/store/library";
+import type { DataSource } from "@my-reader/tools/types/data-source";
+import type { Library } from "@my-reader/tools/types/library";
 
-import type { BookItem, Library } from "../data/types";
+import type { BookItem } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
@@ -43,37 +43,37 @@ export type ReaderSettings = {
 
 export type PersistedAppState = {
   settings: ReaderSettings;
-  dataSources: DataSourceStore["dataSources"];
+  dataSources: DataSource[];
   libraries: Library[];
   activeLibraryId: string | null;
   libraryViewMode: LibraryViewMode;
 };
 
-type DataSourceActions = Pick<
-  DataSourceStore,
-  | "hydrateFromBackend"
-  | "refreshDataSources"
-  | "createDataSource"
-  | "updateDataSource"
-  | "deleteDataSource"
-  | "testDataSourceConnection"
->;
+type DataSourceActions = {
+  hydrateFromBackend: () => Promise<void>;
+  refreshDataSources: (id: string) => Promise<void>;
+  createDataSource: (datasource: DataSource) => Promise<DataSource>;
+  updateDataSource: (id: string, datasource: DataSource) => Promise<void>;
+  deleteDataSource: (id: string) => Promise<void>;
+  testDataSourceConnection: (
+    datasource: DataSource,
+  ) => Promise<{ ok: boolean; message: string }>;
+};
 
-type LibraryActions = Pick<
-  LibraryStore,
-  | "libraries"
-  | "activeLibraryId"
-  | "loading"
-  | "hydrated"
-  | "hydrateFromBackend"
-  | "refreshLibraries"
-  | "addLibrary"
-  | "removeLibrary"
-  | "switchLibrary"
->;
+type LibraryActions = {
+  libraries: Library[];
+  activeLibraryId: string | null;
+  loading: boolean;
+  hydrated: boolean;
+  hydrateFromBackend: () => Promise<void>;
+  refreshLibraries: () => Promise<void>;
+  addLibrary: (path?: string, name?: string) => Promise<Library | null>;
+  removeLibrary: (id: string) => Promise<void>;
+  switchLibrary: (id: string) => Promise<void>;
+};
 
 export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "activeLibraryId"> &
-  Pick<DataSourceStore, "dataSources" | "loading" | "hydrated"> &
+  { dataSources: DataSource[]; loading: boolean; hydrated: boolean } &
   DataSourceActions &
   LibraryActions & {
     books: BookItem[];

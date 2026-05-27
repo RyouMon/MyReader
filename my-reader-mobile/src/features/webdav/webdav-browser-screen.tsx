@@ -11,15 +11,16 @@ import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import { createWebDavOps } from "@/src/data/webdav";
-import type { WebDavDataSource, DataSource } from "@/src/data/types";
+import type { WebDavDataSource, DataSource, DataSourceWebdav } from "@/src/data/types";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
 import { readWebDavPassword } from "@/src/services/storage/credentials";
 
 const resolveWebDavOps = async (candidate: DataSource) => {
   if (candidate.type !== "webdav") return null;
-  const password = candidate.password ?? (await readWebDavPassword(candidate.id)) ?? "";
+  const webdav = candidate as DataSourceWebdav;
+  const password = (await readWebDavPassword(webdav.id)) ?? "";
   if (!password) return null;
-  return createWebDavOps({ ...candidate, password } satisfies WebDavDataSource);
+  return createWebDavOps({ ...webdav, password } satisfies WebDavDataSource);
 };
 
 export default function WebDavBrowserScreen() {

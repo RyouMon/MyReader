@@ -1,10 +1,31 @@
 import { isTauri } from "@tauri-apps/api/core"
-import type { LibraryStore } from "@my-reader/tools/store/library"
+import type { Library } from "@my-reader/tools/types/library"
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 import { api } from "@/lib/tauri-api"
 
-export const useLibraryStore = create<LibraryStore>()((set, get) => ({
+type LibraryState = {
+  libraries: Library[]
+  activeLibraryId: string | null
+  loading: boolean
+  hydrated: boolean
+  books: unknown[]
+  loadingBooks: boolean
+  error: string | null
+  setHydrated: (value: boolean) => void
+  hydrateFromBackend: () => Promise<void>
+  refreshLibraries: () => Promise<void>
+  refreshLibrary: (id: string) => Promise<void>
+  addLibrary: (path?: string, name?: string) => Promise<Library | null>
+  addWebdavLibrary: (dataSourceId?: string, remotePath?: string, name?: string) => Promise<Library | null>
+  removeLibrary: (id: string) => Promise<void>
+  switchLibrary: (id: string) => Promise<void>
+  refreshBooks: () => Promise<void>
+  addResolvedLibrary: (library: Library) => Promise<boolean>
+  clearError: () => void
+}
+
+export const useLibraryStore = create<LibraryState>()((set, get) => ({
   libraries: [],
   activeLibraryId: null,
   loading: true,
@@ -90,7 +111,7 @@ export const useLibraryStore = create<LibraryStore>()((set, get) => ({
     }
   },
 
-  addWebdavLibrary: async (dataSourceId?: string, remotePath?: string, name?: string) => {
+  addWebdavLibrary: async (dataSourceId, remotePath, name) => {
     if (!dataSourceId || !remotePath) return null
     console.info(
       `Start to add WebDAV library. dataSourceId: "${dataSourceId}", remotePath: "${remotePath}", name: "${name ?? ""}"`,

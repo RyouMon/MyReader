@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 
-import type { DataSource } from "@my-reader/tools/store/data-source";
+import type { DataSource } from "@my-reader/tools/types/data-source";
 import {
   forceRefreshLibraryMetadata,
   readBookCountFromMetadata,
