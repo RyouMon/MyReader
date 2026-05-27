@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form"
 import { open } from "@tauri-apps/plugin-dialog"
 import { FolderSearch, Loader2, PlusCircle } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select"
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/constants/local-library-data-source"
 import { cn } from "@/lib/utils"
-import { useDataSourceStore } from "@/stores/dataSourceStore"
+import { useDataSourcesQuery } from "@/hooks/queries/useDataSourcesQuery"
 
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
@@ -34,10 +34,7 @@ interface AddLibraryPanelProps {
 
 export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibraryPanelProps) {
   const { t } = useTranslation()
-  const dataSources = useDataSourceStore((s) => s.dataSources)
-  const hydrated = useDataSourceStore((s) => s.hydrated)
-  const loadingDataSources = useDataSourceStore((s) => s.loading)
-  const hydrateFromBackend = useDataSourceStore((s) => s.hydrateFromBackend)
+  const { data: dataSources = [], isLoading: loadingDataSources } = useDataSourcesQuery()
 
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -55,11 +52,6 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
       }),
     [t],
   )
-
-  useEffect(() => {
-    if (hydrated) return
-    void hydrateFromBackend()
-  }, [hydrateFromBackend, hydrated])
 
   const addLibraryForm = useForm({
     defaultValues: {

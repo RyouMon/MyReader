@@ -10,7 +10,8 @@ import { useSyncActions } from "@/hooks/sync/useSyncActions"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { useLibrary } from "@/stores/libraryStore"
+import { useLibraryMutations, useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export const Route = createFileRoute("/_layout/")({
   component: LibraryPage,
@@ -18,13 +19,10 @@ export const Route = createFileRoute("/_layout/")({
 
 function LibraryPage() {
   const { t } = useTranslation()
-  const {
-    activeLibrary,
-    activeLibraryId,
-    loading: libLoading,
-    libraries,
-    refreshLibrary,
-  } = useLibrary()
+  const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
+  const { refreshLibrary } = useLibraryMutations()
+  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
+  const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const navigate = useNavigate()
 
   const activeView = "all" as const

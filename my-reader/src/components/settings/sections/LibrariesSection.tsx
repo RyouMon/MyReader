@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react"
-import type { Library } from "@my-reader/tools/store/library"
+import type { Library } from "@my-reader/tools/types/library"
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"
@@ -11,11 +11,14 @@ import {
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
-import { useLibrary } from "@/stores/libraryStore"
+import { useLibraryMutations, useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export default function LibrariesSection() {
   const { t } = useTranslation()
-  const { libraries, addLibrary, addWebdavLibrary, removeLibrary, activeLibraryId } = useLibrary()
+  const { data: libraries = [] } = useLibrariesQuery()
+  const { addLibrary, addWebdavLibrary, removeLibrary } = useLibraryMutations()
+  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -70,7 +73,10 @@ export default function LibrariesSection() {
           )}
         </GroupList>
 
-        <AddLibraryPanel onAddLibrary={addLibrary} onAddWebdavLibrary={addWebdavLibrary} />
+        <AddLibraryPanel
+          onAddLibrary={addLibrary}
+          onAddWebdavLibrary={(dataSourceId, remotePath) => addWebdavLibrary({ dataSourceId, rootPath: remotePath })}
+        />
 
         {/* Hint */}
         <StatusNotice className="mt-4">

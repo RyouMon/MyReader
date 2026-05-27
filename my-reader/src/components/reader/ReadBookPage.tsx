@@ -8,7 +8,7 @@ import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
-import { useLibrary } from "@/stores/libraryStore"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { Locator } from "@readium/shared"
 import { useNavigate } from "@tanstack/react-router"
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
@@ -26,7 +26,7 @@ export type ReadBookPageProps = {
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { activeLibraryId, loading: libraryLoading } = useLibrary()
+  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
@@ -67,7 +67,6 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     let cancelled = false
 
     async function load() {
-      if (libraryLoading) return
       if (!activeLibraryId) {
         if (!cancelled) {
           setFetchError(t("reader.noActiveLibrary"))
@@ -133,7 +132,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         void api.closeBookStreamer(activeLibraryId, Number(bookId))
       }
     }
-  }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, libraryLoading])
+  }, [bookId, activeLibraryId, formatFromSearch, mainHandoff])
 
   const readiumPub = useReadiumPublication({
     assetBaseUrl:

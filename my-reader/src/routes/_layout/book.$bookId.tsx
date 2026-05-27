@@ -23,7 +23,8 @@ import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { isReadableInAppFormat, pickReadableFormat } from "@/lib/readFormats"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
-import { useLibrary } from "@/stores/libraryStore"
+import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,
@@ -134,7 +135,9 @@ function BookDetailPage() {
   const { t } = useTranslation()
   const { bookId } = useParams({ from: "/_layout/book/$bookId" })
   const navigate = useNavigate()
-  const { activeLibraryId, activeLibrary } = useLibrary()
+  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
+  const { data: libraries = [] } = useLibrariesQuery()
+  const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const formatLabels = useFormatLabels()
   const identifierLabels = useIdentifierLabels()
   const languageMap = useLanguageMap()

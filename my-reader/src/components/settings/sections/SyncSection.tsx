@@ -16,7 +16,8 @@ import {
   useSyncActions,
 } from "@/hooks/sync/useSyncActions"
 import { cn } from "@/lib/utils"
-import { useLibraryStore } from "@/stores/libraryStore"
+import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 /**
  * 同步设置分区：选择 library + 数据源 → 测连通、触发 DB 同步、管理 file_state 下载/释放/删除。
@@ -26,10 +27,8 @@ import { useLibraryStore } from "@/stores/libraryStore"
 export default function SyncSection() {
   const { t } = useTranslation()
   const actions = useSyncActions()
-  const libraries = useLibraryStore((s) => s.libraries)
-  const activeLibraryId = useLibraryStore((s) => s.activeLibraryId)
-  const hydrateLibraries = useLibraryStore((s) => s.hydrateFromBackend)
-  const librariesHydrated = useLibraryStore((s) => s.hydrated)
+  const { data: libraries = [] } = useLibrariesQuery()
+  const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [backends, setBackends] = useState<SyncBackendInfo[]>([])
   const [backendsLoading, setBackendsLoading] = useState(false)
@@ -91,12 +90,6 @@ export default function SyncSection() {
       setFileStatesLoading(false)
     }
   }, [actions, selectedLibraryId])
-
-  useEffect(() => {
-    if (!librariesHydrated) {
-      void hydrateLibraries()
-    }
-  }, [hydrateLibraries, librariesHydrated])
 
   useEffect(() => {
     void loadBackends()

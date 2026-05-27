@@ -1,32 +1,20 @@
 import { Trash2, Unplug } from "lucide-react"
 import type { DataSource, DataSourceWebdav } from "@my-reader/tools/types/data-source"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
 import { cn } from "@/lib/utils"
-import { useDataSourceStore } from "@/stores/dataSourceStore"
+import { useDataSourcesQuery, useDataSourceMutations } from "@/hooks/queries/useDataSourcesQuery"
 
-/**
- * 在设置页提供数据源增删管理，帮助后续同步层复用统一连接配置。
- */
 export default function DataSourcesSection() {
   const { t } = useTranslation()
-  const dataSources = useDataSourceStore((s) => s.dataSources)
-  const loading = useDataSourceStore((s) => s.loading)
-  const hydrated = useDataSourceStore((s) => s.hydrated)
-  const hydrateFromBackend = useDataSourceStore((s) => s.hydrateFromBackend)
-  const createDataSource = useDataSourceStore((s) => s.createDataSource)
-  const deleteDataSource = useDataSourceStore((s) => s.deleteDataSource)
+  const { data: dataSources = [], isLoading: loading } = useDataSourcesQuery()
+  const { createDataSource, deleteDataSource } = useDataSourceMutations()
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (hydrated) return
-    void hydrateFromBackend()
-  }, [hydrateFromBackend, hydrated])
 
   async function handleDelete(id: string) {
     const target = dataSources.find((item) => item.id === id)

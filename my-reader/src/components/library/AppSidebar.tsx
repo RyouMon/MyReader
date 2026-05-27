@@ -30,18 +30,18 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
-import { useLibrary } from "@/stores/libraryStore"
+import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export type SidebarView = "all" | "recent" | "favorites"
 
 type LibMenuRect = { top: number; left: number; width: number }
 
-/**
- * 应用主侧边栏，包含书库切换、筛选与设置入口。
- */
 export default function AppSidebar() {
   const { t } = useTranslation()
-  const { libraries, activeLibrary, switchLibrary } = useLibrary()
+  const { data: libraries = [] } = useLibrariesQuery()
+  const { activeLibraryId, switchLibrary } = useLibraryUiStore()
+  const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const location = useLocation()
   const [libMenuOpen, setLibMenuOpen] = useState(false)
   const [libMenuRect, setLibMenuRect] = useState<LibMenuRect | null>(null)

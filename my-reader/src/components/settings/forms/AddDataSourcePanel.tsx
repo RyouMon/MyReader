@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form"
 import { isTauri } from "@tauri-apps/api/core"
 import { Loader2, PlusCircle } from "lucide-react"
-import type { DataSource, DataSourceWebdav, DataSourceConnectionTestResult } from "@my-reader/tools/types/data-source"
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { useDataSourceStore } from "@/stores/dataSourceStore"
+import { useDataSourceMutations } from "@/hooks/queries/useDataSourcesQuery"
 
 interface AddDataSourcePanelProps {
   onCreateDataSource: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
@@ -37,6 +37,7 @@ export function AddDataSourcePanel({
   onCreateDataSource,
 }: AddDataSourcePanelProps) {
   const { t } = useTranslation()
+  const { testConnection } = useDataSourceMutations()
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -100,9 +101,7 @@ export function AddDataSourcePanel({
               }
               setTesting(true)
               try {
-                const result = await useDataSourceStore
-                  .getState()
-                  .testDataSourceConnection(datasource)
+                const result = await testConnection(datasource)
                 if (result.ok) {
                   setTestFeedback({
                     tone: "success",
@@ -143,7 +142,7 @@ interface WebdavDataSourceFormProps {
   testing: boolean
   onSubmit: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
   onClearMessages: () => void
-  onTestConnection: (datasource: DataSource) => Promise<void>
+  onTestConnection: (datasource: DataSourceWebdav & { password?: string }) => Promise<void>
 }
 
 type WebdavFieldName =
@@ -267,7 +266,7 @@ function WebdavDataSourceForm({
 
   function buildTestPayload(
     value: z.infer<typeof addWebdavSchema>,
-  ): DataSource {
+  ): DataSourceWebdav & { password?: string } {
     return buildWebdavDataSourceFromForm(value)
   }
 
