@@ -4,7 +4,8 @@ import { Alert } from "react-native";
 
 import type { DataSource } from "@/src/data/types";
 import { isUserCancelled, signIn } from "@/src/services/auth/onedrive";
-import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useAppStore } from "@/src/store/app-store";
+import { useDataSourceActions } from "./use-data-source-actions";
 import {
   writeOneDriveAccessToken,
   writeOneDriveRefreshToken,
@@ -12,7 +13,8 @@ import {
 
 export function useAddOneDriveDataSource() {
   const { t } = useTranslation();
-  const { dataSources, createDataSource } = useDataSourceStore();
+  const dataSources = useAppStore((s) => s.dataSources);
+  const { createDataSource } = useDataSourceActions();
   const [busy, setBusy] = useState(false);
 
   async function addOneDriveDataSource(): Promise<DataSource | null> {

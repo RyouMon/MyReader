@@ -15,12 +15,12 @@ import { View } from "@/tw";
 
 import { Screen, SectionCard, SectionHeading, SettingsRow } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
-import { useLibraryStore } from "@/src/store/library-store";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { mode, setMode } = useTheme();
-  const { libraries, activeLibraryId } = useLibraryStore();
+  const libraries = useAppStore((s) => s.libraries);
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
   const navigation = useNavigation();
   const isTransitioningRef = useRef(false);
 

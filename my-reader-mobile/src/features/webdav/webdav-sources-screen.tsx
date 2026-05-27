@@ -16,12 +16,12 @@ import {
   SettingsRow,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useAppStore } from "@/src/store/app-store";
 
 export default function WebDavSourcesScreen() {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const { dataSources } = useDataSourceStore();
+  const dataSources = useAppStore((state) => state.dataSources);
 
   const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);
   const rightToolbar: HeaderToolbarAction[] = [

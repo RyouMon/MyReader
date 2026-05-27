@@ -17,7 +17,8 @@ import {
   Screen,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useAppStore } from "@/src/store/app-store";
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 
 const addWebDavMobileSchema = z
   .object({
@@ -102,7 +103,7 @@ function buildDraft(values: WebDavFormInput): WebDavDataSource {
 export default function AddWebDavDataSourceScreen() {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const { createDataSource, testDataSourceConnection } = useDataSourceStore();
+  const { createDataSource, testDataSourceConnection } = useDataSourceActions();
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
 

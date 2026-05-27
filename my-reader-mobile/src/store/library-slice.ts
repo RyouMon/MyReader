@@ -1,53 +1,31 @@
 import type { Library } from "@my-reader/tools/types/library";
 import type { BookItem } from "../data/types";
-import { isRemoteSourceType } from "../data/types";
 
-import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import { clearAllReaderCaches } from "../services/fs/cache";
-import {
-  clearLocalCopyCacheByLibrary,
-  ensureLibraryMetadataCached,
-  pickCalibreLibrary,
-  readBookCountFromLibrary,
-} from "../data/calibre";
-import { checkConnectivity } from "../sync/connectivity";
-import { resolveSyncTarget } from "../sync/resolve";
-import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
-import { fetchBooksWithMeta, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
-import { queryClient } from "../hooks/queries/queryClient";
-import { mergeDataSources } from "./app-store.constants";
-import type { AppState, AppStateSlice } from "./app-store.types";
-import i18n from "@/src/i18n";
-
-function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
-  return libraries.map((library) =>
-    library.id === updatedLibrary.id ? updatedLibrary : library
-  );
-}
+import type { AppStateSlice } from "./app-store.types";
 
 type LibrarySlice = {
   libraries: Library[];
   activeLibraryId: string | null;
-  books: BookItem[];
   loading: boolean;
-  loadingBooks: boolean;
   hydrated: boolean;
   refreshingLibraryId: string | null;
   error: string | null;
+  books: BookItem[];
+  loadingBooks: boolean;
+
+  // Pure setters
+  setLibraries: (libraries: Library[]) => void;
+  setActiveLibraryId: (id: string | null) => void;
+  setRefreshingLibraryId: (id: string | null) => void;
+  setError: (error: string | null) => void;
+  setLoading: (loading: boolean) => void;
   setHydrated: (value: boolean) => void;
-  hydrateFromBackend: () => Promise<void>;
-  refreshLibraries: () => Promise<void>;
-  addLibrary: (path?: string, name?: string) => Promise<Library | null>;
-  addResolvedLibrary: (library: Library) => Promise<boolean>;
-  removeLibrary: (id: string) => Promise<void>;
-  switchLibrary: (id: string) => Promise<void>;
-  refreshBooks: () => Promise<void>;
-  refreshLibrary: (libraryId: string) => Promise<void>;
+  upsertLibrary: (library: Library) => void;
+  removeLibraryById: (id: string) => void;
   clearError: () => void;
 };
 
-export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
+export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set) =>
   ({
     libraries: [],
     activeLibraryId: null,
@@ -57,228 +35,42 @@ export const createLibrarySlice: AppStateSlice<LibrarySlice> = (set, get) =>
     refreshingLibraryId: null,
     error: null,
     hydrated: false,
-    setHydrated(value: boolean) {
-      set({ hydrated: value })
+
+    setLibraries(libraries: Library[]) {
+      set({ libraries });
     },
-    async hydrateFromBackend() {
-      set({ loading: true, error: null });
-
-      try {
-        const state = get();
-        const hydratedLibraries = await Promise.all(
-          state.libraries.map(async (library) => {
-            try {
-              return await ensureLibraryMetadataCached(library);
-            } catch {
-              return library;
-            }
-          })
-        );
-
-        const nextActiveLibraryId =
-          hydratedLibraries.find((library) => library.id === state.activeLibraryId)?.id ??
-          hydratedLibraries[0]?.id ??
-          null;
-
-        set({
-          libraries: hydratedLibraries,
-          dataSources: mergeDataSources(state.dataSources),
-          activeLibraryId: nextActiveLibraryId,
-          loading: false,
-        });
-
-        await get().refreshBooks();
-      } catch (caught) {
-        set({
-          libraries: [],
-          activeLibraryId: null,
-          books: [],
-          loading: false,
-          error: caught instanceof Error ? caught.message : i18n.t("sync.loadLibraryFailed"),
-        });
-      }
+    setActiveLibraryId(id: string | null) {
+      set({ activeLibraryId: id });
+    },
+    setRefreshingLibraryId(id: string | null) {
+      set({ refreshingLibraryId: id });
+    },
+    setError(error: string | null) {
+      set({ error });
+    },
+    setLoading(loading: boolean) {
+      set({ loading });
+    },
+    setHydrated(value: boolean) {
+      set({ hydrated: value });
+    },
+    upsertLibrary(library: Library) {
+      set((state) => ({
+        libraries: state.libraries.some((l) => l.id === library.id)
+          ? state.libraries.map((l) => l.id === library.id ? library : l)
+          : [...state.libraries, library],
+      }));
+    },
+    removeLibraryById(id: string) {
+      set((state) => {
+        const nextLibraries = state.libraries.filter((l) => l.id !== id);
+        const nextActiveId = state.activeLibraryId === id
+          ? nextLibraries[0]?.id ?? null
+          : state.activeLibraryId;
+        return { libraries: nextLibraries, activeLibraryId: nextActiveId };
+      });
     },
     clearError() {
       set({ error: null });
-    },
-    async addLibrary() {
-      set({ error: null });
-
-      try {
-        const picked = await pickCalibreLibrary();
-        if (picked === null) {
-          return null;
-        }
-
-        const state = get();
-
-        const nextLibrary: Library = {
-          ...picked,
-          dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
-          sourceType: "local",
-        };
-
-        const { library: preparedLibrary } = await readBookCountFromLibrary(nextLibrary);
-
-        if (
-          state.libraries.some(
-            (item) =>
-              item.metadataUri === preparedLibrary.metadataUri || item.path === preparedLibrary.path
-          )
-        ) {
-          showAlertWithStatusBarRestore(i18n.t("sync.cannotAddDuplicate"), i18n.t("sync.alreadyAdded"), [{ text: i18n.t("common.gotIt") }]);
-          return null;
-        }
-
-        const nextLibraries = [...state.libraries, preparedLibrary];
-        const nextActiveLibraryId = state.activeLibraryId ?? preparedLibrary.id;
-
-        set({
-          libraries: nextLibraries,
-          activeLibraryId: nextActiveLibraryId,
-        });
-
-        await get().refreshBooks();
-        return preparedLibrary;
-      } catch (caught) {
-        const message = caught instanceof Error ? caught.message : i18n.t("sync.addLibraryFailed");
-        set({ error: message });
-        return null;
-      }
-    },
-    async addResolvedLibrary(library: Library) {
-      const state = get();
-      const prepared =
-        isRemoteSourceType(library.sourceType) ? library : (await readBookCountFromLibrary(library)).library;
-
-      if (
-        state.libraries.some(
-          (item) => item.metadataUri === prepared.metadataUri || item.path === prepared.path
-        )
-      ) {
-        showAlertWithStatusBarRestore(i18n.t("sync.cannotAddDuplicate"), i18n.t("sync.alreadyAdded"), [{ text: i18n.t("common.gotIt") }]);
-        return false;
-      }
-
-      const nextLibraries = [...state.libraries, prepared];
-      const nextActiveLibraryId = state.activeLibraryId ?? prepared.id;
-
-      set({
-        libraries: nextLibraries,
-        activeLibraryId: nextActiveLibraryId,
-        error: null,
-      });
-
-      await get().refreshBooks();
-      return true;
-    },
-    async removeLibrary(id) {
-      const state = get();
-      const nextLibraries = state.libraries.filter((library) => library.id !== id);
-      const removedActiveLibrary = state.activeLibraryId === id;
-      const nextActiveLibraryId = removedActiveLibrary ? nextLibraries[0]?.id ?? null : state.activeLibraryId;
-
-      set({
-        libraries: nextLibraries,
-        activeLibraryId: nextActiveLibraryId,
-        error: null,
-      });
-      clearLocalCopyCacheByLibrary(id);
-      clearAllReaderCaches();
-
-      await get().refreshBooks();
-    },
-    async switchLibrary(id) {
-      set({ activeLibraryId: id, error: null });
-      await get().refreshBooks();
-    },
-    async refreshBooks() {
-      const state = get();
-      const activeLibrary =
-        state.libraries.find((library) => library.id === state.activeLibraryId) ?? null;
-
-      if (!activeLibrary) {
-        set({ books: [], loadingBooks: false });
-        return;
-      }
-
-      set({ loadingBooks: true, error: null });
-
-      try {
-        const { books: nextBooks, metadataUri } = await queryClient.fetchQuery({
-          queryKey: libraryQueryKeys.books(state.activeLibraryId),
-          queryFn: () => fetchBooksWithMeta(activeLibrary, state.dataSources),
-        });
-
-        const { library: refreshedLibrary, bookCount } =
-          isRemoteSourceType(activeLibrary.sourceType)
-            ? {
-                library:
-                  metadataUri === activeLibrary.metadataUri
-                    ? activeLibrary
-                    : { ...activeLibrary, metadataUri },
-                bookCount: activeLibrary.bookCount,
-              }
-            : await readBookCountFromLibrary(activeLibrary);
-
-        set((currentState) => ({
-          books: nextBooks,
-          loadingBooks: false,
-          libraries: mergeLibraryUpdate(
-            currentState.libraries,
-            refreshedLibrary.bookCount === bookCount ? refreshedLibrary : { ...refreshedLibrary, bookCount }
-          ),
-        }));
-      } catch (caught) {
-        set({
-          books: [],
-          loadingBooks: false,
-          error: caught instanceof Error ? caught.message : i18n.t("sync.readLibraryFailed"),
-        });
-      }
-    },
-    async refreshLibraries() {},
-    async refreshLibrary(libraryId: string) {
-      const state = get();
-      const library = state.libraries.find((l) => l.id === libraryId);
-      if (!library) return;
-      try {
-        const { backend } = await resolveSyncTarget(library, state.dataSources);
-        await checkConnectivity(backend);
-      } catch {
-        showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
-        return;
-      }
-      set({ refreshingLibraryId: libraryId, error: null });
-      try {
-        const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(
-          library,
-          state.dataSources
-        );
-
-        const nextLibraries = state.libraries.map((l) =>
-          l.id === libraryId
-            ? { ...newLibrary, bookCount: newBookCount }
-            : l
-        );
-        set({ libraries: nextLibraries });
-
-        await get().refreshBooks();
-
-        set({ refreshingLibraryId: null });
-        console.info("Library refreshed:", {
-          libraryId,
-          added: diff.added.length,
-          removed: diff.removed.length,
-          modified: diff.modified.length,
-          newBookCount,
-        });
-      } catch (caught) {
-        set({
-          refreshingLibraryId: null,
-          loadingBooks: false,
-          error: caught instanceof Error ? caught.message : i18n.t("sync.refreshLibraryFailed"),
-        });
-      }
     },
   });

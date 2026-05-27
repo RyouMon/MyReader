@@ -3,7 +3,6 @@ import type { StateCreator } from "zustand";
 import type { DataSource } from "@my-reader/tools/types/data-source";
 import type { Library } from "@my-reader/tools/types/library";
 
-import type { BookItem } from "../data/types";
 import type { ThemeMode } from "../design/tokens";
 
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
@@ -49,37 +48,33 @@ export type PersistedAppState = {
   libraryViewMode: LibraryViewMode;
 };
 
-type DataSourceActions = {
-  hydrateFromBackend: () => Promise<void>;
-  refreshDataSources: (id: string) => Promise<void>;
-  createDataSource: (datasource: DataSource) => Promise<DataSource>;
-  updateDataSource: (id: string, datasource: DataSource) => Promise<void>;
-  deleteDataSource: (id: string) => Promise<void>;
-  testDataSourceConnection: (
-    datasource: DataSource,
-  ) => Promise<{ ok: boolean; message: string }>;
-};
-
-type LibraryActions = {
-  libraries: Library[];
-  activeLibraryId: string | null;
-  loading: boolean;
-  hydrated: boolean;
-  hydrateFromBackend: () => Promise<void>;
-  refreshLibraries: () => Promise<void>;
-  addLibrary: (path?: string, name?: string) => Promise<Library | null>;
-  removeLibrary: (id: string) => Promise<void>;
-  switchLibrary: (id: string) => Promise<void>;
-};
-
 export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "activeLibraryId"> &
   { dataSources: DataSource[]; loading: boolean; hydrated: boolean } &
-  DataSourceActions &
-  LibraryActions & {
-    books: BookItem[];
-    loadingBooks: boolean;
-    error: string | null;
+  {
+    // DataSource setters
+    setDataSources: (dataSources: DataSource[]) => void;
+    setLoading: (loading: boolean) => void;
     setHydrated: (value: boolean) => void;
+    upsertDataSource: (ds: DataSource) => void;
+    removeDataSourceById: (id: string) => void;
+    error: string | null;
+    setError: (error: string | null) => void;
+    clearError: () => void;
+
+    // Library setters
+    libraries: Library[];
+    activeLibraryId: string | null;
+    setLibraries: (libraries: Library[]) => void;
+    setActiveLibraryId: (id: string | null) => void;
+    setRefreshingLibraryId: (id: string | null) => void;
+    upsertLibrary: (library: Library) => void;
+    removeLibraryById: (id: string) => void;
+    refreshingLibraryId: string | null;
+    books: import("../data/types").BookItem[];
+    loadingBooks: boolean;
+
+    // Settings
+    settings: ReaderSettings;
     setThemeMode: (mode: ThemeMode) => void;
     setLanguage: (language: string) => void;
     setLibraryViewMode: (mode: LibraryViewMode) => void;
@@ -87,11 +82,6 @@ export type AppState = Omit<PersistedAppState, "dataSources" | "libraries" | "ac
     patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
     patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
     patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
-    refreshingLibraryId: string | null;
-    clearError: () => void;
-    addResolvedLibrary: (library: Library) => Promise<boolean>;
-    refreshBooks: () => Promise<void>;
-    refreshLibrary: (libraryId: string) => Promise<void>;
   };
 
 export type AppStateSlice<TSlice> = StateCreator<AppState, [], [], TSlice>;

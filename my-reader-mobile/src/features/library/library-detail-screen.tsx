@@ -13,12 +13,12 @@ import { isRemoteSourceType } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";
+import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { Text, View } from "@/tw";
 
 import { Screen } from "@/src/components/ui/screen";
 import { Button } from "@/src/components/ui/button";
 import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
-import { useLibraryStore } from "@/src/store/library-store";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -119,7 +119,9 @@ export default function LibraryDetailScreen() {
   const { t } = useTranslation();
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
-  const { libraries, activeLibraryId, removeLibrary, refreshLibrary, switchLibrary } = useLibraryStore();
+  const { removeLibrary, refreshLibrary, switchLibrary } = useLibraryActions();
+  const libraries = useAppStore((state) => state.libraries);
+  const activeLibraryId = useAppStore((state) => state.activeLibraryId);
   const dataSources = useAppStore((state) => state.dataSources);
 
   const [isRefreshing, setIsRefreshing] = useState(false);

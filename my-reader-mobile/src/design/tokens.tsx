@@ -4,6 +4,8 @@ import { useColorScheme, type ColorSchemeName, type ColorValue } from "react-nat
 
 import { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
 import { useAppStore } from "../store/app-store";
+import { useDataSourceActions } from "../hooks/use-data-source-actions";
+import { useLibraryActions } from "../hooks/use-library-actions";
 import { useThemeModeSetting } from "../store/settings-store";
 
 export type ThemeMode = "system" | "light" | "dark";
@@ -144,8 +146,9 @@ function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
  * Initializes app theme side effects for React Native surfaces.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const hydrateFromBackend = useAppStore((state) => state.hydrateFromBackend);
-  const hydrated = useAppStore((state) => state.hydrated);
+  const hydrated = useAppStore((s) => s.hydrated);
+  const hydrateDataSources = useDataSourceActions().hydrateFromBackend;
+  const hydrateLibraries = useLibraryActions().hydrateFromBackend;
   const systemColorScheme = useColorScheme();
   const { mode } = useThemeModeSetting();
 
@@ -154,8 +157,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void hydrateFromBackend();
-  }, [hydrated, hydrateFromBackend]);
+    void hydrateDataSources().then(() => hydrateLibraries());
+  }, [hydrated, hydrateDataSources, hydrateLibraries]);
 
   const colorScheme = resolveThemeMode(mode, systemColorScheme);
   const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);

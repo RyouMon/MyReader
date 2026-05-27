@@ -15,7 +15,6 @@ import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/data/calibre";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useAppStore } from "@/src/store/app-store";
-import { useLibraryStore } from "@/src/store/library-store";
 
 type DetailCacheEntry = {
   detail: import("@my-reader/tools/types/book").BookDetail | null;
@@ -27,7 +26,13 @@ export default function BookDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { colorScheme, palette } = useTheme();
-  const { books, activeLibrary, activeLibraryId } = useLibraryStore();
+  const books = useAppStore((s) => s.books);
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
+  const libraries = useAppStore((s) => s.libraries);
+  const activeLibrary = useMemo(
+    () => libraries.find((l) => l.id === activeLibraryId) ?? null,
+    [libraries, activeLibraryId],
+  );
   const dataSources = useAppStore((s) => s.dataSources);
   const [currentId, setCurrentId] = useState<string | null>(id ?? null);
   const [detailCache, setDetailCache] = useState<Record<string, DetailCacheEntry>>({});

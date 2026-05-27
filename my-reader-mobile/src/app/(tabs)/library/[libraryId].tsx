@@ -9,9 +9,9 @@ export default function LibraryIdBridgeRoute() {
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
 
   if (typeof libraryId === "string") {
-    const { activeLibraryId, switchLibrary } = useAppStore.getState();
+    const { activeLibraryId } = useAppStore.getState();
     if (activeLibraryId !== libraryId) {
-      void switchLibrary(libraryId);
+      useAppStore.getState().setActiveLibraryId(libraryId);
     }
   }
 

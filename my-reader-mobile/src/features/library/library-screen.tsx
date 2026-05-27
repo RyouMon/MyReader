@@ -35,7 +35,7 @@ import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
-import { useLibraryStore } from "@/src/store/library-store";
+import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { syncDbNow } from "@/src/sync/db_sync";
 import { useSyncActions } from "@/src/sync/useSyncActions";
 import { useBookActions } from "./hooks/useBookActions";
@@ -95,15 +95,21 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { activeLibraryId, libraries, books, loadingBooks, refreshingLibraryId, loading, switchLibrary, error, refreshLibrary } =
-    useLibraryStore();
+  const { switchLibrary, refreshLibrary } = useLibraryActions();
+  const libraries = useAppStore((s) => s.libraries);
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
+  const refreshingLibraryId = useAppStore((s) => s.refreshingLibraryId);
+  const books = useAppStore((s) => s.books);
+  const loadingBooks = useAppStore((s) => s.loadingBooks);
+  const loading = useAppStore((s) => s.loading);
+  const error = useAppStore((s) => s.error);
+  const dataSources = useAppStore((s) => s.dataSources);
+  const viewMode = useAppStore((s) => s.libraryViewMode);
+  const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
-  const viewMode = useAppStore((state) => state.libraryViewMode);
-  const setViewMode = useAppStore((state) => state.setLibraryViewMode);
-  const dataSources = useAppStore((state) => state.dataSources);
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
   const syncActions = useSyncActions();

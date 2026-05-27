@@ -6,8 +6,8 @@ import type { DataSource } from "@/src/data/types";
 import { View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
-import { useDataSourceStore } from "@/src/store/data-source-store";
-import { useLibraryStore } from "@/src/store/library-store";
+import { useAppStore } from "@/src/store/app-store";
+import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 function sourceBrowserPath(source: DataSource) {
@@ -32,8 +32,8 @@ function sourceDetailText(source: DataSource) {
 
 export default function AddLibraryDataSourceScreen() {
   const { t } = useTranslation();
-  const { addLibrary } = useLibraryStore();
-  const { dataSources } = useDataSourceStore();
+  const { addLibrary } = useLibraryActions();
+  const dataSources = useAppStore((s) => s.dataSources);
   const { addOneDriveDataSource } = useAddOneDriveDataSource();
 
   async function handleAddOneDrive() {

@@ -16,13 +16,13 @@ import {
   SettingsRow,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useAppStore } from "@/src/store/app-store";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 export default function OneDriveSourcesScreen() {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const { dataSources } = useDataSourceStore();
+  const dataSources = useAppStore((state) => state.dataSources);
   const { addOneDriveDataSource, busy } = useAddOneDriveDataSource();
 
   const onedriveSources = useMemo(() => dataSources.filter((source) => source.type === "onedrive"), [dataSources]);

@@ -12,7 +12,8 @@ import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 import { HeaderToolbar, Screen, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
-import { useDataSourceStore } from "@/src/store/data-source-store";
+import { useAppStore } from "@/src/store/app-store";
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -92,7 +93,8 @@ export default function WebDavDataSourceDetailScreen() {
   const { t } = useTranslation();
   const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
   const palette = useThemePalette();
-  const { dataSources, deleteDataSource } = useDataSourceStore();
+  const dataSources = useAppStore((state) => state.dataSources);
+  const { deleteDataSource } = useDataSourceActions();
 
   const sourceIndex = useMemo(
     () => dataSources.findIndex((item) => item.id === dataSourceId && item.type === "webdav"),

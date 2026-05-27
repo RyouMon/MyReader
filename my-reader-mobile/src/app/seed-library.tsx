@@ -6,6 +6,7 @@ import { unzipSync } from "fflate";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
+import { readBookCountFromLibrary } from "@/src/data/calibre";
 import { useAppStore } from "@/src/store/app-store";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
 
@@ -53,7 +54,7 @@ async function seedLibrary() {
     const metadataFile = new FSFile(existingDir.uri, "metadata.db");
     if (metadataFile.exists) {
       console.info("[seed-library] directory exists with metadata, registering");
-      const library = {
+      const { library: preparedLibrary } = await readBookCountFromLibrary({
         id: `seed-${LIBRARY_NAME}`,
         name: LIBRARY_NAME,
         path: existingDir.uri,
@@ -62,8 +63,10 @@ async function seedLibrary() {
         addedAt: Date.now(),
         dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
         sourceType: "local",
-      };
-      await store.addResolvedLibrary(library);
+      });
+      const nextLibraries = [...store.libraries, preparedLibrary];
+      const nextActiveLibraryId = store.activeLibraryId ?? preparedLibrary.id;
+      useAppStore.setState({ libraries: nextLibraries, activeLibraryId: nextActiveLibraryId });
       return;
     }
     // Partial seed — clean up and re-seed
@@ -135,5 +138,8 @@ async function seedLibrary() {
   };
 
   console.info("[seed-library] registering library:", { id: library.id, name: library.name });
-  await store.addResolvedLibrary(library);
+  const { library: preparedLibrary } = await readBookCountFromLibrary(library);
+  const nextLibraries = [...useAppStore.getState().libraries, preparedLibrary];
+  const nextActiveLibraryId = useAppStore.getState().activeLibraryId ?? preparedLibrary.id;
+  useAppStore.setState({ libraries: nextLibraries, activeLibraryId: nextActiveLibraryId });
 }

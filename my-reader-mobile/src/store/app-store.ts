@@ -96,10 +96,6 @@ export const useAppStore = create<AppState>()(
         ...createProgramStateSlice(...args),
         ...dataSourceSlice,
         ...librarySlice,
-        async hydrateFromBackend() {
-          await dataSourceSlice.hydrateFromBackend()
-          await librarySlice.hydrateFromBackend()
-        },
       }
     },
     {
@@ -143,7 +139,6 @@ export const useAppStore = create<AppState>()(
         }
 
         state.setHydrated(true);
-        void state.hydrateFromBackend();
       },
     }
   )

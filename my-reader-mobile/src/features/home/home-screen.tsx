@@ -7,12 +7,19 @@ import { Image, Text, View } from "@/tw";
 
 import { EmptyState, HeroCard, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "@/src/components";
 import { HorizontalBookShelf } from "@/src/features/library/components/books";
-import { useLibraryStore } from "@/src/store/library-store";
+import { useAppStore } from "@/src/store/app-store";
 
 export default function HomeScreen() {
   const palette = useThemePalette();
   const { t } = useTranslation();
-  const { activeLibrary, books, loadingBooks } = useLibraryStore();
+  const libraries = useAppStore((s) => s.libraries);
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
+  const books = useAppStore((s) => s.books);
+  const loadingBooks = useAppStore((s) => s.loadingBooks);
+  const activeLibrary = useMemo(
+    () => libraries.find((library) => library.id === activeLibraryId) ?? null,
+    [activeLibraryId, libraries],
+  );
 
   const currentBook = books[0];
   const recentBooks = useMemo(() => books.slice(0, 5), [books]);

@@ -5,8 +5,8 @@ import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status
 import { isMissingMetadataDbError, normalizeCurrentPath } from "@/src/data/remote-library";
 import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/data/remote-library";
 import type { DataSource } from "@/src/data/types";
-import { useDataSourceStore } from "@/src/store/data-source-store";
-import { useLibraryStore } from "@/src/store/library-store";
+import { useAppStore } from "@/src/store/app-store";
+import { useLibraryActions } from "./use-library-actions";
 
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined;
@@ -34,8 +34,8 @@ export function useRemoteDirectoryBrowser({
   resolveOps,
 }: UseRemoteDirectoryBrowserOpts): RemoteDirectoryBrowserState {
   const currentPath = useMemo(() => normalizeCurrentPath(currentPathParam), [currentPathParam]);
-  const { dataSources } = useDataSourceStore();
-  const { addResolvedLibrary } = useLibraryStore();
+  const dataSources = useAppStore((state) => state.dataSources);
+  const { addResolvedLibrary } = useLibraryActions();
   const candidate = useMemo(
     () => dataSources.find((item) => item.id === dataSourceId && item.type === sourceType) ?? null,
     [dataSourceId, dataSources, sourceType],
