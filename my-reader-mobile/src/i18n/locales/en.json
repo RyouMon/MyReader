@@ -434,6 +434,12 @@
     "defaultTitle": "An unexpected error occurred",
     "retry": "Retry"
   },
+  "dataSource": {
+    "deleteInUse": {
+      "title": "Cannot Delete",
+      "message": "The following libraries are using this source: {{names}}. Please remove these libraries before deleting the source."
+    }
+  },
   "common": {
     "confirm": "OK",
     "cancel": "Cancel",

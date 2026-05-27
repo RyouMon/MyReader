@@ -1,13 +1,14 @@
-import type { DataSource, DataSourceWebdav, DataSourceConnectionTestResult } from "@my-reader/tools/types/data-source";
-import { uuid } from "../utils/common";
-import { useAppStore } from "../store/app-store";
+import { DataSourceInUseError } from "@/src/errors";
+import type { DataSourceSecrets } from "@/src/services/storage/credentials";
 import {
-  hydrateDataSourcesFromSecureCredentials,
-  writeSecrets,
   deleteSecrets,
   deriveCredentialFlags,
-} from "../services/storage/credentials";
-import type { DataSourceSecrets } from "../services/storage/credentials";
+  hydrateDataSourcesFromSecureCredentials,
+  writeSecrets,
+} from "@/src/services/storage/credentials";
+import { useAppStore } from "@/src/store/app-store";
+import { uuid } from "@/src/utils/common";
+import type { DataSource, DataSourceConnectionTestResult, DataSourceWebdav } from "@my-reader/tools/types/data-source";
 
 export function useDataSourceActions() {
   const store = useAppStore;
@@ -66,6 +67,11 @@ export function useDataSourceActions() {
 
   async function deleteDataSource(id: string) {
     const state = store.getState();
+    const usedByLibraries = state.libraries.filter((l) => l.dataSourceId === id);
+    if (usedByLibraries.length > 0) {
+      const names = usedByLibraries.map((l) => l.name);
+      throw new DataSourceInUseError(names.join("、"), names);
+    }
     const ds = state.dataSources.find((d) => d.id === id);
     if (ds) {
       await deleteSecrets(id, ds.type);

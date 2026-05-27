@@ -26,6 +26,16 @@ export class DataIntegrityError extends AppError {}
 /** 内部逻辑断言失败，属于代码 bug，不应在正常流程中出现。 */
 export class AppInvariantError extends AppError {}
 
+/** 数据源正在被书库使用，无法删除。 */
+export class DataSourceInUseError extends AppError {
+  constructor(
+    message: string,
+    public readonly libraryNames: string[],
+  ) {
+    super(message);
+  }
+}
+
 export type DownloadErrorInfo = { title: string; message: string };
 
 const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {

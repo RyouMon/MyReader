@@ -7,6 +7,7 @@ import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { DataSourceInUseError } from "@/src/errors";
 import type { DataSourceOnedrive } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -109,10 +110,17 @@ export default function OneDriveDataSourceDetailScreen() {
               await deleteDataSource(onedriveSource.id);
               handleBack();
             } catch (caught) {
-              showAlertWithStatusBarRestore(
-                t("onedrive.deleteFailed.title"),
-                caught instanceof Error ? caught.message : t("onedrive.deleteFailed.message"),
-              );
+              if (caught instanceof DataSourceInUseError) {
+                showAlertWithStatusBarRestore(
+                  t("dataSource.deleteInUse.title"),
+                  t("dataSource.deleteInUse.message", { names: caught.libraryNames.join("、") }),
+                );
+              } else {
+                showAlertWithStatusBarRestore(
+                  t("onedrive.deleteFailed.title"),
+                  caught instanceof Error ? caught.message : t("onedrive.deleteFailed.message"),
+                );
+              }
             }
           })();
         },

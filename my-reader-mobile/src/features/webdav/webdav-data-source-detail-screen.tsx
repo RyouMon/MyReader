@@ -7,6 +7,7 @@ import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { DataSourceInUseError } from "@/src/errors";
 import type { DataSourceWebdav } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -129,10 +130,17 @@ export default function WebDavDataSourceDetailScreen() {
               await deleteDataSource(webdavSource.id);
               handleBack();
             } catch (caught) {
-              showAlertWithStatusBarRestore(
-                t("webdav.deleteFailed.title"),
-                caught instanceof Error ? caught.message : t("webdav.deleteFailed.message")
-              );
+              if (caught instanceof DataSourceInUseError) {
+                showAlertWithStatusBarRestore(
+                  t("dataSource.deleteInUse.title"),
+                  t("dataSource.deleteInUse.message", { names: caught.libraryNames.join("、") }),
+                );
+              } else {
+                showAlertWithStatusBarRestore(
+                  t("webdav.deleteFailed.title"),
+                  caught instanceof Error ? caught.message : t("webdav.deleteFailed.message"),
+                );
+              }
             }
           })();
         },
