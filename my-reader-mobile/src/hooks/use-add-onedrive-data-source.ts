@@ -6,10 +6,6 @@ import type { DataSource } from "@/src/data/types";
 import { isUserCancelled, signIn } from "@/src/services/auth/onedrive";
 import { useAppStore } from "@/src/store/app-store";
 import { useDataSourceActions } from "./use-data-source-actions";
-import {
-  writeOneDriveAccessToken,
-  writeOneDriveRefreshToken,
-} from "@/src/services/storage/credentials";
 
 export function useAddOneDriveDataSource() {
   const { t } = useTranslation();
@@ -43,12 +39,11 @@ export function useAddOneDriveDataSource() {
         hasRefreshToken: Boolean(refreshToken),
       };
 
-      const created = await createDataSource(draft);
-
-      await writeOneDriveAccessToken(created.id, accessToken);
-      if (refreshToken) {
-        await writeOneDriveRefreshToken(created.id, refreshToken);
-      }
+      const created = await createDataSource(draft, {
+        type: "onedrive",
+        accessToken,
+        refreshToken: refreshToken ?? undefined,
+      });
 
       return created;
     } catch (caught) {

@@ -130,7 +130,7 @@ export default function AddWebDavDataSourceScreen() {
   const useSsl = useStore(form.store, (s) => s.values.useSsl);
 
   async function persistDataSource(ds: DataSourceWebdav, password: string) {
-    await createDataSource(ds, { password });
+    await createDataSource(ds, { type: "webdav", password });
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -157,7 +157,7 @@ export default function AddWebDavDataSourceScreen() {
     try {
       const { ds, password } = buildDraft(form.store.state.values);
 
-      const testResult = await testDataSourceConnection(ds, { password });
+      const testResult = await testDataSourceConnection(ds, { type: "webdav", password });
       if (!testResult.ok) {
         Alert.alert(
           t("webdav.add.connectionTestFailed"),

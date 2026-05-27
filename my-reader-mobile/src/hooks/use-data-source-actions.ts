@@ -2,12 +2,12 @@ import type { DataSource, DataSourceWebdav, DataSourceConnectionTestResult } fro
 import { uuid } from "../utils/common";
 import { useAppStore } from "../store/app-store";
 import {
-  deleteWebDavPassword,
-  deleteOneDriveAccessToken,
-  deleteOneDriveRefreshToken,
   hydrateDataSourcesFromSecureCredentials,
-  writeWebDavPassword,
+  writeSecrets,
+  deleteSecrets,
+  deriveCredentialFlags,
 } from "../services/storage/credentials";
+import type { DataSourceSecrets } from "../services/storage/credentials";
 
 export function useDataSourceActions() {
   const store = useAppStore;
@@ -30,18 +30,18 @@ export function useDataSourceActions() {
 
   async function createDataSource(
     ds: DataSource,
-    secrets?: { password?: string },
+    secrets?: DataSourceSecrets,
   ): Promise<DataSource> {
     const id = ds.id || uuid();
     const dsWithId = { ...ds, id };
 
-    if (dsWithId.type === "webdav" && secrets?.password) {
-      await writeWebDavPassword(dsWithId.id, secrets.password);
+    if (secrets) {
+      await writeSecrets(dsWithId.id, secrets);
     }
 
     const stored: DataSource = {
       ...dsWithId,
-      ...(dsWithId.type === "webdav" ? { hasPassword: Boolean(secrets?.password) } : {}),
+      ...deriveCredentialFlags(secrets),
     };
 
     store.getState().upsertDataSource(stored);
@@ -50,15 +50,15 @@ export function useDataSourceActions() {
 
   async function updateDataSource(
     ds: DataSource,
-    secrets?: { password?: string },
+    secrets?: DataSourceSecrets,
   ): Promise<void> {
-    if (ds.type === "webdav" && secrets?.password) {
-      await writeWebDavPassword(ds.id, secrets.password);
+    if (secrets) {
+      await writeSecrets(ds.id, secrets);
     }
 
     const stored: DataSource = {
       ...ds,
-      ...(ds.type === "webdav" ? { hasPassword: Boolean(secrets?.password) } : {}),
+      ...deriveCredentialFlags(secrets),
     };
 
     store.getState().upsertDataSource(stored);
@@ -68,19 +68,14 @@ export function useDataSourceActions() {
     const state = store.getState();
     const ds = state.dataSources.find((d) => d.id === id);
     if (ds) {
-      if (ds.type === "webdav") {
-        await deleteWebDavPassword(id);
-      } else if (ds.type === "onedrive") {
-        await deleteOneDriveAccessToken(id);
-        await deleteOneDriveRefreshToken(id);
-      }
+      await deleteSecrets(id, ds.type);
     }
     state.removeDataSourceById(id);
   }
 
   async function testDataSourceConnection(
-    source: DataSourceWebdav,
-    secrets?: { password?: string },
+    _source: DataSourceWebdav,
+    _secrets?: DataSourceSecrets,
   ): Promise<DataSourceConnectionTestResult> {
     return { ok: true, message: "OK" };
   }
