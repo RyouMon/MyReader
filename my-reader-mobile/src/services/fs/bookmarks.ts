@@ -34,7 +34,7 @@ function getSecurityScopedBookmarksModule() {
   if (cachedIOSModule === undefined) {
     cachedIOSModule = (
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("../../modules/my-module") as { default: SecurityScopedBookmarksNativeModule }
+      require("../../../modules/my-module") as { default: SecurityScopedBookmarksNativeModule }
     ).default;
   }
 
