@@ -37,7 +37,6 @@ import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBooks, useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
-import { syncDbNow } from "@/src/domain/sync/db-sync";
 import { useSyncActions } from "@/src/hooks/useSyncActions";
 import { useBookActions } from "./hooks/useBookActions";
 
@@ -103,7 +102,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const { data: books = [], isLoading: loadingBooks, error: booksError } = useBooks(activeLibraryId);
   const refreshMutation = useRefreshLibraryMutation();
   const isRefreshing = refreshMutation.isPending;
-  const dataSources = useAppStore((s) => s.dataSources);
   const viewMode = useAppStore((s) => s.libraryViewMode);
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const [query, setQuery] = useState("");
@@ -190,12 +188,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
       }
       try {
-        await syncDbNow(selectedLibrary, dataSources);
+        await syncActions.triggerSync("manual");
       } catch (e) {
-        console.error("[library-screen] db sync failed:", e);
+        console.error("[library-screen] sync failed:", e);
       }
     })();
-  }, [selectedLibrary, dataSources, refreshMutation]);
+  }, [selectedLibrary, refreshMutation, syncActions]);
 
   const leftMenuRef = useRef<MenuComponentRef>(null);
   const rightMenuRef = useRef<MenuComponentRef>(null);
