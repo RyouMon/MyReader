@@ -67,7 +67,7 @@ export function resolveCoverUri(
   return buildRemoteCoverUri(library, backend, bookPath, hasCover);
 }
 
-export async function downloadCover(
+async function downloadCover(
   libraryId: string,
   bookPath: string,
   backend: RemoteBackend,

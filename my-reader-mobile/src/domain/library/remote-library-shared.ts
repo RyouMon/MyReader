@@ -9,7 +9,7 @@ import type { RemoteBackend } from "../../services/remote/backend";
 
 // -- Shared constants --
 
-export const BOOKS_QUERY = `
+const BOOKS_QUERY = `
   SELECT
     b.id,
     b.title,
@@ -29,7 +29,7 @@ export const BOOKS_QUERY = `
 
 // -- Shared pure functions --
 
-export type RawBookRow = {
+type RawBookRow = {
   id: number;
   title: string | null;
   author_sort: string | null;
@@ -39,13 +39,13 @@ export type RawBookRow = {
   timestamp: string | null;
 };
 
-export function splitConcat(value: string | null): string[] {
+function splitConcat(value: string | null): string[] {
   return value ? value.split("||").filter(Boolean) : [];
 }
 
 // -- Shared composite functions using RemoteBackend --
 
-export async function ensureMetadataCached(
+async function ensureMetadataCached(
   library: Library,
   backend: RemoteBackend,
 ): Promise<string | null> {

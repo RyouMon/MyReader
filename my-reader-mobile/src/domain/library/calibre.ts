@@ -69,7 +69,7 @@ function ensureMetadataCacheDirectory() {
   return directory;
 }
 
-export function copyMetadataToCache(sourceUri: string, libraryId: string) {
+function copyMetadataToCache(sourceUri: string, libraryId: string) {
   ensureMetadataCacheDirectory();
 
   const source = new FSFile(sourceUri);

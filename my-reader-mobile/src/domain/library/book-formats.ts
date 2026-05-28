@@ -1,9 +1,5 @@
 const readableFormatSet = new Set(["EPUB", "PDF", "CBZ"]);
 
-export function isReadableFormat(format?: string): format is string {
-  return typeof format === "string" && readableFormatSet.has(format.toUpperCase());
-}
-
 export function getReadableFormats(formats?: string[]): string[] {
   return (formats ?? [])
     .map((format) => format.toUpperCase())
