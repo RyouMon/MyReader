@@ -16,6 +16,9 @@ import { pageIndexFromFixedLocator } from "@/src/features/reader/components/read
 import { useAppStore } from "@/src/store/app-store";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
 import { resolveReadFormat } from "@my-reader/tools/utils";
+import { libraryQueryKeys } from "./queries/useLibraryQuery";
+import { queryClient } from "./queries/queryClient";
+import type { BookItem } from "@/src/data/types";
 import type { Locator } from "@ryoumon/react-native-readium";
 import { File } from "expo-file-system";
 import { useEffect, useRef, useState } from "react";
@@ -181,9 +184,11 @@ export function useBookLoader(
         setLoadState({ status: "loading", message: i18n.t("bookLoader.readingBookInfo") });
 
         // 优先从已有的 books 列表中获取封面和标题，减少等待感
-        const bookItem = useAppStore.getState().books.find((b) => b.id === id);
+        const books = queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(activeLibraryId)) ?? [];
+        const bookItem = books.find((b) => b.id === id);
         if (bookItem?.coverUri) {
-          setCoverUri(typeof bookItem.coverUri === "string" ? bookItem.coverUri : bookItem.coverUri.uri);
+          const cover = bookItem.coverUri;
+          setCoverUri(typeof cover === "string" ? cover : cover?.uri);
         }
         if (bookItem?.title) {
           setBookTitle(bookItem.title);

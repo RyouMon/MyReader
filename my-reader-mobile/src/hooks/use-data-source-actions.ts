@@ -16,13 +16,11 @@ export function useDataSourceActions() {
   const store = useAppStore;
 
   async function hydrateFromBackend() {
-    store.getState().setLoading(true);
     try {
       const dataSources = await hydrateDataSourcesFromSecureCredentials(store.getState().dataSources);
       store.getState().setDataSources(dataSources);
     } finally {
-      store.getState().setLoading(false);
-      store.getState().setHydrated(true);
+      store.getState().setStoreReady(true);
     }
   }
 

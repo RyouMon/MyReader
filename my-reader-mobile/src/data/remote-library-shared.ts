@@ -65,7 +65,27 @@ export async function ensureMetadataCached(
   library: Library,
   adapter: RemoteBackendAdapter,
 ): Promise<string | null> {
-  const existingMetadata = new File(library.metadataUri!);
+  const metadataPath = library.metadataUri;
+  if (!metadataPath) {
+    // metadataUri is missing — download from remote
+    try {
+      const remoteBase = adapter.normalizePath(library.sourcePath ?? library.path);
+      const metadataFile = await adapter.downloadToCache(
+        `${remoteBase}/metadata.db`,
+        `${adapter.cacheKeyPrefix}-${library.id}-metadata.db`,
+      );
+      return metadataFile.uri;
+    } catch {
+      showAlertWithStatusBarRestore(
+        i18n.t("sync.corruptedLibrary"),
+        i18n.t("sync.corruptedLibraryMessage"),
+        [{ text: i18n.t("common.gotIt") }],
+      );
+      return null;
+    }
+  }
+
+  const existingMetadata = new File(metadataPath);
   if (existingMetadata.exists) {
     return existingMetadata.uri;
   }

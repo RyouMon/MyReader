@@ -4,7 +4,7 @@ import { ActivityIndicator, Animated, Platform, StyleSheet, Text } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { useAppStore } from "@/src/store/app-store";
+import { useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56;
 
@@ -12,7 +12,7 @@ export function LibraryRefreshPill() {
   const { t } = useTranslation();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
-  const isRefreshing = useAppStore((state) => state.refreshingLibraryId !== null);
+  const isRefreshing = useRefreshLibraryMutation().isPending;
 
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;

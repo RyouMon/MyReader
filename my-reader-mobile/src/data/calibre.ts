@@ -251,7 +251,10 @@ export async function readBookCountFromLibrary(library: Library) {
 
 async function resolveMetadataUriForRead(library: Library): Promise<string | null> {
   if (isRemoteSourceType(library.sourceType)) {
-    const currentMetadata = new FSFile(library.metadataUri!);
+    if (!library.metadataUri) {
+      return null;
+    }
+    const currentMetadata = new FSFile(library.metadataUri);
     if (currentMetadata.exists) {
       return currentMetadata.uri;
     }

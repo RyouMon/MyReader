@@ -35,6 +35,7 @@ import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
+import { useBooks, useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { syncDbNow } from "@/src/sync/db_sync";
 import { useSyncActions } from "@/src/sync/useSyncActions";
@@ -95,14 +96,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { switchLibrary, refreshLibrary } = useLibraryActions();
+  const { switchLibrary } = useLibraryActions();
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
-  const refreshingLibraryId = useAppStore((s) => s.refreshingLibraryId);
-  const books = useAppStore((s) => s.books);
-  const loadingBooks = useAppStore((s) => s.loadingBooks);
-  const loading = useAppStore((s) => s.loading);
-  const error = useAppStore((s) => s.error);
+  const storeReady = useAppStore((s) => s.storeReady);
+  const { data: books = [], isLoading: loadingBooks, error: booksError } = useBooks(activeLibraryId);
+  const refreshMutation = useRefreshLibraryMutation();
+  const isRefreshing = refreshMutation.isPending;
   const dataSources = useAppStore((s) => s.dataSources);
   const viewMode = useAppStore((s) => s.libraryViewMode);
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
@@ -117,9 +117,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevRefreshingIdRef = useRef<string | null>(null);
 
-  const isLoadingNewContent = loadingBooks && !refreshingLibraryId;
+  const isLoadingNewContent = loadingBooks && !isRefreshing;
 
   const handleMenuOpen = useCallback((bookId: string) => {
     if (menuCloseTimerRef.current) {
@@ -184,9 +183,11 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     if (!selectedLibrary) return;
     void (async () => {
       try {
-        await refreshLibrary(selectedLibrary.id);
+        await refreshMutation.mutateAsync(selectedLibrary.id);
+        notifyLibraryRefresh("done");
       } catch (e) {
         console.error("[library-screen] refresh library failed:", e);
+        notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
       }
       try {
         await syncDbNow(selectedLibrary, dataSources);
@@ -194,7 +195,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         console.error("[library-screen] db sync failed:", e);
       }
     })();
-  }, [selectedLibrary, dataSources, refreshLibrary]);
+  }, [selectedLibrary, dataSources, refreshMutation]);
 
   const leftMenuRef = useRef<MenuComponentRef>(null);
   const rightMenuRef = useRef<MenuComponentRef>(null);
@@ -275,15 +276,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
     void switchLibrary(libraryIdProp);
   }, [activeLibraryId, libraryIdProp, selectedLibrary, switchLibrary]);
-
-
-  useEffect(() => {
-    if (prevRefreshingIdRef.current !== null && refreshingLibraryId === null) {
-      const storeError = useAppStore.getState().error;
-      notifyLibraryRefresh(storeError ? "error" : "done", storeError ?? undefined);
-    }
-    prevRefreshingIdRef.current = refreshingLibraryId;
-  }, [refreshingLibraryId]);
 
   const isRemote = isRemoteSourceType(selectedLibrary?.sourceType);
   const selectedLibraryId = selectedLibrary?.id;
@@ -395,7 +387,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const getItemType = useCallback(() => (isGridView ? "grid" : "list"), [isGridView]);
 
-  if (loading && typeof effectiveLibraryId === "string" && !selectedLibrary) {
+  if (!storeReady && typeof effectiveLibraryId === "string" && !selectedLibrary) {
     return (
       <>
         <Stack.Screen
@@ -414,7 +406,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const showInvalidLibrary =
     typeof effectiveLibraryId === "string" &&
     !selectedLibrary &&
-    !loading &&
+    !storeReady &&
     libraries.length > 0;
 
   if (showInvalidLibrary) {
@@ -433,7 +425,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (!loading && libraries.length === 0) {
+  if (!storeReady && libraries.length === 0) {
     return (
       <>
         <Stack.Screen
@@ -456,7 +448,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (loading && libraries.length === 0) {
+  if (storeReady && libraries.length === 0) {
     return (
       <>
         <Stack.Screen
@@ -639,8 +631,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               gridGap={GRID_GAP}
               listPaddingH={LIST_PADDING_H}
             />
-          ) : error ? (
-            <EmptyState title={t("library.loadError.title")} detail={error} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
+          ) : booksError ? (
+            <EmptyState title={t("library.loadError.title")} detail={booksError.message} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
           ) : (
             <EmptyState title={t("library.noMatch.title")} detail={t("library.noMatch.detail")} icon={{ ios: "magnifyingglass", android: "search" }} />
           )

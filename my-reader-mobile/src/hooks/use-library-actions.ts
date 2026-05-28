@@ -8,30 +8,16 @@ import {
   pickCalibreLibrary,
   readBookCountFromLibrary,
 } from "../data/calibre";
-import { checkConnectivity } from "../sync/connectivity";
-import { resolveSyncTarget } from "../sync/resolve";
-import { refreshLibrary as syncRefreshLibrary } from "../sync/refresh-library";
-import { fetchBooksWithMeta, libraryQueryKeys } from "./queries/useLibraryQuery";
-import { queryClient } from "./queries/queryClient";
+import { refreshBooks } from "./queries/useLibraryQuery";
 import type { Library } from "@my-reader/tools/types/library";
-import type { BookItem } from "../data/types";
 import { isRemoteSourceType } from "../data/types";
 import { excludeLocalLibrarySource } from "../store/app-store.constants";
 import i18n from "@/src/i18n";
-
-function mergeLibraryUpdate(libraries: Library[], updatedLibrary: Library) {
-  return libraries.map((library) =>
-    library.id === updatedLibrary.id ? updatedLibrary : library,
-  );
-}
 
 export function useLibraryActions() {
   const store = useAppStore;
 
   async function hydrateFromBackend() {
-    store.getState().setLoading(true);
-    store.getState().setError(null);
-
     try {
       const state = store.getState();
       const hydratedLibraries = await Promise.all(
@@ -52,22 +38,17 @@ export function useLibraryActions() {
       store.getState().setLibraries(hydratedLibraries);
       store.getState().setDataSources(excludeLocalLibrarySource(state.dataSources));
       store.getState().setActiveLibraryId(nextActiveLibraryId);
-      store.getState().setLoading(false);
 
       await refreshBooks();
     } catch (caught) {
       store.getState().setLibraries([]);
       store.getState().setActiveLibraryId(null);
-      store.getState().setLoading(false);
-      store.getState().setError(
-        caught instanceof Error ? caught.message : i18n.t("sync.loadLibraryFailed"),
-      );
+    } finally {
+      store.getState().setStoreReady(true);
     }
   }
 
   async function addLibrary() {
-    store.getState().setError(null);
-
     try {
       const picked = await pickCalibreLibrary();
       if (picked === null) return null;
@@ -100,8 +81,6 @@ export function useLibraryActions() {
       await refreshBooks();
       return preparedLibrary;
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : i18n.t("sync.addLibraryFailed");
-      store.getState().setError(message);
       return null;
     }
   }
@@ -125,7 +104,6 @@ export function useLibraryActions() {
 
     store.getState().setLibraries(nextLibraries);
     store.getState().setActiveLibraryId(nextActiveLibraryId);
-    store.getState().setError(null);
 
     await refreshBooks();
     return true;
@@ -139,7 +117,6 @@ export function useLibraryActions() {
 
     store.getState().setLibraries(nextLibraries);
     store.getState().setActiveLibraryId(nextActiveLibraryId);
-    store.getState().setError(null);
     clearLocalCopyCacheByLibrary(id);
     clearAllReaderCaches();
 
@@ -148,96 +125,7 @@ export function useLibraryActions() {
 
   async function switchLibrary(id: string) {
     store.getState().setActiveLibraryId(id);
-    store.getState().setError(null);
     await refreshBooks();
-  }
-
-  async function refreshBooks() {
-    const state = store.getState();
-    const activeLibrary =
-      state.libraries.find((library) => library.id === state.activeLibraryId) ?? null;
-
-    if (!activeLibrary) {
-      store.getState().setLoading(false);
-      return;
-    }
-
-    // TODO: replace with proper loadingBooks setter after slice split
-    useAppStore.setState({ loadingBooks: true, error: null });
-
-    try {
-      const { books: nextBooks, metadataUri } = await queryClient.fetchQuery({
-        queryKey: libraryQueryKeys.books(state.activeLibraryId),
-        queryFn: () => fetchBooksWithMeta(activeLibrary, state.dataSources),
-      });
-
-      const { library: refreshedLibrary, bookCount } =
-        isRemoteSourceType(activeLibrary.sourceType)
-          ? {
-              library:
-                metadataUri === activeLibrary.metadataUri
-                  ? activeLibrary
-                  : { ...activeLibrary, metadataUri },
-              bookCount: activeLibrary.bookCount,
-            }
-          : await readBookCountFromLibrary(activeLibrary);
-
-      store.getState().setLibraries(
-        mergeLibraryUpdate(
-          store.getState().libraries,
-          refreshedLibrary.bookCount === bookCount ? refreshedLibrary : { ...refreshedLibrary, bookCount },
-        ),
-      );
-      useAppStore.setState({ books: nextBooks, loadingBooks: false });
-    } catch (caught) {
-      useAppStore.setState({
-        books: [],
-        loadingBooks: false,
-        error: caught instanceof Error ? caught.message : i18n.t("sync.readLibraryFailed"),
-      });
-    }
-  }
-
-  async function refreshLibrary(libraryId: string) {
-    const state = store.getState();
-    const library = state.libraries.find((l) => l.id === libraryId);
-    if (!library) return;
-    try {
-      const { backend } = await resolveSyncTarget(library, state.dataSources);
-      await checkConnectivity(backend);
-    } catch {
-      showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
-      return;
-    }
-    store.getState().setRefreshingLibraryId(libraryId);
-    store.getState().setError(null);
-    try {
-      const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(library, state.dataSources);
-
-      const nextLibraries = state.libraries.map((l) =>
-        l.id === libraryId
-          ? { ...newLibrary, bookCount: newBookCount }
-          : l,
-      );
-      store.getState().setLibraries(nextLibraries);
-
-      await refreshBooks();
-
-      store.getState().setRefreshingLibraryId(null);
-      console.info("Library refreshed:", {
-        libraryId,
-        added: diff.added.length,
-        removed: diff.removed.length,
-        modified: diff.modified.length,
-        newBookCount,
-      });
-    } catch (caught) {
-      store.getState().setRefreshingLibraryId(null);
-      useAppStore.setState({
-        loadingBooks: false,
-        error: caught instanceof Error ? caught.message : i18n.t("sync.refreshLibraryFailed"),
-      });
-    }
   }
 
   return {
@@ -247,6 +135,5 @@ export function useLibraryActions() {
     removeLibrary,
     switchLibrary,
     refreshBooks,
-    refreshLibrary,
   };
 }

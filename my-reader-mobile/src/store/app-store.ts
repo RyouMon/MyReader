@@ -70,12 +70,12 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        state.setHydrated(true);
+        state.setStoreReady(true);
       },
     }
   )
 );
 
 export function useAppStoreReady() {
-  return useAppStore((state) => state.hydrated);
+  return useAppStore((state) => state.storeReady);
 }

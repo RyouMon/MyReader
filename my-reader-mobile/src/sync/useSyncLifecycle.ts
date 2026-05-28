@@ -38,15 +38,15 @@ function handleSyncError(err: unknown, trigger: string): void {
  *   disabled auto runs, this hook just avoids unnecessary work.
  */
 export function useSyncLifecycle(): void {
-  const hydrated = useAppStore((state) => state.hydrated);
+  const storeReady = useAppStore((state) => state.storeReady);
   const hasRunStartup = useRef(false);
   const lastStateRef = useRef<AppStateStatus>(AppState.currentState ?? "active");
 
   useEffect(() => {
-    if (!hydrated || hasRunStartup.current) return;
+    if (!storeReady || hasRunStartup.current) return;
     hasRunStartup.current = true;
     void runSync("startup").catch((err) => handleSyncError(err, "startup"));
-  }, [hydrated]);
+  }, [storeReady]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (next) => {

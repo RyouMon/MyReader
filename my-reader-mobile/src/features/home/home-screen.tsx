@@ -7,6 +7,7 @@ import { Image, Text, View } from "@/tw";
 
 import { EmptyState, HeroCard, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "@/src/components";
 import { HorizontalBookShelf } from "@/src/features/library/components/books";
+import { useBooks } from "@/src/hooks/queries/useLibraryQuery";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function HomeScreen() {
@@ -14,8 +15,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
-  const books = useAppStore((s) => s.books);
-  const loadingBooks = useAppStore((s) => s.loadingBooks);
+  const { data: books = [], isLoading: loadingBooks } = useBooks(activeLibraryId);
   const activeLibrary = useMemo(
     () => libraries.find((library) => library.id === activeLibraryId) ?? null,
     [activeLibraryId, libraries],

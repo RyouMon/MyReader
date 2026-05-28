@@ -13,6 +13,7 @@ import { isRemoteSourceType } from "@/src/data/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";
+import { useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { Text, View } from "@/tw";
 
@@ -119,12 +120,13 @@ export default function LibraryDetailScreen() {
   const { t } = useTranslation();
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
-  const { removeLibrary, refreshLibrary, switchLibrary } = useLibraryActions();
+  const { removeLibrary, switchLibrary } = useLibraryActions();
+  const refreshMutation = useRefreshLibraryMutation();
   const libraries = useAppStore((state) => state.libraries);
   const activeLibraryId = useAppStore((state) => state.activeLibraryId);
   const dataSources = useAppStore((state) => state.dataSources);
 
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshing = refreshMutation.isPending;
 
   const libraryIndex = useMemo(
     () => libraries.findIndex((item) => item.id === libraryId),
@@ -232,12 +234,11 @@ export default function LibraryDetailScreen() {
                   onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     void (async () => {
-                      setIsRefreshing(true);
-                      await refreshLibrary(library.id);
-                      setIsRefreshing(false);
-                      const storeError = useAppStore.getState().error;
-                      if (!storeError) {
+                      try {
+                        await refreshMutation.mutateAsync(library.id);
                         notifyLibraryRefresh("done");
+                      } catch (e) {
+                        notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
                       }
                     })();
                   }}
