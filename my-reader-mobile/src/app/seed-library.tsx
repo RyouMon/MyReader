@@ -6,7 +6,7 @@ import { unzipSync } from "fflate";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
-import { readBookCountFromLibrary } from "@/src/data/calibre";
+import { readBookCountFromLibrary } from "@/src/domain/library/calibre";
 import { useAppStore } from "@/src/store/app-store";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
 

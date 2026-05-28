@@ -2,7 +2,7 @@ import type { Library, DataSource } from "../../data/types";
 import type { RemoteBackend } from "./backend";
 import { createRemoteBackend } from "./factory";
 import { useAppStore } from "../../store/app-store";
-import { forceRefreshMetadata } from "../../data/remote-library-shared";
+import { forceRefreshMetadata } from "../../domain/library/remote-library-shared";
 
 export type MetadataCheckResult =
   | { changed: false; etag: string }

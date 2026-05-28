@@ -2,8 +2,8 @@ import type { BookDetail } from "@my-reader/tools/types/book";
 
 import i18n from "@/src/i18n";
 
-import { buildCoverUri } from "../data/calibre";
-import { createRemoteOps } from "../data/remote-library";
+import { buildCoverUri } from "../domain/library/calibre";
+import { createRemoteOps } from "../domain/library/remote-library";
 import type { BookItem, DataSource, Library } from "../data/types";
 
 export const IDENTIFIER_LABELS: Record<string, string> = {

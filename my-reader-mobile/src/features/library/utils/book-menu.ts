@@ -4,7 +4,7 @@ import i18n from "@/src/i18n";
 
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 
-import { getReadableFormats, resolveEffectiveFormat } from "@/src/data/book-formats";
+import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 
 export type BookMenuConfig = {
   isWebdav: boolean;

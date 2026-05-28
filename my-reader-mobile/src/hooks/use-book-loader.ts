@@ -6,10 +6,10 @@ import {
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
-} from "@/src/data/calibre";
+} from "@/src/domain/library/calibre";
 import { getFileState, type LocalState } from "@/src/repos/file_state";
 import { getReadingProgress } from "@/src/data/reading-progress";
-import { createRemoteOps } from "@/src/data/remote-library";
+import { createRemoteOps } from "@/src/domain/library/remote-library";
 import type { DataSource, Library } from "@/src/data/types";
 import { isRemoteSourceType } from "@/src/data/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";

@@ -4,8 +4,8 @@ import type { DataSource } from "@my-reader/tools/types/data-source";
 import {
   forceRefreshLibraryMetadata,
   readBookCountFromMetadata,
-} from "../data/calibre";
-import { createRemoteOps } from "../data/remote-library";
+} from "../domain/library/calibre";
+import { createRemoteOps } from "../domain/library/remote-library";
 import { openDatabaseFromUri } from "../services/db/sqlite";
 import type { Library } from "../data/types";
 import { isRemoteSourceType } from "../data/types";

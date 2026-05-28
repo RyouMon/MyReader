@@ -7,7 +7,7 @@ import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimate
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, EmptyState } from "@/src/components/ui";
-import { getBookFormatPaths } from "@/src/data/calibre";
+import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import { getFileState, type LocalState } from "@/src/repos/file_state";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import type { BookItem, DataSource, Library } from "@/src/data/types";

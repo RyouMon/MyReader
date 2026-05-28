@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { normalizeCurrentPath } from "@/src/data/remote-library";
+import { normalizeCurrentPath } from "@/src/domain/library/remote-library";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,9 +11,9 @@ import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import { createRemoteBackend } from "@/src/services/remote/factory";
-import { createLibraryFromPath } from "@/src/data/remote-library-shared";
+import { createLibraryFromPath } from "@/src/domain/library/remote-library-shared";
 import type { DataSource, Library } from "@/src/data/types";
-import type { RemoteLibraryOps } from "@/src/data/remote-library";
+import type { RemoteLibraryOps } from "@/src/domain/library/remote-library";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
 import { readWebDavPassword } from "@/src/services/storage/credentials";
 

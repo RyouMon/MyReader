@@ -7,7 +7,7 @@ import {
   ensureLibraryMetadataCached,
   pickCalibreLibrary,
   readBookCountFromLibrary,
-} from "../data/calibre";
+} from "../domain/library/calibre";
 import { refreshBooks } from "./queries/useLibraryQuery";
 import type { Library } from "@my-reader/tools/types/library";
 import { isRemoteSourceType } from "../data/types";

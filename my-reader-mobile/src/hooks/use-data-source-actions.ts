@@ -10,7 +10,7 @@ import {
 import { useAppStore } from "@/src/store/app-store";
 import { uuid } from "@/src/utils/common";
 import type { DataSource, DataSourceConnectionTestResult, DataSourceWebdav } from "@my-reader/tools/types/data-source";
-import { testConnection as probeWebDav } from "../data/webdav";
+import { testConnection as probeWebDav } from "../services/remote/webdav/probe";
 
 export function useDataSourceActions() {
   const store = useAppStore;

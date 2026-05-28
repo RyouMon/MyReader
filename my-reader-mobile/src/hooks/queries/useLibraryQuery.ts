@@ -1,13 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { readBooksFromLibrary } from "@/src/data/calibre";
-import { createRemoteOps } from "@/src/data/remote-library";
+import { readBooksFromLibrary } from "@/src/domain/library/calibre";
+import { createRemoteOps } from "@/src/domain/library/remote-library";
 import type { BookItem, DataSource, Library } from "@/src/data/types";
 import { useAppStore } from "@/src/store/app-store";
 import { checkConnectivity } from "@/src/sync/connectivity";
 import { resolveSyncTarget } from "@/src/sync/resolve";
 import { refreshLibrary as syncRefreshLibrary } from "@/src/sync/refresh-library";
-import { readBookCountFromLibrary } from "@/src/data/calibre";
+import { readBookCountFromLibrary } from "@/src/domain/library/calibre";
 import { isRemoteSourceType } from "@/src/data/types";
 import { queryClient } from "./queryClient";
 import i18n from "@/src/i18n";

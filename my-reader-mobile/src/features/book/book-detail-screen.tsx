@@ -12,7 +12,7 @@ import { View } from "@/tw";
 
 import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
-import { readBookDetailFromMetadata } from "@/src/data/calibre";
+import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useBooks } from "@/src/hooks/queries/useLibraryQuery";
 import { useAppStore } from "@/src/store/app-store";
