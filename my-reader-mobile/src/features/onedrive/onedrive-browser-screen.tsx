@@ -10,16 +10,38 @@ import { Text } from "@/tw";
 import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
-import { createOneDriveOps } from "@/src/data/onedrive";
-import { getValidAccessToken } from "@/src/services/auth/onedrive";
-import type { OneDriveDataSource, DataSource } from "@/src/data/types";
+import { createRemoteBackend } from "@/src/remote/factory";
+import { createLibraryFromPath } from "@/src/data/remote-library-shared";
+import type { DataSource, Library } from "@/src/data/types";
+import type { RemoteLibraryOps } from "@/src/data/remote-library";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
 
 const resolveOneDriveOps = async (candidate: DataSource) => {
   if (candidate.type !== "onedrive") return null;
   try {
-    const accessToken = await getValidAccessToken(candidate.id);
-    return createOneDriveOps({ ...candidate, accessToken } satisfies OneDriveDataSource);
+    const placeholderLib: Library = {
+      id: "browse",
+      name: "",
+      path: "",
+      bookCount: 0,
+      dataSourceId: candidate.id,
+      sourceType: "onedrive",
+    };
+    const backend = await createRemoteBackend(candidate, placeholderLib);
+    if (!backend) return null;
+
+    const ops: RemoteLibraryOps = {
+      testConnection: async () => {
+        const headers = await backend.getAuthHeaders();
+        return fetch("https://graph.microsoft.com/v1.0/me/drive", { method: "GET", headers });
+      },
+      listDirectory: (path: string) => backend.listDirectory(path),
+      createLibraryFromPath: (remotePath: string) => createLibraryFromPath(backend, candidate.id, candidate.name, remotePath),
+      readBooks: async () => ({ books: [], metadataUri: "" }),
+      buildCoverUri: async () => undefined,
+      forceRefreshMetadata: async () => null,
+    };
+    return ops;
   } catch {
     return null;
   }

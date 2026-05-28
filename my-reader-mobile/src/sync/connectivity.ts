@@ -1,4 +1,4 @@
-import type { RemoteFileOps } from "./backend";
+import type { RemoteBackend } from "./backend";
 
 export type ConnectivityCheckResult = {
   reachable: boolean;
@@ -6,14 +6,10 @@ export type ConnectivityCheckResult = {
   error?: string;
 };
 
-/**
- * Probe the backend by stat-ing the root path.
- * Accepts a pre-built backend so the caller controls the lifecycle.
- */
-export async function checkConnectivity(backend: RemoteFileOps): Promise<ConnectivityCheckResult> {
+export async function checkConnectivity(backend: RemoteBackend): Promise<ConnectivityCheckResult> {
   const start = Date.now();
   try {
-    await backend.statRemote(".");
+    await backend.statRemoteFile(".");
     return { reachable: true, latencyMs: Date.now() - start };
   } catch (err) {
     return {

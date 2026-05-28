@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 
 import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "./actions";
-import { isTransferBackend } from "./backend";
 import { runSync, type SyncTrigger } from "./scheduler";
 
 export type SyncActions = {

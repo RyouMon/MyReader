@@ -1,6 +1,6 @@
 import type { DataSource, Library } from "../data/types";
 
-import { resolveLibraryBooksDir } from "./backend";
+import { resolveLibraryBooksDir } from "../services/fs/path";
 import { getOrCreateDeviceId } from "./device";
 import { loadManifest, type Manifest } from "./manifest";
 import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";

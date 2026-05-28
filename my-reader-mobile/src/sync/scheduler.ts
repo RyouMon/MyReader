@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import { useAppStore } from "../store/app-store";
+import { isLocalDirect } from "./resolve";
 import { isRemoteSourceType } from "../data/types";
 
 import {
@@ -133,7 +134,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
           continue;
         }
 
-        if (ctx.backend.kind === "local-direct") {
+        if (isLocalDirect(ctx.backend)) {
           entry.skipped = true;
           entry.skipReason = i18n.t("sync.localDirectRead");
           results.push(entry);

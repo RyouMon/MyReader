@@ -1,14 +1,16 @@
+// Re-export path utilities that sync code still needs
+export { resolveLibraryBooksDir, localFileUriFor } from "../../services/fs/path";
+
+// Re-export new RemoteBackend types for sync consumers
+export type {
+  RemoteBackend,
+  RemoteFileStat,
+  RemoteDirEntry,
+  DownloadRequest,
+  UploadRequest,
+  PreparedUpload,
+} from "../../remote/backend";
+export { createRemoteBackend } from "../../remote/factory";
+
+// Keep LocalDirectBackend for local library sync
 export { LocalDirectBackend } from "./local";
-export { OneDriveBackend } from "./onedrive";
-export { WebDavBackend } from "./webdav";
-export {
-  type RemoteFileOps,
-  type NativeTransferOps,
-  type TransferBackend,
-  type BackendKind,
-  type DownloadRequest,
-  type UploadRequest,
-  type RemoteStat,
-  isTransferBackend,
-} from "./types";
-export { buildBackend, localFileUriFor, resolveLibraryBooksDir } from "./build";

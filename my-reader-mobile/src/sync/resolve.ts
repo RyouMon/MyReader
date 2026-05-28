@@ -3,27 +3,21 @@ import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-so
 import { readWebDavPassword, readOneDriveRefreshToken } from "../services/storage/credentials";
 import { parentDirectoryUriForFileUri } from "../services/fs/path";
 import { SyncConfigError } from "../errors";
-
-import { buildBackend, resolveLibraryBooksDir, type RemoteFileOps } from "./backend";
+import { createRemoteBackend } from "../remote/factory";
+import type { RemoteBackend } from "../remote/backend";
+import { LocalDirectBackend } from "./backend/local";
+import { resolveLibraryBooksDir } from "../services/fs/path";
 import i18n from "@/src/i18n";
 
+export type SyncBackend = RemoteBackend | LocalDirectBackend;
+
 export type ResolvedSyncTarget = {
-  backend: RemoteFileOps;
-  /** Stable per-backend scope used for both manifest naming and file_state rows. */
+  backend: SyncBackend;
   dataSourceId: string;
   libraryId: string;
-  /** Local directory for materialized remote files. */
   libraryCacheDirUri: string;
 };
 
-/**
- * Resolve a library + its data source into a ready-to-use `SyncBackend` plus
- * the local cache directory used to stage downloaded bytes.
- *
- * Throws when the library references a remote source that can't be found or
- * whose credentials haven't been unlocked yet — callers should surface this to
- * the user so they can fix credentials.
- */
 export async function resolveSyncTarget(
   library: Library,
   dataSources: DataSource[],
@@ -42,11 +36,8 @@ export async function resolveSyncTarget(
       throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"));
     }
     const source: WebDavDataSource = { ...rawSource, password };
-    const backend = buildBackend({
-      kind: "webdav",
-      source,
-      libraryPath: library.sourcePath ?? library.path ?? "",
-    });
+    const backend = await createRemoteBackend(source, library);
+    if (!backend) throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"));
     return {
       backend,
       dataSourceId: rawSource.id,
@@ -66,11 +57,8 @@ export async function resolveSyncTarget(
     if (!refreshToken) {
       throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"));
     }
-    const backend = buildBackend({
-      kind: "onedrive",
-      dataSourceId: rawSource.id,
-      libraryPath: library.sourcePath ?? library.path ?? "",
-    });
+    const backend = await createRemoteBackend(rawSource, library);
+    if (!backend) throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"));
     return {
       backend,
       dataSourceId: rawSource.id,
@@ -83,11 +71,19 @@ export async function resolveSyncTarget(
   if (!libraryRootUri) {
     throw new SyncConfigError(i18n.t("sync.cannotResolveLocalPath"));
   }
-  const backend = buildBackend({ kind: "local-direct", libraryRootUri });
+  const backend = new LocalDirectBackend(libraryRootUri);
   return {
     backend,
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
     libraryCacheDirUri,
   };
+}
+
+export function isLocalDirect(backend: SyncBackend): boolean {
+  return backend.kind === "local-direct";
+}
+
+export function isRemoteBackend(backend: SyncBackend): backend is RemoteBackend {
+  return backend.kind === "onedrive" || backend.kind === "webdav";
 }

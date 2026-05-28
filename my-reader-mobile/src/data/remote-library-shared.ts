@@ -1,22 +1,11 @@
-import { File } from "expo-file-system";
+import { File as ExpoFile } from "expo-file-system";
 
 import i18n from "@/src/i18n";
 
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { openDatabaseFromUri } from "../services/db/sqlite";
 import type { BookItem, Library } from "./types";
-
-// -- Shared types (moved from onedrive.ts and webdav.ts) --
-
-export type RawBookRow = {
-  id: number;
-  title: string | null;
-  author_sort: string | null;
-  authors: string | null;
-  path: string | null;
-  has_cover: number | null;
-  timestamp: string | null;
-};
+import type { RemoteBackend } from "../remote/backend";
 
 // -- Shared constants --
 
@@ -40,39 +29,33 @@ export const BOOKS_QUERY = `
 
 // -- Shared pure functions --
 
+export type RawBookRow = {
+  id: number;
+  title: string | null;
+  author_sort: string | null;
+  authors: string | null;
+  path: string | null;
+  has_cover: number | null;
+  timestamp: string | null;
+};
+
 export function splitConcat(value: string | null): string[] {
   return value ? value.split("||").filter(Boolean) : [];
 }
 
-// -- Backend adapter interface --
-
-/** Backend-specific operations that differ between OneDrive and WebDAV. */
-export type RemoteBackendAdapter = {
-  cacheKeyPrefix: string;
-  sourceType: "onedrive" | "webdav";
-  normalizePath(path: string): string;
-  downloadToCache(remotePath: string, localName: string): Promise<File>;
-  buildCoverUri(
-    library: Library,
-    bookPath: string,
-    hasCover: boolean,
-  ): Promise<BookItem["coverUri"]>;
-};
-
-// -- Shared composite functions --
+// -- Shared composite functions using RemoteBackend --
 
 export async function ensureMetadataCached(
   library: Library,
-  adapter: RemoteBackendAdapter,
+  backend: RemoteBackend,
 ): Promise<string | null> {
   const metadataPath = library.metadataUri;
   if (!metadataPath) {
-    // metadataUri is missing — download from remote
     try {
-      const remoteBase = adapter.normalizePath(library.sourcePath ?? library.path);
-      const metadataFile = await adapter.downloadToCache(
+      const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
+      const metadataFile = await backend.downloadToCache(
         `${remoteBase}/metadata.db`,
-        `${adapter.cacheKeyPrefix}-${library.id}-metadata.db`,
+        `${backend.kind}-${library.id}-metadata.db`,
       );
       return metadataFile.uri;
     } catch {
@@ -85,16 +68,16 @@ export async function ensureMetadataCached(
     }
   }
 
-  const existingMetadata = new File(metadataPath);
+  const existingMetadata = new ExpoFile(metadataPath);
   if (existingMetadata.exists) {
     return existingMetadata.uri;
   }
 
   try {
-    const remoteBase = adapter.normalizePath(library.sourcePath ?? library.path);
-    const metadataFile = await adapter.downloadToCache(
+    const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
+    const metadataFile = await backend.downloadToCache(
       `${remoteBase}/metadata.db`,
-      `${adapter.cacheKeyPrefix}-${library.id}-metadata.db`,
+      `${backend.kind}-${library.id}-metadata.db`,
     );
     return metadataFile.uri;
   } catch {
@@ -109,13 +92,13 @@ export async function ensureMetadataCached(
 
 export async function forceRefreshMetadata(
   library: Library,
-  adapter: RemoteBackendAdapter,
+  backend: RemoteBackend,
 ): Promise<string | null> {
   try {
-    const remoteBase = adapter.normalizePath(library.sourcePath ?? library.path);
-    const metadataFile = await adapter.downloadToCache(
+    const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
+    const metadataFile = await backend.downloadToCache(
       `${remoteBase}/metadata.db`,
-      `${adapter.cacheKeyPrefix}-${library.id}-metadata.db`,
+      `${backend.kind}-${library.id}-metadata.db`,
     );
     return metadataFile.uri;
   } catch {
@@ -129,15 +112,15 @@ export async function forceRefreshMetadata(
 }
 
 export async function createLibraryFromPath(
-  adapter: RemoteBackendAdapter,
+  backend: RemoteBackend,
   sourceId: string,
   sourceName: string,
   remoteLibraryPath: string,
 ): Promise<Library> {
-  const normalizedPath = adapter.normalizePath(remoteLibraryPath);
-  const metadataFile = await adapter.downloadToCache(
+  const normalizedPath = backend.normalizePath(remoteLibraryPath);
+  const metadataFile = await backend.downloadToCache(
     `${normalizedPath}/metadata.db`,
-    `${adapter.cacheKeyPrefix}-${sourceId}-${Date.now()}-metadata.db`,
+    `${backend.kind}-${sourceId}-${Date.now()}-metadata.db`,
   );
 
   const db = await openDatabaseFromUri(metadataFile.uri);
@@ -152,7 +135,7 @@ export async function createLibraryFromPath(
       bookCount: row ? Number(row.count) : 0,
       addedAt: Date.now(),
       dataSourceId: sourceId,
-      sourceType: adapter.sourceType,
+      sourceType: backend.kind,
       sourcePath: normalizedPath,
     };
   } finally {
@@ -162,9 +145,10 @@ export async function createLibraryFromPath(
 
 export async function readBooks(
   library: Library,
-  adapter: RemoteBackendAdapter,
+  backend: RemoteBackend,
+  buildCoverUri: (library: Library, bookPath: string, hasCover: boolean) => Promise<BookItem["coverUri"]>,
 ): Promise<{ books: BookItem[]; metadataUri: string }> {
-  const metadataUri = await ensureMetadataCached(library, adapter);
+  const metadataUri = await ensureMetadataCached(library, backend);
   if (!metadataUri) {
     return { books: [], metadataUri: library.metadataUri! };
   }
@@ -179,7 +163,7 @@ export async function readBooks(
 
         const coverUri =
           row.path && (row.has_cover ?? 0) !== 0
-            ? await adapter.buildCoverUri(library, row.path, true)
+            ? await buildCoverUri(library, row.path, true)
             : undefined;
 
         return {

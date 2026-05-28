@@ -14,7 +14,7 @@ import type { DataSource, Library } from "@/src/data/types";
 import { isRemoteSourceType } from "@/src/data/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { useAppStore } from "@/src/store/app-store";
-import { localFileUriFor, resolveLibraryBooksDir } from "@/src/sync/backend";
+import { localFileUriFor, resolveLibraryBooksDir } from "@/src/services/fs/path";
 import { resolveReadFormat } from "@my-reader/tools/utils";
 import { libraryQueryKeys } from "./queries/useLibraryQuery";
 import { queryClient } from "./queries/queryClient";

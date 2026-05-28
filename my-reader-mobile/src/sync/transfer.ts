@@ -3,8 +3,9 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { Directory, File } from "expo-file-system";
 import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
-import type { RemoteFileOps, TransferBackend } from "./backend";
-import { isTransferBackend, localFileUriFor, resolveLibraryBooksDir } from "./backend";
+import type { RemoteBackend } from "./backend";
+import { isRemoteBackend } from "./resolve";
+import { localFileUriFor, resolveLibraryBooksDir } from "../services/fs/path";
 import { AppInvariantError, DataIntegrityError } from "../errors";
 import type { Manifest, ManifestEntry } from "./manifest";
 import { findEntry, removeEntry, saveManifest } from "./manifest";
@@ -135,14 +136,14 @@ async function deleteFileIfExists(file: File): Promise<void> {
   }
 }
 
-function downloadWithBackgroundTask(
-  backend: TransferBackend,
+async function downloadWithBackgroundTask(
+  backend: RemoteBackend,
   relativePath: string,
   destUri: string,
   onProgress?: (received: number, total: number) => void,
   options: BackgroundDownloadOptions = {},
 ): Promise<number> {
-  const request = backend.getDownloadRequest(relativePath);
+  const request = await backend.getDownloadRequest(relativePath, destUri);
 
   console.info("Start to download remote file with native adapter, params:", {
     taskId: options.taskId ?? null,
@@ -153,7 +154,7 @@ function downloadWithBackgroundTask(
 
   return startNativeDownload({
     relativePath,
-    url: request.url,
+    url: backend.contentUrl(relativePath),
     destinationUri: destUri,
     headers: request.headers,
     onProgress,
@@ -162,15 +163,17 @@ function downloadWithBackgroundTask(
 }
 
 async function uploadWithBackgroundTask(
-  backend: TransferBackend,
+  backend: RemoteBackend,
   relativePath: string,
   sourceUri: string,
   onProgress?: (sent: number, total: number) => void,
   options: BackgroundUploadOptions = {},
 ): Promise<number> {
-  const request = backend.getUploadRequest(relativePath);
+  const request = await backend.getUploadRequest(sourceUri, relativePath);
 
-  await backend.prepareUpload(relativePath);
+  if (backend.prepareUpload) {
+    await backend.prepareUpload(sourceUri, relativePath);
+  }
   console.info("Start to upload local file with native adapter, params:", {
     taskId: options.taskId ?? null,
     relativePath,
@@ -180,9 +183,9 @@ async function uploadWithBackgroundTask(
 
   return startNativeUpload({
     relativePath,
-    url: request.url,
+    url: backend.contentUrl(relativePath),
     sourceUri,
-    method: request.method,
+    method: "PUT",
     headers: request.headers,
     onProgress,
     options,
@@ -192,7 +195,7 @@ async function uploadWithBackgroundTask(
 // ─── Internal transfer ops (no file_state side effects) ─────────────────
 
 async function downloadFileManifest(
-  backend: TransferBackend,
+  backend: RemoteBackend,
   manifest: Manifest,
   libraryCacheDirUri: string,
   relativePath: string,
@@ -254,7 +257,7 @@ async function downloadFileManifest(
 }
 
 async function downloadFileDirectInternal(
-  backend: TransferBackend,
+  backend: RemoteBackend,
   libraryCacheDirUri: string,
   relativePath: string,
 ): Promise<DownloadOutcome> {
@@ -279,7 +282,7 @@ async function downloadFileDirectInternal(
 }
 
 async function downloadFileDirectWithProgressInternal(
-  backend: TransferBackend,
+  backend: RemoteBackend,
   libraryCacheDirUri: string,
   relativePath: string,
   onProgress?: (received: number, total: number) => void,
@@ -327,12 +330,11 @@ async function downloadFileDirectWithProgressInternal(
 
 // ─── Public API (with file_state upserts) ────────────────────────────────
 
-/** Download + record `present` state so the UI button reflects reality. */
 export async function downloadFile(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<DownloadResult> {
-  if (!isTransferBackend(ctx.backend)) {
+  if (!isRemoteBackend(ctx.backend)) {
     throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
   }
   console.info("Start to download manifest-backed file, params:", {
@@ -366,12 +368,11 @@ export async function downloadFile(
   return { entry, outcome };
 }
 
-/** Download a file directly without requiring a manifest entry. */
 export async function downloadFileDirect(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<DownloadOutcome> {
-  if (!isTransferBackend(ctx.backend)) {
+  if (!isRemoteBackend(ctx.backend)) {
     throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
   }
   const outcome = await downloadFileDirectInternal(ctx.backend, ctx.libraryCacheDirUri, relativePath);
@@ -390,7 +391,7 @@ export async function downloadFileDirectWithProgress(
   onProgress?: (received: number, total: number) => void,
   options: BackgroundDownloadOptions = {},
 ): Promise<DownloadOutcome> {
-  if (!isTransferBackend(ctx.backend)) {
+  if (!isRemoteBackend(ctx.backend)) {
     throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
   }
   const outcome = await downloadFileDirectWithProgressInternal(
@@ -405,7 +406,6 @@ export async function downloadFileDirectWithProgress(
   return outcome;
 }
 
-/** Flip a path back to `remote_only` (local file removed, manifest preserved). */
 export async function evictLocalFile(
   ctx: SyncTargetContext,
   relativePath: string,
@@ -422,7 +422,6 @@ export async function evictLocalFile(
   });
 }
 
-/** Offline-safe variant: evict local file without touching the backend. */
 export async function evictLocalFileOfflineSafe(
   library: Library,
   relativePath: string,
@@ -440,7 +439,6 @@ export async function evictLocalFileOfflineSafe(
   });
 }
 
-/** Delete everywhere: local + remote + manifest entry + file_state row. */
 export async function deleteFileEverywhere(
   ctx: SyncTargetContext,
   relativePath: string,
@@ -460,9 +458,8 @@ export async function deleteFileEverywhere(
   await deleteFileState(ctx.library, relativePath);
 }
 
-/** Upload a local file into the backend + refresh manifest entry. */
 export async function pushFile(
-  backend: RemoteFileOps,
+  backend: RemoteBackend,
   manifest: Manifest,
   libraryCacheDirUri: string,
   relativePath: string,
@@ -473,19 +470,17 @@ export async function pushFile(
   if (!localFile.exists) {
     throw new DataIntegrityError(i18n.t("sync.localFileMissing", { path: relativePath }));
   }
-  if (backend.kind !== "local-direct") {
-    if (isTransferBackend(backend)) {
-      await uploadWithBackgroundTask(
-        backend,
-        relativePath,
-        localFile.uri,
-        options.onProgress,
-        options.upload,
-      );
-    } else {
-      const bytes = await localFile.bytes();
-      await backend.writeBytes(relativePath, bytes);
-    }
+  if (backend.prepareUpload) {
+    await uploadWithBackgroundTask(
+      backend,
+      relativePath,
+      localFile.uri,
+      options.onProgress,
+      options.upload,
+    );
+  } else {
+    const bytes = await localFile.bytes();
+    await backend.writeBytes(relativePath, bytes);
   }
 
   const hex = await blake3HexFile(localFile);

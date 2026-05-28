@@ -1,14 +1,3 @@
-/**
- * Database sync: LWW (Last-Writer-Wins by updated_at) push/pull for
- * reading_progress.
- *
- * Change files live at `.myreader/changes/{device}/{seq}.jsonl` on the backend.
- * Per-line format: {"t":"reading_progress","k":{...},"v":{...}}
- *
- * Mirrors the desktop LwwProvider in my-reader/src-tauri/src/sync/db_sync.rs.
- * Both sides use millisecond timestamps for updated_at.
- */
-
 import { and, eq, gt } from "drizzle-orm";
 
 import { getLibraryDatabase } from "../services/db/library-db";
@@ -17,9 +6,9 @@ import { getSyncMeta, setSyncMeta } from "../data/sync_meta";
 import type { DataSource, Library } from "../data/types";
 import { uuid } from "../utils/common";
 import { readingProgress } from "@my-reader/db/schema";
-import { buildBackend, type RemoteFileOps } from "./backend";
+import { LocalDirectBackend } from "./backend/local";
 import { getOrCreateDeviceId } from "./device";
-import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
+import { resolveSyncTarget, isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";
 
 const LOG_TARGET = "db-sync";
 
@@ -38,7 +27,7 @@ function lastPullCursorKey(deviceId: string, remoteDevice: string): string {
 }
 
 async function pushDbChanges(
-  backend: RemoteFileOps,
+  backend: SyncBackend,
   library: Library,
   deviceId: string,
 ): Promise<number> {
@@ -84,7 +73,7 @@ async function pushDbChanges(
 }
 
 async function pullDbChanges(
-  backend: RemoteFileOps,
+  backend: SyncBackend,
   library: Library,
   deviceId: string,
 ): Promise<number> {
@@ -142,7 +131,6 @@ async function pullDbChanges(
 
         if (!bookId || !format || !locatorJson || incomingTs <= 0) continue;
 
-        // LWW: only apply if incoming timestamp is newer.
         const { db } = await getLibraryDatabase(library);
         const existing = await db
           .select({ updatedAt: readingProgress.updatedAt })
@@ -187,22 +175,18 @@ export type DbSyncReport = {
   pulled: number;
 };
 
-/**
- * Run a full DB sync cycle (push → pull) using an already-resolved sync
- * target.
- */
 export async function syncDbFromContext(
   library: Library,
   ctx: ResolvedSyncTarget,
 ): Promise<DbSyncReport> {
-  if (ctx.backend.kind === "local-direct") {
+  if (isLocalDirect(ctx.backend)) {
     if (!library.securityScopedBookmark) {
       return { pushed: 0, pulled: 0 };
     }
     const deviceId = await getOrCreateDeviceId(library);
 
     const { result } = await withSecurityScopedLibraryAccess(library, async (resolvedUri) => {
-      const backend = buildBackend({ kind: "local-direct", libraryRootUri: resolvedUri });
+      const backend = new LocalDirectBackend(resolvedUri);
       const pushed = await pushDbChanges(backend, library, deviceId);
       const pulled = await pullDbChanges(backend, library, deviceId);
       return { pushed, pulled };
@@ -220,9 +204,6 @@ export async function syncDbFromContext(
   return { pushed, pulled };
 }
 
-/**
- * Convenience wrapper that resolves the sync target itself.
- */
 export async function syncDbNow(
   library: Library,
   dataSources: DataSource[],
