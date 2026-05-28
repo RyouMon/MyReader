@@ -1,4 +1,4 @@
-import type { Library, DataSource } from "../../data/types";
+import type { Library, DataSource } from "../../domain/types";
 import type { RemoteBackend } from "./backend";
 import { createRemoteBackend } from "./factory";
 import { useAppStore } from "../../store/app-store";

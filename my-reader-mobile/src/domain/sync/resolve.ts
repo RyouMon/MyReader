@@ -1,4 +1,4 @@
-import type { DataSource, Library, WebDavDataSource } from "../../data/types";
+import type { DataSource, Library, WebDavDataSource } from "../types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../../services/storage/credentials";
 import { parentDirectoryUriForFileUri } from "../../services/fs/path";

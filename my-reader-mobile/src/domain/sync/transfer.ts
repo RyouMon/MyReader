@@ -18,7 +18,7 @@ import {
 } from "../../services/download/native";
 import { parentDirectoryUriForFileUri } from "../../services/fs/path";
 import { upsertFileState, deleteFileState } from "../../repos/file_state";
-import type { Library } from "../../data/types";
+import type { Library } from "../types";
 import type { SyncTargetContext } from "./context";
 import i18n from "@/src/i18n";
 

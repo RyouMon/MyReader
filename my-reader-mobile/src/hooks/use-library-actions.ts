@@ -10,7 +10,7 @@ import {
 } from "../domain/library/calibre";
 import { refreshBooks } from "./queries/useLibraryQuery";
 import type { Library } from "@my-reader/tools/types/library";
-import { isRemoteSourceType } from "../data/types";
+import { isRemoteSourceType } from "../domain/types";
 import { excludeLocalLibrarySource } from "../store/app-store.constants";
 import i18n from "@/src/i18n";
 

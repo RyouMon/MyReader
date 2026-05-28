@@ -2,7 +2,7 @@ import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { View, useWindowDimensions } from "react-native";
 import React, { useCallback } from "react";
 
-import type { BookItem } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
 
 import { BookCard } from "./book-card";
 

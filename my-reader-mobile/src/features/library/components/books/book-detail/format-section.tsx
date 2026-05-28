@@ -8,7 +8,7 @@ import {
   cancel,
   useDownloadTaskForBookFormat,
   useDownloadTaskForPath,
-} from "@/src/sync/download-store";
+} from "@/src/domain/download/download-store";
 import { FORMAT_LABELS, formatFileSize } from "@/src/utils/book-detail";
 import { Pressable, ScrollView, Text, View } from "@/tw";
 import { SectionFrame, SectionHeader } from "./section-frame";

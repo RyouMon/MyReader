@@ -1,7 +1,7 @@
 import { memo, useEffect, useState } from "react";
 
 import { useThemePalette } from "@/src/design/tokens";
-import type { BookItem } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
 import { Image, Text, View } from "@/tw";
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";

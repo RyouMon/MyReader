@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 import { useAppStore } from "../../store/app-store";
 import { isLocalDirect } from "./resolve";
-import { isRemoteSourceType } from "../../data/types";
+import { isRemoteSourceType } from "../types";
 
 import {
   listBackedFiles,
@@ -14,7 +14,7 @@ import { syncDbFromContext } from "./db-sync";
 import { mirrorMissingCovers } from "../library/cover-mirror";
 import { libraryQueryKeys } from "../../hooks/queries/useLibraryQuery";
 import { queryClient } from "../../hooks/queries/queryClient";
-import type { BookItem } from "../../data/types";
+import type { BookItem } from "../types";
 import i18n from "@/src/i18n";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";

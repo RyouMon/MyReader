@@ -27,8 +27,8 @@ import {
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
 import { AndroidMenuRippleButton } from "@/src/components/ui/AndroidMenuRippleButton";
-import type { BookItem } from "@/src/data/types";
-import { isRemoteSourceType } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";

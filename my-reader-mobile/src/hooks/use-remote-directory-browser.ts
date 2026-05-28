@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { isMissingMetadataDbError, normalizeCurrentPath } from "@/src/domain/library/remote-library";
 import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/domain/library/remote-library";
-import type { DataSource } from "@/src/data/types";
+import type { DataSource } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
 import { useLibraryActions } from "./use-library-actions";
 

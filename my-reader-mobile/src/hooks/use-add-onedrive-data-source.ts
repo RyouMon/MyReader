@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
-import type { DataSource } from "@/src/data/types";
+import type { DataSource } from "@/src/domain/types";
 import { isUserCancelled, signIn } from "@/src/services/auth/onedrive";
 import { useAppStore } from "@/src/store/app-store";
 import { useDataSourceActions } from "./use-data-source-actions";

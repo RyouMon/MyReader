@@ -2,7 +2,7 @@ import { Link, type RelativePathString, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
-import type { DataSource } from "@/src/data/types";
+import type { DataSource } from "@/src/domain/types";
 import { View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";

@@ -8,7 +8,7 @@ import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { DataSourceInUseError } from "@/src/errors";
-import type { DataSourceOnedrive } from "@/src/data/types";
+import type { DataSourceOnedrive } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 

@@ -28,8 +28,8 @@ import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
 } from "../../services/fs/bookmarks";
-import type { BookItem, Library } from "../../data/types";
-import { isRemoteSourceType } from "../../data/types";
+import type { BookItem, Library } from "../types";
+import { isRemoteSourceType } from "../types";
 import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,

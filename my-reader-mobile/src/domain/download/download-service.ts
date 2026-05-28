@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 
-import type { Library } from "../../data/types";
+import type { Library } from "../types";
 import { AppInvariantError, DataIntegrityError } from "../../errors";
 import { useAppStore } from "../../store/app-store";
 

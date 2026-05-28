@@ -1,7 +1,7 @@
 import { randomUUID } from "expo-crypto";
 
 import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta";
-import type { Library } from "../../data/types";
+import type { Library } from "../types";
 
 const DEVICE_KEY = "id";
 

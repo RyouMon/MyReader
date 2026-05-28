@@ -7,8 +7,8 @@ import {
 } from "../library/calibre";
 import { createRemoteOps } from "../library/remote-library";
 import { openDatabaseFromUri } from "../../services/db/sqlite";
-import type { Library } from "../../data/types";
-import { isRemoteSourceType } from "../../data/types";
+import type { Library } from "../types";
+import { isRemoteSourceType } from "../types";
 
 import i18n from "@/src/i18n";
 import { clearReaderCachesForBook } from "../../services/fs/cache";

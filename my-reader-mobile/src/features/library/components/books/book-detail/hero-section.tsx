@@ -2,7 +2,7 @@ import type { BookDetail } from "@my-reader/tools/types/book";
 
 import { Image, Text, View } from "@/tw";
 import { FONT_DISPLAY, FONT_UI } from "@/src/design/typography";
-import type { BookItem } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
 import type { DetailColors } from "./types";
 
 type HeroSectionProps = {

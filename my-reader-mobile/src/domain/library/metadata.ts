@@ -1,4 +1,4 @@
-import type { Library, DataSource } from "../../data/types";
+import type { Library, DataSource } from "../types";
 import type { RemoteBackend } from "../../services/remote/backend";
 import { createRemoteBackend } from "../../services/remote/factory";
 import { forceRefreshMetadata } from "./remote-library-shared";

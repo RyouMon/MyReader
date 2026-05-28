@@ -6,13 +6,13 @@ import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import type { FileStateRow } from "@/src/repos/file_state";
-import type { BookItem, Library } from "@/src/data/types";
+import type { BookItem, Library } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
 import {
   dismissTasksForPath,
   enqueue as enqueueDownload,
-} from "@/src/sync/download-store";
-import type { SyncActions } from "@/src/sync/useSyncActions";
+} from "@/src/domain/download/download-store";
+import type { SyncActions } from "@/src/hooks/useSyncActions";
 import i18n from "@/src/i18n";
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"]);

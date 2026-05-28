@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { BookItem } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
 
 export type SortOption = "title" | "author" | "recentlyAdded";
 export type DownloadFilterOption = "all" | "downloaded" | "notDownloaded" | "downloading";

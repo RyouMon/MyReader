@@ -4,10 +4,10 @@ import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffect
 import { getAllBookFormats } from "@/src/domain/library/calibre";
 import { listFileStates, type FileStateRow, type LocalState } from "@/src/repos/file_state";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
-import type { BookItem, Library } from "@/src/data/types";
-import { isRemoteSourceType } from "@/src/data/types";
+import type { BookItem, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
-import { useDownloadStatusTasks, type DownloadStatusTask } from "@/src/sync/download-store";
+import { useDownloadStatusTasks, type DownloadStatusTask } from "@/src/domain/download/download-store";
 
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
 

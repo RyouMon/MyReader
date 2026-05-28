@@ -1,4 +1,4 @@
-import type { DataSource, Library } from "../../data/types";
+import type { DataSource, Library } from "../types";
 
 import { resolveLibraryBooksDir } from "../../services/fs/path";
 import { getOrCreateDeviceId } from "./device";

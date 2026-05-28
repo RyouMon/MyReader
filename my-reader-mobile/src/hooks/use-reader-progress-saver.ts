@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { setReadingProgress } from "@/src/data/reading-progress";
-import type { Library } from "@/src/data/types";
+import { setReadingProgress } from "@/src/domain/reading-progress";
+import type { Library } from "@/src/domain/types";
 import type { ReaderState } from "@/src/features/reader/components/reader/types";
 import { useAppStore } from "@/src/store/app-store";
 

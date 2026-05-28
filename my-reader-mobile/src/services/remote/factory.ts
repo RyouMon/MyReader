@@ -1,4 +1,4 @@
-import type { DataSource, Library, WebDavDataSource } from "../../data/types";
+import type { DataSource, Library, WebDavDataSource } from "../../domain/types";
 import type { RemoteBackend } from "./backend";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../storage/credentials";
 

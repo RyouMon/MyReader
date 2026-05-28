@@ -8,8 +8,8 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import type { DataSource, Library } from "@/src/data/types";
-import { isRemoteSourceType } from "@/src/data/types";
+import type { DataSource, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
 import { useAppStore } from "@/src/store/app-store";

@@ -12,7 +12,7 @@ import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
 import { createRemoteBackend } from "@/src/services/remote/factory";
 import { createLibraryFromPath } from "@/src/domain/library/remote-library-shared";
-import type { DataSource, Library } from "@/src/data/types";
+import type { DataSource, Library } from "@/src/domain/types";
 import type { RemoteLibraryOps } from "@/src/domain/library/remote-library";
 import { useRemoteDirectoryBrowser } from "@/src/hooks/use-remote-directory-browser";
 

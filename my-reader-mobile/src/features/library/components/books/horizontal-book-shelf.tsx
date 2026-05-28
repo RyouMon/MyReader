@@ -1,6 +1,6 @@
 import { FlatList } from "react-native";
 
-import type { BookItem } from "@/src/data/types";
+import type { BookItem } from "@/src/domain/types";
 
 import { BookCard } from "./book-card";
 

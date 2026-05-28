@@ -10,8 +10,8 @@ import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import { getFileState, type LocalState } from "@/src/repos/file_state";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
-import type { BookItem, DataSource, Library } from "@/src/data/types";
-import { isRemoteSourceType } from "@/src/data/types";
+import type { BookItem, DataSource, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
 import { FONT_UI } from "@/src/design/typography";
 import { describeDownloadError } from "@/src/errors";
 import {
