@@ -19,20 +19,9 @@ export async function openSyncContext(
   library: Library,
   dataSources: DataSource[],
 ): Promise<SyncTargetContext> {
-  console.info("Start to open sync context, params:", {
-    libraryId: library.id,
-    sourceType: library.sourceType ?? "local",
-    dataSourceId: library.dataSourceId ?? null,
-  });
   const deviceId = await getOrCreateDeviceId(library);
   const resolved = await resolveSyncTarget(library, dataSources);
   const manifest = await loadManifest(resolved.backend, deviceId);
-  console.info("Success to open sync context:", {
-    libraryId: resolved.libraryId,
-    dataSourceId: resolved.dataSourceId,
-    backendKind: resolved.backend.kind,
-    manifestEntries: manifest.entries.length,
-  });
   return { ...resolved, manifest, deviceId, library };
 }
 

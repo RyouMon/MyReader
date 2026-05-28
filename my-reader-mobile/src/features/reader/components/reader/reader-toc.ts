@@ -13,13 +13,7 @@ function buildTocItemId(prefix: string, path: readonly number[], rawHref: string
   return `${prefix}-${pathPart}-${rawHref ?? "no-href"}`;
 }
 
-
 export function flattenFixedToc(toc: TocItem[], totalPages: number): ReaderTocItem[] {
-  console.info("[mobile-reader-toc] flatten:start", {
-    sourceTocCount: toc.length,
-    totalPages,
-  });
-
   if (toc.length > 0) {
     const items: ReaderTocItem[] = [];
     function walk(list: TocItem[], parentPath: number[] = []) {
@@ -36,38 +30,20 @@ export function flattenFixedToc(toc: TocItem[], totalPages: number): ReaderTocIt
       }
     }
     walk(toc);
-
-    console.info("[mobile-reader-toc] flatten:from-source", {
-      flattenedCount: items.length,
-      firstItems: items.slice(0, 5),
-    });
     return items;
   }
   if (totalPages <= 20) {
-    const fallback = Array.from({ length: totalPages }, (_, i) => ({
+    return Array.from({ length: totalPages }, (_, i) => ({
       id: buildTocItemId("fixed-fallback", [i], undefined),
       label: i18n.t("reader.pageLabel", { page: i + 1 }),
       pageIndex: i,
       chapterIndex: i,
     }));
-
-    console.info("[mobile-reader-toc] flatten:fallback-pages", {
-      flattenedCount: fallback.length,
-    });
-    return fallback;
   }
-  console.info("[mobile-reader-toc] flatten:empty", {
-    reason: "no-source-toc-and-too-many-pages-for-fallback",
-    totalPages,
-  });
   return [];
 }
 
 export function flattenReflowToc(toc: TocItem[]): ReaderTocItem[] {
-  console.info("[mobile-reader-toc] flatten-reflow:start", {
-    sourceTocCount: toc.length,
-  });
-
   const items: ReaderTocItem[] = [];
   function walk(list: TocItem[], parentPath: number[] = []) {
     for (const [idx, t] of list.entries()) {
@@ -83,12 +59,6 @@ export function flattenReflowToc(toc: TocItem[]): ReaderTocItem[] {
     }
   }
   walk(toc);
-
-
-  console.info("[mobile-reader-toc] flatten-reflow:done", {
-    flattenedCount: items.length,
-    firstItems: items.slice(0, 5),
-  });
 
   return items;
 }

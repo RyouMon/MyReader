@@ -126,18 +126,7 @@ export function useBookLoader(
   }, [loadState]);
 
   useEffect(() => {
-    console.info("[mobile-reader] effect:start", {
-      id,
-      formatParam,
-      activeLibraryId,
-      hasActiveLibrary: Boolean(activeLibraryId),
-    });
-
     if (!id || !activeLibraryId) {
-      console.error("[mobile-reader] effect:missing-input", {
-        id,
-        hasActiveLibrary: Boolean(activeLibraryId),
-      });
       setLoadState({
         status: "error",
         message: !id ? i18n.t("bookLoader.missingParam") : i18n.t("bookLoader.noLibrary"),
@@ -145,25 +134,17 @@ export function useBookLoader(
       return;
     }
 
-    // Guard: 如果已经加载好了同一本书的同一格式，跳过重复加载
     if (
       loadStateRef.current.status === "ready" &&
       loadStateRef.current.bookId === Number(id) &&
       loadStateRef.current.format.toUpperCase() === (formatParam ?? "").toUpperCase()
     ) {
-      console.info("[mobile-reader] effect:skip-duplicate-load", {
-        id,
-        formatParam,
-        bookId: loadStateRef.current.bookId,
-        format: loadStateRef.current.format,
-      });
       return;
     }
 
     const state = useAppStore.getState();
     const currentLibrary = state.libraries.find((l) => l.id === activeLibraryId) ?? null;
     if (!currentLibrary) {
-      console.error("[mobile-reader] effect:library-not-found", { activeLibraryId });
       setLoadState({ status: "error", message: i18n.t("bookLoader.noLibrary") });
       return;
     }
@@ -176,12 +157,6 @@ export function useBookLoader(
     async function load() {
       try {
         enforceReaderCacheLimit(maxCacheSizeMB);
-        console.info("[mobile-reader] load:start", {
-          id,
-          formatParam,
-          libraryId: lib.id,
-          sourceType: lib.sourceType,
-        });
         setLoadState({ status: "loading", message: i18n.t("bookLoader.readingBookInfo") });
 
         // 优先从已有的 books 列表中获取封面和标题，减少等待感
@@ -197,7 +172,6 @@ export function useBookLoader(
 
         const calibreId = Number(id);
         if (!Number.isFinite(calibreId) || calibreId <= 0) {
-          console.error("[mobile-reader] load:invalid-book-id", { id, calibreId });
           setLoadState({ status: "error", message: i18n.t("bookLoader.invalidId") });
           return;
         }
@@ -205,10 +179,6 @@ export function useBookLoader(
         const detail = await readBookDetailFromMetadata(lib, calibreId);
         if (cancelled) return;
         if (!detail) {
-          console.error("[mobile-reader] load:book-detail-not-found", {
-            calibreId,
-            libraryId: lib.id,
-          });
           setLoadState({ status: "error", message: i18n.t("bookLoader.notFoundInLibrary") });
           return;
         }
@@ -225,19 +195,8 @@ export function useBookLoader(
         }
         setBookTitle(detail.title);
 
-        console.info("[mobile-reader] load:book-detail-ready", {
-          calibreId,
-          title: detail.title,
-          formats: detail.formats,
-        });
-
         const fmt = resolveReadFormat(detail.formats, formatParam);
         if (!fmt) {
-          console.error("[mobile-reader] load:no-supported-format", {
-            calibreId,
-            formats: detail.formats,
-            formatParam,
-          });
           setLoadState({
             status: "error",
             message: i18n.t("bookLoader.noReadableFormat"),
@@ -246,10 +205,6 @@ export function useBookLoader(
         }
 
         const fmtUpper = fmt.toUpperCase();
-        console.info("[mobile-reader] load:resolved-format", {
-          calibreId,
-          resolvedFormat: fmtUpper,
-        });
 
         setLoadState({
           status: "loading",
@@ -305,25 +260,6 @@ export function useBookLoader(
 
         if (cancelled) return;
 
-        console.info("[mobile-reader] load:file-ready", {
-          calibreId,
-          format: fmtUpper,
-          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
-          epubFileUri: needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
-          sourceType: lib.sourceType ?? "local",
-        });
-
-        console.info("[mobile-reader] load:reader-input-ready", {
-          calibreId,
-          format: fmtUpper,
-          archiveUri: localBookFile?.uri ?? webDavBookFile?.uri ?? epubArchiveFile?.uri ?? null,
-          layoutMode: detailLayoutMode,
-          renderer:
-            detailLayoutMode === "reflowable"
-              ? "readium-reflow"
-              : "readium-fixed",
-        });
-
         const archiveFile = needsPdfNativePath ? pdfLocalFile : (localBookFile ?? webDavBookFile);
         const bookArchiveFingerprint = archiveFile
           ? `${calibreId}-${fmtUpper}-${archiveFile.md5 ?? `sz${archiveFile.size ?? 0}`}`
@@ -355,25 +291,8 @@ export function useBookLoader(
           initialLocator,
           layoutMode: detailLayoutMode,
         });
-
-        console.info("[mobile-reader] load:ready", {
-          calibreId,
-          format: fmtUpper,
-          title: detail.title,
-          initialPage,
-          initialLocator: initialLocator
-            ? { href: initialLocator.href, type: initialLocator.type }
-            : null,
-          layoutMode: detailLayoutMode,
-        });
       } catch (e) {
         if (cancelled) return;
-        console.error("[mobile-reader] load:failed", {
-          id,
-          formatParam,
-          libraryId: lib.id,
-          error: e,
-        });
         setLoadState({
           status: "error",
           message: e instanceof Error ? e.message : String(e),

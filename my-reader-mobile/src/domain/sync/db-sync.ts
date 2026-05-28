@@ -8,11 +8,7 @@ import { uuid } from "../../utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import { LocalDirectBackend } from "./local";
 import { getOrCreateDeviceId } from "./device";
-import { resolveSyncTarget, isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";
-
-const LOG_TARGET = "db-sync";
-
-type ChangeRow = {
+import { resolveSyncTarget, isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";type ChangeRow = {
   t: string;
   k: Record<string, unknown>;
   v: Record<string, unknown>;
@@ -65,7 +61,6 @@ async function pushDbChanges(
   const seq = Date.now();
   const objectPath = `.myreader/changes/${deviceId}/${seq}.jsonl`;
 
-  console.info(`[${LOG_TARGET}] push: ${rows.length} rows → ${objectPath}`);
   await backend.writeBytes(objectPath, new TextEncoder().encode(payload));
   await setSyncMeta(library, cursorKey, String(maxTs));
 
@@ -90,7 +85,7 @@ async function pullDbChanges(
     try {
       files = await backend.listRemote(`.myreader/changes/${remoteDevice}/`);
     } catch (err) {
-      console.warn(`[${LOG_TARGET}] pull: cannot list .myreader/changes/${remoteDevice}/:`, err);
+      console.warn(`[db-sync] pull: cannot list .myreader/changes/${remoteDevice}/:`, err);
       continue;
     }
 
@@ -106,8 +101,6 @@ async function pullDbChanges(
 
     for (const { name: fileName, seq } of sortedFiles) {
       const filePath = `.myreader/changes/${remoteDevice}/${fileName}`;
-      console.info(`[${LOG_TARGET}] pull: reading ${filePath}`);
-
       const bytes = await backend.readBytes(filePath);
       const text = new TextDecoder().decode(bytes);
 
@@ -118,7 +111,7 @@ async function pullDbChanges(
         try {
           change = JSON.parse(trimmed) as ChangeRow;
         } catch {
-          console.warn(`[${LOG_TARGET}] pull: malformed line in ${filePath}`);
+          console.warn(`[db-sync] pull: malformed line in ${filePath}`);
           continue;
         }
         if (change.t !== "reading_progress") continue;
@@ -166,7 +159,6 @@ async function pullDbChanges(
     }
   }
 
-  console.info(`[${LOG_TARGET}] pull: applied ${applied} rows`);
   return applied;
 }
 
@@ -192,7 +184,6 @@ export async function syncDbFromContext(
       return { pushed, pulled };
     });
 
-    console.info(`[${LOG_TARGET}] local-direct sync done: pushed=${result.pushed}, pulled=${result.pulled}`);
     return result;
   }
 
@@ -200,7 +191,6 @@ export async function syncDbFromContext(
   const pushed = await pushDbChanges(ctx.backend, library, deviceId);
   const pulled = await pullDbChanges(ctx.backend, library, deviceId);
 
-  console.info(`[${LOG_TARGET}] sync done: pushed=${pushed}, pulled=${pulled}`);
   return { pushed, pulled };
 }
 

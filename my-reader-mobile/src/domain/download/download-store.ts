@@ -318,13 +318,6 @@ export async function enqueue(opts: EnqueueOptions): Promise<string> {
         t.relativePath === opts.relativePath &&
         isActiveStatus(t.status),
     )!.id;
-    console.info("Success to reuse active download task:", {
-      taskId: existingId,
-      libraryId: opts.libraryId,
-      bookId: opts.bookId ?? null,
-      format: opts.format ?? null,
-      relativePath: opts.relativePath,
-    });
     return existingId;
   }
 
@@ -342,13 +335,6 @@ export async function enqueue(opts: EnqueueOptions): Promise<string> {
     progress: 0,
     error: null,
   };
-  console.info("Start to enqueue download task, params:", {
-    taskId: id,
-    libraryId: task.libraryId,
-    bookId: task.bookId ?? null,
-    format: task.format ?? null,
-    relativePath: task.relativePath,
-  });
   setState({ tasks: [...state.tasks.filter((item) => item.id !== id), task] });
   alertedErrorTaskIds.delete(id);
   notifiedDoneTaskIds.delete(id);
@@ -361,12 +347,10 @@ export function cancel(taskId: string): void {
   const task = state.tasks.find((t) => t.id === taskId);
   if (!task) return;
   if (task.status === "starting" || task.status === "downloading") {
-    console.info("Start to cancel running download task, params:", { taskId, relativePath: task.relativePath });
     transitionTask(taskId, { type: "cancel" });
     nativeStopHandlers.get(taskId)?.();
     cancelNativeDownload(taskId);
   } else if (task.status === "queued") {
-    console.info("Start to cancel queued download task, params:", { taskId, relativePath: task.relativePath });
     transitionTask(taskId, { type: "cancel" });
   }
 }
@@ -413,13 +397,6 @@ function _runNext(): void {
   const activeCount = state.tasks.filter((t) => t.status === "starting" || t.status === "downloading").length;
   const queued = state.tasks.filter((t) => t.status === "queued");
   const slots = MAX_CONCURRENT - activeCount;
-  if (queued.length > 0 && slots > 0) {
-    console.info("Start to schedule queued download tasks, params:", {
-      activeCount,
-      queuedCount: queued.length,
-      slots,
-    });
-  }
   for (let i = 0; i < Math.min(slots, queued.length); i++) {
     _startTask(queued[i]!.id).catch((err) => {
       console.error("[DownloadStore] _startTask unexpected throw (outside try-catch):", err);
@@ -432,13 +409,6 @@ async function _startTask(taskId: string): Promise<void> {
   if (!task || task.status !== "queued") return;
 
   transitionTask(taskId, { type: "start" });
-  console.info("Start to run download task, params:", {
-    taskId,
-    libraryId: task.libraryId,
-    bookId: task.bookId ?? null,
-    format: task.format ?? null,
-    relativePath: task.relativePath,
-  });
 
   try {
     const current = state.tasks.find((t) => t.id === taskId);
@@ -458,10 +428,6 @@ async function _startTask(taskId: string): Promise<void> {
       },
     );
     if (state.tasks.find((t) => t.id === taskId)?.status !== "cancelled") {
-      console.info("Success to finish download task:", {
-        taskId,
-        relativePath: task.relativePath,
-      });
       transitionTask(taskId, { type: "done" });
     }
   } catch (err) {

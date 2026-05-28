@@ -161,13 +161,6 @@ export function useRefreshLibraryMutation() {
 
       await refreshBooks();
 
-      console.info("Library refreshed:", {
-        libraryId,
-        added: diff.added.length,
-        removed: diff.removed.length,
-        modified: diff.modified.length,
-        newBookCount,
-      });
     },
   });
 }

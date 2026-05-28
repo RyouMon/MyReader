@@ -46,7 +46,6 @@ export async function getReadingProgress(
   format: string,
 ): Promise<Locator | null> {
   const fmt = format.toUpperCase();
-  console.info(`[${LOG_TARGET}] get:start`, { bookId, format: fmt });
 
   try {
     const { db } = await getLibraryDatabase(library);
@@ -62,20 +61,13 @@ export async function getReadingProgress(
 
     const row = rows[0];
     if (!row) {
-      console.info(`[${LOG_TARGET}] get:miss`, { bookId, format: fmt });
       return null;
     }
 
     const raw: unknown = JSON.parse(row.locatorJson);
     const locator = parseStoredLocator(raw);
     if (locator) {
-      console.info(`[${LOG_TARGET}] get:hit`, {
-        bookId,
-        format: fmt,
-        ...summarizeLocator(locator),
-      });
     } else {
-      console.info(`[${LOG_TARGET}] get:unparseable`, { bookId, format: fmt });
     }
     return locator;
   } catch (e) {
@@ -100,12 +92,6 @@ export async function setReadingProgress(
   const json = JSON.stringify(normalized);
   const id = uuid();
 
-  console.info(`[${LOG_TARGET}] set:start`, {
-    bookId,
-    format: fmt,
-    updatedAt,
-    ...summarizeLocator(locator),
-  });
 
   try {
     const { db } = await getLibraryDatabase(library);
@@ -116,7 +102,6 @@ export async function setReadingProgress(
         target: [readingProgress.bookId, readingProgress.format],
         set: { locatorJson: json, updatedAt },
       });
-    console.info(`[${LOG_TARGET}] set:ok`, { bookId, format: fmt });
   } catch (e) {
     console.error(`[${LOG_TARGET}] set:error`, { bookId, format: fmt, error: e });
   }

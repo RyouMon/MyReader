@@ -226,11 +226,6 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
 
     const handlePublicationReady = useCallback(
       (event: PublicationReadyEvent) => {
-        console.info("[readium-reflow] publication-ready", {
-          title: event.metadata.title,
-          tocCount: event.tableOfContents.length,
-          positionCount: event.positions.length,
-        });
 
         positionsRef.current = event.positions;
         const tocItems = linksToTocItems(event.tableOfContents, event.positions);

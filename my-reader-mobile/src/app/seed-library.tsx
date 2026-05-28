@@ -43,7 +43,6 @@ async function seedLibrary() {
 
   // Skip if library already registered
   if (store.libraries.some((l) => l.name === LIBRARY_NAME)) {
-    console.info("[seed-library] already registered, skipping");
     return;
   }
 
@@ -53,7 +52,6 @@ async function seedLibrary() {
   if (existingDir.exists) {
     const metadataFile = new FSFile(existingDir.uri, "metadata.db");
     if (metadataFile.exists) {
-      console.info("[seed-library] directory exists with metadata, registering");
       const { library: preparedLibrary } = await readBookCountFromLibrary({
         id: `seed-${LIBRARY_NAME}`,
         name: LIBRARY_NAME,
@@ -70,7 +68,6 @@ async function seedLibrary() {
       return;
     }
     // Partial seed — clean up and re-seed
-    console.info("[seed-library] partial seed found, cleaning up");
     existingDir.delete();
   }
 
@@ -137,7 +134,6 @@ async function seedLibrary() {
     sourceType: "local",
   };
 
-  console.info("[seed-library] registering library:", { id: library.id, name: library.name });
   const { library: preparedLibrary } = await readBookCountFromLibrary(library);
   const nextLibraries = [...useAppStore.getState().libraries, preparedLibrary];
   const nextActiveLibraryId = useAppStore.getState().activeLibraryId ?? preparedLibrary.id;

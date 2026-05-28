@@ -43,10 +43,6 @@ type PickedDirectoryLike = {
   list?: () => unknown[];
 };
 
-function splitConcat(value: string | null) {
-  return value ? value.split("||").filter(Boolean) : [];
-}
-
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -138,13 +134,11 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
 
   try {
     directory = await Directory.pickDirectoryAsync();
-  } catch (error) {
-    console.info("[MyReader] " + i18n.t("sync.userCancelled"), error);
+  } catch {
     return null;
   }
 
   if (directory == null) {
-    console.info("[MyReader] " + i18n.t("sync.userCancelled"));
     return null;
   }
 
@@ -597,7 +591,6 @@ function assertBookFileExists(
   bookFile: FSFile,
   libraryPath: string,
   rowPath: string,
-  fileName: string
 ) {
   if (!bookFile.exists) {
     throw new Error(
@@ -606,16 +599,6 @@ function assertBookFileExists(
   }
 }
 
-function describeFileForLog(file: FSFile) {
-  return {
-    uri: file.uri,
-    exists: file.exists,
-    size: file.size ?? null,
-    name: file.name ?? null,
-    extension: file.extension ?? null,
-    md5: file.md5 ?? null,
-  };
-}
 
 export async function materializeBookFileToCache(
   library: Library,
@@ -639,62 +622,22 @@ export async function materializeBookFileToCache(
   // So we only create the file for the bytes-write path (iOS security-scoped).
   // The local path will skip this and let copy() create the file.
 
-  console.info("[mobile-reader] calibre:materialize-cache:start", {
-    libraryId: library.id,
-    calibreBookId,
-    format: format.toUpperCase(),
-    cachePrefix,
-    sourceType: library.sourceType ?? "local",
-    hasSecurityScopedBookmark: Boolean(library.securityScopedBookmark),
-    cacheFile: describeFileForLog(cachedFile),
-    rowPath,
-    segments,
-  });
-
   if (Platform.OS === "ios" && library.securityScopedBookmark) {
     cachedFile.create({ intermediates: true });
     const { result: sourceBytes } = await withSecurityScopedLibraryAccess(library, async (resolvedPath) => {
       const sourceFile = createBookFile(resolvedPath, segments, fileName);
-      assertBookFileExists(sourceFile, resolvedPath, rowPath, fileName);
-      console.info("[mobile-reader] calibre:materialize-cache:source-ios", {
-        libraryId: library.id,
-        calibreBookId,
-        resolvedPath,
-        sourceFile: describeFileForLog(sourceFile),
-      });
+      assertBookFileExists(sourceFile, resolvedPath, rowPath);
       return sourceFile.bytes();
-    });
-
-    console.info("[mobile-reader] calibre:materialize-cache:bytes-ios", {
-      libraryId: library.id,
-      calibreBookId,
-      byteLength: sourceBytes.byteLength,
-      cacheFileBeforeWrite: describeFileForLog(cachedFile),
     });
 
     cachedFile.write(sourceBytes);
 
-    console.info("[mobile-reader] calibre:materialize-cache:done-ios", {
-      libraryId: library.id,
-      calibreBookId,
-      cacheFile: describeFileForLog(cachedFile),
-    });
     return cachedFile;
   }
 
   const sourceFile = createBookFile(library.path, segments, fileName);
-  assertBookFileExists(sourceFile, library.path, rowPath, fileName);
-  console.info("[mobile-reader] calibre:materialize-cache:source-local", {
-    libraryId: library.id,
-    calibreBookId,
-    sourceFile: describeFileForLog(sourceFile),
-  });
+  assertBookFileExists(sourceFile, library.path, rowPath);
   sourceFile.copy(cachedFile);
-  console.info("[mobile-reader] calibre:materialize-cache:done-local", {
-    libraryId: library.id,
-    calibreBookId,
-    cacheFile: describeFileForLog(cachedFile),
-  });
   return cachedFile;
 }
 
@@ -724,12 +667,12 @@ export async function resolveBookFile(
     );
 
     const effectiveLibrary = refreshedLibrary ?? library;
-    assertBookFileExists(bookFile, effectiveLibrary.path, rowPath, fileName);
+    assertBookFileExists(bookFile, effectiveLibrary.path, rowPath);
     return bookFile;
   }
 
   const bookFile = createBookFile(library.path, segments, fileName);
-  assertBookFileExists(bookFile, library.path, rowPath, fileName);
+  assertBookFileExists(bookFile, library.path, rowPath);
   return bookFile;
 }
 

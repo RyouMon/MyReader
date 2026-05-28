@@ -62,10 +62,6 @@ export async function refreshLibrary(
   library: Library,
   dataSources: DataSource[],
 ): Promise<RefreshLibraryResult> {
-  console.info("Start to refresh library:", {
-    libraryId: library.id,
-    sourceType: library.sourceType ?? "local",
-  });
 
   // 1. Read old summaries from current cached metadata.db
   const oldMetadataUri = library.metadataUri;
@@ -163,14 +159,6 @@ export async function refreshLibrary(
       }
     }
   }
-
-  console.info("Success to refresh library:", {
-    libraryId: library.id,
-    added: diff.added.length,
-    removed: diff.removed.length,
-    modified: diff.modified.length,
-    newBookCount,
-  });
 
   return { diff, newBookCount, newLibrary };
 }

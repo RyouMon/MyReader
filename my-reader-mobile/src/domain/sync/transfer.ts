@@ -145,12 +145,6 @@ async function downloadWithBackgroundTask(
 ): Promise<number> {
   const request = await backend.getDownloadRequest(relativePath, destUri);
 
-  console.info("Start to download remote file with native adapter, params:", {
-    taskId: options.taskId ?? null,
-    relativePath,
-    destUri,
-    hasHeaders: Boolean(request.headers && Object.keys(request.headers).length > 0),
-  });
 
   return startNativeDownload({
     relativePath,
@@ -174,12 +168,6 @@ async function uploadWithBackgroundTask(
   if (backend.prepareUpload) {
     await backend.prepareUpload(sourceUri, relativePath);
   }
-  console.info("Start to upload local file with native adapter, params:", {
-    taskId: options.taskId ?? null,
-    relativePath,
-    sourceUri,
-    hasHeaders: Boolean(request.headers && Object.keys(request.headers).length > 0),
-  });
 
   return startNativeUpload({
     relativePath,
@@ -211,11 +199,6 @@ async function downloadFileManifest(
   if (destFile.exists) {
     const hex = await blake3HexFile(destFile);
     if (hex === entry.blake3) {
-      console.info("Success to use cached manifest file:", {
-        relativePath,
-        destUri,
-        size: destFile.size ?? 0,
-      });
       return {
         blake3: hex,
         size: destFile.size ?? 0,
@@ -232,10 +215,6 @@ async function downloadFileManifest(
   }
 
   await ensureParentDirFor(destUri);
-  console.info("Start to download manifest file with native downloader, params:", {
-    relativePath,
-    destUri,
-  });
   await downloadWithBackgroundTask(backend, relativePath, destUri);
   const written = uriToFile(destUri);
   const hex = await blake3HexFile(written);
@@ -243,11 +222,6 @@ async function downloadFileManifest(
     await deleteFileIfExists(written);
     throw new DataIntegrityError(i18n.t("sync.hashMismatch", { expected: entry.blake3, actual: hex }));
   }
-  console.info("Success to write manifest file to local cache:", {
-    relativePath,
-    destUri,
-    size: written.size ?? 0,
-  });
 
   return {
     blake3: hex,
@@ -267,11 +241,6 @@ async function downloadFileDirectInternal(
   const destFile = uriToFile(destUri);
 
   if (hasNonEmptyFileBytes(destFile)) {
-    console.info("Success to use cached direct download file:", {
-      relativePath,
-      destUri,
-      size: destFile.size ?? 0,
-    });
     return outcomeFromFileWithoutHash(destFile);
   }
   if (destFile.exists) {
@@ -295,11 +264,6 @@ async function downloadFileDirectWithProgressInternal(
   if (hasNonEmptyFileBytes(destFile)) {
     const size = destFile.size ?? 0;
     onProgress?.(size, size);
-    console.info("Success to use cached progress download file:", {
-      relativePath,
-      destUri,
-      size,
-    });
     return outcomeFromFileWithoutHash(destFile);
   }
   if (destFile.exists) {
@@ -307,19 +271,10 @@ async function downloadFileDirectWithProgressInternal(
   }
 
   await ensureParentDirFor(destUri);
-  console.info("Start native download to local cache, params:", {
-    relativePath,
-    destUri,
-  });
   try {
     const bytesDownloaded = await downloadWithBackgroundTask(backend, relativePath, destUri, onProgress, options);
     const written = uriToFile(destUri);
     const outcome = outcomeFromNativeDownload(written, bytesDownloaded, relativePath);
-    console.info("Success to finish native download to local cache:", {
-      relativePath,
-      destUri,
-      size: outcome.size,
-    });
     return outcome;
   } catch (err) {
     const partial = uriToFile(destUri);
@@ -337,11 +292,6 @@ export async function downloadFile(
   if (!isRemoteBackend(ctx.backend)) {
     throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
   }
-  console.info("Start to download manifest-backed file, params:", {
-    libraryId: ctx.libraryId,
-    dataSourceId: ctx.dataSourceId,
-    relativePath,
-  });
   const entry = findEntry(ctx.manifest, relativePath);
   if (!entry) {
     console.error("Failed to find manifest entry before download:", {
@@ -358,12 +308,6 @@ export async function downloadFile(
     localBlake3: outcome.blake3,
     localSize: outcome.size,
     localMtime: outcome.mtimeMs,
-  });
-  console.info("Success to download manifest-backed file:", {
-    libraryId: ctx.libraryId,
-    relativePath,
-    size: outcome.size,
-    blake3: outcome.blake3,
   });
   return { entry, outcome };
 }

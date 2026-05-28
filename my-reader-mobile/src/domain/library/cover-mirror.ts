@@ -128,11 +128,6 @@ export async function mirrorMissingCovers(
 
   if (missing.length === 0) return;
 
-  console.info("[cover-mirror] mirroring missing covers:", {
-    libraryId: library.id,
-    missingCount: missing.length,
-  });
-
   const libraryRoot = backend.normalizePath(library.sourcePath ?? library.path);
 
   let active = 0;
@@ -162,5 +157,4 @@ export async function mirrorMissingCovers(
     next();
   });
 
-  console.info("[cover-mirror] done:", { libraryId: library.id });
 }

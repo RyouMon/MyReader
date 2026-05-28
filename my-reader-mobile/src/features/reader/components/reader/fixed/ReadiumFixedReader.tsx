@@ -147,11 +147,6 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
 
     const handlePublicationReady = useCallback(
       (event: PublicationReadyEvent) => {
-        console.info("[readium-fixed] publication-ready", {
-          title: event.metadata.title,
-          tocCount: event.tableOfContents.length,
-          positionCount: event.positions.length,
-        });
 
         positionsRef.current = event.positions;
         const tocItems = positionsToTocItems(event.positions);

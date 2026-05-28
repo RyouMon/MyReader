@@ -117,12 +117,6 @@ export function startNativeDownload({
   options = {},
 }: NativeDownloadRequest): Promise<NativeDownloadResult> {
   const taskId = options.taskId ?? `download:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  console.info("Start to create native download task, params:", {
-    taskId,
-    relativePath,
-    destinationUri,
-    hasHeaders: Boolean(headers && Object.keys(headers).length > 0),
-  });
 
   const task = createDownloadTask({
     id: taskId,
@@ -175,12 +169,6 @@ export function startNativeDownload({
       finishCleanup();
       onProgress?.(bytesDownloaded, bytesTotal);
       completeNativeTask(taskId);
-      console.info("Success to finish native download task:", {
-        taskId,
-        relativePath,
-        bytesDownloaded,
-        bytesTotal,
-      });
       resolve({ bytesDownloaded, bytesTotal });
     }
 
@@ -229,11 +217,6 @@ export function startNativeDownload({
     task
       .begin(({ expectedBytes }) => {
         markNativeBegin(expectedBytes);
-        console.info("Start to receive native download bytes, params:", {
-          taskId,
-          relativePath,
-          expectedBytes,
-        });
         onProgress?.(0, expectedBytes);
       })
       .progress(({ bytesDownloaded, bytesTotal }) => {
@@ -270,13 +253,6 @@ export function startNativeUpload({
   options = {},
 }: NativeUploadRequest): Promise<NativeUploadResult> {
   const taskId = options.taskId ?? `upload:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  console.info("Start to create native upload task, params:", {
-    taskId,
-    relativePath,
-    sourceUri,
-    method,
-    hasHeaders: Boolean(headers && Object.keys(headers).length > 0),
-  });
 
   const task = createUploadTask({
     id: taskId,
@@ -339,13 +315,6 @@ export function startNativeUpload({
       finishCleanup();
       onProgress?.(bytesUploaded, bytesTotal);
       completeNativeTask(taskId);
-      console.info("Success to finish native upload task:", {
-        taskId,
-        relativePath,
-        responseCode,
-        bytesUploaded,
-        bytesTotal,
-      });
       resolve({ responseCode, responseBody, bytesUploaded, bytesTotal });
     }
 
@@ -394,11 +363,6 @@ export function startNativeUpload({
     task
       .begin(({ expectedBytes }) => {
         markNativeBegin(expectedBytes);
-        console.info("Start to send native upload bytes, params:", {
-          taskId,
-          relativePath,
-          expectedBytes,
-        });
         onProgress?.(0, expectedBytes);
       })
       .progress(({ bytesUploaded, bytesTotal }) => {

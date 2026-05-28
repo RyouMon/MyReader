@@ -31,7 +31,7 @@ import { Animated, Pressable, Text, View } from "@/tw";
 const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));
 const ReadiumReflowReader = lazy(async () => import("@/src/features/reader/components/reader/reflow/ReadiumReflowReader"));
 
-const TOC_LOG_PREVIEW_COUNT = 5;
+
 const TOC_GOTO_RESET_DELAY_MS = 100;
 const READER_SCREEN_BACKGROUND_COLOR = READER_FIXED.canvasBg;
 const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator;
@@ -66,15 +66,10 @@ export default function ReaderScreen() {
   useReaderProgressSaver(activeLibraryId, loadState, readerState);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
-    console.info("[mobile-reader] state-change", state);
     setReaderState(state);
   }, []);
 
   const handleTocReady = useCallback(async (items: ReaderTocItem[]) => {
-    console.info("[mobile-reader] toc-ready", {
-      count: items.length,
-      firstItems: items.slice(0, TOC_LOG_PREVIEW_COUNT),
-    });
     setToc(items);
   }, []);
 
@@ -104,7 +99,6 @@ export default function ReaderScreen() {
   }, [chromeState]);
 
   const handleTocSelect = useCallback((pageIndex: number) => {
-    console.info("[mobile-reader] toc-select", { pageIndex });
     setGotoPageCmd(pageIndex);
     tocSheetRef.current?.dismiss();
     dispatch({ type: "tocSelect" });
@@ -231,29 +225,12 @@ export default function ReaderScreen() {
     );
   }
 
-  const title = loadState.title;
-  const fmtUpper = loadState.format.toUpperCase();
   const isReflowSurface = loadState.layoutMode === "reflowable";
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
   const chromePalette = useMemo<ReaderChromePalette>(() => {
     const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
     return readerChromePalette(option.fg, option.swatch);
   }, [activeTheme]);
-
-  if (__DEV__) {
-    console.info("[mobile-reader] render:ready-screen", {
-      title,
-      format: fmtUpper,
-      layoutMode: loadState.layoutMode,
-      isFixedSurface,
-      isReflowSurface,
-      readerReady: readerState?.ready ?? false,
-      currentPage: readerState?.currentPage ?? null,
-      totalPages: readerState?.totalPages ?? null,
-      tocCount: toc.length,
-      chromeState,
-    });
-  }
 
   const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2";
   const statusBarStyle = isDarkTheme ? "light-content" : "dark-content";
@@ -407,12 +384,6 @@ const DomReaderFallback = memo(function DomReaderFallback({
   title: string | null;
 }) {
   const { t } = useTranslation();
-  useEffect(() => {
-    console.info("[mobile-reader] dom-fallback:mounted", {
-      format,
-      title,
-    });
-  }, [format, title]);
 
   return (
     <View
