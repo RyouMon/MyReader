@@ -21,6 +21,7 @@ import { upsertFileState, deleteFileState } from "../../repos/file_state";
 import type { Library } from "../types";
 import type { SyncTargetContext } from "./context";
 import i18n from "@/src/i18n";
+import { describeError, yieldToEventLoop } from "../../utils/common";
 
 export type DownloadOutcome = {
   blake3: string | null;
@@ -43,10 +44,6 @@ type PushFileOptions = {
 };
 
 const HASH_CHUNK_BYTES = 1024 * 1024;
-
-function yieldToEventLoop(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
 
 function blake3Hex(bytes: Uint8Array): string {
   return bytesToHex(blake3(bytes));

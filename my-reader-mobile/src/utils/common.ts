@@ -15,3 +15,8 @@ export function describeError(err: unknown): string {
     return String(err);
   }
 }
+
+/** Yield to the event loop to prevent blocking the JS thread. */
+export function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}

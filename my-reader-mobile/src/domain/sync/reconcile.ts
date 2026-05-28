@@ -7,12 +7,9 @@ import {
 } from "../../repos/file_state";
 import { findEntry } from "./manifest";
 import type { SyncTargetContext } from "./context";
+import { yieldToEventLoop } from "../../utils/common";
 
 const RECONCILE_BATCH_SIZE = 100;
-
-function yieldToEventLoop(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
 
 /**
  * Reconcile cached `file_state` rows against the freshly loaded manifest.
