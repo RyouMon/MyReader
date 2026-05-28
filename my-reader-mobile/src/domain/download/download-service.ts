@@ -1,17 +1,18 @@
 import { File } from "expo-file-system";
 
-import type { Library } from "../types";
+import type { DataSource, Library } from "../types";
 import { AppInvariantError, DataIntegrityError } from "../../errors";
-import { useAppStore } from "../../store/app-store";
 
 import { upsertFileState } from "../../repos/file_state";
 import { openSyncContext, type SyncTargetContext } from "../sync/actions";
 import { localFileUriFor } from "../../services/fs/path";
 import {
   downloadFileDirectWithProgress,
-  type BackgroundDownloadOptions,
   type DownloadOutcome,
 } from "../sync/transfer";
+import type { NativeDownloadOptions } from "../../services/download/native";
+
+type BackgroundDownloadOptions = NativeDownloadOptions;
 
 import i18n from "@/src/i18n";
 
@@ -20,16 +21,21 @@ export type DownloadProgressHandler = (received: number, total: number) => void;
 export type LibraryDownloadRequest = {
   libraryId: string;
   relativePath: string;
+  libraries: Library[];
+  dataSources: DataSource[];
   onProgress?: DownloadProgressHandler;
   options?: BackgroundDownloadOptions;
 };
 
 /**
- * Opens the current app-store library snapshot for queue-driven download work.
+ * Opens a sync context for a library by looking it up from the provided lists.
  */
-export async function openDownloadContextForLibrary(libraryId: string): Promise<SyncTargetContext> {
-  const { libraries, dataSources } = useAppStore.getState();
-  const library = libraries.find((item: Library) => item.id === libraryId);
+export async function openDownloadContextForLibrary(
+  libraryId: string,
+  libraries: Library[],
+  dataSources: DataSource[],
+): Promise<SyncTargetContext> {
+  const library = libraries.find((item) => item.id === libraryId);
   if (!library) throw new AppInvariantError(i18n.t("sync.libraryNotFound", { id: libraryId }));
   return openSyncContext(library, dataSources);
 }
@@ -40,10 +46,12 @@ export async function openDownloadContextForLibrary(libraryId: string): Promise<
 export async function downloadLibraryFile({
   libraryId,
   relativePath,
+  libraries,
+  dataSources,
   onProgress,
   options,
 }: LibraryDownloadRequest): Promise<DownloadOutcome> {
-  const ctx = await openDownloadContextForLibrary(libraryId);
+  const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
   return downloadContextFile(ctx, relativePath, onProgress, options);
 }
 
@@ -65,9 +73,11 @@ export async function downloadContextFile(
 export async function finalizeRecoveredDownload(
   libraryId: string,
   relativePath: string,
+  libraries: Library[],
+  dataSources: DataSource[],
   onProgress?: DownloadProgressHandler,
 ): Promise<DownloadOutcome> {
-  const ctx = await openDownloadContextForLibrary(libraryId);
+  const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
   const outcome = readCachedDownloadOutcome(ctx, relativePath);
   onProgress?.(outcome.size, outcome.size);
   await upsertFileState(ctx.library, relativePath, {

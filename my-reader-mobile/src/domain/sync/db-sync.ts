@@ -194,10 +194,3 @@ export async function syncDbFromContext(
   return { pushed, pulled };
 }
 
-export async function syncDbNow(
-  library: Library,
-  dataSources: DataSource[],
-): Promise<DbSyncReport> {
-  const ctx = await resolveSyncTarget(library, dataSources);
-  return syncDbFromContext(library, ctx);
-}

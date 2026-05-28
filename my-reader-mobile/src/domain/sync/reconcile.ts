@@ -49,8 +49,3 @@ export async function listBackedFiles(
   const needle = filter.toLowerCase();
   return rows.filter((row) => row.path.toLowerCase().includes(needle));
 }
-
-/** Persist an updated manifest after mutating entries in-place. */
-export async function persistManifest(ctx: SyncTargetContext): Promise<void> {
-  await saveManifest(ctx.backend, ctx.manifest);
-}

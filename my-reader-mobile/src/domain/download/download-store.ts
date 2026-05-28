@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 
+import type { DataSource, Library } from "../types";
 import { SyncConfigError } from "../../errors";
 import { notifyDownloadState } from "../../notifications/download-notifications";
 import { checkConnectivity } from "../sync/connectivity";
@@ -17,11 +18,20 @@ import {
 import i18n from "@/src/i18n";
 
 async function checkLibraryConnectivity(libraryId: string): Promise<void> {
-  const { libraries, dataSources } = useAppStore.getState();
+  const snapshot = useAppStore.getState();
+  const { libraries, dataSources } = snapshot;
   const library = libraries.find((l) => l.id === libraryId);
   if (!library) throw new SyncConfigError(i18n.t("sync.libraryNotFound", { id: libraryId }));
   const target = await resolveSyncTarget(library, dataSources);
   if (isRemoteBackend(target.backend)) await checkConnectivity(target.backend);
+}
+
+function getStoreLibraries(): Library[] {
+  return useAppStore.getState().libraries;
+}
+
+function getStoreDataSources(): DataSource[] {
+  return useAppStore.getState().dataSources;
 }
 
 export type DownloadTaskStatus =
@@ -419,7 +429,7 @@ async function _startTask(taskId: string): Promise<void> {
     const afterCheck = state.tasks.find((t) => t.id === taskId);
     if (!afterCheck || afterCheck.status === "cancelled") return;
 
-    const ctx = await openDownloadContextForLibrary(task.libraryId);
+    const ctx = await openDownloadContextForLibrary(task.libraryId, getStoreLibraries(), getStoreDataSources());
     await downloadContextFile(
       ctx,
       task.relativePath,
@@ -466,7 +476,9 @@ function finalizeRecoveredTaskOnce(task: DownloadTask): Promise<void> {
   const existing = finalizingRecoveredTasks.get(task.id);
   if (existing) return existing;
 
-  const promise = finalizeRecoveredDownload(task.libraryId, task.relativePath, (received, total) => {
+  const libs = getStoreLibraries();
+  const ds = getStoreDataSources();
+  const promise = finalizeRecoveredDownload(task.libraryId, task.relativePath, libs, ds, (received, total) => {
     transitionTask(task.id, { type: "progress", received, total, force: true });
   })
     .then(() => {

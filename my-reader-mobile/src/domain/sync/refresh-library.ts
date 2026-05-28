@@ -124,6 +124,8 @@ export async function refreshLibrary(
           await downloadLibraryFile({
             libraryId: library.id,
             relativePath: `${book.path}/cover.jpg`,
+            libraries: [library],
+            dataSources,
           });
         } catch (e) {
           console.warn("Failed to download cover for new book:", {
@@ -148,6 +150,8 @@ export async function refreshLibrary(
             await downloadLibraryFile({
               libraryId: library.id,
               relativePath: `${newBook.path}/cover.jpg`,
+              libraries: [library],
+              dataSources,
             });
           } catch (e) {
             console.warn("Failed to download cover for modified book:", {
