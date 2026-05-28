@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getAllBookFormats } from "@/src/domain/library/calibre";
-import { listFileStates, type FileStateRow, type LocalState } from "@/src/repos/file_state";
+import { listFileStates, getFileState, type FileStateRow } from "@/src/domain/sync/actions";
+import type { LocalState } from "@/src/domain/types";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import type { BookItem, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";

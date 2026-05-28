@@ -12,7 +12,12 @@ import { setCachedAuth } from "../services/remote/auth-cache";
 import { getValidAccessToken } from "../services/auth/onedrive";
 import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
 import { queryClient } from "../hooks/queries/queryClient";
+import type { BookItem } from "../domain/types";
 import i18n from "@/src/i18n";
+
+function getBooksForLibrary(libraryId: string): BookItem[] {
+  return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
+}
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({
@@ -31,6 +36,7 @@ function getSyncDeps(): SyncDeps {
     libraries: state.libraries,
     dataSources: state.dataSources,
     syncEnabled: state.settings.syncEnabled,
+    getBooksForLibrary,
   };
 }
 

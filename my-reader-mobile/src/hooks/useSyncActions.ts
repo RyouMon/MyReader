@@ -3,14 +3,21 @@ import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 
 import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "../domain/sync/actions";
-import { runSync, type SyncTrigger, type SyncDeps } from "../domain/sync/scheduler";
+import { runSync, type SyncTrigger, type SyncDeps, type SyncRunReport } from "../domain/sync/scheduler";
+import { queryClient } from "./queries/queryClient";
+import { libraryQueryKeys } from "./queries/useLibraryQuery";
+import type { BookItem } from "../domain/types";
 
 export type SyncActions = {
-  triggerSync: (libraryId: string) => Promise<void>;
+  triggerSync: (trigger?: SyncTrigger) => Promise<SyncRunReport>;
   deleteRemote: (libraryId: string, relativePath: string) => Promise<void>;
   evictLocal: (libraryId: string, relativePath: string) => Promise<void>;
   deleteEverywhere: (libraryId: string, relativePath: string) => Promise<void>;
 };
+
+function getBooksForLibrary(libraryId: string): BookItem[] {
+  return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
+}
 
 export function useSyncActions(): SyncActions {
   const libraries = useAppStore((s) => s.libraries);
@@ -23,6 +30,7 @@ export function useSyncActions(): SyncActions {
         libraries: snapshot.libraries,
         dataSources: snapshot.dataSources,
         syncEnabled: snapshot.settings.syncEnabled,
+        getBooksForLibrary,
       };
       return runSync(trigger, deps);
     },

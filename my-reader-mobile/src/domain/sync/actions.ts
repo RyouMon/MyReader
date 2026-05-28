@@ -24,3 +24,11 @@ export {
   reconcileFileStates,
   listBackedFiles,
 } from "./reconcile";
+
+export {
+  getFileState,
+  listFileStates,
+  subscribeFileState,
+  getFileStateRevision,
+} from "../../repos/file_state";
+export type { FileState as FileStateRow } from "@my-reader/db/types";

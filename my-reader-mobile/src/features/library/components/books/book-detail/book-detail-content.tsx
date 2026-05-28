@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
-import { getFileState, type LocalState } from "@/src/repos/file_state";
+import { getFileState } from "@/src/domain/sync/actions";
+import type { LocalState } from "@/src/domain/types";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import type { BookItem, DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
@@ -28,6 +29,7 @@ import {
   formatLanguage,
   IDENTIFIER_LABELS,
   resolveCoverForDetail,
+  stripHtml,
 } from "@/src/utils/book-detail";
 import { AnimatedScrollView, Text, View } from "@/tw";
 import type { BookDetail } from "@my-reader/tools/types/book";
@@ -412,16 +414,4 @@ export function BookDetailContent({
       ) : null}
     </View>
   );
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .trim();
 }

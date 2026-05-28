@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
-import type { FileStateRow } from "@/src/repos/file_state";
+import type { FileStateRow } from "@/src/domain/sync/actions";
 import type { BookItem, Library } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
 import {

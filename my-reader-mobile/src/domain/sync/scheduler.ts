@@ -11,8 +11,6 @@ import {
 } from "./actions";
 import { syncDbFromContext } from "./db-sync";
 import { mirrorMissingCovers } from "../library/cover-mirror";
-import { libraryQueryKeys } from "../../hooks/queries/useLibraryQuery";
-import { queryClient } from "../../hooks/queries/queryClient";
 import type { BookItem, DataSource, Library } from "../types";
 import i18n from "@/src/i18n";
 import { describeError } from "../../utils/common";
@@ -81,6 +79,7 @@ export type SyncDeps = {
   libraries: Library[];
   dataSources: DataSource[];
   syncEnabled: boolean;
+  getBooksForLibrary: (libraryId: string) => BookItem[];
 };
 
 /**
@@ -157,7 +156,7 @@ export function runSync(trigger: SyncTrigger, deps: SyncDeps): Promise<SyncRunRe
         entry.dbPulled = dbResult.pulled;
 
         if (isRemoteSourceType(library.sourceType)) {
-          const books = queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(library.id)) ?? [];
+          const books = deps.getBooksForLibrary(library.id);
           void mirrorMissingCovers(library, dataSources, books).catch(() => {});
         }
       } catch (err) {
