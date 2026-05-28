@@ -12,9 +12,9 @@ import { isRemoteSourceType } from "@/src/data/types";
 import { queryClient } from "./queryClient";
 import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { refreshMetadataIfStale } from "@/src/remote/metadata-check";
+import { refreshMetadataIfStale } from "@/src/services/remote/metadata-check";
 
-import { getCachedAuth } from "@/src/remote/auth-cache";
+import { getCachedAuth } from "@/src/services/remote/auth-cache";
 
 export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,

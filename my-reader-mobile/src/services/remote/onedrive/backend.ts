@@ -2,10 +2,10 @@ import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
 import i18n from "@/src/i18n";
-import { GRAPH_API_BASE } from "../../constants/onedrive";
-import { NetworkError } from "../../errors";
-import { refreshAccessToken } from "../../services/auth/onedrive";
-import { canonicalRelativePathSegments } from "../../services/fs/path";
+import { GRAPH_API_BASE } from "../../../constants/onedrive";
+import { NetworkError } from "../../../errors";
+import { refreshAccessToken } from "../../auth/onedrive";
+import { canonicalRelativePathSegments } from "../../fs/path";
 import { getCachedAuth, invalidateCachedAuth, setCachedAuth } from "../auth-cache";
 
 import type { DownloadRequest, PreparedUpload, RemoteBackend, RemoteDirEntry, RemoteFileStat, UploadRequest } from "../backend";

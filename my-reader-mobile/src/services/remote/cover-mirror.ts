@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { BookItem, DataSource, Library } from "../data/types";
+import type { BookItem, DataSource, Library } from "../../data/types";
 import type { RemoteBackend } from "./backend";
 import { createRemoteBackend } from "./factory";
 

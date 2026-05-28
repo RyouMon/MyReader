@@ -5,7 +5,7 @@ import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "../constants/alert-with-status-bar";
 import { openDatabaseFromUri } from "../services/db/sqlite";
 import type { BookItem, Library } from "./types";
-import type { RemoteBackend } from "../remote/backend";
+import type { RemoteBackend } from "../services/remote/backend";
 
 // -- Shared constants --
 

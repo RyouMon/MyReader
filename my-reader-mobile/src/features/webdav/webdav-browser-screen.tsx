@@ -10,7 +10,7 @@ import { Text } from "@/tw";
 import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
-import { createRemoteBackend } from "@/src/remote/factory";
+import { createRemoteBackend } from "@/src/services/remote/factory";
 import { createLibraryFromPath } from "@/src/data/remote-library-shared";
 import type { DataSource, Library } from "@/src/data/types";
 import type { RemoteLibraryOps } from "@/src/data/remote-library";

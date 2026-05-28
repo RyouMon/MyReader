@@ -1,5 +1,5 @@
-import { buildRemoteCoverUri } from "../remote/cover-mirror";
-import { createRemoteBackend } from "../remote/factory";
+import { buildRemoteCoverUri } from "../services/remote/cover-mirror";
+import { createRemoteBackend } from "../services/remote/factory";
 import { createLibraryFromPath, forceRefreshMetadata, readBooks } from "./remote-library-shared";
 import type { BookItem, DataSource, Library } from "./types";
 

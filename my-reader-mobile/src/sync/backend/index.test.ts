@@ -1,4 +1,4 @@
-import { WebDavRemoteBackend } from "../../remote/webdav/backend";
+import { WebDavRemoteBackend } from "../../services/remote/webdav/backend";
 
 describe("WebDAV upload request contract", () => {
   test("builds a native PUT upload request with auth and content type", async () => {

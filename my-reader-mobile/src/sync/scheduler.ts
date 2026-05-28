@@ -11,7 +11,7 @@ import {
   type SyncTargetContext,
 } from "./actions";
 import { syncDbFromContext } from "./db_sync";
-import { mirrorMissingCovers } from "../remote/cover-mirror";
+import { mirrorMissingCovers } from "../services/remote/cover-mirror";
 import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
 import { queryClient } from "../hooks/queries/queryClient";
 import type { BookItem } from "../data/types";

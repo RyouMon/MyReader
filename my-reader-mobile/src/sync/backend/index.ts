@@ -9,8 +9,8 @@ export type {
   DownloadRequest,
   UploadRequest,
   PreparedUpload,
-} from "../../remote/backend";
-export { createRemoteBackend } from "../../remote/factory";
+} from "../../services/remote/backend";
+export { createRemoteBackend } from "../../services/remote/factory";
 
 // Keep LocalDirectBackend for local library sync
 export { LocalDirectBackend } from "./local";
