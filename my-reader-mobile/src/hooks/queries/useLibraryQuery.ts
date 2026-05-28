@@ -20,6 +20,10 @@ export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,
 };
 
+export function getBooksForLibrary(libraryId: string): BookItem[] {
+  return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
+}
+
 export async function fetchBooksWithMeta(
   activeLibrary: Library,
   dataSources: DataSource[]

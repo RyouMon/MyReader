@@ -519,39 +519,6 @@ export async function getBookFormatPaths(
   }
 }
 
-export async function getLibraryBookFormatPathMap(
-  library: Library,
-): Promise<Record<string, string[]>> {
-  const metadataUri = await resolveMetadataUriForRead(library);
-  if (!metadataUri) {
-    return {};
-  }
-  const handle = openCalibreDatabase(metadataUri);
-  try {
-    const allBooks = await handle.db
-      .select({ id: books.id, path: books.path })
-      .from(books)
-      .all();
-
-    const allData = await handle.db
-      .select({ book: data.book, format: data.format, name: data.name })
-      .from(data)
-      .all();
-
-    const bookPathMap = new Map(allBooks.map((b) => [b.id, b.path ?? ""]));
-
-    return allData.reduce<Record<string, string[]>>((mapped, row) => {
-      const bookIdKey = String(row.book);
-      const bookPath = bookPathMap.get(row.book) ?? "";
-      mapped[bookIdKey] = mapped[bookIdKey] ?? [];
-      mapped[bookIdKey].push(`${bookPath}/${row.name}.${(row.format ?? "").toLowerCase()}`);
-      return mapped;
-    }, {});
-  } finally {
-    await handle.raw.closeAsync();
-  }
-}
-
 export async function getAllBookFormats(
   library: Library,
 ): Promise<Record<string, string[]>> {

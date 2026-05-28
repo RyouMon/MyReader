@@ -40,14 +40,14 @@ function writeCoverWithRetry(destFile: File, bytes: Uint8Array): void {
   }
 }
 
-export function localCoverPath(libraryId: string, bookPath: string): string {
+function localCoverPath(libraryId: string, bookPath: string): string {
   const segments = bookPath.split("/").filter(Boolean);
   const dir = new Directory(libraryCoversDir(libraryId), ...segments);
   const file = new File(dir, "cover.jpg");
   return file.uri;
 }
 
-export function hasLocalCover(libraryId: string, bookPath: string): boolean {
+function hasLocalCover(libraryId: string, bookPath: string): boolean {
   const file = new File(localCoverPath(libraryId, bookPath));
   return file.exists && (file.size ?? 0) > 0;
 }
@@ -103,11 +103,6 @@ export async function downloadCover(
   }
 }
 
-export function clearCoversForLibrary(libraryId: string): void {
-  const dir = libraryCoversDir(libraryId);
-  if (dir.exists) dir.delete();
-}
-
 export async function mirrorMissingCovers(
   library: Library,
   dataSources: DataSource[],
@@ -127,8 +122,6 @@ export async function mirrorMissingCovers(
   );
 
   if (missing.length === 0) return;
-
-  const libraryRoot = backend.normalizePath(library.sourcePath ?? library.path);
 
   let active = 0;
   let idx = 0;

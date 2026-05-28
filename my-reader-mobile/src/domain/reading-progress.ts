@@ -74,7 +74,6 @@ export async function getReadingProgress(
     }
 
     const raw: unknown = JSON.parse(row.locatorJson);
-    const locator = parseStoredLocator(raw);
     return parseStoredLocator(raw);
   } catch (e) {
     console.error("[reading-progress] get:error", { bookId, format: fmt, error: e });
