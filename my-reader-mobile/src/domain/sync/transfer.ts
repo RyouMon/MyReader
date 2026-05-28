@@ -33,8 +33,8 @@ export type DownloadResult = {
   outcome: DownloadOutcome;
 };
 
-export type BackgroundDownloadOptions = NativeDownloadOptions;
-export type BackgroundUploadOptions = NativeUploadOptions;
+type BackgroundDownloadOptions = NativeDownloadOptions;
+type BackgroundUploadOptions = NativeUploadOptions;
 
 type PushFileOptions = {
   required?: boolean;

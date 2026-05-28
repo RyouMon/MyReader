@@ -1,6 +1,5 @@
 import type { DataSource, Library } from "../types";
 
-import { resolveLibraryBooksDir } from "../../services/fs/path";
 import { getOrCreateDeviceId } from "./device";
 import { loadManifest, type Manifest } from "./manifest";
 import { resolveSyncTarget, type ResolvedSyncTarget } from "./resolve";
@@ -23,8 +22,4 @@ export async function openSyncContext(
   const resolved = await resolveSyncTarget(library, dataSources);
   const manifest = await loadManifest(resolved.backend, deviceId);
   return { ...resolved, manifest, deviceId, library };
-}
-
-export function getLibraryCacheDirUri(libraryId: string): string {
-  return resolveLibraryBooksDir(libraryId);
 }

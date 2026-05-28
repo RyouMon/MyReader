@@ -19,7 +19,7 @@ export type Manifest = {
   entries: ManifestEntry[];
 };
 
-export function emptyManifest(device: string): Manifest {
+function emptyManifest(device: string): Manifest {
   return { version: 1, updatedAt: 0, device, entries: [] };
 }
 
@@ -27,7 +27,7 @@ export function findEntry(manifest: Manifest, path: string): ManifestEntry | und
   return manifest.entries.find((entry) => entry.path === path);
 }
 
-export function upsertEntry(manifest: Manifest, entry: ManifestEntry): void {
+function upsertEntry(manifest: Manifest, entry: ManifestEntry): void {
   const idx = manifest.entries.findIndex((e) => e.path === entry.path);
   if (idx >= 0) {
     manifest.entries[idx] = entry;

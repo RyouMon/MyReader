@@ -7,7 +7,6 @@
 
 export {
   openSyncContext,
-  getLibraryCacheDirUri,
   type SyncTargetContext,
 } from "./context";
 
@@ -24,5 +23,4 @@ export {
 export {
   reconcileFileStates,
   listBackedFiles,
-  persistManifest,
 } from "./reconcile";
