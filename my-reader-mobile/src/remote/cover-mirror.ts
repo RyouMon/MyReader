@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { BookItem, Library, DataSource } from "../data/types";
+import type { BookItem, DataSource, Library } from "../data/types";
 import type { RemoteBackend } from "./backend";
 import { createRemoteBackend } from "./factory";
 
@@ -15,6 +15,34 @@ function libraryCoversDir(libraryId: string): Directory {
   return new Directory(coversRoot(), libraryId);
 }
 
+/**
+ * Ensures the local destination exists before writing bytes, then retries once
+ * when iOS reports a transient "file doesn't exist" race.
+ */
+function writeCoverWithRetry(destFile: File, bytes: Uint8Array): void {
+  const ensureFileReady = () => {
+    const dir = destFile.parentDirectory;
+    if (dir && !dir.exists) {
+      dir.create({ intermediates: true, idempotent: true });
+    }
+    if (!destFile.exists) {
+      destFile.create({ intermediates: true, overwrite: true });
+    }
+  };
+
+  ensureFileReady();
+  try {
+    destFile.write(bytes);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/doesn.?t exist/i.test(message) && !/does not exist/i.test(message)) {
+      throw error;
+    }
+    ensureFileReady();
+    destFile.write(bytes);
+  }
+}
+
 export function localCoverPath(libraryId: string, bookPath: string): string {
   const segments = bookPath.split("/").filter(Boolean);
   const dir = new Directory(libraryCoversDir(libraryId), ...segments);
@@ -25,6 +53,28 @@ export function localCoverPath(libraryId: string, bookPath: string): string {
 export function hasLocalCover(libraryId: string, bookPath: string): boolean {
   const file = new File(localCoverPath(libraryId, bookPath));
   return file.exists && (file.size ?? 0) > 0;
+}
+
+export function buildRemoteCoverUri(
+  library: Library,
+  backend: RemoteBackend,
+  bookPath: string,
+  hasCover: boolean,
+): BookItem["coverUri"] {
+  if (!bookPath || !hasCover) return undefined;
+
+  if (hasLocalCover(library.id, bookPath)) {
+    return localCoverPath(library.id, bookPath);
+  }
+
+  const libraryRoot = library.sourcePath ?? library.path;
+  const remoteCoverPath = `${bookPath}/cover.jpg`;
+  const cachedHeaders = backend.getCachedAuthHeaders();
+
+  return {
+    uri: backend.contentUrl(remoteCoverPath),
+    headers: cachedHeaders ?? undefined,
+  };
 }
 
 export async function downloadCover(
@@ -41,6 +91,9 @@ export async function downloadCover(
   if (dir && !dir.exists) {
     dir.create({ intermediates: true, idempotent: true });
   }
+  if (!destFile.exists) {
+    destFile.create({ overwrite: true });
+  }
 
   try {
     const cachedFile = await backend.downloadToCache(
@@ -48,7 +101,7 @@ export async function downloadCover(
       `cover-${libraryId}-${Date.now()}`,
     );
     const bytes = await cachedFile.bytes();
-    destFile.write(bytes);
+    writeCoverWithRetry(destFile, bytes);
     cachedFile.delete();
   } catch (e) {
     console.warn("[cover-mirror] download failed:", {
@@ -90,7 +143,7 @@ export async function mirrorMissingCovers(
     missingCount: missing.length,
   });
 
-  const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
+  const libraryRoot = backend.normalizePath(library.sourcePath ?? library.path);
 
   let active = 0;
   let idx = 0;
@@ -101,8 +154,8 @@ export async function mirrorMissingCovers(
         const book = missing[idx]!;
         idx += 1;
         active += 1;
-        const remoteCoverPath = `${remoteBase}/${book.path}/cover.jpg`;
-        void downloadCover(library.id, book.path!, backend, remoteCoverPath)
+        const rcp = `${book.path}/cover.jpg`;
+        void downloadCover(library.id, book.path!, backend, rcp)
           .then(() => {
             active -= 1;
             if (idx >= missing.length && active === 0) resolve();

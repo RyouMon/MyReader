@@ -1,14 +1,13 @@
 import { GRAPH_API_BASE } from "../constants/onedrive";
-import { getValidAccessToken } from "../services/auth/onedrive";
+import { buildRemoteCoverUri } from "../remote/cover-mirror";
 import { createRemoteBackend } from "../remote/factory";
-import type { DataSourceOnedrive, Library } from "./types";
-import type { BookItem } from "./types";
+import { getValidAccessToken } from "../services/auth/onedrive";
 import {
-  readBooks,
-  forceRefreshMetadata,
   createLibraryFromPath,
+  forceRefreshMetadata,
+  readBooks,
 } from "./remote-library-shared";
-import { hasLocalCover, localCoverPath } from "../remote/cover-mirror";
+import type { BookItem, DataSourceOnedrive, Library } from "./types";
 
 export type OneDriveOps = {
   testConnection(): Promise<Response>;
@@ -33,33 +32,13 @@ export async function createOneDriveOps(
     },
     listDirectory: (path: string) => backend.listDirectory(path),
     createLibraryFromPath: (remotePath: string) => createLibraryFromPath(backend, dataSource.id, dataSource.name, remotePath),
-    readBooks: (lib: Library) => readBooks(lib, backend, (l, bookPath, hasCover) =>
-      buildOneDriveCoverUri(l, backend, bookPath, hasCover),
-    ),
+    readBooks: (lib: Library) =>
+      readBooks(lib, backend, (l, bookPath, hasCover) =>
+        buildRemoteCoverUri(l, backend, bookPath, hasCover),
+      ),
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
-      buildOneDriveCoverUri(lib, backend, bookPath, hasCover),
+      buildRemoteCoverUri(lib, backend, bookPath, hasCover),
     forceRefreshMetadata: (lib: Library) => forceRefreshMetadata(lib, backend),
-  };
-}
-
-function buildOneDriveCoverUri(
-  library: Library,
-  backend: import("../remote/backend").RemoteBackend,
-  bookPath: string,
-  hasCover: boolean,
-): BookItem["coverUri"] {
-  if (!bookPath || !hasCover) return undefined;
-
-  if (hasLocalCover(library.id, bookPath)) {
-    return localCoverPath(library.id, bookPath);
-  }
-
-  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
-  const cachedHeaders = backend.getCachedAuthHeaders();
-
-  return {
-    uri: backend.contentUrl(remoteCoverPath),
-    headers: cachedHeaders ?? undefined,
   };
 }
 

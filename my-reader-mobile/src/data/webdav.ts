@@ -1,12 +1,12 @@
+import { buildRemoteCoverUri } from "../remote/cover-mirror";
 import { createRemoteBackend } from "../remote/factory";
 import { WebDavUrlBuilder } from "../services/webdav/url-builder";
-import type { BookItem, Library, WebDavDataSource } from "./types";
 import {
-  readBooks,
-  forceRefreshMetadata,
   createLibraryFromPath,
+  forceRefreshMetadata,
+  readBooks,
 } from "./remote-library-shared";
-import { hasLocalCover, localCoverPath } from "../remote/cover-mirror";
+import type { BookItem, Library, WebDavDataSource } from "./types";
 
 export type WebDavOps = {
   testConnection(timeout?: number | false): Promise<Response>;
@@ -35,33 +35,13 @@ export async function createWebDavOps(
     },
     listDirectory: (path: string) => backend.listDirectory(path),
     createLibraryFromPath: (remotePath: string) => createLibraryFromPath(backend, dataSource.id, dataSource.name, remotePath),
-    readBooks: (lib: Library) => readBooks(lib, backend, (l, bookPath, hasCover) =>
-      buildWebDavCoverUri(l, backend, bookPath, hasCover),
-    ),
+    readBooks: (lib: Library) =>
+      readBooks(lib, backend, (l, bookPath, hasCover) =>
+        buildRemoteCoverUri(l, backend, bookPath, hasCover),
+      ),
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
-      buildWebDavCoverUri(lib, backend, bookPath, hasCover),
+      buildRemoteCoverUri(lib, backend, bookPath, hasCover),
     forceRefreshMetadata: (lib: Library) => forceRefreshMetadata(lib, backend),
-  };
-}
-
-function buildWebDavCoverUri(
-  library: Library,
-  backend: import("../remote/backend").RemoteBackend,
-  bookPath: string,
-  hasCover: boolean,
-): BookItem["coverUri"] {
-  if (!bookPath || !hasCover) return undefined;
-
-  if (hasLocalCover(library.id, bookPath)) {
-    return localCoverPath(library.id, bookPath);
-  }
-
-  const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
-  const cachedHeaders = backend.getCachedAuthHeaders();
-
-  return {
-    uri: backend.contentUrl(remoteCoverPath),
-    headers: cachedHeaders ?? undefined,
   };
 }
 

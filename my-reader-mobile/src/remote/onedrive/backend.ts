@@ -1,14 +1,14 @@
 import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
+import i18n from "@/src/i18n";
 import { GRAPH_API_BASE } from "../../constants/onedrive";
+import { NetworkError } from "../../errors";
 import { refreshAccessToken } from "../../services/auth/onedrive";
 import { canonicalRelativePathSegments } from "../../services/fs/path";
-import { NetworkError } from "../../errors";
-import i18n from "@/src/i18n";
-import { getCachedAuth, setCachedAuth, invalidateCachedAuth } from "../auth-cache";
+import { getCachedAuth, invalidateCachedAuth, setCachedAuth } from "../auth-cache";
 
-import type { RemoteBackend, RemoteFileStat, RemoteDirEntry, DownloadRequest, UploadRequest, PreparedUpload } from "../backend";
+import type { DownloadRequest, PreparedUpload, RemoteBackend, RemoteDirEntry, RemoteFileStat, UploadRequest } from "../backend";
 
 type DriveItem = {
   id: string;
@@ -139,7 +139,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
 
   async downloadToCache(remotePath: string, localName: string): Promise<File> {
     const headers = await this.getAuthHeaders();
-    const encodedPath = encodeURI(remotePath.startsWith("/") ? remotePath : `/${remotePath}`);
+    const encodedPath = encodeURI(this.fullPath(remotePath));
     const url = `${GRAPH_API_BASE}/me/drive/root:${encodedPath}:/content`;
 
     const response = await ky(url, { headers });
