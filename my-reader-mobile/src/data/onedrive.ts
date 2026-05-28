@@ -58,7 +58,8 @@ async function buildOneDriveCoverUri(
   };
 }
 
-export async function refreshOneDriveToken(dataSourceId: string): Promise<string> {
-  const token = await getValidAccessToken(dataSourceId);
-  return token;
+export async function refreshOneDriveToken(
+  dataSourceId: string,
+): Promise<{ accessToken: string; expiresAt: number }> {
+  return getValidAccessToken(dataSourceId);
 }

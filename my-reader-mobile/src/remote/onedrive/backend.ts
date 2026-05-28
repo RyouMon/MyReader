@@ -2,10 +2,11 @@ import { File, Paths } from "expo-file-system";
 import ky from "ky";
 
 import { GRAPH_API_BASE } from "../../constants/onedrive";
-import { getValidAccessToken, refreshAccessToken } from "../../services/auth/onedrive";
+import { refreshAccessToken } from "../../services/auth/onedrive";
 import { canonicalRelativePathSegments } from "../../services/fs/path";
 import { NetworkError } from "../../errors";
 import i18n from "@/src/i18n";
+import { getCachedAuth, setCachedAuth, invalidateCachedAuth } from "../auth-cache";
 
 import type { RemoteBackend, RemoteFileStat, RemoteDirEntry, DownloadRequest, UploadRequest, PreparedUpload } from "../backend";
 
@@ -40,16 +41,21 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   // -- Auth --
 
   async getAuthHeaders(): Promise<Record<string, string>> {
-    const token = await getValidAccessToken(this.dataSourceId);
-    return { Authorization: `Bearer ${token}` };
+    const cached = getCachedAuth(this.dataSourceId);
+    if (cached) return cached;
+
+    const { accessToken, expiresAt } = await refreshAccessToken(this.dataSourceId);
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    setCachedAuth(this.dataSourceId, headers, expiresAt);
+    return headers;
   }
 
   getCachedAuthHeaders(): Record<string, string> | null {
-    return null;
+    return getCachedAuth(this.dataSourceId);
   }
 
   invalidateAuth(): void {
-    // Phase 2 will add AuthCache integration
+    invalidateCachedAuth(this.dataSourceId);
   }
 
   // -- Stat --
@@ -232,7 +238,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     const res = await fetch(url, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> ?? {}) } });
 
     if (res.status === 401) {
-      await refreshAccessToken(this.dataSourceId);
+      this.invalidateAuth();
       const retryHeaders = await this.getAuthHeaders();
       return fetch(url, { ...init, headers: { ...retryHeaders, ...(init.headers as Record<string, string> ?? {}) } });
     }
@@ -247,7 +253,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
       throwHttpErrors: false,
     });
     if (res.status === 401) {
-      await refreshAccessToken(this.dataSourceId);
+      this.invalidateAuth();
       const retryHeaders = await this.getAuthHeaders();
       const retryRes = await ky(`${GRAPH_API_BASE}${graphPath}`, {
         headers: retryHeaders,

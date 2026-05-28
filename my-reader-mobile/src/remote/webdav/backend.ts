@@ -5,6 +5,7 @@ import { canonicalRelativePath, canonicalRelativePathSegments } from "../../serv
 import { WebDavUrlBuilder } from "../../services/webdav/url-builder";
 import { NetworkError } from "../../errors";
 import i18n from "@/src/i18n";
+import { getCachedAuth, setCachedAuth, invalidateCachedAuth } from "../auth-cache";
 
 import type { RemoteBackend, RemoteFileStat, RemoteDirEntry, DownloadRequest, UploadRequest, PreparedUpload } from "../backend";
 import type { WebDavDataSource } from "../../data/types";
@@ -93,15 +94,19 @@ export class WebDavRemoteBackend implements RemoteBackend {
   // -- Auth --
 
   async getAuthHeaders(): Promise<Record<string, string>> {
-    return this.urlBuilder.authHeaders;
+    const cached = getCachedAuth(this.dataSourceId);
+    if (cached) return cached;
+    const headers = this.urlBuilder.authHeaders;
+    setCachedAuth(this.dataSourceId, headers, null);
+    return headers;
   }
 
   getCachedAuthHeaders(): Record<string, string> | null {
-    return this.urlBuilder.authHeaders;
+    return getCachedAuth(this.dataSourceId);
   }
 
   invalidateAuth(): void {
-    // Basic auth never expires
+    invalidateCachedAuth(this.dataSourceId);
   }
 
   // -- Stat --

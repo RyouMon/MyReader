@@ -22,6 +22,7 @@ export type DataSourceOnedrive = {
   rootPath?: string | null
   hasRefreshToken: boolean
   readonly?: boolean
+  accessTokenExpiresAt?: number
   createdAt?: number
 }
 

@@ -76,7 +76,7 @@ export async function signIn(): Promise<{
   };
 }
 
-export async function refreshAccessToken(dataSourceId: string): Promise<string> {
+export async function refreshAccessToken(dataSourceId: string): Promise<{ accessToken: string; expiresAt: number }> {
   const refreshToken = await readOneDriveRefreshToken(dataSourceId);
   if (!refreshToken) {
     throw new Error("No refresh token available");
@@ -89,24 +89,13 @@ export async function refreshAccessToken(dataSourceId: string): Promise<string> 
     await writeOneDriveRefreshToken(dataSourceId, result.refreshToken);
   }
 
-  return result.accessToken;
+  const expiresAt = new Date(result.accessTokenExpirationDate).getTime() - 5 * 60 * 1000;
+  return { accessToken: result.accessToken, expiresAt };
 }
 
-export async function getValidAccessToken(dataSourceId: string): Promise<string> {
-  const token = await readOneDriveAccessToken(dataSourceId);
-  if (!token) {
-    return refreshAccessToken(dataSourceId);
-  }
-
-  const res = await fetch("https://graph.microsoft.com/v1.0/drive", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (res.status === 401) {
-    return refreshAccessToken(dataSourceId);
-  }
-
-  return token;
+export async function getValidAccessToken(dataSourceId: string): Promise<{ accessToken: string; expiresAt: number }> {
+  const { accessToken, expiresAt } = await refreshAccessToken(dataSourceId);
+  return { accessToken, expiresAt };
 }
 
 export async function revokeAuth(dataSourceId: string): Promise<void> {
