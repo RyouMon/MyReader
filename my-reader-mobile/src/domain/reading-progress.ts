@@ -39,15 +39,6 @@ function normalizeHrefForStorage(href: string): string {
   return href;
 }
 
-function summarizeLocator(locator: Locator): Record<string, unknown> {
-  return {
-    href: locator.href,
-    type: locator.type,
-    progression: locator.locations?.progression ?? null,
-    position: locator.locations?.position ?? null,
-  };
-}
-
 /** Read reading progress by book id and format (case-insensitive). */
 export async function getReadingProgress(
   library: Library,
@@ -94,18 +85,17 @@ export async function setReadingProgress(
     ...locator,
     href: normalizeHrefForStorage(locator.href),
   };
-  const json = JSON.stringify(normalized);
+  const locatorJson = JSON.stringify(normalized);
   const id = uuid();
-
 
   try {
     const { db } = await getLibraryDatabase(library);
     await db
       .insert(readingProgress)
-      .values({ id, bookId, format: fmt, locatorJson: json, updatedAt })
+      .values({ id, bookId, format: fmt, locatorJson, updatedAt })
       .onConflictDoUpdate({
         target: [readingProgress.bookId, readingProgress.format],
-        set: { locatorJson: json, updatedAt },
+        set: { locatorJson, updatedAt },
       });
   } catch (e) {
     console.error("[reading-progress] set:error", { bookId, format: fmt, error: e });
