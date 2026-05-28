@@ -448,12 +448,11 @@ async function _startTask(taskId: string): Promise<void> {
     const isAbort =
       err instanceof Error &&
       (err.name === "AbortError" || err.message.toLowerCase().includes("abort"));
-    const isConfigError = err instanceof SyncConfigError;
     console.error("Failed to finish download task:", {
       taskId,
       relativePath: task.relativePath,
       isAbort,
-      isConfigError,
+      isConfigError: err instanceof SyncConfigError,
       error: err,
     });
     if (isAbort) {
