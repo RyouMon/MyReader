@@ -8,7 +8,8 @@ import i18n from "@/src/i18n";
 import { getCachedAuth, setCachedAuth, invalidateCachedAuth } from "../auth-cache";
 
 import type { RemoteBackend, RemoteFileStat, RemoteDirEntry, DownloadRequest, UploadRequest, PreparedUpload } from "../backend";
-import type { WebDavDataSource } from "../../../domain/types";
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
+type WebDavDataSource = DataSourceWebdav & { password: string };
 
 function normalizeRemotePath(path: string) {
   const trimmed = path.trim();

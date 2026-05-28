@@ -1,5 +1,5 @@
-import type { BookItem, Library } from "../../domain/types";
-import type { RemoteBackend } from "./backend";
+import type { BookItem, Library } from "../types";
+import type { RemoteBackend } from "../../services/remote/backend";
 
 export function buildRemoteCoverUri(
   library: Library,

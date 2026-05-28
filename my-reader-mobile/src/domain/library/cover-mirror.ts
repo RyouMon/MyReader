@@ -3,7 +3,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import type { BookItem, DataSource, Library } from "../types";
 import type { RemoteBackend } from "../../services/remote/backend";
 import { createRemoteBackend } from "../../services/remote/factory";
-import { buildRemoteCoverUri } from "../../services/remote/cover-url";
+import { buildRemoteCoverUri } from "./cover-url";
 
 const COVERS_DIR_NAME = "library-covers";
 const CONCURRENT_COVER_DOWNLOADS = 3;

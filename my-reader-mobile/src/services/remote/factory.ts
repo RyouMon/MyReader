@@ -1,9 +1,12 @@
-import type { DataSource, Library, WebDavDataSource } from "../../domain/types";
+import type { DataSource, DataSourceWebdav } from "@my-reader/tools/types/data-source";
+import type { Library } from "@my-reader/tools/types/library";
 import type { RemoteBackend } from "./backend";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../storage/credentials";
 
 import { OneDriveRemoteBackend } from "./onedrive/backend";
 import { WebDavRemoteBackend } from "./webdav/backend";
+
+type WebDavDataSource = DataSourceWebdav & { password: string };
 
 export async function createRemoteBackend(
   dataSource: DataSource,
