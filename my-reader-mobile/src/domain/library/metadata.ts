@@ -3,11 +3,11 @@ import type { RemoteBackend } from "../../services/remote/backend";
 import { createRemoteBackend } from "../../services/remote/factory";
 import { forceRefreshMetadata } from "./remote-library-shared";
 
-export type MetadataCheckResult =
+type MetadataCheckResult =
   | { changed: false; etag: string }
   | { changed: true; etag: string; library: Library };
 
-export async function checkMetadataEtag(
+async function checkMetadataEtag(
   backend: RemoteBackend,
   library: Library,
 ): Promise<{ changed: boolean; etag: string }> {
