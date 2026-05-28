@@ -6,13 +6,14 @@ import {
   forceRefreshMetadata,
   createLibraryFromPath,
 } from "./remote-library-shared";
+import { hasLocalCover, localCoverPath } from "../remote/cover-mirror";
 
 export type WebDavOps = {
   testConnection(timeout?: number | false): Promise<Response>;
   listDirectory(path: string): Promise<import("./remote-library").RemoteDirEntry[]>;
   createLibraryFromPath(remotePath: string): Promise<Library>;
   readBooks(library: Library): Promise<{ books: BookItem[]; metadataUri: string }>;
-  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): Promise<BookItem["coverUri"]>;
+  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): BookItem["coverUri"];
   forceRefreshMetadata(library: Library): Promise<string | null>;
 };
 
@@ -43,13 +44,17 @@ export async function createWebDavOps(
   };
 }
 
-async function buildWebDavCoverUri(
+function buildWebDavCoverUri(
   library: Library,
   backend: import("../remote/backend").RemoteBackend,
   bookPath: string,
   hasCover: boolean,
-): Promise<BookItem["coverUri"]> {
+): BookItem["coverUri"] {
   if (!bookPath || !hasCover) return undefined;
+
+  if (hasLocalCover(library.id, bookPath)) {
+    return localCoverPath(library.id, bookPath);
+  }
 
   const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
   const cachedHeaders = backend.getCachedAuthHeaders();

@@ -146,7 +146,7 @@ export async function createLibraryFromPath(
 export async function readBooks(
   library: Library,
   backend: RemoteBackend,
-  buildCoverUri: (library: Library, bookPath: string, hasCover: boolean) => Promise<BookItem["coverUri"]>,
+  buildCoverUri: (library: Library, bookPath: string, hasCover: boolean) => BookItem["coverUri"],
 ): Promise<{ books: BookItem[]; metadataUri: string }> {
   const metadataUri = await ensureMetadataCached(library, backend);
   if (!metadataUri) {

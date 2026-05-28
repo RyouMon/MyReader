@@ -11,6 +11,10 @@ import {
   type SyncTargetContext,
 } from "./actions";
 import { syncDbFromContext } from "./db_sync";
+import { mirrorMissingCovers } from "../remote/cover-mirror";
+import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
+import { queryClient } from "../hooks/queries/queryClient";
+import type { BookItem } from "../data/types";
 import i18n from "@/src/i18n";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";
@@ -148,6 +152,11 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
         const dbResult = await syncDbFromContext(library, ctx);
         entry.dbPushed = dbResult.pushed;
         entry.dbPulled = dbResult.pulled;
+
+        if (isRemoteSourceType(library.sourceType)) {
+          const books = queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(library.id)) ?? [];
+          void mirrorMissingCovers(library, dataSources, books).catch(() => {});
+        }
       } catch (err) {
         entry.error = describeError(err);
       }

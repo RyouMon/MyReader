@@ -1,6 +1,7 @@
 import { createRemoteBackend } from "../remote/factory";
 import type { BookItem, DataSource, Library } from "./types";
 import { readBooks, forceRefreshMetadata, createLibraryFromPath } from "./remote-library-shared";
+import { hasLocalCover, localCoverPath } from "../remote/cover-mirror";
 
 // -- Types (kept here for backward compat) --
 
@@ -15,7 +16,7 @@ export type RemoteLibraryOps = {
   listDirectory(path: string): Promise<RemoteDirEntry[]>;
   createLibraryFromPath(remotePath: string): Promise<Library>;
   readBooks(library: Library): Promise<{ books: BookItem[]; metadataUri: string }>;
-  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): Promise<BookItem["coverUri"]>;
+  buildCoverUri(library: Library, bookPath: string, hasCover: boolean): BookItem["coverUri"];
   forceRefreshMetadata(library: Library): Promise<string | null>;
 };
 
@@ -59,13 +60,17 @@ export async function createRemoteOps(
   };
 }
 
-async function buildCoverUriFromBackend(
+function buildCoverUriFromBackend(
   library: Library,
   backend: import("../remote/backend").RemoteBackend,
   bookPath: string,
   hasCover: boolean,
-): Promise<BookItem["coverUri"]> {
+): BookItem["coverUri"] {
   if (!bookPath || !hasCover) return undefined;
+
+  if (hasLocalCover(library.id, bookPath)) {
+    return localCoverPath(library.id, bookPath);
+  }
 
   const remoteCoverPath = `${library.sourcePath ?? library.path}/${bookPath}/cover.jpg`;
   const cachedHeaders = backend.getCachedAuthHeaders();
