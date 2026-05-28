@@ -1,17 +1,17 @@
 import { File } from "expo-file-system";
 
-import type { Library } from "../data/types";
-import { AppInvariantError, DataIntegrityError } from "../errors";
-import { useAppStore } from "../store/app-store";
+import type { Library } from "../../data/types";
+import { AppInvariantError, DataIntegrityError } from "../../errors";
+import { useAppStore } from "../../store/app-store";
 
-import { upsertFileState } from "../repos/file_state";
-import { openSyncContext, type SyncTargetContext } from "./actions";
-import { localFileUriFor } from "./backend";
+import { upsertFileState } from "../../repos/file_state";
+import { openSyncContext, type SyncTargetContext } from "../sync/actions";
+import { localFileUriFor } from "../../services/fs/path";
 import {
   downloadFileDirectWithProgress,
   type BackgroundDownloadOptions,
   type DownloadOutcome,
-} from "./transfer";
+} from "../sync/transfer";
 
 import i18n from "@/src/i18n";
 

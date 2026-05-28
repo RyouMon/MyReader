@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { useDownloadTaskForBookFormat } from "@/src/sync/download-store";
+import { useDownloadTaskForBookFormat } from "@/src/domain/download/download-store";
 
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 

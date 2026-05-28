@@ -4,7 +4,7 @@ import {
   deleteFileState,
   listFileStates,
   upsertFileState,
-} from "../repos/file_state";
+} from "../../repos/file_state";
 import { findEntry } from "./manifest";
 import { saveManifest } from "./manifest";
 import type { SyncTargetContext } from "./context";

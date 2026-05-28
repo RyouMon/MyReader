@@ -17,7 +17,7 @@ import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { queryClient } from "@/src/hooks/queries/queryClient";
 import { initializeDownloadNotifications } from "@/src/notifications/download-notifications";
-import { useSyncLifecycle } from "@/src/sync/useSyncLifecycle";
+import { useSyncLifecycle } from "@/src/hooks/useSyncLifecycle";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";
 

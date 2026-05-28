@@ -3,22 +3,22 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { Directory, File } from "expo-file-system";
 import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
-import type { RemoteBackend } from "./backend";
+import type { RemoteBackend } from "../../services/remote/backend";
 import { isRemoteBackend } from "./resolve";
-import { localFileUriFor, resolveLibraryBooksDir } from "../services/fs/path";
-import { AppInvariantError, DataIntegrityError } from "../errors";
+import { localFileUriFor, resolveLibraryBooksDir } from "../../services/fs/path";
+import { AppInvariantError, DataIntegrityError } from "../../errors";
 import type { Manifest, ManifestEntry } from "./manifest";
 import { findEntry, removeEntry, saveManifest } from "./manifest";
-import { clearExtractedReaderCachesForArchiveUri } from "../services/fs/cache";
+import { clearExtractedReaderCachesForArchiveUri } from "../../services/fs/cache";
 import {
   startNativeDownload,
   startNativeUpload,
   type NativeDownloadOptions,
   type NativeUploadOptions,
-} from "../services/download/native";
-import { parentDirectoryUriForFileUri } from "../services/fs/path";
-import { upsertFileState, deleteFileState } from "../data/file_state";
-import type { Library } from "../data/types";
+} from "../../services/download/native";
+import { parentDirectoryUriForFileUri } from "../../services/fs/path";
+import { upsertFileState, deleteFileState } from "../../repos/file_state";
+import type { Library } from "../../data/types";
 import type { SyncTargetContext } from "./context";
 import i18n from "@/src/i18n";
 

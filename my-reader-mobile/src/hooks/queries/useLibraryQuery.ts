@@ -4,9 +4,9 @@ import { readBooksFromLibrary } from "@/src/domain/library/calibre";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
 import type { BookItem, DataSource, Library } from "@/src/data/types";
 import { useAppStore } from "@/src/store/app-store";
-import { checkConnectivity } from "@/src/sync/connectivity";
-import { resolveSyncTarget } from "@/src/sync/resolve";
-import { refreshLibrary as syncRefreshLibrary } from "@/src/sync/refresh-library";
+import { checkConnectivity } from "@/src/domain/sync/connectivity";
+import { resolveSyncTarget, isRemoteBackend } from "@/src/domain/sync/resolve";
+import { refreshLibrary as syncRefreshLibrary } from "@/src/domain/sync/refresh-library";
 import { readBookCountFromLibrary } from "@/src/domain/library/calibre";
 import { isRemoteSourceType } from "@/src/data/types";
 import { queryClient } from "./queryClient";
@@ -133,7 +133,7 @@ export function useRefreshLibraryMutation() {
 
       try {
         const { backend } = await resolveSyncTarget(library, state.dataSources);
-        await checkConnectivity(backend);
+        if (isRemoteBackend(backend)) await checkConnectivity(backend);
       } catch {
         showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
         throw new Error(i18n.t("sync.sourceUnreachable"));

@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 
-import { useAppStore } from "../store/app-store";
+import { useAppStore } from "../../store/app-store";
 import { isLocalDirect } from "./resolve";
-import { isRemoteSourceType } from "../data/types";
+import { isRemoteSourceType } from "../../data/types";
 
 import {
   listBackedFiles,
@@ -10,11 +10,11 @@ import {
   reconcileFileStates,
   type SyncTargetContext,
 } from "./actions";
-import { syncDbFromContext } from "./db_sync";
-import { mirrorMissingCovers } from "../domain/library/cover-mirror";
-import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
-import { queryClient } from "../hooks/queries/queryClient";
-import type { BookItem } from "../data/types";
+import { syncDbFromContext } from "./db-sync";
+import { mirrorMissingCovers } from "../library/cover-mirror";
+import { libraryQueryKeys } from "../../hooks/queries/useLibraryQuery";
+import { queryClient } from "../../hooks/queries/queryClient";
+import type { BookItem } from "../../data/types";
 import i18n from "@/src/i18n";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";

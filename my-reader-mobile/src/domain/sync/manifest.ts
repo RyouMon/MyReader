@@ -1,4 +1,4 @@
-import type { RemoteBackend } from "./backend";
+import type { SyncBackend } from "./resolve";
 
 /** 与桌面端 `MANIFEST_PATH` 保持一致。 */
 export const MANIFEST_PATH = ".myreader/manifest.json";
@@ -50,7 +50,7 @@ function utf8Decode(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes);
 }
 
-export async function loadManifest(backend: RemoteBackend, device: string): Promise<Manifest> {
+export async function loadManifest(backend: SyncBackend, device: string): Promise<Manifest> {
   try {
     const bytes = await backend.readBytes(MANIFEST_PATH);
     if (bytes.byteLength === 0) return emptyManifest(device);
@@ -64,7 +64,7 @@ export async function loadManifest(backend: RemoteBackend, device: string): Prom
   }
 }
 
-export async function saveManifest(backend: RemoteBackend, manifest: Manifest): Promise<void> {
+export async function saveManifest(backend: SyncBackend, manifest: Manifest): Promise<void> {
   manifest.updatedAt = Date.now();
   const bytes = utf8Encode(JSON.stringify(manifest, null, 2));
   await backend.writeBytes(MANIFEST_PATH, bytes);

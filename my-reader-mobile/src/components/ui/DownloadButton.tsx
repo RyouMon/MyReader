@@ -11,8 +11,8 @@ import {
   enqueue,
   useDownloadStatusTasks,
   useDownloadTaskForPath,
-} from "@/src/sync/download-store";
-import { useSyncActions } from "@/src/sync/useSyncActions";
+} from "@/src/domain/download/download-store";
+import { useSyncActions } from "@/src/hooks/useSyncActions";
 
 export type DownloadButtonState = FileStateRow["localState"];
 

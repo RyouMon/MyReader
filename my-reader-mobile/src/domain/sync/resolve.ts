@@ -1,12 +1,12 @@
-import type { DataSource, Library, WebDavDataSource } from "../data/types";
-import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source";
-import { readWebDavPassword, readOneDriveRefreshToken } from "../services/storage/credentials";
-import { parentDirectoryUriForFileUri } from "../services/fs/path";
-import { SyncConfigError } from "../errors";
-import { createRemoteBackend } from "../services/remote/factory";
-import type { RemoteBackend } from "../services/remote/backend";
-import { LocalDirectBackend } from "./backend/local";
-import { resolveLibraryBooksDir } from "../services/fs/path";
+import type { DataSource, Library, WebDavDataSource } from "../../data/types";
+import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source";
+import { readWebDavPassword, readOneDriveRefreshToken } from "../../services/storage/credentials";
+import { parentDirectoryUriForFileUri } from "../../services/fs/path";
+import { SyncConfigError } from "../../errors";
+import { createRemoteBackend } from "../../services/remote/factory";
+import type { RemoteBackend } from "../../services/remote/backend";
+import { LocalDirectBackend } from "./local";
+import { resolveLibraryBooksDir } from "../../services/fs/path";
 import i18n from "@/src/i18n";
 
 export type SyncBackend = RemoteBackend | LocalDirectBackend;

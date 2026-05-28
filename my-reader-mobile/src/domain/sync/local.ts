@@ -4,7 +4,22 @@ import { localCachedFileUri, parentDirectoryUriForFileUri } from "../../services
 import { DataIntegrityError } from "../../errors";
 import i18n from "@/src/i18n";
 
-import type { BackendKind, RemoteStat, RemoteFileOps } from "./types";
+export type BackendKind = "local-direct";
+
+export type RemoteStat = {
+  size: number;
+  mtimeMs: number;
+  exists: boolean;
+};
+
+export interface RemoteFileOps {
+  readonly kind: BackendKind;
+  readBytes(relativePath: string): Promise<Uint8Array>;
+  writeBytes(relativePath: string, bytes: Uint8Array): Promise<void>;
+  deleteRemote(relativePath: string): Promise<void>;
+  statRemote(relativePath: string): Promise<RemoteStat>;
+  listRemote(prefix: string): Promise<string[]>;
+}
 
 export class LocalDirectBackend implements RemoteFileOps {
   readonly kind: BackendKind = "local-direct";

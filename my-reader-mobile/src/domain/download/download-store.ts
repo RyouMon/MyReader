@@ -1,18 +1,18 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-import { SyncConfigError } from "../errors";
-import { notifyDownloadState } from "../notifications/download-notifications";
-import { checkConnectivity } from "./connectivity";
+import { SyncConfigError } from "../../errors";
+import { notifyDownloadState } from "../../notifications/download-notifications";
+import { checkConnectivity } from "../sync/connectivity";
 import { downloadContextFile, finalizeRecoveredDownload, openDownloadContextForLibrary } from "./download-service";
-import { resolveSyncTarget } from "./resolve";
-import { useAppStore } from "../store/app-store";
+import { resolveSyncTarget, isRemoteBackend } from "../sync/resolve";
+import { useAppStore } from "../../store/app-store";
 import {
   cancelNativeDownload,
   completeNativeDownload,
   isNativeCancel,
   recoverNativeDownloads,
   type RecoveredNativeDownload,
-} from "../services/download/native";
+} from "../../services/download/native";
 
 import i18n from "@/src/i18n";
 
@@ -21,7 +21,7 @@ async function checkLibraryConnectivity(libraryId: string): Promise<void> {
   const library = libraries.find((l) => l.id === libraryId);
   if (!library) throw new SyncConfigError(i18n.t("sync.libraryNotFound", { id: libraryId }));
   const target = await resolveSyncTarget(library, dataSources);
-  await checkConnectivity(target.backend);
+  if (isRemoteBackend(target.backend)) await checkConnectivity(target.backend);
 }
 
 export type DownloadTaskStatus =

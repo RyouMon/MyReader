@@ -2,8 +2,8 @@ import { useCallback } from "react";
 
 import { useAppStore } from "../store/app-store";
 
-import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "./actions";
-import { runSync, type SyncTrigger } from "./scheduler";
+import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "../domain/sync/actions";
+import { runSync, type SyncTrigger } from "../domain/sync/scheduler";
 
 export type SyncActions = {
   triggerSync: (libraryId: string) => Promise<void>;

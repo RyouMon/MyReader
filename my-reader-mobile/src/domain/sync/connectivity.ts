@@ -1,4 +1,4 @@
-import type { RemoteBackend } from "./backend";
+import type { RemoteBackend } from "../../services/remote/backend";
 
 export type ConnectivityCheckResult = {
   reachable: boolean;

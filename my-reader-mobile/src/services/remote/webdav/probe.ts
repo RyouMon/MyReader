@@ -1,4 +1,4 @@
-import { WebDavUrlBuilder } from "../../../webdav/url-builder";
+import { WebDavUrlBuilder } from "../../webdav/url-builder";
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
 
 type WebDavDataSource = DataSourceWebdav & { password: string };

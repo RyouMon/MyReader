@@ -6,7 +6,7 @@ import { useAppStore } from "../store/app-store";
 import { SyncConfigError } from "../errors";
 import { InAppNotification } from "../notifications/in-app-notification";
 
-import { runSync } from "./scheduler";
+import { runSync } from "../domain/sync/scheduler";
 import { refreshMetadataIfStale } from "../domain/library/metadata";
 import { setCachedAuth } from "../services/remote/auth-cache";
 import { getValidAccessToken } from "../services/auth/onedrive";

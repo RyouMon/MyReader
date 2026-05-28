@@ -37,8 +37,8 @@ import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBooks, useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
-import { syncDbNow } from "@/src/sync/db_sync";
-import { useSyncActions } from "@/src/sync/useSyncActions";
+import { syncDbNow } from "@/src/domain/sync/db-sync";
+import { useSyncActions } from "@/src/hooks/useSyncActions";
 import { useBookActions } from "./hooks/useBookActions";
 
 const downloadFilterOptions = [

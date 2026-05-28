@@ -4,17 +4,17 @@ import type { DataSource } from "@my-reader/tools/types/data-source";
 import {
   forceRefreshLibraryMetadata,
   readBookCountFromMetadata,
-} from "../domain/library/calibre";
-import { createRemoteOps } from "../domain/library/remote-library";
-import { openDatabaseFromUri } from "../services/db/sqlite";
-import type { Library } from "../data/types";
-import { isRemoteSourceType } from "../data/types";
+} from "../library/calibre";
+import { createRemoteOps } from "../library/remote-library";
+import { openDatabaseFromUri } from "../../services/db/sqlite";
+import type { Library } from "../../data/types";
+import { isRemoteSourceType } from "../../data/types";
 
 import i18n from "@/src/i18n";
-import { clearReaderCachesForBook } from "../services/fs/cache";
+import { clearReaderCachesForBook } from "../../services/fs/cache";
 import { evictLocalFileOfflineSafe } from "./actions";
 import { diffBooks, type BookDiff, type BookSummary } from "./book-diff";
-import { downloadLibraryFile } from "./download-service";
+import { downloadLibraryFile } from "../download/download-service";
 
 type RawBookSummaryRow = {
   id: number;
