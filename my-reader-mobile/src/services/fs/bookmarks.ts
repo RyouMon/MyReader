@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 
 import i18n from "@/src/i18n";
 
-import type { Library } from "../../data/types";
+import type { Library } from "@my-reader/tools/types/library";
 import type { ResolveBookmarkResult } from "../../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
 
 export type SecurityScopedAccessResult = {

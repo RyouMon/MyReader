@@ -7,7 +7,9 @@
 
 import { buildHttpBasicAuthHeader } from "../http/auth";
 import { encodeUrlPathFromChunks } from "../fs/path";
-import type { WebDavDataSource } from "../../data/types";
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
+
+type WebDavDataSource = DataSourceWebdav & { password: string };
 
 export class WebDavUrlBuilder {
   private readonly serverUrl: string;
