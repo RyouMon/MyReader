@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from "react";
 
-import { useAppStore } from "../../store/app-store";
 import { isLocalDirect } from "./resolve";
 import { isRemoteSourceType } from "../types";
 
@@ -14,8 +13,9 @@ import { syncDbFromContext } from "./db-sync";
 import { mirrorMissingCovers } from "../library/cover-mirror";
 import { libraryQueryKeys } from "../../hooks/queries/useLibraryQuery";
 import { queryClient } from "../../hooks/queries/queryClient";
-import type { BookItem } from "../types";
+import type { BookItem, DataSource, Library } from "../types";
 import i18n from "@/src/i18n";
+import { describeError } from "../../utils/common";
 
 export type SyncTrigger = "startup" | "foreground" | "manual";
 
@@ -77,12 +77,18 @@ function getStatus(): SchedulerStatus {
   return state;
 }
 
+export type SyncDeps = {
+  libraries: Library[];
+  dataSources: DataSource[];
+  syncEnabled: boolean;
+};
+
 /**
  * Public scheduler entry point. Coalesces concurrent triggers into one run and
  * enforces a minimum interval for automatic triggers (startup/foreground) so
  * that rapid lifecycle ping-pong doesn't hammer the backend.
  */
-export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
+export function runSync(trigger: SyncTrigger, deps: SyncDeps): Promise<SyncRunReport> {
   if (inflight) return inflight;
 
   const now = Date.now();
@@ -99,8 +105,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
     return Promise.resolve(skipped);
   }
 
-  const syncEnabled = useAppStore.getState().settings.syncEnabled;
-  if (!syncEnabled && trigger !== "manual") {
+  if (!deps.syncEnabled && trigger !== "manual") {
     const skipped: SyncRunReport = {
       trigger,
       startedAt: now,
@@ -116,9 +121,7 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
     setState({ running: true, lastTrigger: trigger });
     const startedAt = Date.now();
     const results: LibrarySyncResult[] = [];
-    const snapshot = useAppStore.getState();
-    const libraries = snapshot.libraries;
-    const dataSources = snapshot.dataSources;
+    const { libraries, dataSources } = deps;
 
     for (const library of libraries) {
       const entry: LibrarySyncResult = {
@@ -192,14 +195,4 @@ export function runSync(trigger: SyncTrigger): Promise<SyncRunReport> {
  */
 export function useSyncSchedulerStatus(): SchedulerStatus {
   return useSyncExternalStore(subscribe, getStatus, getStatus);
-}
-
-function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
-  try {
-    return JSON.stringify(err);
-  } catch {
-    return String(err);
-  }
 }

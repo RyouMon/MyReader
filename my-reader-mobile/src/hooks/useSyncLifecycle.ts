@@ -6,7 +6,7 @@ import { useAppStore } from "../store/app-store";
 import { SyncConfigError } from "../errors";
 import { InAppNotification } from "../notifications/in-app-notification";
 
-import { runSync } from "../domain/sync/scheduler";
+import { runSync, type SyncDeps } from "../domain/sync/scheduler";
 import { refreshMetadataIfStale } from "../domain/library/metadata";
 import { setCachedAuth } from "../services/remote/auth-cache";
 import { getValidAccessToken } from "../services/auth/onedrive";
@@ -23,6 +23,15 @@ function notifySyncConfigError(message: string): void {
     Component: InAppNotification,
     componentProps: { kind: "error" },
   });
+}
+
+function getSyncDeps(): SyncDeps {
+  const state = useAppStore.getState();
+  return {
+    libraries: state.libraries,
+    dataSources: state.dataSources,
+    syncEnabled: state.settings.syncEnabled,
+  };
 }
 
 function handleSyncError(err: unknown, trigger: string): void {
@@ -64,7 +73,7 @@ export function useSyncLifecycle(): void {
     }
 
     InteractionManager.runAfterInteractions(() => {
-      void runSync("startup").catch((err) => handleSyncError(err, "startup"));
+      void runSync("startup", getSyncDeps()).catch((err) => handleSyncError(err, "startup"));
     });
 
     if (state.settings.syncEnabled) {
@@ -87,7 +96,7 @@ export function useSyncLifecycle(): void {
       const prev = lastStateRef.current;
       lastStateRef.current = next;
       if (prev !== "active" && next === "active" && hasRunStartup.current) {
-        void runSync("foreground").catch((err) => handleSyncError(err, "foreground"));
+        void runSync("foreground", getSyncDeps()).catch((err) => handleSyncError(err, "foreground"));
       }
     });
     return () => subscription.remove();

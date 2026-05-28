@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useAppStore } from "../store/app-store";
 
 import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "../domain/sync/actions";
-import { runSync, type SyncTrigger } from "../domain/sync/scheduler";
+import { runSync, type SyncTrigger, type SyncDeps } from "../domain/sync/scheduler";
 
 export type SyncActions = {
   triggerSync: (libraryId: string) => Promise<void>;
@@ -18,7 +18,13 @@ export function useSyncActions(): SyncActions {
 
   const triggerSync = useCallback(
     (trigger: SyncTrigger = "manual") => {
-      return runSync(trigger);
+      const snapshot = useAppStore.getState();
+      const deps: SyncDeps = {
+        libraries: snapshot.libraries,
+        dataSources: snapshot.dataSources,
+        syncEnabled: snapshot.settings.syncEnabled,
+      };
+      return runSync(trigger, deps);
     },
     [],
   );

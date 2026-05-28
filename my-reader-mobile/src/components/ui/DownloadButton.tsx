@@ -6,15 +6,16 @@ import { Text, View } from "@/tw";
 
 import { Button } from "./button";
 
-import type { FileStateRow } from "@/src/repos/file_state";
+import type { LocalState } from "@/src/domain/types";
 import {
   enqueue,
   useDownloadStatusTasks,
   useDownloadTaskForPath,
 } from "@/src/domain/download/download-store";
 import { useSyncActions } from "@/src/hooks/useSyncActions";
+import { describeError } from "@/src/utils/common";
 
-export type DownloadButtonState = FileStateRow["localState"];
+export type DownloadButtonState = LocalState;
 
 type BusyKind = "download" | "evict" | "delete" | null;
 
@@ -258,10 +259,4 @@ function Pill({
       variant="outline"
     />
   );
-}
-
-function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
-  return String(err);
 }

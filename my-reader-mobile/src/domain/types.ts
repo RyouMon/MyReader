@@ -24,8 +24,9 @@ export type WebDavDataSource = DataSourceWebdav & { password: string };
 /** OneDrive API layer: requires valid access token */
 export type OneDriveDataSource = DataSourceOnedrive & { accessToken: string };
 
-export function isRemoteSourceType(sourceType?: string | null): boolean {
-  return sourceType === "webdav" || sourceType === "onedrive";
+export type LocalState = "present" | "remote_only" | "dirty_push";
+
+export function isRemoteSourceType(sourceType?: string | null): boolean {  return sourceType === "webdav" || sourceType === "onedrive";
 }
 
 export type MobileLibrariesConfig = {
