@@ -32,7 +32,8 @@ async function resolveRemoteCoverUri(
   hasCover: boolean,
 ) {
   const ops = await createRemoteOps(library, dataSources);
-  return ops?.buildCoverUri(library, bookPath, hasCover);
+  if (!ops) return undefined;
+  return ops.buildCoverUri(library, bookPath, hasCover);
 }
 
 function isDownloadedLocalState(state: LocalState | null | undefined): boolean {

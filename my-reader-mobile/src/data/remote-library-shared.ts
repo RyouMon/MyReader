@@ -157,28 +157,26 @@ export async function readBooks(
   try {
     const rows = await db.getAllAsync<RawBookRow>(BOOKS_QUERY);
 
-    const books = await Promise.all(
-      rows.map(async (row) => {
-        const authors = splitConcat(row.authors);
+    const books = rows.map((row) => {
+      const authors = splitConcat(row.authors);
 
-        const coverUri =
-          row.path && (row.has_cover ?? 0) !== 0
-            ? await buildCoverUri(library, row.path, true)
-            : undefined;
+      const coverUri =
+        row.path && (row.has_cover ?? 0) !== 0
+          ? buildCoverUri(library, row.path, true)
+          : undefined;
 
-        return {
-          id: `${row.id}`,
-          calibreId: row.id,
-          title: row.title || i18n.t("common.unnamedBook"),
-          author: authors[0] || row.author_sort || i18n.t("common.unknownAuthor"),
-          authors,
-          path: row.path || undefined,
-          hasCover: (row.has_cover ?? 0) !== 0,
-          timestamp: row.timestamp,
-          coverUri,
-        } satisfies BookItem;
-      }),
-    );
+      return {
+        id: `${row.id}`,
+        calibreId: row.id,
+        title: row.title || i18n.t("common.unnamedBook"),
+        author: authors[0] || row.author_sort || i18n.t("common.unknownAuthor"),
+        authors,
+        path: row.path || undefined,
+        hasCover: (row.has_cover ?? 0) !== 0,
+        timestamp: row.timestamp,
+        coverUri,
+      } satisfies BookItem;
+    });
 
     return { metadataUri, books };
   } finally {

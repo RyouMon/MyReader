@@ -16,49 +16,49 @@ todos:
     status: done
   - id: auth-field
     content: "Phase 2: DataSourceOnedrive 加 accessTokenExpiresAt 字段"
-    status: pending
+    status: done
   - id: auth-cache
     content: "Phase 2: 实现通用 AuthCache（内存缓存 + 同步读 + invalidate）"
-    status: pending
+    status: done
   - id: auth-od
     content: "Phase 2: OneDrive backend 接入 AuthCache，refreshAccessToken 写 expiry"
-    status: pending
+    status: done
   - id: auth-wd
     content: "Phase 2: WebDAV backend 接入 AuthCache（无过期）"
-    status: pending
+    status: done
   - id: auth-test
     content: "Phase 2: AuthCache 单测（命中 / 过期 / invalidate / 多 backend）"
-    status: pending
+    status: done
   - id: stat-backend
     content: "Phase 3: 每个 backend 实现 statRemoteFile（OneDrive cTag / WebDAV PROPFIND）"
-    status: pending
+    status: done
   - id: stat-refresh
     content: "Phase 3: 通用 refreshMetadataIfStale，挂到 startup（受 syncEnabled gate）与 manual refresh；变化时 invalidate books query"
-    status: pending
+    status: done
   - id: stat-library-field
     content: "Phase 3: Library 类型加 metadataEtag 字段并持久化"
-    status: pending
+    status: done
   - id: cover-mirror
     content: "Phase 4: 通用 CoverMirror 模块（路径 / 检查 / 下载）"
-    status: pending
+    status: done
   - id: cover-uri
     content: "Phase 4: buildCoverUri 优先 file://，未命中走 backend.contentUrl"
-    status: pending
+    status: done
   - id: cover-queue
     content: "Phase 4: runSync 后台缺失封面补齐队列（并发 3）"
-    status: pending
+    status: done
   - id: persist-deps
     content: "Phase 5: 安装 react-query-persist-client 与 AsyncStorage"
-    status: pending
+    status: done
   - id: persist-client
     content: "Phase 5: 配置 queryClient 持久化，coverUri 持久化前拍扁、渲染时 inflate"
-    status: pending
+    status: done
   - id: persist-prewarm
     content: "Phase 5: useSyncLifecycle 暖 AuthCache（每个 OAuth 数据源各一次）"
-    status: pending
+    status: done
   - id: defer-sync
     content: "Phase 6: startup runSync 延迟到 runAfterInteractions"
-    status: pending
+    status: done
   - id: verify
     content: "验证：冷启动计时、飞行模式浏览、远端加书后下次启动可见、WebDAV 同样生效"
     status: pending

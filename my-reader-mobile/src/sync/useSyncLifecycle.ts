@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, InteractionManager, type AppStateStatus } from "react-native";
 import { Notifier } from "react-native-notifier";
 
 import { useAppStore } from "../store/app-store";
@@ -8,6 +8,8 @@ import { InAppNotification } from "../notifications/in-app-notification";
 
 import { runSync } from "./scheduler";
 import { refreshMetadataIfStale } from "../remote/metadata-check";
+import { setCachedAuth } from "../remote/auth-cache";
+import { getValidAccessToken } from "../services/auth/onedrive";
 import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
 import { queryClient } from "../hooks/queries/queryClient";
 import i18n from "@/src/i18n";
@@ -49,9 +51,22 @@ export function useSyncLifecycle(): void {
     if (!storeReady || hasRunStartup.current) return;
     hasRunStartup.current = true;
 
-    void runSync("startup").catch((err) => handleSyncError(err, "startup"));
-
     const state = useAppStore.getState();
+
+    for (const ds of state.dataSources) {
+      if (ds.type === "onedrive") {
+        void getValidAccessToken(ds.id)
+          .then(({ accessToken, expiresAt }) => {
+            setCachedAuth(ds.id, { Authorization: `Bearer ${accessToken}` }, expiresAt);
+          })
+          .catch(() => {});
+      }
+    }
+
+    InteractionManager.runAfterInteractions(() => {
+      void runSync("startup").catch((err) => handleSyncError(err, "startup"));
+    });
+
     if (state.settings.syncEnabled) {
       for (const library of state.libraries) {
         if (library.dataSourceId && library.sourceType !== "local") {

@@ -14,6 +14,8 @@ import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { refreshMetadataIfStale } from "@/src/remote/metadata-check";
 
+import { getCachedAuth } from "@/src/remote/auth-cache";
+
 export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,
 };
@@ -56,6 +58,27 @@ export function useBooks(activeLibraryId: string | null) {
     },
     enabled: !!activeLibraryId,
     staleTime: 1000 * 60 * 5,
+    select: (books: BookItem[]) => inflateCoverUris(books, activeLibraryId),
+  });
+}
+
+function inflateCoverUris(books: BookItem[], libraryId: string | null): BookItem[] {
+  if (!libraryId) return books;
+
+  const state = useAppStore.getState();
+  const library = state.libraries.find((l) => l.id === libraryId);
+  if (!library?.dataSourceId) return books;
+
+  const cachedHeaders = getCachedAuth(library.dataSourceId);
+
+  return books.map((book) => {
+    if (!book.coverUri || typeof book.coverUri !== "string" || book.coverUri.startsWith("file://")) {
+      return book;
+    }
+
+    if (!cachedHeaders) return book;
+
+    return { ...book, coverUri: { uri: book.coverUri, headers: cachedHeaders } };
   });
 }
 
