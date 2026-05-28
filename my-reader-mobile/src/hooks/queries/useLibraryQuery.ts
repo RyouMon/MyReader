@@ -12,7 +12,7 @@ import { isRemoteSourceType } from "@/src/data/types";
 import { queryClient } from "./queryClient";
 import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { refreshMetadataIfStale } from "@/src/services/remote/metadata-check";
+import { refreshMetadataIfStale } from "@/src/domain/library/metadata";
 
 import { getCachedAuth } from "@/src/services/remote/auth-cache";
 

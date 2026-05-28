@@ -7,7 +7,7 @@ import { SyncConfigError } from "../errors";
 import { InAppNotification } from "../notifications/in-app-notification";
 
 import { runSync } from "./scheduler";
-import { refreshMetadataIfStale } from "../services/remote/metadata-check";
+import { refreshMetadataIfStale } from "../domain/library/metadata";
 import { setCachedAuth } from "../services/remote/auth-cache";
 import { getValidAccessToken } from "../services/auth/onedrive";
 import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
