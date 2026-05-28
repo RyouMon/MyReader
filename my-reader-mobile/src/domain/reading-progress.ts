@@ -1,13 +1,22 @@
 import type { Locator } from "@ryoumon/react-native-readium";
 import { and, eq } from "drizzle-orm";
 
-import { parseStoredLocator } from "@/src/features/reader/components/reader/locator";
 import { uuid } from "@/src/utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import { getLibraryDatabase } from "../services/db/library-db";
 import type { Library } from "./types";
 
-const LOG_TARGET = "reading-progress";
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function parseStoredLocator(raw: unknown): Locator | null {
+  if (!isPlainObject(raw)) return null;
+  const { href, type } = raw;
+  if (typeof href !== "string" || href.length === 0) return null;
+  if (typeof type !== "string" || type.length === 0) return null;
+  return raw as unknown as Locator;
+}
 
 /**
  * Strip platform-specific prefix from href for cross-platform storage.
@@ -66,12 +75,9 @@ export async function getReadingProgress(
 
     const raw: unknown = JSON.parse(row.locatorJson);
     const locator = parseStoredLocator(raw);
-    if (locator) {
-    } else {
-    }
-    return locator;
+    return parseStoredLocator(raw);
   } catch (e) {
-    console.error(`[${LOG_TARGET}] get:error`, { bookId, format: fmt, error: e });
+    console.error("[reading-progress] get:error", { bookId, format: fmt, error: e });
     return null;
   }
 }
@@ -103,6 +109,6 @@ export async function setReadingProgress(
         set: { locatorJson: json, updatedAt },
       });
   } catch (e) {
-    console.error(`[${LOG_TARGET}] set:error`, { bookId, format: fmt, error: e });
+    console.error("[reading-progress] set:error", { bookId, format: fmt, error: e });
   }
 }
