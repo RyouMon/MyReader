@@ -36,7 +36,7 @@ export class DataSourceInUseError extends AppError {
   }
 }
 
-export type DownloadErrorInfo = { title: string; message: string };
+type DownloadErrorInfo = { title: string; message: string };
 
 const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {
   title: i18n.t("errors.sourceUnreachable"),

@@ -5,7 +5,7 @@ import i18n from "@/src/i18n";
 import type { Library } from "@my-reader/tools/types/library";
 import type { ResolveBookmarkResult } from "../../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
 
-export type SecurityScopedAccessResult = {
+type SecurityScopedAccessResult = {
   uri: string;
   stale: boolean;
 };
@@ -119,25 +119,6 @@ export async function createSecurityScopedBookmark(uri: string) {
     return await securityScopedBookmarksModule.createBookmarkForDirectoryAsync(uri);
   } catch (error) {
     throw createBookmarkOperationError(i18n.t("securityBookmarks.createBookmark"), error);
-  }
-}
-
-/**
- * Resolves a stored security-scoped bookmark back to a runtime URI.
- */
-export async function resolveSecurityScopedBookmark(bookmarkBase64: string) {
-  const securityScopedBookmarksModule = getSecurityScopedBookmarksModule();
-  if (!securityScopedBookmarksModule) {
-    return {
-      uri: "",
-      stale: false,
-    };
-  }
-
-  try {
-    return await securityScopedBookmarksModule.resolveBookmarkAsync(bookmarkBase64);
-  } catch (error) {
-    throw createBookmarkOperationError(i18n.t("securityBookmarks.restoreBookmark"), error);
   }
 }
 

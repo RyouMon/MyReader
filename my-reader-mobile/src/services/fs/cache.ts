@@ -1,8 +1,8 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { toNativeFilesystemPath } from "./path";
 
-export const READER_CACHE_ROOT = new Directory(Paths.cache, "myreader");
-export const READER_EXTRACTED_CACHE_DIR = new Directory(READER_CACHE_ROOT, "extracted");
+const READER_CACHE_ROOT = new Directory(Paths.cache, "myreader");
+const READER_EXTRACTED_CACHE_DIR = new Directory(READER_CACHE_ROOT, "extracted");
 export const READER_LOCAL_COPY_CACHE_DIR = new Directory(READER_CACHE_ROOT, "local-copies");
 
 type CacheFileStat = {

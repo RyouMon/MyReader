@@ -1,4 +1,3 @@
-import { File as FSFile } from "expo-file-system";
 import { open, type DB, type Scalar } from "@op-engineering/op-sqlite";
 
 import { fileUriToNativeDirAndName } from "../fs/path";
@@ -7,7 +6,7 @@ import { fileUriToNativeDirAndName } from "../fs/path";
  * Lightweight adapter that mirrors the small slice of expo-sqlite's async API
  * the legacy call sites relied on.
  */
-export type OpenedDatabase = {
+type OpenedDatabase = {
   getFirstAsync<T = Record<string, Scalar>>(
     sql: string,
     params?: Scalar | Scalar[],
@@ -54,11 +53,4 @@ export async function openDatabaseFromUri(uri: string): Promise<OpenedDatabase> 
   const { dir, name } = fileUriToNativeDirAndName(uri);
   const db = open({ name, location: dir });
   return wrapConnection(db);
-}
-
-export function deleteDbFileByUri(uri: string): void {
-  const file = new FSFile(uri);
-  if (file.exists) {
-    file.delete();
-  }
 }

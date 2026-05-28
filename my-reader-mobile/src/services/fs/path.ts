@@ -29,13 +29,13 @@ import { Directory, Paths } from "expo-file-system";
 import i18n from "@/src/i18n";
 
 /** Max decode rounds for `%` sequences within a single path segment. */
-export const IO_PATH_MAX_PERCENT_DECODE_ROUNDS = 8;
+const IO_PATH_MAX_PERCENT_DECODE_ROUNDS = 8;
 
 /**
  * Normalize a "library-relative path": trim whitespace, backslashes to
  * forward slashes, strip leading/trailing `/`.
  */
-export function normalizeRelativePath(path: string): string {
+function normalizeRelativePath(path: string): string {
   const trimmed = path.trim().replace(/\\/g, "/");
   return trimmed.replace(/^\/+/, "").replace(/\/+$/, "");
 }
@@ -118,7 +118,7 @@ export function encodeUrlPathFromChunks(...pathChunks: string[]): string {
 /**
  * Check whether a string is a local file URI.
  */
-export function isFileUri(value: string): boolean {
+function isFileUri(value: string): boolean {
   return value.trim().startsWith("file:");
 }
 
@@ -126,7 +126,7 @@ export function isFileUri(value: string): boolean {
  * Normalize a native absolute path or bare path into a `file:` URI for use
  * with Expo `File` / `Directory` / legacy file-system.
  */
-export function toFileUri(pathOrUri: string): string {
+function toFileUri(pathOrUri: string): string {
   const normalized = pathOrUri.replace(/\\/g, "/").trim();
   const nativePath = isFileUri(normalized) ? toNativeFilesystemPath(normalized) : decodePathToPlainText(normalized);
   const encodedPath = nativePath
