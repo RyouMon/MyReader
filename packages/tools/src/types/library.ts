@@ -8,6 +8,8 @@ export type Library = {
   dataSourceId?: string | null
   sourceType?: string | null
   sourcePath?: string | null
+  /** ETag/cTag of metadata.db on remote. Used for incremental detection. */
+  metadataEtag?: string | null
   securityScopedBookmark?: {
     bookmarkBase64: string
     resolvedUri: string

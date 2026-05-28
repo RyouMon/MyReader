@@ -12,6 +12,7 @@ import { isRemoteSourceType } from "@/src/data/types";
 import { queryClient } from "./queryClient";
 import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { refreshMetadataIfStale } from "@/src/remote/metadata-check";
 
 export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,
@@ -113,6 +114,17 @@ export function useRefreshLibraryMutation() {
       } catch {
         showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
         throw new Error(i18n.t("sync.sourceUnreachable"));
+      }
+
+      if (isRemoteSourceType(library.sourceType) && library.dataSourceId) {
+        try {
+          const result = await refreshMetadataIfStale(library, state.dataSources);
+          if (result.changed) {
+            await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(libraryId) });
+          }
+        } catch {
+          // metadata check failure should not block manual refresh
+        }
       }
 
       const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(library, state.dataSources);

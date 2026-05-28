@@ -7,6 +7,9 @@ import { SyncConfigError } from "../errors";
 import { InAppNotification } from "../notifications/in-app-notification";
 
 import { runSync } from "./scheduler";
+import { refreshMetadataIfStale } from "../remote/metadata-check";
+import { libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
+import { queryClient } from "../hooks/queries/queryClient";
 import i18n from "@/src/i18n";
 
 function notifySyncConfigError(message: string): void {
@@ -45,7 +48,23 @@ export function useSyncLifecycle(): void {
   useEffect(() => {
     if (!storeReady || hasRunStartup.current) return;
     hasRunStartup.current = true;
+
     void runSync("startup").catch((err) => handleSyncError(err, "startup"));
+
+    const state = useAppStore.getState();
+    if (state.settings.syncEnabled) {
+      for (const library of state.libraries) {
+        if (library.dataSourceId && library.sourceType !== "local") {
+          void refreshMetadataIfStale(library, state.dataSources)
+            .then((result) => {
+              if (result.changed) {
+                queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(library.id) });
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    }
   }, [storeReady]);
 
   useEffect(() => {
