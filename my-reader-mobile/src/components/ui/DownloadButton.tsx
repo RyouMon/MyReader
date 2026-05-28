@@ -6,7 +6,7 @@ import { Text, View } from "@/tw";
 
 import { Button } from "./button";
 
-import type { FileStateRow } from "@/src/data/file_state";
+import type { FileStateRow } from "@/src/repos/file_state";
 import {
   enqueue,
   useDownloadStatusTasks,

@@ -7,7 +7,7 @@ import {
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/data/calibre";
-import { getFileState, type LocalState } from "@/src/data/file_state";
+import { getFileState, type LocalState } from "@/src/repos/file_state";
 import { getReadingProgress } from "@/src/data/reading-progress";
 import { createRemoteOps } from "@/src/data/remote-library";
 import type { DataSource, Library } from "@/src/data/types";

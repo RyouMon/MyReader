@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/data/calibre";
-import { getFileState, useFileStateRevision, type LocalState } from "@/src/data/file_state";
+import { getFileState, type LocalState } from "@/src/repos/file_state";
+import { useFileStateRevision } from "@/src/hooks/useFileState";
 import type { BookItem, DataSource, Library } from "@/src/data/types";
 import { isRemoteSourceType } from "@/src/data/types";
 import { FONT_UI } from "@/src/design/typography";

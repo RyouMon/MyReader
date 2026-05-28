@@ -4,7 +4,7 @@ import type { Library } from "../data/types";
 import { AppInvariantError, DataIntegrityError } from "../errors";
 import { useAppStore } from "../store/app-store";
 
-import { upsertFileState } from "../data/file_state";
+import { upsertFileState } from "../repos/file_state";
 import { openSyncContext, type SyncTargetContext } from "./actions";
 import { localFileUriFor } from "./backend";
 import {

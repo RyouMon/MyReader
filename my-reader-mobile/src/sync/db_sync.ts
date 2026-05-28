@@ -2,7 +2,7 @@ import { and, eq, gt } from "drizzle-orm";
 
 import { getLibraryDatabase } from "../services/db/library-db";
 import { withSecurityScopedLibraryAccess } from "../services/fs/bookmarks";
-import { getSyncMeta, setSyncMeta } from "../data/sync_meta";
+import { getSyncMeta, setSyncMeta } from "../repos/sync_meta";
 import type { DataSource, Library } from "../data/types";
 import { uuid } from "../utils/common";
 import { readingProgress } from "@my-reader/db/schema";

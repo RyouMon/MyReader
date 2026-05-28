@@ -18,7 +18,7 @@ type FormatSectionProps = {
   book: BookDetail;
   colors: DetailColors;
   defaultFormat: string | null;
-  formatInfoMap: Record<string, { relativePath: string; localState: import("@/src/data/file_state").LocalState | null }>;
+  formatInfoMap: Record<string, { relativePath: string; localState: import("@/src/repos/file_state").LocalState | null }>;
   formatSizeMap: Map<string, number>;
   isNetworkSource: boolean;
   libraryId: string;
@@ -102,7 +102,7 @@ function FormatCard({
   bookId: string;
   colors: DetailColors;
   defaultFormatKey: string | null;
-  fileLocalState: import("@/src/data/file_state").LocalState | null;
+  fileLocalState: import("@/src/repos/file_state").LocalState | null;
   format: string;
   isNetworkSource: boolean;
   isReadable: boolean;
