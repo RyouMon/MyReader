@@ -101,7 +101,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const storeReady = useAppStore((s) => s.storeReady);
   const { data: books = [], isLoading: loadingBooks, error: booksError } = useBooks(activeLibraryId);
   const refreshMutation = useRefreshLibraryMutation();
-  const isRefreshing = refreshMutation.isPending;
   const viewMode = useAppStore((s) => s.libraryViewMode);
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const [query, setQuery] = useState("");
@@ -116,7 +115,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isLoadingNewContent = loadingBooks && !isRefreshing;
+  const isLoadingNewContent = loadingBooks && books.length === 0;
 
   const handleMenuOpen = useCallback((bookId: string) => {
     if (menuCloseTimerRef.current) {

@@ -38,8 +38,6 @@ export function useLibraryActions() {
       store.getState().setLibraries(hydratedLibraries);
       store.getState().setDataSources(excludeLocalLibrarySource(state.dataSources));
       store.getState().setActiveLibraryId(nextActiveLibraryId);
-
-      await refreshBooks();
     } catch {
       store.getState().setLibraries([]);
       store.getState().setActiveLibraryId(null);
@@ -123,9 +121,8 @@ export function useLibraryActions() {
     await refreshBooks();
   }
 
-  async function switchLibrary(id: string) {
+  function switchLibrary(id: string) {
     store.getState().setActiveLibraryId(id);
-    await refreshBooks();
   }
 
   return {
