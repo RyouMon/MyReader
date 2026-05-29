@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-export type InAppNotificationKind = "success" | "error" | "warning" | "info";
+type InAppNotificationKind = "success" | "error" | "warning" | "info";
 
 // Fixed light-palette colors — intentionally not theme-aware so backgrounds
 // remain legible (high contrast) in both light and dark mode.
