@@ -27,15 +27,6 @@ export function findEntry(manifest: Manifest, path: string): ManifestEntry | und
   return manifest.entries.find((entry) => entry.path === path);
 }
 
-function upsertEntry(manifest: Manifest, entry: ManifestEntry): void {
-  const idx = manifest.entries.findIndex((e) => e.path === entry.path);
-  if (idx >= 0) {
-    manifest.entries[idx] = entry;
-  } else {
-    manifest.entries.push(entry);
-  }
-}
-
 export function removeEntry(manifest: Manifest, path: string): boolean {
   const before = manifest.entries.length;
   manifest.entries = manifest.entries.filter((entry) => entry.path !== path);

@@ -4,10 +4,11 @@ import { uuid } from "@/src/utils/common";
 import { fileState } from "@my-reader/db/schema";
 import type { FileState as FileStateRow } from "@my-reader/db/types";
 import { getLibraryDatabase } from "../services/db/library-db";
-import type { Library, LocalState } from "../domain/types";
-export type { FileState as FileStateRow } from "@my-reader/db/types";
+import type { Library } from "@my-reader/tools/types/library";
 
-export type { LocalState } from "../domain/types";
+type LocalState = "present" | "remote_only" | "local_only" | "dirty_push";
+export type { LocalState };
+export type { FileState as FileStateRow } from "@my-reader/db/types";
 
 type Listener = () => void;
 

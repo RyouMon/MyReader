@@ -8,7 +8,7 @@ import { uuid } from "../../utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import { LocalDirectBackend } from "./local";
 import { getOrCreateDeviceId } from "./device";
-import { resolveSyncTarget, isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";type ChangeRow = {
+import { isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";type ChangeRow = {
   t: string;
   k: Record<string, unknown>;
   v: Record<string, unknown>;

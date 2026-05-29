@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import { useAppStore } from "../store/app-store";
 
-import { openSyncContext, evictLocalFile, deleteFileEverywhere, type SyncTargetContext } from "../domain/sync/actions";
+import { openSyncContext, evictLocalFile, deleteFileEverywhere } from "../domain/sync/actions";
 import { runSync, type SyncTrigger, type SyncDeps, type SyncRunReport } from "../domain/sync/scheduler";
 import { getBooksForLibrary } from "./queries/useLibraryQuery";
 

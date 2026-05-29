@@ -240,20 +240,6 @@ function stableTaskId(libraryId: string, relativePath: string): string {
 }
 
 /**
- * Serializes the UI task fields needed to recover native background tasks.
- */
-function getTaskMetadata(task: DownloadTask): DownloadTaskMetadata {
-  return {
-    source: "myreader",
-    libraryId: task.libraryId,
-    bookId: task.bookId,
-    format: task.format,
-    relativePath: task.relativePath,
-    label: task.label,
-  };
-}
-
-/**
  * Parses downloader metadata written by this app and ignores foreign tasks.
  */
 function readTaskMetadata(task: RecoveredNativeDownload): DownloadTaskMetadata | null {

@@ -5,7 +5,7 @@ import { deleteAsync, makeDirectoryAsync } from "expo-file-system/legacy";
 
 import type { RemoteBackend } from "../../services/remote/backend";
 import { isRemoteBackend } from "./resolve";
-import { localFileUriFor, resolveLibraryBooksDir } from "../../services/fs/path";
+import { localFileUriFor, resolveLibraryBooksDir, parentDirectoryUriForFileUri } from "../../services/fs/path";
 import { AppInvariantError, DataIntegrityError } from "../../errors";
 import type { Manifest, ManifestEntry } from "./manifest";
 import { findEntry, removeEntry, saveManifest } from "./manifest";
@@ -16,12 +16,11 @@ import {
   type NativeDownloadOptions,
   type NativeUploadOptions,
 } from "../../services/download/native";
-import { parentDirectoryUriForFileUri } from "../../services/fs/path";
 import { upsertFileState, deleteFileState } from "../../repos/file_state";
 import type { Library } from "../types";
 import type { SyncTargetContext } from "./context";
 import i18n from "@/src/i18n";
-import { describeError, yieldToEventLoop } from "../../utils/common";
+import { yieldToEventLoop } from "../../utils/common";
 
 export type DownloadOutcome = {
   blake3: string | null;

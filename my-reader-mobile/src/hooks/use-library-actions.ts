@@ -40,7 +40,7 @@ export function useLibraryActions() {
       store.getState().setActiveLibraryId(nextActiveLibraryId);
 
       await refreshBooks();
-    } catch (caught) {
+    } catch {
       store.getState().setLibraries([]);
       store.getState().setActiveLibraryId(null);
     } finally {
@@ -80,7 +80,7 @@ export function useLibraryActions() {
 
       await refreshBooks();
       return preparedLibrary;
-    } catch (caught) {
+    } catch {
       return null;
     }
   }

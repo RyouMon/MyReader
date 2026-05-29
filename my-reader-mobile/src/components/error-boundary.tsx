@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
