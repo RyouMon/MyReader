@@ -18,7 +18,7 @@ export type NativeDownloadOptions = {
   onNativeTask?: (task: BackgroundDownloadTask) => void;
 };
 
-export type NativeDownloadRequest = {
+type NativeDownloadRequest = {
   relativePath: string;
   url: string;
   destinationUri: string;
@@ -27,7 +27,7 @@ export type NativeDownloadRequest = {
   options?: NativeDownloadOptions;
 };
 
-export type RecoveredNativeDownload = {
+type RecoveredNativeDownload = {
   id: string;
   metadata: BackgroundDownloadTask["metadata"];
   state: BackgroundDownloadTask["state"];
@@ -37,25 +37,25 @@ export type RecoveredNativeDownload = {
   stop: () => void;
 };
 
-export type NativeDownloadRecoveredHandlers = {
+type NativeDownloadRecoveredHandlers = {
   onProgress?: (received: number, total: number) => void;
   onDone?: (received: number, total: number) => void;
   onError?: (error: string, errorCode: number) => void;
 };
 
-export type NativeDownloadResult = {
+type NativeDownloadResult = {
   bytesDownloaded: number;
   bytesTotal: number;
 };
 
-export type NativeUploadOptions = {
+type NativeUploadOptions = {
   taskId?: string;
   metadata?: Record<string, unknown>;
   onBegin?: (expectedBytes: number) => void;
   onNativeTask?: (task: BackgroundUploadTask) => void;
 };
 
-export type NativeUploadRequest = {
+type NativeUploadRequest = {
   relativePath: string;
   url: string;
   sourceUri: string;
@@ -65,7 +65,7 @@ export type NativeUploadRequest = {
   options?: NativeUploadOptions;
 };
 
-export type RecoveredNativeUpload = {
+type RecoveredNativeUpload = {
   id: string;
   metadata: BackgroundUploadTask["metadata"];
   state: BackgroundUploadTask["state"];
@@ -75,13 +75,13 @@ export type RecoveredNativeUpload = {
   stop: () => void;
 };
 
-export type NativeUploadRecoveredHandlers = {
+type NativeUploadRecoveredHandlers = {
   onProgress?: (sent: number, total: number) => void;
   onDone?: (sent: number, total: number) => void;
   onError?: (error: string, errorCode: number) => void;
 };
 
-export type NativeUploadResult = {
+type NativeUploadResult = {
   responseCode: number;
   responseBody: string;
   bytesUploaded: number;
