@@ -1,6 +1,5 @@
-import type { AppStateSlice, ReaderSettings, ReflowableReaderSettings, FixedReaderSettings } from "./app-store.types";
+import type { AppStateSlice, FixedReaderSettings, LibraryViewMode, ReaderSettings, ReflowableReaderSettings } from "./app-store.types";
 import type { ThemeMode } from "../design/tokens";
-import type { LibraryViewMode } from "./app-store.types";
 
 import { DEFAULT_LIBRARY_VIEW_MODE, defaultSettings } from "./app-store.constants";
 

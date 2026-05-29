@@ -179,6 +179,11 @@ export default function ReaderScreen() {
     opacity: themeOverlayOpacity.value,
   }));
 
+  const chromePalette = useMemo<ReaderChromePalette>(() => {
+    const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
+    return readerChromePalette(option.fg, option.swatch);
+  }, [activeTheme]);
+
   if (loadState.status === "loading") {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}>
@@ -227,10 +232,6 @@ export default function ReaderScreen() {
 
   const isReflowSurface = loadState.layoutMode === "reflowable";
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
-  const chromePalette = useMemo<ReaderChromePalette>(() => {
-    const option = READER_THEME_OPTIONS.find((o) => o.key === activeTheme) ?? READER_THEME_OPTIONS[0]!;
-    return readerChromePalette(option.fg, option.swatch);
-  }, [activeTheme]);
 
   const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2";
   const statusBarStyle = isDarkTheme ? "light-content" : "dark-content";

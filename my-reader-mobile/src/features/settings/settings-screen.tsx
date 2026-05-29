@@ -24,18 +24,6 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const isTransitioningRef = useRef(false);
 
-  const themeModes = [t("settings.themeMode.system"), t("settings.themeMode.light"), t("settings.themeMode.dark")];
-  const themeModeMap: Record<string, ThemeMode> = {
-    [t("settings.themeMode.system")]: "system",
-    [t("settings.themeMode.light")]: "light",
-    [t("settings.themeMode.dark")]: "dark",
-  };
-  const themeModeLabels: Record<ThemeMode, string> = {
-    system: t("settings.themeMode.system"),
-    light: t("settings.themeMode.light"),
-    dark: t("settings.themeMode.dark"),
-  };
-
   useEffect(() => {
     // transitionStart/transitionEnd are Stack-specific events; the generic
     // useNavigation() type doesn't expose them but they exist at runtime.
@@ -64,14 +52,26 @@ export default function SettingsScreen() {
     const usage = getReaderCacheUsageSummary();
     return `${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`;
   });
-  const themeMode = useMemo(() => themeModeLabels[mode], [mode, themeModeLabels]);
+  const themeModeLabels: Record<ThemeMode, string> = useMemo(() => ({
+    system: t("settings.themeMode.system"),
+    light: t("settings.themeMode.light"),
+    dark: t("settings.themeMode.dark"),
+  }), [t]);
+  const themeMode = themeModeLabels[mode];
   const themeMenuActions = useMemo<MenuAction[]>(
-    () =>
-      themeModes.map((nextMode) => ({
+    () => {
+      const themeModes = [t("settings.themeMode.system"), t("settings.themeMode.light"), t("settings.themeMode.dark")];
+      const themeModeMap: Record<string, ThemeMode> = {
+        [t("settings.themeMode.system")]: "system",
+        [t("settings.themeMode.light")]: "light",
+        [t("settings.themeMode.dark")]: "dark",
+      };
+      return themeModes.map((nextMode) => ({
         id: `theme:${themeModeMap[nextMode]}`,
         title: `${nextMode === themeMode ? "✓ " : ""}${nextMode}`,
-      })),
-    [themeModes, themeMode, themeModeMap]
+      }));
+    },
+    [t, themeMode]
   );
   const cacheLimitMenuActions = useMemo<MenuAction[]>(
     () =>
@@ -84,8 +84,11 @@ export default function SettingsScreen() {
 
   const language = useAppStore((s) => s.settings.language);
   const setLanguage = useAppStore((s) => s.setLanguage);
-  const languageLabels: Record<string, string> = { zh: "中文", en: "English", system: t("settings.themeMode.system") };
   const effectiveLanguage = language || "system";
+  const languageLabels = useMemo<Record<string, string>>(
+    () => ({ zh: "中文", en: "English", system: t("settings.themeMode.system") }),
+    [t]
+  );
   const languageMenuActions = useMemo<MenuAction[]>(
     () =>
       ["system", "zh", "en"].map((lang) => ({

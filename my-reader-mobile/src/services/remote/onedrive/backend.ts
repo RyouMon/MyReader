@@ -131,7 +131,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
         res.status,
       );
     }
-    const data = await res.json() as { value: Array<{ name: string; folder?: object }> };
+    const data = await res.json() as { value: { name: string; folder?: object }[] };
     return data.value.map((item) =>
       item.folder ? `${item.name}/` : item.name,
     );

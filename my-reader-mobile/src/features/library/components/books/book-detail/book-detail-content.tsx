@@ -9,10 +9,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, EmptyState } from "@/src/components/ui";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import { getFileState } from "@/src/domain/sync/actions";
-import type { LocalState } from "@/src/domain/types";
-import { useFileStateRevision } from "@/src/hooks/useFileState";
-import type { BookItem, DataSource, Library } from "@/src/domain/types";
+import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
+import { useFileStateRevision } from "@/src/hooks/useFileState";
 import { FONT_UI } from "@/src/design/typography";
 import { describeDownloadError } from "@/src/errors";
 import {

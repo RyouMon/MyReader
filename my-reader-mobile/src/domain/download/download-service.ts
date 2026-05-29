@@ -1,4 +1,5 @@
 import { File } from "expo-file-system";
+import i18n from "@/src/i18n";
 
 import type { DataSource, Library } from "../types";
 import { AppInvariantError, DataIntegrityError } from "../../errors";
@@ -13,8 +14,6 @@ import {
 import type { NativeDownloadOptions } from "../../services/download/native";
 
 type BackgroundDownloadOptions = NativeDownloadOptions;
-
-import i18n from "@/src/i18n";
 
 export type DownloadProgressHandler = (received: number, total: number) => void;
 
