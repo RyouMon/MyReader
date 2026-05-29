@@ -148,7 +148,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     [libraries, effectiveLibraryId]
   );
 
-  const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById } = useLibraryBookMeta(
+  const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById, bookActiveFormatsById } = useLibraryBookMeta(
     selectedLibrary,
     books,
     selectedFormatById,
@@ -320,7 +320,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       const status = bookDownloadStatusById[item.id] ?? "notDownloaded";
       const effectiveFormat = bookFormatMetaById.get(item.id)?.effectiveFormat;
       const subscriptionLibraryId = isRemote && status === "downloading" ? selectedLibraryId : undefined;
-      const subscriptionFormat = subscriptionLibraryId ? effectiveFormat : undefined;
+      const activeFormat = effectiveFormat ?? (status === "downloading" ? bookActiveFormatsById.get(item.id) : undefined);
+      const subscriptionFormat = subscriptionLibraryId ? activeFormat : undefined;
       const menuFormats = bookFormatsById[item.id];
       const menuSelectedFormat = selectedFormatById[item.id];
 
@@ -366,6 +367,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     },
     [
       LIST_PADDING_H,
+      bookActiveFormatsById,
       bookDownloadStatusById,
       bookFormatMetaById,
       bookFormatsById,

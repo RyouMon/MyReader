@@ -162,10 +162,9 @@ export function useLibraryBookMeta(
     for (const [bookId, tasks] of tasksByBookId) {
       const meta = bookFormatMetaById.get(bookId);
       const effectiveFormat = meta?.effectiveFormat;
-      if (!effectiveFormat) continue;
       for (const task of tasks) {
         const taskFormat = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
-        if (taskFormat !== effectiveFormat) continue;
+        if (effectiveFormat && taskFormat !== effectiveFormat) continue;
         if (task.status === "done") {
           next[bookId] = "downloaded";
         } else if (next[bookId] !== "downloaded") {
@@ -177,5 +176,20 @@ export function useLibraryBookMeta(
     return next;
   }, [bookFormatMetaById, books, fileStateBundle, isRemote, tasksByBookId]);
 
-  return { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById };
+  const bookActiveFormatsById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [bookId, tasks] of tasksByBookId) {
+      for (const task of tasks) {
+        if (task.status === "done") continue;
+        const fmt = task.format?.toUpperCase() ?? getFormatFromPath(task.relativePath);
+        if (fmt) {
+          map.set(bookId, fmt);
+          break;
+        }
+      }
+    }
+    return map;
+  }, [tasksByBookId]);
+
+  return { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById, bookActiveFormatsById };
 }
