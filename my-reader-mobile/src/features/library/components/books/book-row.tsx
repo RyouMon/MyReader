@@ -224,7 +224,7 @@ function BookRowImpl({
                     fallbackProgress={downloadProgress}
                   />
                 ) : (
-                  <CircularProgress progress={downloadProgress ?? 0} size={13} strokeWidth={1.5} color={palette.primary} />
+                  <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={13} strokeWidth={1.5} color={palette.primary} />
                 )
               ) : null}
               {hasMenu ? (

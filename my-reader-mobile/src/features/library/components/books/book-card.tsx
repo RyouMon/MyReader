@@ -197,7 +197,7 @@ function BookCardImpl({
                 fallbackProgress={downloadProgress}
               />
             ) : (
-              <CircularProgress progress={downloadProgress ?? 0} size={14} strokeWidth={1.5} color={palette.primary} />
+              <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={14} strokeWidth={1.5} color={palette.primary} />
             )
           ) : null}
           {hasMenu ? (

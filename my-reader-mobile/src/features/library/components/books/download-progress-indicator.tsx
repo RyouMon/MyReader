@@ -31,7 +31,7 @@ function DownloadProgressIndicatorImpl({
 }: DownloadProgressIndicatorProps) {
   const task = useDownloadTaskForBookFormat(libraryId, bookId, format);
   const progress = task?.progress ?? fallbackProgress ?? 0;
-  return <CircularProgress progress={progress} size={size} strokeWidth={strokeWidth} color={color} />;
+  return <CircularProgress progress={progress} indeterminate={progress === 0} size={size} strokeWidth={strokeWidth} color={color} />;
 }
 
 export const DownloadProgressIndicator = memo(DownloadProgressIndicatorImpl);
