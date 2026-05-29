@@ -10,6 +10,7 @@ Apply these when writing, reviewing, or refactoring code:
 2. **Surgical Changes** — Touch only what you must. Don't improve adjacent code, comments, or formatting. Match existing style. Remove only imports/variables/functions that *your* changes made unused.
 3. **Goal-Driven Execution** — Define verifiable success criteria before implementing. Transform tasks into testable goals (e.g., "Write a test that reproduces the bug, then make it pass").
 4. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
+5. **Respect the Layering** — Dependencies must only flow downward. When adding or moving imports, verify the direction is allowed by the architecture rules in `.agents/rules/mobile.md` or `.agents/rules/desktop.md`. No upward imports, no bypassing layers.
 
 ---
 
@@ -32,5 +33,12 @@ MyReader is a local-first, cross-platform e-book reader based on Calibre library
 - **Role separation**: Display = serif, UI = sans, reading font = reader only.
 - Shared brand rules and canonical design tokens live in `.agents/skills/myreader-design-system/colors_and_type.css`. Always read `DESIGN.md` before making shared visual decisions. Run `node scripts/sync-design-tokens.mjs` after token changes to sync desktop/mobile implementations.
 - Sync tokens across packages after token changes: Run `node scripts/sync-design-tokens.mjs` commmand.
+
+---
+
+## Package Architecture
+
+- **Mobile** (my-reader-mobile) → [`.agents/rules/mobile.md`](.agents/rules/mobile.md)
+- **Desktop** (my-reader) → [`.agents/rules/desktop.md`](.agents/rules/desktop.md)
 
 ---
