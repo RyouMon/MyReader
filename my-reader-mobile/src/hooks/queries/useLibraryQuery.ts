@@ -154,7 +154,7 @@ export function useRefreshLibraryMutation() {
         }
       }
 
-      const { diff, newBookCount, newLibrary } = await syncRefreshLibrary(library, state.dataSources);
+      const { newBookCount, newLibrary } = await syncRefreshLibrary(library, state.dataSources);
 
       const nextLibraries = state.libraries.map((l) =>
         l.id === libraryId
