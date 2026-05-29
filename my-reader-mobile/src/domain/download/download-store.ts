@@ -182,10 +182,6 @@ function subscribe(listener: Listener): () => void {
   };
 }
 
-function getSnapshot(): StoreState {
-  return state;
-}
-
 /**
  * Returns a cached task summary that ignores progress-only changes.
  */
@@ -566,23 +562,9 @@ function useEnsureDownloadStoreInitialized(): void {
   }, []);
 }
 
-export function useDownloadStore(): StoreState {
-  useEnsureDownloadStoreInitialized();
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
 export function useDownloadStatusTasks(): DownloadStatusTask[] {
   useEnsureDownloadStoreInitialized();
   return useSyncExternalStore(subscribe, getStatusSnapshot, () => []);
-}
-
-export function useActiveDownloadCount(): number {
-  useEnsureDownloadStoreInitialized();
-  return useSyncExternalStore(
-    subscribe,
-    () => state.tasks.filter((t) => t.status === "queued" || t.status === "starting" || t.status === "downloading").length,
-    () => 0,
-  );
 }
 
 /**
@@ -628,23 +610,3 @@ export function useDownloadTaskForBookFormat(
     () => undefined,
   );
 }
-
-export const __downloadStoreTestApi = {
-  getState: () => state,
-  initializeExistingDownloadTasks,
-  reset: () => {
-    state = { tasks: [] };
-    statusSnapshotKey = "";
-    statusSnapshot = [];
-    initializedExistingTasks = false;
-    initializingExistingTasks = null;
-    nativeStopHandlers.clear();
-    finalizingRecoveredTasks.clear();
-    finalizedRecoveredTaskIds.clear();
-    alertedErrorTaskIds.clear();
-    notifiedDoneTaskIds.clear();
-    notifiedErrorTaskIds.clear();
-    lastProgressNotifications.clear();
-    listeners.clear();
-  },
-};

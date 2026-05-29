@@ -608,41 +608,6 @@ export async function materializeBookFileToCache(
   return cachedFile;
 }
 
-export function clearLocalCopyCacheByLibrary(libraryId: string): void {
-  ensureReaderCacheDirectories();
-  if (!READER_LOCAL_COPY_CACHE_DIR.exists) return;
-  const prefix = `-${libraryId}-`;
-  for (const entry of READER_LOCAL_COPY_CACHE_DIR.list()) {
-    if (!(entry instanceof FSFile)) continue;
-    if (entry.name?.includes(prefix)) {
-      entry.delete();
-    }
-  }
-}
-
-export async function resolveBookFile(
-  library: Library,
-  calibreBookId: number,
-  format: string
-): Promise<FSFile> {
-  const { rowPath, fileName, segments } = await lookupBookFileLocation(library, calibreBookId, format);
-
-  if (library.securityScopedBookmark) {
-    const { result: bookFile, refreshedLibrary } = await withSecurityScopedLibraryAccess(
-      library,
-      async (resolvedPath) => createBookFile(resolvedPath, segments, fileName)
-    );
-
-    const effectiveLibrary = refreshedLibrary ?? library;
-    assertBookFileExists(bookFile, effectiveLibrary.path, rowPath);
-    return bookFile;
-  }
-
-  const bookFile = createBookFile(library.path, segments, fileName);
-  assertBookFileExists(bookFile, library.path, rowPath);
-  return bookFile;
-}
-
 export async function readBooksFromLibrary(library: Library): Promise<BookItem[]> {
   const metadataUri = await resolveMetadataUriForRead(library);
   if (!metadataUri) {
