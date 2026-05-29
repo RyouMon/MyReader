@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 import type { DataSource, Library } from "../types";
-import { SyncConfigError } from "../../errors";
+import { SyncConfigError, NetworkError } from "../../errors";
 import { notifyDownloadState } from "../../notifications/download-notifications";
 import { checkConnectivity } from "../sync/connectivity";
 import { downloadContextFile, finalizeRecoveredDownload, openDownloadContextForLibrary } from "./download-service";
@@ -435,7 +435,7 @@ async function _startTask(taskId: string): Promise<void> {
       relativePath: task.relativePath,
       isAbort,
       isConfigError: err instanceof SyncConfigError,
-      error: err,
+      error: err instanceof NetworkError ? { message: err.message, statusCode: (err as NetworkError).statusCode } : err,
     });
     if (isAbort) {
       transitionTask(taskId, { type: "cancel" });

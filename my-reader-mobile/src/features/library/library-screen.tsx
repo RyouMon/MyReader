@@ -333,7 +333,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               width={cardWidth}
               isAnyMenuOpen={isMenuOpen}
               onPress={handleBookPress}
-              menuIsWebdav={isRemote}
+              menuIsRemote={isRemote}
               menuFormats={menuFormats}
               menuSelectedFormat={menuSelectedFormat}
               onMenuAction={handleBookMenuAction}
@@ -352,7 +352,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           downloadStatus={status}
           isAnyMenuOpen={isMenuOpen}
           onPress={handleBookPress}
-          menuIsWebdav={isRemote}
+          menuIsRemote={isRemote}
           menuFormats={menuFormats}
           menuSelectedFormat={menuSelectedFormat}
           onMenuAction={handleBookMenuAction}

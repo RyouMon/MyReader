@@ -7,6 +7,7 @@ import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import type { FileStateRow } from "@/src/domain/sync/actions";
 import type { BookItem, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
 import {
   dismissTasksForPath,
@@ -58,7 +59,7 @@ export function useBookActions(
   const downloadBook = useCallback(async (book: BookItem, targetFormat?: string) => {
     const { selectedLibrary: lib, selectedFormatById: formatById } = stateRef.current;
     const calibreId = Number(book.id);
-    if (!Number.isFinite(calibreId) || calibreId <= 0 || !lib || lib.sourceType !== "webdav") return;
+    if (!Number.isFinite(calibreId) || calibreId <= 0 || !lib || !isRemoteSourceType(lib.sourceType)) return;
 
     try {
       const paths = await getBookFormatPaths(lib, calibreId);
@@ -139,7 +140,7 @@ export function useBookActions(
     if (!book) return;
     const status = latest.bookDownloadStatusById[bookId] ?? "notDownloaded";
 
-    if (latest.selectedLibrary?.sourceType !== "webdav" || status === "downloaded") {
+    if (!isRemoteSourceType(latest.selectedLibrary?.sourceType) || status === "downloaded") {
       isNavigatingRef.current = true;
       const effectiveFormat = latest.bookFormatMetaById.get(bookId)?.effectiveFormat;
       if (effectiveFormat) {

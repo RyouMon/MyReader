@@ -5,6 +5,7 @@ import i18n from "@/src/i18n";
 import { buildCoverUri } from "../domain/library/calibre";
 import { createRemoteOps } from "../domain/library/remote-library";
 import type { BookItem, DataSource, Library } from "../domain/types";
+import { isRemoteSourceType } from "../domain/types";
 
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
@@ -94,7 +95,7 @@ export async function resolveCoverForDetail(
 ): Promise<BookItem["coverUri"] | undefined> {
   if (fallback) return fallback;
   if (!library || !detail.path) return undefined;
-  if (library.sourceType === "webdav" || library.sourceType === "onedrive") {
+  if (isRemoteSourceType(library.sourceType)) {
     const ops = await createRemoteOps(library, dataSources);
     if (ops) return ops.buildCoverUri(library, detail.path, detail.hasCover);
   }

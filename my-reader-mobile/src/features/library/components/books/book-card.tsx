@@ -39,7 +39,7 @@ export type BookCardProps = {
    * would defeat memoization because the parent reallocates the object whenever
    * any of these fields change.
    */
-  menuIsWebdav?: boolean;
+  menuIsRemote?: boolean;
   menuFormats?: string[];
   menuSelectedFormat?: string;
   /**
@@ -64,7 +64,7 @@ function BookCardImpl({
   progress,
   downloadStatus,
   downloadProgress,
-  menuIsWebdav,
+  menuIsRemote,
   menuFormats,
   menuSelectedFormat,
   subscriptionLibraryId,
@@ -79,15 +79,15 @@ function BookCardImpl({
   const showProgressIndicator = downloadStatus === "downloading";
   const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
 
-  const hasMenuInputs = menuIsWebdav !== undefined;
+  const hasMenuInputs = menuIsRemote !== undefined;
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
     if (!hasMenuInputs) return menuActions;
     return buildBookMenuActions(downloadStatus, {
-      isWebdav: menuIsWebdav ?? false,
+      isRemote: menuIsRemote ?? false,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsWebdav, menuSelectedFormat]);
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat]);
 
   const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
 

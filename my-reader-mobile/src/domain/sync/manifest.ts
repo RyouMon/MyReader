@@ -1,4 +1,5 @@
 import type { SyncBackend } from "./resolve";
+import { NetworkError } from "../../errors";
 
 /** 与桌面端 `MANIFEST_PATH` 保持一致。 */
 export const MANIFEST_PATH = ".myreader/manifest.json";
@@ -47,8 +48,11 @@ export async function loadManifest(backend: SyncBackend, device: string): Promis
     if (bytes.byteLength === 0) return emptyManifest(device);
     return JSON.parse(utf8Decode(bytes)) as Manifest;
   } catch (error) {
+    if (error instanceof NetworkError && error.statusCode === 404) {
+      return emptyManifest(device);
+    }
     const message = error instanceof Error ? error.message : String(error);
-    if (/404|not found|不存在/i.test(message)) {
+    if (/not found|不存在/i.test(message)) {
       return emptyManifest(device);
     }
     throw error;

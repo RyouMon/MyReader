@@ -51,7 +51,7 @@ function getLibraryTypeLabel(t: (key: string) => string) {
 }
 
 function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
-  if (library.sourceType === "webdav" && dataSource?.type === "webdav") {
+  if (isRemoteSourceType(library.sourceType) && dataSource && dataSource.type === "webdav") {
     return `${dataSource.endpoint}${library.sourcePath ?? (dataSource.rootPath ?? "")}`;
   }
 

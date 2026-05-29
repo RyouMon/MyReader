@@ -32,6 +32,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   readonly dataSourceId: string;
 
   private readonly libraryRootPath: string;
+  private readonly resolvedDownloadUrls = new Map<string, string>();
 
   constructor(dataSourceId: string, libraryRootPath: string) {
     this.dataSourceId = dataSourceId;
@@ -139,8 +140,7 @@ export class OneDriveRemoteBackend implements RemoteBackend {
 
   async downloadToCache(remotePath: string, localName: string): Promise<File> {
     const headers = await this.getAuthHeaders();
-    const encodedPath = encodeURI(this.fullPath(remotePath));
-    const url = `${GRAPH_API_BASE}/me/drive/root:${encodedPath}:/content`;
+    const url = `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`;
 
     const response = await ky(url, { headers });
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -156,7 +156,21 @@ export class OneDriveRemoteBackend implements RemoteBackend {
 
   async getDownloadRequest(remotePath: string, localFileUri: string): Promise<DownloadRequest> {
     const headers = await this.getAuthHeaders();
-    return { remotePath, localFileUri, headers };
+    const ep = this.encodedPath(remotePath);
+    const apiContentUrl = `${GRAPH_API_BASE}/me/drive/root:${ep}:/content`;
+    try {
+      const res = await fetch(apiContentUrl, { method: "GET", headers, redirect: "manual" });
+      if (res.status === 302 || res.status === 301) {
+        const directUrl = res.headers.get("Location");
+        if (directUrl) {
+          this.resolvedDownloadUrls.set(remotePath, directUrl);
+          return { remotePath, localFileUri, headers: {} };
+        }
+      }
+      return { remotePath, localFileUri, headers };
+    } catch (e) {
+      throw e;
+    }
   }
 
   async getUploadRequest(localFileUri: string, remotePath: string): Promise<UploadRequest> {
@@ -176,17 +190,26 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   }
 
   contentUrl(remotePath: string): string {
-    const path = encodeURI(this.fullPath(remotePath));
-    return `${GRAPH_API_BASE}/me/drive/root:${path}:/content`;
+    const resolved = this.resolvedDownloadUrls.get(remotePath);
+    if (resolved) return resolved;
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`;
+  }
+
+  private encodedPath(remotePath: string): string {
+    return this.fullPath(remotePath)
+      .split("/")
+      .map((s) => encodeURIComponent(s))
+      .join("/");
   }
 
   // -- Browse --
 
   async listDirectory(path: string): Promise<RemoteDirEntry[]> {
-    const encodedPath = encodeURI(path.startsWith("/") ? path : `/${path}`);
-    const endpoint = encodedPath === "/"
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const segments = normalizedPath.split("/").map((s) => encodeURIComponent(s)).join("/");
+    const endpoint = segments === "/"
       ? "/me/drive/root/children"
-      : `/me/drive/root:${encodedPath}:/children`;
+      : `/me/drive/root:${segments}:/children`;
 
     let allItems: DriveItem[] = [];
     let nextUrl: string | undefined = endpoint;
@@ -224,13 +247,11 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   }
 
   private itemUrl(relativePath: string): string {
-    const path = encodeURI(this.fullPath(relativePath));
-    return `${GRAPH_API_BASE}/me/drive/root:${path}`;
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(relativePath)}`;
   }
 
   private childrenUrl(prefix: string): string {
-    const path = encodeURI(this.fullPath(prefix));
-    return `${GRAPH_API_BASE}/me/drive/root:${path}:/children`;
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(prefix)}:/children`;
   }
 
   private async fetchWithAuth(url: string, init: RequestInit): Promise<Response> {

@@ -7,7 +7,7 @@ import type { BookDownloadStatus } from "@/src/features/library/components/books
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 
 export type BookMenuConfig = {
-  isWebdav: boolean;
+  isRemote: boolean;
   formats?: string[];
   selectedFormat?: string;
 };
@@ -20,12 +20,12 @@ export function buildBookMenuActions(
   downloadStatus: BookDownloadStatus | undefined,
   menuConfig: BookMenuConfig,
 ): MenuAction[] {
-  const { isWebdav, formats, selectedFormat } = menuConfig;
+  const { isRemote, formats, selectedFormat } = menuConfig;
   const readableFormats = getReadableFormats(formats);
   const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormat);
   const actions: MenuAction[] = [{ id: "detail", title: i18n.t("bookMenu.detail") }];
 
-  if (isWebdav && downloadStatus !== "downloaded") {
+  if (isRemote && downloadStatus !== "downloaded") {
     if (readableFormats.length === 1) {
       actions.push({
         id: `download:${readableFormats[0]}`,
@@ -54,7 +54,7 @@ export function buildBookMenuActions(
     });
   }
 
-  if (isWebdav && downloadStatus === "downloaded") {
+  if (isRemote && downloadStatus === "downloaded") {
     actions.push({
       id: "deleteDownload",
       title: i18n.t("bookMenu.deleteDownload"),
