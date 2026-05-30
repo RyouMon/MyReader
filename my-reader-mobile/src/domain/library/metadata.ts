@@ -11,8 +11,7 @@ async function checkMetadataEtag(
   backend: RemoteBackend,
   library: Library,
 ): Promise<{ changed: boolean; etag: string }> {
-  const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
-  const stat = await backend.statRemoteFile(`${remoteBase}/metadata.db`);
+  const stat = await backend.statRemoteFile("metadata.db");
   if (!stat) {
     return { changed: false, etag: library.metadataEtag ?? "" };
   }
@@ -42,13 +41,19 @@ export async function refreshMetadataIfStale(
     return { changed: false, etag };
   }
 
-  const newMetadataUri = await forceRefreshMetadata(library, backend);
-
-  const updated: Library = {
-    ...library,
-    metadataEtag: etag,
-    ...(newMetadataUri ? { metadataUri: newMetadataUri } : {}),
-  };
-
-  return { changed: true, etag, library: updated };
+  try {
+    const newMetadataUri = await forceRefreshMetadata(library, backend);
+    const updated: Library = {
+      ...library,
+      metadataEtag: etag,
+      metadataUri: newMetadataUri,
+    };
+    return { changed: true, etag, library: updated };
+  } catch (error) {
+    console.warn("[metadata] forceRefreshMetadata failed during stale check:", {
+      libraryId: library.id,
+      error,
+    });
+    return { changed: false, etag: library.metadataEtag ?? "" };
+  }
 }

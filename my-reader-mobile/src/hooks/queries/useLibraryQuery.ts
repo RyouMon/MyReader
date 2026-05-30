@@ -137,9 +137,15 @@ export function useRefreshLibraryMutation() {
       try {
         const { backend } = await resolveSyncTarget(library, state.dataSources);
         if (isRemoteBackend(backend)) await checkConnectivity(backend);
-      } catch {
+      } catch (error) {
+        console.error("[useRefreshLibraryMutation] connectivity check failed:", {
+          libraryId,
+          sourceType: library.sourceType,
+          dataSourceId: library.dataSourceId,
+          error,
+        });
         showAlertWithStatusBarRestore(i18n.t("sync.sourceUnreachable"), i18n.t("sync.sourceUnreachableSyncDetail"), [{ text: i18n.t("common.gotIt") }]);
-        throw new Error(i18n.t("sync.sourceUnreachable"));
+        throw error instanceof Error ? error : new Error(i18n.t("sync.sourceUnreachable"));
       }
 
       if (isRemoteSourceType(library.sourceType) && library.dataSourceId) {
@@ -148,8 +154,11 @@ export function useRefreshLibraryMutation() {
           if (result.changed) {
             await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(libraryId) });
           }
-        } catch {
-          // metadata check failure should not block manual refresh
+        } catch (error) {
+          console.warn("[useRefreshLibraryMutation] refreshMetadataIfStale failed:", {
+            libraryId,
+            error,
+          });
         }
       }
 

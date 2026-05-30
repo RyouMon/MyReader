@@ -39,7 +39,9 @@ const resolveOneDriveOps = async (candidate: DataSource) => {
       createLibraryFromPath: (remotePath: string) => createLibraryFromPath(backend, candidate.id, candidate.name, remotePath),
       readBooks: async () => ({ books: [], metadataUri: "" }),
       buildCoverUri: async () => undefined,
-      forceRefreshMetadata: async () => null,
+      forceRefreshMetadata: async () => {
+        throw new Error("forceRefreshMetadata unavailable in OneDrive browser");
+      },
     };
     return ops;
   } catch {

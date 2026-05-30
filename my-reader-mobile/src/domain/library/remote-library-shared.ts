@@ -8,6 +8,35 @@ import type { RemoteBackend } from "../../services/remote/backend";
 import type { BookItem, Library } from "../types";
 import { mapListRowsToBookItems } from "./calibre";
 
+/** Path relative to the library root; backend already scopes URLs to that root. */
+const METADATA_DB_RELATIVE = "metadata.db";
+
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function metadataDbError(error: unknown): Error {
+  const detail = describeError(error);
+  return new Error(`${i18n.t("sync.cannotRedownloadMeta")}: ${detail}`, { cause: error });
+}
+
+function logMetadataDbFailure(
+  scope: string,
+  library: Library,
+  backend: RemoteBackend,
+  error: unknown,
+): void {
+  console.error(`[remote-library] ${scope}:`, {
+    libraryId: library.id,
+    backendKind: backend.kind,
+    libraryPath: library.sourcePath ?? library.path,
+    relativePath: METADATA_DB_RELATIVE,
+    downloadUrl: backend.contentUrl(METADATA_DB_RELATIVE),
+    error,
+  });
+}
+
 async function ensureMetadataCached(
   library: Library,
   backend: RemoteBackend,
@@ -15,13 +44,13 @@ async function ensureMetadataCached(
   const metadataPath = library.metadataUri;
   if (!metadataPath) {
     try {
-      const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
       const metadataFile = await backend.downloadToCache(
-        `${remoteBase}/metadata.db`,
+        METADATA_DB_RELATIVE,
         `${backend.kind}-${library.id}-metadata.db`,
       );
       return metadataFile.uri;
-    } catch {
+    } catch (error) {
+      logMetadataDbFailure("ensureMetadataCached (no metadataUri)", library, backend, error);
       showAlertWithStatusBarRestore(
         i18n.t("sync.corruptedLibrary"),
         i18n.t("sync.corruptedLibraryMessage"),
@@ -37,13 +66,13 @@ async function ensureMetadataCached(
   }
 
   try {
-    const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
     const metadataFile = await backend.downloadToCache(
-      `${remoteBase}/metadata.db`,
+      METADATA_DB_RELATIVE,
       `${backend.kind}-${library.id}-metadata.db`,
     );
     return metadataFile.uri;
-  } catch {
+  } catch (error) {
+    logMetadataDbFailure("ensureMetadataCached (cache missing)", library, backend, error);
     showAlertWithStatusBarRestore(
       i18n.t("sync.corruptedLibrary"),
       i18n.t("sync.corruptedLibraryMessage"),
@@ -56,21 +85,21 @@ async function ensureMetadataCached(
 export async function forceRefreshMetadata(
   library: Library,
   backend: RemoteBackend,
-): Promise<string | null> {
+): Promise<string> {
   try {
-    const remoteBase = backend.normalizePath(library.sourcePath ?? library.path);
     const metadataFile = await backend.downloadToCache(
-      `${remoteBase}/metadata.db`,
+      METADATA_DB_RELATIVE,
       `${backend.kind}-${library.id}-metadata.db`,
     );
     return metadataFile.uri;
-  } catch {
+  } catch (error) {
+    logMetadataDbFailure("forceRefreshMetadata", library, backend, error);
     showAlertWithStatusBarRestore(
       i18n.t("sync.corruptedLibrary"),
       i18n.t("sync.corruptedLibraryRedownloadMessage"),
       [{ text: i18n.t("common.gotIt") }],
     );
-    return null;
+    throw metadataDbError(error);
   }
 }
 

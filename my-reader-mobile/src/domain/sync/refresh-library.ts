@@ -52,12 +52,27 @@ export async function refreshLibrary(
   if (isRemoteSourceType(library.sourceType)) {
     const ops = await createRemoteOps(library, dataSources);
     if (!ops) {
-      throw new Error(i18n.t("sync.cannotRedownloadMeta"));
+      const reason = !library.dataSourceId
+        ? "library.dataSourceId is missing"
+        : !dataSources.find(
+            (d) =>
+              d.id === library.dataSourceId &&
+              (d.type === "webdav" || d.type === "onedrive"),
+          )
+          ? `data source not found: ${library.dataSourceId}`
+          : library.sourceType === "webdav"
+            ? "WebDAV password not configured"
+            : "OneDrive refresh token not configured";
+      console.error("[refresh-library] createRemoteOps failed:", {
+        libraryId: library.id,
+        sourceType: library.sourceType,
+        dataSourceId: library.dataSourceId,
+        libraryPath: library.sourcePath ?? library.path,
+        reason,
+      });
+      throw new Error(`${i18n.t("sync.cannotRedownloadMeta")}: ${reason}`);
     }
     const newMetadataUri = await ops.forceRefreshMetadata(library);
-    if (!newMetadataUri) {
-      throw new Error(i18n.t("sync.cannotRedownloadMeta"));
-    }
     newLibrary = { ...library, metadataUri: newMetadataUri };
   } else {
     newLibrary = await forceRefreshLibraryMetadata(library);

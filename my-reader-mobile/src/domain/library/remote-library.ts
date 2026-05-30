@@ -17,7 +17,7 @@ export type RemoteLibraryOps = {
   createLibraryFromPath(remotePath: string): Promise<Library>;
   readBooks(library: Library): Promise<{ books: BookItem[]; metadataUri: string }>;
   buildCoverUri(library: Library, bookPath: string, hasCover: boolean): BookItem["coverUri"];
-  forceRefreshMetadata(library: Library): Promise<string | null>;
+  forceRefreshMetadata(library: Library): Promise<string>;
 };
 
 export function normalizeCurrentPath(path: string | undefined) {
