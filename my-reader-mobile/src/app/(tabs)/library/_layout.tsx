@@ -14,12 +14,6 @@ export default function LibraryStackLayout() {
     <Stack screenOptions={screenOptions}>
       <Stack.Screen name="index" />
       <Stack.Screen name="[libraryId]" />
-      <Stack.Screen
-        name="picker"
-        options={{
-          presentation: "modal",
-        }}
-      />
     </Stack>
   );
 }
