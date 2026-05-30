@@ -45,7 +45,12 @@ my-reader-mobile/src/
 │
 ├── repos/                 Table-access CRUD — no React, no fetch, no orchestration
 │   ├── file_state.ts      file_state table
-│   └── sync_meta.ts       sync_meta table
+│   ├── sync_meta.ts       sync_meta table
+│   ├── reading_progress.ts reading_progress table
+│   └── calibre/           Calibre metadata.db (read-only; connection via services/db/calibre-db)
+│       ├── books.ts       book list, count, summaries
+│       ├── book_relations.ts  single-book relation rows
+│       └── data.ts        formats and file paths
 │
 ├── domain/                Business orchestration
 │   ├── library/           book-formats, calibre, cover-mirror, cover-url, metadata,

@@ -1,25 +1,25 @@
 import { useMemo } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { useThemePalette } from "@/src/design/tokens";
+import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { useThemePalette } from "@/src/design/tokens";
-import { notifyLibraryRefresh } from "@/src/notifications/download-notifications";
-import { useAppStore } from "@/src/store/app-store";
 import { useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
+import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
-import { Screen } from "@/src/components/ui/screen";
-import { Button } from "@/src/components/ui/button";
 import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
+import { Button } from "@/src/components/ui/button";
+import { Screen } from "@/src/components/ui/screen";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {

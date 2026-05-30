@@ -1,8 +1,8 @@
 import { AppState } from "react-native";
 import { Notifier } from "react-native-notifier";
 
-import { InAppNotification } from "./in-app-notification";
 import i18n from "@/src/i18n";
+import { InAppNotification } from "./in-app-notification";
 
 type DownloadNotificationKind = "start" | "done" | "error";
 

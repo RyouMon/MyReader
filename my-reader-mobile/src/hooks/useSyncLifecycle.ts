@@ -2,17 +2,17 @@ import { useEffect, useRef } from "react";
 import { AppState, InteractionManager, type AppStateStatus } from "react-native";
 import { Notifier } from "react-native-notifier";
 
-import { useAppStore } from "../store/app-store";
+import { InAppNotification } from "../domain/notifications/in-app-notification";
 import { SyncConfigError } from "../errors";
-import { InAppNotification } from "../notifications/in-app-notification";
+import { useAppStore } from "../store/app-store";
 
-import { runSync, type SyncDeps } from "../domain/sync/scheduler";
-import { refreshMetadataIfStale } from "../domain/library/metadata";
-import { setCachedAuth } from "../services/remote/auth-cache";
-import { getValidAccessToken } from "../services/auth/onedrive";
-import { libraryQueryKeys, getBooksForLibrary } from "../hooks/queries/useLibraryQuery";
-import { queryClient } from "../hooks/queries/queryClient";
 import i18n from "@/src/i18n";
+import { refreshMetadataIfStale } from "../domain/library/metadata";
+import { runSync, type SyncDeps } from "../domain/sync/scheduler";
+import { queryClient } from "../hooks/queries/queryClient";
+import { getBooksForLibrary, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
+import { getValidAccessToken } from "../services/auth/onedrive";
+import { setCachedAuth } from "../services/remote/auth-cache";
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({

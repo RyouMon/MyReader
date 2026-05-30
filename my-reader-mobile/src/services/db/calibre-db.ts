@@ -21,3 +21,15 @@ export function openCalibreDatabase(metadataUri: string): CalibreDbHandle {
   const db = drizzle(raw, { schema: calibreSchema });
   return { raw, db };
 }
+
+export async function withCalibreDb<T>(
+  metadataUri: string,
+  fn: (db: CalibreDbHandle["db"]) => Promise<T>,
+): Promise<T> {
+  const handle = openCalibreDatabase(metadataUri);
+  try {
+    return await fn(handle.db);
+  } finally {
+    await handle.raw.closeAsync();
+  }
+}

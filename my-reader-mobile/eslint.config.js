@@ -52,7 +52,7 @@ module.exports = defineConfig([
           basePath: "src",
           zones: [
             // store/ is global state (Zustand), not UI — domain may read it
-            { target: "domain", from: ["hooks", "features", "app"] },
+            { target: "domain", from: ["hooks", "features", "app", "services/db"] },
           ],
         },
       ],

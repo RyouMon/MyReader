@@ -1,14 +1,16 @@
-import { and, eq, gt } from "drizzle-orm";
-
-import { getLibraryDatabase } from "../../services/db/library-db";
-import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
+import {
+  getReadingProgressUpdatedAt,
+  listReadingProgressSince,
+  upsertReadingProgress,
+} from "../../repos/reading_progress";
 import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta";
+import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
 import type { Library } from "../types";
-import { uuid } from "../../utils/common";
-import { readingProgress } from "@my-reader/db/schema";
-import { LocalDirectBackend } from "./local";
 import { getOrCreateDeviceId } from "./device";
-import { isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";type ChangeRow = {
+import { LocalDirectBackend } from "./local";
+import { isLocalDirect, type ResolvedSyncTarget, type SyncBackend } from "./resolve";
+
+type ChangeRow = {
   t: string;
   k: Record<string, unknown>;
   v: Record<string, unknown>;
@@ -31,17 +33,7 @@ async function pushDbChanges(
   const cursorStr = await getSyncMeta(library, cursorKey);
   const sinceMs = cursorStr ? parseFloat(cursorStr) : 0;
 
-  const { db } = await getLibraryDatabase(library);
-  const rows = await db
-    .select({
-      bookId: readingProgress.bookId,
-      format: readingProgress.format,
-      locatorJson: readingProgress.locatorJson,
-      updatedAt: readingProgress.updatedAt,
-    })
-    .from(readingProgress)
-    .where(gt(readingProgress.updatedAt, sinceMs))
-    .orderBy(readingProgress.updatedAt);
+  const rows = await listReadingProgressSince(library, sinceMs);
 
   if (rows.length === 0) return 0;
 
@@ -124,34 +116,17 @@ async function pullDbChanges(
 
         if (!bookId || !format || !locatorJson || incomingTs <= 0) continue;
 
-        const { db } = await getLibraryDatabase(library);
-        const existing = await db
-          .select({ updatedAt: readingProgress.updatedAt })
-          .from(readingProgress)
-          .where(
-            and(
-              eq(readingProgress.bookId, bookId),
-              eq(readingProgress.format, format),
-            ),
-          );
+        const existingTs = await getReadingProgressUpdatedAt(library, bookId, format);
+        const baselineTs = existingTs ?? -1;
 
-        const existingTs = existing[0] ? Number(existing[0].updatedAt) : -1;
+        if (incomingTs <= baselineTs) continue;
 
-        if (incomingTs <= existingTs) continue;
-
-        await db
-          .insert(readingProgress)
-          .values({
-            id: uuid(),
-            bookId,
-            format,
-            locatorJson,
-            updatedAt: incomingTs,
-          })
-          .onConflictDoUpdate({
-            target: [readingProgress.bookId, readingProgress.format],
-            set: { locatorJson, updatedAt: incomingTs },
-          });
+        await upsertReadingProgress(library, {
+          bookId,
+          format,
+          locatorJson,
+          updatedAt: incomingTs,
+        });
         applied++;
       }
 
@@ -193,4 +168,3 @@ export async function syncDbFromContext(
 
   return { pushed, pulled };
 }
-

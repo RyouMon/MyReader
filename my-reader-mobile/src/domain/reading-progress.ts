@@ -1,9 +1,9 @@
 import type { Locator } from "@ryoumon/react-native-readium";
-import { and, eq } from "drizzle-orm";
 
-import { uuid } from "@/src/utils/common";
-import { readingProgress } from "@my-reader/db/schema";
-import { getLibraryDatabase } from "../services/db/library-db";
+import {
+  getReadingProgressRow,
+  upsertReadingProgress,
+} from "../repos/reading_progress";
 import type { Library } from "./types";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -48,18 +48,7 @@ export async function getReadingProgress(
   const fmt = format.toUpperCase();
 
   try {
-    const { db } = await getLibraryDatabase(library);
-    const rows = await db
-      .select()
-      .from(readingProgress)
-      .where(
-        and(
-          eq(readingProgress.bookId, bookId),
-          eq(readingProgress.format, fmt),
-        ),
-      );
-
-    const row = rows[0];
+    const row = await getReadingProgressRow(library, bookId, fmt);
     if (!row) {
       return null;
     }
@@ -86,17 +75,14 @@ export async function setReadingProgress(
     href: normalizeHrefForStorage(locator.href),
   };
   const locatorJson = JSON.stringify(normalized);
-  const id = uuid();
 
   try {
-    const { db } = await getLibraryDatabase(library);
-    await db
-      .insert(readingProgress)
-      .values({ id, bookId, format: fmt, locatorJson, updatedAt })
-      .onConflictDoUpdate({
-        target: [readingProgress.bookId, readingProgress.format],
-        set: { locatorJson, updatedAt },
-      });
+    await upsertReadingProgress(library, {
+      bookId,
+      format: fmt,
+      locatorJson,
+      updatedAt,
+    });
   } catch (e) {
     console.error("[reading-progress] set:error", { bookId, format: fmt, error: e });
   }

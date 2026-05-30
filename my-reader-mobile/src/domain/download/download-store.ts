@@ -1,12 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 
-import type { DataSource, Library } from "../types";
-import { SyncConfigError, NetworkError } from "../../errors";
-import { notifyDownloadState } from "../../notifications/download-notifications";
-import { checkConnectivity } from "../sync/connectivity";
-import { downloadContextFile, finalizeRecoveredDownload, openDownloadContextForLibrary } from "./download-service";
-import { resolveSyncTarget, isRemoteBackend } from "../sync/resolve";
-import { useAppStore } from "../../store/app-store";
+import { NetworkError, SyncConfigError } from "../../errors";
 import {
   cancelNativeDownload,
   completeNativeDownload,
@@ -14,6 +8,12 @@ import {
   recoverNativeDownloads,
   type RecoveredNativeDownload,
 } from "../../services/download/native";
+import { useAppStore } from "../../store/app-store";
+import { notifyDownloadState } from "../notifications/download-notifications";
+import { checkConnectivity } from "../sync/connectivity";
+import { isRemoteBackend, resolveSyncTarget } from "../sync/resolve";
+import type { DataSource, Library } from "../types";
+import { downloadContextFile, finalizeRecoveredDownload, openDownloadContextForLibrary } from "./download-service";
 
 import i18n from "@/src/i18n";
 
