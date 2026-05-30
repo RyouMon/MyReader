@@ -1,23 +1,25 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
 
-import { readBooksFromLibrary, readBookCountFromLibrary } from "@/src/domain/library/calibre";
-import { createRemoteOps } from "@/src/domain/library/remote-library";
-import type { BookItem, DataSource, Library } from "@/src/domain/types";
-import { useAppStore } from "@/src/store/app-store";
-import { checkConnectivity } from "@/src/domain/sync/connectivity";
-import { resolveSyncTarget, isRemoteBackend } from "@/src/domain/sync/resolve";
-import { refreshLibrary as syncRefreshLibrary } from "@/src/domain/sync/refresh-library";
-import { isRemoteSourceType } from "@/src/domain/types";
-import { queryClient } from "./queryClient";
-import i18n from "@/src/i18n";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { readBookCountFromLibrary, readBooksFromLibrary } from "@/src/domain/library/calibre";
 import { refreshMetadataIfStale } from "@/src/domain/library/metadata";
+import { createRemoteOps } from "@/src/domain/library/remote-library";
+import { checkConnectivity } from "@/src/domain/sync/connectivity";
+import { refreshLibrary as syncRefreshLibrary } from "@/src/domain/sync/refresh-library";
+import { isRemoteBackend, resolveSyncTarget } from "@/src/domain/sync/resolve";
+import type { BookItem, DataSource, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
+import i18n from "@/src/i18n";
+import { useAppStore } from "@/src/store/app-store";
+import { queryClient } from "@/src/services/query/query-client";
 
 import { getCachedAuth } from "@/src/services/remote/auth-cache";
 
 export const libraryQueryKeys = {
   books: (libraryId: string | null) => ["books", libraryId] as const,
 };
+
+export const libraryRefreshMutationKey = ["library", "refresh"] as const;
 
 export function getBooksForLibrary(libraryId: string): BookItem[] {
   return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
@@ -127,8 +129,17 @@ export async function refreshBooks() {
   }
 }
 
+export function useIsLibraryRefreshing(): boolean {
+  return (
+    useMutationState({
+      filters: { mutationKey: libraryRefreshMutationKey, status: "pending" },
+    }).length > 0
+  );
+}
+
 export function useRefreshLibraryMutation() {
   return useMutation({
+    mutationKey: libraryRefreshMutationKey,
     mutationFn: async (libraryId: string) => {
       const state = useAppStore.getState();
       const library = state.libraries.find((l) => l.id === libraryId);

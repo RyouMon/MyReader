@@ -1,26 +1,26 @@
 import i18n from "@/src/i18n";
 
-import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
 import {
   buildCoverUri as buildLocalCoverUri,
   getBookFormatPaths,
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/domain/library/calibre";
-import { getFileState } from "@/src/domain/sync/actions";
-import { getReadingProgress } from "@/src/domain/reading-progress";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
+import { getReadingProgress } from "@/src/domain/reading-progress";
+import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
-import { useAppStore } from "@/src/store/app-store";
+import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
 import { localFileUriFor, resolveLibraryBooksDir } from "@/src/services/fs/path";
+import { queryClient } from "@/src/services/query/query-client";
+import { useAppStore } from "@/src/store/app-store";
 import { resolveReadFormat } from "@my-reader/tools/utils";
-import { libraryQueryKeys } from "./queries/useLibraryQuery";
-import { queryClient } from "./queries/queryClient";
 import type { Locator } from "@ryoumon/react-native-readium";
 import { File } from "expo-file-system";
 import { useEffect, useRef, useState } from "react";
+import { libraryQueryKeys } from "../features/library/hooks/useLibraryQuery";
 
 const INITIAL_READER_PAGE = 0;
 

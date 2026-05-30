@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { router } from "expo-router";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
@@ -7,7 +7,7 @@ import { Image, Text, View } from "@/tw";
 
 import { EmptyState, HeroCard, PrimaryButton, ProgressBar, Screen, SecondaryButton, SectionHeading } from "@/src/components";
 import { HorizontalBookShelf } from "@/src/features/library/components/books";
-import { useBooks } from "@/src/hooks/queries/useLibraryQuery";
+import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function HomeScreen() {

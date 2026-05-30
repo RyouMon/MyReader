@@ -12,7 +12,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
+import { useRefreshLibraryMutation } from "@/src/features/library/hooks/useLibraryQuery";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";

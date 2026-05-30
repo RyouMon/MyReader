@@ -6,13 +6,13 @@ import { Text, View } from "@/tw";
 
 import { Button } from "./button";
 
-import type { LocalState } from "@/src/domain/types";
 import {
   enqueue,
   useDownloadStatusTasks,
   useDownloadTaskForPath,
 } from "@/src/domain/download/download-store";
-import { useSyncActions } from "@/src/hooks/useSyncActions";
+import type { LocalState } from "@/src/domain/types";
+import { useSyncActions } from "@/src/hooks/use-sync-actions";
 import { describeError } from "@/src/utils/common";
 
 export type DownloadButtonState = LocalState;

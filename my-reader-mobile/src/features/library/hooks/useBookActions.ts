@@ -3,17 +3,17 @@ import { useCallback, useRef } from "react";
 import { router } from "expo-router";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import {
+  dismissTasksForPath,
+  enqueue as enqueueDownload,
+} from "@/src/domain/download/download-store";
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import type { FileStateRow } from "@/src/domain/sync/actions";
 import type { BookItem, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
-import {
-  dismissTasksForPath,
-  enqueue as enqueueDownload,
-} from "@/src/domain/download/download-store";
-import type { SyncActions } from "@/src/hooks/useSyncActions";
+import type { SyncActions } from "@/src/hooks/use-sync-actions";
 import i18n from "@/src/i18n";
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"]);

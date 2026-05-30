@@ -11,13 +11,13 @@ import { NotifierWrapper } from "react-native-notifier";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
-import { LibraryRefreshPill } from "@/src/components/ui/library-refresh-pill";
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
-import { queryClient } from "@/src/hooks/queries/queryClient";
-import { useSyncLifecycle } from "@/src/hooks/useSyncLifecycle";
+import { LibraryRefreshPill } from "@/src/features/library/components/library-refresh-pill";
+import { useSyncLifecycle } from "@/src/hooks/use-sync-lifecycle";
+import { queryClient } from "@/src/services/query/query-client";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";
 

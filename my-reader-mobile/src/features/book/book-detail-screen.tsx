@@ -14,7 +14,7 @@ import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/compo
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
-import { useBooks } from "@/src/hooks/queries/useLibraryQuery";
+import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useAppStore } from "@/src/store/app-store";
 
 type DetailCacheEntry = {

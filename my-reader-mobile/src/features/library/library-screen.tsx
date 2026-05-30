@@ -30,12 +30,12 @@ import {
   BookRow,
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
-import { useBooks, useRefreshLibraryMutation } from "@/src/hooks/queries/useLibraryQuery";
+import { useBooks, useRefreshLibraryMutation } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryActions } from "@/src/hooks/use-library-actions";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
-import { useSyncActions } from "@/src/hooks/useSyncActions";
+import { useSyncActions } from "@/src/hooks/use-sync-actions";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBookActions } from "./hooks/useBookActions";

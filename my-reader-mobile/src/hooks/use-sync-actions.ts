@@ -2,9 +2,9 @@ import { useCallback } from "react";
 
 import { useAppStore } from "../store/app-store";
 
-import { openSyncContext, evictLocalFile, deleteFileEverywhere } from "../domain/sync/actions";
-import { runSync, type SyncTrigger, type SyncDeps, type SyncRunReport } from "../domain/sync/scheduler";
-import { getBooksForLibrary } from "./queries/useLibraryQuery";
+import { deleteFileEverywhere, evictLocalFile, openSyncContext } from "../domain/sync/actions";
+import { runSync, type SyncDeps, type SyncRunReport, type SyncTrigger } from "../domain/sync/scheduler";
+import { getBooksForLibrary } from "../features/library/hooks/useLibraryQuery";
 
 export type SyncActions = {
   triggerSync: (trigger?: SyncTrigger) => Promise<SyncRunReport>;

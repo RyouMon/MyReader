@@ -7,10 +7,10 @@ import { SyncConfigError } from "../errors";
 import { useAppStore } from "../store/app-store";
 
 import i18n from "@/src/i18n";
+import { queryClient } from "@/src/services/query/query-client";
 import { refreshMetadataIfStale } from "../domain/library/metadata";
 import { runSync, type SyncDeps } from "../domain/sync/scheduler";
-import { queryClient } from "../hooks/queries/queryClient";
-import { getBooksForLibrary, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
+import { getBooksForLibrary, libraryQueryKeys } from "../features/library/hooks/useLibraryQuery";
 import { getValidAccessToken } from "../services/auth/onedrive";
 import { setCachedAuth } from "../services/remote/auth-cache";
 import { cancelIdleWork, scheduleIdleWork } from "../utils/common";
