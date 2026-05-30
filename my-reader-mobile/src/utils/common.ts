@@ -20,3 +20,25 @@ export function describeError(err: unknown): string {
 export function yieldToEventLoop(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+type IdleWorkHandle = ReturnType<typeof globalThis.requestIdleCallback>;
+
+/**
+ * Schedules non-critical work during idle time (RN-recommended replacement for
+ * deprecated InteractionManager.runAfterInteractions).
+ */
+export function scheduleIdleWork(callback: () => void): IdleWorkHandle {
+  if (typeof globalThis.requestIdleCallback === "function") {
+    return globalThis.requestIdleCallback(callback);
+  }
+  return setTimeout(callback, 1) as unknown as IdleWorkHandle;
+}
+
+/** Cancels work scheduled by {@link scheduleIdleWork}. */
+export function cancelIdleWork(handle: IdleWorkHandle): void {
+  if (typeof globalThis.cancelIdleCallback === "function") {
+    globalThis.cancelIdleCallback(handle);
+  } else {
+    clearTimeout(handle as ReturnType<typeof setTimeout>);
+  }
+}

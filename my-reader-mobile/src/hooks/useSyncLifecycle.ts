@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AppState, InteractionManager, type AppStateStatus } from "react-native";
+import { AppState, type AppStateStatus } from "react-native";
 import { Notifier } from "react-native-notifier";
 
 import { InAppNotification } from "../domain/notifications/in-app-notification";
@@ -13,6 +13,7 @@ import { queryClient } from "../hooks/queries/queryClient";
 import { getBooksForLibrary, libraryQueryKeys } from "../hooks/queries/useLibraryQuery";
 import { getValidAccessToken } from "../services/auth/onedrive";
 import { setCachedAuth } from "../services/remote/auth-cache";
+import { cancelIdleWork, scheduleIdleWork } from "../utils/common";
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({
@@ -73,7 +74,7 @@ export function useSyncLifecycle(): void {
       }
     }
 
-    InteractionManager.runAfterInteractions(() => {
+    const startupSyncHandle = scheduleIdleWork(() => {
       void runSync("startup", getSyncDeps()).catch((err) => handleSyncError(err, "startup"));
     });
 
@@ -90,6 +91,8 @@ export function useSyncLifecycle(): void {
         }
       }
     }
+
+    return () => cancelIdleWork(startupSyncHandle);
   }, [storeReady]);
 
   useEffect(() => {
