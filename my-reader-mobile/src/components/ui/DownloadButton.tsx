@@ -12,7 +12,10 @@ import {
   useDownloadTaskForPath,
 } from "@/src/domain/download/download-store";
 import type { LocalState } from "@/src/domain/types";
-import { useSyncActions } from "@/src/hooks/use-sync-actions";
+import {
+  deleteFileEverywhereForLibrary,
+  evictLocalFileForLibrary,
+} from "@/src/domain/sync/file-actions";
 import { describeError } from "@/src/utils/common";
 
 export type DownloadButtonState = LocalState;
@@ -44,7 +47,10 @@ export function DownloadButton({
 }: DownloadButtonProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const actions = useSyncActions();
+  const actions = {
+    evictLocal: evictLocalFileForLibrary,
+    deleteEverywhere: deleteFileEverywhereForLibrary,
+  };
   const downloadTask = useDownloadTaskForPath(libraryId, relativePath);
   const downloadStatusTask = useDownloadStatusTasks().find(
     (task) => task.libraryId === libraryId && task.relativePath === relativePath,

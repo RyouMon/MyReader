@@ -20,7 +20,7 @@ import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
-import { useSyncActions } from "@/src/hooks/use-sync-actions";
+import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import {
   extractYear,
@@ -110,7 +110,6 @@ export function BookDetailContent({
   const formatInfoMapRef = useRef(formatInfoMap);
   formatInfoMapRef.current = formatInfoMap;
 
-  const syncActions = useSyncActions();
   const fileStateRevision = useFileStateRevision();
   const downloadStatusTasks = useDownloadStatusTasks();
   const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
@@ -240,7 +239,7 @@ export function BookDetailContent({
         [format]: { ...prev[format]!, localState: "remote_only" },
       }));
       try {
-        await syncActions.evictLocal(activeLibrary.id, info.relativePath);
+        await evictLocalFileForLibrary(activeLibrary.id, info.relativePath);
         dismissTasksForPath(activeLibrary.id, info.relativePath);
       } catch (err) {
         // Roll back the optimistic update.
@@ -252,7 +251,7 @@ export function BookDetailContent({
         Alert.alert(t("bookDetail.deleteLocalFailed"), err instanceof Error ? err.message : String(err));
       }
     },
-    [formatInfoMap, downloadStatusTasks, activeLibrary.id, syncActions, t]
+    [formatInfoMap, downloadStatusTasks, activeLibrary.id, t]
   );
 
   const handleSetDefaultFormat = useCallback(

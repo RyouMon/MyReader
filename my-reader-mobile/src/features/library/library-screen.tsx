@@ -30,12 +30,12 @@ import {
   BookRow,
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
-import { useBooks, useRefreshLibraryMutation } from "@/src/features/library/hooks/useLibraryQuery";
+import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
-import { useLibraryActions } from "@/src/hooks/use-library-actions";
+import { switchActiveLibrary } from "@/src/hooks/library-actions";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
-import { useSyncActions } from "@/src/hooks/use-sync-actions";
+import { useSyncLibrary } from "@/src/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBookActions } from "./hooks/useBookActions";
@@ -95,12 +95,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const GRID_HALF_GAP = GRID_GAP / 2;
   const LIST_PADDING_H = GRID_PADDING_H;
   const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
-  const { switchLibrary } = useLibraryActions();
+  const { switchLibrary } = { switchLibrary: switchActiveLibrary };
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
   const storeReady = useAppStore((s) => s.storeReady);
   const { data: books = [], isLoading: loadingBooks, error: booksError } = useBooks(activeLibraryId);
-  const refreshMutation = useRefreshLibraryMutation();
+  const { syncNow, isSyncing } = useSyncLibrary();
   const viewMode = useAppStore((s) => s.libraryViewMode);
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const [query, setQuery] = useState("");
@@ -109,8 +109,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
   const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
-  const syncActions = useSyncActions();
-
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,19 +178,14 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     if (!selectedLibrary) return;
     void (async () => {
       try {
-        await refreshMutation.mutateAsync(selectedLibrary.id);
+        await syncNow(selectedLibrary.id);
         notifyLibraryRefresh("done");
       } catch (e) {
-        console.error("[library-screen] refresh library failed:", e);
+        console.error("[library-screen] sync library failed:", e);
         notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
       }
-      try {
-        await syncActions.triggerSync("manual");
-      } catch (e) {
-        console.error("[library-screen] sync failed:", e);
-      }
     })();
-  }, [selectedLibrary, refreshMutation, syncActions]);
+  }, [selectedLibrary, syncNow]);
 
   const leftMenuRef = useRef<MenuComponentRef>(null);
   const rightMenuRef = useRef<MenuComponentRef>(null);
@@ -285,7 +278,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    syncActions,
     setSelectedFormatById,
   );
 

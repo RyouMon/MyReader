@@ -55,8 +55,9 @@ my-reader-mobile/src/
 ├── domain/                Business orchestration
 │   ├── library/           book-formats, calibre, cover-mirror, cover-url, metadata,
 │   │                      remote-library, remote-library-shared
-│   ├── sync/              scheduler, transfer, reconcile, manifest, db-sync, device,
-│   │                      book-diff, refresh-library, resolve, connectivity, context, actions
+│   ├── sync/              sync-library, calibre-sync, myreader-sync, policy, scheduler,
+│   │                      transfer, db-sync, device, book-diff, resolve, connectivity,
+│   │                      context, actions, file-actions
 │   ├── download/          download-service, download-store (React subscription kept in-place)
 │   ├── reading-progress.ts
 │   └── types.ts           BookItem, etc.

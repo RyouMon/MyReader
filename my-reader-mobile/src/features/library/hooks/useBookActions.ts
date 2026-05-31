@@ -10,10 +10,12 @@ import {
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import type { FileStateRow } from "@/src/domain/sync/actions";
+import {
+  evictLocalFileForLibrary,
+} from "@/src/domain/sync/file-actions";
 import type { BookItem, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
-import type { SyncActions } from "@/src/hooks/use-sync-actions";
 import i18n from "@/src/i18n";
 
 const downloadedStates = new Set(["present", "local_only", "dirty_push"]);
@@ -26,7 +28,6 @@ export function useBookActions(
   openMenuBookId: string | null,
   selectedFormatById: Record<string, string>,
   selectedLibrary: Library | null,
-  syncActions: SyncActions | null,
   setSelectedFormatById: React.Dispatch<React.SetStateAction<Record<string, string>>> | null,
 ) {
   const isNavigatingRef = useRef(false);
@@ -41,7 +42,6 @@ export function useBookActions(
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    syncActions,
     setSelectedFormatById,
   });
   stateRef.current = {
@@ -52,7 +52,6 @@ export function useBookActions(
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    syncActions,
     setSelectedFormatById,
   };
 
@@ -196,8 +195,7 @@ export function useBookActions(
         const downloadedRows = rows.filter((row) => downloadedStates.has(row.localState));
         if (downloadedRows.length === 0) return;
         const lib = latest.selectedLibrary;
-        const sync = latest.syncActions;
-        if (!lib || !sync) return;
+        if (!lib) return;
         showAlertWithStatusBarRestore(
           i18n.t("sync.deleteDownloadFile"),
           i18n.t("sync.confirmDeleteDownload", { title: book.title }),
@@ -210,7 +208,7 @@ export function useBookActions(
                 void (async () => {
                   try {
                     for (const row of downloadedRows) {
-                      await sync.evictLocal(lib.id, row.path);
+                      await evictLocalFileForLibrary(lib.id, row.path);
                       dismissTasksForPath(lib.id, row.path);
                     }
                   } catch (err) {

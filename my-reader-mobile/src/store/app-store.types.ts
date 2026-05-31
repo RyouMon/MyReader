@@ -33,7 +33,8 @@ export type FixedReaderSettings = {
 export type ReaderSettings = {
   themeMode: ThemeMode;
   language: string;
-  syncEnabled: boolean;
+  syncOnStartup: boolean;
+  enableAutoSync: boolean;
   cache: {
     maxCacheSizeMB: number;
   };

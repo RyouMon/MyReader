@@ -1,46 +1,18 @@
 import { useSyncExternalStore } from "react";
 
-import { isLocalDirect } from "./resolve";
-import { isRemoteSourceType } from "../types";
-
-import {
-  listBackedFiles,
-  openSyncContext,
-  reconcileFileStates,
-  type SyncTargetContext,
-} from "./actions";
-import { syncDbFromContext } from "./db-sync";
-import { mirrorMissingCovers } from "../library/cover-mirror";
-import type { BookItem, DataSource, Library } from "../types";
-import i18n from "@/src/i18n";
-import { describeError } from "../../utils/common";
-
-export type SyncTrigger = "startup" | "foreground" | "manual";
-
-export type LibrarySyncResult = {
-  libraryId: string;
-  libraryName: string;
-  isLocalDirect: boolean;
-  skipped: boolean;
-  skipReason?: string;
-  reconciledCount?: number;
-  dbPushed?: number;
-  dbPulled?: number;
-  error?: string;
-};
-
-export type SyncRunReport = {
-  trigger: SyncTrigger;
-  startedAt: number;
-  finishedAt: number;
-  durationMs: number;
-  results: LibrarySyncResult[];
-  aborted?: boolean;
-};
+import { DEFAULT_SYNC_POLICY } from "./policy";
+import { syncLibraries } from "./sync-library";
+import type {
+  ScheduledSyncTarget,
+  SyncLibrariesDeps,
+  SyncRunReport,
+  SyncTrigger,
+} from "./types";
 
 export type SchedulerStatus = {
   running: boolean;
   lastTrigger: SyncTrigger | null;
+  lastScheduledTarget: ScheduledSyncTarget | null;
   lastFinishedAt: number | null;
   lastReport: SyncRunReport | null;
 };
@@ -52,6 +24,7 @@ const MIN_AUTO_INTERVAL_MS = 30_000;
 let state: SchedulerStatus = {
   running: false,
   lastTrigger: null,
+  lastScheduledTarget: null,
   lastFinishedAt: null,
   lastReport: null,
 };
@@ -75,123 +48,53 @@ function getStatus(): SchedulerStatus {
   return state;
 }
 
-export type SyncDeps = {
-  libraries: Library[];
-  dataSources: DataSource[];
-  syncEnabled: boolean;
-  getBooksForLibrary: (libraryId: string) => BookItem[];
-};
-
 /**
- * Public scheduler entry point. Coalesces concurrent triggers into one run and
- * enforces a minimum interval for automatic triggers (startup/foreground) so
- * that rapid lifecycle ping-pong doesn't hammer the backend.
+ * Coalesces concurrent sync runs and enforces minimum interval for automatic triggers.
  */
-export function runSync(trigger: SyncTrigger, deps: SyncDeps): Promise<SyncRunReport> {
+export function runSyncLibraries(
+  trigger: SyncTrigger,
+  deps: SyncLibrariesDeps,
+  scheduledTarget?: ScheduledSyncTarget,
+): Promise<SyncRunReport> {
   if (inflight) return inflight;
 
   const now = Date.now();
   const sinceLast = state.lastFinishedAt ? now - state.lastFinishedAt : Infinity;
-  if (trigger !== "manual" && sinceLast < MIN_AUTO_INTERVAL_MS) {
-    const skipped: SyncRunReport = {
+  if (
+    (trigger === "startup" || trigger === "scheduled") &&
+    sinceLast < MIN_AUTO_INTERVAL_MS
+  ) {
+    return Promise.resolve({
       trigger,
       startedAt: now,
       finishedAt: now,
       durationMs: 0,
       results: [],
       aborted: true,
-    };
-    return Promise.resolve(skipped);
-  }
-
-  if (!deps.syncEnabled && trigger !== "manual") {
-    const skipped: SyncRunReport = {
-      trigger,
-      startedAt: now,
-      finishedAt: now,
-      durationMs: 0,
-      results: [],
-      aborted: true,
-    };
-    return Promise.resolve(skipped);
+    });
   }
 
   inflight = (async () => {
-    setState({ running: true, lastTrigger: trigger });
-    const startedAt = Date.now();
-    const results: LibrarySyncResult[] = [];
-    const { libraries, dataSources } = deps;
-
-    for (const library of libraries) {
-      const entry: LibrarySyncResult = {
-        libraryId: library.id,
-        libraryName: library.name,
-        isLocalDirect: !isRemoteSourceType(library.sourceType),
-        skipped: false,
-      };
-      try {
-        let ctx: SyncTargetContext;
-        try {
-          ctx = await openSyncContext(library, dataSources);
-        } catch (err) {
-          entry.skipped = true;
-          entry.skipReason = describeError(err);
-          results.push(entry);
-          continue;
-        }
-
-        if (isLocalDirect(ctx.backend)) {
-          entry.skipped = true;
-          entry.skipReason = i18n.t("sync.localDirectRead");
-          results.push(entry);
-          continue;
-        }
-
-        await reconcileFileStates(ctx);
-        const rows = await listBackedFiles(ctx);
-        entry.reconciledCount = rows.length;
-
-        const dbResult = await syncDbFromContext(library, ctx);
-        entry.dbPushed = dbResult.pushed;
-        entry.dbPulled = dbResult.pulled;
-
-        if (isRemoteSourceType(library.sourceType)) {
-          const books = deps.getBooksForLibrary(library.id);
-          void mirrorMissingCovers(library, dataSources, books).catch(() => {});
-        }
-      } catch (err) {
-        entry.error = describeError(err);
-      }
-      results.push(entry);
-    }
-
-    const finishedAt = Date.now();
-    const report: SyncRunReport = {
-      trigger,
-      startedAt,
-      finishedAt,
-      durationMs: finishedAt - startedAt,
-      results,
-    };
-
-    setState({ running: false, lastFinishedAt: finishedAt, lastReport: report });
+    setState({ running: true, lastTrigger: trigger, lastScheduledTarget: scheduledTarget ?? null });
+    const report = await syncLibraries(deps, trigger, DEFAULT_SYNC_POLICY, scheduledTarget);
+    setState({
+      running: false,
+      lastFinishedAt: Date.now(),
+      lastReport: report,
+    });
     return report;
   })();
 
-  try {
-    return inflight;
-  } finally {
-    void inflight.finally(() => {
-      inflight = null;
-    });
-  }
+  void inflight.finally(() => {
+    inflight = null;
+  });
+
+  return inflight;
 }
 
-/**
- * Hook for UI components that need to reflect scheduler activity (progress
- * indicator, last-run timestamp). Uses the external-store pattern so React
- * sees state updates without each component having to wire subscriptions.
- */
+/** Hook for components that reflect background scheduler activity. */
 export function useSyncSchedulerStatus(): SchedulerStatus {
   return useSyncExternalStore(subscribe, getStatus, getStatus);
 }
+
+export type { SyncLibrariesDeps, SyncRunReport, SyncTrigger, ScheduledSyncTarget };

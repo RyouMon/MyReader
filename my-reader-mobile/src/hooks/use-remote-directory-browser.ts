@@ -6,7 +6,7 @@ import { isMissingMetadataDbError, normalizeCurrentPath } from "@/src/domain/lib
 import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/domain/library/remote-library";
 import type { DataSource } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
-import { useLibraryActions } from "./use-library-actions";
+import { registerLibrary } from "./library-actions";
 
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined;
@@ -37,7 +37,6 @@ export function useRemoteDirectoryBrowser({
 }: UseRemoteDirectoryBrowserOpts): RemoteDirectoryBrowserState {
   const currentPath = useMemo(() => normalizeCurrentPath(currentPathParam), [currentPathParam]);
   const dataSources = useAppStore((state) => state.dataSources);
-  const { addResolvedLibrary } = useLibraryActions();
   const candidate = useMemo(
     () => dataSources.find((item) => item.id === dataSourceId && item.type === sourceType) ?? null,
     [dataSourceId, dataSources, sourceType],
@@ -128,7 +127,7 @@ export function useRemoteDirectoryBrowser({
 
     try {
       const library = await ops.createLibraryFromPath(currentPath || "/");
-      const added = await addResolvedLibrary(library);
+      const added = await registerLibrary(library);
       if (added) {
         router.dismissTo("/settings");
       }

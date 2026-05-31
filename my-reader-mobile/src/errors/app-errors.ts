@@ -10,6 +10,16 @@ export class AppError extends Error {
 /** WebDAV 数据源缺失、密码未配置、本地书库根目录无法解析等配置问题，用户需要去设置里修复。 */
 export class SyncConfigError extends AppError {}
 
+/** 远程书库连通性检查失败；携带 sync report 供 UI 展示。 */
+export class SyncConnectivityError extends AppError {
+  constructor(
+    message: string,
+    public readonly report: import("../domain/sync/types").LibrarySyncReport,
+  ) {
+    super(message);
+  }
+}
+
 /** 网络请求失败，通常是临时问题，可以重试。 */
 export class NetworkError extends AppError {
   constructor(

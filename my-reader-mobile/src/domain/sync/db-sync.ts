@@ -145,26 +145,29 @@ export type DbSyncReport = {
 export async function syncDbFromContext(
   library: Library,
   ctx: ResolvedSyncTarget,
+  options?: { mode?: "push_only" | "pull_only" | "full" },
 ): Promise<DbSyncReport> {
+  const mode = options?.mode ?? "full";
+
+  const run = async (backend: SyncBackend) => {
+    const deviceId = await getOrCreateDeviceId(library);
+    const pushed = mode === "pull_only" ? 0 : await pushDbChanges(backend, library, deviceId);
+    const pulled = mode === "push_only" ? 0 : await pullDbChanges(backend, library, deviceId);
+    return { pushed, pulled };
+  };
+
   if (isLocalDirect(ctx.backend)) {
     if (!library.securityScopedBookmark) {
       return { pushed: 0, pulled: 0 };
     }
-    const deviceId = await getOrCreateDeviceId(library);
 
     const { result } = await withSecurityScopedLibraryAccess(library, async (resolvedUri) => {
       const backend = new LocalDirectBackend(resolvedUri);
-      const pushed = await pushDbChanges(backend, library, deviceId);
-      const pulled = await pullDbChanges(backend, library, deviceId);
-      return { pushed, pulled };
+      return run(backend);
     });
 
     return result;
   }
 
-  const deviceId = await getOrCreateDeviceId(library);
-  const pushed = await pushDbChanges(ctx.backend, library, deviceId);
-  const pulled = await pullDbChanges(ctx.backend, library, deviceId);
-
-  return { pushed, pulled };
+  return run(ctx.backend);
 }

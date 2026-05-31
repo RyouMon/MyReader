@@ -570,7 +570,8 @@
     "downloadStart": "开始下载",
     "downloadDone": "下载完成",
     "downloadFailed": "下载失败",
-    "libraryRefreshing": "书库更新中"
+    "libraryRefreshing": "书库更新中",
+    "librarySyncing": "书库同步中"
   },
   "errors": {
     "sourceUnreachable": "数据源无法连接",

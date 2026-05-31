@@ -12,8 +12,8 @@ import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { useRefreshLibraryMutation } from "@/src/features/library/hooks/useLibraryQuery";
-import { useLibraryActions } from "@/src/hooks/use-library-actions";
+import { removeLibrary, switchActiveLibrary } from "@/src/hooks/library-actions";
+import { useSyncLibrary } from "@/src/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
@@ -120,13 +120,10 @@ export default function LibraryDetailScreen() {
   const { t } = useTranslation();
   const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
   const palette = useThemePalette();
-  const { removeLibrary, switchLibrary } = useLibraryActions();
-  const refreshMutation = useRefreshLibraryMutation();
   const libraries = useAppStore((state) => state.libraries);
   const activeLibraryId = useAppStore((state) => state.activeLibraryId);
   const dataSources = useAppStore((state) => state.dataSources);
-
-  const isRefreshing = refreshMutation.isPending;
+  const { syncNow, isSyncing } = useSyncLibrary();
 
   const libraryIndex = useMemo(
     () => libraries.findIndex((item) => item.id === libraryId),
@@ -223,26 +220,26 @@ export default function LibraryDetailScreen() {
                   disabled={Boolean(isActive)}
                   onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    void switchLibrary(library.id);
+                    void switchActiveLibrary(library.id);
                   }}
                   title={t("libraryDetail.useLibrary")}
                   variant="primary"
                 />
                 <Button
                   className="flex-1"
-                  disabled={isRefreshing}
+                  disabled={isSyncing}
                   onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     void (async () => {
                       try {
-                        await refreshMutation.mutateAsync(library.id);
+                        await syncNow(library.id);
                         notifyLibraryRefresh("done");
                       } catch (e) {
                         notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
                       }
                     })();
                   }}
-                  title={isRefreshing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
+                  title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
                   variant="secondary"
                 />
               </View>

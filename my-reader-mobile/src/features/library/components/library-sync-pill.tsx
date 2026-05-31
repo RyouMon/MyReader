@@ -4,15 +4,15 @@ import { ActivityIndicator, Animated, Platform, StyleSheet, Text } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { useIsLibraryRefreshing } from "@/src/features/library/hooks/useLibraryQuery";
+import { useIsLibrarySyncing } from "@/src/hooks/use-sync-library";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56;
 
-export function LibraryRefreshPill() {
+export function LibrarySyncPill() {
   const { t } = useTranslation();
   const palette = useThemePalette();
   const insets = useSafeAreaInsets();
-  const isRefreshing = useIsLibraryRefreshing();
+  const isSyncing = useIsLibrarySyncing();
 
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(14)).current;
@@ -20,17 +20,17 @@ export function LibraryRefreshPill() {
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, {
-        toValue: isRefreshing ? 1 : 0,
-        duration: isRefreshing ? 220 : 160,
+        toValue: isSyncing ? 1 : 0,
+        duration: isSyncing ? 220 : 160,
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
-        toValue: isRefreshing ? 0 : 14,
-        duration: isRefreshing ? 220 : 160,
+        toValue: isSyncing ? 0 : 14,
+        duration: isSyncing ? 220 : 160,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isRefreshing, opacity, translateY]);
+  }, [isSyncing, opacity, translateY]);
 
   return (
     <Animated.View
@@ -47,7 +47,7 @@ export function LibraryRefreshPill() {
       ]}
     >
       <ActivityIndicator size="small" color={palette.primary} />
-      <Text style={[styles.label, { color: palette.text }]}>{t("notifications.libraryRefreshing")}</Text>
+      <Text style={[styles.label, { color: palette.text }]}>{t("notifications.librarySyncing")}</Text>
     </Animated.View>
   );
 }
@@ -74,3 +74,11 @@ const styles = StyleSheet.create({
     marginLeft: 7,
   },
 });
+
+/** @deprecated use LibrarySyncPill */
+export const LibraryRefreshPill = LibrarySyncPill;
+
+/** @deprecated use useIsLibrarySyncing */
+export function useIsLibraryRefreshing(): boolean {
+  return useIsLibrarySyncing();
+}

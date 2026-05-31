@@ -7,7 +7,8 @@ import { View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
-import { useLibraryActions } from "@/src/hooks/use-library-actions";
+import { pickCalibreLibrary } from "@/src/domain/library/calibre";
+import { addLibraryFromPicker } from "@/src/hooks/library-actions";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 function sourceBrowserPath(source: DataSource) {
@@ -32,9 +33,16 @@ function sourceDetailText(source: DataSource) {
 
 export default function AddLibraryDataSourceScreen() {
   const { t } = useTranslation();
-  const { addLibrary } = useLibraryActions();
   const dataSources = useAppStore((s) => s.dataSources);
   const { addOneDriveDataSource } = useAddOneDriveDataSource();
+
+  async function handleAddLocalLibrary() {
+    const picked = await pickCalibreLibrary();
+    const added = await addLibraryFromPicker(picked);
+    if (added != null) {
+      router.dismissTo("/library");
+    }
+  }
 
   async function handleAddOneDrive() {
     const created = await addOneDriveDataSource();
@@ -55,12 +63,7 @@ export default function AddLibraryDataSourceScreen() {
             title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
             detail={t("addLibrary.localDetail")}
             onPress={() => {
-              void (async () => {
-                const added = await addLibrary();
-                if (added != null) {
-                  router.dismissTo("/settings");
-                }
-              })();
+              void handleAddLocalLibrary();
             }}
             isLast={dataSources.length === 0}
           />

@@ -7,7 +7,8 @@ export type SettingsSlice = {
   settings: ReaderSettings;
   setThemeMode: (mode: ThemeMode) => void;
   setLanguage: (language: string) => void;
-  setSyncEnabled: (enabled: boolean) => void;
+  setSyncOnStartup: (enabled: boolean) => void;
+  setEnableAutoSync: (enabled: boolean) => void;
   patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
   patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
   patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
@@ -21,8 +22,11 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   setLanguage(language) {
     set((state) => ({ settings: { ...state.settings, language } }));
   },
-  setSyncEnabled(enabled) {
-    set((state) => ({ settings: { ...state.settings, syncEnabled: enabled } }));
+  setSyncOnStartup(enabled) {
+    set((state) => ({ settings: { ...state.settings, syncOnStartup: enabled } }));
+  },
+  setEnableAutoSync(enabled) {
+    set((state) => ({ settings: { ...state.settings, enableAutoSync: enabled } }));
   },
   patchCacheSettings(patch) {
     set((state) => ({

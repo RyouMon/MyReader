@@ -62,9 +62,8 @@ async function seedLibrary() {
         dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
         sourceType: "local",
       });
-      const nextLibraries = [...store.libraries, preparedLibrary];
-      const nextActiveLibraryId = store.activeLibraryId ?? preparedLibrary.id;
-      useAppStore.setState({ libraries: nextLibraries, activeLibraryId: nextActiveLibraryId });
+      const { registerLibrary } = await import("@/src/hooks/library-actions");
+      await registerLibrary(preparedLibrary);
       return;
     }
     // Partial seed — clean up and re-seed
@@ -135,7 +134,6 @@ async function seedLibrary() {
   };
 
   const { library: preparedLibrary } = await readBookCountFromLibrary(library);
-  const nextLibraries = [...useAppStore.getState().libraries, preparedLibrary];
-  const nextActiveLibraryId = useAppStore.getState().activeLibraryId ?? preparedLibrary.id;
-  useAppStore.setState({ libraries: nextLibraries, activeLibraryId: nextActiveLibraryId });
+  const { registerLibrary } = await import("@/src/hooks/library-actions");
+  await registerLibrary(preparedLibrary);
 }

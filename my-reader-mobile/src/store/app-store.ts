@@ -7,7 +7,7 @@ import {
     defaultSettings,
     STORE_NAME,
 } from "./app-store.constants";
-import type { AppState, LibraryViewMode, PersistedAppState } from "./app-store.types";
+import type { AppState, LibraryViewMode, PersistedAppState, ReaderSettings } from "./app-store.types";
 import { createDataSourceSlice } from "./data-source-slice";
 import { createExpoJsonStorage } from "../services/storage/json-storage";
 import { createLibrarySlice } from "./library-slice";
@@ -42,13 +42,18 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persistedState, currentState) => {
         const typedPersisted = (persistedState as Partial<PersistedAppState>) ?? {};
-        const persistedSettings = typedPersisted.settings;
+        const persistedSettings = typedPersisted.settings as
+          | (Partial<ReaderSettings> & { syncEnabled?: boolean })
+          | undefined;
+        const legacyAutoSync = persistedSettings?.syncEnabled;
 
         return {
           ...currentState,
           settings: {
             ...defaultSettings,
             ...persistedSettings,
+            syncOnStartup: persistedSettings?.syncOnStartup ?? legacyAutoSync ?? true,
+            enableAutoSync: persistedSettings?.enableAutoSync ?? legacyAutoSync ?? true,
             reflowable: { ...defaultSettings.reflowable, ...persistedSettings?.reflowable },
             fixed: { ...defaultSettings.fixed, ...persistedSettings?.fixed },
           },

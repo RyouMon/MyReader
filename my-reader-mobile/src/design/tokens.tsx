@@ -5,7 +5,7 @@ import { useColorScheme, type ColorSchemeName, type ColorValue } from "react-nat
 import { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
 import { useAppStore } from "../store/app-store";
 import { useDataSourceActions } from "../hooks/use-data-source-actions";
-import { useLibraryActions } from "../hooks/use-library-actions";
+import { hydrateLibraries } from "@/src/hooks/library-actions";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -147,7 +147,6 @@ function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const storeReady = useAppStore((s) => s.storeReady);
   const hydrateDataSources = useDataSourceActions().hydrateFromBackend;
-  const hydrateLibraries = useLibraryActions().hydrateFromBackend;
   const systemColorScheme = useColorScheme();
   const mode = useAppStore((s) => s.settings.themeMode);
 

@@ -1,8 +1,5 @@
 /**
- * Barrel re-export for the actions module.
- *
- * Consumers can continue importing from "./actions" while the implementation
- * lives in the focused sub-modules: context, transfer, reconcile.
+ * Barrel re-export for sync file operations.
  */
 
 export {
@@ -11,19 +8,18 @@ export {
 } from "./context";
 
 export {
-  downloadFile,
   downloadFileDirect,
   downloadFileDirectWithProgress,
   evictLocalFile,
   evictLocalFileOfflineSafe,
   deleteFileEverywhere,
-  type DownloadResult,
 } from "./transfer";
 
 export {
-  reconcileFileStates,
-  listBackedFiles,
-} from "./reconcile";
+  deleteFileEverywhereForLibrary,
+  deleteRemoteFileForLibrary,
+  evictLocalFileForLibrary,
+} from "./file-actions";
 
 export {
   getFileState,

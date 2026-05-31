@@ -15,8 +15,8 @@ import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-stat
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
-import { LibraryRefreshPill } from "@/src/features/library/components/library-refresh-pill";
-import { useSyncLifecycle } from "@/src/hooks/use-sync-lifecycle";
+import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill";
+import { SyncRuntime } from "@/src/hooks/SyncRuntime";
 import { queryClient } from "@/src/services/query/query-client";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -54,11 +54,6 @@ function RootNavigator() {
     setAlertStatusBarPreferredStyle(statusBarStyle);
   }, [statusBarStyle]);
 
-  useSyncLifecycle();
-
-  /**
-   * Initializes local notification behavior used by download tasks.
-   */
   useEffect(() => {
     initializeDownloadNotifications();
   }, []);
@@ -109,7 +104,8 @@ function RootNavigator() {
           />
         </Stack>
       </NavigationThemeProvider>
-      <LibraryRefreshPill />
+      <SyncRuntime />
+      <LibrarySyncPill />
     </>
   );
 }

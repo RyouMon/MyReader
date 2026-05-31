@@ -579,7 +579,8 @@
     "downloadStart": "Download started",
     "downloadDone": "Download complete",
     "downloadFailed": "Download failed",
-    "libraryRefreshing": "Library refreshing"
+    "libraryRefreshing": "Library refreshing",
+    "librarySyncing": "Syncing library"
   },
   "errors": {
     "sourceUnreachable": "Source unreachable",
