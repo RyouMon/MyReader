@@ -6,6 +6,7 @@ import {
   materializeBookFileToCache,
   readBookDetailFromMetadata,
 } from "@/src/domain/library/calibre";
+import { libraryRootUri } from "@/src/domain/library/locations";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
 import { getReadingProgress } from "@/src/domain/reading-progress";
 import { getFileState } from "@/src/domain/sync/actions";
@@ -13,7 +14,6 @@ import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/typ
 import { isRemoteSourceType } from "@/src/domain/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
-import { libraryRootUri } from "@/src/domain/library/locations";
 import { fileUriFor } from "@/src/services/fs/path";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";

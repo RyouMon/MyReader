@@ -5,7 +5,7 @@ import "@/src/polyfills/reader-engine-globals";
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ComponentProps } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotifierWrapper } from "react-native-notifier";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,9 +14,9 @@ import { ErrorBoundary } from "@/src/components/error-boundary";
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
+import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill";
-import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime";
 import { queryClient } from "@/src/services/query/query-client";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -110,7 +110,9 @@ function RootNavigator() {
   );
 }
 
-function NotifierWithSafeArea({ children }: { children: ReactNode }) {
+type NotifierChildren = ComponentProps<typeof NotifierWrapper>["children"];
+
+function NotifierWithSafeArea({ children }: { children: NotifierChildren }) {
   const { top } = useSafeAreaInsets();
   return <NotifierWrapper containerStyle={{ marginTop: top }}>{children}</NotifierWrapper>;
 }

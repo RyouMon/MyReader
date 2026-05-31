@@ -1,15 +1,15 @@
+import i18n from "@/src/i18n";
+import { AppInvariantError } from "../../errors";
+import { deleteFileState, upsertFileState } from "../../repos/file_state";
+import type { NativeDownloadOptions } from "../../services/download/native";
+import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
+import { clearExtractedReaderCachesForArchiveUri } from "../../services/fs/cache";
+import { deleteFileAtUri } from "../../services/fs/file-io";
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
 import { libraryRootUri } from "../library/locations";
-import { deleteFileAtUri } from "../../services/fs/file-io";
-import { clearExtractedReaderCachesForArchiveUri } from "../../services/fs/cache";
-import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
-import { deleteFileState, upsertFileState } from "../../repos/file_state";
-import { AppInvariantError } from "../../errors";
 import type { Library } from "../types";
 import type { SyncTargetContext } from "./context";
 import { isRemoteBackend } from "./resolve";
-import i18n from "@/src/i18n";
-import type { NativeDownloadOptions } from "../../services/download/native";
 
 export type DownloadOutcome = {
   blake3: string | null;

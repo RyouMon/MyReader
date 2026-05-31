@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
@@ -22,7 +22,9 @@ import {
   type HeaderToolbarAction,
 } from "@/src/components";
 import { AndroidMenuRippleButton } from "@/src/components/ui/AndroidMenuRippleButton";
+import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { BookItem } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import {
@@ -32,10 +34,8 @@ import {
 } from "@/src/features/library/components/books";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
-import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
-import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBookActions } from "./hooks/useBookActions";
@@ -78,12 +78,16 @@ function getResponsiveGridColumns(containerWidth: number, gap: number, horizonta
   return Math.max(GRID_MIN_COLUMNS, Math.min(GRID_MAX_COLUMNS, estimatedColumns || GRID_MIN_COLUMNS));
 }
 
+type LibraryItemSeparator = NonNullable<
+  ComponentProps<typeof FlashList<BookItem>>["ItemSeparatorComponent"]
+>;
+
 const SeparatorGrid = memo(function SeparatorGrid() {
   return <View className="h-3" />;
-});
+}) as LibraryItemSeparator;
 const SeparatorList = memo(function SeparatorList() {
   return null;
-});
+}) as LibraryItemSeparator;
 
 export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScreenProps) {
   const { t } = useTranslation();
