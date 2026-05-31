@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { uuid } from "@/src/utils/common";
 import { fileState } from "@my-reader/db/schema";
 import type { FileState as FileStateRow } from "@my-reader/db/types";
-import { getLibraryDatabase } from "../services/db/library-db";
+import { getLibraryDatabase } from "../domain/library/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 type LocalState = "present" | "remote_only" | "local_only" | "dirty_push";

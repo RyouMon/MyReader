@@ -1,4 +1,4 @@
-import { resolveCoverUri as buildRemoteCoverUri } from "./cover-mirror";
+import { resolveCoverUri } from "./locations";
 import { createRemoteBackend } from "../../services/remote/factory";
 import { createLibraryFromPath, forceRefreshMetadata, readBooks } from "./remote-library-shared";
 import type { BookItem, DataSource, Library } from "../types";
@@ -53,10 +53,10 @@ export async function createRemoteOps(
     createLibraryFromPath: (remotePath: string) => createLibraryFromPath(backend, source.id, source.name, remotePath),
     readBooks: (lib: Library) =>
       readBooks(lib, backend, (l, bookPath, hasCover) =>
-        buildRemoteCoverUri(l, backend, bookPath, hasCover),
+        resolveCoverUri(l, bookPath, hasCover, backend),
       ),
     buildCoverUri: (lib: Library, bookPath: string, hasCover: boolean) =>
-      buildRemoteCoverUri(lib, backend, bookPath, hasCover),
+      resolveCoverUri(lib, bookPath, hasCover, backend),
     forceRefreshMetadata: (lib: Library) => forceRefreshMetadata(lib, backend),
   };
 }

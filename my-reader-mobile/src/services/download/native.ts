@@ -27,7 +27,7 @@ type NativeDownloadRequest = {
   options?: NativeDownloadOptions;
 };
 
-type RecoveredNativeDownload = {
+export type RecoveredNativeDownload = {
   id: string;
   metadata: BackgroundDownloadTask["metadata"];
   state: BackgroundDownloadTask["state"];

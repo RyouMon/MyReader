@@ -22,12 +22,12 @@ jest.mock("./resolve", () => ({
 
 import type { DataSource, Library } from "../types";
 
-import { syncLibraries, syncLibrary } from "./sync-library";
-import { openSyncContext } from "./context";
-import { checkConnectivity } from "./connectivity";
 import { skippedCalibre, syncCalibre } from "./calibre-sync";
+import { checkConnectivity } from "./connectivity";
+import { openSyncContext, type SyncTargetContext } from "./context";
 import { skippedMyreader, syncMyReader } from "./myreader-sync";
 import { isRemoteBackend } from "./resolve";
+import { syncLibraries, syncLibrary } from "./sync-library";
 
 const mockOpenSyncContext = openSyncContext as jest.MockedFunction<typeof openSyncContext>;
 const mockCheckConnectivity = checkConnectivity as jest.MockedFunction<typeof checkConnectivity>;
@@ -53,14 +53,16 @@ const dataSources: DataSource[] = [];
 const localCtx = {
   library,
   deviceId: "device-1",
-  libraryCacheDirUri: "file:///cache/lib-1",
-  backend: { kind: "localDirect" as const },
-};
+  libraryRootUri: "file:///cache/lib-1",
+  dataSourceId: "local",
+  libraryId: library.id,
+  backend: { kind: "local-direct" as const },
+} as SyncTargetContext;
 
 const remoteCtx = {
   ...localCtx,
   backend: { kind: "webdav" as const },
-};
+} as SyncTargetContext;
 
 function calibreResult(changed = true) {
   return {
@@ -150,7 +152,7 @@ describe("syncLibrary", () => {
   test("returns connectivity failure for unreachable remote backend", async () => {
     mockOpenSyncContext.mockResolvedValue(remoteCtx);
     mockIsRemoteBackend.mockReturnValue(true);
-    mockCheckConnectivity.mockResolvedValue({ reachable: false, error: "offline" });
+    mockCheckConnectivity.mockResolvedValue({ reachable: false, latencyMs: 0, error: "offline" });
 
     const report = await syncLibrary(library, dataSources, { throwOnFailure: false });
 

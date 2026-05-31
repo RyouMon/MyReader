@@ -57,7 +57,7 @@ Examples:
 ```
 my-reader-mobile/src/
 ├── services/              Infrastructure — no business logic, no React
-│   ├── db/                SQLite, library-db, calibre-db
+│   ├── db/                SQLite, calibre-db (library sidecar DB in domain/library/library-db.ts)
 │   ├── fs/                path, file-io, cache, bookmarks
 │   ├── http/              auth HTTP client
 │   ├── storage/           credentials, json-storage
@@ -76,7 +76,7 @@ my-reader-mobile/src/
 │       └── data.ts        formats and file paths
 │
 ├── domain/                Shared business modules (same internal layout as features/)
-│   ├── library/           calibre (incl. query keys, fetchBooks), cover-mirror, metadata,
+│   ├── library/           calibre, locations, library-db, metadata,
 │   │                      remote-library
 │   │   └── hooks/         library-actions (hydrate, register, remove, switch)
 │   ├── sync/              sync-library, calibre-sync, myreader-sync, policy, scheduler,
@@ -107,6 +107,10 @@ my-reader-mobile/src/
 - **Table schemas** live in `@my-reader/db`; `repos/` files are access facades named after their table.
 - **Shared types** (`DataSource`, `Library`, etc.) come from `@my-reader/tools` — never from a local `data/types.ts` re-export.
 - **Remote backends** are created via `services/remote/factory.ts`; UI must go through `domain/library/remote-library.ts`, never call factory directly.
+- **Calibre tree**: local and remote share the same relative paths under a single **`libraryRootUri(library)`** per library (`domain/library/locations.ts`). Remote cache root: `document/libraries/{libraryId}/`; sidecar DB: `{libraryRoot}/.myreader/myreader.db`.
+- **Path infra**: `joinRelativePath` and `fileUriFor(base, relative)` in `services/fs/path.ts`. Fixed Calibre literals: `"metadata.db"`, `"cover.jpg"` only; format filenames come from metadata.
+- **Remote URLs**: `RemoteBackend.contentUrl(relative)` — no domain wrapper except cover display.
+- **Cover display**: `resolveCoverUri(library, bookPath, hasCover, backend?)` in `domain/library/locations.ts` (local file under library root, else remote URL).
 - **`download-store.ts`** contains React subscriptions and stays in `domain/download/` — not split further unless a later pass.
 - **Deleted directories**: `data/`, root-level `remote/`, root-level `sync/` — do not re-introduce these.
 - **File naming**: hyphen-case in `domain/` and `services/`; underscore in `repos/` to match table names.

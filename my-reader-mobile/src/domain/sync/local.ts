@@ -1,8 +1,8 @@
 import { Directory, File } from "expo-file-system";
 
-import { localCachedFileUri, parentDirectoryUriForFileUri } from "../../services/fs/path";
-import { DataIntegrityError } from "../../errors";
 import i18n from "@/src/i18n";
+import { DataIntegrityError } from "../../errors";
+import { fileUriFor, parentDirectoryUriForFileUri } from "../../services/fs/path";
 
 export type BackendKind = "local-direct";
 
@@ -27,7 +27,7 @@ export class LocalDirectBackend implements RemoteFileOps {
   constructor(private readonly libraryRootUri: string) {}
 
   private fileFor(relativePath: string): File {
-    return new File(localCachedFileUri(this.libraryRootUri, relativePath));
+    return new File(fileUriFor(this.libraryRootUri, relativePath));
   }
 
   private ensureParent(relativePath: string): void {
@@ -73,7 +73,7 @@ export class LocalDirectBackend implements RemoteFileOps {
   async listRemote(prefix: string): Promise<string[]> {
     const normalizedPrefix = prefix.replace(/\/$/, "");
     const dirUri = normalizedPrefix
-      ? localCachedFileUri(this.libraryRootUri, normalizedPrefix)
+      ? fileUriFor(this.libraryRootUri, normalizedPrefix)
       : this.libraryRootUri;
     const dir = new Directory(dirUri);
     if (!dir.exists) return [];

@@ -5,7 +5,7 @@ import { AppInvariantError } from "../../errors";
 
 import { upsertFileState } from "../../repos/file_state";
 import { readFileStat } from "../../services/fs/file-io";
-import { assertSafeRelativePath, localFileUriFor } from "../../services/fs/path";
+import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
 import { openSyncContext, type SyncTargetContext } from "../sync/actions";
 import { downloadFileDirectWithProgress, type DownloadOutcome } from "../sync/transfer";
 import type { NativeDownloadOptions } from "../../services/download/native";
@@ -75,7 +75,7 @@ export async function finalizeRecoveredDownload(
 ): Promise<DownloadOutcome> {
   const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
   assertSafeRelativePath(relativePath);
-  const stat = readFileStat(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
+  const stat = readFileStat(fileUriFor(ctx.libraryRootUri, relativePath));
   const outcome: DownloadOutcome = { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs };
   onProgress?.(outcome.size, outcome.size);
   await upsertFileState(ctx.library, relativePath, {

@@ -2,6 +2,7 @@ import type { Library, DataSource } from "../types";
 import type { RemoteBackend } from "../../services/remote/backend";
 import { createRemoteBackend } from "../../services/remote/factory";
 import { forceRefreshMetadata } from "./remote-library-shared";
+import { METADATA_DB_RELATIVE } from "./locations";
 
 type MetadataCheckResult =
   | { changed: false; etag: string }
@@ -11,7 +12,7 @@ async function checkMetadataEtag(
   backend: RemoteBackend,
   library: Library,
 ): Promise<{ changed: boolean; etag: string }> {
-  const stat = await backend.statRemoteFile("metadata.db");
+  const stat = await backend.statRemoteFile(METADATA_DB_RELATIVE);
   if (!stat) {
     return { changed: false, etag: library.metadataEtag ?? "" };
   }

@@ -1,7 +1,7 @@
 import type { DataSource, Library, WebDavDataSource } from "../types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../../services/storage/credentials";
-import { parentDirectoryUriForFileUri, resolveLibraryBooksDir } from "../../services/fs/path";
+import { libraryRootUri } from "../library/locations";
 import { SyncConfigError } from "../../errors";
 import { createRemoteBackend } from "../../services/remote/factory";
 import type { RemoteBackend } from "../../services/remote/backend";
@@ -14,14 +14,14 @@ export type ResolvedSyncTarget = {
   backend: SyncBackend;
   dataSourceId: string;
   libraryId: string;
-  libraryCacheDirUri: string;
+  libraryRootUri: string;
 };
 
 export async function resolveSyncTarget(
   library: Library,
   dataSources: DataSource[],
 ): Promise<ResolvedSyncTarget> {
-  const libraryCacheDirUri = resolveLibraryBooksDir(library.id);
+  const rootUri = libraryRootUri(library);
 
   if (library.sourceType === "webdav") {
     const rawSource = dataSources.find(
@@ -41,7 +41,7 @@ export async function resolveSyncTarget(
       backend,
       dataSourceId: rawSource.id,
       libraryId: library.id,
-      libraryCacheDirUri,
+      libraryRootUri: rootUri,
     };
   }
 
@@ -62,20 +62,16 @@ export async function resolveSyncTarget(
       backend,
       dataSourceId: rawSource.id,
       libraryId: library.id,
-      libraryCacheDirUri,
+      libraryRootUri: rootUri,
     };
   }
 
-  const libraryRootUri = parentDirectoryUriForFileUri(library.metadataUri!);
-  if (!libraryRootUri) {
-    throw new SyncConfigError(i18n.t("sync.cannotResolveLocalPath"));
-  }
-  const backend = new LocalDirectBackend(libraryRootUri);
+  const backend = new LocalDirectBackend(rootUri);
   return {
     backend,
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
-    libraryCacheDirUri,
+    libraryRootUri: rootUri,
   };
 }
 

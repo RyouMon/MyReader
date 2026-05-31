@@ -1,8 +1,5 @@
-import {
-  assertSafeRelativePath,
-  localFileUriFor,
-  resolveLibraryBooksDir,
-} from "../../services/fs/path";
+import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
+import { libraryRootUri } from "../library/locations";
 import { deleteFileAtUri } from "../../services/fs/file-io";
 import { clearExtractedReaderCachesForArchiveUri } from "../../services/fs/cache";
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
@@ -28,7 +25,7 @@ function toDownloadOutcome(stat: { size: number; mtimeMs: number }): DownloadOut
 
 function localFileUri(ctx: SyncTargetContext, relativePath: string): string {
   assertSafeRelativePath(relativePath);
-  return localFileUriFor(ctx.libraryCacheDirUri, relativePath);
+  return fileUriFor(ctx.libraryRootUri, relativePath);
 }
 
 function requireRemoteBackend(ctx: SyncTargetContext) {
@@ -103,7 +100,7 @@ export async function evictLocalFileOfflineSafe(
   relativePath: string,
 ): Promise<void> {
   assertSafeRelativePath(relativePath);
-  const fileUri = localFileUriFor(resolveLibraryBooksDir(library.id), relativePath);
+  const fileUri = fileUriFor(libraryRootUri(library), relativePath);
   await removeLocalFile(fileUri);
   await upsertFileState(library, relativePath, {
     localState: "remote_only",

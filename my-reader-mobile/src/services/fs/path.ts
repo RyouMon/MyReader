@@ -19,7 +19,7 @@
  * - **Logical relative paths** (manifest, `file_state.path`, Calibre relative paths):
  *   understood as plaintext segments; if a segment contains `%`, iteratively
  *   decode to stable before joining any local file or URL.
- * - **Local `file://` URIs**: use {@link localCachedFileUri} / {@link toFileUri},
+ * - **Local `file://` URIs**: use {@link fileUriFor} / {@link toFileUri},
  *   which handle scheme & decoding uniformly here.
  * - **WebDAV URL paths**: use {@link encodeUrlPathFromChunks}, encoding each
  *   segment **only** once with `encodeURIComponent`.
@@ -101,13 +101,23 @@ export function canonicalRelativePath(relativePath: string): string {
 }
 
 /**
+ * Join a Calibre book folder path with a file segment (e.g. cover.jpg or a format filename).
+ */
+export function joinRelativePath(bookPath: string | null | undefined, segment: string): string {
+  const normalizedSegment = segment.replace(/^\/+/, "");
+  if (!bookPath) return normalizedSegment;
+  const normalizedBookPath = bookPath.replace(/\\/g, "/").replace(/\/+$/, "");
+  return normalizedBookPath ? `${normalizedBookPath}/${normalizedSegment}` : normalizedSegment;
+}
+
+/**
  * Resolve a relative path under an existing directory URI to get the target
  * file's `file://` URI. All segments are first normalized to plaintext, then
  * passed to Expo `File`/`Directory` constructors, avoiding manual concatenation
  * and double-encoding.
  */
-export function localCachedFileUri(libraryCacheDirUri: string, relativePath: string): string {
-  const base = toNativeFilesystemPath(libraryCacheDirUri).replace(/\/+$/, "");
+export function fileUriFor(baseDirUri: string, relativePath: string): string {
+  const base = toNativeFilesystemPath(baseDirUri).replace(/\/+$/, "");
   const segments = canonicalRelativePathSegments(relativePath);
   return toFileUri([base, ...segments].join("/"));
 }
@@ -196,22 +206,11 @@ export function fileUriToNativeDirAndName(fileUri: string): { dir: string; name:
   };
 }
 
-/**
- * Return the absolute local directory URI where a library's book downloads live.
- * Path: {documentDir}/book-downloads/{libraryId}
- */
-export function resolveLibraryBooksDir(libraryId: string): string {
-  const dir = new Directory(Paths.document, "book-downloads", libraryId);
+/** Creates (if needed) and returns a subdirectory under the app document directory. */
+export function ensureDocumentSubdirUri(...segments: string[]): string {
+  const dir = new Directory(Paths.document, ...segments);
   if (!dir.exists) {
     dir.create({ idempotent: true, intermediates: true });
   }
   return dir.uri;
-}
-
-/**
- * Resolve a relative path to a `file://` URI under a given library cache
- * directory URI. Delegates to {@link localCachedFileUri}.
- */
-export function localFileUriFor(libraryCacheDirUri: string, relativePath: string): string {
-  return localCachedFileUri(libraryCacheDirUri, relativePath);
 }

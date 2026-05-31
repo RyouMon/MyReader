@@ -13,7 +13,8 @@ import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/typ
 import { isRemoteSourceType } from "@/src/domain/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
-import { localFileUriFor, resolveLibraryBooksDir } from "@/src/services/fs/path";
+import { libraryRootUri } from "@/src/domain/library/locations";
+import { fileUriFor } from "@/src/services/fs/path";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 import { resolveReadFormat } from "@my-reader/tools/utils";
@@ -63,9 +64,6 @@ async function hasExpectedReaderSignature(file: File, format: string): Promise<b
 }
 
 async function resolveDownloadedWebDavBookFile(input: {
-  libraryId: string;
-  dataSourceId: string;
-  cacheDirUri: string;
   library: Library;
   calibreBookId: number;
   format: string;
@@ -74,13 +72,10 @@ async function resolveDownloadedWebDavBookFile(input: {
   const match = paths.find((path) => path.format.toUpperCase() === input.format.toUpperCase());
   if (!match) return null;
 
-  const state = await getFileState(
-    input.library,
-    match.relativePath,
-  );
+  const state = await getFileState(input.library, match.relativePath);
   if (!isDownloadedLocalState(state?.localState)) return null;
 
-  const file = new File(localFileUriFor(input.cacheDirUri, match.relativePath));
+  const file = new File(fileUriFor(libraryRootUri(input.library), match.relativePath));
   if (await hasExpectedReaderSignature(file, input.format)) return file;
   if (file.exists) file.delete();
   return null;
@@ -217,18 +212,13 @@ export function useBookLoader(
         const needsPdfNativePath = fmtUpper === "PDF";
         const needsEpubExtract = fmtUpper === "EPUB";
 
-        const syncCacheDirUri = isRemoteSource ? resolveLibraryBooksDir(lib.id) : undefined;
-        const downloadedWebDavBookFile =
-          isRemoteSource && syncCacheDirUri && lib.dataSourceId
-            ? await resolveDownloadedWebDavBookFile({
-                libraryId: lib.id,
-                dataSourceId: lib.dataSourceId,
-                cacheDirUri: syncCacheDirUri,
-                library: lib,
-                calibreBookId: calibreId,
-                format: fmt,
-              })
-            : null;
+        const downloadedWebDavBookFile = isRemoteSource
+          ? await resolveDownloadedWebDavBookFile({
+              library: lib,
+              calibreBookId: calibreId,
+              format: fmt,
+            })
+          : null;
 
         const localBookFile = !isRemoteSource && needsNativeComicPath
           ? await materializeBookFileToCache(lib, calibreId, fmt, "local-comic")

@@ -23,7 +23,8 @@ import {
   READER_LOCAL_COPY_CACHE_DIR,
   ensureReaderCacheDirectories,
 } from "../../services/fs/cache";
-import { localCachedFileUri } from "../../services/fs/path";
+import { fileUriFor, joinRelativePath } from "@/src/services/fs/path";
+import { libraryRootUri, resolveCoverUri } from "./locations";
 import { queryClient } from "../../services/query/query-client";
 import type { BookItem, DataSource, Library } from "../types";
 import { isRemoteSourceType } from "../types";
@@ -85,35 +86,22 @@ async function refreshCachedMetadataFromDirectory(library: Library, directoryUri
   return copyMetadataToCache(metadataFile.uri, library.id);
 }
 
-function getLibraryRootUri(library: Library, resolvedPath?: string) {
-  return resolvedPath ?? library.securityScopedBookmark?.resolvedUri ?? library.path;
+function getLibraryRootUri(library: Library) {
+  return libraryRootUri(library);
 }
 
 export function buildCoverUri(
   library: Library,
-  bookPath: string | null,
+  bookPath: string,
   hasCover: boolean,
-  resolvedPath?: string,
-) {
-  if (!bookPath || !hasCover) {
-    return undefined;
-  }
-
-  const segments = bookPath.split("/").filter(Boolean);
-  const coverFile = new FSFile(
-    new Directory(getLibraryRootUri(library, resolvedPath)),
-    ...segments,
-    "cover.jpg",
-  );
-
-  return coverFile.uri;
+): BookItem["coverUri"] | undefined {
+  return resolveCoverUri(library, bookPath, hasCover);
 }
 
 export function mapListRowsToBookItems(
   library: Library,
   rows: BookWithAuthorsRow[],
   options?: {
-    coverRootPath?: string;
     buildCoverUri?: (
       lib: Library,
       bookPath: string,
@@ -123,7 +111,7 @@ export function mapListRowsToBookItems(
 ): BookItem[] {
   const resolveCover =
     options?.buildCoverUri ??
-    ((lib, bookPath, hasCover) => buildCoverUri(lib, bookPath, hasCover, options?.coverRootPath));
+    ((lib, bookPath, hasCover) => resolveCoverUri(lib, bookPath, hasCover));
 
   return rows.map((row) => {
     const hasCover = (row.hasCover ?? 0) !== 0;
@@ -329,10 +317,12 @@ export async function readBookDetailFromMetadata(
     sizeBytes: Math.trunc(Number(r.uncompressedSize ?? 0)),
   }));
 
-  const bookIdentifiers: BookIdentifier[] = rows.identifierRows.map((r) => ({
-    idType: r.type ?? "isbn",
-    value: r.val,
-  }));
+  const bookIdentifiers: BookIdentifier[] = rows.identifierRows
+    .map((r) => ({
+      idType: r.type ?? "isbn",
+      value: r.val ?? "",
+    }))
+    .filter((id) => id.value.length > 0);
 
   const ratingRaw = rows.ratingRow?.rating;
   const rating =
@@ -402,7 +392,7 @@ export async function getBookFormatPaths(
 
   return formats.map((r) => ({
     format: (r.format ?? "").toUpperCase(),
-    relativePath: `${bookPath}/${r.name}.${(r.format ?? "").toLowerCase()}`,
+    relativePath: joinRelativePath(bookPath, `${r.name}.${(r.format ?? "").toLowerCase()}`),
   }));
 }
 
@@ -426,7 +416,8 @@ export async function getAllBookFormats(library: Library): Promise<Record<string
 }
 
 function createBookFile(rootUri: string, segments: string[], fileName: string) {
-  return new FSFile(localCachedFileUri(rootUri, [...segments, fileName].join("/")));
+  const bookPath = segments.join("/");
+  return new FSFile(fileUriFor(rootUri, joinRelativePath(bookPath, fileName)));
 }
 
 function assertBookFileExists(bookFile: FSFile, libraryPath: string, rowPath: string) {
@@ -475,8 +466,8 @@ export async function materializeBookFileToCache(
     return cachedFile;
   }
 
-  const sourceFile = createBookFile(library.path, segments, fileName);
-  assertBookFileExists(sourceFile, library.path, rowPath);
+  const sourceFile = createBookFile(getLibraryRootUri(library), segments, fileName);
+  assertBookFileExists(sourceFile, getLibraryRootUri(library), rowPath);
   sourceFile.copy(cachedFile);
   return cachedFile;
 }
@@ -493,13 +484,11 @@ export async function readBooksFromLibrary(library: Library): Promise<BookItem[]
   }
 
   if (library.securityScopedBookmark) {
-    const { result: coverRootPath, refreshedLibrary } = await withSecurityScopedLibraryAccess(
+    const { result: books } = await withSecurityScopedLibraryAccess(
       library,
-      async (resolvedPath) => resolvedPath,
+      async (resolvedPath) => mapListRowsToBookItems({ ...library, path: resolvedPath }, rows),
     );
-    return mapListRowsToBookItems(refreshedLibrary ?? library, rows, {
-      coverRootPath,
-    });
+    return books;
   }
 
   return mapListRowsToBookItems(library, rows);

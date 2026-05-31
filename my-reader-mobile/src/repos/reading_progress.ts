@@ -3,7 +3,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { uuid } from "@/src/utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import type { ReadingProgress } from "@my-reader/db/types";
-import { getLibraryDatabase } from "../services/db/library-db";
+import { getLibraryDatabase } from "../domain/library/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 export async function getReadingProgressRow(

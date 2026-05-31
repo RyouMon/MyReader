@@ -6,10 +6,12 @@ import * as schema from "@my-reader/db/schema";
 import migrations from "@my-reader/db/drizzle/migrations";
 
 import type { Library } from "@my-reader/tools/types/library";
-import { resolveLibraryBooksDir } from "../fs/path";
+import { fileUriFor } from "@/src/services/fs/path";
+import { libraryRootUri } from "./locations";
 
 const LIBRARY_DB_DIR_NAME = ".myreader";
 const LIBRARY_DB_FILE_NAME = "myreader.db";
+const SIDECAR_RELATIVE_PATH = `${LIBRARY_DB_DIR_NAME}/${LIBRARY_DB_FILE_NAME}`;
 
 export type LibraryDbHandle = {
   raw: DB;
@@ -19,22 +21,18 @@ export type LibraryDbHandle = {
 const dbCache = new Map<string, LibraryDbHandle>();
 const dbInitPromise = new Map<string, Promise<LibraryDbHandle>>();
 
-function getLibraryRootUri(library: Library): string {
-  return resolveLibraryBooksDir(library.id);
-}
-
-function ensureLibraryDataDir(libraryRootUri: string): string {
-  const dir = new Directory(libraryRootUri, LIBRARY_DB_DIR_NAME);
+function ensureLibraryDataDir(libraryRoot: string): string {
+  const dir = new Directory(libraryRoot, LIBRARY_DB_DIR_NAME);
   if (!dir.exists) {
     dir.create({ idempotent: true, intermediates: true });
   }
   return dir.uri;
 }
 
-function libraryDbUri(libraryRootUri: string): string {
-  const dataDir = ensureLibraryDataDir(libraryRootUri);
-  const file = new File(dataDir, LIBRARY_DB_FILE_NAME);
-  return file.uri;
+function libraryDbUri(library: Library): string {
+  const rootUri = libraryRootUri(library);
+  ensureLibraryDataDir(rootUri);
+  return fileUriFor(rootUri, SIDECAR_RELATIVE_PATH);
 }
 
 function uriToNativePath(uri: string): string {
@@ -46,15 +44,14 @@ function uriToNativePath(uri: string): string {
 
 /**
  * Returns a process-wide handle to the library-wide database.
- * Path: {cacheDir}/book-downloads/{libraryId}/.myreader/myreader.db
+ * Path: {libraryRoot}/.myreader/myreader.db
  *
  * Applies Drizzle migrations on first access.
  * Concurrent callers for the same database await the same init promise
  * to avoid "database is locked" on Android.
  */
 export async function getLibraryDatabase(library: Library): Promise<LibraryDbHandle> {
-  const rootUri = getLibraryRootUri(library);
-  const dbUri = libraryDbUri(rootUri);
+  const dbUri = libraryDbUri(library);
   const cacheKey = dbUri;
 
   const cached = dbCache.get(cacheKey);

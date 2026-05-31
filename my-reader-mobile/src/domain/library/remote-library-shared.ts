@@ -7,9 +7,7 @@ import { countBooks, listBooksWithAuthors } from "../../repos/calibre/books";
 import type { RemoteBackend } from "../../services/remote/backend";
 import type { BookItem, Library } from "../types";
 import { mapListRowsToBookItems } from "./calibre";
-
-/** Path relative to the library root; backend already scopes URLs to that root. */
-const METADATA_DB_RELATIVE = "metadata.db";
+import { METADATA_DB_RELATIVE } from "./locations";
 
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message;
