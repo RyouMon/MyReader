@@ -10,9 +10,6 @@ export const defaultSettings: ReaderSettings = {
   language: "",
   syncOnStartup: true,
   enableAutoSync: true,
-  cache: {
-    maxCacheSizeMB: 2048,
-  },
   reflowable: {
     theme: "paper",
     fontSize: 18,

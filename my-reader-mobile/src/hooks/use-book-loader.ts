@@ -3,18 +3,16 @@ import i18n from "@/src/i18n";
 import {
   buildCoverUri as buildLocalCoverUri,
   getBookFormatPaths,
-  materializeBookFileToCache,
   readBookDetailFromMetadata,
+  resolveBookFileForRead,
 } from "@/src/domain/library/calibre";
-import { libraryRootUri } from "@/src/domain/library/locations";
+import { libraryBookFileUri } from "@/src/domain/library/locations";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
 import { getReadingProgress } from "@/src/domain/reading-progress";
 import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
-import { enforceReaderCacheLimit } from "@/src/services/fs/cache";
-import { fileUriFor } from "@/src/services/fs/path";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 import { resolveReadFormat } from "@my-reader/tools/utils";
@@ -75,7 +73,7 @@ async function resolveDownloadedWebDavBookFile(input: {
   const state = await getFileState(input.library, match.relativePath);
   if (!isDownloadedLocalState(state?.localState)) return null;
 
-  const file = new File(fileUriFor(libraryRootUri(input.library), match.relativePath));
+  const file = new File(libraryBookFileUri(input.library, match.relativePath));
   if (await hasExpectedReaderSignature(file, input.format)) return file;
   if (file.exists) file.delete();
   return null;
@@ -105,7 +103,6 @@ export function useBookLoader(
   id: string | undefined,
   formatParam: string | undefined,
   activeLibraryId: string | null,
-  maxCacheSizeMB: number,
 ) {
   const [loadState, setLoadState] = useState<LoadState>({
     status: "loading",
@@ -150,7 +147,6 @@ export function useBookLoader(
 
     async function load() {
       try {
-        enforceReaderCacheLimit(maxCacheSizeMB);
         setLoadState({ status: "loading", message: i18n.t("bookLoader.readingBookInfo") });
 
         // 优先从已有的 books 列表中获取封面和标题，减少等待感
@@ -221,11 +217,11 @@ export function useBookLoader(
           : null;
 
         const localBookFile = !isRemoteSource && needsNativeComicPath
-          ? await materializeBookFileToCache(lib, calibreId, fmt, "local-comic")
+          ? await resolveBookFileForRead(lib, calibreId, fmt)
           : null;
         const localEpubFile =
           needsEpubExtract && !isRemoteSource
-            ? await materializeBookFileToCache(lib, calibreId, fmt, "local-epub")
+            ? await resolveBookFileForRead(lib, calibreId, fmt)
             : null;
         const webDavEpubFile =
           needsEpubExtract && isRemoteSource ? downloadedWebDavBookFile : null;
@@ -234,7 +230,7 @@ export function useBookLoader(
         const pdfLocalFile = needsPdfNativePath
           ? isRemoteSource
             ? downloadedWebDavBookFile
-            : await materializeBookFileToCache(lib, calibreId, fmt, "local-pdf")
+            : await resolveBookFileForRead(lib, calibreId, fmt)
           : null;
 
         const epubArchiveFile = localEpubFile ?? webDavEpubFile;
@@ -293,7 +289,7 @@ export function useBookLoader(
     return () => {
       cancelled = true;
     };
-  }, [id, activeLibraryId, formatParam, maxCacheSizeMB]);
+  }, [id, activeLibraryId, formatParam]);
 
   return { loadState, coverUri, bookTitle };
 }

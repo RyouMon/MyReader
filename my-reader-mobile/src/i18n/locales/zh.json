@@ -124,9 +124,6 @@
     "darkMode": "深色模式",
     "readerStyle": "阅读器样式",
     "readerStyleDetail": "字体、字号、页边距",
-    "cacheMaxSize": "缓存最大容量",
-    "clearAllCache": "全部清理缓存",
-    "currentUsage": "当前占用 {{size}}",
     "themeMode": {
       "system": "跟随设备",
       "light": "浅色",

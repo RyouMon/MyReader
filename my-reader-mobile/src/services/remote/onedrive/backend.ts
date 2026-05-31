@@ -1,11 +1,11 @@
-import { File, Paths } from "expo-file-system";
+import { Directory, File } from "expo-file-system";
 import ky from "ky";
 
 import i18n from "@/src/i18n";
 import { GRAPH_API_BASE } from "../../../constants/onedrive";
 import { NetworkError } from "../../../errors";
 import { refreshAccessToken } from "../../auth/onedrive";
-import { canonicalRelativePathSegments } from "../../fs/path";
+import { canonicalRelativePathSegments, parentDirectoryUriForFileUri } from "../../fs/path";
 import { getCachedAuth, invalidateCachedAuth, setCachedAuth } from "../auth-cache";
 
 import type { DownloadRequest, PreparedUpload, RemoteBackend, RemoteDirEntry, RemoteFileStat, UploadRequest } from "../backend";
@@ -138,18 +138,26 @@ export class OneDriveRemoteBackend implements RemoteBackend {
     );
   }
 
-  async downloadToCache(remotePath: string, localName: string): Promise<File> {
+  async downloadToUri(remotePath: string, localFileUri: string): Promise<File> {
     const headers = await this.getAuthHeaders();
     const url = `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`;
 
     const response = await ky(url, { headers });
     const bytes = new Uint8Array(await response.arrayBuffer());
-    const file = new File(Paths.cache, localName);
+    const parentUri = parentDirectoryUriForFileUri(localFileUri);
+    if (parentUri) {
+      const parent = new Directory(parentUri);
+      if (!parent.exists) {
+        parent.create({ idempotent: true, intermediates: true });
+      }
+    }
+    const file = new File(localFileUri);
 
-    if (!file.exists) {
-      file.create({ intermediates: true, overwrite: true });
+    if (file.exists) {
+      file.delete();
     }
 
+    file.create({ intermediates: true, overwrite: true });
     file.write(bytes);
     return file;
   }

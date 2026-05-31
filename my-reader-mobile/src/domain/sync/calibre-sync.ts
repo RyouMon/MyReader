@@ -7,13 +7,13 @@ import { fetchBooks } from "../library/calibre";
 import { forceRefreshMetadata } from "../library/remote-library-shared";
 import {
   COVER_FILE_NAME,
-  libraryRootUri,
+  libraryBookFileUri,
   METADATA_DB_RELATIVE,
 } from "../library/locations";
+import { withLocalLibraryCalibreRoot } from "../library/local-library-content";
 import type { BookItem, Library } from "../types";
 import { isRemoteSourceType } from "../types";
-import { clearReaderCachesForBook } from "../../services/fs/cache";
-import { fileUriFor, joinRelativePath } from "../../services/fs/path";
+import { joinRelativePath } from "../../services/fs/path";
 import { downloadLibraryFile } from "../download/download-service";
 import i18n from "@/src/i18n";
 import { describeError } from "../../utils/common";
@@ -23,6 +23,7 @@ import type { SyncTargetContext } from "./context";
 import { evictLocalFileOfflineSafe } from "./transfer";
 import type { CalibreSyncResult, SyncLibraryOptions } from "./types";
 import { isRemoteBackend, type SyncBackend } from "./resolve";
+import { LocalDirectBackend } from "./local";
 
 const CONCURRENT_COVER_DOWNLOADS = 3;
 
@@ -37,15 +38,19 @@ function mapSummaries(
   }));
 }
 
-async function statMetadataEtag(backend: SyncBackend): Promise<string | null> {
+async function statMetadataEtag(library: Library, backend: SyncBackend): Promise<string | null> {
   if (isRemoteBackend(backend)) {
     const stat = await backend.statRemoteFile(METADATA_DB_RELATIVE);
     if (!stat) return null;
     return stat.etag ?? `${stat.mtimeMs}-${stat.size}`;
   }
-  const stat = await backend.statRemote(METADATA_DB_RELATIVE);
-  if (!stat.exists) return null;
-  return `${stat.mtimeMs}-${stat.size}`;
+
+  return withLocalLibraryCalibreRoot(library, async (calibreRootUri) => {
+    const localBackend = new LocalDirectBackend(calibreRootUri);
+    const stat = await localBackend.statRemote(METADATA_DB_RELATIVE);
+    if (!stat.exists) return null;
+    return `${stat.mtimeMs}-${stat.size}`;
+  });
 }
 
 async function materializeMetadata(
@@ -65,7 +70,7 @@ async function materializeMetadata(
 
 function hasLocalCoverFile(library: Library, bookPath: string): boolean {
   const relative = joinRelativePath(bookPath, COVER_FILE_NAME);
-  const file = new File(fileUriFor(libraryRootUri(library), relative));
+  const file = new File(libraryBookFileUri(library, relative));
   return file.exists && (file.size ?? 0) > 0;
 }
 
@@ -118,6 +123,7 @@ async function evictRemovedBookFiles(
   book: BookSummary,
   metadataUri: string,
 ): Promise<void> {
+  if (!isRemoteSourceType(library.sourceType)) return;
   if (!book.path) return;
 
   try {
@@ -145,7 +151,6 @@ async function applyBookDiffCleanup(
   if (oldMetadataUri) {
     for (const book of diff.removed) {
       await evictRemovedBookFiles(library, book, oldMetadataUri);
-      clearReaderCachesForBook(library.id, book.id);
     }
   }
 
@@ -205,7 +210,7 @@ export async function syncCalibre(
   const forceCalibre = options.forceCalibre ?? false;
 
   try {
-    const etag = await statMetadataEtag(ctx.backend);
+    const etag = await statMetadataEtag(library, ctx.backend);
     if (!etag && !forceCalibre) {
       return {
         skipped: true,

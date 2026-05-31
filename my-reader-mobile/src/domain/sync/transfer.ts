@@ -3,11 +3,11 @@ import { AppInvariantError } from "../../errors";
 import { deleteFileState, upsertFileState } from "../../repos/file_state";
 import type { NativeDownloadOptions } from "../../services/download/native";
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
-import { clearExtractedReaderCachesForArchiveUri } from "../../services/fs/cache";
 import { deleteFileAtUri } from "../../services/fs/file-io";
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
-import { libraryRootUri } from "../library/locations";
+import { libraryContainerRootUri } from "../library/locations";
 import type { Library } from "../types";
+import { isRemoteSourceType } from "../types";
 import type { SyncTargetContext } from "./context";
 import { isRemoteBackend } from "./resolve";
 
@@ -37,7 +37,6 @@ function requireRemoteBackend(ctx: SyncTargetContext) {
 
 async function removeLocalFile(fileUri: string): Promise<void> {
   await deleteFileAtUri(fileUri);
-  await clearExtractedReaderCachesForArchiveUri(fileUri);
 }
 
 export async function downloadFileDirect(
@@ -99,8 +98,9 @@ export async function evictLocalFileOfflineSafe(
   library: Library,
   relativePath: string,
 ): Promise<void> {
+  if (!isRemoteSourceType(library.sourceType)) return;
   assertSafeRelativePath(relativePath);
-  const fileUri = fileUriFor(libraryRootUri(library), relativePath);
+  const fileUri = fileUriFor(libraryContainerRootUri(library.id), relativePath);
   await removeLocalFile(fileUri);
   await upsertFileState(library, relativePath, {
     localState: "remote_only",

@@ -6,7 +6,8 @@ import { ensureLibraryMetadataCached, readBookCountFromLibrary } from "@/src/dom
 import { libraryQueryKeys } from "@/src/domain/library/calibre";
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { clearAllReaderCaches, clearLocalCopyCacheByLibrary } from "@/src/services/fs/cache";
+import { libraryContainerRootUri, usesIosContainerSidecar } from "@/src/domain/library/locations";
+import { Directory } from "expo-file-system";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants";
@@ -76,7 +77,7 @@ export async function registerLibrary(library: Library): Promise<Library | null>
   return prepared;
 }
 
-/** Removes a library and clears associated caches. */
+/** Removes a library and deletes its app container when applicable. */
 export async function removeLibrary(id: string): Promise<void> {
   const state = useAppStore.getState();
   const nextLibraries = state.libraries.filter((library) => library.id !== id);
@@ -85,10 +86,17 @@ export async function removeLibrary(id: string): Promise<void> {
     ? (nextLibraries[0]?.id ?? null)
     : state.activeLibraryId;
 
+  const removed = state.libraries.find((library) => library.id === id);
+
   useAppStore.getState().setLibraries(nextLibraries);
   useAppStore.getState().setActiveLibraryId(nextActiveLibraryId);
-  clearLocalCopyCacheByLibrary(id);
-  clearAllReaderCaches();
+
+  if (removed && (isRemoteSourceType(removed.sourceType) || usesIosContainerSidecar(removed))) {
+    const container = new Directory(libraryContainerRootUri(id));
+    if (container.exists) {
+      container.delete();
+    }
+  }
 
   await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(id) });
   if (nextActiveLibraryId) {

@@ -1,7 +1,7 @@
-import { File, Paths } from "expo-file-system";
+import { Directory, File } from "expo-file-system";
 import ky from "ky";
 
-import { canonicalRelativePath, canonicalRelativePathSegments } from "../../fs/path";
+import { canonicalRelativePath, canonicalRelativePathSegments, parentDirectoryUriForFileUri } from "../../fs/path";
 import { WebDavUrlBuilder } from "../../webdav/url-builder";
 import { NetworkError } from "../../../errors";
 import i18n from "@/src/i18n";
@@ -214,15 +214,23 @@ export class WebDavRemoteBackend implements RemoteBackend {
     return children;
   }
 
-  async downloadToCache(remotePath: string, localName: string): Promise<File> {
+  async downloadToUri(remotePath: string, localFileUri: string): Promise<File> {
     const response = await ky(this.urlBuilder.urlFor(remotePath), {
       headers: this.urlBuilder.authHeaders,
     });
     const bytes = new Uint8Array(await response.arrayBuffer());
-    const file = new File(Paths.cache, localName);
-    if (!file.exists) {
-      file.create({ intermediates: true, overwrite: true });
+    const parentUri = parentDirectoryUriForFileUri(localFileUri);
+    if (parentUri) {
+      const parent = new Directory(parentUri);
+      if (!parent.exists) {
+        parent.create({ idempotent: true, intermediates: true });
+      }
     }
+    const file = new File(localFileUri);
+    if (file.exists) {
+      file.delete();
+    }
+    file.create({ intermediates: true, overwrite: true });
     file.write(bytes);
     return file;
   }

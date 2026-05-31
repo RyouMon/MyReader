@@ -35,9 +35,6 @@ export type ReaderSettings = {
   language: string;
   syncOnStartup: boolean;
   enableAutoSync: boolean;
-  cache: {
-    maxCacheSizeMB: number;
-  };
   reflowable: ReflowableReaderSettings;
   fixed: FixedReaderSettings;
 };

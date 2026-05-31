@@ -9,7 +9,6 @@ export type SettingsSlice = {
   setLanguage: (language: string) => void;
   setSyncOnStartup: (enabled: boolean) => void;
   setEnableAutoSync: (enabled: boolean) => void;
-  patchCacheSettings: (patch: Partial<ReaderSettings["cache"]>) => void;
   patchReflowableReaderSettings: (patch: Partial<ReflowableReaderSettings>) => void;
   patchFixedReaderSettings: (patch: Partial<FixedReaderSettings>) => void;
 };
@@ -27,17 +26,6 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
   setEnableAutoSync(enabled) {
     set((state) => ({ settings: { ...state.settings, enableAutoSync: enabled } }));
-  },
-  patchCacheSettings(patch) {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        cache: {
-          ...state.settings.cache,
-          ...patch,
-        },
-      },
-    }));
   },
   patchReflowableReaderSettings(patch) {
     set((state) => ({

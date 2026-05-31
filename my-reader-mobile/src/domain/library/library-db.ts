@@ -7,7 +7,7 @@ import migrations from "@my-reader/db/drizzle/migrations";
 
 import type { Library } from "@my-reader/tools/types/library";
 import { fileUriFor } from "@/src/services/fs/path";
-import { libraryRootUri } from "./locations";
+import { librarySidecarRootUri } from "./locations";
 
 const LIBRARY_DB_DIR_NAME = ".myreader";
 const LIBRARY_DB_FILE_NAME = "myreader.db";
@@ -30,7 +30,7 @@ function ensureLibraryDataDir(libraryRoot: string): string {
 }
 
 function libraryDbUri(library: Library): string {
-  const rootUri = libraryRootUri(library);
+  const rootUri = librarySidecarRootUri(library);
   ensureLibraryDataDir(rootUri);
   return fileUriFor(rootUri, SIDECAR_RELATIVE_PATH);
 }

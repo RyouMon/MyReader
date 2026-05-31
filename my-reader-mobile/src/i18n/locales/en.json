@@ -124,9 +124,6 @@
     "darkMode": "Dark Mode",
     "readerStyle": "Reader Style",
     "readerStyleDetail": "Font, font size, margins",
-    "cacheMaxSize": "Cache Max Size",
-    "clearAllCache": "Clear All Cache",
-    "currentUsage": "Currently using {{size}}",
     "themeMode": {
       "system": "System",
       "light": "Light",

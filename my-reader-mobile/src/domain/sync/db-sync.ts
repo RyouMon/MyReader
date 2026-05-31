@@ -5,6 +5,11 @@ import {
 } from "../../repos/reading_progress";
 import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta";
 import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
+import {
+  ensureLibrarySidecarDirectory,
+  librarySidecarRootUri,
+  usesIosContainerSidecar,
+} from "../library/locations";
 import type { Library } from "../types";
 import { getOrCreateDeviceId } from "./device";
 import { LocalDirectBackend } from "./local";
@@ -18,6 +23,10 @@ type ChangeRow = {
 
 function lastPushCursorKey(deviceId: string): string {
   return `last_push_cursor::${deviceId}`;
+}
+
+function lastExternalMirrorSeqKey(deviceId: string): string {
+  return `last_external_mirror_seq::${deviceId}`;
 }
 
 function lastPullCursorKey(deviceId: string, remoteDevice: string): string {
@@ -57,6 +66,41 @@ async function pushDbChanges(
   await setSyncMeta(library, cursorKey, String(maxTs));
 
   return rows.length;
+}
+
+async function mirrorChangesToExternal(
+  sidecarBackend: LocalDirectBackend,
+  externalBackend: LocalDirectBackend,
+  library: Library,
+  deviceId: string,
+): Promise<number> {
+  const mirrorKey = lastExternalMirrorSeqKey(deviceId);
+  const lastSeqStr = await getSyncMeta(library, mirrorKey);
+  const lastSeq = lastSeqStr ? parseInt(lastSeqStr, 10) : 0;
+
+  let files: string[];
+  try {
+    files = await sidecarBackend.listRemote(`.myreader/changes/${deviceId}/`);
+  } catch {
+    return 0;
+  }
+
+  const pending = files
+    .filter((f) => f.endsWith(".jsonl"))
+    .map((name) => ({ name, seq: parseInt(name.replace(/\.jsonl$/, ""), 10) }))
+    .filter((f) => f.seq > 0 && f.seq > lastSeq)
+    .sort((a, b) => a.seq - b.seq);
+
+  let mirrored = 0;
+  for (const { name, seq } of pending) {
+    const objectPath = `.myreader/changes/${deviceId}/${name}`;
+    const bytes = await sidecarBackend.readBytes(objectPath);
+    await externalBackend.writeBytes(objectPath, bytes);
+    await setSyncMeta(library, mirrorKey, String(seq));
+    mirrored++;
+  }
+
+  return mirrored;
 }
 
 async function pullDbChanges(
@@ -142,6 +186,42 @@ export type DbSyncReport = {
   pulled: number;
 };
 
+async function syncDbWithSingleBackend(
+  backend: SyncBackend,
+  library: Library,
+  mode: "push_only" | "pull_only" | "full",
+): Promise<DbSyncReport> {
+  const deviceId = await getOrCreateDeviceId(library);
+  const pushed = mode === "pull_only" ? 0 : await pushDbChanges(backend, library, deviceId);
+  const pulled = mode === "push_only" ? 0 : await pullDbChanges(backend, library, deviceId);
+  return { pushed, pulled };
+}
+
+async function syncDbIosContainerSidecar(
+  library: Library,
+  mode: "push_only" | "pull_only" | "full",
+): Promise<DbSyncReport> {
+  ensureLibrarySidecarDirectory(library);
+  const sidecarBackend = new LocalDirectBackend(librarySidecarRootUri(library));
+  const deviceId = await getOrCreateDeviceId(library);
+
+  const pushedLocal =
+    mode === "pull_only" ? 0 : await pushDbChanges(sidecarBackend, library, deviceId);
+
+  const { result } = await withSecurityScopedLibraryAccess(library, async (contentRootUri) => {
+    const externalBackend = new LocalDirectBackend(contentRootUri);
+    const pushedExternal =
+      mode === "pull_only"
+        ? 0
+        : await mirrorChangesToExternal(sidecarBackend, externalBackend, library, deviceId);
+    const pulled =
+      mode === "push_only" ? 0 : await pullDbChanges(externalBackend, library, deviceId);
+    return { pushed: pushedLocal + pushedExternal, pulled };
+  });
+
+  return result;
+}
+
 export async function syncDbFromContext(
   library: Library,
   ctx: ResolvedSyncTarget,
@@ -149,25 +229,23 @@ export async function syncDbFromContext(
 ): Promise<DbSyncReport> {
   const mode = options?.mode ?? "full";
 
-  const run = async (backend: SyncBackend) => {
-    const deviceId = await getOrCreateDeviceId(library);
-    const pushed = mode === "pull_only" ? 0 : await pushDbChanges(backend, library, deviceId);
-    const pulled = mode === "push_only" ? 0 : await pullDbChanges(backend, library, deviceId);
-    return { pushed, pulled };
-  };
+  if (isLocalDirect(ctx.backend) && usesIosContainerSidecar(library)) {
+    return syncDbIosContainerSidecar(library, mode);
+  }
 
   if (isLocalDirect(ctx.backend)) {
     if (!library.securityScopedBookmark) {
-      return { pushed: 0, pulled: 0 };
+      const backend = new LocalDirectBackend(ctx.librarySidecarRootUri);
+      return syncDbWithSingleBackend(backend, library, mode);
     }
 
     const { result } = await withSecurityScopedLibraryAccess(library, async (resolvedUri) => {
       const backend = new LocalDirectBackend(resolvedUri);
-      return run(backend);
+      return syncDbWithSingleBackend(backend, library, mode);
     });
 
     return result;
   }
 
-  return run(ctx.backend);
+  return syncDbWithSingleBackend(ctx.backend, library, mode);
 }

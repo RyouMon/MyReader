@@ -1,14 +1,9 @@
 import { getLocales } from "expo-localization";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { router, useNavigation } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-  clearAllReaderCaches,
-  enforceReaderCacheLimit,
-  getReaderCacheUsageSummary,
-} from "@/src/services/fs/cache";
 import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
@@ -46,12 +41,7 @@ export default function SettingsScreen() {
     if (isTransitioningRef.current) return;
     router.push(href);
   }
-  const cacheSettings = useAppStore((s) => s.settings.cache);
-  const patchCacheSettings = useAppStore((s) => s.patchCacheSettings);
-  const [cacheUsageLabel, setCacheUsageLabel] = useState(() => {
-    const usage = getReaderCacheUsageSummary();
-    return `${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`;
-  });
+
   const themeModeLabels: Record<ThemeMode, string> = useMemo(() => ({
     system: t("settings.themeMode.system"),
     light: t("settings.themeMode.light"),
@@ -72,14 +62,6 @@ export default function SettingsScreen() {
       }));
     },
     [t, themeMode]
-  );
-  const cacheLimitMenuActions = useMemo<MenuAction[]>(
-    () =>
-      [512, 1024, 2048, 4096, 8192].map((size) => ({
-        id: `cache:${size}`,
-        title: `${cacheSettings.maxCacheSizeMB === size ? "✓ " : ""}${size} MB`,
-      })),
-    [cacheSettings.maxCacheSizeMB]
   );
 
   const language = useAppStore((s) => s.settings.language);
@@ -169,29 +151,9 @@ export default function SettingsScreen() {
             >
               <SettingsRow title={t("settings.darkMode")} detail={themeMode} />
             </MenuView>
-            <SettingsRow title={t("settings.readerStyle")} detail={t("settings.readerStyleDetail")} />
-            <MenuView
-              actions={cacheLimitMenuActions}
-              isAnchoredToRight
-              onPressAction={({ nativeEvent }) => {
-                const size = Number(nativeEvent.event.replace("cache:", ""));
-                if (!Number.isFinite(size)) return;
-                patchCacheSettings({ maxCacheSizeMB: size });
-                enforceReaderCacheLimit(size);
-                const usage = getReaderCacheUsageSummary();
-                setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
-              }}
-            >
-              <SettingsRow title={t("settings.cacheMaxSize")} detail={`${cacheSettings.maxCacheSizeMB} MB`} />
-            </MenuView>
             <SettingsRow
-              title={t("settings.clearAllCache")}
-              detail={t("settings.currentUsage", { size: cacheUsageLabel })}
-              onPress={() => {
-                clearAllReaderCaches();
-                const usage = getReaderCacheUsageSummary();
-                setCacheUsageLabel(`${(usage.totalBytes / 1024 / 1024).toFixed(1)} MB`);
-              }}
+              title={t("settings.readerStyle")}
+              detail={t("settings.readerStyleDetail")}
               isLast
             />
           </SectionCard>

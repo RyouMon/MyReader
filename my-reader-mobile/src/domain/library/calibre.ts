@@ -1,5 +1,4 @@
-import { Directory, File as FSFile, Paths } from "expo-file-system";
-import { Platform } from "react-native";
+import { Directory, File as FSFile } from "expo-file-system";
 
 import i18n from "@/src/i18n";
 import type { BookDetail, BookIdentifier, FormatSize } from "@my-reader/tools/types/book";
@@ -19,12 +18,18 @@ import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
 } from "../../services/fs/bookmarks";
-import {
-  READER_LOCAL_COPY_CACHE_DIR,
-  ensureReaderCacheDirectories,
-} from "../../services/fs/cache";
 import { fileUriFor, joinRelativePath } from "@/src/services/fs/path";
-import { libraryRootUri, resolveCoverUri } from "./locations";
+import {
+  ensureLibrarySidecarDirectory,
+  libraryLocalRootUri,
+  libraryMetadataUri,
+  METADATA_DB_RELATIVE,
+  resolveCoverUri,
+} from "./locations";
+import {
+  resolveLocalLibraryMetadataUri,
+  withLocalLibraryCalibreRoot,
+} from "./local-library-content";
 import { queryClient } from "../../services/query/query-client";
 import type { BookItem, DataSource, Library } from "../types";
 import { isRemoteSourceType } from "../types";
@@ -39,55 +44,14 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function getMetadataCacheDirectory() {
-  return new Directory(Paths.document, "library-metadata-cache");
-}
+function getMetadataFileFromDirectory(directory: PickedDirectoryLike) {
+  const typedDirectory = new Directory(directory.uri);
+  const entries = (directory.list?.() ?? typedDirectory.list()) as unknown[];
+  const metadata = entries.find(
+    (entry) => entry instanceof FSFile && entry.name === METADATA_DB_RELATIVE,
+  );
 
-function getMetadataCacheFile(libraryId: string) {
-  return new FSFile(getMetadataCacheDirectory(), `${libraryId}.db`);
-}
-
-function isCachedMetadataUri(uri: string) {
-  return uri.startsWith(Paths.document.uri);
-}
-
-function ensureMetadataCacheDirectory() {
-  const directory = getMetadataCacheDirectory();
-
-  if (!directory.exists) {
-    directory.create({ idempotent: true, intermediates: true });
-  }
-
-  return directory;
-}
-
-function copyMetadataToCache(sourceUri: string, libraryId: string) {
-  ensureMetadataCacheDirectory();
-
-  const source = new FSFile(sourceUri);
-  const destination = getMetadataCacheFile(libraryId);
-
-  if (destination.exists) {
-    destination.delete();
-  }
-
-  source.copy(destination);
-
-  return destination.uri;
-}
-
-async function refreshCachedMetadataFromDirectory(library: Library, directoryUri: string) {
-  const metadataFile = getMetadataFileFromDirectory({ uri: directoryUri });
-
-  if (!metadataFile) {
-    throw new Error(i18n.t("sync.notValidCalibreLibrary"));
-  }
-
-  return copyMetadataToCache(metadataFile.uri, library.id);
-}
-
-function getLibraryRootUri(library: Library) {
-  return libraryRootUri(library);
+  return metadata instanceof FSFile ? metadata : null;
 }
 
 export function buildCoverUri(
@@ -131,19 +95,8 @@ export function mapListRowsToBookItems(
   });
 }
 
-function getMetadataFileFromDirectory(directory: PickedDirectoryLike) {
-  const typedDirectory = new Directory(directory.uri);
-  const entries = (directory.list?.() ?? typedDirectory.list()) as unknown[];
-  const metadata = entries.find(
-    (entry) => entry instanceof FSFile && entry.name === "metadata.db",
-  );
-
-  return metadata instanceof FSFile ? metadata : null;
-}
-
 export async function pickCalibreLibrary(): Promise<Library | null> {
   let directory: PickedDirectoryLike | null = null;
-  let metadataFile: FSFile | null = null;
 
   try {
     directory = await Directory.pickDirectoryAsync();
@@ -155,7 +108,7 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
     return null;
   }
 
-  metadataFile = getMetadataFileFromDirectory(directory);
+  const metadataFile = getMetadataFileFromDirectory(directory);
 
   if (!metadataFile) {
     showAlertWithStatusBarRestore(
@@ -167,89 +120,72 @@ export async function pickCalibreLibrary(): Promise<Library | null> {
   }
 
   const libraryRoot = directory;
-
   const id = createId();
   const securityScopedBookmark = await createSecurityScopedBookmark(libraryRoot.uri);
-  const cachedMetadataUri = copyMetadataToCache(metadataFile.uri, id);
-  const bookCount = await countBooks(cachedMetadataUri);
   const resolvedPath = securityScopedBookmark?.resolvedUri ?? libraryRoot.uri;
 
-  return {
+  const draftLibrary: Library = {
     id,
     name: libraryRoot.name || new Directory(libraryRoot.uri).name || i18n.t("common.unnamedLibrary"),
     path: resolvedPath,
-    metadataUri: cachedMetadataUri,
-    bookCount,
+    metadataUri: "",
+    bookCount: 0,
     addedAt: Date.now(),
     securityScopedBookmark: securityScopedBookmark ?? undefined,
   };
+
+  ensureLibrarySidecarDirectory(draftLibrary);
+  const { library } = await readBookCountFromLibrary(draftLibrary);
+  return library;
 }
 
 export async function ensureLibraryMetadataCached(library: Library): Promise<Library> {
   if (isRemoteSourceType(library.sourceType)) {
-    return library;
+    ensureLibrarySidecarDirectory(library);
+    return { ...library, metadataUri: libraryMetadataUri(library) };
   }
 
-  if (library.securityScopedBookmark) {
-    const { result: cachedMetadataUri, refreshedLibrary } = await withSecurityScopedLibraryAccess(
-      library,
-      async (resolvedPath) => refreshCachedMetadataFromDirectory(library, resolvedPath),
-    );
-
-    return {
-      ...(refreshedLibrary ?? library),
-      metadataUri: cachedMetadataUri,
-    };
-  }
-
-  if (isCachedMetadataUri(library.metadataUri!)) {
-    return library;
-  }
-
-  const cachedMetadataUri = copyMetadataToCache(library.metadataUri!, library.id);
-
+  ensureLibrarySidecarDirectory(library);
+  const metadataUri = await resolveLocalLibraryMetadataUri(library);
   return {
     ...library,
-    metadataUri: cachedMetadataUri,
+    metadataUri: metadataUri ?? libraryMetadataUri(library),
   };
 }
 
 export async function forceRefreshLibraryMetadata(library: Library): Promise<Library> {
   if (isRemoteSourceType(library.sourceType)) {
-    return library;
+    return { ...library, metadataUri: libraryMetadataUri(library) };
   }
 
-  if (library.securityScopedBookmark) {
-    const { result: cachedMetadataUri, refreshedLibrary } = await withSecurityScopedLibraryAccess(
-      library,
-      async (resolvedPath) => refreshCachedMetadataFromDirectory(library, resolvedPath),
-    );
-
-    const effectiveLibrary = refreshedLibrary ?? library;
-    const bookCount = await countBooks(cachedMetadataUri);
-    return {
-      ...effectiveLibrary,
-      metadataUri: cachedMetadataUri,
-      bookCount,
-    };
+  ensureLibrarySidecarDirectory(library);
+  const metadataUri = await resolveLocalLibraryMetadataUri(library);
+  if (!metadataUri) {
+    throw new Error(i18n.t("sync.notValidCalibreLibrary"));
   }
 
-  const cachedMetadataUri = copyMetadataToCache(library.metadataUri!, library.id);
-  const bookCount = await countBooks(cachedMetadataUri);
+  const bookCount = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    countBooks(fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)),
+  );
+
   return {
     ...library,
-    metadataUri: cachedMetadataUri,
+    metadataUri,
     bookCount,
   };
 }
 
 export async function readBookCountFromLibrary(library: Library) {
   const nextLibrary = await ensureLibraryMetadataCached(library);
-  const bookCount = await countBooks(nextLibrary.metadataUri!);
+  const metadataUri = nextLibrary.metadataUri ?? libraryMetadataUri(nextLibrary);
+  const bookCount = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    countBooks(fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)),
+  );
 
   return {
     library: {
       ...nextLibrary,
+      metadataUri,
       bookCount,
     },
     bookCount,
@@ -258,24 +194,24 @@ export async function readBookCountFromLibrary(library: Library) {
 
 async function resolveMetadataUriForRead(library: Library): Promise<string | null> {
   if (isRemoteSourceType(library.sourceType)) {
-    if (!library.metadataUri) {
-      return null;
+    const metadataUri = libraryMetadataUri(library);
+    const currentMetadata = new FSFile(metadataUri);
+    if (currentMetadata.exists && (currentMetadata.size ?? 0) > 0) {
+      return metadataUri;
     }
-    const currentMetadata = new FSFile(library.metadataUri);
-    if (currentMetadata.exists) {
-      return currentMetadata.uri;
-    }
-
-    const fallbackMetadata = new FSFile(Paths.cache, `webdav-${library.id}-metadata.db`);
-    if (fallbackMetadata.exists) {
-      return fallbackMetadata.uri;
-    }
-    return library.metadataUri!;
+    return null;
   }
 
   try {
-    const cachedLibrary = await ensureLibraryMetadataCached(library);
-    return cachedLibrary.metadataUri!;
+    const metadataUri = await resolveLocalLibraryMetadataUri(library);
+    if (!metadataUri) {
+      showAlertWithStatusBarRestore(
+        i18n.t("sync.corruptedLibrary"),
+        i18n.t("sync.corruptedLibraryMessage"),
+        [{ text: i18n.t("common.gotIt") }],
+      );
+    }
+    return metadataUri;
   } catch {
     showAlertWithStatusBarRestore(
       i18n.t("sync.corruptedLibrary"),
@@ -428,70 +364,44 @@ function assertBookFileExists(bookFile: FSFile, libraryPath: string, rowPath: st
   }
 }
 
-export async function materializeBookFileToCache(
+/** Opens a Calibre book file from the content root (bookmark direct read on iOS). */
+export async function resolveBookFileForRead(
   library: Library,
   calibreBookId: number,
   format: string,
-  cachePrefix = "local-book",
 ): Promise<FSFile> {
   const { rowPath, fileName, segments } = await lookupBookFileLocation(
     library,
     calibreBookId,
     format,
   );
-  ensureReaderCacheDirectories();
-  const cacheDir = READER_LOCAL_COPY_CACHE_DIR;
 
-  const ext = `.${format.toLowerCase()}`;
-  const rand = Math.random().toString(36).slice(2, 10);
-  const cacheName = `${cachePrefix}-${library.id}-${calibreBookId}-${Date.now()}-${rand}${ext}`;
-  const cachedFile = new FSFile(cacheDir, cacheName);
-  if (cachedFile.exists) {
-    cachedFile.delete();
-  }
-
-  if (Platform.OS === "ios" && library.securityScopedBookmark) {
-    cachedFile.create({ intermediates: true });
-    const { result: sourceBytes } = await withSecurityScopedLibraryAccess(
+  if (library.securityScopedBookmark) {
+    const { result: sourceFile } = await withSecurityScopedLibraryAccess(
       library,
       async (resolvedPath) => {
-        const sourceFile = createBookFile(resolvedPath, segments, fileName);
-        assertBookFileExists(sourceFile, resolvedPath, rowPath);
-        return sourceFile.bytes();
+        const file = createBookFile(resolvedPath, segments, fileName);
+        assertBookFileExists(file, resolvedPath, rowPath);
+        return file;
       },
     );
-
-    cachedFile.write(sourceBytes);
-
-    return cachedFile;
+    return sourceFile;
   }
 
-  const sourceFile = createBookFile(getLibraryRootUri(library), segments, fileName);
-  assertBookFileExists(sourceFile, getLibraryRootUri(library), rowPath);
-  sourceFile.copy(cachedFile);
-  return cachedFile;
+  const sourceFile = createBookFile(libraryLocalRootUri(library), segments, fileName);
+  assertBookFileExists(sourceFile, libraryLocalRootUri(library), rowPath);
+  return sourceFile;
 }
 
 export async function readBooksFromLibrary(library: Library): Promise<BookItem[]> {
-  const metadataUri = await resolveMetadataUriForRead(library);
-  if (!metadataUri) {
-    return [];
-  }
-
-  const rows = await listBooksWithAuthors(metadataUri);
-  if (rows.length === 0) {
-    return [];
-  }
-
-  if (library.securityScopedBookmark) {
-    const { result: books } = await withSecurityScopedLibraryAccess(
-      library,
-      async (resolvedPath) => mapListRowsToBookItems({ ...library, path: resolvedPath }, rows),
-    );
-    return books;
-  }
-
-  return mapListRowsToBookItems(library, rows);
+  return withLocalLibraryCalibreRoot(library, async (calibreRootUri) => {
+    const metadataUri = fileUriFor(calibreRootUri, METADATA_DB_RELATIVE);
+    const rows = await listBooksWithAuthors(metadataUri);
+    if (rows.length === 0) {
+      return [];
+    }
+    return mapListRowsToBookItems(library, rows);
+  });
 }
 
 export const libraryQueryKeys = {
@@ -515,7 +425,7 @@ export async function fetchBooksWithMeta(
   }
 
   const books = await readBooksFromLibrary(library);
-  return { books, metadataUri: library.metadataUri };
+  return { books, metadataUri: libraryMetadataUri(library) };
 }
 
 export async function fetchBooks(

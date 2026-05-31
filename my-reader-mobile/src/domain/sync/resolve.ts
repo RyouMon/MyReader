@@ -1,7 +1,7 @@
 import type { DataSource, Library, WebDavDataSource } from "../types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../../services/storage/credentials";
-import { libraryRootUri } from "../library/locations";
+import { libraryRootUri, librarySidecarRootUri } from "../library/locations";
 import { SyncConfigError } from "../../errors";
 import { createRemoteBackend } from "../../services/remote/factory";
 import type { RemoteBackend } from "../../services/remote/backend";
@@ -14,7 +14,10 @@ export type ResolvedSyncTarget = {
   backend: SyncBackend;
   dataSourceId: string;
   libraryId: string;
+  /** Calibre tree root (metadata, books, covers). */
   libraryRootUri: string;
+  /** Root for `{root}/.myreader/` sidecar data. */
+  librarySidecarRootUri: string;
 };
 
 export async function resolveSyncTarget(
@@ -22,6 +25,7 @@ export async function resolveSyncTarget(
   dataSources: DataSource[],
 ): Promise<ResolvedSyncTarget> {
   const rootUri = libraryRootUri(library);
+  const sidecarRootUri = librarySidecarRootUri(library);
 
   if (library.sourceType === "webdav") {
     const rawSource = dataSources.find(
@@ -42,6 +46,7 @@ export async function resolveSyncTarget(
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
+      librarySidecarRootUri: sidecarRootUri,
     };
   }
 
@@ -63,6 +68,7 @@ export async function resolveSyncTarget(
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
+      librarySidecarRootUri: sidecarRootUri,
     };
   }
 
@@ -72,10 +78,11 @@ export async function resolveSyncTarget(
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
     libraryRootUri: rootUri,
+    librarySidecarRootUri: sidecarRootUri,
   };
 }
 
-export function isLocalDirect(backend: SyncBackend): boolean {
+export function isLocalDirect(backend: SyncBackend): backend is LocalDirectBackend {
   return backend.kind === "local-direct";
 }
 

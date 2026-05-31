@@ -57,12 +57,7 @@ export default function ReaderScreen() {
   const settingsSheetRef = useRef<BottomSheetModal>(null);
 
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
-  const { loadState, bookTitle } = useBookLoader(
-    id,
-    formatParam,
-    activeLibraryId,
-    settings.cache.maxCacheSizeMB,
-  );
+  const { loadState, bookTitle } = useBookLoader(id, formatParam, activeLibraryId);
   useReaderProgressSaver(activeLibraryId, loadState, readerState);
 
   const handleStateChange = useCallback(async (state: ReaderState) => {

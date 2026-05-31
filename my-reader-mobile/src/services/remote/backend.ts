@@ -49,7 +49,7 @@ export interface RemoteBackend {
   writeBytes(remotePath: string, bytes: Uint8Array): Promise<void>;
   deleteRemote(remotePath: string): Promise<void>;
   listRemote(prefix: string): Promise<string[]>;
-  downloadToCache(remotePath: string, localName: string): Promise<ExpoFile>;
+  downloadToUri(remotePath: string, localFileUri: string): Promise<ExpoFile>;
 
   // -- Transfer (native background) --
   getDownloadRequest(remotePath: string, localFileUri: string): Promise<DownloadRequest>;

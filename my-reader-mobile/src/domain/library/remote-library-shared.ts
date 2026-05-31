@@ -7,7 +7,7 @@ import { countBooks, listBooksWithAuthors } from "../../repos/calibre/books";
 import type { RemoteBackend } from "../../services/remote/backend";
 import type { BookItem, Library } from "../types";
 import { mapListRowsToBookItems } from "./calibre";
-import { METADATA_DB_RELATIVE } from "./locations";
+import { libraryContainerRootUri, libraryMetadataUri, METADATA_DB_RELATIVE } from "./locations";
 
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -39,38 +39,17 @@ async function ensureMetadataCached(
   library: Library,
   backend: RemoteBackend,
 ): Promise<string | null> {
-  const metadataPath = library.metadataUri;
-  if (!metadataPath) {
-    try {
-      const metadataFile = await backend.downloadToCache(
-        METADATA_DB_RELATIVE,
-        `${backend.kind}-${library.id}-metadata.db`,
-      );
-      return metadataFile.uri;
-    } catch (error) {
-      logMetadataDbFailure("ensureMetadataCached (no metadataUri)", library, backend, error);
-      showAlertWithStatusBarRestore(
-        i18n.t("sync.corruptedLibrary"),
-        i18n.t("sync.corruptedLibraryMessage"),
-        [{ text: i18n.t("common.gotIt") }],
-      );
-      return null;
-    }
-  }
-
-  const existingMetadata = new ExpoFile(metadataPath);
-  if (existingMetadata.exists) {
+  const metadataUri = libraryMetadataUri(library);
+  const existingMetadata = new ExpoFile(metadataUri);
+  if (existingMetadata.exists && (existingMetadata.size ?? 0) > 0) {
     return existingMetadata.uri;
   }
 
   try {
-    const metadataFile = await backend.downloadToCache(
-      METADATA_DB_RELATIVE,
-      `${backend.kind}-${library.id}-metadata.db`,
-    );
+    const metadataFile = await backend.downloadToUri(METADATA_DB_RELATIVE, metadataUri);
     return metadataFile.uri;
   } catch (error) {
-    logMetadataDbFailure("ensureMetadataCached (cache missing)", library, backend, error);
+    logMetadataDbFailure("ensureMetadataCached", library, backend, error);
     showAlertWithStatusBarRestore(
       i18n.t("sync.corruptedLibrary"),
       i18n.t("sync.corruptedLibraryMessage"),
@@ -84,11 +63,9 @@ export async function forceRefreshMetadata(
   library: Library,
   backend: RemoteBackend,
 ): Promise<string> {
+  const metadataUri = libraryMetadataUri(library);
   try {
-    const metadataFile = await backend.downloadToCache(
-      METADATA_DB_RELATIVE,
-      `${backend.kind}-${library.id}-metadata.db`,
-    );
+    const metadataFile = await backend.downloadToUri(METADATA_DB_RELATIVE, metadataUri);
     return metadataFile.uri;
   } catch (error) {
     logMetadataDbFailure("forceRefreshMetadata", library, backend, error);
@@ -108,23 +85,29 @@ export async function createLibraryFromPath(
   remoteLibraryPath: string,
 ): Promise<Library> {
   const normalizedPath = backend.normalizePath(remoteLibraryPath);
-  const metadataFile = await backend.downloadToCache(
-    `${normalizedPath}/metadata.db`,
-    `${backend.kind}-${sourceId}-${Date.now()}-metadata.db`,
-  );
-
-  const bookCount = await countBooks(metadataFile.uri);
-
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  libraryContainerRootUri(id);
+  const stubLibrary: Library = {
+    id,
     name: normalizedPath.split("/").filter(Boolean).at(-1) ?? sourceName,
     path: normalizedPath,
-    metadataUri: metadataFile.uri,
-    bookCount,
+    metadataUri: "",
+    bookCount: 0,
     addedAt: Date.now(),
     dataSourceId: sourceId,
     sourceType: backend.kind,
     sourcePath: normalizedPath,
+  };
+  const metadataUri = libraryMetadataUri(stubLibrary);
+
+  await backend.downloadToUri(`${normalizedPath}/metadata.db`, metadataUri);
+
+  const bookCount = await countBooks(metadataUri);
+
+  return {
+    ...stubLibrary,
+    metadataUri,
+    bookCount,
   };
 }
 
@@ -135,7 +118,7 @@ export async function readBooks(
 ): Promise<{ books: BookItem[]; metadataUri: string }> {
   const metadataUri = await ensureMetadataCached(library, backend);
   if (!metadataUri) {
-    return { books: [], metadataUri: library.metadataUri! };
+    return { books: [], metadataUri: libraryMetadataUri(library) };
   }
 
   const rows = await listBooksWithAuthors(metadataUri);
