@@ -3,14 +3,13 @@ import type { Library } from "@my-reader/tools/types/library";
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
 import { ensureLibraryMetadataCached, readBookCountFromLibrary } from "@/src/domain/library/calibre";
+import { libraryQueryKeys } from "@/src/domain/library/calibre";
+import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { libraryQueryKeys } from "@/src/features/library/hooks/useLibraryQuery";
 import { clearAllReaderCaches, clearLocalCopyCacheByLibrary } from "@/src/services/fs/cache";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants";
-
-import { runLibrarySync } from "./run-library-sync";
 
 function isDuplicateLibrary(libraries: Library[], candidate: Library): boolean {
   return libraries.some(

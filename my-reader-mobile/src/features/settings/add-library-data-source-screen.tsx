@@ -8,7 +8,7 @@ import { View } from "@/tw";
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
-import { addLibraryFromPicker } from "@/src/hooks/library-actions";
+import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 function sourceBrowserPath(source: DataSource) {

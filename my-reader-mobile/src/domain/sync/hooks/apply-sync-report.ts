@@ -1,5 +1,5 @@
 import type { LibrarySyncReport, SyncTrigger } from "@/src/domain/sync/types";
-import { libraryQueryKeys } from "@/src/features/library/hooks/useLibraryQuery";
+import { libraryQueryKeys } from "@/src/domain/library/calibre";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 

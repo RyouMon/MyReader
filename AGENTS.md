@@ -10,7 +10,7 @@ Apply these when writing, reviewing, or refactoring code:
 2. **Surgical Changes** — Touch only what you must. Don't improve adjacent code, comments, or formatting. Match existing style. Remove only imports/variables/functions that *your* changes made unused.
 3. **Goal-Driven Execution** — Define verifiable success criteria before implementing. Transform tasks into testable goals (e.g., "Write a test that reproduces the bug, then make it pass").
 4. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
-5. **Respect the Layering** — Dependencies must only flow downward. When adding or moving imports, verify the direction is allowed by the architecture rules in `.agents/rules/mobile.md` or `.agents/rules/desktop.md`. No upward imports, no bypassing layers.
+5. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/` vs `features/` vs `repos/` vs `services/`). No upward imports, no bypassing layers.
 
 ---
 

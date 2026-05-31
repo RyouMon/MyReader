@@ -32,10 +32,10 @@ import {
 } from "@/src/features/library/components/books";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
-import { switchActiveLibrary } from "@/src/hooks/library-actions";
+import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
-import { useSyncLibrary } from "@/src/hooks/use-sync-library";
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBookActions } from "./hooks/useBookActions";

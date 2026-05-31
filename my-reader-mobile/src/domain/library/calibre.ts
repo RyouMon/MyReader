@@ -24,7 +24,8 @@ import {
   ensureReaderCacheDirectories,
 } from "../../services/fs/cache";
 import { localCachedFileUri } from "../../services/fs/path";
-import type { BookItem, Library } from "../types";
+import { queryClient } from "../../services/query/query-client";
+import type { BookItem, DataSource, Library } from "../types";
 import { isRemoteSourceType } from "../types";
 
 type PickedDirectoryLike = {
@@ -502,4 +503,36 @@ export async function readBooksFromLibrary(library: Library): Promise<BookItem[]
   }
 
   return mapListRowsToBookItems(library, rows);
+}
+
+export const libraryQueryKeys = {
+  books: (libraryId: string | null) => ["books", libraryId] as const,
+};
+
+export function getBooksForLibrary(libraryId: string): BookItem[] {
+  return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
+}
+
+/** Reads the book list for a library (remote ops or local metadata.db). */
+export async function fetchBooksWithMeta(
+  library: Library,
+  dataSources: DataSource[],
+): Promise<{ books: BookItem[]; metadataUri?: string }> {
+  const { createRemoteOps } = await import("./remote-library");
+  const ops = await createRemoteOps(library, dataSources);
+  if (ops) {
+    const { books, metadataUri } = await ops.readBooks(library);
+    return { books, metadataUri };
+  }
+
+  const books = await readBooksFromLibrary(library);
+  return { books, metadataUri: library.metadataUri };
+}
+
+export async function fetchBooks(
+  library: Library,
+  dataSources: DataSource[],
+): Promise<BookItem[]> {
+  const { books } = await fetchBooksWithMeta(library, dataSources);
+  return books;
 }

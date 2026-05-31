@@ -6,7 +6,7 @@ import { isMissingMetadataDbError, normalizeCurrentPath } from "@/src/domain/lib
 import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/domain/library/remote-library";
 import type { DataSource } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
-import { registerLibrary } from "./library-actions";
+import { registerLibrary } from "@/src/domain/library/hooks/library-actions";
 
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined;

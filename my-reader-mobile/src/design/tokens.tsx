@@ -5,7 +5,7 @@ import { useColorScheme, type ColorSchemeName, type ColorValue } from "react-nat
 import { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
 import { useAppStore } from "../store/app-store";
 import { useDataSourceActions } from "../hooks/use-data-source-actions";
-import { hydrateLibraries } from "@/src/hooks/library-actions";
+import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions";
 
 export type ThemeMode = "system" | "light" | "dark";
 

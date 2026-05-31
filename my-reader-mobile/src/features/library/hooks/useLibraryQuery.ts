@@ -1,42 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { readBookCountFromLibrary, readBooksFromLibrary } from "@/src/domain/library/calibre";
-import { createRemoteOps } from "@/src/domain/library/remote-library";
-import type { BookItem, DataSource, Library } from "@/src/domain/types";
+import {
+  fetchBooks,
+  fetchBooksWithMeta,
+  getBooksForLibrary,
+  libraryQueryKeys,
+} from "@/src/domain/library/calibre";
+import type { BookItem } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
-import { queryClient } from "@/src/services/query/query-client";
 
 import { getCachedAuth } from "@/src/services/remote/auth-cache";
 
-export const libraryQueryKeys = {
-  books: (libraryId: string | null) => ["books", libraryId] as const,
-};
-
-export function getBooksForLibrary(libraryId: string): BookItem[] {
-  return queryClient.getQueryData<BookItem[]>(libraryQueryKeys.books(libraryId)) ?? [];
-}
-
-export async function fetchBooksWithMeta(
-  activeLibrary: Library,
-  dataSources: DataSource[],
-): Promise<{ books: BookItem[]; metadataUri?: string }> {
-  const ops = await createRemoteOps(activeLibrary, dataSources);
-  if (ops) {
-    const { books, metadataUri } = await ops.readBooks(activeLibrary);
-    return { books, metadataUri };
-  }
-
-  const books = await readBooksFromLibrary(activeLibrary);
-  return { books, metadataUri: activeLibrary.metadataUri };
-}
-
-export async function fetchBooks(
-  activeLibrary: Library,
-  dataSources: DataSource[],
-): Promise<BookItem[]> {
-  const { books } = await fetchBooksWithMeta(activeLibrary, dataSources);
-  return books;
-}
+export { fetchBooks, fetchBooksWithMeta, getBooksForLibrary, libraryQueryKeys };
 
 export function useBooks(activeLibraryId: string | null) {
   return useQuery({

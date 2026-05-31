@@ -16,7 +16,7 @@ import { ThemeProvider, useTheme } from "@/src/design/tokens";
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill";
-import { SyncRuntime } from "@/src/hooks/SyncRuntime";
+import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime";
 import { queryClient } from "@/src/services/query/query-client";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";

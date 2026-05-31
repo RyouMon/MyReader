@@ -62,7 +62,7 @@ async function seedLibrary() {
         dataSourceId: LOCAL_LIBRARY_DATA_SOURCE_ID,
         sourceType: "local",
       });
-      const { registerLibrary } = await import("@/src/hooks/library-actions");
+      const { registerLibrary } = await import("@/src/domain/library/hooks/library-actions");
       await registerLibrary(preparedLibrary);
       return;
     }
@@ -134,6 +134,6 @@ async function seedLibrary() {
   };
 
   const { library: preparedLibrary } = await readBookCountFromLibrary(library);
-  const { registerLibrary } = await import("@/src/hooks/library-actions");
+  const { registerLibrary } = await import("@/src/domain/library/hooks/library-actions");
   await registerLibrary(preparedLibrary);
 }

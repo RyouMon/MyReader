@@ -27,9 +27,23 @@
 
 import { Directory, Paths } from "expo-file-system";
 import i18n from "@/src/i18n";
+import { AppInvariantError } from "@/src/errors";
 
 /** Max decode rounds for `%` sequences within a single path segment. */
 const IO_PATH_MAX_PERCENT_DECODE_ROUNDS = 8;
+
+/** Rejects empty, absolute, or traversal relative paths. */
+export function assertSafeRelativePath(relativePath: string): void {
+  if (!relativePath) {
+    throw new AppInvariantError("Relative path must not be empty");
+  }
+  if (relativePath.includes("..")) {
+    throw new AppInvariantError(`Relative path must not contain '..': ${relativePath}`);
+  }
+  if (relativePath.startsWith("/")) {
+    throw new AppInvariantError(`Relative path must not be absolute: ${relativePath}`);
+  }
+}
 
 /**
  * Normalize a "library-relative path": trim whitespace, backslashes to

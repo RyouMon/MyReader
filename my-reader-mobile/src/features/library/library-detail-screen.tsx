@@ -12,8 +12,8 @@ import { useThemePalette } from "@/src/design/tokens";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { removeLibrary, switchActiveLibrary } from "@/src/hooks/library-actions";
-import { useSyncLibrary } from "@/src/hooks/use-sync-library";
+import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 

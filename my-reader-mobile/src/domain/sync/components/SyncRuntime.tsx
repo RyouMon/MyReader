@@ -1,12 +1,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "expo-router";
 
-import { SyncConfigError } from "@/src/errors";
-import { getBooksForLibrary } from "@/src/features/library/hooks/useLibraryQuery";
-import { getValidAccessToken } from "@/src/services/auth/onedrive";
-import { setCachedAuth } from "@/src/services/remote/auth-cache";
-import { useAppStore } from "@/src/store/app-store";
-import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common";
+import { getBooksForLibrary } from "@/src/domain/library/calibre";
+import { InAppNotification } from "@/src/domain/notifications/in-app-notification";
 import {
   LIBRARY_SYNC_INTERVAL_MS,
   READING_SYNC_INTERVAL_MS,
@@ -14,9 +10,13 @@ import {
   type ScheduledSyncTarget,
   type SyncLibrariesDeps,
 } from "@/src/domain/sync";
-import { applySyncRunReports } from "@/src/hooks/apply-sync-report";
-import { InAppNotification } from "@/src/domain/notifications/in-app-notification";
+import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report";
+import { SyncConfigError } from "@/src/errors";
 import i18n from "@/src/i18n";
+import { getValidAccessToken } from "@/src/services/auth/onedrive";
+import { setCachedAuth } from "@/src/services/remote/auth-cache";
+import { useAppStore } from "@/src/store/app-store";
+import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common";
 import { Notifier } from "react-native-notifier";
 
 function notifySyncConfigError(message: string): void {

@@ -1,16 +1,13 @@
-import { File } from "expo-file-system";
 import i18n from "@/src/i18n";
 
 import type { DataSource, Library } from "../types";
-import { AppInvariantError, DataIntegrityError } from "../../errors";
+import { AppInvariantError } from "../../errors";
 
 import { upsertFileState } from "../../repos/file_state";
+import { readFileStat } from "../../services/fs/file-io";
+import { assertSafeRelativePath, localFileUriFor } from "../../services/fs/path";
 import { openSyncContext, type SyncTargetContext } from "../sync/actions";
-import { localFileUriFor } from "../../services/fs/path";
-import {
-  downloadFileDirectWithProgress,
-  type DownloadOutcome,
-} from "../sync/transfer";
+import { downloadFileDirectWithProgress, type DownloadOutcome } from "../sync/transfer";
 import type { NativeDownloadOptions } from "../../services/download/native";
 
 type BackgroundDownloadOptions = NativeDownloadOptions;
@@ -77,7 +74,9 @@ export async function finalizeRecoveredDownload(
   onProgress?: DownloadProgressHandler,
 ): Promise<DownloadOutcome> {
   const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
-  const outcome = readCachedDownloadOutcome(ctx, relativePath);
+  assertSafeRelativePath(relativePath);
+  const stat = readFileStat(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
+  const outcome: DownloadOutcome = { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs };
   onProgress?.(outcome.size, outcome.size);
   await upsertFileState(ctx.library, relativePath, {
     localState: "present",
@@ -86,19 +85,4 @@ export async function finalizeRecoveredDownload(
     localMtime: outcome.mtimeMs,
   });
   return outcome;
-}
-
-/**
- * Reads the bytes metadata expected after a recovered native task reaches DONE.
- */
-function readCachedDownloadOutcome(ctx: SyncTargetContext, relativePath: string): DownloadOutcome {
-  const file = new File(localFileUriFor(ctx.libraryCacheDirUri, relativePath));
-  if (!file.exists) {
-    throw new DataIntegrityError(i18n.t("sync.nativeDownloadMissing", { path: relativePath }));
-  }
-  return {
-    blake3: null,
-    size: file.size ?? 0,
-    mtimeMs: file.modificationTime ? file.modificationTime * 1000 : Date.now(),
-  };
 }

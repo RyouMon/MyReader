@@ -10,24 +10,47 @@ paths:
 - **Database**: op-sqlite with CR-SQLite enabled
 - **Patches**: 4 patches in `patches/` (react-native, react-native-css, react-native-zip-archive, gradle-plugin). Applied automatically via `postinstall`.
 
-### Three-Layer Dependency Model
+### Layer Model
+
+Two kinds of **feature modules** sit above infrastructure. They share the same internal shape; the difference is scope, not capability.
 
 ```
-UI (hooks / features / app / stores / components)
+app/  stores/  components/  design/  …   — app shell & cross-cutting UI
  ↓
-domain/  — business orchestration (library, sync, download)
- ↓         may also call repos/ directly
-repos/    — table-access CRUD (no React, no fetch, no orchestration)
+features/   — product surfaces (screens, flows); relatively isolated
+domain/     — shared business areas reused across features (library, sync, download)
  ↓
-services/ — infrastructure (fs, db, storage, http, auth, download, remote)
+repos/      — table-access CRUD (no React, no fetch, no orchestration)
+ ↓
+services/   — infrastructure (fs, db, storage, http, auth, download, remote)
 ```
 
-**Strict rules**:
-1. Dependencies only flow downward: `UI → domain → repos | services`, `repos → services`.
-2. `services/` must not import from `repos/`, `domain/`, or any UI layer.
-3. `repos/` must not import from `domain/` or any UI layer.
-4. `domain/` must not import from any UI layer (`hooks/`, `features/`, `app/`, `stores/`).
-5. `domain/` sub-directories (`library/`, `sync/`, `download/`) may call each other — enforced by convention and review, not lint.
+**Module anatomy** (same for `features/<name>/` and `domain/<name>/`):
+
+```
+<module>/
+├── hooks/          React hooks & store/query glue for this area
+├── components/     UI pieces owned by this area (optional)
+├── utils/          pure helpers (optional)
+└── *.ts            orchestration, types, plain async APIs
+```
+
+Examples:
+- `domain/sync/hooks/apply-sync-report.ts` — writes sync results to Zustand + React Query
+- `domain/library/hooks/library-actions.ts` — register / remove / switch libraries
+- `features/library/` — library screens and feature-local hooks (`useLibraryQuery`, `useBookActions`)
+
+**`src/hooks/`** — only **app-wide** hooks with no natural module home (debounce, stack options, reader progress saver, etc.). Do not add new domain- or feature-specific hooks here; colocate them under the owning module.
+
+### Dependency Rules
+
+1. Dependencies flow **downward**: modules → `repos` | `services`; `repos` → `services`.
+2. `services/` must not import from `repos/`, `domain/`, `features/`, or UI shell.
+3. `repos/` must not import from `domain/`, `features/`, or UI shell.
+4. **`domain/` must not import from `features/`** — shared logic stays in domain; features consume domain, not the reverse.
+5. **`features/` may import from `domain/`** and from other features only when necessary (prefer domain for shared code).
+6. **`domain/` sub-areas may import each other** (`sync` ↔ `library` ↔ `download`) — convention and review, not lint.
+7. Module hooks may use **Zustand**, **React Query**, and **React** — that is not a layering violation when the hook lives inside the owning `domain/*` or `features/*` tree.
 
 ### Directory Map
 
@@ -35,11 +58,11 @@ services/ — infrastructure (fs, db, storage, http, auth, download, remote)
 my-reader-mobile/src/
 ├── services/              Infrastructure — no business logic, no React
 │   ├── db/                SQLite, library-db, calibre-db
-│   ├── fs/                path, cache, bookmarks
+│   ├── fs/                path, file-io, cache, bookmarks
 │   ├── http/              auth HTTP client
 │   ├── storage/           credentials, json-storage
 │   ├── auth/              onedrive auth
-│   ├── download/          native download
+│   ├── download/          native download, remote-to-local
 │   ├── webdav/            url-builder
 │   └── remote/            backend interfaces, factory, auth-cache, webdav/, onedrive/
 │
@@ -52,18 +75,20 @@ my-reader-mobile/src/
 │       ├── book_relations.ts  single-book relation rows
 │       └── data.ts        formats and file paths
 │
-├── domain/                Business orchestration
-│   ├── library/           book-formats, calibre, cover-mirror, cover-url, metadata,
-│   │                      remote-library, remote-library-shared
+├── domain/                Shared business modules (same internal layout as features/)
+│   ├── library/           calibre (incl. query keys, fetchBooks), cover-mirror, metadata,
+│   │                      remote-library
+│   │   └── hooks/         library-actions (hydrate, register, remove, switch)
 │   ├── sync/              sync-library, calibre-sync, myreader-sync, policy, scheduler,
-│   │                      transfer, db-sync, device, book-diff, resolve, connectivity,
-│   │                      context, actions, file-actions
-│   ├── download/          download-service, download-store (React subscription kept in-place)
+│   │                      transfer (orchestration), db-sync, context, file-actions
+│   │   ├── hooks/         apply-sync-report, run-library-sync, use-sync-library
+│   │   └── components/    SyncRuntime
+│   ├── download/          download-service, download-store
 │   ├── reading-progress.ts
 │   └── types.ts           BookItem, etc.
 │
-├── hooks/                 React hooks — sole callers of domain/ from UI
-├── features/              Screen-level UI components
+├── features/              Product surfaces (screens + feature-local hooks/components)
+├── hooks/                 App-wide hooks only (not domain/feature-specific)
 ├── app/                   Expo Router file-based routes
 ├── stores/                Zustand store slices
 ├── components/            Shared UI components
@@ -108,7 +133,7 @@ npm run test                  # Jest watch mode
 npm run test:e2e              # Maestro E2E (runs all flows in e2e/maestro/)
   # Note: dev-build E2E requires a running Expo dev server (npx expo start)
 npm run build:dev:android     # EAS local Android build (development profile)
-npm run build:dev:ios         # EAS local iOS build (development profile)
+npm run build:dev:ios       # EAS local iOS build (development profile)
 ```
 
 ## Testing

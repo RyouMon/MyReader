@@ -4,7 +4,7 @@ import { ActivityIndicator, Animated, Platform, StyleSheet, Text } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { useIsLibrarySyncing } from "@/src/hooks/use-sync-library";
+import { useIsLibrarySyncing } from "@/src/domain/sync/hooks/use-sync-library";
 
 const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56;
 

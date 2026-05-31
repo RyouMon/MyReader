@@ -2,7 +2,7 @@ import { File } from "expo-file-system";
 
 import { countBooks, listBookSummaries } from "../../repos/calibre/books";
 import { forceRefreshLibraryMetadata } from "../library/calibre";
-import { fetchBooksForLibrary } from "../library/books-list";
+import { fetchBooks } from "../library/calibre";
 import { forceRefreshMetadata } from "../library/remote-library-shared";
 import { mirrorMissingCovers } from "../library/cover-mirror";
 import type { Library } from "../types";
@@ -178,7 +178,7 @@ export async function syncCalibre(
     const diff = diffBooks(oldSummaries, newSummaries);
     await applyBookDiffCleanup(newLibrary, dataSources, diff);
 
-    const books = await fetchBooksForLibrary(newLibrary, dataSources);
+    const books = await fetchBooks(newLibrary, dataSources);
 
     if (isRemoteSourceType(newLibrary.sourceType)) {
       const sourceBooks = getBooks?.(newLibrary.id) ?? books;
