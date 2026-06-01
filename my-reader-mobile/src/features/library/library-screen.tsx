@@ -420,7 +420,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (!storeReady && libraries.length === 0) {
+  if (libraries.length === 0) {
     return (
       <>
         <Stack.Screen
@@ -438,22 +438,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
             action={<PrimaryButton title={t("library.addLibrary")} onPress={() => router.push("/settings/add-library")} />}
             icon={{ ios: "books.vertical.fill", android: "library-books" }}
           />
-        </Screen>
-      </>
-    );
-  }
-
-  if (storeReady && libraries.length === 0) {
-    return (
-      <>
-        <Stack.Screen
-          options={{
-            title: t("library.title"),
-            headerLargeTitle: true,
-          }}
-        />
-        <Screen>
-          <EmptyState title={t("library.loading.title")} detail={t("library.loading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
       </>
     );
