@@ -62,7 +62,7 @@ export default function HomeScreen() {
                     {currentBook.title}
                   </Text>
                 </View>
-                <View className="rounded-full px-3 py-2" style={{ backgroundColor: palette.backgroundSecondary }}>
+                <View className="rounded-full px-3 py-2" style={{ backgroundColor: palette.background }}>
                   <Text
                     className="text-sm font-semibold"
                     style={{ color: palette.primary, fontVariant: ["tabular-nums"] }}
@@ -81,7 +81,7 @@ export default function HomeScreen() {
                     recyclingKey={currentBook.id}
                   />
                 ) : (
-                  <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.backgroundSecondary }}>
+                  <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.background }}>
                     <Text className="text-sm" style={{ color: palette.textMuted, fontWeight: "600" }}>
                       {t("home.noCover")}
                     </Text>

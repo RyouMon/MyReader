@@ -58,9 +58,9 @@ const APP_BORDER = {
 } as const;
 
 const lightPaletteBase = {
-  background: "#F7F3EC",
+  background: "#EDE8DF",
   backgroundSecondary: "#EDE8DF",
-  surface: "#EDE8DF",
+  surface: "#F7F3EC",
   text: "#1C1714",
   textMuted: "#5C5349",
   textOnPrimary: "#FAF6F0",
@@ -92,7 +92,7 @@ const lightPalette: ThemePalette = {
 
 const darkPaletteBase = {
   background: "#1C1814",
-  backgroundSecondary: "#26211D",
+  backgroundSecondary: "#1C1814",
   surface: "#26211D",
   text: "#F0EBE1",
   textMuted: "#B8AFA6",

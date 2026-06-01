@@ -421,7 +421,7 @@ $3`
 
   const lightMapping = [
     ["background", "--bg"],
-    ["backgroundSecondary", "--bg-secondary"],
+    ["backgroundSecondary", "--bg"],
     ["surface", "--bg-secondary"],
     ["text", "--ink-1"],
     ["textMuted", "--ink-2"],
@@ -475,7 +475,7 @@ $3`
 
   const darkMapping = [
     ["background", "--bg"],
-    ["backgroundSecondary", "--bg-secondary"],
+    ["backgroundSecondary", "--bg"],
     ["surface", "--bg-secondary"],
     ["text", "--ink-1"],
     ["textMuted", "--ink-2"],

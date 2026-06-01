@@ -18,10 +18,10 @@
   --secondary: #A87E62;   /* warm amber-brown, muted — tags, secondary actions */
 
   /* ── BACKGROUNDS ──────────────────────────────────────────
-     Two levels only: page bg and recessed/panel bg.
+     Two levels: muted page canvas and elevated surfaces.
   ───────────────────────────────────────────────────────── */
-  --bg:           #F7F3EC;   /* page — warm paper */
-  --bg-secondary: #EDE8DF;   /* panels, sidebars, recessed rows */
+  --bg:           #EDE8DF;   /* page canvas — warm muted ground */
+  --bg-secondary: #F7F3EC;   /* elevated — cards, sidebars, popovers */
 
   /* ── TEXT (Ink) ───────────────────────────────────────────
      Two levels only: primary + weak emphasis.

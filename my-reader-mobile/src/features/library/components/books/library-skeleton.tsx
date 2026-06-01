@@ -42,7 +42,7 @@ function CardSkeleton({
           width,
           height: coverHeight,
           borderRadius: 10,
-          backgroundColor: palette.backgroundSecondary,
+          backgroundColor: palette.surface,
         }}
       />
       <View
@@ -50,7 +50,7 @@ function CardSkeleton({
           marginTop: 8,
           height: 14,
           borderRadius: 4,
-          backgroundColor: palette.backgroundSecondary,
+          backgroundColor: palette.surface,
           width: "78%",
         }}
       />
@@ -59,7 +59,7 @@ function CardSkeleton({
           marginTop: 4,
           height: 12,
           borderRadius: 4,
-          backgroundColor: palette.backgroundSecondary,
+          backgroundColor: palette.surface,
           width: "52%",
         }}
       />
@@ -93,7 +93,7 @@ function RowSkeleton({
           width: 38,
           height: 54,
           borderRadius: 5,
-          backgroundColor: palette.backgroundSecondary,
+          backgroundColor: palette.surface,
         }}
       />
       <View style={{ flex: 1 }}>
@@ -101,7 +101,7 @@ function RowSkeleton({
           style={{
             height: 15,
             borderRadius: 4,
-            backgroundColor: palette.backgroundSecondary,
+            backgroundColor: palette.surface,
             width: "68%",
           }}
         />
@@ -110,7 +110,7 @@ function RowSkeleton({
             marginTop: 6,
             height: 13,
             borderRadius: 4,
-            backgroundColor: palette.backgroundSecondary,
+            backgroundColor: palette.surface,
             width: "44%",
           }}
         />

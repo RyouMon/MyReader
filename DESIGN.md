@@ -8,8 +8,8 @@ description: >
 colors:
   primary: "#D97757"
   secondary: "#A87E62"
-  bg: "#F7F3EC"
-  bg-secondary: "#EDE8DF"
+  bg: "#EDE8DF"
+  bg-secondary: "#F7F3EC"
   ink-1: "#1C1714"
   ink-2: "#5C5349"
   ink-inverse: "#FAF6F0"

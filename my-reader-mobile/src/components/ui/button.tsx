@@ -78,11 +78,11 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
       };
     case "secondary":
       return {
-        backgroundColor: palette.backgroundSecondary,
+        backgroundColor: palette.surface,
         borderColor: palette.border,
         indicatorColor: palette.text,
         textColor: palette.text,
-        underlayColor: palette.surface,
+        underlayColor: palette.background,
       };
     case "outline":
       return {

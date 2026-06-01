@@ -64,7 +64,7 @@ function RootNavigator() {
         colors: {
           ...DarkTheme.colors,
           background: palette.background,
-          card: palette.backgroundSecondary,
+          card: palette.surface,
           text: palette.text,
           border: palette.border,
           primary: palette.primary,
@@ -76,7 +76,7 @@ function RootNavigator() {
         colors: {
           ...DefaultTheme.colors,
           background: palette.background,
-          card: palette.backgroundSecondary,
+          card: palette.surface,
           text: palette.text,
           border: palette.border,
           primary: palette.primary,

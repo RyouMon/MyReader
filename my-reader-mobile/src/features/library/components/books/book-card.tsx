@@ -158,7 +158,7 @@ function BookCardImpl({
           accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
           onPress={handlePress}
           activeOpacity={0.78}
-          underlayColor={palette.backgroundSecondary}
+          underlayColor={palette.surface}
           style={{ borderRadius: 10, overflow: "hidden" }}
         >
           <View>

@@ -168,7 +168,7 @@ function BookRowImpl({
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
       onPress={handlePress}
-      underlayColor={palette.backgroundSecondary}
+      underlayColor={palette.surface}
     >
       <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
         <BookCover
@@ -189,7 +189,7 @@ function BookRowImpl({
             <Text
               className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
               style={{
-                backgroundColor: isUnread ? palette.backgroundSecondary : "rgba(217,119,87,0.14)",
+                backgroundColor: isUnread ? palette.surface : "rgba(217,119,87,0.14)",
                 color: isUnread ? palette.textMuted : palette.primary,
               }}
             >

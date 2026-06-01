@@ -42,7 +42,7 @@ export function HeroSection({
         ) : (
           <View
             className="h-full w-full justify-end px-3 py-4"
-            style={{ backgroundColor: colors.palette.backgroundSecondary }}
+            style={{ backgroundColor: colors.palette.surface }}
           >
             <Text
               className="text-center text-sm leading-5"
