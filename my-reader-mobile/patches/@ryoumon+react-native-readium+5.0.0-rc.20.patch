@@ -5,7 +5,7 @@ index 0ff10d2..9ec7aae 100644
 @@ -25,6 +25,11 @@ def getExtOrIntegerDefault(name) {
    return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties['Readium_' + name]).toInteger()
  }
-
+ 
 +def reactNativeArchitectures() {
 +  def value = rootProject.getProperties().get("reactNativeArchitectures")
 +  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
@@ -23,3 +23,16 @@ index 0ff10d2..9ec7aae 100644
        }
      }
    }
+diff --git a/node_modules/@ryoumon/react-native-readium/nitrogen/generated/android/c++/JHybridReadiumViewSpec.cpp b/node_modules/@ryoumon/react-native-readium/nitrogen/generated/android/c++/JHybridReadiumViewSpec.cpp
+index 0000000..0000000 100644
+--- a/node_modules/@ryoumon/react-native-readium/nitrogen/generated/android/c++/JHybridReadiumViewSpec.cpp
++++ b/node_modules/@ryoumon/react-native-readium/nitrogen/generated/android/c++/JHybridReadiumViewSpec.cpp
+@@ -132,7 +132,7 @@ namespace margelo::nitro::readium {
+     if (castJavaPart == nullptr) [[unlikely]] {
+       throw std::runtime_error("Failed to cast JHybridObject::JavaPart to JHybridReadiumViewSpec::JavaPart!");
+     }
+-    return std::make_shared<JHybridReadiumViewSpec>(castJavaPart);
++    return std::shared_ptr<JHybridReadiumViewSpec>(new JHybridReadiumViewSpec(castJavaPart));
+   }
+ 
+   void JHybridReadiumViewSpec::CxxPart::registerNatives() {
