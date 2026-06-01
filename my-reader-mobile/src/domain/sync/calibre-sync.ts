@@ -5,16 +5,11 @@ import { getBookFormatRows } from "../../repos/calibre/data";
 import { forceRefreshLibraryMetadata } from "../library/calibre";
 import { fetchBooks } from "../library/calibre";
 import { forceRefreshMetadata } from "../library/remote-library-shared";
-import {
-  COVER_FILE_NAME,
-  libraryBookFileUri,
-  METADATA_DB_RELATIVE,
-} from "../library/locations";
+import { COVER_FILE_NAME, METADATA_DB_RELATIVE } from "../library/locations";
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content";
-import type { BookItem, Library } from "../types";
+import type { Library } from "../types";
 import { isRemoteSourceType } from "../types";
 import { joinRelativePath } from "../../services/fs/path";
-import { downloadLibraryFile } from "../download/download-service";
 import i18n from "@/src/i18n";
 import { describeError } from "../../utils/common";
 
@@ -24,8 +19,6 @@ import { evictLocalFileOfflineSafe } from "./transfer";
 import type { CalibreSyncResult, SyncLibraryOptions } from "./types";
 import { isRemoteBackend, type SyncBackend } from "./resolve";
 import { LocalDirectBackend } from "./local";
-
-const CONCURRENT_COVER_DOWNLOADS = 3;
 
 function mapSummaries(
   rows: Awaited<ReturnType<typeof listBookSummaries>>,
@@ -68,56 +61,6 @@ async function materializeMetadata(
   return { ...refreshed, metadataEtag: etag };
 }
 
-function hasLocalCoverFile(library: Library, bookPath: string): boolean {
-  const relative = joinRelativePath(bookPath, COVER_FILE_NAME);
-  const file = new File(libraryBookFileUri(library, relative));
-  return file.exists && (file.size ?? 0) > 0;
-}
-
-async function downloadMissingCovers(
-  library: Library,
-  dataSources: import("../types").DataSource[],
-  books: BookItem[],
-): Promise<void> {
-  if (!isRemoteSourceType(library.sourceType)) return;
-
-  const missing = books.filter(
-    (book) => book.hasCover && book.path && !hasLocalCoverFile(library, book.path),
-  );
-  if (missing.length === 0) return;
-
-  let active = 0;
-  let idx = 0;
-
-  await new Promise<void>((resolve) => {
-    function next(): void {
-      while (active < CONCURRENT_COVER_DOWNLOADS && idx < missing.length) {
-        const book = missing[idx]!;
-        idx += 1;
-        active += 1;
-        void downloadLibraryFile({
-          libraryId: library.id,
-          relativePath: joinRelativePath(book.path!, COVER_FILE_NAME),
-          libraries: [library],
-          dataSources,
-        })
-          .then(() => {
-            active -= 1;
-            if (idx >= missing.length && active === 0) resolve();
-            else next();
-          })
-          .catch(() => {
-            active -= 1;
-            if (idx >= missing.length && active === 0) resolve();
-            else next();
-          });
-      }
-      if (idx >= missing.length && active === 0) resolve();
-    }
-    next();
-  });
-}
-
 async function evictRemovedBookFiles(
   library: Library,
   book: BookSummary,
@@ -144,7 +87,6 @@ async function evictRemovedBookFiles(
 
 async function applyBookDiffCleanup(
   library: Library,
-  dataSources: import("../types").DataSource[],
   diff: BookDiff,
   oldMetadataUri: string | undefined,
 ): Promise<void> {
@@ -156,55 +98,22 @@ async function applyBookDiffCleanup(
 
   if (!isRemoteSourceType(library.sourceType)) return;
 
-  for (const book of diff.added) {
-    if (book.hasCover && book.path) {
-      try {
-        await downloadLibraryFile({
-          libraryId: library.id,
-          relativePath: joinRelativePath(book.path, COVER_FILE_NAME),
-          libraries: [library],
-          dataSources,
-        });
-      } catch (e) {
-        console.warn("Failed to download cover for new book:", { bookId: book.id, error: e });
-      }
-    }
-  }
-
   for (const { old: oldBook, new: newBook } of diff.modified) {
-    if (!newBook.hasCover || !newBook.path) continue;
-    if (oldBook.path && oldBook.path !== newBook.path) {
-      try {
-        await evictLocalFileOfflineSafe(
-          library,
-          joinRelativePath(oldBook.path, COVER_FILE_NAME),
-        );
-      } catch {}
-    }
-    if (!oldBook.hasCover || oldBook.path !== newBook.path) {
-      try {
-        await downloadLibraryFile({
-          libraryId: library.id,
-          relativePath: joinRelativePath(newBook.path, COVER_FILE_NAME),
-          libraries: [library],
-          dataSources,
-        });
-      } catch (e) {
-        console.warn("Failed to download cover for modified book:", {
-          bookId: newBook.id,
-          error: e,
-        });
-      }
-    }
+    if (!oldBook.path || oldBook.path === newBook.path) continue;
+    try {
+      await evictLocalFileOfflineSafe(
+        library,
+        joinRelativePath(oldBook.path, COVER_FILE_NAME),
+      );
+    } catch {}
   }
 }
 
-/** Phase A — Calibre 同步：metadata.db stat → materialize → 书目 diff → 封面。 */
+/** Phase A — Calibre 同步：metadata.db stat → materialize → 书目 diff。 */
 export async function syncCalibre(
   ctx: SyncTargetContext,
   dataSources: import("../types").DataSource[],
   options: Pick<SyncLibraryOptions, "forceCalibre">,
-  getBooks?: (libraryId: string) => import("../types").BookItem[],
 ): Promise<CalibreSyncResult> {
   const { library } = ctx;
   const forceCalibre = options.forceCalibre ?? false;
@@ -257,14 +166,9 @@ export async function syncCalibre(
     newLibrary = { ...newLibrary, bookCount: newBookCount };
 
     const diff = diffBooks(oldSummaries, newSummaries);
-    await applyBookDiffCleanup(newLibrary, dataSources, diff, oldMetadataUri);
+    await applyBookDiffCleanup(newLibrary, diff, oldMetadataUri);
 
     const books = await fetchBooks(newLibrary, dataSources);
-
-    if (isRemoteSourceType(newLibrary.sourceType)) {
-      const sourceBooks = getBooks?.(newLibrary.id) ?? books;
-      void downloadMissingCovers(newLibrary, dataSources, sourceBooks).catch(() => {});
-    }
 
     return {
       skipped: false,

@@ -74,7 +74,12 @@ export default function HomeScreen() {
 
               <View className="flex-row gap-4">
                 {currentBook.coverUri ? (
-                  <Image source={currentBook.coverUri} className="h-[168px] w-[112px] rounded-[18px]" />
+                  <Image
+                    source={currentBook.coverUri}
+                    className="h-[168px] w-[112px] rounded-[18px]"
+                    cachePolicy="memory-disk"
+                    recyclingKey={currentBook.id}
+                  />
                 ) : (
                   <View className="h-[168px] w-[112px] items-center justify-center rounded-[18px]" style={{ backgroundColor: palette.backgroundSecondary }}>
                     <Text className="text-sm" style={{ color: palette.textMuted, fontWeight: "600" }}>

@@ -4,12 +4,13 @@ jest.mock("@/src/services/fs/path", () => ({
   ensureDocumentSubdirUri: (...segments: string[]) => `file:///documents/${segments.join("/")}`,
   fileUriFor: (base: string, rel: string) => `${base.replace(/\/$/, "")}/${rel}`,
   joinRelativePath: (left: string, right: string) => `${left}/${right}`,
+  canonicalRelativePath: (path: string) => path,
 }));
 
 jest.mock("expo-file-system", () => ({
   File: class MockFile {
-    exists = false;
-    size = 0;
+    exists = true;
+    size = 100;
     uri: string;
     constructor(mockUri: string) {
       this.uri = mockUri;
@@ -22,6 +23,8 @@ jest.mock("react-native", () => ({
   Platform: { get OS() { return platformOs.current; } },
 }));
 
+import type { RemoteBackend } from "@/src/services/remote/backend";
+
 import {
   libraryBookFileUri,
   libraryContainerRootUri,
@@ -30,6 +33,7 @@ import {
   libraryMyReaderDirUri,
   libraryRootUri,
   librarySidecarRootUri,
+  resolveCoverUri,
   usesIosContainerSidecar,
 } from "./locations";
 
@@ -100,5 +104,27 @@ describe("library path helpers", () => {
 
   test("libraryContainerRootUri creates predictable document path", () => {
     expect(libraryContainerRootUri("abc")).toBe("file:///documents/libraries/abc");
+  });
+});
+
+describe("resolveCoverUri", () => {
+  test("remote library uses backend URL even when container cover.jpg exists", () => {
+    const library = localLibrary({ sourceType: "webdav", path: "https://example.com/lib" });
+    const backend = {
+      contentUrl: (relative: string) => `https://example.com/lib/${relative}`,
+      getCachedAuthHeaders: () => ({ Authorization: "Bearer token" }),
+    } as Pick<RemoteBackend, "contentUrl" | "getCachedAuthHeaders"> as RemoteBackend;
+
+    expect(resolveCoverUri(library, "Author/Book", true, backend)).toEqual({
+      uri: "https://example.com/lib/Author/Book/cover.jpg",
+      headers: { Authorization: "Bearer token" },
+    });
+  });
+
+  test("local library prefers on-disk cover.jpg", () => {
+    const library = localLibrary({ path: "file:///external/Calibre" });
+    expect(resolveCoverUri(library, "Author/Book", true)).toBe(
+      "file:///external/Calibre/Author/Book/cover.jpg",
+    );
   });
 });

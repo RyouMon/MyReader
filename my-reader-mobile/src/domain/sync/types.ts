@@ -82,7 +82,6 @@ export type SyncLibrariesDeps = {
   syncOnStartup: boolean;
   enableAutoSync: boolean;
   activeLibraryId?: string | null;
-  getBooksForLibrary?: (libraryId: string) => BookItem[];
 };
 
 /** 单类 MyReader 数据的同步单元 */

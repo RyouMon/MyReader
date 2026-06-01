@@ -121,6 +121,8 @@ export async function readBooks(
     return { books: [], metadataUri: libraryMetadataUri(library) };
   }
 
+  await backend.getAuthHeaders();
+
   const rows = await listBooksWithAuthors(metadataUri);
   const books = mapListRowsToBookItems(library, rows, { buildCoverUri: buildCoverUriFn });
 

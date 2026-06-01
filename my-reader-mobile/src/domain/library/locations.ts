@@ -2,7 +2,12 @@ import { Directory, File } from "expo-file-system";
 import { Platform } from "react-native";
 
 import type { RemoteBackend } from "@/src/services/remote/backend";
-import { ensureDocumentSubdirUri, fileUriFor, joinRelativePath } from "@/src/services/fs/path";
+import {
+  canonicalRelativePath,
+  ensureDocumentSubdirUri,
+  fileUriFor,
+  joinRelativePath,
+} from "@/src/services/fs/path";
 import type { BookItem, Library } from "../types";
 import { isRemoteSourceType } from "../types";
 
@@ -89,7 +94,10 @@ function hasLocalCoverFile(library: Library, bookPath: string): boolean {
   return file.exists && (file.size ?? 0) > 0;
 }
 
-/** Prefer on-disk cover under library root; fall back to remote URL when a backend is provided. */
+/**
+ * Local libraries read cover.jpg from the Calibre tree; remote libraries use the backend URL
+ * (expo-image caches HTTP responses — no sync-time cover download).
+ */
 export function resolveCoverUri(
   library: Library,
   bookPath: string | null,
@@ -98,13 +106,13 @@ export function resolveCoverUri(
 ): BookItem["coverUri"] | undefined {
   if (!bookPath || !hasCover) return undefined;
 
-  if (hasLocalCoverFile(library, bookPath)) {
+  if (!isRemoteSourceType(library.sourceType) && hasLocalCoverFile(library, bookPath)) {
     return libraryBookFileUri(library, joinRelativePath(bookPath, COVER_FILE_NAME));
   }
 
   if (!backend) return undefined;
 
-  const relative = joinRelativePath(bookPath, COVER_FILE_NAME);
+  const relative = canonicalRelativePath(joinRelativePath(bookPath, COVER_FILE_NAME));
   const cachedHeaders = backend.getCachedAuthHeaders();
   return {
     uri: backend.contentUrl(relative),

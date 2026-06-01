@@ -33,7 +33,12 @@ export function HeroSection({
     <View className="flex-row gap-4 px-4 pb-5 pt-4">
       <View className="h-[188px] w-[128px] overflow-hidden rounded-lg">
         {coverUri ? (
-          <Image source={coverUri} className="h-full w-full object-cover" />
+          <Image
+            source={coverUri}
+            className="h-full w-full object-cover"
+            cachePolicy="memory-disk"
+            recyclingKey={String(book.id)}
+          />
         ) : (
           <View
             className="h-full w-full justify-end px-3 py-4"

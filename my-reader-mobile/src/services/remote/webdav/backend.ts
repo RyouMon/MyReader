@@ -103,7 +103,7 @@ export class WebDavRemoteBackend implements RemoteBackend {
   }
 
   getCachedAuthHeaders(): Record<string, string> | null {
-    return getCachedAuth(this.dataSourceId);
+    return getCachedAuth(this.dataSourceId) ?? this.urlBuilder.authHeaders;
   }
 
   invalidateAuth(): void {
@@ -215,8 +215,9 @@ export class WebDavRemoteBackend implements RemoteBackend {
   }
 
   async downloadToUri(remotePath: string, localFileUri: string): Promise<File> {
+    const headers = await this.getAuthHeaders();
     const response = await ky(this.urlBuilder.urlFor(remotePath), {
-      headers: this.urlBuilder.authHeaders,
+      headers,
     });
     const bytes = new Uint8Array(await response.arrayBuffer());
     const parentUri = parentDirectoryUriForFileUri(localFileUri);
@@ -236,7 +237,8 @@ export class WebDavRemoteBackend implements RemoteBackend {
   }
 
   async getDownloadRequest(remotePath: string, localFileUri: string): Promise<DownloadRequest> {
-    return { remotePath, localFileUri, headers: this.urlBuilder.authHeaders };
+    const headers = await this.getAuthHeaders();
+    return { remotePath, localFileUri, headers };
   }
 
   async getUploadRequest(localFileUri: string, remotePath: string): Promise<UploadRequest> {

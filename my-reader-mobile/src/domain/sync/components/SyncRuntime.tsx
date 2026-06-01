@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "expo-router";
 
-import { getBooksForLibrary } from "@/src/domain/library/calibre";
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification";
 import {
   LIBRARY_SYNC_INTERVAL_MS,
@@ -38,7 +37,6 @@ function getSyncDeps(): SyncLibrariesDeps {
     syncOnStartup: state.settings.syncOnStartup,
     enableAutoSync: state.settings.enableAutoSync,
     activeLibraryId: state.activeLibraryId,
-    getBooksForLibrary,
   };
 }
 

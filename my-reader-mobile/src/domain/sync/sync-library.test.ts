@@ -138,7 +138,6 @@ describe("syncLibrary", () => {
       localCtx,
       dataSources,
       expect.objectContaining({ forceCalibre: true }),
-      undefined,
     );
   });
 

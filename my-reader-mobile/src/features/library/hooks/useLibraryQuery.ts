@@ -43,12 +43,14 @@ function inflateCoverUris(books: BookItem[], libraryId: string | null): BookItem
   const cachedHeaders = getCachedAuth(library.dataSourceId);
 
   return books.map((book) => {
-    if (!book.coverUri || typeof book.coverUri !== "string" || book.coverUri.startsWith("file://")) {
-      return book;
+    if (!book.coverUri || !cachedHeaders) return book;
+
+    if (typeof book.coverUri === "string") {
+      if (book.coverUri.startsWith("file://")) return book;
+      return { ...book, coverUri: { uri: book.coverUri, headers: cachedHeaders } };
     }
 
-    if (!cachedHeaders) return book;
-
-    return { ...book, coverUri: { uri: book.coverUri, headers: cachedHeaders } };
+    if (book.coverUri.headers) return book;
+    return { ...book, coverUri: { ...book.coverUri, headers: cachedHeaders } };
   });
 }

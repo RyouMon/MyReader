@@ -71,7 +71,6 @@ export async function syncLibrary(
   library: Library,
   dataSources: DataSource[],
   options: SyncLibraryOptions = {},
-  helpers?: { getBooksForLibrary?: (libraryId: string) => import("../types").BookItem[] },
 ): Promise<LibrarySyncReport> {
   const startedAt = Date.now();
   const scope = options.scope ?? "all";
@@ -113,7 +112,7 @@ export async function syncLibrary(
   }
 
   let calibre = scopeHasCalibre(options)
-    ? await syncCalibre(ctx, dataSources, options, helpers?.getBooksForLibrary)
+    ? await syncCalibre(ctx, dataSources, options)
     : skippedCalibre(library);
 
   let myreader = scopeHasMyreader(options)
@@ -191,9 +190,7 @@ export async function syncLibraries(
     if (trigger === "scheduled" && scheduledTarget === "reading" && !deps.activeLibraryId) {
       continue;
     }
-    const report = await syncLibrary(library, deps.dataSources, options, {
-      getBooksForLibrary: deps.getBooksForLibrary,
-    });
+    const report = await syncLibrary(library, deps.dataSources, options);
     results.push(report);
   }
 

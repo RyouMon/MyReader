@@ -62,6 +62,7 @@ function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = tru
           source={book.coverUri}
           style={{ width, height }}
           recyclingKey={book.id}
+          cachePolicy="memory-disk"
           transition={200}
           onError={() => setImageError(true)}
         />
