@@ -7,5 +7,6 @@ allowBuilds:
   edgedriver: true
   esbuild: true
   geckodriver: true
+  msgpackr-extract: true
   unrs-resolver: true
 blockExoticSubdeps: false

@@ -3,7 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { type ReactNode } from "react";
 import { Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
+import { useHeaderHeight } from "expo-router/react-navigation";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";

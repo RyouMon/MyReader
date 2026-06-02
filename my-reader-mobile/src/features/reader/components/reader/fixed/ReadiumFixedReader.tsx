@@ -297,7 +297,7 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
         {brightness < 100 && (
           <View
             style={[
-              StyleSheet.absoluteFillObject,
+              { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
               { backgroundColor: "black", opacity: (100 - brightness) / 100 },
             ]}
             pointerEvents="none"

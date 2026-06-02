@@ -1,6 +1,6 @@
 import { Directory, File as FSFile } from "expo-file-system";
 import { Asset } from "expo-asset";
-import { CommonActions } from "@react-navigation/native";
+import { CommonActions } from "expo-router/react-navigation";
 import { useNavigation } from "expo-router";
 import { unzipSync } from "fflate";
 import { useEffect, useRef } from "react";

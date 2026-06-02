@@ -2,7 +2,7 @@ import "@/src/global.css";
 import "@/src/i18n";
 import "@/src/polyfills/reader-engine-globals";
 
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "@react-navigation/native";
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "expo-router/react-navigation";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, type ComponentProps } from "react";

@@ -39,7 +39,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.5",
+            "deploymentTarget": "16.4",
             "buildReactNativeFromSource": true
           },
           "android": {}
@@ -82,9 +82,15 @@
       [
         "react-native-app-auth",
         {
-          "redirectUrls": ["myreadermobile://onedrive-auth/"]
+          "redirectUrls": [
+            "myreadermobile://onedrive-auth/"
+          ]
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-asset",
+      "expo-localization",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
