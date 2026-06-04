@@ -1,5 +1,5 @@
 import { getLocales } from "expo-localization";
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
+import type { MenuAction } from "@react-native-menu/menu";
 import { router, useNavigation } from "expo-router";
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,7 +8,7 @@ import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { Screen, SectionCard, SettingsMenuRow, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function SettingsScreen() {
@@ -129,7 +129,7 @@ export default function SettingsScreen() {
         <View className="gap-3">
           <SettingsSectionLabel>{t("settings.appearance")}</SettingsSectionLabel>
           <SectionCard>
-            <MenuView
+            <SettingsMenuRow
               actions={languageMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
@@ -137,19 +137,20 @@ export default function SettingsScreen() {
                 setLanguage(lang === "system" ? "" : lang);
                 changeLanguage(lang === "system" ? (getLocales()[0]?.languageCode ?? "zh") : lang);
               }}
-            >
-              <SettingsRow title={t("settings.language")} value={languageLabels[effectiveLanguage]} />
-            </MenuView>
-            <MenuView
+              title={t("settings.language")}
+              value={languageLabels[effectiveLanguage]}
+            />
+            <SettingsMenuRow
               actions={themeMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
                 const nextMode = nativeEvent.event.replace("theme:", "") as ThemeMode;
                 setMode(nextMode);
               }}
-            >
-              <SettingsRow title={t("settings.darkMode")} value={themeMode} isLast />
-            </MenuView>
+              title={t("settings.darkMode")}
+              value={themeMode}
+              isLast
+            />
           </SectionCard>
         </View>
       </Screen>
