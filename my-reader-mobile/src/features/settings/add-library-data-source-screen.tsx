@@ -24,9 +24,16 @@ function sourceBrowserPath(source: DataSource) {
   };
 }
 
-function sourceDetailText(source: DataSource) {
+function dataSourceTypeLabel(t: (key: string) => string, source: DataSource) {
   if (source.type === "onedrive") {
-    return source.email ?? source.rootPath ?? "";
+    return t("libraryDetail.typeOnedrive");
+  }
+  return t("libraryDetail.typeWebdav");
+}
+
+function dataSourceHelpText(source: DataSource) {
+  if (source.type === "onedrive") {
+    return source.email ?? "";
   }
   return `${source.endpoint}${source.rootPath ?? ""}`;
 }
@@ -61,7 +68,6 @@ export default function AddLibraryDataSourceScreen() {
         <SectionCard>
           <SettingsRow
             title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-            detail={t("addLibrary.localDetail")}
             onPress={() => {
               void handleAddLocalLibrary();
             }}
@@ -75,7 +81,8 @@ export default function AddLibraryDataSourceScreen() {
             >
               <SettingsRow
                 title={source.name}
-                detail={sourceDetailText(source)}
+                detail={dataSourceHelpText(source)}
+                value={dataSourceTypeLabel(t, source)}
                 isLast={index === dataSources.length - 1}
               />
             </Link>
@@ -87,11 +94,10 @@ export default function AddLibraryDataSourceScreen() {
         <SettingsSectionLabel>{t("addLibrary.addSources")}</SettingsSectionLabel>
         <SectionCard>
           <Link href="/settings/webdav/add" asChild>
-            <SettingsRow title="WebDAV" detail={t("addLibrary.webdavDetail")} />
+            <SettingsRow title="WebDAV" />
           </Link>
           <SettingsRow
             title="OneDrive"
-            detail={t("addLibrary.onedriveDetail")}
             onPress={() => void handleAddOneDrive()}
             isLast
           />

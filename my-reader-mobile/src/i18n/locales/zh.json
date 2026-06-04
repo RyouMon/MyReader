@@ -255,9 +255,7 @@
   },
   "addLibrary": {
     "existingSources": "已有数据源",
-    "localDetail": "直接从本机存储中选择书库",
-    "addSources": "添加数据源",
-    "webdavDetail": "通过 WebDAV 浏览远程文件并选择 Calibre 书库"
+    "addSources": "添加数据源"
   },
   "webdav": {
     "sourcesTitle": "WebDAV 数据源",

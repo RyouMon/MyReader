@@ -255,10 +255,7 @@
   },
   "addLibrary": {
     "existingSources": "Existing Sources",
-    "localDetail": "Select a library from local storage",
-    "addSources": "Add Sources",
-    "webdavDetail": "Browse remote files via WebDAV and select a Calibre library",
-    "onedriveDetail": "Browse remote files via OneDrive and select a Calibre library"
+    "addSources": "Add Sources"
   },
   "webdav": {
     "sourcesTitle": "WebDAV Sources",
