@@ -1,4 +1,3 @@
-import { type ReactNode } from "react";
 import {
   Platform,
   Pressable as RNPressable,
@@ -14,7 +13,8 @@ import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/token
 import { Text, View } from "@/tw";
 
 const ROW_CLASS = "min-h-16 flex-row items-center justify-between gap-3 px-4 py-4";
-const SECONDARY_CLASS = "text-[13px] leading-5";
+const TITLE_CLASS = "text-[16px] leading-6";
+const DETAIL_CLASS = "text-[13px] leading-5";
 
 function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
   if (colorScheme === "light") {
@@ -43,9 +43,8 @@ type SettingsRowProps = {
   title: string;
   /** Muted secondary text shown below the title. */
   detail?: string;
-  /** Muted secondary text shown on the trailing edge. */
+  /** Right-side label (same size as title, muted color). */
   value?: string;
-  trailing?: ReactNode;
   onPress?: () => void;
   isLast?: boolean;
 };
@@ -54,7 +53,6 @@ export function SettingsRow({
   title,
   detail,
   value,
-  trailing,
   onPress,
   isLast,
 }: SettingsRowProps) {
@@ -69,21 +67,20 @@ export function SettingsRow({
   const body = (
     <>
       <View className="flex-1 gap-1">
-        <Text selectable className="text-[16px] leading-6" style={{ color: palette.text }}>
+        <Text selectable className={TITLE_CLASS} style={{ color: palette.text }}>
           {title}
         </Text>
         {detail ? (
-          <Text selectable className={SECONDARY_CLASS} style={{ color: palette.textMuted }}>
+          <Text selectable className={DETAIL_CLASS} style={{ color: palette.textMuted }}>
             {detail}
           </Text>
         ) : null}
       </View>
       {hasValue ? (
-        <Text selectable className={`shrink ${SECONDARY_CLASS}`} style={{ color: palette.textMuted }}>
+        <Text selectable className={`shrink ${TITLE_CLASS}`} style={{ color: palette.textMuted }}>
           {value}
         </Text>
       ) : null}
-      {trailing}
     </>
   );
 
