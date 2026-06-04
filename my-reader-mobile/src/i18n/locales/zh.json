@@ -113,6 +113,7 @@
     "libraryDetail": "书库详情",
     "addLibrary": "添加书库",
     "librarySection": "书库",
+    "currentInUse": "当前使用",
     "bookCountCurrent": "{{count}} 本 · 当前使用",
     "bookCount": "{{count}} 本",
     "remoteDataSources": "远程数据源",

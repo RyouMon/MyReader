@@ -113,6 +113,7 @@
     "libraryDetail": "Library Details",
     "addLibrary": "Add Library",
     "librarySection": "Library",
+    "currentInUse": "In use",
     "bookCountCurrent": "{{count}} books · In use",
     "bookCount": "{{count}} books",
     "remoteDataSources": "Remote Data Sources",

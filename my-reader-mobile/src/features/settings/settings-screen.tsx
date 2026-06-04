@@ -90,11 +90,7 @@ export default function SettingsScreen() {
               <SettingsRow
                 key={library.id}
                 title={library.name}
-                value={
-                  activeLibraryId === library.id
-                    ? t("settings.bookCountCurrent", { count: library.bookCount })
-                    : t("settings.bookCount", { count: library.bookCount })
-                }
+                value={activeLibraryId === library.id ? t("settings.currentInUse") : undefined}
                 onPress={() =>
                   navigateTo({
                     pathname: "/settings/library/[libraryId]",
