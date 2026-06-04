@@ -1,11 +1,43 @@
 import { type ReactNode } from "react";
-import { Platform, TouchableNativeFeedback } from "react-native";
+import {
+  Platform,
+  Pressable as RNPressable,
+  StyleSheet,
+  TouchableNativeFeedback,
+  type ViewStyle,
+} from "react-native";
 
-import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, Text, TouchableHighlight, View } from "@/tw";
+import chroma from "chroma-js";
+
+import { mixInk } from "@/src/design/reader-chrome-palette";
+import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/tokens";
+import { Text, View } from "@/tw";
 
 const ROW_CLASS = "min-h-16 flex-row items-center justify-between gap-3 px-4 py-4";
 const SECONDARY_CLASS = "text-[13px] leading-5";
+
+function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
+  if (colorScheme === "light") {
+    return mixInk(palette.text, palette.surface, 12);
+  }
+
+  return chroma(palette.surface).brighten(0.5).hex();
+}
+
+function settingsRowAndroidPressBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
+  if (colorScheme === "light") {
+    return TouchableNativeFeedback.Ripple(chroma(palette.text).alpha(0.14).css(), false);
+  }
+
+  return TouchableNativeFeedback.SelectableBackground();
+}
+
+function rowSeparatorStyle(isLast: boolean | undefined, palette: ThemePalette): ViewStyle {
+  return {
+    borderBottomColor: palette.borderStrong,
+    borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+  };
+}
 
 type SettingsRowProps = {
   title: string;
@@ -26,11 +58,12 @@ export function SettingsRow({
   onPress,
   isLast,
 }: SettingsRowProps) {
+  const { colorScheme } = useTheme();
   const palette = useThemePalette();
-  const borderStyle = {
-    borderBottomColor: palette.border,
-    borderBottomWidth: isLast ? 0 : 1,
-  };
+  const resolvedScheme = colorScheme === "dark" ? "dark" : "light";
+  const rowPressedBackground = settingsRowPressedBackground(resolvedScheme, palette);
+  const androidPressBackground = settingsRowAndroidPressBackground(resolvedScheme, palette);
+  const separatorStyle = rowSeparatorStyle(isLast, palette);
   const hasValue = value != null && value.length > 0;
 
   const body = (
@@ -56,7 +89,7 @@ export function SettingsRow({
 
   if (!onPress) {
     return (
-      <View className={ROW_CLASS} style={borderStyle}>
+      <View className={ROW_CLASS} style={separatorStyle}>
         {body}
       </View>
     );
@@ -64,35 +97,38 @@ export function SettingsRow({
 
   if (Platform.OS === "android") {
     return (
-      <TouchableNativeFeedback
-        accessibilityRole="button"
-        background={TouchableNativeFeedback.SelectableBackground()}
-        onPress={onPress}
-      >
-        <View className={ROW_CLASS} style={borderStyle}>
-          {body}
-        </View>
-      </TouchableNativeFeedback>
-    );
-  }
-
-  if (Platform.OS === "ios") {
-    return (
-      <TouchableHighlight
-        accessibilityRole="button"
-        underlayColor={palette.surface}
-        onPress={onPress}
-      >
-        <View className={ROW_CLASS} style={borderStyle}>
-          {body}
-        </View>
-      </TouchableHighlight>
+      <View style={separatorStyle}>
+        <TouchableNativeFeedback
+          accessibilityRole="button"
+          background={androidPressBackground}
+          onPress={onPress}
+        >
+          <View className={ROW_CLASS} style={{ backgroundColor: palette.surface }}>
+            {body}
+          </View>
+        </TouchableNativeFeedback>
+      </View>
     );
   }
 
   return (
-    <Pressable accessibilityRole="button" className={ROW_CLASS} onPress={onPress} style={borderStyle}>
-      {body}
-    </Pressable>
+    <View style={separatorStyle}>
+      <RNPressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.pressableRow,
+          { backgroundColor: pressed ? rowPressedBackground : palette.surface },
+        ]}
+      >
+        <View className={ROW_CLASS}>{body}</View>
+      </RNPressable>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  pressableRow: {
+    width: "100%",
+  },
+});
