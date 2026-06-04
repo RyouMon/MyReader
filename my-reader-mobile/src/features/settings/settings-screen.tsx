@@ -8,7 +8,7 @@ import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SectionHeading, SettingsRow } from "@/src/components";
+import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function SettingsScreen() {
@@ -84,13 +84,13 @@ export default function SettingsScreen() {
     <>
       <Screen>
         <View className="gap-3">
-          <SectionHeading title={t("settings.librarySection")} />
+          <SettingsSectionLabel>{t("settings.librarySection")}</SettingsSectionLabel>
           <SectionCard>
             {libraries.map((library) => (
               <SettingsRow
                 key={library.id}
                 title={library.name}
-                detail={
+                value={
                   activeLibraryId === library.id
                     ? t("settings.bookCountCurrent", { count: library.bookCount })
                     : t("settings.bookCount", { count: library.bookCount })
@@ -111,7 +111,7 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionHeading title={t("settings.dataAndSources")} />
+          <SettingsSectionLabel>{t("settings.dataAndSources")}</SettingsSectionLabel>
           <SectionCard>
             <SettingsRow title={t("settings.localStorage")} detail={t("settings.localStorageDetail")} />
             <SettingsRow
@@ -128,7 +128,7 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SectionHeading title={t("settings.readingPreferences")} />
+          <SettingsSectionLabel>{t("settings.readingPreferences")}</SettingsSectionLabel>
           <SectionCard>
             <MenuView
               actions={languageMenuActions}
@@ -139,7 +139,7 @@ export default function SettingsScreen() {
                 changeLanguage(lang === "system" ? (getLocales()[0]?.languageCode ?? "zh") : lang);
               }}
             >
-              <SettingsRow title={t("settings.language")} detail={languageLabels[effectiveLanguage]} />
+              <SettingsRow title={t("settings.language")} value={languageLabels[effectiveLanguage]} />
             </MenuView>
             <MenuView
               actions={themeMenuActions}
@@ -149,7 +149,7 @@ export default function SettingsScreen() {
                 setMode(nextMode);
               }}
             >
-              <SettingsRow title={t("settings.darkMode")} detail={themeMode} />
+              <SettingsRow title={t("settings.darkMode")} value={themeMode} />
             </MenuView>
             <SettingsRow
               title={t("settings.readerStyle")}
