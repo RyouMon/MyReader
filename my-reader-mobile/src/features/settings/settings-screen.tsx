@@ -111,9 +111,8 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.dataAndSources")}</SettingsSectionLabel>
+          <SettingsSectionLabel>{t("settings.remoteDataSources")}</SettingsSectionLabel>
           <SectionCard>
-            <SettingsRow title={t("settings.localStorage")} detail={t("settings.localStorageDetail")} />
             <SettingsRow
               title="WebDAV"
               detail={t("settings.webdavDetail")}
@@ -128,7 +127,7 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.readingPreferences")}</SettingsSectionLabel>
+          <SettingsSectionLabel>{t("settings.appearance")}</SettingsSectionLabel>
           <SectionCard>
             <MenuView
               actions={languageMenuActions}
@@ -149,13 +148,8 @@ export default function SettingsScreen() {
                 setMode(nextMode);
               }}
             >
-              <SettingsRow title={t("settings.darkMode")} value={themeMode} />
+              <SettingsRow title={t("settings.darkMode")} value={themeMode} isLast />
             </MenuView>
-            <SettingsRow
-              title={t("settings.readerStyle")}
-              detail={t("settings.readerStyleDetail")}
-              isLast
-            />
           </SectionCard>
         </View>
       </Screen>
