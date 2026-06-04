@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { HeaderCloseButton } from "@/src/components/ui/button";
 import { useStackScreenOptions } from "@/src/hooks/use-stack-screen-options";
+import { Platform } from "react-native";
 
 export default function OneDriveModalStackLayout() {
   const screenOptions = useStackScreenOptions();
@@ -16,7 +17,7 @@ export default function OneDriveModalStackLayout() {
         name="index"
         options={{
           title: t("onedrive.sourcesTitle"),
-          headerLeft: closeButton,
+          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
         }}
       />
       <Stack.Screen name="[dataSourceId]" options={{ title: t("onedrive.sourceDetail") }} />

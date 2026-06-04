@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { HeaderCloseButton } from "@/src/components/ui/button";
 import { useStackScreenOptions } from "@/src/hooks/use-stack-screen-options";
+import { Platform } from "react-native";
 
 export default function SettingsStackLayout() {
   const screenOptions = useStackScreenOptions();
@@ -18,7 +19,7 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.libraryDetail"),
           presentation: "modal",
-          headerLeft: closeButton,
+          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
         }}
       />
       <Stack.Screen
@@ -26,7 +27,7 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.addLibrary"),
           presentation: "modal",
-          headerLeft: closeButton,
+          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
         }}
       />
       <Stack.Screen

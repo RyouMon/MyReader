@@ -282,7 +282,7 @@ export function HeaderCloseButton({
       }}
     >
       {Platform.OS === "ios" ? (
-        <SymbolView name="xmark" tintColor={palette.text} />
+        <SymbolView name="xmark" weight="semibold" tintColor={palette.text} />
       ) : (
         <MaterialIcons name="close" size={24} color={palette.text} />
       )}
