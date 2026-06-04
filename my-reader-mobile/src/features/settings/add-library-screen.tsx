@@ -9,6 +9,7 @@ import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/co
 import { useAppStore } from "@/src/store/app-store";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
 import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
+import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 function sourceBrowserPath(source: DataSource) {
@@ -47,7 +48,8 @@ export default function AddLibraryDataSourceScreen() {
     const picked = await pickCalibreLibrary();
     const added = await addLibraryFromPicker(picked);
     if (added != null) {
-      router.dismissTo("/library");
+      router.dismissTo("/settings");
+      notifyLibraryAdded(added.name);
     }
   }
 

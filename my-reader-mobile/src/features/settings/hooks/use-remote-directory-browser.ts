@@ -7,6 +7,7 @@ import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/domain/library/remo
 import type { DataSource } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
 import { registerLibrary } from "@/src/domain/library/hooks/library-actions";
+import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
 
 export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined;
@@ -130,6 +131,7 @@ export function useRemoteDirectoryBrowser({
       const added = await registerLibrary(library);
       if (added) {
         router.dismissTo("/settings");
+        notifyLibraryAdded(added.name);
       }
     } catch (caught) {
       if (isMissingMetadataDbError(caught)) {

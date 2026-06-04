@@ -564,6 +564,7 @@
     "syncPathCannotBeEmpty": "Sync path cannot be empty"
   },
   "notifications": {
+    "libraryAdded": "Library added: {{name}}",
     "libraryUpdated": "Library updated",
     "libraryUpdateFailed": "Library update failed",
     "downloadStart": "Download started",

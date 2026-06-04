@@ -556,6 +556,7 @@
     "syncPathCannotBeEmpty": "同步路径不能为空"
   },
   "notifications": {
+    "libraryAdded": "成功添加书库：{{name}}",
     "libraryUpdated": "书库已更新",
     "libraryUpdateFailed": "书库更新失败",
     "downloadStart": "开始下载",
