@@ -107,7 +107,7 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
         >
           {library.name}
         </Text>
-        <Text className="text-sm font-medium" style={{ color: palette.textMuted }}>
+        <Text className="text-[16px] leading-6" style={{ color: palette.textMuted }}>
           {t("libraryDetail.bookCount", { count: library.bookCount })}
           {isActive ? t("libraryDetail.currentlyUsed") : ""}
         </Text>
