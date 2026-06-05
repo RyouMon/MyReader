@@ -33,6 +33,14 @@ export type SettingsRowIcon = {
   android: string;
 };
 
+const TITLE_LINE_HEIGHT = 24;
+
+function settingsRowTextStyle(color: string) {
+  return Platform.OS === "android"
+    ? { color, includeFontPadding: false as const }
+    : { color };
+}
+
 function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
   if (colorScheme === "light") {
     return mixInk(palette.text, palette.surface, 12);
@@ -78,13 +86,18 @@ function SettingsRowIconView({ icon, palette }: { icon: SettingsRowIcon; palette
   const tintColor = palette.textMuted;
 
   return (
-    <SymbolView
-      fallback={<MaterialIcons name={icon.android as never} size={ROW_ICON_SIZE} color={tintColor} />}
-      name={{ ios: icon.ios, android: icon.android } as never}
-      resizeMode="scaleAspectFit"
-      size={ROW_ICON_SIZE}
-      tintColor={tintColor}
-    />
+    <View style={styles.iconSlot}>
+      {Platform.OS === "android" ? (
+        <MaterialIcons name={icon.android as never} size={ROW_ICON_SIZE} color={tintColor} />
+      ) : (
+        <SymbolView
+          name={{ ios: icon.ios, android: icon.android } as never}
+          resizeMode="scaleAspectFit"
+          size={ROW_ICON_SIZE}
+          tintColor={tintColor}
+        />
+      )}
+    </View>
   );
 }
 
@@ -101,17 +114,17 @@ function SettingsRowBody({
     <>
       {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
       <View className="flex-1 gap-1">
-        <Text selectable className={TITLE_CLASS} style={{ color: palette.text }}>
+        <Text selectable className={TITLE_CLASS} style={settingsRowTextStyle(palette.text)}>
           {title}
         </Text>
         {detail ? (
-          <Text selectable className={DETAIL_CLASS} style={{ color: palette.textMuted }}>
+          <Text selectable className={DETAIL_CLASS} style={settingsRowTextStyle(palette.textMuted)}>
             {detail}
           </Text>
         ) : null}
       </View>
       {hasValue ? (
-        <Text selectable className={`shrink ${TITLE_CLASS}`} style={{ color: palette.textMuted }}>
+        <Text selectable className={`shrink ${TITLE_CLASS}`} style={settingsRowTextStyle(palette.textMuted)}>
           {value}
         </Text>
       ) : null}
@@ -277,5 +290,12 @@ const styles = StyleSheet.create({
   },
   menuAnchorFill: {
     flex: 1,
+  },
+  iconSlot: {
+    width: ROW_ICON_SIZE,
+    height: TITLE_LINE_HEIGHT,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
