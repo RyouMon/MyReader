@@ -1,15 +1,18 @@
 import { Stack } from "expo-router";
-import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import { HeaderCloseButton } from "@/src/components/ui/button";
 import { useStackScreenOptions } from "@/src/hooks/use-stack-screen-options";
 import { Platform } from "react-native";
 
+const IOS_MODAL_CLOSE_OPTIONS =
+  Platform.OS === "ios"
+    ? { headerLeft: () => <HeaderCloseButton fallbackRoute="/settings" />, headerBackVisible: false as const }
+    : {};
+
 export default function WebDavModalStackLayout() {
   const screenOptions = useStackScreenOptions();
   const { t } = useTranslation();
-  const closeButton = useCallback(() => <HeaderCloseButton fallbackRoute="/settings" />, []);
 
   return (
     <Stack screenOptions={screenOptions}>
@@ -17,7 +20,7 @@ export default function WebDavModalStackLayout() {
         name="index"
         options={{
           title: t("webdav.sourcesTitle"),
-          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
+          ...IOS_MODAL_CLOSE_OPTIONS,
         }}
       />
       <Stack.Screen name="[dataSourceId]" options={{ title: t("webdav.sourceDetail") }} />

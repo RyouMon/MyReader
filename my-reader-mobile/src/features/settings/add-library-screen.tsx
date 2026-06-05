@@ -13,15 +13,16 @@ import { notifyLibraryAdded } from "@/src/domain/notifications/library-notificat
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 function sourceBrowserPath(source: DataSource) {
+  const sharedParams = { currentPath: "/", from: "add-library" as const };
   if (source.type === "onedrive") {
     return {
       pathname: "/settings/onedrive/browser" as RelativePathString,
-      params: { dataSourceId: source.id, currentPath: "/" },
+      params: { dataSourceId: source.id, ...sharedParams },
     };
   }
   return {
     pathname: "/settings/webdav/browser" as RelativePathString,
-    params: { dataSourceId: source.id, currentPath: "/" },
+    params: { dataSourceId: source.id, ...sharedParams },
   };
 }
 
@@ -58,7 +59,7 @@ export default function AddLibraryDataSourceScreen() {
     if (created) {
       router.push({
         pathname: "/settings/onedrive/browser" as RelativePathString,
-        params: { dataSourceId: created.id, currentPath: "/" },
+        params: { dataSourceId: created.id, currentPath: "/", from: "add-library" },
       });
     }
   }
@@ -95,7 +96,7 @@ export default function AddLibraryDataSourceScreen() {
       <View className="gap-3">
         <SettingsSectionLabel>{t("addLibrary.addSources")}</SettingsSectionLabel>
         <SectionCard>
-          <Link href="/settings/webdav/add" asChild>
+          <Link href={{ pathname: "/settings/webdav/add", params: { from: "add-library" } }} asChild>
             <SettingsRow title="WebDAV" />
           </Link>
           <SettingsRow

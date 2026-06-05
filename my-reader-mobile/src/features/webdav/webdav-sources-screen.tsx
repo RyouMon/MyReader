@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 
@@ -16,6 +16,8 @@ import {
   SettingsRow,
   type HeaderToolbarAction,
 } from "@/src/components";
+import { modalCloseToolbarAction } from "@/src/components/ui/modal-close-toolbar-action";
+import { resolveRemoteSourcesListHeaderLead } from "@/src/navigation/settings-modal-header";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function WebDavSourcesScreen() {
@@ -24,6 +26,12 @@ export default function WebDavSourcesScreen() {
   const dataSources = useAppStore((state) => state.dataSources);
 
   const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);
+  const leftToolbar =
+    resolveRemoteSourcesListHeaderLead({
+      platform: Platform.OS === "ios" ? "ios" : "android",
+    }) === "toolbar-close"
+      ? [modalCloseToolbarAction(t("common.close"))]
+      : undefined;
   const rightToolbar: HeaderToolbarAction[] = [
     {
       label: t("webdav.addSource"),
@@ -52,7 +60,7 @@ export default function WebDavSourcesScreen() {
           headerShadowVisible: false,
         }}
       />
-      <HeaderToolbar right={rightToolbar} />
+      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">

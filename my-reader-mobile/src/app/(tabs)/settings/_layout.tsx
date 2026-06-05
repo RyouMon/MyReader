@@ -19,7 +19,7 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.libraryDetail"),
           presentation: "modal",
-          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
+          ...(Platform.OS === "ios" ? { headerLeft: closeButton } : {}),
         }}
       />
       <Stack.Screen
@@ -27,7 +27,7 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.addLibrary"),
           presentation: "modal",
-          headerLeft: Platform.OS === "ios" ? closeButton : undefined,
+          ...(Platform.OS === "ios" ? { headerLeft: closeButton } : {}),
         }}
       />
       <Stack.Screen
