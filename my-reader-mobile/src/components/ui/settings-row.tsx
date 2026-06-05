@@ -120,33 +120,31 @@ function SettingsRowPressable({
 
   if (Platform.OS === "android") {
     return (
-      <View style={separatorStyle}>
-        <TouchableNativeFeedback
-          accessibilityRole="button"
-          background={androidPressBackground}
-          onPress={onPress}
-        >
-          <View className={ROW_CLASS} style={{ backgroundColor: palette.surface }}>
-            {children}
-          </View>
-        </TouchableNativeFeedback>
-      </View>
+      <TouchableNativeFeedback
+        accessibilityRole="button"
+        background={androidPressBackground}
+        onPress={onPress}
+      >
+        <View className={ROW_CLASS} style={[separatorStyle, { backgroundColor: palette.surface }]}>
+          {children}
+        </View>
+      </TouchableNativeFeedback>
     );
   }
 
   return (
-    <View style={separatorStyle}>
-      <RNPressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.pressableRow,
-          { backgroundColor: pressed ? rowPressedBackground : palette.surface },
-        ]}
-      >
-        <View className={ROW_CLASS}>{children}</View>
-      </RNPressable>
-    </View>
+    <RNPressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.pressableRow,
+        { backgroundColor: pressed ? rowPressedBackground : palette.surface },
+      ]}
+    >
+      <View className={ROW_CLASS} style={separatorStyle}>
+        {children}
+      </View>
+    </RNPressable>
   );
 }
 

@@ -137,7 +137,6 @@ export default function WebDavBrowserScreen() {
               <SettingsRow
                 key={entry.path}
                 title={entry.name}
-                detail={entry.path || "/"}
                 onPress={() => handleOpenDirectory(entry.path)}
                 isLast={index === entries.length - 1}
               />
