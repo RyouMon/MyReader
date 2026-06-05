@@ -2,9 +2,12 @@ import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { isMissingMetadataDbError, normalizeCurrentPath } from "@/src/domain/library/remote-library";
+import {
+  createBrowseRemoteOps,
+  isMissingMetadataDbError,
+  normalizeCurrentPath,
+} from "@/src/domain/library/remote-library";
 import type { RemoteDirEntry, RemoteLibraryOps } from "@/src/domain/library/remote-library";
-import type { DataSource } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
 import { registerLibrary } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
@@ -13,7 +16,6 @@ export type UseRemoteDirectoryBrowserOpts = {
   dataSourceId: string | undefined;
   currentPathParam: string | undefined;
   sourceType: "webdav" | "onedrive";
-  resolveOps: (candidate: DataSource) => Promise<RemoteLibraryOps | null>;
 };
 
 export type RemoteDirectoryBrowserState = {
@@ -34,7 +36,6 @@ export function useRemoteDirectoryBrowser({
   dataSourceId,
   currentPathParam,
   sourceType,
-  resolveOps,
 }: UseRemoteDirectoryBrowserOpts): RemoteDirectoryBrowserState {
   const currentPath = useMemo(() => normalizeCurrentPath(currentPathParam), [currentPathParam]);
   const dataSources = useAppStore((state) => state.dataSources);
@@ -65,7 +66,7 @@ export function useRemoteDirectoryBrowser({
         setError(null);
       }
 
-      const result = await resolveOps(candidate);
+      const result = await createBrowseRemoteOps(candidate);
       if (active) {
         setOps(result);
         if (!result) {
@@ -79,7 +80,7 @@ export function useRemoteDirectoryBrowser({
     return () => {
       active = false;
     };
-  }, [candidate, resolveOps]);
+  }, [candidate]);
 
   useEffect(() => {
     let active = true;
