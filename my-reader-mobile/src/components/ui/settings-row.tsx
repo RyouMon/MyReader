@@ -8,7 +8,9 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction, type MenuComponentRef } from "@react-native-menu/menu";
+import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 import chroma from "chroma-js";
 
@@ -19,9 +21,16 @@ import { Text, View } from "@/tw";
 const ROW_CLASS = "flex-row items-center justify-between gap-3 px-4 py-4";
 const TITLE_CLASS = "text-[16px] leading-6";
 const DETAIL_CLASS = "text-[13px] leading-5";
+const ROW_ICON_SIZE = 22;
 const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
   ...StyleSheet.absoluteFill,
   opacity: 0,
+};
+
+/** Cross-platform row icon — SF Symbol on iOS, Material Icons on Android (`expo-symbols`). */
+export type SettingsRowIcon = {
+  ios: string;
+  android: string;
 };
 
 function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
@@ -49,6 +58,8 @@ function rowSeparatorStyle(isLast: boolean | undefined, palette: ThemePalette): 
 
 type SettingsRowProps = {
   title: string;
+  /** Leading icon — SF Symbol (iOS) and Material Icons name (Android). */
+  icon?: SettingsRowIcon;
   /** Muted secondary text shown below the title. */
   detail?: string;
   /** Right-side label (same size as title, muted color). */
@@ -63,16 +74,32 @@ type SettingsMenuRowProps = Omit<SettingsRowProps, "onPress"> & {
   isAnchoredToRight?: boolean;
 };
 
+function SettingsRowIconView({ icon, palette }: { icon: SettingsRowIcon; palette: ThemePalette }) {
+  const tintColor = palette.textMuted;
+
+  return (
+    <SymbolView
+      fallback={<MaterialIcons name={icon.android as never} size={ROW_ICON_SIZE} color={tintColor} />}
+      name={{ ios: icon.ios, android: icon.android } as never}
+      resizeMode="scaleAspectFit"
+      size={ROW_ICON_SIZE}
+      tintColor={tintColor}
+    />
+  );
+}
+
 function SettingsRowBody({
   title,
+  icon,
   detail,
   value,
   palette,
-}: Pick<SettingsRowProps, "title" | "detail" | "value"> & { palette: ThemePalette }) {
+}: Pick<SettingsRowProps, "title" | "icon" | "detail" | "value"> & { palette: ThemePalette }) {
   const hasValue = value != null && value.length > 0;
 
   return (
     <>
+      {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
       <View className="flex-1 gap-1">
         <Text selectable className={TITLE_CLASS} style={{ color: palette.text }}>
           {title}
@@ -179,6 +206,7 @@ export function SettingsMenuRow({
   onPressAction,
   isAnchoredToRight,
   title,
+  icon,
   detail,
   value,
   isLast,
@@ -186,7 +214,7 @@ export function SettingsMenuRow({
   const { t } = useTranslation();
   const menuRef = useRef<MenuComponentRef>(null);
   const palette = useThemePalette();
-  const body = <SettingsRowBody title={title} detail={detail} value={value} palette={palette} />;
+  const body = <SettingsRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
 
   const handlePress = useCallback(() => {
     if (Platform.OS === "ios") {
@@ -227,13 +255,14 @@ export function SettingsMenuRow({
 
 export function SettingsRow({
   title,
+  icon,
   detail,
   value,
   onPress,
   isLast,
 }: SettingsRowProps) {
   const palette = useThemePalette();
-  const body = <SettingsRowBody title={title} detail={detail} value={value} palette={palette} />;
+  const body = <SettingsRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
 
   return (
     <SettingsRowPressable onPress={onPress} isLast={isLast}>

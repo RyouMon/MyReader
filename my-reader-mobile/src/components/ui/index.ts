@@ -16,5 +16,5 @@ export { Screen } from "./screen";
 export { SearchField } from "./search-field";
 export { SectionCard } from "./section-card";
 export { SectionHeading } from "./section-heading";
-export { SettingsMenuRow, SettingsRow } from "./settings-row";
+export { SettingsMenuRow, SettingsRow, type SettingsRowIcon } from "./settings-row";
 export { SettingsSectionLabel } from "./settings-section-label";

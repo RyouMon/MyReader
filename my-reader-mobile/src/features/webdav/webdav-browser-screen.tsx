@@ -137,6 +137,7 @@ export default function WebDavBrowserScreen() {
               <SettingsRow
                 key={entry.path}
                 title={entry.name}
+                icon={{ ios: "folder.fill", android: "folder" }}
                 onPress={() => handleOpenDirectory(entry.path)}
                 isLast={index === entries.length - 1}
               />
