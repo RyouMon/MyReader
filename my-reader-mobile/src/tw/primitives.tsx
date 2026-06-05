@@ -55,7 +55,7 @@ View.displayName = "CSS(View)";
 export const Text = (
   props: React.ComponentProps<typeof RNText> & { className?: string }
 ) => {
-  return cssElement(RNText, props, { className: "style" });
+  return cssElement(RNText, { maxFontSizeMultiplier: 1.3, ...props }, { className: "style" });
 };
 Text.displayName = "CSS(Text)";
 

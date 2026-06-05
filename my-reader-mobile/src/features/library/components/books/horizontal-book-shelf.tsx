@@ -17,7 +17,7 @@ export function HorizontalBookShelf({
       data={data}
       keyExtractor={(item) => item.id}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 12, paddingHorizontal: 4 }}
+      contentContainerStyle={{ gap: 12, paddingHorizontal: 4, alignItems: "flex-start" }}
       renderItem={({ item }) => <BookCard book={item} width={156} onPress={onSelectBook ? () => onSelectBook(item) : undefined} />}
     />
   );

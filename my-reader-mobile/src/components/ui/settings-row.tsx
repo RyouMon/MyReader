@@ -16,7 +16,7 @@ import { mixInk } from "@/src/design/reader-chrome-palette";
 import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-const ROW_CLASS = "min-h-16 flex-row items-center justify-between gap-3 px-4 py-4";
+const ROW_CLASS = "flex-row items-center justify-between gap-3 px-4 py-4";
 const TITLE_CLASS = "text-[16px] leading-6";
 const DETAIL_CLASS = "text-[13px] leading-5";
 const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {

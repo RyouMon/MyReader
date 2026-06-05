@@ -170,7 +170,7 @@ function BookRowImpl({
       onPress={handlePress}
       underlayColor={palette.surface}
     >
-      <View className="min-h-[60px] flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
+      <View className="flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
         <BookCover
           book={book}
           width={38}
