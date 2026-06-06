@@ -19,7 +19,7 @@ describe("useStackScreenOptions", () => {
     Object.defineProperty(Platform, "OS", { configurable: true, value: originalPlatform });
   });
 
-  it("uses native stack back on iOS", () => {
+  it("should use native stack back when platform is iOS", () => {
     Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
 
     const options = useStackScreenOptions();
@@ -28,7 +28,7 @@ describe("useStackScreenOptions", () => {
     expect(options.headerLeft).toBeUndefined();
   });
 
-  it("uses a single custom back button on Android", () => {
+  it("should use a single custom back button when platform is Android", () => {
     Object.defineProperty(Platform, "OS", { configurable: true, value: "android" });
 
     const options = useStackScreenOptions();

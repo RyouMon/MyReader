@@ -3,7 +3,7 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Platform, TextInput as RNTextInput } from "react-native";
+import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
@@ -17,8 +17,7 @@ import {
   Screen,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { modalCloseToolbarAction } from "@/src/components/ui/modal-close-toolbar-action";
-import { resolveAddWebDavHeaderLead } from "@/src/navigation/settings-modal-header";
+import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 
 const addWebDavMobileSchema = z
@@ -188,13 +187,10 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   const inputClassName = "border-0 bg-transparent py-1 text-[15px]";
-  const leftToolbar =
-    resolveAddWebDavHeaderLead({
-      platform: Platform.OS === "ios" ? "ios" : "android",
-      from,
-    }) === "toolbar-close"
-      ? [modalCloseToolbarAction(t("common.close"))]
-      : undefined;
+  const leftToolbar = useSettingsScreenHeaderLeft({
+    routeId: "webdav.add",
+    flow: from,
+  });
   const rightToolbar: HeaderToolbarAction[] = [
     {
       label: saving ? t("webdav.add.completing") : t("webdav.add.complete"),

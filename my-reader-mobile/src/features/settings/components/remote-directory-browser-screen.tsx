@@ -1,24 +1,16 @@
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { router, useLocalSearchParams, type RelativePathString } from "expo-router";
-import { useMemo } from "react";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-import { EmptyState, Screen, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
+import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
-import { modalCloseToolbarAction } from "@/src/components/ui/modal-close-toolbar-action";
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
-import {
-  ADD_LIBRARY_FLOW,
-  resolveRemoteDirectoryBrowserHeaderLead,
-} from "@/src/navigation/settings-modal-header";
-
-const ADD_LIBRARY_BROWSER_FALLBACK = "/settings/add-library" as RelativePathString;
+import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
 
 type RemoteDirectoryBrowserScreenProps = {
   sourceType: "webdav" | "onedrive";
@@ -71,21 +63,11 @@ export function RemoteDirectoryBrowserScreen({
     });
   }
 
-  const leftToolbar = useMemo((): HeaderToolbarAction[] | undefined => {
-    const lead = resolveRemoteDirectoryBrowserHeaderLead({
-      platform: Platform.OS === "ios" ? "ios" : "android",
-      from,
-      currentPath,
-    });
-
-    if (lead !== "toolbar-close") {
-      return undefined;
-    }
-
-    return [
-      modalCloseToolbarAction(t("common.close"), ADD_LIBRARY_BROWSER_FALLBACK, { dismissTo: true }),
-    ];
-  }, [currentPath, from, t]);
+  const leftToolbar = useSettingsScreenHeaderLeft({
+    routeId: sourceType === "webdav" ? "webdav.browser" : "onedrive.browser",
+    flow: from,
+    currentPath,
+  });
 
   if (notFound) {
     return (

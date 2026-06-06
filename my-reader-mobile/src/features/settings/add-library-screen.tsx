@@ -11,9 +11,10 @@ import { pickCalibreLibrary } from "@/src/domain/library/calibre";
 import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
+import { SETTINGS_FLOW_ADD_LIBRARY } from "@/src/navigation/policies/settings-routes";
 
 function sourceBrowserPath(source: DataSource) {
-  const sharedParams = { currentPath: "/", from: "add-library" as const };
+  const sharedParams = { currentPath: "/", from: SETTINGS_FLOW_ADD_LIBRARY };
   if (source.type === "onedrive") {
     return {
       pathname: "/settings/onedrive/browser" as RelativePathString,

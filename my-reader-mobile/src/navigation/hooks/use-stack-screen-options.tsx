@@ -26,7 +26,7 @@ export function useStackScreenOptions(): NativeStackNavigationOptions {
   return {
     ...shared,
     headerBackVisible: false,
-    headerLeft: ({ canGoBack, onPress }) =>
-      canGoBack ? <HeaderBackButton onPress={onPress ?? (() => router.back())} /> : null,
+    headerLeft: ({ canGoBack }) =>
+      canGoBack ? <HeaderBackButton onPress={() => router.back()} /> : null,
   };
 }

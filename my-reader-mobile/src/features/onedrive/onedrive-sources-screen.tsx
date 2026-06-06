@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
 
@@ -16,8 +16,7 @@ import {
   SettingsRow,
   type HeaderToolbarAction,
 } from "@/src/components";
-import { modalCloseToolbarAction } from "@/src/components/ui/modal-close-toolbar-action";
-import { resolveRemoteSourcesListHeaderLead } from "@/src/navigation/settings-modal-header";
+import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
 import { useAppStore } from "@/src/store/app-store";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
@@ -37,12 +36,7 @@ export default function OneDriveSourcesScreen() {
     router.push({ pathname: "/settings/onedrive/[dataSourceId]", params: { dataSourceId: sourceId } });
   }
 
-  const leftToolbar =
-    resolveRemoteSourcesListHeaderLead({
-      platform: Platform.OS === "ios" ? "ios" : "android",
-    }) === "toolbar-close"
-      ? [modalCloseToolbarAction(t("common.close"))]
-      : undefined;
+  const leftToolbar = useSettingsScreenHeaderLeft({ routeId: "onedrive.sources" });
   const rightToolbar: HeaderToolbarAction[] = [
     {
       label: t("onedrive.addSource"),

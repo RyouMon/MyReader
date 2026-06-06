@@ -4,7 +4,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
   const renderLeft = jest.fn();
   const renderRight = jest.fn();
 
-  it("does not override stack back when only right actions are provided", () => {
+  it("should not override stack back when only right actions are provided", () => {
     const options = buildAndroidHeaderToolbarNavigationOptions({
       hasLeft: false,
       hasRight: true,
@@ -17,7 +17,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
     expect(options.headerRight).toBe(renderRight);
   });
 
-  it("hides stack back when custom left toolbar actions are provided", () => {
+  it("should hide stack back when custom left toolbar actions are provided", () => {
     const options = buildAndroidHeaderToolbarNavigationOptions({
       hasLeft: true,
       hasRight: false,
@@ -30,7 +30,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
     expect(options.headerRight).toBeUndefined();
   });
 
-  it("never enables stack back together with custom left actions", () => {
+  it("should not enable stack back when custom left actions are present", () => {
     const options = buildAndroidHeaderToolbarNavigationOptions({
       hasLeft: true,
       hasRight: true,
