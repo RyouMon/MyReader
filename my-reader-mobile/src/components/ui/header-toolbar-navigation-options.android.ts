@@ -1,6 +1,8 @@
 import type { NativeStackNavigationOptions } from "expo-router";
 import type { ReactNode } from "react";
 
+import { wrapAndroidHeaderAction } from "./android-header-layout";
+
 type AndroidHeaderToolbarNavigationOptionsInput = {
   hasLeft: boolean;
   hasRight: boolean;
@@ -19,11 +21,11 @@ export function buildAndroidHeaderToolbarNavigationOptions({
 
   if (hasLeft) {
     options.headerBackVisible = false;
-    options.headerLeft = renderLeft;
+    options.headerLeft = wrapAndroidHeaderAction("left", renderLeft);
   }
 
   if (hasRight) {
-    options.headerRight = renderRight;
+    options.headerRight = wrapAndroidHeaderAction("right", renderRight);
   }
 
   return options;

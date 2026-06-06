@@ -14,7 +14,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
 
     expect(options.headerBackVisible).toBeUndefined();
     expect(options.headerLeft).toBeUndefined();
-    expect(options.headerRight).toBe(renderRight);
+    expect(typeof options.headerRight).toBe("function");
   });
 
   it("should hide stack back when custom left toolbar actions are provided", () => {
@@ -26,7 +26,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
     });
 
     expect(options.headerBackVisible).toBe(false);
-    expect(options.headerLeft).toBe(renderLeft);
+    expect(typeof options.headerLeft).toBe("function");
     expect(options.headerRight).toBeUndefined();
   });
 
@@ -39,7 +39,7 @@ describe("buildAndroidHeaderToolbarNavigationOptions", () => {
     });
 
     expect(options.headerBackVisible).toBe(false);
-    expect(options.headerLeft).toBe(renderLeft);
-    expect(options.headerRight).toBe(renderRight);
+    expect(typeof options.headerLeft).toBe("function");
+    expect(typeof options.headerRight).toBe("function");
   });
 });

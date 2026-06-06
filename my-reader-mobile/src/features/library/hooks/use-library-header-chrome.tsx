@@ -74,7 +74,6 @@ export function useLibraryHeaderChrome({
     onSetDownloadFilter,
     onSetSortBy,
     onSetViewMode,
-    textColor: palette.text,
   });
 
   const toolbarRight = useMemo((): HeaderToolbarAction[] | undefined => {

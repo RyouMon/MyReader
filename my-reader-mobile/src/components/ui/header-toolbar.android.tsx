@@ -1,19 +1,12 @@
 import { type ReactNode } from "react";
 
-import {
-  CircularProgressIndicator,
-  Host,
-  Icon,
-  IconButton,
-} from "@expo/ui/jetpack-compose";
-import { size } from "@expo/ui/jetpack-compose/modifiers";
 import { Stack, type NativeStackNavigationOptions } from "expo-router";
 import type { SFSymbol } from "expo-symbols";
-import { Pressable, type ColorValue } from "react-native";
+import type { ColorValue } from "react-native";
 
-import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
+import { AndroidHeaderIconButton } from "./android-header-icon-button";
 import { resolveToolbarMaterialIcon } from "./header-toolbar-material-icons.android";
 import { RoundIconButton } from "./round-icon-button";
 import { buildAndroidHeaderToolbarNavigationOptions } from "./header-toolbar-navigation-options.android";
@@ -38,10 +31,8 @@ type HeaderToolbarProps = {
 };
 
 function HeaderToolbarActionButton({ action }: { action: HeaderToolbarAction }) {
-  const { palette, colorScheme } = useTheme();
   const materialIcon = resolveToolbarMaterialIcon(action.iosSfSymbol);
   const enabled = !(action.loading || action.disabled);
-  const isDark = colorScheme === "dark";
 
   if (!materialIcon) {
     return (
@@ -55,42 +46,13 @@ function HeaderToolbarActionButton({ action }: { action: HeaderToolbarAction }) 
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <AndroidHeaderIconButton
+      icon={materialIcon}
       accessibilityLabel={action.label}
-      accessibilityState={{ disabled: !enabled }}
-      android_ripple={{
-        color: isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.12)",
-        borderless: true,
-        radius: 24,
-      }}
       disabled={!enabled}
+      loading={action.loading}
       onPress={action.onPress}
-    >
-      <Host matchContents pointerEvents="none" style={{ overflow: "visible" }}>
-        <IconButton
-          colors={{
-            contentColor: palette.text,
-            disabledContentColor: palette.textMuted,
-          }}
-          enabled={enabled}
-        >
-          {action.loading ? (
-            <CircularProgressIndicator
-              color={palette.text}
-              modifiers={[size(20, 20)]}
-              strokeWidth={2}
-            />
-          ) : (
-            <Icon
-              source={materialIcon}
-              size={24}
-              contentDescription={action.label}
-            />
-          )}
-        </IconButton>
-      </Host>
-    </Pressable>
+    />
   );
 }
 
