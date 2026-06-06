@@ -1,4 +1,4 @@
 export type PlatformOS = "ios" | "android";
 
-/** Leading header affordance for a settings-stack screen. */
-export type SettingsHeaderLead = "stack-back" | "toolbar-close" | "layout-close";
+/** Leading header affordance for a screen. */
+export type HeaderLead = "none" | "stack-back" | "toolbar-close" | "layout-close";

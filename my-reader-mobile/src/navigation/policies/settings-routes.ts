@@ -1,6 +1,6 @@
 import type { RelativePathString } from "expo-router";
 
-import type { PlatformOS, SettingsHeaderLead } from "../types";
+import type { PlatformOS, HeaderLead } from "../types";
 
 export const SETTINGS_FLOW_ADD_LIBRARY = "add-library";
 
@@ -26,7 +26,7 @@ export type SettingsHeaderContext = {
 };
 
 /** Resolves the leading header affordance for a settings-domain route. */
-export function resolveSettingsHeaderLead(ctx: SettingsHeaderContext): SettingsHeaderLead {
+export function resolveSettingsHeaderLead(ctx: SettingsHeaderContext): HeaderLead {
   const { routeId, platform, flow, currentPath = "/" } = ctx;
   const fromAddLibrary = flow === SETTINGS_FLOW_ADD_LIBRARY;
 

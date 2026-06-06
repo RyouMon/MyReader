@@ -1,4 +1,4 @@
-import type { NativeStackNavigationOptions } from "expo-router";
+import type { RelativePathString } from "expo-router";
 
 import {
   resolveSettingsCloseDismissTarget,
@@ -6,24 +6,30 @@ import {
   type SettingsHeaderContext,
   type SettingsRouteId,
 } from "./policies/settings-routes";
-import type { PlatformOS, SettingsHeaderLead } from "./types";
+import type { HeaderLead, PlatformOS } from "./types";
 
-export type ComposedSettingsScreenHeader = {
-  lead: SettingsHeaderLead;
-  closeDismissTarget: ReturnType<typeof resolveSettingsCloseDismissTarget>;
-  androidStackOptionsWhenToolbarLeft: Pick<NativeStackNavigationOptions, "headerBackVisible">;
+export type ComposedScreenHeader = {
+  lead: HeaderLead;
+  closeDismissTarget?: RelativePathString;
 };
 
-/** Composes header lead policy and Android stack invariants for a settings screen. */
-export function composeSettingsScreenHeader(ctx: SettingsHeaderContext): ComposedSettingsScreenHeader {
-  const lead = resolveSettingsHeaderLead(ctx);
-  const hasToolbarLeft = lead === "toolbar-close";
+export type ScreenHeaderInput = {
+  domain: "settings";
+  ctx: SettingsHeaderContext;
+};
+
+/** Composes header policy for a navigation domain into screen-ready decisions. */
+export function composeScreenHeader(input: ScreenHeaderInput): ComposedScreenHeader {
+  const lead = resolveSettingsHeaderLead(input.ctx);
+
+  if (lead !== "toolbar-close") {
+    return { lead };
+  }
 
   return {
     lead,
-    closeDismissTarget: resolveSettingsCloseDismissTarget(ctx.routeId, ctx.flow),
-    androidStackOptionsWhenToolbarLeft: hasToolbarLeft ? { headerBackVisible: false } : {},
+    closeDismissTarget: resolveSettingsCloseDismissTarget(input.ctx.routeId, input.ctx.flow),
   };
 }
 
-export type { SettingsRouteId, SettingsHeaderContext, PlatformOS, SettingsHeaderLead };
+export type { SettingsRouteId, SettingsHeaderContext, PlatformOS, HeaderLead };

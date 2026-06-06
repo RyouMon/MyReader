@@ -1,12 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
 import { FlashList } from "@shopify/flash-list";
 import { Stack, router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
-import { Platform, View, useWindowDimensions } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
@@ -19,9 +17,7 @@ import {
   Screen,
   SearchField,
   SectionHeading,
-  type HeaderToolbarAction,
 } from "@/src/components";
-import { AndroidMenuRippleButton } from "@/src/components/ui/AndroidMenuRippleButton";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
@@ -32,29 +28,15 @@ import {
   BookRow,
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
+import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
+import { getLibraryDownloadFilterLabel } from "@/src/features/library/utils/library-header-config";
+import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
 import { useAppStore } from "@/src/store/app-store";
-import type { LibraryViewMode } from "@/src/store/app-store.types";
 import { useBookActions } from "./hooks/useBookActions";
-
-const downloadFilterOptions = [
-  { value: "all", labelKey: "library.filter.all" as const },
-  { value: "downloaded", labelKey: "library.filter.downloaded" as const },
-  { value: "notDownloaded", labelKey: "library.filter.notDownloaded" as const },
-  { value: "downloading", labelKey: "library.filter.downloading" as const },
-] as const;
-const sortOptions: { value: SortOption; labelKey: string }[] = [
-  { value: "title", labelKey: "library.sort.title" },
-  { value: "author", labelKey: "library.sort.author" },
-  { value: "recentlyAdded", labelKey: "library.sort.recentlyAdded" },
-];
-const viewOptions: { value: LibraryViewMode; labelKey: string }[] = [
-  { value: "grid", labelKey: "library.view.grid" },
-  { value: "list", labelKey: "library.view.list" },
-];
 
 const defaultSortOption: SortOption = "recentlyAdded";
 const GRID_MIN_CARD_WIDTH = 150;
@@ -64,12 +46,6 @@ const GRID_MAX_COLUMNS = 6;
 type LibraryScreenProps = {
   libraryId?: string;
 };
-
-/** Returns the display label for the active download-state filter. */
-function getDownloadFilterLabel(t: (key: string) => string, option: DownloadFilterOption) {
-  const item = downloadFilterOptions.find((item) => item.value === option);
-  return item ? t(item.labelKey) : t("library.filter.all");
-}
 
 /** Computes responsive grid columns so larger screens can show more books per row. */
 function getResponsiveGridColumns(containerWidth: number, gap: number, horizontalPadding: number): number {
@@ -147,8 +123,15 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const selectedLibrary = useMemo(
     () => (effectiveLibraryId ? libraries.find((library) => library.id === effectiveLibraryId) ?? null : null),
-    [libraries, effectiveLibraryId]
+    [libraries, effectiveLibraryId],
   );
+
+  const variant = resolveLibraryScreenVariant({
+    storeReady,
+    effectiveLibraryId,
+    hasSelectedLibrary: selectedLibrary !== null,
+    librariesCount: libraries.length,
+  });
 
   const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById, bookActiveFormatsById } = useLibraryBookMeta(
     selectedLibrary,
@@ -174,7 +157,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           onPress: () => applyLibrarySelection(library.id),
         })),
         { text: t("library.switchLibraryAlert.close"), style: "cancel" },
-      ]
+      ],
     );
   }, [applyLibrarySelection, effectiveLibraryId, libraries, selectedLibrary, t]);
 
@@ -191,77 +174,21 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     })();
   }, [selectedLibrary, syncNow]);
 
-  const leftMenuRef = useRef<MenuComponentRef>(null);
-  const rightMenuRef = useRef<MenuComponentRef>(null);
-
-  const androidLeftMenuActions = useMemo(
-    () => [
-      { id: "refreshLibrary", title: t("library.syncCurrentLibrary") },
-      {
-        id: "switchLibrary",
-        title: t("library.switchLibrary"),
-        subactions: libraries.map((library) => ({
-          id: `switchLibrary:${library.id}`,
-          title: `${effectiveLibraryId === library.id ? "✓ " : ""}${library.name}`,
-        })),
-      },
-    ],
-    [libraries, effectiveLibraryId, t],
-  );
-
-  const androidRightMenuActions = useMemo(
-    () => [
-      {
-        id: "filter",
-        title: t("library.filterLabel"),
-        subactions: downloadFilterOptions.map((option) => ({
-          id: `filter:${option.value}`,
-          title: `${downloadFilter === option.value ? "✓ " : ""}${t(option.labelKey)}`,
-        })),
-      },
-      {
-        id: "sort",
-        title: t("library.sortLabel"),
-        subactions: sortOptions.map((option) => ({
-          id: `sort:${option.value}`,
-          title: `${sortBy === option.value ? "✓ " : ""}${t(option.labelKey)}`,
-        })),
-      },
-      {
-        id: "view",
-        title: t("library.viewLabel"),
-        subactions: viewOptions.map((option) => ({
-          id: `view:${option.value}`,
-          title: `${viewMode === option.value ? "✓ " : ""}${t(option.labelKey)}`,
-        })),
-      },
-    ],
-    [downloadFilter, sortBy, viewMode, t],
-  );
-
-  function handleAndroidLeftMenuAction(event: string) {
-    if (event === "refreshLibrary") {
-      handleSyncCurrentLibrary();
-      return;
-    }
-    if (event.startsWith("switchLibrary:")) {
-      applyLibrarySelection(event.slice("switchLibrary:".length));
-    }
-  }
-
-  function handleAndroidRightMenuAction(event: string) {
-    if (event.startsWith("filter:")) {
-      setDownloadFilter(event.slice("filter:".length) as DownloadFilterOption);
-      return;
-    }
-    if (event.startsWith("sort:")) {
-      setSortBy(event.slice("sort:".length) as SortOption);
-      return;
-    }
-    if (event.startsWith("view:")) {
-      setViewMode(event.slice("view:".length) as LibraryViewMode);
-    }
-  }
+  const { stackScreenOptions, toolbarRight, iosToolbar } = useLibraryHeaderChrome({
+    variant,
+    selectedLibrary,
+    libraries,
+    effectiveLibraryId,
+    downloadFilter,
+    sortBy,
+    viewMode,
+    onSyncCurrentLibrary: handleSyncCurrentLibrary,
+    onSelectLibrary: applyLibrarySelection,
+    onOpenLibrarySwitchMenu: openLibrarySwitchMenu,
+    onSetDownloadFilter: setDownloadFilter,
+    onSetSortBy: setSortBy,
+    onSetViewMode: setViewMode,
+  });
 
   useEffect(() => {
     if (!libraryIdProp || !selectedLibrary || libraryIdProp === activeLibraryId) {
@@ -284,30 +211,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     selectedLibrary,
     setSelectedFormatById,
   );
-
-  const emptyLibrariesToolbarRight: HeaderToolbarAction[] = [
-    {
-      label: t("library.addLibrary"),
-      onPress: () => router.push("/settings/add-library"),
-      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
-      iosSfSymbol: "plus",
-    },
-  ];
-
-  const unselectedLibraryToolbarRight: HeaderToolbarAction[] = [
-    {
-      label: t("library.switchLibrary"),
-      onPress: openLibrarySwitchMenu,
-      icon: <SymbolView name="arrow.left.arrow.right" size={18} tintColor={palette.text} />,
-      iosSfSymbol: "arrow.left.arrow.right",
-    },
-    {
-      label: t("library.addLibrary"),
-      onPress: () => router.push("/settings/add-library"),
-      icon: <SymbolView name="plus" size={18} tintColor={palette.text} />,
-      iosSfSymbol: "plus",
-    },
-  ];
 
   const isMenuOpen = openMenuBookId !== null;
 
@@ -382,15 +285,18 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const getItemType = useCallback(() => (isGridView ? "grid" : "list"), [isGridView]);
 
-  if (!storeReady && typeof effectiveLibraryId === "string" && !selectedLibrary) {
+  const header = (
+    <>
+      <Stack.Screen options={stackScreenOptions} />
+      {toolbarRight ? <HeaderToolbar right={toolbarRight} /> : null}
+      {iosToolbar}
+    </>
+  );
+
+  if (variant === "loading") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: t("library.title"),
-            headerLargeTitle: true,
-          }}
-        />
+        {header}
         <Screen>
           <EmptyState title={t("library.loading.title")} detail={t("library.loading.detail")} icon={{ ios: "hourglass", android: "hourglass-empty" }} />
         </Screen>
@@ -398,21 +304,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  const showInvalidLibrary =
-    typeof effectiveLibraryId === "string" &&
-    !selectedLibrary &&
-    !storeReady &&
-    libraries.length > 0;
-
-  if (showInvalidLibrary) {
+  if (variant === "invalid") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: t("library.title"),
-            headerLargeTitle: true,
-          }}
-        />
+        {header}
         <Screen>
           <EmptyState title={t("library.notFound.title")} detail={t("library.notFound.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </Screen>
@@ -420,17 +315,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (libraries.length === 0) {
+  if (variant === "empty") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: t("library.title"),
-            headerLargeTitle: true,
-            headerLargeTitleShadowVisible: false,
-          }}
-        />
-        <HeaderToolbar right={emptyLibrariesToolbarRight} />
+        {header}
         <Screen>
           <EmptyState
             title={t("library.noLibrary.title")}
@@ -443,16 +331,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  if (!selectedLibrary) {
+  if (variant === "unselected") {
     return (
       <>
-        <Stack.Screen
-          options={{
-            title: t("library.title"),
-            headerLargeTitle: true,
-          }}
-        />
-        <HeaderToolbar right={unselectedLibraryToolbarRight} />
+        {header}
         <Screen>
           <EmptyState
             title={t("library.unselected.title")}
@@ -475,7 +357,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     <View className="gap-5" style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
       <SearchField placeholder={t("library.searchPlaceholder")} value={query} onChangeText={setQuery} />
       <SectionHeading
-        title={getDownloadFilterLabel(t, downloadFilter)}
+        title={getLibraryDownloadFilterLabel(t, downloadFilter)}
         detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
       />
     </View>
@@ -483,108 +365,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: selectedLibrary.name,
-          headerLargeTitle: true,
-          headerLeft:
-            Platform.OS !== "ios"
-              ? () => (
-                  <View className="h-10 w-10">
-                    <MenuView
-                      ref={leftMenuRef}
-                      actions={androidLeftMenuActions}
-                      onPressAction={({ nativeEvent }) => handleAndroidLeftMenuAction(nativeEvent.event)}
-                      style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
-                    >
-                      <View className="h-10 w-10" />
-                    </MenuView>
-                    <AndroidMenuRippleButton
-                      menuRef={leftMenuRef}
-                      icon={<MaterialIcons name="more-vert" size={22} color={palette.text} />}
-                      accessibilityLabel={t("library.libraryActions")}
-                    />
-                  </View>
-                )
-              : undefined,
-          headerRight:
-            Platform.OS !== "ios"
-              ? () => (
-                  <View className="h-10 w-10">
-                    <MenuView
-                      ref={rightMenuRef}
-                      actions={androidRightMenuActions}
-                      isAnchoredToRight
-                      onPressAction={({ nativeEvent }) => handleAndroidRightMenuAction(nativeEvent.event)}
-                      style={{ position: "absolute", top: 0, left: 0, width: 40, height: 40, opacity: 0 }}
-                    >
-                      <View className="h-10 w-10" />
-                    </MenuView>
-                    <AndroidMenuRippleButton
-                      menuRef={rightMenuRef}
-                      icon={<MaterialIcons name="tune" size={22} color={palette.text} />}
-                      accessibilityLabel={t("library.viewConfig")}
-                    />
-                  </View>
-                )
-              : undefined,
-        }}
-      />
-      {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Menu icon="ellipsis">
-            <Stack.Toolbar.MenuAction onPress={handleSyncCurrentLibrary}>
-              {t("library.syncCurrentLibrary")}
-            </Stack.Toolbar.MenuAction>
-            <Stack.Toolbar.Menu inline title={t("library.switchLibrary")}>
-              {libraries.map((library) => (
-                <Stack.Toolbar.MenuAction
-                  key={`library-${library.id}`}
-                  isOn={effectiveLibraryId === library.id}
-                  onPress={() => applyLibrarySelection(library.id)}
-                >
-                  {library.name}
-                </Stack.Toolbar.MenuAction>
-              ))}
-            </Stack.Toolbar.Menu>
-          </Stack.Toolbar.Menu>
-        </Stack.Toolbar>
-      ) : null}
-      {Platform.OS === "ios" ? (
-        <Stack.Toolbar placement="right">
-          <Stack.Toolbar.Menu icon="line.3.horizontal.decrease">
-            <Stack.Toolbar.Menu inline title={t("library.filterLabel")}>
-              {downloadFilterOptions.map((option) => (
-                <Stack.Toolbar.MenuAction
-                  key={`download-filter-${option.value}`}
-                  isOn={downloadFilter === option.value}
-                  onPress={() => setDownloadFilter(option.value)}
-                >
-                  {t(option.labelKey)}
-                </Stack.Toolbar.MenuAction>
-              ))}
-            </Stack.Toolbar.Menu>
-            <Stack.Toolbar.Menu inline title={t("library.sortLabel")}>
-              {sortOptions.map((option) => (
-                <Stack.Toolbar.MenuAction key={`sort-${option.value}`} isOn={sortBy === option.value} onPress={() => setSortBy(option.value)}>
-                  {t(option.labelKey)}
-                </Stack.Toolbar.MenuAction>
-              ))}
-            </Stack.Toolbar.Menu>
-            <Stack.Toolbar.Menu inline title={t("library.viewLabel")}>
-              {viewOptions.map((option) => (
-                <Stack.Toolbar.MenuAction
-                  key={`view-${option.value}`}
-                  isOn={viewMode === option.value}
-                  onPress={() => setViewMode(option.value)}
-                >
-                  {t(option.labelKey)}
-                </Stack.Toolbar.MenuAction>
-              ))}
-            </Stack.Toolbar.Menu>
-          </Stack.Toolbar.Menu>
-        </Stack.Toolbar>
-      ) : null}
+      {header}
       <FlashList
         key={`${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
         data={isLoadingNewContent ? [] : visibleBooks}
