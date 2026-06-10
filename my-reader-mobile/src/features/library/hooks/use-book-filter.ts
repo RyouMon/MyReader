@@ -19,7 +19,8 @@ function compareRecentlyAdded(left: BookItem, right: BookItem): number {
   return left.id.localeCompare(right.id, "zh-CN", { numeric: true });
 }
 
-export function useLibraryBookSearch(
+/** Filters and sorts books by query (title / author / authors), then by download status. */
+export function useBookFilter(
   books: BookItem[],
   debouncedQuery: string,
   sortBy: SortOption,

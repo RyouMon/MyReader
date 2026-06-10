@@ -29,7 +29,7 @@
     "addLibrary": "添加书库",
     "switchLibrary": "切换书库",
     "syncCurrentLibrary": "同步当前书库",
-    "searchPlaceholder": "搜索书名、作者、标签",
+    "searchPlaceholder": "搜索书名、作者",
     "bookCountRatio": "{{visible}} / {{total}} 本",
     "filter": {
       "all": "全部",
@@ -77,8 +77,18 @@
       "title": "读取失败"
     },
     "noMatch": {
-      "title": "没有匹配的图书",
-      "detail": "请调整搜索词，或确认书库中存在图书。"
+      "search": {
+        "title": "搜索无结果",
+        "detail": "未找到与搜索词匹配的图书，请尝试其他关键词。"
+      },
+      "empty": {
+        "title": "书库为空",
+        "detail": "当前书库中还没有图书。"
+      },
+      "filter": {
+        "title": "筛选无结果",
+        "detail": "当前筛选条件下没有图书，请尝试其他筛选条件。"
+      }
     }
   },
   "libraryDetail": {
@@ -439,6 +449,7 @@
     "delete": "删除",
     "gotIt": "知道了",
     "search": "搜索",
+    "clear": "清除",
     "current": "当前",
     "localStorage": "本地存储",
     "unnamedBook": "未命名书籍",

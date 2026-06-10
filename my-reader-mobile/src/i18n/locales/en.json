@@ -29,7 +29,7 @@
     "addLibrary": "Add Library",
     "switchLibrary": "Switch Library",
     "syncCurrentLibrary": "Sync Current Library",
-    "searchPlaceholder": "Search title, author, tags",
+    "searchPlaceholder": "Search title, author",
     "bookCountRatio": "{{visible}} / {{total}} books",
     "filter": {
       "all": "All",
@@ -77,8 +77,18 @@
       "title": "Load Failed"
     },
     "noMatch": {
-      "title": "No matching books",
-      "detail": "Adjust your search terms or confirm the library has books."
+      "search": {
+        "title": "No search results",
+        "detail": "No books match your search. Try different keywords."
+      },
+      "empty": {
+        "title": "Library is empty",
+        "detail": "There are no books in this library yet."
+      },
+      "filter": {
+        "title": "No filtered results",
+        "detail": "No books match the current filter. Try a different filter."
+      }
     }
   },
   "libraryDetail": {
@@ -439,6 +449,7 @@
     "delete": "Delete",
     "gotIt": "Got it",
     "search": "Search",
+    "clear": "Clear",
     "current": "Current",
     "localStorage": "Local Storage",
     "unnamedBook": "Unnamed Book",

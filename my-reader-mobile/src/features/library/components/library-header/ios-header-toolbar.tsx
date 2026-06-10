@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import type { Library } from "@/src/domain/types";
-import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-library-book-search";
+import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import {

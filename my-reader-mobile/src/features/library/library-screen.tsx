@@ -14,7 +14,6 @@ import {
   PrimaryButton,
   RoundIconButton,
   Screen,
-  SearchField,
   SectionHeading,
 } from "@/src/components";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
@@ -28,12 +27,12 @@ import {
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
+import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
 import { getLibraryDownloadFilterLabel } from "@/src/features/library/utils/library-header-config";
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
-import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
-import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-library-book-search";
+import { useBookFilter, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
 import { useAppStore } from "@/src/store/app-store";
 import { useBookActions } from "./hooks/useBookActions";
 
@@ -78,15 +77,15 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
   const storeReady = useAppStore((s) => s.storeReady);
+  const effectiveLibraryId = libraryIdProp ?? activeLibraryId ?? undefined;
   const { data: books = [], isLoading: loadingBooks, error: booksError } = useBooks(activeLibraryId);
-  const { syncNow, isSyncing } = useSyncLibrary();
+  const { syncNow } = useSyncLibrary();
   const viewMode = useAppStore((s) => s.libraryViewMode);
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
-  const [query, setQuery] = useState("");
+  const { query, setQuery, debouncedQuery, clearQuery } = useSearchQuery(effectiveLibraryId);
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
   const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
-  const debouncedQuery = useDebouncedValue(query, 180);
   const isGridView = viewMode === "grid";
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
@@ -108,8 +107,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       menuCloseTimerRef.current = null;
     }, 120);
   }, []);
-
-  const effectiveLibraryId = libraryIdProp ?? activeLibraryId ?? undefined;
 
   /** Switches active library only when user selects a different one. */
   const applyLibrarySelection = useCallback(
@@ -137,7 +134,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     books,
     selectedFormatById,
   );
-  const { visibleBooks } = useLibraryBookSearch(
+  const { visibleBooks } = useBookFilter(
     books,
     debouncedQuery,
     sortBy,
@@ -187,6 +184,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     onSetDownloadFilter: setDownloadFilter,
     onSetSortBy: setSortBy,
     onSetViewMode: setViewMode,
+    onQueryChange: setQuery,
+    onSearchCancel: clearQuery,
   });
 
   useEffect(() => {
@@ -352,14 +351,42 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   const listHeader = (
-    <View className="gap-5" style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
-      <SearchField placeholder={t("library.searchPlaceholder")} value={query} onChangeText={setQuery} />
+    <View style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
       <SectionHeading
         title={getLibraryDownloadFilterLabel(t, downloadFilter)}
         detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
       />
     </View>
   );
+
+  const emptyState = useMemo(() => {
+    if (query.length > 0) {
+      return {
+        title: t("library.noMatch.search.title"),
+        detail: t("library.noMatch.search.detail"),
+        icon: { ios: "magnifyingglass", android: "search" } as const,
+      };
+    }
+    if (books.length === 0) {
+      return {
+        title: t("library.noMatch.empty.title"),
+        detail: t("library.noMatch.empty.detail"),
+        icon: { ios: "books.vertical", android: "library-books" } as const,
+      };
+    }
+    if (downloadFilter !== "all") {
+      return {
+        title: t("library.noMatch.filter.title"),
+        detail: t("library.noMatch.filter.detail"),
+        icon: { ios: "line.3.horizontal.decrease.circle", android: "filter-list" } as const,
+      };
+    }
+    return {
+      title: t("library.noMatch.search.title"),
+      detail: t("library.noMatch.search.detail"),
+      icon: { ios: "magnifyingglass", android: "search" } as const,
+    };
+  }, [query.length, books.length, downloadFilter, t]);
 
   return (
     <>
@@ -392,7 +419,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           ) : booksError ? (
             <EmptyState title={t("library.loadError.title")} detail={booksError.message} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
           ) : (
-            <EmptyState title={t("library.noMatch.title")} detail={t("library.noMatch.detail")} icon={{ ios: "magnifyingglass", android: "search" }} />
+            <EmptyState title={emptyState.title} detail={emptyState.detail} icon={emptyState.icon} />
           )
         }
         renderItem={renderItem}

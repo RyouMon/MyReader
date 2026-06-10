@@ -13,7 +13,6 @@ export { type HeaderToolbarAction, type HeaderToolbarProps } from "./header-tool
 export { HeroCard } from "./hero-card";
 export { ProgressBar } from "./progress-bar";
 export { Screen } from "./screen";
-export { SearchField } from "./search-field";
 export { SectionCard } from "./section-card";
 export { SectionHeading } from "./section-heading";
 export { SettingsMenuRow, SettingsRow, type SettingsRowIcon } from "./settings-row";

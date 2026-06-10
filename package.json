@@ -11,7 +11,8 @@
     "sync:design-tokens": "node scripts/sync-design-tokens.mjs",
     "db:generate": "pnpm --filter @my-reader/db generate && bash scripts/generate-seaorm-entities.sh",
     "db:generate:calibre": "bash scripts/generate-seaorm-calibre-entities.sh",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "lint": "expo lint"
   },
   "devDependencies": {
     "husky": "^9.1.7"
