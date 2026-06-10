@@ -16,6 +16,7 @@ export default function SeedOneDriveScreen() {
   useEffect(() => {
     if (!storeReady || seeded.current) return;
     seeded.current = true;
+    let cancelled = false;
 
     async function seedOneDrive() {
       await createDataSource(
@@ -37,12 +38,16 @@ export default function SeedOneDriveScreen() {
 
     seedOneDrive()
       .then(() => {
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       })
       .catch((error) => {
         console.error("[seed-onedrive] failed:", error);
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [createDataSource, storeReady]);
 
   return <View />;

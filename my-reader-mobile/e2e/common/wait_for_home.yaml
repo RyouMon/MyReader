@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+name: Wait for home tab after async navigation
+tags:
+  - skip
+---
+# Seed routes finish in a useEffect and call router.dismissTo("/home").
+# Without this wait, a later tab switch can be overwritten by a late seed completion.
+- extendedWaitUntil:
+    visible:
+      id: "home-screen"
+    timeout: 120000

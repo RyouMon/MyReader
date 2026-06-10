@@ -9,6 +9,7 @@ tags:
     commands:
       - openLink: myreadermobile://seed-onedrive
       - runFlow: confirm_deep_link.yaml
+      - runFlow: wait_for_home.yaml
 - runFlow:
     when:
       platform: Android
@@ -16,3 +17,4 @@ tags:
       - openLink:
           link: exp+my-reader-mobile://seed-onedrive
           autoVerify: true
+      - runFlow: wait_for_home.yaml

@@ -10,26 +10,33 @@ tags:
 - runFlow: ../../common/seed_onedrive.yaml
 - runFlow: ../../common/open_settings.yaml
 - runScript: ../../scripts/selectors.js
+- extendedWaitUntil:
+    visible: ${output.selectors.fixtures.libraryName}
+    timeout: 10000
 
 # Scenario: 书库详情页面头部按钮
 - tapOn: ${output.selectors.fixtures.libraryName}
+- assertVisible: ${output.selectors.settings.header.titles.libraryDetail}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 - assertVisible: ${output.selectors.settings.toolbar.libraryDelete}
 - runFlow: ../../common/tap_header_back_or_close.yaml
 
 # Scenario: 添加书库页面头部按钮
 - tapOn: ${output.selectors.settings.rows.addLibrary}
+- assertVisible: ${output.selectors.settings.header.titles.addLibrary}
 - assertVisible: ${output.selectors.fixtures.webdavSource}
 - assertVisible: ${output.selectors.fixtures.onedriveSource}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 
 # Scenario: WebDAV 浏览器页面头部按钮
 - tapOn: ${output.selectors.fixtures.webdavSource}
+- assertVisible: ${output.selectors.settings.header.titles.webdavBrowser}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 - assertVisible: ${output.selectors.settings.toolbar.selectDirectory}
 
 # Scenario: WebDAV 浏览器子目录页面头部按钮
 - tapOn: ".*sub"
+- assertVisible: ${output.selectors.settings.header.titles.webdavBrowser}
 - runFlow: ../../common/assert_header_back.yaml
 - assertVisible: ${output.selectors.settings.toolbar.selectDirectory}
 - runFlow: ../../common/tap_header_back.yaml
@@ -37,11 +44,13 @@ tags:
 
 # Scenario: OneDrive 浏览器页面头部按钮
 - tapOn: ${output.selectors.fixtures.onedriveSource}
+- assertVisible: ${output.selectors.settings.header.titles.onedriveBrowser}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 - assertVisible: ${output.selectors.settings.toolbar.selectDirectory}
 
 # Scenario: OneDrive 浏览器子目录页面头部按钮
 - tapOn: ".*sub"
+- assertVisible: ${output.selectors.settings.header.titles.onedriveBrowser}
 - runFlow: ../../common/assert_header_back.yaml
 - assertVisible: ${output.selectors.settings.toolbar.selectDirectory}
 - runFlow: ../../common/tap_header_back.yaml
@@ -50,18 +59,21 @@ tags:
 
 # Scenario: WebDAV 源列表页面头部按钮
 - tapOn: ${output.selectors.settings.rows.webdav}
+- assertVisible: ${output.selectors.settings.header.titles.webdavSources}
 - assertVisible: ${output.selectors.fixtures.webdavSource}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 - assertVisible: ${output.selectors.settings.toolbar.webdavAdd}
 
 # Scenario: 添加 WebDAV 页面头部按钮
 - tapOn: ${output.selectors.settings.toolbar.webdavAdd}
+- assertVisible: ${output.selectors.settings.header.titles.webdavAdd}
 - runFlow: ../../common/assert_header_back.yaml
 - assertVisible: ${output.selectors.settings.toolbar.addWebdavDone}
 - runFlow: ../../common/tap_header_back.yaml
 
 # Scenario: WebDAV 源详情页面头部按钮
 - tapOn: ${output.selectors.fixtures.webdavSource}
+- assertVisible: ${output.selectors.settings.header.titles.webdavDetail}
 - runFlow: ../../common/assert_header_back.yaml
 - assertVisible: ${output.selectors.settings.toolbar.dataSourceDelete}
 - runFlow: ../../common/tap_header_back.yaml
@@ -69,12 +81,14 @@ tags:
 
 # Scenario: OneDrive 源列表页面头部按钮
 - tapOn: ${output.selectors.settings.rows.onedrive}
+- assertVisible: ${output.selectors.settings.header.titles.onedriveSources}
 - assertVisible: ${output.selectors.fixtures.onedriveSource}
 - runFlow: ../../common/assert_header_back_or_close.yaml
 - assertVisible: ${output.selectors.settings.toolbar.onedriveAdd}
 
 # Scenario: OneDrive 源详情页面头部按钮
 - tapOn: ${output.selectors.fixtures.onedriveSource}
+- assertVisible: ${output.selectors.settings.header.titles.onedriveDetail}
 - runFlow: ../../common/assert_header_back.yaml
 - assertVisible: ${output.selectors.settings.toolbar.dataSourceDelete}
 - runFlow: ../../common/tap_header_back.yaml

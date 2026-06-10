@@ -17,6 +17,17 @@ output.selectors = {
       close: "关闭|Close",
       back: "返回|Back",
       iosNativeBack: "返回|Back",
+      titles: {
+        libraryDetail: "书库详情|Library Details",
+        addLibrary: "添加书库|Add Library",
+        webdavSources: "WebDAV 数据源|WebDAV Sources",
+        webdavAdd: "添加 WebDAV 数据源|Add WebDAV Source",
+        webdavDetail: "数据源详情|Source Details",
+        webdavBrowser: "选择 WebDAV 书库|Select WebDAV Library",
+        onedriveSources: "OneDrive 数据源|OneDrive Sources",
+        onedriveDetail: "数据源详情|Source Details",
+        onedriveBrowser: "选择 OneDrive 书库|Select OneDrive Library",
+      },
     },
     toolbar: {
       libraryDelete: "删除书库|Delete Library",

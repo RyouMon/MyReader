@@ -21,15 +21,20 @@ export default function SeedLibraryScreen() {
   useEffect(() => {
     if (!storeReady || seeded.current) return;
     seeded.current = true;
+    let cancelled = false;
 
     seedLibrary()
       .then(() => {
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       })
       .catch((error) => {
         console.error("[seed-library] failed:", error);
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [storeReady]);
 
   return <View />;

@@ -16,6 +16,7 @@ export default function SeedWebDavScreen() {
   useEffect(() => {
     if (!storeReady || seeded.current) return;
     seeded.current = true;
+    let cancelled = false;
 
     async function seedWebDav() {
       await createDataSource(
@@ -36,12 +37,16 @@ export default function SeedWebDavScreen() {
 
     seedWebDav()
       .then(() => {
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       })
       .catch((error) => {
         console.error("[seed-webdav] failed:", error);
-        router.push("/home");
+        if (!cancelled) router.dismissTo("/home");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [createDataSource, storeReady]);
 
   return <View />;
