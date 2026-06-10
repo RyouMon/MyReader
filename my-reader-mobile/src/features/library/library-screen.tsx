@@ -11,7 +11,6 @@ import { useThemePalette } from "@/src/design/tokens";
 
 import {
   EmptyState,
-  HeaderToolbar,
   PrimaryButton,
   RoundIconButton,
   Screen,
@@ -34,7 +33,7 @@ import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolv
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useDebouncedValue } from "@/src/hooks/use-debounced-value";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
-import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/hooks/use-library-book-search";
+import { useLibraryBookSearch, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-library-book-search";
 import { useAppStore } from "@/src/store/app-store";
 import { useBookActions } from "./hooks/useBookActions";
 
@@ -174,7 +173,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     })();
   }, [selectedLibrary, syncNow]);
 
-  const { stackScreenOptions, toolbarRight, iosToolbar } = useLibraryHeaderChrome({
+  const { options, toolbar } = useLibraryHeaderChrome({
     variant,
     selectedLibrary,
     libraries,
@@ -287,9 +286,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const header = (
     <>
-      <Stack.Screen options={stackScreenOptions} />
-      {toolbarRight ? <HeaderToolbar right={toolbarRight} /> : null}
-      {iosToolbar}
+      <Stack.Screen options={options} />
+      {toolbar}
     </>
   );
 

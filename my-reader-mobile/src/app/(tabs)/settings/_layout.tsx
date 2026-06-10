@@ -2,7 +2,6 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { useStackScreenOptions } from "@/src/navigation/hooks/use-stack-screen-options";
-import { settingsModalLayoutCloseOptions } from "@/src/navigation/settings-layout-header";
 
 export default function SettingsStackLayout() {
   const screenOptions = useStackScreenOptions();
@@ -16,7 +15,6 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.libraryDetail"),
           presentation: "modal",
-          ...settingsModalLayoutCloseOptions(),
         }}
       />
       <Stack.Screen
@@ -24,7 +22,6 @@ export default function SettingsStackLayout() {
         options={{
           title: t("settings.addLibrary"),
           presentation: "modal",
-          ...settingsModalLayoutCloseOptions(),
         }}
       />
       <Stack.Screen

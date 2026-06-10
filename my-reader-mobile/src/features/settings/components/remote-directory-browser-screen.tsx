@@ -1,6 +1,5 @@
 import { normalizeCurrentPath } from "@/src/domain/library/remote-library";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { useThemePalette } from "@/src/design/tokens";
@@ -8,9 +7,9 @@ import { Text, View } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
-import { HeaderToolbar } from "@/src/components/ui/header-toolbar";
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers";
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
-import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
 
 type RemoteDirectoryBrowserScreenProps = {
   sourceType: "webdav" | "onedrive";
@@ -63,10 +62,28 @@ export function RemoteDirectoryBrowserScreen({
     });
   }
 
-  const leftToolbar = useSettingsScreenHeaderLeft({
-    routeId: sourceType === "webdav" ? "webdav.browser" : "onedrive.browser",
-    flow: from,
-    currentPath,
+  const isAddLibraryFlow = from === "add-library" && currentPath === "/";
+  const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings";
+  const isRootBrowser = currentPath === "/";
+
+  const { options, toolbar } = useScreenHeader({
+    ...(isRootBrowser
+      ? { close: { target: closeTarget, dismissTo: true, variant: "layout" } }
+      : {}),
+    backTitle: t("reader.back"),
+    right: [
+      createSaveAction({
+        label: saving ? label("validating") : label("selectDirectory"),
+        onPress: () =>
+          void chooseCurrentPath({
+            notValidTitle: label("notValidLibrary.title"),
+            notValidMessage: label("notValidLibrary.message"),
+            generic: label("notCalibreLibrary"),
+          }),
+        loading: saving,
+        color: palette.primary,
+      }),
+    ],
   });
 
   if (notFound) {
@@ -83,27 +100,8 @@ export function RemoteDirectoryBrowserScreen({
 
   return (
     <>
-      <HeaderToolbar
-        left={leftToolbar}
-        right={[
-          {
-            label: saving ? label("validating") : label("selectDirectory"),
-            onPress: () =>
-              void chooseCurrentPath({
-                notValidTitle: label("notValidLibrary.title"),
-                notValidMessage: label("notValidLibrary.message"),
-                generic: label("notCalibreLibrary"),
-              }),
-            icon: <MaterialIcons name="check" size={22} color={palette.primary} />,
-            iosSfSymbol: "checkmark",
-            color: palette.primary,
-            iconOnly: true,
-            loading: saving,
-            disabled: saving,
-            variant: "prominent",
-          },
-        ]}
-      />
+      <Stack.Screen options={options} />
+      {toolbar}
 
       <Screen>
         <ErrorBoundary

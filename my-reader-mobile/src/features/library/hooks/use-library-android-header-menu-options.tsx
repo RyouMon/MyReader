@@ -10,7 +10,7 @@ import {
   AndroidHeaderMenuButton,
 } from "@/src/components/ui/android-header-menu-button";
 import type { Library } from "@/src/domain/types";
-import type { DownloadFilterOption, SortOption } from "@/src/hooks/use-library-book-search";
+import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-library-book-search";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import {

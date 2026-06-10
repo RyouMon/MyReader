@@ -38,7 +38,8 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      {!activeLibrary ? (
+      <View testID="home-screen" className="flex-1 gap-5">
+        {!activeLibrary ? (
         <EmptyState
           title={t("home.noLibrary.title")}
           detail={t("home.noLibrary.detail")}
@@ -123,6 +124,7 @@ export default function HomeScreen() {
           icon={{ ios: "book", android: "book" }}
         />
       )}
+      </View>
     </Screen>
   );
 }

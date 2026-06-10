@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+tags:
+  - smoke
+---
+# Scenario: 应用启动并显示主页
+- runFlow: ../../common/launch_and_prepare.yaml
+- runScript: ../../scripts/selectors.js
+- assertVisible: ${output.selectors.tabs.home}

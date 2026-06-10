@@ -1,0 +1,12 @@
+flows:
+  - "*/**"
+
+excludeTags:
+  - skip
+  - wip
+
+platform:
+  ios:
+    disableAnimations: true
+  android:
+    disableAnimations: true

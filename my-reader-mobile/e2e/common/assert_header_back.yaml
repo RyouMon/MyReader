@@ -1,0 +1,26 @@
+appId: ${APP_ID}
+name: Assert pushed page back button is visible exactly once
+tags:
+  - skip
+---
+- runScript: ../scripts/selectors.js
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: ${output.selectors.settings.header.iosNativeBack}
+          index: 0
+      - assertNotVisible:
+          text: ${output.selectors.settings.header.iosNativeBack}
+          index: 1
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: ${output.selectors.settings.header.back}
+          index: 0
+      - assertNotVisible:
+          text: ${output.selectors.settings.header.back}
+          index: 1

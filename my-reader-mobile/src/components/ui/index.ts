@@ -9,7 +9,7 @@ export { CircularProgress } from "./circular-progress";
 export { EmptyState } from "./empty-state";
 export { FormFieldSwitch } from "./form-field-switch";
 export { FormLabeledFieldRow } from "./form-labeled-field-row";
-export { HeaderToolbar, type HeaderToolbarAction, type HeaderToolbarProps } from "./header-toolbar";
+export { type HeaderToolbarAction, type HeaderToolbarProps } from "./header-toolbar";
 export { HeroCard } from "./hero-card";
 export { ProgressBar } from "./progress-bar";
 export { Screen } from "./screen";

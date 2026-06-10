@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+name: Seed WebDAV fixture via deep link
+tags:
+  - skip
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: myreadermobile://seed-webdav
+      - runFlow: confirm_deep_link.yaml
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - openLink:
+          link: exp+my-reader-mobile://seed-webdav
+          autoVerify: true

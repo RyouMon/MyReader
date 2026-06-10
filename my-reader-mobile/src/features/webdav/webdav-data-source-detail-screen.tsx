@@ -2,19 +2,20 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { DataSourceInUseError } from "@/src/errors";
-import type { DataSourceWebdav } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
+import type { DataSourceWebdav } from "@/src/domain/types";
+import { DataSourceInUseError } from "@/src/errors";
 import { Text, View } from "@/tw";
 
-import { HeaderToolbar, Screen, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
-import { useAppStore } from "@/src/store/app-store";
+import { Screen, SectionCard, SettingsRow } from "@/src/components";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
+import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
+import { useAppStore } from "@/src/store/app-store";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -148,38 +149,40 @@ export default function WebDavDataSourceDetailScreen() {
     ]);
   }
 
-  const rightToolbar: HeaderToolbarAction[] = webdavSource
-    ? [
-        {
-          label: t("webdav.deleteSource"),
-          onPress: confirmDelete,
-          icon:
-            Platform.OS === "ios" ? (
-              <SymbolView name="trash" size={16} tintColor={palette.destructive} />
-            ) : (
-              <MaterialIcons name="delete-outline" size={22} color={palette.destructive} />
-            ),
-          iosSfSymbol: "trash",
-          color: palette.destructive,
-          iconOnly: true,
-          variant: "prominent",
-        },
-      ]
-    : [];
+  const deleteAction: ScreenHeaderAction | undefined = webdavSource
+    ? {
+        label: t("webdav.deleteSource"),
+        onPress: confirmDelete,
+        icon:
+          Platform.OS === "ios" ? (
+            <SymbolView name="trash" size={16} tintColor={palette.destructive} />
+          ) : (
+            <MaterialIcons name="delete-outline" size={22} color={palette.destructive} />
+          ),
+        iosSfSymbol: "trash",
+        color: palette.destructive,
+        iconOnly: true,
+        variant: "prominent" as const,
+      }
+    : undefined;
+
+  const { options, toolbar } = useScreenHeader({
+    backTitle: t("back"),
+    right: deleteAction ? [deleteAction] : [],
+  });
 
   if (!webdavSource) {
     return (
       <Screen>
-        <View className="flex-1">
-          <HeaderToolbar />
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-              {t("webdav.notFound.title")}
-            </Text>
-            <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-              {t("webdav.notFound.detail")}
-            </Text>
-          </View>
+        <Stack.Screen options={options} />
+        {toolbar}
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
+            {t("webdav.notFound.title")}
+          </Text>
+          <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
+            {t("webdav.notFound.detail")}
+          </Text>
         </View>
       </Screen>
     );
@@ -187,8 +190,9 @@ export default function WebDavDataSourceDetailScreen() {
 
   return (
     <Screen>
+      <Stack.Screen options={options} />
+      {toolbar}
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <HeaderToolbar right={rightToolbar} />
         <View className="flex-1 gap-8">
           <WebDavDetailHero source={webdavSource} accent={accent} />
           <SectionCard>

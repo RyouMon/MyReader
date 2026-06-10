@@ -12,6 +12,7 @@ export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "dan
 export type ButtonSize = "sm" | "md" | "lg";
 export type HeaderCloseButtonProps = {
   fallbackRoute?: Href;
+  dismissTo?: boolean;
 };
 
 type ButtonColorOverrides = {
@@ -264,6 +265,7 @@ export function FilterChip({
  */
 export function HeaderCloseButton({
   fallbackRoute = "/",
+  dismissTo,
 }: HeaderCloseButtonProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
@@ -271,9 +273,14 @@ export function HeaderCloseButton({
   return (
     <Pressable
       hitSlop={8}
+      testID="header-close-button"
       accessibilityLabel={t("common.close")}
       accessibilityRole="button"
       onPress={() => {
+        if (dismissTo) {
+          router.dismissTo(fallbackRoute);
+          return;
+        }
         if (router.canGoBack()) {
           router.dismiss();
           return;

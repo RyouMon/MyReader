@@ -2,6 +2,7 @@ import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/read
 import { TouchableHighlight } from "@/tw";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -20,6 +21,7 @@ const BTN_SIZE = 48;
 const ICON_SIZE = 24;
 
 export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
+  const { t } = useTranslation();
   const scale = useSharedValue(0.85);
   const opacity = useSharedValue(0);
 
@@ -59,7 +61,7 @@ export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
       <TouchableHighlight
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel="More actions"
+        accessibilityLabel={t("reader.chrome.moreActions")}
         hitSlop={4}
         underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
         className="h-[44px] w-[44px] items-center justify-center rounded-full"

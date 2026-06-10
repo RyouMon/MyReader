@@ -14,7 +14,7 @@
     "test": "jest",
     "test:ci": "jest --runInBand",
     "test:update-snapshots": "jest -u --coverage=false",
-    "test:e2e": "maestro test e2e/maestro -e APP_ID=ryoumon.myreadermobile",
+    "test:e2e": "maestro test e2e -e APP_ID=ryoumon.myreadermobile",
     "zip:fixtures": "cd ../calibre-library && zip -r ../my-reader-mobile/assets/e2e-fixtures/Example1.zip Example1/",
     "build:dev:android": "npx eas-cli@latest build --platform android --profile development --local",
     "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local"

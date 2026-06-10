@@ -1,4 +1,0 @@
-appId: ${APP_ID}
----
-- tapOn:
-    point: "50%,50%"

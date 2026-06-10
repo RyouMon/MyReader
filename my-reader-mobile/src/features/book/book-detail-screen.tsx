@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Feather from "@expo/vector-icons/Feather";
 import { pickReadableFormat } from "@my-reader/tools/utils";
-import type { NativeStackNavigationOptions } from "expo-router";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Share } from "react-native";
+import { Platform, Share } from "react-native";
 
 import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { EmptyState, HeaderToolbar, type HeaderToolbarAction } from "@/src/components";
+import { EmptyState } from "@/src/components";
+import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
@@ -150,7 +150,7 @@ export default function BookDetailScreen() {
   const detailColors = useMemo(() => getDetailColors(palette, colorScheme), [palette, colorScheme]);
   const noop = useCallback(() => {}, []);
 
-  const headerLeftActions = useMemo<HeaderToolbarAction[]>(
+  const leftActions = useMemo<ScreenHeaderAction[]>(
     () => [
       {
         label: t("bookDetail.back"),
@@ -164,7 +164,7 @@ export default function BookDetailScreen() {
     [handleGoBack, palette.text, t]
   );
 
-  const headerRightActions = useMemo<HeaderToolbarAction[] | undefined>(() => {
+  const rightActions = useMemo<ScreenHeaderAction[] | undefined>(() => {
     if (!currentDetail) return undefined;
     return [
       {
@@ -186,19 +186,19 @@ export default function BookDetailScreen() {
     ];
   }, [currentDetail, detailColors.muted, handleShare, noop, t]);
 
-  const screenOptions = useMemo<NativeStackNavigationOptions>(
+  const { options: baseOptions, toolbar } = useScreenHeader({
+    title: t("bookDetail.title"),
+    back: "hidden",
+    left: leftActions,
+    right: rightActions,
+  });
+
+  const options = useMemo(
     () => ({
-      title: t("bookDetail.title"),
-      headerShown: true,
-      headerLargeTitle: false,
-      headerLargeTitleShadowVisible: false,
-      headerShadowVisible: false,
-      headerBackVisible: false,
-      headerBackButtonDisplayMode: "generic",
+      ...baseOptions,
       headerStyle: { backgroundColor: palette.background },
-      headerTintColor: palette.text,
     }),
-    [palette.background, palette.text, t]
+    [baseOptions, palette.background]
   );
 
   const getListBook = useCallback(
@@ -226,8 +226,8 @@ export default function BookDetailScreen() {
   if (!currentId) {
     return (
       <>
-        <Stack.Screen options={screenOptions} />
-        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+        <Stack.Screen options={options} />
+        {toolbar}
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
           <EmptyState title={t("bookDetail.missingParam.title")} detail={t("bookDetail.missingParam.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
@@ -238,8 +238,8 @@ export default function BookDetailScreen() {
   if (!activeLibraryId || !activeLibrary) {
     return (
       <>
-        <Stack.Screen options={screenOptions} />
-        <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+        <Stack.Screen options={options} />
+        {toolbar}
         <View className="flex-1 px-4 pt-4" style={{ backgroundColor: palette.background }}>
           <EmptyState title={t("bookDetail.noLibrary.title")} detail={t("bookDetail.noLibrary.detail")} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />
         </View>
@@ -249,8 +249,8 @@ export default function BookDetailScreen() {
 
   return (
     <View className="flex-1 overflow-hidden" style={{ backgroundColor: palette.background }}>
-      <Stack.Screen options={screenOptions} />
-      <HeaderToolbar left={headerLeftActions} right={headerRightActions} />
+      <Stack.Screen options={options} />
+      {toolbar}
       <ErrorBoundary
         title={t("bookDetail.loadFailed")}
         message={t("bookDetail.loadFailedMessage")}

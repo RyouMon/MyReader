@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+name: Launch app and dismiss dev launcher
+tags:
+  - skip
+---
+- stopApp
+- launchApp:
+    clearState: true
+
+- runFlow: dismiss_dev_launcher.yaml
+
+- assertVisible:
+    id: "home-screen"

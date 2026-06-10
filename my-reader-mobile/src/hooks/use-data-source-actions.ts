@@ -17,16 +17,29 @@ export function useDataSourceActions() {
 
   async function hydrateFromBackend() {
     try {
-      const dataSources = await hydrateDataSourcesFromSecureCredentials(store.getState().dataSources);
-      store.getState().setDataSources(dataSources);
+      const snapshot = store.getState().dataSources;
+      const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot);
+      const latest = store.getState().dataSources;
+      // Merge so concurrent inserts (e.g. E2E seed fixtures) are not wiped out.
+      const merged = latest.map((ds) => {
+        const h = hydrated.find((d) => d.id === ds.id);
+        return h ? { ...ds, ...h } : ds;
+      });
+      store.getState().setDataSources(merged);
     } finally {
       store.getState().setStoreReady(true);
     }
   }
 
   async function refreshDataSources() {
-    const dataSources = await hydrateDataSourcesFromSecureCredentials(store.getState().dataSources);
-    store.getState().setDataSources(dataSources);
+    const snapshot = store.getState().dataSources;
+    const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot);
+    const latest = store.getState().dataSources;
+    const merged = latest.map((ds) => {
+      const h = hydrated.find((d) => d.id === ds.id);
+      return h ? { ...ds, ...h } : ds;
+    });
+    store.getState().setDataSources(merged);
   }
 
   async function createDataSource(

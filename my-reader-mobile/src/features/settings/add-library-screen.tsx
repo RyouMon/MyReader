@@ -1,4 +1,4 @@
-import { Link, type RelativePathString, router } from "expo-router";
+import { Link, Stack, type RelativePathString, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
@@ -11,7 +11,9 @@ import { pickCalibreLibrary } from "@/src/domain/library/calibre";
 import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
 import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
-import { SETTINGS_FLOW_ADD_LIBRARY } from "@/src/navigation/policies/settings-routes";
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+
+const SETTINGS_FLOW_ADD_LIBRARY = "add-library";
 
 function sourceBrowserPath(source: DataSource) {
   const sharedParams = { currentPath: "/", from: SETTINGS_FLOW_ADD_LIBRARY };
@@ -65,8 +67,15 @@ export default function AddLibraryDataSourceScreen() {
     }
   }
 
+  const { options, toolbar } = useScreenHeader({
+    close: { target: "/settings", dismissTo: true, variant: "layout" },
+  });
+
   return (
-    <Screen>
+    <>
+      <Stack.Screen options={options} />
+      {toolbar}
+      <Screen>
       <View className="gap-3">
         <SettingsSectionLabel>{t("addLibrary.existingSources")}</SettingsSectionLabel>
         <SectionCard>
@@ -84,6 +93,7 @@ export default function AddLibraryDataSourceScreen() {
               asChild
             >
               <SettingsRow
+                testID={`add-library-source-${source.id}`}
                 title={source.name}
                 detail={dataSourceHelpText(source)}
                 value={dataSourceTypeLabel(t, source)}
@@ -108,5 +118,6 @@ export default function AddLibraryDataSourceScreen() {
         </SectionCard>
       </View>
     </Screen>
+  </>
   );
 }

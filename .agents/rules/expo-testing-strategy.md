@@ -40,7 +40,7 @@ Jest + jest-expo preset + @testing-library/react-native
 cd my-reader-mobile
 npm run test:ci               # Jest in CI mode（jest-expo preset）
 npm run test                  # Jest watch mode
-npm run test:e2e              # Maestro E2E（runs all flows in e2e/maestro/）
+npm run test:e2e              # Maestro E2E（runs all flows in e2e/）
 npm run build:dev:android     # EAS local Android build（development profile）
 npm run build:dev:ios         # EAS local iOS build（development profile）
 ```
@@ -181,7 +181,7 @@ describe('auth navigation', () => {
 
 ```bash
 cd my-reader-mobile
-npm run test:e2e              # Maestro E2E（runs all flows in e2e/maestro/）
+npm run test:e2e              # Maestro E2E（runs all flows in e2e/）
 npm run build:dev:android     # EAS local Android build（development profile）
 npm run build:dev:ios         # EAS local iOS build（development profile）
 ```
@@ -190,14 +190,14 @@ npm run build:dev:ios         # EAS local iOS build（development profile）
 
 ### 架构概述
 
-E2E层采用 **Maestro + BDD** 架构：
+E2E层采用 **Maestro flow/subflow** 架构：
 
-- **Feature**（`.feature`）：Gherkin业务规范，人写/人审
-- **Step**（`steps/{domain}.yaml`）：GWT定义，`runFlow`调用下层
-- **Page / API**（`.yaml`）：Page封装UI定位，API封装后端调用
-- **Executable**（`maestro/*.yaml`）：AI生成的可执行Maestro Flow
+- **Flow**（`flows/{domain}/*.yaml`）：可执行测试，按 feature 分组，文件名用动词短语描述用户行为
+- **Subflow**（`common/*.yaml`）：被 `runFlow` 引用的复用序列，统一标记 `tags: [skip]`
+- **Selector**（`scripts/selectors.js`）：Page Object 脚本，优先用 accessibilityLabel 中英文正则，通过 `runScript` 加载
+- **Config**（`config.yaml`）：Maestro workspace 配置，`flows: ["*/**"]` 自动发现所有 flow
 
-> **详细规范（目录结构、命名规则、映射算法、转换逻辑、完整示例）见 `maestro-bdd-spec.md`**
+> **详细规范（目录结构、命名规则、复用策略、完整示例）见 `maestro-bdd-spec.md`**
 
 ### CI集成（EAS Workflows）
 
@@ -212,7 +212,7 @@ maestro:
   type: maestro
   params:
     build_id: ${{ steps.build.id }}
-    flows: ./e2e/maestro
+    flows: ./e2e
     shards: 4
 ```
 
@@ -273,9 +273,9 @@ npm run lint                  # ESLint（expo lint）
 | 决策 | 结论 |
 |---|---|
 | E2E框架 | **Maestro**（Expo官方推荐，<1% flakiness） |
-| BDD在哪层 | **只在E2E层**，单元测试和导航测试不写BDD |
+| BDD在哪层 | **不写BDD**。Maestro 无官方 BDD runner，场景描述直接写在 flow 注释里 |
 | 导航测试用BDD吗 | **不用**，`renderRouter` API足够声明式 |
-| Step文件组织 | `steps/{domain}.yaml`，内部分`given/when/then`组 |
-| Given怎么实现 | 调用API层直接设置状态，不走UI |
-| AI做什么 | Feature → Step → Maestro Flow的机械组装 |
+| Flow文件组织 | `flows/{domain}/` 按 feature 分组；`common/` 放复用 subflow |
+| 状态怎么设置 | 优先用 deep link 或 seed 路由直接设置状态，不走 UI |
+| AI做什么 | 直接编写/修改 Maestro flow 和 common subflow |
 | CI首选 | **EAS Workflows**（原生Maestro集成） |

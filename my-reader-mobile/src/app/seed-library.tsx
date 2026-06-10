@@ -1,14 +1,13 @@
 import { Directory, File as FSFile } from "expo-file-system";
 import { Asset } from "expo-asset";
-import { CommonActions } from "expo-router/react-navigation";
-import { useNavigation } from "expo-router";
+import { router } from "expo-router";
 import { unzipSync } from "fflate";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { readBookCountFromLibrary } from "@/src/domain/library/calibre";
 import { libraryContainerRootUri, libraryMetadataUri } from "@/src/domain/library/locations";
-import { useAppStore } from "@/src/store/app-store";
+import { useAppStore, useAppStoreReady } from "@/src/store/app-store";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
 
 const FIXTURE_ASSET = require("../../assets/e2e-fixtures/Example1.zip");
@@ -16,26 +15,22 @@ const LIBRARY_NAME = "Example1";
 const LIBRARY_ID = `seed-${LIBRARY_NAME}`;
 
 export default function SeedLibraryScreen() {
-  const navigation = useNavigation();
+  const storeReady = useAppStoreReady();
   const seeded = useRef(false);
 
   useEffect(() => {
-    if (seeded.current) return;
+    if (!storeReady || seeded.current) return;
     seeded.current = true;
 
     seedLibrary()
       .then(() => {
-        navigation.dispatch(
-          CommonActions.reset({ index: 0, routes: [{ name: "(tabs)" }] })
-        );
+        router.push("/home");
       })
       .catch((error) => {
         console.error("[seed-library] failed:", error);
-        navigation.dispatch(
-          CommonActions.reset({ index: 0, routes: [{ name: "(tabs)" }] })
-        );
+        router.push("/home");
       });
-  }, []);
+  }, [storeReady]);
 
   return <View />;
 }
@@ -96,15 +91,19 @@ async function seedLibrary() {
 
   for (const [relativePath, data] of Object.entries(entries)) {
     const decodedPath = decodeURIComponent(relativePath);
-    const targetUri = `${libraryDir.uri}${decodedPath}`;
+    // Strip the top-level directory prefix (e.g., "Example1/") so files land
+    // directly under libraryDir instead of libraryDir/Example1/.
+    const strippedPath = decodedPath.replace(/^[^/]+\//, "");
+    if (!strippedPath) continue;
+    const targetUri = `${libraryDir.uri}${strippedPath}`;
 
-    if (data.length === 0 && decodedPath.endsWith("/")) {
+    if (data.length === 0 && strippedPath.endsWith("/")) {
       const dir = new Directory(targetUri);
       if (!dir.exists) {
         dir.create({ intermediates: true });
       }
     } else {
-      const parentPath = decodedPath.substring(0, decodedPath.lastIndexOf("/") + 1);
+      const parentPath = strippedPath.substring(0, strippedPath.lastIndexOf("/") + 1);
       if (parentPath) {
         const dir = new Directory(`${libraryDir.uri}${parentPath}`);
         if (!dir.exists) {
@@ -116,7 +115,7 @@ async function seedLibrary() {
     }
   }
 
-  const metadataFile = new FSFile(libraryDir.uri, "metadata.db");
+  const metadataFile = new FSFile(`${libraryDir.uri}metadata.db`);
   if (!metadataFile.exists) {
     throw new Error("[seed-library] metadata.db not found after unzip");
   }

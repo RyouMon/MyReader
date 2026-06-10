@@ -13,10 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
 import { ThemeProvider, useTheme } from "@/src/design/tokens";
+import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions";
 import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
+import { useAppStore } from "@/src/store/app-store";
 import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime";
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
 import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill";
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 import { queryClient } from "@/src/services/query/query-client";
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -46,6 +49,8 @@ if (sentryDsn) {
 function RootNavigator() {
   const { colorScheme, palette } = useTheme();
   const statusBarStyle = colorScheme === "dark" ? "light" : "dark";
+  const storeReady = useAppStore((s) => s.storeReady);
+  const hydrateDataSources = useDataSourceActions().hydrateFromBackend;
 
   /**
    * Keeps alert status bar restoration aligned with app theme mode.
@@ -57,6 +62,13 @@ function RootNavigator() {
   useEffect(() => {
     initializeDownloadNotifications();
   }, []);
+
+  useEffect(() => {
+    if (!storeReady) {
+      return;
+    }
+    void hydrateDataSources().then(() => hydrateLibraries());
+  }, [storeReady, hydrateDataSources]);
 
   const navigationTheme = colorScheme === "dark"
     ? {

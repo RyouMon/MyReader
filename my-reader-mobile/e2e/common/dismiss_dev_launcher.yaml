@@ -1,0 +1,83 @@
+appId: ${APP_ID}
+name: Dismiss Expo dev launcher
+tags:
+  - skip
+---
+# In dev builds, the Expo Dev Launcher may appear if no dev server is running.
+# This step is a no-op in release builds (element not found = condition not met).
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - runFlow:
+          when:
+            visible: "Forward"
+          commands:
+            - tapOn: "Forward"
+      - runFlow:
+          when:
+            visible: "Chevron"
+          commands:
+            - tapOn: "Chevron"
+      - runFlow:
+          when:
+            visible: "exp://"
+          commands:
+            - tapOn: "exp://"
+            - runFlow:
+                when:
+                  platform: iOS
+                commands:
+                  - inputText: "127.0.0.1:8081"
+            - runFlow:
+                when:
+                  platform: Android
+                commands:
+                  - inputText: "10.0.2.2:8081"
+                  - hideKeyboard
+            - tapOn: "Connect"
+      - runFlow:
+          commands:
+            - extendedWaitUntil:
+                visible: "SplashScreenLogo"
+                timeout: 10000
+                optional: true
+            - extendedWaitUntil:
+                notVisible: "SplashScreenLogo"
+                timeout: 10000
+                optional: true
+            - extendedWaitUntil:
+                visible: "Continue"
+                timeout: 10000
+                optional: true
+      - runFlow:
+          when:
+            visible: "Continue"
+          commands:
+            - tapOn: "Continue"
+      - runFlow:
+          when:
+            visible: "Reload"
+          commands:
+            - scrollUntilVisible:
+                element:
+                  text: "Tools button"
+            - runFlow:
+                when:
+                  platform: iOS
+                commands:
+                  - tapOn:
+                      text: "1"
+                      index: 1
+                      rightOf:
+                        text: "Tools button"
+            - runFlow:
+                when:
+                  platform: Android
+                commands:
+                  - tapOn: "Tools button"
+            - runFlow:
+                when:
+                  visible: "Close"
+                commands:
+                  - tapOn: "Close"

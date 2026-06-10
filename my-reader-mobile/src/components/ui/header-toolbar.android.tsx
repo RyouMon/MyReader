@@ -1,6 +1,5 @@
 import { type ReactNode } from "react";
 
-import { Stack, type NativeStackNavigationOptions } from "expo-router";
 import type { SFSymbol } from "expo-symbols";
 import type { ColorValue } from "react-native";
 
@@ -9,9 +8,8 @@ import { View } from "@/tw";
 import { AndroidHeaderIconButton } from "./android-header-icon-button";
 import { resolveToolbarMaterialIcon } from "./header-toolbar-material-icons.android";
 import { RoundIconButton } from "./round-icon-button";
-import { buildAndroidHeaderToolbarNavigationOptions } from "./header-toolbar-navigation-options.android";
 
-type HeaderToolbarAction = {
+export type HeaderToolbarAction = {
   label: string;
   onPress: () => void;
   icon?: ReactNode;
@@ -25,7 +23,7 @@ type HeaderToolbarAction = {
   variant?: "done" | "prominent" | "plain";
 };
 
-type HeaderToolbarProps = {
+export type HeaderToolbarProps = {
   left?: HeaderToolbarAction[];
   right?: HeaderToolbarAction[];
 };
@@ -66,7 +64,8 @@ function ActionGroup({ actions }: { actions: HeaderToolbarAction[] }) {
   );
 }
 
-function renderActions(actions?: HeaderToolbarAction[]) {
+/** Renders a set of toolbar actions as Android header button nodes. */
+export function renderHeaderToolbarActions(actions?: HeaderToolbarAction[]): ReactNode {
   if (!actions?.length) {
     return null;
   }
@@ -81,22 +80,9 @@ function renderActions(actions?: HeaderToolbarAction[]) {
   );
 }
 
-/** Builds native-stack header overrides for Android toolbar actions (testable). */
-export { buildAndroidHeaderToolbarNavigationOptions } from "./header-toolbar-navigation-options.android";
-
-export function HeaderToolbar({ left, right }: HeaderToolbarProps) {
-  const options = buildAndroidHeaderToolbarNavigationOptions({
-    hasLeft: Boolean(left?.length),
-    hasRight: Boolean(right?.length),
-    renderLeft: () => renderActions(left),
-    renderRight: () => renderActions(right),
-  });
-
-  if (!left?.length && !right?.length) {
-    return null;
-  }
-
-  return <Stack.Screen options={options} />;
+/** @deprecated On Android, toolbar actions should be set via `useScreenHeader` hook which injects them into `Stack.Screen` options. This component returns null on Android. */
+export function HeaderToolbar(_props: HeaderToolbarProps) {
+  return null;
 }
 
-export type { HeaderToolbarAction, HeaderToolbarProps };
+export { buildAndroidHeaderToolbarNavigationOptions } from "./header-toolbar-navigation-options.android";

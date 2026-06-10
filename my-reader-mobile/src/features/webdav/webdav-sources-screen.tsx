@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Stack, router } from "expo-router";
 import { View } from "react-native";
 
@@ -9,34 +8,19 @@ import { useThemePalette } from "@/src/design/tokens";
 
 import {
   EmptyState,
-  HeaderToolbar,
   PrimaryButton,
   Screen,
   SectionCard,
   SettingsRow,
-  type HeaderToolbarAction,
 } from "@/src/components";
-import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+import { createAddAction } from "@/src/navigation/toolbar-action-helpers";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function WebDavSourcesScreen() {
   const { t } = useTranslation();
   const palette = useThemePalette();
   const dataSources = useAppStore((state) => state.dataSources);
-
-  const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);
-  const leftToolbar = useSettingsScreenHeaderLeft({ routeId: "webdav.sources" });
-  const rightToolbar: HeaderToolbarAction[] = [
-    {
-      label: t("webdav.addSource"),
-      onPress: handleAdd,
-      icon: <MaterialIcons name="add" size={18} color={palette.primary} />,
-      iosSfSymbol: "plus",
-      iconOnly: true,
-      color: palette.primary,
-      variant: "prominent",
-    },
-  ];
 
   function handleAdd() {
     router.push("/settings/webdav/add");
@@ -46,15 +30,20 @@ export default function WebDavSourcesScreen() {
     router.push({ pathname: "/settings/webdav/[dataSourceId]", params: { dataSourceId: sourceId } });
   }
 
+  const webdavSources = useMemo(() => dataSources.filter((source) => source.type === "webdav"), [dataSources]);
+
+  const { options, toolbar } = useScreenHeader({
+    title: t("webdav.sourcesTitle"),
+    headerShadowVisible: false,
+    backTitle: t("reader.back"),
+    close: { target: "/settings", dismissTo: true, variant: "layout" },
+    right: [createAddAction({ label: t("webdav.addSource"), onPress: handleAdd, color: palette.primary })],
+  });
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: t("webdav.sourcesTitle"),
-          headerShadowVisible: false,
-        }}
-      />
-      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
+      <Stack.Screen options={options} />
+      {toolbar}
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">
@@ -71,6 +60,7 @@ export default function WebDavSourcesScreen() {
                 {webdavSources.map((source, index) => (
                   <SettingsRow
                     key={source.id}
+                    testID={`data-source-row-${source.id}`}
                     title={source.name}
                     detail={`${source.endpoint}${source.rootPath ?? ""}`}
                     onPress={() => openSourceDetail(source.id)}

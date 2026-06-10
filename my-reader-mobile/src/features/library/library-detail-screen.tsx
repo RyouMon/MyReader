@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
@@ -17,9 +17,10 @@ import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
-import { HeaderToolbar, SectionCard, SettingsRow, type HeaderToolbarAction } from "@/src/components";
+import { SectionCard, SettingsRow } from "@/src/components";
 import { Button } from "@/src/components/ui/button";
 import { Screen } from "@/src/components/ui/screen";
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
@@ -170,47 +171,49 @@ export default function LibraryDetailScreen() {
     );
   }
 
-  const rightToolbar: HeaderToolbarAction[] = library
-    ? [
-        {
-          label: t("libraryDetail.deleteLibrary"),
-          onPress: confirmDelete,
-          icon:
-            Platform.OS === "ios" ? (
-              <SymbolView name="trash" size={16} tintColor={palette.destructive} />
-            ) : (
-              <MaterialIcons name="delete-outline" size={22} color={palette.destructive} />
-            ),
-          iosSfSymbol: "trash",
-          color: palette.destructive,
-          iconOnly: true,
-          variant: "prominent",
-        },
-      ]
-    : [];
+  const { options, toolbar } = useScreenHeader({
+    close: { target: "/settings", dismissTo: true, variant: "layout" },
+    right: library
+      ? [
+          {
+            label: t("libraryDetail.deleteLibrary"),
+            onPress: confirmDelete,
+            iosSfSymbol: "trash",
+            color: palette.destructive,
+            iconOnly: true,
+            variant: "prominent",
+          },
+        ]
+      : undefined,
+  });
 
   if (!library) {
     return (
-      <Screen>
-        <View className="flex-1">
-          <HeaderToolbar />
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-              {t("libraryDetail.notFound.title")}
-            </Text>
-            <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-              {t("libraryDetail.notFound.detail")}
-            </Text>
+      <>
+        <Stack.Screen options={options} />
+        {toolbar}
+        <Screen>
+          <View className="flex-1">
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
+                {t("libraryDetail.notFound.title")}
+              </Text>
+              <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
+                {t("libraryDetail.notFound.detail")}
+              </Text>
+            </View>
           </View>
-        </View>
-      </Screen>
+        </Screen>
+      </>
     );
   }
 
   return (
-    <Screen>
-      <View className="flex-1" style={{ backgroundColor: palette.background }}>
-        <HeaderToolbar right={rightToolbar} />
+    <>
+      <Stack.Screen options={options} />
+      {toolbar}
+      <Screen>
+        <View className="flex-1" style={{ backgroundColor: palette.background }}>
           <View className="flex-1 gap-8">
             <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} t={t} />
             <View className="items-center">
@@ -254,5 +257,6 @@ export default function LibraryDetailScreen() {
           </View>
       </View>
     </Screen>
+  </>
   );
 }

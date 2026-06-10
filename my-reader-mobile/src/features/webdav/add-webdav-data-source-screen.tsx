@@ -1,24 +1,22 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useForm, useStore } from "@tanstack/react-form";
-import { router, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, TextInput as RNTextInput } from "react-native";
 import { z } from "zod";
 
-import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
 import { useThemePalette } from "@/src/design/tokens";
 import { TextInput, View } from "@/tw";
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
 
 import {
   FormFieldSwitch,
   FormLabeledFieldRow,
-  HeaderToolbar,
   Screen,
-  type HeaderToolbarAction,
 } from "@/src/components";
-import { useSettingsScreenHeaderLeft } from "@/src/navigation/hooks/use-settings-screen-header";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers";
 
 const addWebDavMobileSchema = z
   .object({
@@ -187,22 +185,24 @@ export default function AddWebDavDataSourceScreen() {
   }
 
   const inputClassName = "border-0 bg-transparent py-1 text-[15px]";
-  const leftToolbar = useSettingsScreenHeaderLeft({
-    routeId: "webdav.add",
-    flow: from,
+
+  const isAddLibraryFlow = from === "add-library";
+
+  const { options, toolbar } = useScreenHeader({
+    title: t("webdav.addSource"),
+    backTitle: t("back"),
+    ...(isAddLibraryFlow
+      ? { close: { target: "/settings/add-library", dismissTo: true, variant: "layout" } }
+      : {}),
+    right: [
+      createSaveAction({
+        label: saving ? t("webdav.add.completing") : t("webdav.add.complete"),
+        onPress: () => void handleSave(),
+        loading: saving,
+        color: palette.primary,
+      }),
+    ],
   });
-  const rightToolbar: HeaderToolbarAction[] = [
-    {
-      label: saving ? t("webdav.add.completing") : t("webdav.add.complete"),
-      onPress: () => void handleSave(),
-      icon: <MaterialIcons name="check" size={18} color={palette.primary} />,
-      iosSfSymbol: "checkmark",
-      iconOnly: true,
-      color: palette.primary,
-      loading: saving,
-      variant: "prominent",
-    },
-  ];
 
   function fieldError(name: string): string | undefined {
     const raw = fieldErrors[name];
@@ -211,7 +211,8 @@ export default function AddWebDavDataSourceScreen() {
 
   return (
     <>
-      <HeaderToolbar left={leftToolbar} right={rightToolbar} />
+      <Stack.Screen options={options} />
+      {toolbar}
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">

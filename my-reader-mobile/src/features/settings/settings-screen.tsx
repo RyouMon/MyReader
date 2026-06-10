@@ -89,6 +89,7 @@ export default function SettingsScreen() {
             {libraries.map((library) => (
               <SettingsRow
                 key={library.id}
+                testID={`settings-library-row-${library.id}`}
                 title={library.name}
                 value={activeLibraryId === library.id ? t("settings.currentInUse") : undefined}
                 onPress={() =>
@@ -100,6 +101,7 @@ export default function SettingsScreen() {
               />
             ))}
             <SettingsRow
+              testID="settings-add-library-row"
               title={t("settings.addLibrary")}
               isLast
               onPress={() => navigateTo("/settings/add-library")}
@@ -110,11 +112,13 @@ export default function SettingsScreen() {
           <SettingsSectionLabel>{t("settings.remoteDataSources")}</SettingsSectionLabel>
           <SectionCard>
             <SettingsRow
+              testID="settings-webdav-row"
               title="WebDAV"
               detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
             <SettingsRow
+              testID="settings-onedrive-row"
               title="OneDrive"
               detail={t("settings.onedriveDetail")}
               onPress={() => navigateTo("/settings/onedrive")}

@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+name: Open settings tab from home
+tags:
+  - skip
+---
+- runScript: ../scripts/selectors.js
+- tapOn: ${output.selectors.tabs.settings}
+- assertVisible: ${output.selectors.settings.rows.addLibrary}

@@ -1,3 +1,0 @@
-appId: ${APP_ID}
----
-- assertNotVisible: "目录"

@@ -3,292 +3,190 @@ paths:
   - "my-reader-mobile/**/*"
 ---
 
-# Maestro + BDD 测试架构规则
+# Maestro E2E 测试规范
 
-## 一、三层架构
+> 基于 Maestro 原生能力的 flow/subflow 结构。不再维护 Gherkin `.feature` 文件；场景描述直接写在可执行 flow 的注释里。
 
-| 层 | 文件 | 职责 |
-|---|---|---|
-| L0 Feature | `.feature` | Gherkin业务规范，零技术细节 |
-| L1 Step | `.yaml` | 可复用的子流程，每个action一个文件 |
-| L2 Executable | `.yaml` | 可执行Maestro Flow，机械组装Step |
-
----
-
-## 二、目录结构
+## 一、目录结构
 
 ```
 e2e/
-├── features/                          ← L0
-│   └── {domain}/
-│       └── {feature}.feature
-├── steps/                             ← L1
-│   └── {domain}/
-│       ├── given/
-│       ├── when/
-│       └── then/
-└── maestro/                           ← L2（生成目录）
-    └── {feature}.yaml
+├── config.yaml              # Maestro workspace 配置
+├── scripts/
+│   └── selectors.js         # 统一 page-object selector map
+├── common/                  # 复用 subflow，全部 tag: skip
+│   ├── launch_and_prepare.yaml
+│   ├── confirm_deep_link.yaml
+│   ├── open_settings.yaml
+│   └── ...
+└── flows/                   # 可执行 Maestro flow，按 feature 分组
+    ├── smoke/
+    │   └── launch_app.yaml
+    ├── settings/
+    │   ├── navigate_settings.yaml
+    │   ├── browse_webdav.yaml
+    │   └── browse_onedrive.yaml
+    ├── reader/
+    │   └── toggle_reader_chrome.yaml
+    └── library/
+        └── ...
 ```
 
----
+## 二、文件分类
 
-## 三、文件命名
+| 类型 | 目录 | tag | 作用 |
+|---|---|---|---|
+| 可执行 Flow | `flows/{domain}/` | 业务标签（如 `settings`, `smoke`） | 被 Maestro 直接运行 |
+| 复用 Subflow | `common/` | `skip` | 通过 `runFlow` 被可执行 flow 引用 |
+| 待稳定 Flow | `flows/{domain}/` | `wip` | 暂时跳过，待修复或补全后再启用 |
+| Selector 脚本 | `scripts/` | — | 被 `runScript` 加载，集中管理 label 正则（优先）与少量 testID |
 
-| 类型 | 格式 | 示例 |
-|---|---|---|
-| Feature | `kebab-case.feature` | `login.feature` |
-| Step | `{action}.yaml` | `user_launches_app.yaml` |
-| 生成Flow | `{feature}.yaml` | `smoke.yaml` |
+## 三、命名规范
 
-Step文件名使用英文snake_case，不加when/then/given前缀（由父目录表达行为类型）：
-- `user_launches_app` — 用户操作
-- `home_page_should_be_visible` — 断言验证
-- `user_has_registered_account` — 前置状态（如有）
+### Flow 文件
 
----
+- 动词开头，snake_case，描述**用户行为或测试目的**；
+- 好：`navigate_settings.yaml`, `browse_webdav.yaml`, `launch_app.yaml`, `toggle_reader_chrome.yaml`；
+- 差：`modal_root_headers.yaml`（这是状态，不是行为）。
 
-## 四、Step 编写规范
+### Subflow 文件
 
-1. **原子化**：一个文件只做一个action，不超过10行
-2. **直接操作**：Step中直接写Maestro命令（`tapOn`/`assertVisible`等），不额外封装Page层
-3. **复用通过文件**：需要复用的命令序列抽成独立的Step子流程文件，通过`runFlow`引用
-4. **无元素定位抽象**：选择器字符串直接出现在Step中，保持可读性
-5. **环境变量**：通过`${VAR}`引用，由调用方在`env`中传入
+- 动作/状态为中心，snake_case；
+- 好：`launch_and_prepare.yaml`, `confirm_deep_link.yaml`, `open_settings.yaml`。
 
----
+### Selector 脚本
 
-## 五、Step 文件格式
+- 使用 `output.selectors = { domain: { ... } }` 结构；
+- 按业务域分组，避免散落在 YAML 中的魔法字符串。
 
-标准Maestro flow，无分组结构：
+## 四、复用策略
+
+**原则：非复用即内联。**
+
+- 只有 ≥2 个可执行 flow 使用的序列，才抽成 `common/*.yaml`；
+- 同一个 flow 内部的重复代码直接内联，避免为了复用而制造大量原子 subflow；
+- 每个 scenario 尽量自包含，便于单独阅读和调试。
+
+## 五、Flow 文件格式
 
 ```yaml
 appId: ${APP_ID}
+tags:
+  - settings
+  - navigation
 ---
-- tapOn: "登录按钮"
+# Scenario: 用户能从书库详情返回设置首页
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: myreadermobile://seed-library
+      - runFlow: ../../common/confirm_deep_link.yaml
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - openLink: exp+my-reader-mobile://seed-library
+      - runFlow: ../../common/confirm_deep_link.yaml
+- runFlow: ../../common/open_settings.yaml
+- tapOn:
+    id: "settings-library-row-seed-Example1"
+- runFlow: ../../common/tap_header_back_or_close.yaml
+- extendedWaitUntil:
+    visible:
+      id: "settings-add-library-row"
+    timeout: 10000
 ```
 
+### 多个 scenario
+
+一个 flow 文件内可用 `---` 分隔多个 scenario。当多个场景验证**同一类行为**时（如"设置导航"下的各种页面头部/返回行为），优先合并到同一个 flow。
+
+## 六、Subflow 文件格式
+
+所有 `common/*.yaml` 必须带 `tags: [skip]`，防止 Maestro 直接执行。
+
+```yaml
+appId: ${APP_ID}
+name: Launch app and dismiss dev launcher
+tags:
+  - skip
 ---
+- launchApp
+# ...
+```
 
-## 六、Feature 到 Step 的映射规则
+### 状态隔离
 
-### 转换算法
+批量运行多个 flow 时，Maestro 会复用同一个设备 session。为确保每个 flow 都从干净状态开始，公共启动子流程应使用 `clearState: true`：
 
-1. **确定前缀**：
-   - `Given` → `given_`
-   - `When` 或 `And`/`But`（紧跟When之后）→ `when_`
-   - `Then` 或 `And`/`But`（紧跟Then之后）→ `then_`
-
-2. **去除参数**：去掉Cucumber Expression（`{string}`、`{int}`等）和引号包裹的实际值
-
-3. **转为snake_case**：剩余文本翻译为英文动词短语
-
-4. **定位文件**：在 `steps/{domain}/{group}/` 下查找同名yaml文件（group为given/when/then）
-
-### 映射示例
-
-| Gherkin步骤 | Step文件 |
-|---|---|
-| `Given 用户已注册账户` | `steps/auth/given/user_has_registered_account.yaml` |
-| `When 用户输入手机号` | `steps/auth/when/user_inputs_phone_number.yaml` |
-| `And 用户点击登录按钮` | `steps/auth/when/user_taps_login_button.yaml` |
-| `Then 应跳转到首页` | `steps/auth/then/home_page_should_be_visible.yaml` |
-
+```yaml
 ---
+- stopApp
+- launchApp:
+    clearState: true
+```
 
-## 七、转换规则
+这可以避免上一个 flow 结束时留在深层导航栈，导致下一个 flow 的断言失败。
 
-**输入**：`.feature` + `steps/{domain}/{given|when|then}/*.yaml`
-**输出**：`maestro/{domain}/{feature}.yaml`
+## 七、Selector 脚本格式
 
-转换逻辑：
-1. 读取Feature所在domain对应的 `steps/{domain}/` 目录
-2. 按Scenario顺序遍历每个步骤
-3. 按第六节规则将Gherkin步骤转为group+文件名
-4. 生成 `runFlow: ../steps/{domain}/{group}/{action}.yaml`
-5. 展开Scenario Outline的Examples
+```javascript
+output.selectors = {
+  tabs: { settings: "设置|Settings" },
+  settings: {
+    header: { close: "关闭|Close", back: "返回|Back" },
+    toolbar: { libraryDelete: "删除书库|Delete Library" },
+    rows: { addLibrary: "添加书库|Add Library", webdav: "WebDAV" },
+  },
+  fixtures: { libraryName: "Example1", webdavSource: "Test WebDAV" },
+};
+```
 
-约束：不创造新逻辑，不修改已有step文件。
+在 flow 中使用（**优先 `text` / 字符串 shorthand**，与 Maestro 官方建议一致）：
 
----
+```yaml
+- runScript: ../../scripts/selectors.js
+- tapOn: ${output.selectors.tabs.settings}
+- assertVisible: ${output.selectors.settings.toolbar.libraryDelete}
+```
+
+Selector 值为 **accessibilityLabel / 可见文案** 的中英文正则（`中文|English`），fixture 数据用稳定英文名。仅在原生控件无 label 时保留 `testID`。
 
 ## 八、工作流
 
 ```
-1. 编写/修改 Feature
+1. 确定要覆盖的行为
         ↓
-2. 【等待审核通过】 ← 唯一需要外部审核的节点
+2. 在 flows/{domain}/ 下新建或修改 flow 文件
         ↓
-3. 编写/复用 Step（如需新action，新增文件到steps/{domain}/）
+3. 如需复用序列，检查是否已有 common/*.yaml；没有则新建
         ↓
-4. 生成 maestro/*.yaml
+4. 如需新 selector，添加到 scripts/selectors.js
         ↓
-5. maestro test
+5. 本地运行 maestro test 验证
 ```
-
-提交要求：Feature + steps + maestro 一起提交，确保maestro/*.yaml可随时重新生成。
-
----
 
 ## 九、编辑覆盖策略
 
 | 文件 | 覆盖策略 |
 |---|---|
-| `.feature` | 持续维护 |
-| `steps/{domain}/*.yaml` | 持续维护，同一domain的step集中在一个文件夹 |
-| `maestro/*.yaml` | 每次转换重新生成；可临时编辑，但会被覆盖；长期改应回到上游文件 |
+| `flows/*.yaml` | 持续维护，按需增删 scenario |
+| `common/*.yaml` | 持续维护，通用子流程变更时同步更新所有调用方 |
+| `scripts/selectors.js` | 持续维护，重命名 selector 必须同步更新所有引用 |
+| `.feature` | **不再维护**，已删除 |
+| `steps/` | **不再维护**，已删除 |
 
----
+## 十、迁移前结构（归档参考）
 
-## 十、总结
-
-```
-L0: Feature（Gherkin） → L1: Step（steps/{domain}/{action}.yaml） →
-L2: Flow（机械组装）
-```
-
-核心原则：业务逻辑写在Feature和Step两层，最终可执行Flow由转换器机械生成。Step直接包含Maestro命令，不额外封装Page层。
-
----
-
-# 完整示例
-
-## 目录结构
+旧结构采用 L0/L1/L2 三层 BDD：
 
 ```
 e2e/
-├── features/
-│   └── auth/
-│       └── login.feature
-├── steps/
-│   └── auth/
-│       ├── given/
-│       │   └── user_has_registered_account.yaml
-│       ├── when/
-│       │   ├── user_inputs_phone_number.yaml
-│       │   ├── user_inputs_verification_code.yaml
-│       │   └── user_taps_login_button.yaml
-│       └── then/
-│           ├── home_page_should_be_visible.yaml
-│           └── welcome_message_should_be_displayed.yaml
-└── maestro/
-    └── login.yaml
+├── features/          # Gherkin .feature
+├── steps/             # GWT step YAML
+└── maestro/           # 可执行 flow
 ```
 
----
-
-## L0: Feature
-
-`features/auth/login.feature`
-
-```gherkin
-Feature: 用户认证
-  作为已注册用户
-  我希望通过手机号和验证码登录
-  以便访问我的个人中心
-
-  Rule: 有效凭证允许访问
-
-    Scenario: 使用有效手机号和验证码登录成功
-      Given 用户已注册账户 "13800138000"
-      When 用户输入手机号 "13800138000"
-      And 用户输入验证码 "123456"
-      And 用户点击登录按钮
-      Then 应跳转到首页
-      And 应显示欢迎提示
-```
-
----
-
-## L1: Step
-
-`steps/auth/given/user_has_registered_account.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- runScript: |
-    var resp = http.post('${API_BASE}/users', {
-      body: JSON.stringify({ phone: '${phone}' })
-    });
-    output.userId = json(resp.body).id;
-```
-
-`steps/auth/when/user_inputs_phone_number.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- tapOn: "手机号输入框"
-- inputText: "${phone}"
-```
-
-`steps/auth/when/user_inputs_verification_code.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- tapOn: "验证码输入框"
-- inputText: "${code}"
-```
-
-`steps/auth/when/user_taps_login_button.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- tapOn: "登录按钮"
-```
-
-`steps/auth/then/home_page_should_be_visible.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- assertVisible: "首页"
-```
-
-`steps/auth/then/welcome_message_should_be_displayed.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-- assertVisible: "欢迎回来"
-```
-
----
-
-## L2: 生成的可执行 Flow
-
-`maestro/login.yaml`
-
-```yaml
-appId: ${APP_ID}
----
-# Feature: 用户认证
-# Scenario: 使用有效手机号和验证码登录成功
-
-# Given 用户已注册账户 "13800138000"
-- runFlow: ../steps/auth/given/user_has_registered_account.yaml
-  env:
-    phone: "13800138000"
-
-# When 用户输入手机号 "13800138000"
-- runFlow: ../steps/auth/when/user_inputs_phone_number.yaml
-  env:
-    phone: "13800138000"
-
-# And 用户输入验证码 "123456"
-- runFlow: ../steps/auth/when/user_inputs_verification_code.yaml
-  env:
-    code: "123456"
-
-# And 用户点击登录按钮
-- runFlow: ../steps/auth/when/user_taps_login_button.yaml
-
-# Then 应跳转到首页
-- runFlow: ../steps/auth/then/home_page_should_be_visible.yaml
-
-# And 应显示欢迎提示
-- runFlow: ../steps/auth/then/welcome_message_should_be_displayed.yaml
-```
+由于 Maestro 没有官方 BDD runner，维护成本过高，已迁移为当前 flow/subflow 结构。

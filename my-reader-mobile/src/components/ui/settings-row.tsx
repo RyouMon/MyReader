@@ -74,6 +74,7 @@ type SettingsRowProps = {
   value?: string;
   onPress?: () => void;
   isLast?: boolean;
+  testID?: string;
 };
 
 type SettingsMenuRowProps = Omit<SettingsRowProps, "onPress"> & {
@@ -136,11 +137,15 @@ function SettingsRowPressable({
   onPress,
   isLast,
   omitSeparator,
+  accessibilityLabel,
+  testID,
   children,
 }: {
   onPress?: () => void;
   isLast?: boolean;
   omitSeparator?: boolean;
+  accessibilityLabel?: string;
+  testID?: string;
   children: ReactNode;
 }) {
   const { colorScheme } = useTheme();
@@ -152,7 +157,7 @@ function SettingsRowPressable({
 
   if (!onPress) {
     return (
-      <View className={ROW_CLASS} style={separatorStyle}>
+      <View testID={testID} className={ROW_CLASS} style={separatorStyle}>
         {children}
       </View>
     );
@@ -161,6 +166,8 @@ function SettingsRowPressable({
   if (Platform.OS === "android") {
     return (
       <TouchableNativeFeedback
+        testID={testID}
+        accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         background={androidPressBackground}
         onPress={onPress}
@@ -174,6 +181,8 @@ function SettingsRowPressable({
 
   return (
     <RNPressable
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -252,7 +261,7 @@ export function SettingsMenuRow({
             <View style={styles.menuAnchorFill} />
           </MenuView>
         </View>
-        <SettingsRowPressable omitSeparator onPress={handlePress}>
+        <SettingsRowPressable accessibilityLabel={title} omitSeparator onPress={handlePress}>
           {body}
         </SettingsRowPressable>
       </View>
@@ -260,7 +269,7 @@ export function SettingsMenuRow({
   }
 
   return (
-    <SettingsRowPressable isLast={isLast} onPress={handlePress}>
+    <SettingsRowPressable accessibilityLabel={title} isLast={isLast} onPress={handlePress}>
       {body}
     </SettingsRowPressable>
   );
@@ -273,12 +282,18 @@ export function SettingsRow({
   value,
   onPress,
   isLast,
+  testID,
 }: SettingsRowProps) {
   const palette = useThemePalette();
   const body = <SettingsRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
 
   return (
-    <SettingsRowPressable onPress={onPress} isLast={isLast}>
+    <SettingsRowPressable
+      accessibilityLabel={title}
+      onPress={onPress}
+      isLast={isLast}
+      testID={testID}
+    >
       {body}
     </SettingsRowPressable>
   );

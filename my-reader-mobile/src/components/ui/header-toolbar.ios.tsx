@@ -6,6 +6,7 @@ function toolbarButtonElements(actions: HeaderToolbarAction[]) {
   return actions.map((action) => (
     <Stack.Toolbar.Button
       key={action.label}
+      accessibilityLabel={action.label}
       disabled={action.disabled}
       onPress={action.onPress}
       tintColor={action.color}

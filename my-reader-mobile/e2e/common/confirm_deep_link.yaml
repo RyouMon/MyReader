@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+name: Confirm deep link open prompts
+tags:
+  - skip
+---
+- runFlow:
+    when:
+      platform: iOS
+      visible: "打开|Open"
+    commands:
+      - tapOn: "打开|Open"

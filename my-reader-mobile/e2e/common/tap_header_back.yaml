@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+name: Tap pushed page back button
+tags:
+  - skip
+---
+- runScript: ../scripts/selectors.js
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: ${output.selectors.settings.header.iosNativeBack}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: ${output.selectors.settings.header.back}

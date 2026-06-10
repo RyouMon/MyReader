@@ -1,4 +1,4 @@
-import type { DownloadFilterOption, SortOption } from "@/src/hooks/use-library-book-search";
+import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-library-book-search";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 export const libraryDownloadFilterOptions = [
