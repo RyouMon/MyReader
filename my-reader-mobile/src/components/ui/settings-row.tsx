@@ -66,6 +66,8 @@ function rowSeparatorStyle(isLast: boolean | undefined, palette: ThemePalette): 
 
 type SettingsRowProps = {
   title: string;
+  /** Overrides `accessibilityLabel`; defaults to `title` when omitted. */
+  label?: string;
   /** Leading icon — SF Symbol (iOS) and Material Icons name (Android). */
   icon?: SettingsRowIcon;
   /** Muted secondary text shown below the title. */
@@ -228,6 +230,7 @@ export function SettingsMenuRow({
   onPressAction,
   isAnchoredToRight,
   title,
+  label,
   icon,
   detail,
   value,
@@ -261,7 +264,7 @@ export function SettingsMenuRow({
             <View style={styles.menuAnchorFill} />
           </MenuView>
         </View>
-        <SettingsRowPressable accessibilityLabel={title} omitSeparator onPress={handlePress}>
+        <SettingsRowPressable accessibilityLabel={label ?? title} omitSeparator onPress={handlePress}>
           {body}
         </SettingsRowPressable>
       </View>
@@ -269,7 +272,7 @@ export function SettingsMenuRow({
   }
 
   return (
-    <SettingsRowPressable accessibilityLabel={title} isLast={isLast} onPress={handlePress}>
+    <SettingsRowPressable accessibilityLabel={label ?? title} isLast={isLast} onPress={handlePress}>
       {body}
     </SettingsRowPressable>
   );
@@ -277,6 +280,7 @@ export function SettingsMenuRow({
 
 export function SettingsRow({
   title,
+  label,
   icon,
   detail,
   value,
@@ -289,7 +293,7 @@ export function SettingsRow({
 
   return (
     <SettingsRowPressable
-      accessibilityLabel={title}
+      accessibilityLabel={label ?? title}
       onPress={onPress}
       isLast={isLast}
       testID={testID}

@@ -108,10 +108,11 @@ export default function AddLibraryDataSourceScreen() {
         <SettingsSectionLabel>{t("addLibrary.addSources")}</SettingsSectionLabel>
         <SectionCard>
           <Link href={{ pathname: "/settings/webdav/add", params: { from: "add-library" } }} asChild>
-            <SettingsRow title="WebDAV" />
+            <SettingsRow title="WebDAV" label={t("webdav.addSource")} />
           </Link>
           <SettingsRow
             title="OneDrive"
+            label={t("onedrive.addSource")}
             onPress={() => void handleAddOneDrive()}
             isLast
           />

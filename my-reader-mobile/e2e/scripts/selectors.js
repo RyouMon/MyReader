@@ -40,6 +40,8 @@ output.selectors = {
     },
     rows: {
       addLibrary: "添加书库|Add Library",
+      addLibraryWebdav: "添加 WebDAV 数据源|Add WebDAV Source",
+      addLibraryOnedrive: "添加 OneDrive 数据源|Add OneDrive Source",
       webdav: "WebDAV",
       onedrive: "OneDrive",
     },

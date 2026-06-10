@@ -55,6 +55,13 @@ tags:
 - assertVisible: ${output.selectors.settings.toolbar.selectDirectory}
 - runFlow: ../../common/tap_header_back.yaml
 - runFlow: ../../common/tap_header_back_or_close.yaml
+
+# Scenario: 从添加书库进入添加 WebDAV 数据源表单页面头部按钮
+- tapOn: ${output.selectors.settings.rows.addLibraryWebdav}
+- assertVisible: ${output.selectors.settings.header.titles.webdavAdd}
+- runFlow: ../../common/assert_header_back_or_close.yaml
+- assertVisible: ${output.selectors.settings.toolbar.addWebdavDone}
+- runFlow: ../../common/tap_header_back_or_close.yaml
 - runFlow: ../../common/tap_header_back_or_close.yaml
 
 # Scenario: WebDAV 源列表页面头部按钮
