@@ -4,16 +4,23 @@ export type CreateAddActionParams = {
   label: string;
   onPress: () => void;
   color?: string;
+  disabled?: boolean;
 };
 
 /** Builds a prominent "add" toolbar action with plus icon. */
-export function createAddAction({ label, onPress, color }: CreateAddActionParams): ScreenHeaderAction {
+export function createAddAction({
+  label,
+  onPress,
+  color,
+  disabled,
+}: CreateAddActionParams): ScreenHeaderAction {
   return {
     label,
     onPress,
     iosSfSymbol: "plus",
     iconOnly: true,
     color,
+    disabled,
     variant: "prominent",
   };
 }

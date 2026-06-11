@@ -1,21 +1,43 @@
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert } from "react-native";
 
 import type { DataSource } from "@/src/domain/types";
 import { isUserCancelled, signIn } from "@/src/services/auth/onedrive";
 import { useAppStore } from "@/src/store/app-store";
-import { useDataSourceActions } from "./use-data-source-actions";
+import { useDataSourceActions } from "../../../hooks/use-data-source-actions";
+
+let addInProgress = false;
+const addInProgressListeners = new Set<() => void>();
+
+function subscribeAddInProgress(listener: () => void) {
+  addInProgressListeners.add(listener);
+  return () => {
+    addInProgressListeners.delete(listener);
+  };
+}
+
+function getAddInProgressSnapshot() {
+  return addInProgress;
+}
+
+function setAddInProgress(value: boolean) {
+  if (addInProgress === value) {
+    return;
+  }
+  addInProgress = value;
+  addInProgressListeners.forEach((listener) => listener());
+}
 
 export function useAddOneDriveDataSource() {
   const { t } = useTranslation();
   const dataSources = useAppStore((s) => s.dataSources);
   const { createDataSource } = useDataSourceActions();
-  const [busy, setBusy] = useState(false);
+  const busy = useSyncExternalStore(subscribeAddInProgress, getAddInProgressSnapshot, getAddInProgressSnapshot);
 
   async function addOneDriveDataSource(): Promise<DataSource | null> {
     if (busy) return null;
-    setBusy(true);
+    setAddInProgress(true);
     try {
       const { accessToken, refreshToken, displayName, email } = await signIn();
 
@@ -54,7 +76,7 @@ export function useAddOneDriveDataSource() {
       );
       return null;
     } finally {
-      setBusy(false);
+      setAddInProgress(false);
     }
   }
 

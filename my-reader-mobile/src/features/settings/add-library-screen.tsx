@@ -1,4 +1,4 @@
-import { Link, Stack, type RelativePathString, router } from "expo-router";
+import { Link, router, Stack, type RelativePathString } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
@@ -6,12 +6,13 @@ import type { DataSource } from "@/src/domain/types";
 import { View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
-import { useAppStore } from "@/src/store/app-store";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
 import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
-import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source";
+import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+import { useAppStore } from "@/src/store/app-store";
 
 const SETTINGS_FLOW_ADD_LIBRARY = "add-library";
 
@@ -46,7 +47,7 @@ function dataSourceHelpText(source: DataSource) {
 export default function AddLibraryDataSourceScreen() {
   const { t } = useTranslation();
   const dataSources = useAppStore((s) => s.dataSources);
-  const { addOneDriveDataSource } = useAddOneDriveDataSource();
+  const { addOneDriveDataSource, busy: addingOneDrive } = useAddOneDriveDataSource();
 
   async function handleAddLocalLibrary() {
     const picked = await pickCalibreLibrary();
@@ -58,13 +59,7 @@ export default function AddLibraryDataSourceScreen() {
   }
 
   async function handleAddOneDrive() {
-    const created = await addOneDriveDataSource();
-    if (created) {
-      router.push({
-        pathname: "/settings/onedrive/browser" as RelativePathString,
-        params: { dataSourceId: created.id, currentPath: "/", from: "add-library" },
-      });
-    }
+    await addOneDriveDataSource();
   }
 
   const { options, toolbar } = useScreenHeader({
@@ -76,6 +71,10 @@ export default function AddLibraryDataSourceScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
+      {addingOneDrive ? (
+        <OneDriveAddingEmptyState />
+      ) : (
+      <>
       <View className="gap-3">
         <SettingsSectionLabel>{t("addLibrary.existingSources")}</SettingsSectionLabel>
         <SectionCard>
@@ -118,6 +117,8 @@ export default function AddLibraryDataSourceScreen() {
           />
         </SectionCard>
       </View>
+      </>
+      )}
     </Screen>
   </>
   );

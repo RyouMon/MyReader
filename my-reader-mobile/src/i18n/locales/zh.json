@@ -426,6 +426,8 @@
       "signInDetail": "连接 Microsoft 账号，浏览 OneDrive 并选择 Calibre 书库。",
       "signInWithMicrosoft": "使用 Microsoft 登录",
       "authenticating": "正在认证…",
+      "addingTitle": "正在添加 OneDrive 数据源",
+      "addingDetail": "正在完成连接，请勿关闭应用。",
       "authFailed": "认证失败",
       "authFailedMessage": "无法登录 OneDrive，请重试。",
       "alreadyAdded": "账号已添加",

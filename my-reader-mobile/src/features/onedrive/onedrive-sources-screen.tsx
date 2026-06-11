@@ -7,16 +7,17 @@ import { View } from "react-native";
 import { useThemePalette } from "@/src/design/tokens";
 
 import {
-  EmptyState,
-  PrimaryButton,
-  Screen,
-  SectionCard,
-  SettingsRow,
+    EmptyState,
+    PrimaryButton,
+    Screen,
+    SectionCard,
+    SettingsRow,
 } from "@/src/components";
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source";
+import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers";
 import { useAppStore } from "@/src/store/app-store";
-import { useAddOneDriveDataSource } from "@/src/hooks/use-add-onedrive-data-source";
 
 export default function OneDriveSourcesScreen() {
   const { t } = useTranslation();
@@ -39,7 +40,14 @@ export default function OneDriveSourcesScreen() {
     headerShadowVisible: false,
     backTitle: t("reader.back"),
     close: { target: "/settings", dismissTo: true, variant: "layout" },
-    right: [createAddAction({ label: t("onedrive.addSource"), onPress: handleAdd, color: palette.primary })],
+    right: [
+      createAddAction({
+        label: t("onedrive.addSource"),
+        onPress: handleAdd,
+        color: palette.primary,
+        disabled: busy,
+      }),
+    ],
   });
 
   return (
@@ -50,11 +58,13 @@ export default function OneDriveSourcesScreen() {
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">
           <View className="gap-3">
-            {onedriveSources.length === 0 ? (
+            {busy ? (
+              <OneDriveAddingEmptyState />
+            ) : onedriveSources.length === 0 ? (
               <EmptyState
                 title={t("onedrive.noSources.title")}
                 detail={t("onedrive.noSources.detail")}
-                action={<PrimaryButton title={t("onedrive.addSource")} onPress={handleAdd} disabled={busy} />}
+                action={<PrimaryButton title={t("onedrive.addSource")} onPress={handleAdd} />}
                 icon={{ ios: "externaldrive.fill", android: "storage" }}
               />
             ) : (
