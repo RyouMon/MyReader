@@ -83,7 +83,7 @@
         "react-native-app-auth",
         {
           "redirectUrls": [
-            "myreadermobile://onedrive-auth/"
+            "ryoumon.myreadermobile.auth://onedrive/"
           ]
         }
       ],
