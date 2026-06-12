@@ -3,9 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile",
+    "eas-build-pre-install": "cd .. && git submodule update --init --recursive && pnpm install --frozen-lockfile",
     "eas-build-post-install": "rm -rf node_modules/.cache",
-    "postinstall": "patch-package",
+    "postinstall": "node ../scripts/prepare-react-native-readium.mjs && patch-package",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
     "android": "expo run:android --device",
@@ -36,7 +36,7 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/slider": "^5.2.0",
     "@react-native-menu/menu": "^2.0.0",
-    "@ryoumon/react-native-readium": "^5.0.0-rc.20",
+    "@ryoumon/react-native-readium": "link:../packages/react-native-readium",
     "@sentry/react-native": "^7.11.0",
     "@shopify/flash-list": "2.0.2",
     "@tailwindcss/postcss": "^4.2.2",
@@ -130,7 +130,9 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
       "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
-      "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1"
+      "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
+      "^@ryoumon/react-native-readium$": "<rootDir>/../packages/react-native-readium/src/index.tsx",
+      "^@ryoumon/react-native-readium/(.*)$": "<rootDir>/../packages/react-native-readium/src/$1"
     }
   },
   "lint-staged": {

@@ -1,5 +1,6 @@
 packages:
-  - "packages/*"
+  - "packages/db"
+  - "packages/tools"
   - "my-reader"
   - "my-reader-mobile"
 allowBuilds:

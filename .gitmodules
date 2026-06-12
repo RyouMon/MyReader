@@ -1,0 +1,3 @@
+[submodule "packages/react-native-readium"]
+	path = packages/react-native-readium
+	url = https://github.com/RyouMon/react-native-readium.git
