@@ -1,9 +1,11 @@
 import { Link, router, Stack, type RelativePathString } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
 
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
+import { useThemePalette } from "@/src/design/tokens";
 import type { DataSource } from "@/src/domain/types";
-import { View } from "@/tw";
+import { View, Text } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
@@ -46,8 +48,12 @@ function dataSourceHelpText(source: DataSource) {
 
 export default function AddLibraryDataSourceScreen() {
   const { t } = useTranslation();
+  const palette = useThemePalette();
   const dataSources = useAppStore((s) => s.dataSources);
   const { addOneDriveDataSource, busy: addingOneDrive } = useAddOneDriveDataSource();
+
+  const showLocalLibraryOption = Platform.OS !== "android";
+  const hasExistingSources = showLocalLibraryOption || dataSources.length > 0;
 
   async function handleAddLocalLibrary() {
     const picked = await pickCalibreLibrary();
@@ -78,13 +84,15 @@ export default function AddLibraryDataSourceScreen() {
       <View className="gap-3">
         <SettingsSectionLabel>{t("addLibrary.existingSources")}</SettingsSectionLabel>
         <SectionCard>
-          <SettingsRow
-            title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-            onPress={() => {
-              void handleAddLocalLibrary();
-            }}
-            isLast={dataSources.length === 0}
-          />
+          {showLocalLibraryOption && (
+            <SettingsRow
+              title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
+              onPress={() => {
+                void handleAddLocalLibrary();
+              }}
+              isLast={dataSources.length === 0}
+            />
+          )}
           {dataSources.map((source, index) => (
             <Link
               key={source.id}
@@ -100,6 +108,22 @@ export default function AddLibraryDataSourceScreen() {
               />
             </Link>
           ))}
+          {!hasExistingSources && (
+            <View className="py-6 px-4 gap-2">
+              <Text
+                className="text-center text-base leading-6"
+                style={{ color: palette.text, fontWeight: "600" }}
+              >
+                {t("addLibrary.noSources.title")}
+              </Text>
+              <Text
+                className="text-center text-base leading-6"
+                style={{ color: palette.textMuted }}
+              >
+                {t("addLibrary.noSources.detail")}
+              </Text>
+            </View>
+          )}
         </SectionCard>
       </View>
 

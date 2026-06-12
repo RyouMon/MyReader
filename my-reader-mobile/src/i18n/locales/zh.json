@@ -267,7 +267,11 @@
   },
   "addLibrary": {
     "existingSources": "已有数据源",
-    "addSources": "添加数据源"
+    "addSources": "添加数据源",
+    "noSources": {
+      "title": "还没有数据源",
+      "detail": "添加数据源后，即可选择书库。"
+    }
   },
   "webdav": {
     "sourcesTitle": "WebDAV 数据源",

@@ -267,7 +267,11 @@
   },
   "addLibrary": {
     "existingSources": "Existing Sources",
-    "addSources": "Add Sources"
+    "addSources": "Add Sources",
+    "noSources": {
+      "title": "No data sources yet",
+      "detail": "Add a data source to browse and select a library."
+    }
   },
   "webdav": {
     "sourcesTitle": "WebDAV Sources",
