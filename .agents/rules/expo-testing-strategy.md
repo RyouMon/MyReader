@@ -186,7 +186,11 @@ npm run build:dev:android     # EAS local Android build（development profile）
 npm run build:dev:ios         # EAS local iOS build（development profile）
 ```
 
-> **Dev-build E2E 前置条件**：使用 development build 运行 E2E 测试时，需先启动 Expo 开发服务器（`npx expo start`），否则 dev client 会弹出 "Enter URL manually" 提示。
+> **Dev-build E2E 前置条件**：使用 development build 运行 E2E 测试时，需先启动 Expo 开发服务器（`pnpm run start`），否则 dev client 会弹出 "Enter URL manually" 提示。
+>
+> **Maestro driver 超时**：iOS 首次运行或更新 Maestro 后可能触发 `iOS driver not ready in time`。设置环境变量 `MAESTRO_DRIVER_STARTUP_TIMEOUT=600000` 再运行，必要时删除旧的 Maestro XCTest driver 让其重新安装。
+>
+> **Deep link 平台差异**：iOS 使用 `myreadermobile://<path>`；Android 使用 `exp+my-reader-mobile://<path>` 并开启 `autoVerify: true`，否则应用已在前台时 deep link 可能丢失路径段。
 
 ### 架构概述
 
@@ -198,6 +202,100 @@ E2E层采用 **Maestro flow/subflow** 架构：
 - **Config**（`config.yaml`）：Maestro workspace 配置，`flows: ["*/**"]` 自动发现所有 flow
 
 > **详细规范（目录结构、命名规则、复用策略、完整示例）见 `maestro-bdd-spec.md`**
+
+### 开发模式本地 E2E 运行流程
+
+开发构建（development build）跑 E2E 时，需要 Metro 和已启动的模拟器同时就绪。按以下顺序执行，**iOS 与 Android 不要同时跑**：
+
+#### 1. 检查并启动 Metro
+
+```bash
+cd my-reader-mobile
+
+# 检查 8081 端口是否已有 Metro（任一命令有输出即可）
+lsof -Pi :8081 -sTCP:LISTEN
+curl -I http://127.0.0.1:8081
+
+# 如果没有输出，启动 Metro
+pnpm run start
+```
+
+等待 `http://127.0.0.1:8081` 可访问后再继续。
+
+#### 2. 检查并启动模拟器
+
+优先使用已经创建好的模拟器，没有时再创建。
+
+**iOS：**
+
+```bash
+# 列出可用模拟器
+xcrun simctl list devices available
+
+# 如果已有 Booted 的设备，直接使用；否则启动第一个可用 UDID
+xcrun simctl boot <UDID>
+open -a Simulator
+```
+
+**Android：**
+
+```bash
+# 列出已创建的 AVD
+emulator -list-avds
+
+# 检查是否有运行中的设备
+adb devices
+
+# 如果没有运行中的设备，启动第一个 AVD
+emulator -avd <AVD_NAME>
+```
+
+> 启动 Android 模拟器后执行 `adb reverse tcp:8081 tcp:8081`，然后在 dev launcher 里输入 `127.0.0.1:8081`（部分模拟器的 `10.0.2.2` 网络不可达）。
+>
+> 如果 Maestro 提示设备未连接（`Device xxx was requested, but it is not connected`），尝试重启 adb 服务：`adb kill-server && adb start-server`，再重新运行。
+
+#### 3. 安装 development build（如设备上未安装）
+
+`pnpm run ios` / `pnpm run android` 默认会交互式选择设备。为避免卡在选择界面，先查出设备 ID，再通过 `--device` 指定：
+
+**iOS：**
+
+```bash
+# 查出目标模拟器的 UDID
+xcrun simctl list devices available
+
+# 指定模拟器安装 development build
+pnpm exec expo run:ios --device <UDID>
+```
+
+**Android：**
+
+```bash
+# 列出已创建的 AVD
+emulator -list-avds
+
+# 指定模拟器安装 development build（优先使用 AVD 名称）
+pnpm exec expo run:android --device <AVD_NAME>
+```
+
+如果 `--device <ID>` 匹配失败，可以退回到交互式命令 `pnpm run ios` 或 `pnpm run android` 在模拟器列表中手动选择。
+
+#### 4. 分别运行 E2E
+
+先跑完一个平台，再跑另一个：
+
+```bash
+# iOS
+MAESTRO_DRIVER_STARTUP_TIMEOUT=600000 pnpm run test:e2e:ios
+
+# Android（等 iOS 结束后再执行）
+MAESTRO_DRIVER_STARTUP_TIMEOUT=600000 pnpm run test:e2e:android
+```
+
+- iOS 模拟器与 Mac 共享网络，dev-client 自动使用 `127.0.0.1:8081`。
+- Android 模拟器通过 `adb reverse tcp:8081 tcp:8081` 后，dev-client 使用 `127.0.0.1:8081`。
+- 单条 flow 调试示例：
+  `MAESTRO_DRIVER_STARTUP_TIMEOUT=600000 pnpm exec maestro --device emulator-5554 test e2e/flows/reader/read_book.yaml -e APP_ID=ryoumon.myreadermobile`
 
 ### CI集成（EAS Workflows）
 

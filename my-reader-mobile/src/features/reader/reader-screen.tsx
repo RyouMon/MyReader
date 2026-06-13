@@ -234,6 +234,7 @@ export default function ReaderScreen() {
   return (
     <BottomSheetModalProvider>
       <Animated.View
+        testID="reader-screen"
         entering={FadeIn.duration(300)}
         className="flex-1"
         style={{ backgroundColor: READER_FIXED.canvasBg }}

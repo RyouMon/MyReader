@@ -1,0 +1,33 @@
+appId: ${APP_ID}
+name: Open reader from a clean launch
+tags:
+  - skip
+---
+# Seed the fixture library and wait for the home screen.
+- runFlow: seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Open the first book in the reader and wait for it to load.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: myreadermobile://reader/1
+      - runFlow: confirm_deep_link.yaml
+      - extendedWaitUntil:
+          visible:
+            id: "reader-screen"
+          timeout: 15000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - openLink:
+          link: exp+my-reader-mobile://reader/1
+          autoVerify: true
+      - runFlow: confirm_deep_link.yaml
+      - extendedWaitUntil:
+          visible:
+            id: "reader-screen"
+          timeout: 15000

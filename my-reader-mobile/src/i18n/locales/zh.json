@@ -147,9 +147,14 @@
     "mountingReader": "正在挂载阅读器…",
     "loadFailed": "阅读器加载失败",
     "loadFailedMessage": "阅读器遇到了意外错误，请返回重试。",
+    "chrome": {
+      "moreActions": "更多操作"
+    },
     "toc": "目录",
+    "tocSheet": "目录面板",
     "noToc": "此书籍没有目录",
     "settings": "阅读设置",
+    "settingsSheet": "阅读设置面板",
     "settingsTheme": "主题",
     "readingMode": "阅读方式",
     "pageDirection": "翻页方向",

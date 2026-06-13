@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { StyleSheet, View, type GestureResponderEvent } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { ReadiumView } from "@ryoumon/react-native-readium";
 import type {
   Locator,
@@ -15,14 +15,6 @@ import type { ReaderState, ReaderTocItem } from "@/src/features/reader/component
 import type { ReaderTheme } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
-const TAP_MAX_DRIFT = 12;
-const TAP_MAX_DURATION_MS = 260;
-
-type TouchSnapshot = {
-  x: number;
-  y: number;
-  timestampMs: number;
-};
 
 export type ReadiumFixedReaderRef = {
   goTo: (locator: Locator) => void;
@@ -121,7 +113,6 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
     const tocItemsRef = useRef<ReaderTocItem[]>([]);
     const positionsRef = useRef<Locator[]>([]);
     const currentLocatorRef = useRef<Locator | null>(null);
-    const touchStartRef = useRef<TouchSnapshot | null>(null);
 
     useImperativeHandle(ref, () => ({
       goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -221,48 +212,6 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
       [onStateChange],
     );
 
-    const handleTouchStart = useCallback((event: GestureResponderEvent) => {
-      if (event.nativeEvent.touches.length !== 1) {
-        touchStartRef.current = null;
-        return;
-      }
-
-      const touch = event.nativeEvent.touches[0]!;
-      touchStartRef.current = {
-        x: touch.pageX,
-        y: touch.pageY,
-        timestampMs: Date.now(),
-      };
-    }, []);
-
-    const handleTouchEnd = useCallback(
-      (event: GestureResponderEvent) => {
-        const start = touchStartRef.current;
-        touchStartRef.current = null;
-        if (!start) return;
-
-        const currentTouch = event.nativeEvent.changedTouches[0];
-        if (!currentTouch) return;
-
-        const dx = currentTouch.pageX - start.x;
-        const dy = currentTouch.pageY - start.y;
-        const durationMs = Date.now() - start.timestampMs;
-        const isTapGesture =
-          Math.abs(dx) <= TAP_MAX_DRIFT &&
-          Math.abs(dy) <= TAP_MAX_DRIFT &&
-          durationMs <= TAP_MAX_DURATION_MS;
-
-        if (isTapGesture) {
-          onToggleChrome?.();
-        }
-      },
-      [onToggleChrome],
-    );
-
-    const handleTouchCancel = useCallback(() => {
-      touchStartRef.current = null;
-    }, []);
-
     useEffect(() => {
       if (gotoPageCommand == null || gotoPageCommand < 0) return;
 
@@ -279,21 +228,18 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
 
     return (
       <View style={styles.reader}>
-        <View
+        <ReadiumView
+          ref={readiumRef}
+          file={file}
+          preferences={preferences}
           style={styles.reader}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
-        >
-          <ReadiumView
-            ref={readiumRef}
-            file={file}
-            preferences={preferences}
-            style={styles.reader}
-            onPublicationReady={handlePublicationReady}
-            onLocationChange={handleLocationChange}
-          />
-        </View>
+          onPublicationReady={handlePublicationReady}
+          onLocationChange={handleLocationChange}
+          // onTap is emitted by the native navigator; the wrapping View's
+          // touch handlers don't receive events on Android because the native
+          // reader view consumes them.
+          onTap={onToggleChrome}
+        />
         {brightness < 100 && (
           <View
             style={[

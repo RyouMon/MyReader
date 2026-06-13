@@ -75,7 +75,7 @@ export default function ReaderActionsExpanded({
             style={[styles.pillButton, { backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
             onPress={onOpenToc}
           >
-            <RNView style={styles.pillInner}>
+            <RNView style={styles.pillInner} accessibilityElementsHidden={true}>
               <RNView style={styles.pillFill} pointerEvents="none">
                 <RNView style={[styles.pillFillBar, { backgroundColor: palette.progressFill, width: `${progressPercent}%` }]} />
               </RNView>
@@ -120,7 +120,7 @@ export default function ReaderActionsExpanded({
             style={[{ backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
             onPress={onOpenSettings}
           >
-            <RNView style={styles.pillContent}>
+            <RNView style={styles.pillContent} accessibilityElementsHidden={true}>
               <Text
                 className="text-[15px] font-semibold"
                 style={{ color: palette.actionText }}

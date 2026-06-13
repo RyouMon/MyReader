@@ -147,9 +147,14 @@
     "mountingReader": "Mounting reader…",
     "loadFailed": "Reader load failed",
     "loadFailedMessage": "The reader encountered an unexpected error. Please go back and retry.",
+    "chrome": {
+      "moreActions": "More Actions"
+    },
     "toc": "Table of Contents",
+    "tocSheet": "Table of Contents panel",
     "noToc": "This book has no table of contents",
     "settings": "Reading Settings",
+    "settingsSheet": "Reading Settings panel",
     "settingsTheme": "Theme",
     "readingMode": "Reading Mode",
     "pageDirection": "Page Direction",

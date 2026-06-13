@@ -33,51 +33,54 @@ tags:
                 when:
                   platform: Android
                 commands:
-                  - inputText: "10.0.2.2:8081"
+                  - inputText: "127.0.0.1:8081"
                   - hideKeyboard
             - tapOn: "Connect"
-      - runFlow:
-          commands:
-            - extendedWaitUntil:
-                visible: "SplashScreenLogo"
-                timeout: 10000
-                optional: true
-            - extendedWaitUntil:
-                notVisible: "SplashScreenLogo"
-                timeout: 10000
-                optional: true
-            - extendedWaitUntil:
-                visible: "Continue"
-                timeout: 10000
-                optional: true
+
+- runFlow:
+    commands:
+      - extendedWaitUntil:
+          visible: "SplashScreenLogo"
+          timeout: 10000
+          optional: true
+      - extendedWaitUntil:
+          notVisible: "SplashScreenLogo"
+          timeout: 10000
+          optional: true
+      - extendedWaitUntil:
+          visible: "Continue"
+          timeout: 10000
+          optional: true
+
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: "Tools button"
       - runFlow:
           when:
-            visible: "Continue"
+            platform: iOS
           commands:
-            - tapOn: "Continue"
-      - runFlow:
-          when:
-            visible: "Reload"
-          commands:
-            - scrollUntilVisible:
-                element:
+            - tapOn:
+                text: "1"
+                index: 1
+                rightOf:
                   text: "Tools button"
-            - runFlow:
-                when:
-                  platform: iOS
-                commands:
-                  - tapOn:
-                      text: "1"
-                      index: 1
-                      rightOf:
-                        text: "Tools button"
-            - runFlow:
-                when:
-                  platform: Android
-                commands:
-                  - tapOn: "Tools button"
-            - runFlow:
-                when:
-                  visible: "Close"
-                commands:
-                  - tapOn: "Close"
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - tapOn: "Tools button"
+      - runFlow:
+          when:
+            visible: "Close"
+          commands:
+            - tapOn: "Close"

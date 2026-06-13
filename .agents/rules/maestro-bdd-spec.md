@@ -27,7 +27,7 @@ e2e/
     │   ├── browse_webdav.yaml
     │   └── browse_onedrive.yaml
     ├── reader/
-    │   └── toggle_reader_chrome.yaml
+    │   └── read_book.yaml
     └── library/
         └── ...
 ```
@@ -46,7 +46,7 @@ e2e/
 ### Flow 文件
 
 - 动词开头，snake_case，描述**用户行为或测试目的**；
-- 好：`navigate_settings.yaml`, `browse_webdav.yaml`, `launch_app.yaml`, `toggle_reader_chrome.yaml`；
+- 好：`navigate_settings.yaml`, `browse_webdav.yaml`, `launch_app.yaml`, `read_book.yaml`；
 - 差：`modal_root_headers.yaml`（这是状态，不是行为）。
 
 ### Subflow 文件

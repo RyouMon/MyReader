@@ -58,5 +58,7 @@ output.selectors = {
     moreActions: "更多操作|More Actions|More actions",
     tocButton: "目录|Table of Contents",
     settingsButton: "阅读设置|Reading Settings",
+    tocSheet: "目录面板|Table of Contents panel",
+    settingsSheet: "阅读设置面板|Reading Settings panel",
   },
 };

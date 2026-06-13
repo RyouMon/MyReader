@@ -49,6 +49,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
         backgroundStyle={[styles.background, { backgroundColor: palette.sheetSurface }]}
         handleComponent={renderHandle}
         onDismiss={onDismiss}
+        accessibilityLabel={t("reader.tocSheet")}
       >
         <RNView style={styles.header}>
           <Text className="text-lg font-bold px-5 pt-3.5 pb-2.5" style={{ color: palette.text }}>
