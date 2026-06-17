@@ -1,0 +1,39 @@
+NOTICE
+======
+
+@my-reader/readium — Expo Module bridging Readium (Swift/Kotlin Toolkit) to React Native.
+Copyright (c) 2026 Wen Liang
+
+This module's own source is released under the MIT License; see the project's
+top-level LICENSE. The permissive licenses listed below (MIT, BSD 3-Clause) do
+not extend their terms to this module's own code; they apply only to the
+third-party portions identified here. Their copyright and license notices are
+retained as each license requires.
+
+
+1. react-native-readium
+   Copyright (c) 2021 Jacob Spizziri
+   Licensed under the MIT License — see licenses/MIT.txt
+   https://github.com/5-stones/react-native-readium
+
+   The reader core — ReaderService, the EPUB/PDF/CBZ view-controllers (iOS) and
+   fragments (Android), converters, and shared utils — was ported into this
+   module from react-native-readium. The original Nitro-Modules bridge layer
+   was rewritten as an Expo Module (ReadiumModule / ReadiumView); props, events,
+   and the imperative-navigation ref contract are preserved.
+
+
+2. Readium Swift Toolkit / Kotlin Toolkit
+   Copyright (c) 2017, Readium
+   Licensed under the BSD 3-Clause License — see licenses/BSD-3-Clause.txt
+   https://github.com/readium/swift-toolkit
+   https://github.com/readium/kotlin-toolkit
+
+   Used as runtime dependencies (CocoaPods pods ReadiumShared /
+   ReadiumNavigator / ReadiumStreamer / ReadiumInternal, and Maven artifacts
+   org.readium.kotlin-toolkit:*). In addition, reader/navigator source was
+   adapted from the toolkit and the now-archived r2-* example apps: the Android
+   reader fragments (EpubReaderFragment, VisualReaderFragment) and navigator
+   layout resources retain their original file headers reading
+   "Copyright ... Readium Foundation ... BSD-style license" and are governed by
+   this same BSD 3-Clause License text.

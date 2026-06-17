@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo } from "react";
 
-import type { Locator } from "@ryoumon/react-native-readium";
+import type { Locator } from "@my-reader/readium";
 
 import type { ReaderTheme } from "@/src/store/app-store.types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";

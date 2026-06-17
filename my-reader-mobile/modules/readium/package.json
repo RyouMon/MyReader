@@ -1,0 +1,21 @@
+{
+  "name": "@my-reader/readium",
+  "version": "0.1.0",
+  "description": "Open-architecture Readium bridge (Expo Module) for iOS + Android.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "react-native": "index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "ios",
+    "android",
+    "scripts",
+    "expo-module.config.json"
+  ],
+  "peerDependencies": {
+    "expo-modules-core": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

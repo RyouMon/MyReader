@@ -4,7 +4,7 @@ const path = require("path");
 
 /**
  * Adds a debug-only network security config that permits cleartext traffic
- * from any domain, overriding @ryoumon/react-native-readium's restrictive
+ * from any domain, overriding @my-reader/readium's restrictive
  * config which only allows localhost. This is required for the Metro bundler
  * to serve the JS bundle over HTTP via the LAN IP in development.
  */

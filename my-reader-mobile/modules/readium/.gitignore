@@ -1,0 +1,33 @@
+# Build outputs
+android/build/
+android/.gradle/
+android/captures/
+ios/build/
+
+# Machine-specific (SDK paths, signing)
+android/local.properties
+
+# CocoaPods — pods are installed at the app level (my-reader-mobile/ios/Pods),
+# never in-module.
+ios/Pods/
+
+# Xcode — Expo autolinking builds the module from the podspec; the standalone
+# Readium.xcodeproj is a per-machine artifact and is not committed.
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+
+# Kotlin / Gradle / IDE
+.kotlin/
+.idea/
+*.iml
+
+# Dependencies
+node_modules/
+
+# OS / logs
+.DS_Store
+*.log

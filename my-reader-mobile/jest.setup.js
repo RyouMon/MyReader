@@ -1,6 +1,6 @@
 jest.mock("react-native-reanimated", () => require("react-native-reanimated/mock"));
 
-jest.mock("@ryoumon/react-native-readium", () => {
+jest.mock("@my-reader/readium", () => {
   const mockReact = require("react");
   const { View } = require("react-native");
   return {

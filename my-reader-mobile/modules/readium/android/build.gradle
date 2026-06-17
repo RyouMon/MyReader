@@ -1,0 +1,66 @@
+plugins {
+  id 'com.android.library'
+  id 'kotlin-android'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.myreader.readium'
+version = '0.1.0'
+
+def readiumVersion = '3.1.2'
+
+android {
+  namespace "com.myreader.readium"
+  defaultConfig {
+    minSdkVersion 24
+    versionCode 1
+    versionName "0.1.0"
+  }
+  buildFeatures {
+    viewBinding true
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+  maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-android'
+
+  // Readium Kotlin Toolkit (REP-001~009)
+  implementation "org.readium.kotlin-toolkit:readium-shared:${readiumVersion}"
+  implementation "org.readium.kotlin-toolkit:readium-streamer:${readiumVersion}"
+  implementation("org.readium.kotlin-toolkit:readium-adapter-pdfium:${readiumVersion}") {
+    // Replace marain87's fork with mhiew's, which fixes the NPE in
+    // PDFView.loadComplete() when the view detaches before
+    // DecodingAsyncTask.onPostExecute() fires.
+    exclude group: "com.github.marain87", module: "AndroidPdfViewer"
+  }
+  implementation("org.readium.kotlin-toolkit:readium-navigator:${readiumVersion}") {
+    // No audio playback — drop exoplayer transitive deps to avoid collisions.
+    exclude group: "com.google.android.exoplayer"
+  }
+  implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3") {
+    // Avoid duplicate classes/native libs with Readium's transitive PdfiumAndroid.
+    exclude group: "com.github.mhiew", module: "pdfium-android"
+  }
+
+  // AndroidX (subset actually referenced by the reader fragments/layouts)
+  implementation "androidx.core:core-ktx:1.13.1"
+  implementation "androidx.activity:activity-ktx:1.9.0"
+  implementation "androidx.appcompat:appcompat:1.6.1"
+  implementation "androidx.fragment:fragment-ktx:1.7.1"
+  implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.8.4"
+  implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.8.4"
+  implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4"
+  implementation "androidx.navigation:navigation-fragment-ktx:2.7.7"
+  implementation "androidx.navigation:navigation-ui-ktx:2.7.7"
+  implementation "androidx.webkit:webkit:1.8.0"
+  implementation "com.google.android.material:material:1.11.0"
+
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0"
+  implementation "org.jsoup:jsoup:1.18.3"
+}

@@ -1,4 +1,4 @@
-import type { Locator } from "@ryoumon/react-native-readium";
+import type { Locator } from "@my-reader/readium";
 
 import {
   getReadingProgressRow,

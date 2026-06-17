@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import { ReadiumView } from "@ryoumon/react-native-readium";
+import { ReadiumView } from "@my-reader/readium";
 import type {
   Link,
   Locator,
@@ -8,7 +8,7 @@ import type {
   PublicationReadyEvent,
   ReadiumFile,
   ReadiumViewRef,
-} from "@ryoumon/react-native-readium";
+} from "@my-reader/readium";
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";

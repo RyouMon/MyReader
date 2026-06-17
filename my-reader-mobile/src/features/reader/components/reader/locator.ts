@@ -1,4 +1,4 @@
-import type { Locator } from "@ryoumon/react-native-readium";
+import type { Locator } from "@my-reader/readium";
 
 /** 从固定版式 {@link Locator} 解析 0-based 页码：优先 `position`。 */
 export function pageIndexFromFixedLocator(

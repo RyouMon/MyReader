@@ -16,7 +16,7 @@ import { pageIndexFromFixedLocator } from "@/src/features/reader/components/read
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 import { resolveReadFormat } from "@my-reader/tools/utils";
-import type { Locator } from "@ryoumon/react-native-readium";
+import type { Locator } from "@my-reader/readium";
 import { File } from "expo-file-system";
 import { useEffect, useRef, useState } from "react";
 import { libraryQueryKeys } from "../features/library/hooks/useLibraryQuery";
