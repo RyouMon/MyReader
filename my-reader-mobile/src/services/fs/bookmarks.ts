@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import i18n from "@/src/i18n";
 
 import type { Library } from "@my-reader/tools/types/library";
-import type { ResolveBookmarkResult } from "../../../modules/my-module/src/MyReaderSecurityScopedBookmarks.types";
+import type { ResolveBookmarkResult } from "../../../modules/security-scoped-bookmarks/src/MyReaderSecurityScopedBookmarks.types";
 
 type SecurityScopedAccessResult = {
   uri: string;
@@ -34,7 +34,7 @@ function getSecurityScopedBookmarksModule() {
   if (cachedIOSModule === undefined) {
     cachedIOSModule = (
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("../../../modules/my-module") as { default: SecurityScopedBookmarksNativeModule }
+      require("../../../modules/security-scoped-bookmarks") as { default: SecurityScopedBookmarksNativeModule }
     ).default;
   }
 
