@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
+    "test:rust:coverage": "cd src-tauri && cargo llvm-cov --lib --text --summary-only",
     "test:e2e": "npm run test:e2e:frontend && npm run test:e2e:desktop",
     "test:e2e:frontend": "npx bddgen -c e2e-frontend/playwright.config.ts && npx playwright test -c e2e-frontend/playwright.config.ts",
     "test:e2e:frontend:ui": "npx bddgen -c e2e-frontend/playwright.config.ts && npx playwright test --ui -c e2e-frontend/playwright.config.ts",

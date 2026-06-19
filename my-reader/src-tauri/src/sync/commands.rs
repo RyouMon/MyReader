@@ -68,6 +68,25 @@ pub fn sync_list_backends(state: State<'_, AppState>) -> Result<Vec<SyncBackendI
                     is_local_direct: false,
                 }
             }
+            crate::models::DataSourceDetail::Onedrive {
+                client_id,
+                tenant_id,
+                user_name,
+                user_email,
+                root_path,
+                ..
+            } => {
+                let root_view = root_path.clone().unwrap_or_else(|| "/".into());
+                let account_view = user_name.clone().unwrap_or_else(|| client_id.clone());
+                SyncBackendInfo {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    enabled: s.enabled,
+                    kind: "onedrive".into(),
+                    summary: format!("{} (account: {}, tenant: {}, root: {})", client_id, account_view, tenant_id, root_view),
+                    is_local_direct: false,
+                }
+            }
         })
         .collect::<Vec<_>>();
     info!("Success to list sync backends. count: {}", out.len());

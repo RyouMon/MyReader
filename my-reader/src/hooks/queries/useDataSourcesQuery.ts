@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import type { DataSource, DataSourceWebdav, DataSourceConnectionTestResult } from "@my-reader/tools/types/data-source"
+import type {
+  DataSource,
+  DataSourceOnedrive,
+  DataSourceWebdav,
+  DataSourceConnectionTestResult,
+} from "@my-reader/tools/types/data-source"
 import { api } from "@/lib/tauri-api"
 
 export const dataSourceKeys = {
@@ -20,8 +25,8 @@ function mapDataSourceFromBackendJson(raw: Record<string, unknown>): DataSource 
       type: "webdav",
       endpoint: raw.endpoint as string,
       username: raw.username as string,
-      hasPassword: Boolean(raw.hasPassword),
-      rootPath: raw.rootPath as string | null | undefined,
+      hasPassword: Boolean(raw.hasPassword ?? raw.has_password),
+      rootPath: (raw.rootPath ?? raw.root_path) as string | null | undefined,
       readonly: raw.readonly as boolean | undefined,
       createdAt: raw.createdAt as number | undefined,
     }
@@ -31,11 +36,12 @@ function mapDataSourceFromBackendJson(raw: Record<string, unknown>): DataSource 
     return {
       ...base,
       type: "onedrive",
-      clientId: raw.clientId as string,
-      displayName: raw.displayName as string | null | undefined,
-      email: raw.email as string | null | undefined,
-      rootPath: raw.rootPath as string | null | undefined,
-      hasRefreshToken: Boolean(raw.hasRefreshToken),
+      clientId: (raw.clientId ?? raw.client_id) as string,
+      tenantId: (raw.tenantId ?? raw.tenant_id) as string | null | undefined,
+      displayName: (raw.userName ?? raw.user_name ?? raw.displayName) as string | null | undefined,
+      email: (raw.userEmail ?? raw.user_email ?? raw.email) as string | null | undefined,
+      rootPath: (raw.rootPath ?? raw.root_path) as string | null | undefined,
+      hasRefreshToken: Boolean(raw.hasRefreshToken ?? raw.has_refresh_token),
       readonly: raw.readonly as boolean | undefined,
       createdAt: raw.createdAt as number | undefined,
     }
@@ -49,6 +55,10 @@ async function fetchDataSources(): Promise<DataSource[]> {
   return rows.map(mapDataSourceFromBackendJson).filter((d): d is DataSource => d !== null)
 }
 
+export type CreateDataSourceInput =
+  | (DataSourceWebdav & { password?: string })
+  | (DataSourceOnedrive & { refreshToken?: string })
+
 export function useDataSourcesQuery() {
   return useQuery({
     queryKey: dataSourceKeys.all,
@@ -60,13 +70,26 @@ export function useDataSourceMutations() {
   const queryClient = useQueryClient()
 
   const createDataSource = useMutation({
-    mutationFn: async (input: DataSourceWebdav & { password?: string }) => {
-      const raw = await api.addWebdavDataSource({
+    mutationFn: async (input: CreateDataSourceInput) => {
+      if (input.type === "webdav") {
+        const raw = await api.addWebdavDataSource({
+          name: input.name,
+          endpoint: input.endpoint,
+          username: input.username,
+          password: input.password ?? "",
+          rootPath: input.rootPath ?? null,
+        })
+        return mapDataSourceFromBackendJson(raw) as DataSource
+      }
+
+      const raw = await api.addOnedriveDataSource({
         name: input.name,
-        endpoint: input.endpoint,
-        username: input.username,
-        password: input.password ?? "",
+        clientId: input.clientId || null,
+        tenantId: input.tenantId ?? null,
         rootPath: input.rootPath ?? null,
+        userName: input.displayName ?? null,
+        userEmail: input.email ?? null,
+        refreshToken: input.refreshToken ?? null,
       })
       return mapDataSourceFromBackendJson(raw) as DataSource
     },

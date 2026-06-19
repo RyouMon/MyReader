@@ -38,8 +38,11 @@ tracing = "0.1"
 time = { version = "0.3", features = ["macros", "formatting"] }
 zip = "2"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-opendal = { version = "0.50", default-features = false, features = ["services-webdav", "services-fs"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+opendal = { version = "0.50", default-features = false, features = ["services-webdav", "services-fs", "services-onedrive"] }
+oauth2 = "4"
+open = "5"
+url = "2"
 blake3 = "1"
 async-trait = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs"] }
@@ -50,6 +53,9 @@ portpicker = "0.1"
 dunce = "1"
 quick-xml = "0.37"
 percent-encoding = "2"
+
+[dev-dependencies]
+bytes = "1"
 
 [profile.release]
 opt-level = "s"

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Folder Browser Redesign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --primary: #D97757;
+      --secondary: #A87E62;
+      --bg: #EDE8DF;
+      --bg-secondary: #F7F3EC;
+      --ink-1: #1C1714;
+      --ink-2: #5C5349;
+      --ink-inverse: #FAF6F0;
+      --success: #3A7D5A;
+      --warning: #C4922D;
+      --danger: #B53A2F;
+      --border: rgba(28, 23, 20, 0.10);
+      --border-strong: rgba(28, 23, 20, 0.20);
+      --radius: 8px;
+      --radius-md: 8px;
+      --radius-lg: 16px;
+      --shadow-lg: 0 4px 16px rgba(28, 23, 20, 0.12), 0 24px 64px rgba(28, 23, 20, 0.14);
+      --hover-bg: color-mix(in srgb, var(--ink-1) 5%, transparent);
+      --active-bg: color-mix(in srgb, var(--primary) 12%, transparent);
+      --focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      font-family: "Noto Sans SC", "DM Sans", system-ui, sans-serif;
+      color: var(--ink-1);
+    }
+
+    /* Dialog entrance */
+    @keyframes dialog-in {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .dialog {
+      width: 480px;
+      max-width: calc(100vw - 32px);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: 20px;
+      animation: dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* List item entrance */
+    @keyframes row-in {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .row {
+      animation: row-in 150ms ease-out both;
+    }
+
+    .row:nth-child(1) { animation-delay: 0ms; }
+    .row:nth-child(2) { animation-delay: 20ms; }
+    .row:nth-child(3) { animation-delay: 40ms; }
+    .row:nth-child(4) { animation-delay: 60ms; }
+    .row:nth-child(5) { animation-delay: 80ms; }
+    .row:nth-child(6) { animation-delay: 100ms; }
+
+    /* Hover & active states */
+    .folder-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: none;
+      color: var(--ink-1);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 150ms ease, transform 100ms ease;
+      text-align: left;
+    }
+
+    .folder-row:hover {
+      background: var(--hover-bg);
+    }
+
+    .folder-row:active {
+      transform: scale(0.995);
+    }
+
+    .folder-row:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .folder-icon {
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .folder-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .folder-chevron {
+      color: var(--ink-2);
+      flex-shrink: 0;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    }
+
+    .icon-button:hover {
+      background: var(--hover-bg);
+      color: var(--ink-1);
+    }
+
+    .icon-button:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .breadcrumb {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-2);
+      overflow: hidden;
+    }
+
+    .breadcrumb-current {
+      color: var(--ink-1);
+    }
+
+    .breadcrumb-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: color 150ms ease;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-link:hover {
+      color: var(--primary);
+    }
+
+    .breadcrumb-separator {
+      flex-shrink: 0;
+    }
+
+    /* Header */
+    .dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .dialog-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ink-1);
+      margin: 0 0 4px;
+    }
+
+    .dialog-subtitle {
+      font-size: 13px;
+      color: var(--ink-2);
+      margin: 0;
+    }
+
+    .close-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius);
+      border: none;
+      background: transparent;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: background-color 150ms ease, color 150ms ease;
+      margin-top: -4px;
+      margin-right: -4px;
+    }
+
+    .close-button:hover {
+      background: var(--hover-bg);
+      color: var(--ink-1);
+    }
+
+    /* Folder list */
+    .folder-list {
+      min-height: 220px;
+      max-height: 320px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 6px;
+      background: var(--bg-secondary);
+    }
+
+    .folder-list-empty,
+    .folder-list-loading,
+    .folder-list-error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 220px;
+      color: var(--ink-2);
+      font-size: 13px;
+      text-align: center;
+      gap: 8px;
+    }
+
+    .folder-list-error {
+      color: var(--danger);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    /* Footer */
+    .dialog-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .selected-path {
+      font-size: 13px;
+      color: var(--ink-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .selected-path strong {
+      color: var(--ink-1);
+      font-weight: 500;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 150ms ease, opacity 150ms ease, transform 100ms ease;
+      border: none;
+    }
+
+    .btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--ink-1);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--hover-bg);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--ink-inverse);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.05);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .dialog,
+      .row,
+      .folder-row,
+      .icon-button,
+      .btn,
+      .spinner {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <div class="dialog-header">
+      <div>
+        <h2 id="dialog-title" class="dialog-title">Select folder</h2>
+        <p class="dialog-subtitle">Choose the Calibre library root folder</p>
+      </div>
+      <button class="close-button" aria-label="Close">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div class="toolbar">
+      <button class="icon-button" aria-label="Go back" title="Go back">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      </button>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <button class="breadcrumb-link">Home</button>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 breadcrumb-separator"></i>
+        <button class="breadcrumb-link">Books</button>
+        <i data-lucide="chevron-right" class="w-3.5 h-3.5 breadcrumb-separator"></i>
+        <span class="breadcrumb-current">Calibre</span>
+      </nav>
+      <button class="icon-button" aria-label="Refresh" title="Refresh">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <div class="folder-list" role="list">
+      <button class="folder-row row" role="listitem">
+        <i data-lucide="folder" class="w-[18px] h-[18px] folder-icon"></i>
+        <span class="folder-name">Art</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 folder-chevron"></i>
+      </button>
+      <button class="folder-row row" role="listitem">
+        <i data-lucide="folder" class="w-[18px] h-[18px] folder-icon"></i>
+        <span class="folder-name">Comics</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 folder-chevron"></i>
+      </button>
+      <button class="folder-row row" role="listitem">
+        <i data-lucide="folder" class="w-[18px] h-[18px] folder-icon"></i>
+        <span class="folder-name">Ebooks</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 folder-chevron"></i>
+      </button>
+      <button class="folder-row row" role="listitem">
+        <i data-lucide="folder" class="w-[18px] h-[18px] folder-icon"></i>
+        <span class="folder-name">Magazines</span>
+        <i data-lucide="chevron-right" class="w-4 h-4 folder-chevron"></i>
+      </button>
+    </div>
+
+    <div class="dialog-footer">
+      <span class="selected-path">Selected: <strong>/Books/Calibre</strong></span>
+      <div class="button-group">
+        <button class="btn btn-secondary">Cancel</button>
+        <button class="btn btn-primary">Select this folder</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

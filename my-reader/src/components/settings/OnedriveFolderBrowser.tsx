@@ -3,24 +3,24 @@ import { useTranslation } from "react-i18next"
 
 import { FolderBrowser } from "@/components/settings/FolderBrowser"
 import { api } from "@/lib/tauri-api"
-import type { WebdavFolderEntry } from "@/lib/tauri-specta"
+import type { OnedriveFolderEntry } from "@/lib/tauri-specta"
 
-interface WebdavFolderBrowserProps {
+interface OnedriveFolderBrowserProps {
   dataSourceId: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (path: string) => void
 }
 
-export function WebdavFolderBrowser({
+export function OnedriveFolderBrowser({
   dataSourceId,
   open,
   onOpenChange,
   onSelect,
-}: WebdavFolderBrowserProps) {
+}: OnedriveFolderBrowserProps) {
   const { t } = useTranslation()
   const [currentPath, setCurrentPath] = useState("/")
-  const [folders, setFolders] = useState<WebdavFolderEntry[]>([])
+  const [folders, setFolders] = useState<OnedriveFolderEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,10 +29,10 @@ export function WebdavFolderBrowser({
       setLoading(true)
       setError(null)
       try {
-        const result = await api.webdavListFolders(dataSourceId, path)
+        const result = await api.onedriveListFolders(dataSourceId, path)
         setFolders(result)
       } catch {
-        setError(t("addLibraryForm.webdavBrowserError"))
+        setError(t("addDataSourceForm.onedriveBrowserError"))
         setFolders([])
       } finally {
         setLoading(false)
@@ -55,17 +55,17 @@ export function WebdavFolderBrowser({
 
   return (
     <FolderBrowser
-      title={t("addLibraryForm.webdavBrowserTitle")}
+      title={t("addDataSourceForm.onedriveBrowserTitle")}
       open={open}
       onOpenChange={onOpenChange}
       currentPath={currentPath}
       folders={folders}
       loading={loading}
       error={error}
-      loadingMessage={t("addLibraryForm.webdavBrowserLoading")}
-      emptyMessage={t("addLibraryForm.webdavBrowserEmpty")}
-      errorMessage={t("addLibraryForm.webdavBrowserError")}
-      selectLabel={t("addLibraryForm.webdavBrowserSelect")}
+      loadingMessage={t("addDataSourceForm.onedriveBrowserLoading")}
+      emptyMessage={t("addDataSourceForm.onedriveBrowserEmpty")}
+      errorMessage={t("addDataSourceForm.onedriveBrowserError")}
+      selectLabel={t("addDataSourceForm.onedriveBrowserSelect")}
       onNavigate={navigateTo}
       onRefresh={() => fetchFolders(currentPath)}
       onSelect={onSelect}

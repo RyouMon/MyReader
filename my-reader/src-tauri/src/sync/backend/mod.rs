@@ -1,6 +1,7 @@
-//! 同步后端抽象：LocalDirect 与 Webdav 分别实现在子模块中。
+//! 同步后端抽象：LocalDirect 与 Webdav 与 Onedrive 分别实现在子模块中。
 
 mod local;
+mod onedrive;
 mod webdav;
 
 use std::path::PathBuf;
@@ -19,22 +20,27 @@ pub enum BackendKind {
     Webdav {
         endpoint: String,
         username: String,
-        /// 指向 keyring 账户名；桌面端通过该字段 lazy 读出密码，不直接把密码序列化。
         credential_account: Option<String>,
-        /// 调用方可直接传入密码供一次性测试（如 `testBackend`），不落盘。
         #[serde(skip_serializing, default)]
         inline_password: Option<String>,
+        root_path: Option<String>,
+    },
+    /// OneDrive 远端：通过 OAuth2 access_token 访问 Microsoft Graph。
+    Onedrive {
+        data_source_id: String,
+        client_id: String,
+        tenant_id: String,
+        #[serde(skip_serializing, default)]
+        inline_access_token: Option<String>,
         root_path: Option<String>,
     },
 }
 
 impl BackendKind {
-    /// 是否为本地直读：许多 API 在此模式下需要短路。
     pub fn is_local_direct(&self) -> bool {
         matches!(self, BackendKind::LocalDirect { .. })
     }
 
-    /// Local 直读下的根目录。
     pub fn local_root(&self) -> Option<PathBuf> {
         match self {
             BackendKind::LocalDirect { root } => Some(PathBuf::from(root)),
@@ -43,7 +49,7 @@ impl BackendKind {
     }
 }
 
-/// 构造 OpenDAL `Operator`；`LocalDirect` 返回 `fs` 后端，`Webdav` 返回 `webdav` 后端。
+/// 构造 OpenDAL `Operator`。
 pub fn build_operator(kind: &BackendKind) -> Result<opendal::Operator, AppError> {
     match kind {
         BackendKind::LocalDirect { root } => local::build_operator(root),
@@ -54,10 +60,41 @@ pub fn build_operator(kind: &BackendKind) -> Result<opendal::Operator, AppError>
             inline_password,
             root_path,
         } => webdav::build_operator(endpoint, username, credential_account, inline_password, root_path),
+        BackendKind::Onedrive {
+            inline_access_token,
+            root_path,
+            ..
+        } => {
+            let token = inline_access_token.as_deref().filter(|t| !t.trim().is_empty())
+                .ok_or_else(|| AppError::Auth("OneDrive access token not available; call onedrive_start_auth first".into()))?;
+            onedrive::build_operator(token, root_path.as_deref())
+        }
     }
 }
 
-/// 小工具：`.pipe(Ok)` 链式收尾，避免 `Result<Operator, _>` 的中间变量。
+/// Build an operator for a persisted data source, lazily loading credentials
+/// (WebDAV password from keyring, OneDrive token via token manager).
+pub async fn build_operator_for_data_source(source: &crate::models::DataSourceConfig) -> Result<opendal::Operator, AppError> {
+    use crate::auth::credentials;
+    use crate::auth::onedrive::OnedriveTokenManager;
+
+    let mut kind = crate::sync::data_source_to_backend_kind(source)?;
+    match &mut kind {
+        BackendKind::Webdav { inline_password, credential_account, .. } => {
+            if let Some(account) = credential_account {
+                *inline_password = credentials::read_webdav_password(account)?;
+            }
+        }
+        BackendKind::Onedrive { inline_access_token, data_source_id, client_id, tenant_id, .. } => {
+            let manager = OnedriveTokenManager::new();
+            let token = manager.get_access_token(data_source_id, Some(client_id), Some(tenant_id)).await?;
+            *inline_access_token = Some(token);
+        }
+        _ => {}
+    }
+    build_operator(&kind)
+}
+
 pub(crate) trait Pipe: Sized {
     fn pipe<R>(self, f: impl FnOnce(Self) -> R) -> R {
         f(self)

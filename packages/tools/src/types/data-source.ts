@@ -17,11 +17,13 @@ export type DataSourceOnedrive = {
   name: string
   enabled: boolean
   clientId: string
+  tenantId?: string | null
   displayName?: string | null
   email?: string | null
   rootPath?: string | null
   hasRefreshToken: boolean
   readonly?: boolean
+  refreshToken?: string
   accessTokenExpiresAt?: number
   createdAt?: number
 }

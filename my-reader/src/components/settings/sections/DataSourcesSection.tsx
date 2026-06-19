@@ -1,8 +1,9 @@
 import { Trash2, Unplug } from "lucide-react"
-import type { DataSource, DataSourceWebdav } from "@my-reader/tools/types/data-source"
+import type { DataSource } from "@my-reader/tools/types/data-source"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AppRow } from "@/components/common/AppRow"
+import type { AppRowIconName } from "@/components/common/AppRow"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
 import { cn } from "@/lib/utils"
@@ -117,9 +118,6 @@ interface DataSourceCardProps {
   onDelete: (id: string) => Promise<void>
 }
 
-/**
- * 用统一卡片承载不同类型数据源，保持列表扫描效率。
- */
 function DataSourceCard({
   source,
   isPendingDelete,
@@ -127,10 +125,21 @@ function DataSourceCard({
   onDelete,
 }: DataSourceCardProps) {
   const { t } = useTranslation()
-  const rowIcon = "database"
-  const secondaryText = source.type === "webdav"
-    ? `${(source as DataSourceWebdav).endpoint} · ${(source as DataSourceWebdav).username}`
-    : source.name
+  const typeLabel = source.type
+  let bodyText = source.name
+  let secondaryText: string | undefined
+  let rowIcon: AppRowIconName = "database"
+
+  switch (source.type) {
+    case "webdav":
+      secondaryText = `${source.endpoint} · ${source.username}`
+      break
+    case "onedrive":
+      rowIcon = "cloud"
+      bodyText = source.displayName || source.name || "OneDrive"
+      secondaryText = source.email || undefined
+      break
+  }
 
   return (
     <GroupListItem
@@ -143,19 +152,14 @@ function DataSourceCard({
     >
       <AppRow
         icon={rowIcon}
-        body={source.name}
+        body={bodyText}
         detail={secondaryText}
         detailClassName="font-mono"
         tail={
           <div className="flex items-center gap-2">
             <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
-              webdav
+              {typeLabel}
             </span>
-            {source.readonly && (
-              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-                {t("settings.dataSources.builtIn")}
-              </span>
-            )}
             {isPendingDelete && !source.readonly ? (
               <span className="hidden text-[11px] text-destructive md:inline">
                 {t("settings.dataSources.confirmDelete")}

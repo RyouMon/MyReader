@@ -1,26 +1,47 @@
 use std::path::{Path, PathBuf};
 
 use futures::stream::{self, StreamExt};
+use opendal::Operator;
 use tracing::{info, warn};
 
 use crate::error::AppError;
 use crate::models::DataSourceConfig;
-use crate::utils::http::{build_client, build_list_url, extract_credentials, send_get};
+use crate::repositories::calibre_repo::CoverSummary;
+use crate::sync::backend::build_operator_for_data_source;
 
-/// Local cache directory for a WebDAV library's metadata.db.
-pub fn webdav_cache_dir(app_data_dir: &Path, library_id: &str) -> Result<PathBuf, AppError> {
-    let dir = app_data_dir.join("webdav-cache").join(library_id);
+/// Local cache directory for a remote library's metadata.db and covers.
+pub fn remote_library_cache_dir(app_data_dir: &Path, library_id: &str) -> Result<PathBuf, AppError> {
+    let dir = app_data_dir.join("remote-cache").join(library_id);
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
 
-/// Download metadata.db from WebDAV via direct HTTP GET.
+#[deprecated(note = "use remote_library_cache_dir instead")]
+pub fn webdav_cache_dir(app_data_dir: &Path, library_id: &str) -> Result<PathBuf, AppError> {
+    remote_library_cache_dir(app_data_dir, library_id)
+}
+
+/// Download a single remote file via OpenDAL operator.
+async fn download_file(op: &Operator, remote_path: &str, dest: &Path) -> Result<(), AppError> {
+    let bytes: Vec<u8> = op.read(remote_path).await
+        .map_err(|e| AppError::Config(format!("REMOTE_READ_FAILED: {e} ({remote_path})")))?
+        .to_vec();
+
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(dest, bytes)?;
+
+    Ok(())
+}
+
+/// Download metadata.db from a remote data source via OpenDAL.
 pub async fn download_metadata_db(
     source: &DataSourceConfig,
     remote_path: &str,
     dest: &Path,
 ) -> Result<(), AppError> {
-    let creds = extract_credentials(source)?;
+    let op = build_operator_for_data_source(source).await?;
 
     let normalized_remote = remote_path.trim().trim_start_matches('/');
     let trimmed_remote = if normalized_remote.is_empty() {
@@ -35,40 +56,25 @@ pub async fn download_metadata_db(
         format!("{trimmed_remote}/metadata.db")
     };
 
-    let target_url = build_list_url(&creds.endpoint, creds.root_path.as_deref(), &metadata_rel)?;
-
-    info!("Downloading metadata.db via HTTP GET. url: \"{target_url}\"");
-
-    let client = build_client(30)?;
-    let response = send_get(&client, &target_url, &creds.username, &creds.password).await?;
-
-    let status = response.status();
-    if status != reqwest::StatusCode::OK {
-        return Err(AppError::Config(format!(
-            "WEBDAV_METADATA_DOWNLOAD_FAILED: HTTP {} for {target_url}",
-            status.as_u16()
-        )));
-    }
-
-    let bytes = response.bytes().await.map_err(|err| {
-        AppError::Config(format!("WEBDAV_READ_BODY_FAILED: {err}"))
-    })?;
+    info!("Downloading metadata.db via OpenDAL. source_kind: {:?}, remote_path: \"{metadata_rel}\"", source.detail);
 
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(dest, &bytes)?;
 
+    download_file(&op, &metadata_rel, dest).await?;
+
+    let size = std::fs::metadata(dest).map(|m| m.len()).unwrap_or(0);
     info!(
         "Downloaded metadata.db. bytes: {}, dest: \"{}\"",
-        bytes.len(),
+        size,
         dest.display()
     );
 
     Ok(())
 }
 
-/// Bulk-download all book covers from WebDAV to the local cache directory.
+/// Bulk-download all book covers from a remote data source to the local cache directory.
 /// Covers are stored at `{cache_dir}/{book_path}/cover.jpg`, mirroring the
 /// Calibre directory layout so the bookcover_handler can serve them directly.
 /// Downloads up to 8 covers concurrently for speed.
@@ -76,17 +82,15 @@ pub async fn download_all_covers(
     source: &DataSourceConfig,
     remote_path: &str,
     cache_dir: &Path,
-    summaries: &[crate::repositories::calibre_repo::CoverSummary],
+    summaries: &[CoverSummary],
 ) {
-    let creds = match extract_credentials(source) {
-        Ok(c) => c,
-        Err(_) => {
-            warn!("Skipping cover download: cannot extract WebDAV credentials");
+    let op = match build_operator_for_data_source(source).await {
+        Ok(o) => o,
+        Err(e) => {
+            warn!("Skipping cover download: cannot build operator: {e}");
             return;
         }
     };
-
-    let client = build_client(15).unwrap_or_default();
 
     let normalized_remote = remote_path.trim().trim_start_matches('/');
     let trimmed_remote = if normalized_remote.is_empty() {
@@ -105,12 +109,6 @@ pub async fn download_all_covers(
             } else {
                 format!("{}/{}/cover.jpg", trimmed_remote, s.path)
             };
-            let url = build_list_url(
-                &creds.endpoint,
-                creds.root_path.as_deref(),
-                &cover_rel,
-            )
-            .ok()?;
             let local_dir = cache_dir.join(&s.path);
             let local_path = local_dir.join("cover.jpg");
 
@@ -123,7 +121,7 @@ pub async fn download_all_covers(
                 return None;
             }
 
-            Some((url.to_string(), local_path))
+            Some((cover_rel, local_path))
         })
         .collect();
 
@@ -135,38 +133,20 @@ pub async fn download_all_covers(
 
     info!("Starting bulk cover download. covers to fetch: {total}");
 
-    let username = creds.username.clone();
-    let password = creds.password.clone();
-
     let results: Vec<bool> = stream::iter(to_download)
-        .map(|(url, local_path)| {
-            let username = username.clone();
-            let password = password.clone();
-            let client = &client;
+        .map(|(cover_rel, local_path)| {
+            let op = op.clone();
             async move {
-                // Create parent dir
                 if let Some(parent) = local_path.parent() {
                     let _ = std::fs::create_dir_all(parent);
                 }
 
-                let result = client
-                    .get(&url)
-                    .basic_auth(&username, Some(&password))
-                    .send()
-                    .await;
-
-                match result {
-                    Ok(response) => {
-                        if response.status() == reqwest::StatusCode::OK {
-                            match response.bytes().await {
-                                Ok(bytes) => std::fs::write(&local_path, &bytes).is_ok(),
-                                Err(_) => false,
-                            }
-                        } else {
-                            false
-                        }
+                match download_file(&op, &cover_rel, &local_path).await {
+                    Ok(()) => true,
+                    Err(e) => {
+                        warn!("Failed to download cover: {e}");
+                        false
                     }
-                    Err(_) => false,
                 }
             }
         })
@@ -179,3 +159,8 @@ pub async fn download_all_covers(
 
     info!("Bulk cover download complete. downloaded: {downloaded}, failed: {failed}, total: {total}");
 }
+
+// Legacy WebDAV-specific helpers kept for compatibility with callers that still
+// need direct HTTP access (none currently).
+#[allow(dead_code)]
+fn _legacy_placeholder() {}

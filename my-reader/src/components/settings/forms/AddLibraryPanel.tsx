@@ -7,6 +7,7 @@ import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { DataSourceTypeSelector, type DataSourceType } from "@/components/settings/DataSourceTypeSelector"
 import { WebdavFolderBrowser } from "@/components/settings/WebdavFolderBrowser"
+import { OnedriveFolderBrowser } from "@/components/settings/OnedriveFolderBrowser"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -30,9 +31,10 @@ import { useDataSourcesQuery } from "@/hooks/queries/useDataSourcesQuery"
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
   onAddWebdavLibrary: (dataSourceId: string, remotePath: string) => Promise<unknown>
+  onAddOnedriveLibrary: (dataSourceId: string, remotePath: string) => Promise<unknown>
 }
 
-export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibraryPanelProps) {
+export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriveLibrary }: AddLibraryPanelProps) {
   const { t } = useTranslation()
   const { data: dataSources = [], isLoading: loadingDataSources } = useDataSourcesQuery()
 
@@ -41,8 +43,10 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [selectedType, setSelectedType] = useState<DataSourceType>("local")
   const [webdavBrowserOpen, setWebdavBrowserOpen] = useState(false)
+  const [onedriveBrowserOpen, setOnedriveBrowserOpen] = useState(false)
   const pathInputRef = useRef<HTMLInputElement>(null)
-  const availableWebdavSources = dataSources.filter((row) => row.enabled)
+  const availableWebdavSources = dataSources.filter((row) => row.enabled && row.type === "webdav")
+  const availableOnedriveSources = dataSources.filter((row) => row.enabled && row.type === "onedrive")
 
   const addLibrarySchema = useMemo(
     () =>
@@ -67,6 +71,8 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
       try {
         if (selectedType === "webdav") {
           await onAddWebdavLibrary(value.dataSourceId, value.path.trim())
+        } else if (selectedType === "onedrive") {
+          await onAddOnedriveLibrary(value.dataSourceId, value.path.trim())
         } else {
           await onAddLibrary(value.path.trim())
         }
@@ -99,8 +105,10 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
     setSubmitError(null)
     if (type === "local") {
       addLibraryForm.setFieldValue("dataSourceId", LOCAL_LIBRARY_DATA_SOURCE_ID)
-    } else if (availableWebdavSources.length > 0) {
+    } else if (type === "webdav" && availableWebdavSources.length > 0) {
       addLibraryForm.setFieldValue("dataSourceId", availableWebdavSources[0].id)
+    } else if (type === "onedrive" && availableOnedriveSources.length > 0) {
+      addLibraryForm.setFieldValue("dataSourceId", availableOnedriveSources[0].id)
     } else {
       addLibraryForm.setFieldValue("dataSourceId", "")
     }
@@ -132,7 +140,16 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
     pathInputRef.current?.focus()
   }
 
+  function handleOnedriveFolderSelect(path: string) {
+    addLibraryForm.setFieldValue("path", path)
+    setSubmitError(null)
+    pathInputRef.current?.focus()
+  }
+
   const selectedWebdavSource = availableWebdavSources.find(
+    (s) => s.id === addLibraryForm.state.values.dataSourceId,
+  )
+  const selectedOnedriveSource = availableOnedriveSources.find(
     (s) => s.id === addLibraryForm.state.values.dataSourceId,
   )
 
@@ -326,6 +343,117 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary }: AddLibrary
                       open={webdavBrowserOpen}
                       onOpenChange={setWebdavBrowserOpen}
                       onSelect={handleWebdavFolderSelect}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* OneDrive: data source select + path input + browse */}
+              {selectedType === "onedrive" && (
+                <>
+                  <addLibraryForm.Field name="dataSourceId">
+                    {(field) => {
+                      const isInvalid =
+                        field.state.meta.isTouched && !field.state.meta.isValid
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            {t("addLibraryForm.dataSourceLabel")}
+                          </FieldLabel>
+                          <Select
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              setSubmitError(null)
+                            }}
+                            disabled={adding || loadingDataSources}
+                          >
+                            <SelectTrigger
+                              id={field.name}
+                              className="w-full"
+                              onBlur={field.handleBlur}
+                              aria-invalid={isInvalid}
+                            >
+                              <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {availableOnedriveSources.map((source) => (
+                                  <SelectItem key={source.id} value={source.id}>
+                                    {source.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {t("addLibraryForm.onedriveSourceHint")}
+                          </p>
+                        </Field>
+                      )
+                    }}
+                  </addLibraryForm.Field>
+
+                  <addLibraryForm.Field name="path">
+                    {(pathField) => {
+                      const isPathInvalid =
+                        pathField.state.meta.isTouched &&
+                        !pathField.state.meta.isValid
+                      const browseDisabled =
+                        adding || !selectedOnedriveSource
+                      return (
+                        <Field data-invalid={isPathInvalid}>
+                          <FieldLabel htmlFor={pathField.name}>
+                            {t("addLibraryForm.pathLabel")}
+                          </FieldLabel>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              ref={pathInputRef}
+                              id={pathField.name}
+                              name={pathField.name}
+                              value={pathField.state.value}
+                              onBlur={pathField.handleBlur}
+                              onChange={(event) => {
+                                pathField.handleChange(event.target.value)
+                                setSubmitError(null)
+                              }}
+                              placeholder="Browse or enter a folder path on OneDrive"
+                              className="h-9 flex-1 font-mono text-xs"
+                              spellCheck={false}
+                              autoComplete="off"
+                              disabled={adding}
+                              aria-invalid={isPathInvalid}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="shrink-0 gap-1.5"
+                              onClick={() => setOnedriveBrowserOpen(true)}
+                              disabled={browseDisabled}
+                            >
+                              <FolderSearch className="size-[13px]" />
+                              {t("addLibraryForm.browse")}
+                            </Button>
+                          </div>
+                          {isPathInvalid && (
+                            <FieldError errors={pathField.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </addLibraryForm.Field>
+
+                  {selectedOnedriveSource && (
+                    <OnedriveFolderBrowser
+                      dataSourceId={selectedOnedriveSource.id}
+                      open={onedriveBrowserOpen}
+                      onOpenChange={setOnedriveBrowserOpen}
+                      onSelect={handleOnedriveFolderSelect}
                     />
                   )}
                 </>

@@ -123,6 +123,69 @@ pub async fn add_webdav_library(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn add_onedrive_library(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    data_source_id: String,
+    remote_path: String,
+    name: Option<String>,
+) -> Result<LibraryInfo, AppError> {
+    info!(
+        "Start to add OneDrive library. data_source_id: \"{data_source_id}\", remote_path: \"{remote_path}\", name: {name:?}"
+    );
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
+
+    let mut config = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
+    };
+
+    let info = LibraryService::add_onedrive_library(
+        &app_data_dir,
+        &data_source_id,
+        &remote_path,
+        name.as_deref(),
+        &mut config,
+    )
+    .await?;
+
+    {
+        let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        *guard = config;
+    }
+
+    let config_path = app_data_dir.join("config.json");
+    {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        config::save_config(&config_path, &guard)?;
+    }
+
+    if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
+        error!(
+            "Failed to extend asset protocol scope after adding OneDrive library. error: {e}"
+        );
+    }
+
+    info!(
+        "Success to add OneDrive library. id: \"{}\", name: \"{}\", book count: {}",
+        info.id, info.name, info.book_count
+    );
+
+    // Start background cover download — don't block the response
+    let config_snapshot = {
+        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
+        guard.clone()
+    };
+    LibraryService::spawn_cover_download(&app, &info.id, &config_snapshot);
+
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn refresh_webdav_library(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -143,6 +206,37 @@ pub async fn refresh_webdav_library(
 
     info!(
         "Success to refresh WebDAV library. id: \"{}\", name: \"{}\", book count: {}",
+        info.id, info.name, info.book_count
+    );
+
+    // Start background cover download — don't block the response
+    LibraryService::spawn_cover_download(&app, &info.id, &config);
+
+    Ok(info)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn refresh_onedrive_library(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<LibraryInfo, AppError> {
+    info!("Start to refresh OneDrive library. id: \"{id}\"");
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
+
+    let config = {
+        let config = state.lock().unwrap_or_else(|e| e.into_inner());
+        config.clone()
+    };
+
+    let info = LibraryService::refresh_onedrive_library(&app_data_dir, &id, &config).await?;
+
+    info!(
+        "Success to refresh OneDrive library. id: \"{}\", name: \"{}\", book count: {}",
         info.id, info.name, info.book_count
     );
 

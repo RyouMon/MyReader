@@ -1,5 +1,7 @@
 mod asset_scope;
+pub mod auth;
 pub mod cache;
+pub mod clients;
 pub mod commands;
 mod config;
 mod db;
@@ -40,8 +42,10 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::source::test_webdav_connection,
             commands::library::add_library,
             commands::library::add_webdav_library,
+            commands::library::add_onedrive_library,
             commands::library::refresh_library,
             commands::library::refresh_webdav_library,
+            commands::library::refresh_onedrive_library,
             commands::source::add_local_data_source,
             commands::source::add_webdav_data_source,
             commands::library::remove_library,
@@ -49,6 +53,9 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::library::switch_library,
             commands::library::get_active_library_id,
             commands::source::webdav_list_folders,
+            commands::source::onedrive_start_auth,
+            commands::source::add_onedrive_data_source,
+            commands::source::onedrive_list_folders,
             commands::book::get_books,
             commands::book::get_books_page,
             commands::book::get_book_detail,

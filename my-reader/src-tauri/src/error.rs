@@ -25,6 +25,15 @@ pub enum AppError {
 
     #[error("TASK_ERROR: {0}")]
     Task(String),
+
+    #[error("AUTH_ERROR: {0}")]
+    Auth(String),
+
+    #[error("CREDENTIAL_ERROR: {0}")]
+    Credential(String),
+
+    #[error("SYNC_ERROR: {0}")]
+    Sync(String),
 }
 
 impl From<sqlx::Error> for AppError {
@@ -62,6 +71,9 @@ pub enum ErrorKind {
     Request(String),
     Zip(String),
     Task(String),
+    Auth(String),
+    Credential(String),
+    Sync(String),
 }
 
 impl specta::Type for AppError {
@@ -84,6 +96,9 @@ impl serde::Serialize for AppError {
             Self::Request(_) => ErrorKind::Request(self.to_string()),
             Self::Zip(_) => ErrorKind::Zip(self.to_string()),
             Self::Task(_) => ErrorKind::Task(self.to_string()),
+            Self::Auth(_) => ErrorKind::Auth(self.to_string()),
+            Self::Credential(_) => ErrorKind::Credential(self.to_string()),
+            Self::Sync(_) => ErrorKind::Sync(self.to_string()),
         };
         kind.serialize(serializer)
     }

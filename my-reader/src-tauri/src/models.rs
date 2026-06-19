@@ -17,7 +17,7 @@ pub struct LibraryConfig {
     pub source_path: Option<String>,
 }
 
-/// 数据源配置；用于在本机保存可连接的数据位置（如本地目录、WebDAV）。
+/// Data source configuration; persisted locally to describe connectable data locations (local directories, WebDAV, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DataSourceConfig {
@@ -29,7 +29,7 @@ pub struct DataSourceConfig {
     pub detail: DataSourceDetail,
 }
 
-/// 数据源类型与其连接参数。
+/// Data source type and its connection parameters.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DataSourceDetail {
@@ -44,14 +44,26 @@ pub enum DataSourceDetail {
         #[serde(default)]
         root_path: Option<String>,
     },
+    Onedrive {
+        client_id: String,
+        tenant_id: String,
+        #[serde(default)]
+        credential_account: Option<String>,
+        #[serde(default)]
+        root_path: Option<String>,
+        #[serde(default)]
+        user_name: Option<String>,
+        #[serde(default)]
+        user_email: Option<String>,
+    },
 }
 
-/// 新增数据源默认启用，避免历史配置迁移后出现不可见状态。
+/// Newly added data sources are enabled by default so migrated legacy configs do not become invisible.
 fn default_data_source_enabled() -> bool {
     true
 }
 
-/// 应用配置根结构，持久化为 `app_data_dir/config.json`（仅机器本地：书库注册、活动书库、阅读器 UI）。
+/// Root application config structure, persisted to `app_data_dir/config.json` (machine-local only: library registry, active library, reader UI).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
@@ -62,13 +74,13 @@ pub struct AppConfig {
     pub data_sources: Vec<DataSourceConfig>,
     #[serde(default)]
     pub reader_ui: ReaderUiPreferences,
-    /// 稳定的 per-install 设备 UUID，首次生成后写回 config.json。
+    /// Stable per-install device UUID, written back to config.json after first generation.
     #[serde(default)]
     pub device_id: Option<String>,
 }
 
 
-/// 前端展示用数据源 DTO，WebDAV 仅回传是否已配置密码，避免在设置页明文回显。
+/// Data source DTO for the frontend. For WebDAV only whether a password is configured is returned, to avoid echoing plaintext secrets on the settings page.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DataSourceDto {
@@ -91,6 +103,14 @@ pub enum DataSourceDetailDto {
         has_password: bool,
         root_path: Option<String>,
     },
+    Onedrive {
+        client_id: String,
+        tenant_id: String,
+        has_refresh_token: bool,
+        root_path: Option<String>,
+        user_name: Option<String>,
+        user_email: Option<String>,
+    },
 }
 
 impl From<&DataSourceConfig> for DataSourceDto {
@@ -111,6 +131,23 @@ impl From<&DataSourceConfig> for DataSourceDto {
                     .as_ref()
                     .is_some_and(|account| !account.trim().is_empty()),
                 root_path: root_path.clone(),
+            },
+            DataSourceDetail::Onedrive {
+                client_id,
+                tenant_id,
+                credential_account,
+                root_path,
+                user_name,
+                user_email,
+            } => DataSourceDetailDto::Onedrive {
+                client_id: client_id.clone(),
+                tenant_id: tenant_id.clone(),
+                has_refresh_token: credential_account
+                    .as_ref()
+                    .is_some_and(|account| !account.trim().is_empty()),
+                root_path: root_path.clone(),
+                user_name: user_name.clone(),
+                user_email: user_email.clone(),
             },
         };
 
@@ -197,7 +234,24 @@ pub struct WebdavFolderEntry {
     pub path: String,
 }
 
-/// `get_reading_progress` 返回：Readium `Locator` 的 JSON（与 `@readium/shared` 一致）。
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OnedriveFolderEntry {
+    pub name: String,
+    pub path: String,
+    pub item_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OnedriveAuthResultDto {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub user_name: String,
+    pub user_email: Option<String>,
+}
+
+/// Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`).
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadingProgressDto {
@@ -217,5 +271,131 @@ pub struct JsonAny(pub serde_json::Value);
 impl specta::Type for JsonAny {
     fn definition(_types: &mut specta::Types) -> specta::datatype::DataType {
         specta::datatype::DataType::Reference(specta_typescript::define("any"))
+    }
+}
+
+// ── Inline tests ──────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_data_source_enabled_should_return_true_when_data_source_is_added() {
+        assert!(default_data_source_enabled());
+    }
+
+    #[test]
+    fn data_source_dto_should_preserve_local_root_path_when_local_source_has_root_path() {
+        let source = DataSourceConfig {
+            id: "ds-1".to_string(),
+            name: "Local".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Local {
+                root_path: "/tmp/books".to_string(),
+            },
+        };
+
+        let dto = DataSourceDto::from(&source);
+        assert_eq!(dto.id, "ds-1");
+        assert_eq!(dto.name, "Local");
+        assert!(dto.enabled);
+        match dto.detail {
+            DataSourceDetailDto::Local { root_path } => {
+                assert_eq!(root_path, "/tmp/books");
+            }
+            _ => panic!("expected local DTO"),
+        }
+    }
+
+    #[test]
+    fn data_source_dto_should_mark_has_password_when_webdav_has_credential_account() {
+        let source = DataSourceConfig {
+            id: "ds-2".to_string(),
+            name: "WebDAV".to_string(),
+            enabled: false,
+            detail: DataSourceDetail::Webdav {
+                endpoint: "https://dav.example.com".to_string(),
+                username: "user".to_string(),
+                credential_account: Some("acct".to_string()),
+                root_path: Some("/books".to_string()),
+            },
+        };
+
+        let dto = DataSourceDto::from(&source);
+        match dto.detail {
+            DataSourceDetailDto::Webdav {
+                endpoint,
+                username,
+                has_password,
+                root_path,
+            } => {
+                assert_eq!(endpoint, "https://dav.example.com");
+                assert_eq!(username, "user");
+                assert!(has_password);
+                assert_eq!(root_path, Some("/books".to_string()));
+            }
+            _ => panic!("expected webdav DTO"),
+        }
+    }
+
+    #[test]
+    fn data_source_dto_should_mark_no_password_when_webdav_has_blank_credential_account() {
+        let source = DataSourceConfig {
+            id: "ds-3".to_string(),
+            name: "WebDAV".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Webdav {
+                endpoint: "https://dav.example.com".to_string(),
+                username: "user".to_string(),
+                credential_account: Some("   ".to_string()),
+                root_path: None,
+            },
+        };
+
+        let dto = DataSourceDto::from(&source);
+        match dto.detail {
+            DataSourceDetailDto::Webdav { has_password, .. } => {
+                assert!(!has_password);
+            }
+            _ => panic!("expected webdav DTO"),
+        }
+    }
+
+    #[test]
+    fn data_source_dto_should_carry_user_info_when_onedrive_has_user_info() {
+        let source = DataSourceConfig {
+            id: "ds-4".to_string(),
+            name: "OneDrive".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Onedrive {
+                client_id: "client".to_string(),
+                tenant_id: "consumers".to_string(),
+                credential_account: Some("acct".to_string()),
+                root_path: Some("/Books".to_string()),
+                user_name: Some("Wen Liang".to_string()),
+                user_email: Some("wen@example.com".to_string()),
+            },
+        };
+
+        let dto = DataSourceDto::from(&source);
+        match dto.detail {
+            DataSourceDetailDto::Onedrive {
+                client_id,
+                tenant_id,
+                has_refresh_token,
+                root_path,
+                user_name,
+                user_email,
+            } => {
+                assert_eq!(client_id, "client");
+                assert_eq!(tenant_id, "consumers");
+                assert!(has_refresh_token);
+                assert_eq!(root_path, Some("/Books".to_string()));
+                assert_eq!(user_name, Some("Wen Liang".to_string()));
+                assert_eq!(user_email, Some("wen@example.com".to_string()));
+            }
+            _ => panic!("expected onedrive DTO"),
+        }
     }
 }

@@ -54,6 +54,16 @@ export function useLibraryMutations() {
     },
   })
 
+  const addOnedriveLibrary = useMutation({
+    mutationFn: async ({ dataSourceId, rootPath, name }: { dataSourceId: string; rootPath: string; name?: string }) => {
+      const info = await api.addOnedriveLibrary(dataSourceId, rootPath, name ?? null)
+      return mapLibraryFromBackendJson(info)
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
+    },
+  })
+
   const removeLibrary = useMutation({
     mutationFn: async (id: string) => {
       await api.removeLibrary(id)
@@ -70,6 +80,8 @@ export function useLibraryMutations() {
       if (!lib) throw new Error("Library not found")
       if (lib.sourceType === "webdav") {
         await api.refreshWebdavLibrary(id)
+      } else if (lib.sourceType === "onedrive") {
+        await api.refreshOnedriveLibrary(id)
       } else {
         await api.refreshLibrary(id)
       }
@@ -82,10 +94,12 @@ export function useLibraryMutations() {
   return {
     addLibrary: addLibrary.mutateAsync,
     addWebdavLibrary: addWebdavLibrary.mutateAsync,
+    addOnedriveLibrary: addOnedriveLibrary.mutateAsync,
     removeLibrary: removeLibrary.mutateAsync,
     refreshLibrary: refreshLibrary.mutateAsync,
     isAdding: addLibrary.isPending,
     isAddingWebdav: addWebdavLibrary.isPending,
+    isAddingOnedrive: addOnedriveLibrary.isPending,
     isRemoving: removeLibrary.isPending,
     isRefreshing: refreshLibrary.isPending,
   }

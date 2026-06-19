@@ -1,8 +1,10 @@
 use tracing::info;
 
 use crate::error::AppError;
-use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, DataSourceDto, WebdavFolderEntry};
-use crate::sync::credentials;
+use crate::models::{AppConfig, DataSourceConfig, DataSourceDetail, DataSourceDto, OnedriveFolderEntry, WebdavFolderEntry};
+use crate::auth::credentials;
+use crate::auth::onedrive::OnedriveTokenManager;
+use crate::clients::graph::{GraphClient, ReqwestGraphClient};
 use crate::utils::http::{
     build_client, build_list_url, build_test_url, extract_credentials, map_status_error,
     parse_propfind_response,
@@ -162,16 +164,18 @@ impl DataSourceService {
 
     pub fn remove_data_source(id: &str, config: &mut AppConfig) -> Result<(), AppError> {
         let mut webdav_accounts_to_delete = Vec::new();
+        let mut is_onedrive = false;
         for source in &config.data_sources {
             if source.id != id {
                 continue;
             }
-            if let DataSourceDetail::Webdav {
-                credential_account: Some(account),
-                ..
-            } = &source.detail
-            {
-                webdav_accounts_to_delete.push(account.clone());
+            match &source.detail {
+                DataSourceDetail::Webdav {
+                    credential_account: Some(account),
+                    ..
+                } => webdav_accounts_to_delete.push(account.clone()),
+                DataSourceDetail::Onedrive { .. } => is_onedrive = true,
+                _ => {}
             }
         }
 
@@ -183,6 +187,9 @@ impl DataSourceService {
 
         for account in webdav_accounts_to_delete {
             credentials::delete_webdav_password(&account)?;
+        }
+        if is_onedrive {
+            let _ = credentials::delete_onedrive_refresh_token(id);
         }
 
         Ok(())
@@ -260,5 +267,618 @@ impl DataSourceService {
         );
 
         Ok(entries)
+    }
+
+    pub fn add_onedrive_data_source(
+        name: &str,
+        client_id: Option<&str>,
+        tenant_id: Option<&str>,
+        root_path: Option<&str>,
+        user_name: Option<&str>,
+        user_email: Option<&str>,
+        refresh_token: Option<&str>,
+        config: &mut AppConfig,
+    ) -> Result<DataSourceDto, AppError> {
+        if name.is_empty() {
+            return Err(AppError::Config("DATASOURCE_NAME_REQUIRED".into()));
+        }
+
+        let resolved_client_id = client_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or("")
+            .to_string();
+        let resolved_tenant_id = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or("consumers")
+            .to_string();
+
+        let mut source = DataSourceConfig {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Onedrive {
+                client_id: resolved_client_id,
+                tenant_id: resolved_tenant_id,
+                credential_account: None,
+                root_path: root_path.filter(|p| !p.is_empty()).map(ToString::to_string),
+                user_name: user_name.map(ToString::to_string),
+                user_email: user_email.map(ToString::to_string),
+            },
+        };
+
+        let refresh_token = refresh_token.filter(|t| !t.is_empty());
+        if refresh_token.is_none() {
+            return Err(AppError::Auth("ONEDRIVE_REFRESH_TOKEN_REQUIRED".into()));
+        }
+
+        if let Some(rt) = refresh_token {
+            let account = credentials::onedrive_refresh_token_account(&source.id);
+            credentials::save_onedrive_refresh_token(&account, rt)?;
+            if let DataSourceDetail::Onedrive { credential_account, .. } = &mut source.detail {
+                *credential_account = Some(account);
+            }
+        }
+
+        let dto = DataSourceDto::from(&source);
+        config.data_sources.push(source);
+        Ok(dto)
+    }
+
+    pub async fn list_onedrive_folders(
+        data_source_id: &str,
+        path: &str,
+        config: &AppConfig,
+    ) -> Result<Vec<OnedriveFolderEntry>, AppError> {
+        let (client_id, tenant_id) = resolve_onedrive_source(config, data_source_id)?;
+
+        let manager = OnedriveTokenManager::new();
+        let access_token = manager
+            .get_access_token(data_source_id, Some(&client_id), Some(&tenant_id))
+            .await?;
+
+        let graph = ReqwestGraphClient::new()?;
+        list_onedrive_folders_with_client(data_source_id, path, &access_token, &graph).await
+    }
+}
+
+fn resolve_onedrive_source(
+    config: &AppConfig,
+    data_source_id: &str,
+) -> Result<(String, String), AppError> {
+    let source = config
+        .data_sources
+        .iter()
+        .find(|s| s.id == data_source_id)
+        .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id)))?;
+
+    match &source.detail {
+        DataSourceDetail::Onedrive { client_id, tenant_id, .. } => {
+            Ok((client_id.clone(), tenant_id.clone()))
+        }
+        _ => Err(AppError::Config("DATASOURCE_NOT_ONEDRIVE".into())),
+    }
+}
+
+async fn list_onedrive_folders_with_client(
+    data_source_id: &str,
+    path: &str,
+    access_token: &str,
+    graph: &dyn GraphClient,
+) -> Result<Vec<OnedriveFolderEntry>, AppError> {
+    info!("OneDrive list folders. data_source_id: \"{data_source_id}\", path: \"{path}\"");
+    graph.list_onedrive_folders(access_token, path).await
+}
+
+// ── Inline tests ──────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use async_trait::async_trait;
+    use warp::Filter;
+
+    use super::*;
+    use crate::auth::credentials;
+    use crate::clients::graph::GraphClient;
+
+    fn sample_onedrive_source(id: &str) -> DataSourceConfig {
+        DataSourceConfig {
+            id: id.to_string(),
+            name: "Sample OneDrive".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Onedrive {
+                client_id: "client-id".to_string(),
+                tenant_id: "consumers".to_string(),
+                credential_account: None,
+                root_path: None,
+                user_name: None,
+                user_email: None,
+            },
+        }
+    }
+
+    #[test]
+    fn resolve_onedrive_source_should_return_client_and_tenant_id_when_source_is_onedrive() {
+        let config = AppConfig {
+            data_sources: vec![sample_onedrive_source("ds-1")],
+            ..Default::default()
+        };
+
+        let (client_id, tenant_id) = resolve_onedrive_source(&config, "ds-1").unwrap();
+        assert_eq!(client_id, "client-id");
+        assert_eq!(tenant_id, "consumers");
+    }
+
+    #[test]
+    fn resolve_onedrive_source_should_return_not_found_when_source_id_is_missing() {
+        let config = AppConfig::default();
+        let err = resolve_onedrive_source(&config, "missing").unwrap_err();
+        assert!(format!("{err}").contains("DATASOURCE_NOT_FOUND"));
+    }
+
+    #[test]
+    fn resolve_onedrive_source_should_return_config_error_when_source_is_not_onedrive() {
+        let config = AppConfig {
+            data_sources: vec![DataSourceConfig {
+                id: "ds-2".to_string(),
+                name: "Local".to_string(),
+                enabled: true,
+                detail: DataSourceDetail::Local {
+                    root_path: "/tmp".to_string(),
+                },
+            }],
+            ..Default::default()
+        };
+
+        let err = resolve_onedrive_source(&config, "ds-2").unwrap_err();
+        assert!(format!("{err}").contains("DATASOURCE_NOT_ONEDRIVE"));
+    }
+
+    struct MockGraphClient {
+        result: Result<Vec<OnedriveFolderEntry>, String>,
+    }
+
+    #[async_trait]
+    impl GraphClient for MockGraphClient {
+        async fn get_me(&self,
+            _access_token: &str,
+        ) -> Result<serde_json::Value, AppError> {
+            Ok(serde_json::json!({}))
+        }
+
+        async fn list_onedrive_folders(
+            &self,
+            _access_token: &str,
+            _path: &str,
+        ) -> Result<Vec<OnedriveFolderEntry>, AppError> {
+            match &self.result {
+                Ok(entries) => Ok(entries.clone()),
+                Err(msg) => Err(AppError::Auth(msg.clone())),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn list_onedrive_folders_with_client_should_return_entries_when_client_returns_entries() {
+        let graph = MockGraphClient {
+            result: Ok(vec![OnedriveFolderEntry {
+                name: "Books".to_string(),
+                path: "Books/".to_string(),
+                item_id: Some("1".to_string()),
+            }]),
+        };
+
+        let entries = list_onedrive_folders_with_client("ds-1", "Books", "token", &graph)
+            .await
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "Books");
+    }
+
+    #[tokio::test]
+    async fn list_onedrive_folders_with_client_should_propagate_error_when_client_fails() {
+        let graph = MockGraphClient {
+            result: Err("ONEDRIVE_UNAUTHORIZED".to_string()),
+        };
+
+        let err = list_onedrive_folders_with_client("ds-1", "Books", "token", &graph)
+            .await
+            .unwrap_err();
+        assert!(format!("{err}").contains("ONEDRIVE_UNAUTHORIZED"));
+    }
+
+    #[test]
+    fn list_data_sources_should_return_dto_list_when_sources_exist() {
+        let mut config = AppConfig::default();
+        let source = DataSourceConfig {
+            id: "ds-1".to_string(),
+            name: "Local".to_string(),
+            enabled: true,
+            detail: DataSourceDetail::Local {
+                root_path: "/tmp".to_string(),
+            },
+        };
+        config.data_sources.push(source);
+
+        let dtos = DataSourceService::list_data_sources(&config);
+        assert_eq!(dtos.len(), 1);
+        assert_eq!(dtos[0].name, "Local");
+    }
+
+    #[test]
+    fn add_local_data_source_should_reject_when_name_or_path_is_empty() {
+        let mut config = AppConfig::default();
+        let err = DataSourceService::add_local_data_source("", "/tmp", &mut config).unwrap_err();
+        assert!(format!("{err}").contains("DATASOURCE_NAME_REQUIRED"));
+
+        let err = DataSourceService::add_local_data_source("Name", "", &mut config).unwrap_err();
+        assert!(format!("{err}").contains("LOCAL_ROOT_PATH_REQUIRED"));
+    }
+
+    #[test]
+    fn add_local_data_source_should_reject_when_local_path_does_not_exist() {
+        let mut config = AppConfig::default();
+        let err = DataSourceService::add_local_data_source(
+            "Name",
+            "/definitely/not/exists",
+            &mut config,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("INVALID_DATASOURCE_PATH"));
+    }
+
+    #[test]
+    fn add_local_data_source_should_reject_duplicate_when_local_source_already_exists() {
+        let mut config = AppConfig::default();
+        let temp = std::env::temp_dir();
+        let first = DataSourceService::add_local_data_source(
+            "First",
+            temp.to_str().unwrap(),
+            &mut config,
+        )
+        .unwrap();
+
+        let err = DataSourceService::add_local_data_source(
+            "Second",
+            temp.to_str().unwrap(),
+            &mut config,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("LOCAL_DATASOURCE_ALREADY_EXISTS"));
+        assert_eq!(config.data_sources.len(), 1);
+        assert_eq!(first.name, "First");
+    }
+
+    #[test]
+    fn remove_data_source_should_delete_local_source_when_removing_local_source() {
+        let mut config = AppConfig::default();
+        let dto = DataSourceService::add_local_data_source(
+            "ToRemove",
+            std::env::temp_dir().to_str().unwrap(),
+            &mut config,
+        )
+        .unwrap();
+
+        DataSourceService::remove_data_source(&dto.id, &mut config).unwrap();
+        assert!(config.data_sources.is_empty());
+    }
+
+    #[test]
+    fn remove_data_source_should_return_not_found_when_source_id_does_not_exist() {
+        let mut config = AppConfig::default();
+        let err = DataSourceService::remove_data_source("missing", &mut config).unwrap_err();
+        assert!(format!("{err}").contains("DATASOURCE_NOT_FOUND"));
+    }
+
+    #[test]
+    fn add_onedrive_data_source_should_reject_when_name_is_empty() {
+        let mut config = AppConfig::default();
+        let err = DataSourceService::add_onedrive_data_source(
+            "", None, None, None, None, None, Some("rt"), &mut config,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("DATASOURCE_NAME_REQUIRED"));
+    }
+
+    #[test]
+    fn add_onedrive_data_source_should_reject_when_refresh_token_is_empty() {
+        let mut config = AppConfig::default();
+        let err = DataSourceService::add_onedrive_data_source(
+            "OneDrive", None, None, None, None, None, None, &mut config,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("ONEDRIVE_REFRESH_TOKEN_REQUIRED"));
+    }
+
+    #[tokio::test]
+    async fn test_webdav_connection_should_reject_when_inputs_are_invalid() {
+        let err = DataSourceService::test_webdav_connection("", "user", "pass", None)
+            .await
+            .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_ENDPOINT_REQUIRED"));
+
+        let err = DataSourceService::test_webdav_connection("http://x", "", "pass", None)
+            .await
+            .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_USERNAME_REQUIRED"));
+
+        let err = DataSourceService::test_webdav_connection("http://x", "user", "", None)
+            .await
+            .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_PASSWORD_REQUIRED"));
+    }
+
+    #[test]
+    fn add_webdav_data_source_should_reject_duplicate_when_source_already_exists() {
+        let mut config = AppConfig::default();
+        DataSourceService::add_webdav_data_source(
+            "A",
+            "http://dav",
+            "user",
+            "pass",
+            None,
+            &mut config,
+        )
+        .unwrap();
+
+        let err = DataSourceService::add_webdav_data_source(
+            "B",
+            "http://dav",
+            "user",
+            "pass2",
+            None,
+            &mut config,
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_DATASOURCE_ALREADY_EXISTS"));
+    }
+
+    #[test]
+    fn add_webdav_data_source_should_create_source_and_store_password_when_valid() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let mut config = AppConfig::default();
+
+        let dto = DataSourceService::add_webdav_data_source(
+            "WebDAV",
+            "http://dav.example.com",
+            "user",
+            "pass",
+            Some("/books"),
+            &mut config,
+        )
+        .unwrap();
+
+        assert_eq!(dto.name, "WebDAV");
+        assert_eq!(config.data_sources.len(), 1);
+
+        let account = credentials::webdav_password_account(&dto.id);
+        assert_eq!(
+            credentials::read_webdav_password(&account).unwrap(),
+            Some("pass".to_string())
+        );
+    }
+
+    #[test]
+    fn add_onedrive_data_source_should_create_source_and_store_token_when_valid() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let mut config = AppConfig::default();
+
+        let dto = DataSourceService::add_onedrive_data_source(
+            "OneDrive",
+            None,
+            None,
+            Some("/Books"),
+            Some("Wen Liang"),
+            Some("wen@example.com"),
+            Some("refresh-token"),
+            &mut config,
+        )
+        .unwrap();
+
+        assert_eq!(dto.name, "OneDrive");
+        assert_eq!(config.data_sources.len(), 1);
+
+        assert_eq!(
+            credentials::read_onedrive_refresh_token(&dto.id).unwrap(),
+            Some("refresh-token".to_string())
+        );
+    }
+
+    #[test]
+    fn remove_data_source_should_delete_webdav_password_when_removing_webdav_source() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let mut config = AppConfig::default();
+        let dto = DataSourceService::add_webdav_data_source(
+            "WebDAV",
+            "http://dav",
+            "user",
+            "pass",
+            None,
+            &mut config,
+        )
+        .unwrap();
+
+        let account = credentials::webdav_password_account(&dto.id);
+        assert!(credentials::read_webdav_password(&account).unwrap().is_some());
+
+        DataSourceService::remove_data_source(&dto.id, &mut config).unwrap();
+        assert!(config.data_sources.is_empty());
+        assert_eq!(credentials::read_webdav_password(&account).unwrap(), None);
+    }
+
+    #[test]
+    fn remove_data_source_should_delete_onedrive_token_when_removing_onedrive_source() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let mut config = AppConfig::default();
+        let dto = DataSourceService::add_onedrive_data_source(
+            "OneDrive",
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some("refresh-token"),
+            &mut config,
+        )
+        .unwrap();
+
+        assert!(
+            credentials::read_onedrive_refresh_token(&dto.id)
+                .unwrap()
+                .is_some()
+        );
+
+        DataSourceService::remove_data_source(&dto.id, &mut config).unwrap();
+        assert!(config.data_sources.is_empty());
+        assert_eq!(
+            credentials::read_onedrive_refresh_token(&dto.id).unwrap(),
+            None
+        );
+    }
+
+    /// Start a local warp server and return the listening address.
+    fn start_warp_server<
+        F: Fn(warp::http::Method, String, bytes::Bytes) -> warp::http::Response<bytes::Bytes>
+            + Send
+            + Sync
+            + 'static,
+    >(
+        handler: F,
+    ) -> std::net::SocketAddr {
+        let handler = std::sync::Arc::new(handler);
+        let route = warp::any()
+            .and(warp::method())
+            .and(warp::header::<String>("depth"))
+            .and(warp::body::bytes())
+            .map(move |method: warp::http::Method, depth: String, body: bytes::Bytes| {
+                let handler = handler.clone();
+                handler(method, depth, body)
+            });
+
+        let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
+        tokio::spawn(server);
+        addr
+    }
+
+    #[tokio::test]
+    async fn test_webdav_connection_should_succeed_when_server_returns_multi_status() {
+        let addr = start_warp_server(|_method, _depth, _body| {
+            warp::http::Response::builder()
+                .status(207)
+                .body(bytes::Bytes::from_static(b""))
+                .unwrap()
+        });
+
+        DataSourceService::test_webdav_connection(
+            &format!("http://{addr}/dav"),
+            "user",
+            "pass",
+            Some("/books"),
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_webdav_connection_should_map_unauthorized_error_when_server_returns_unauthorized() {
+        let addr = start_warp_server(|_method, _depth, _body| {
+            warp::http::Response::builder()
+                .status(401)
+                .body(bytes::Bytes::from_static(b""))
+                .unwrap()
+        });
+
+        let err = DataSourceService::test_webdav_connection(
+            &format!("http://{addr}/dav"),
+            "user",
+            "pass",
+            None,
+        )
+        .await
+        .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_UNAUTHORIZED"));
+    }
+
+    const PROPFIND_LISTING_XML: &str = r#"<?xml version="1.0"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/books/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:resourcetype><D:collection/></D:resourcetype>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/books/Authors/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:resourcetype><D:collection/></D:resourcetype>
+        <D:displayname>Authors</D:displayname>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+</D:multistatus>"#;
+
+    #[tokio::test]
+    async fn list_webdav_folders_should_return_directory_entries_when_server_returns_propfind() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let addr = start_warp_server(|_method, depth, _body| {
+            let body = if depth == "1" {
+                PROPFIND_LISTING_XML.to_string()
+            } else {
+                String::new()
+            };
+            warp::http::Response::builder()
+                .status(207)
+                .body(bytes::Bytes::from(body))
+                .unwrap()
+        });
+
+        let mut config = AppConfig::default();
+        let dto = DataSourceService::add_webdav_data_source(
+            "WebDAV",
+            &format!("http://{addr}"),
+            "user",
+            "pass",
+            Some("/books"),
+            &mut config,
+        )
+        .unwrap();
+
+        let entries = DataSourceService::list_webdav_folders(&dto.id, "/", &config)
+            .await
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "Authors");
+        assert_eq!(entries[0].path, "Authors/");
+    }
+
+    #[tokio::test]
+    async fn list_webdav_folders_should_return_error_when_server_returns_unexpected_status() {
+        let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
+        let addr = start_warp_server(|_method, _depth, _body| {
+            warp::http::Response::builder()
+                .status(500)
+                .body(bytes::Bytes::from_static(b""))
+                .unwrap()
+        });
+
+        let mut config = AppConfig::default();
+        let dto = DataSourceService::add_webdav_data_source(
+            "WebDAV",
+            &format!("http://{addr}/dav"),
+            "user",
+            "pass",
+            Some("/books"),
+            &mut config,
+        )
+        .unwrap();
+
+        let err = DataSourceService::list_webdav_folders(&dto.id, "/", &config)
+            .await
+            .unwrap_err();
+        assert!(format!("{err}").contains("WEBDAV_UNEXPECTED_STATUS"));
     }
 }

@@ -4,7 +4,7 @@ use opendal::{services, Operator};
 
 use crate::error::AppError;
 
-use crate::sync::credentials;
+use crate::auth::credentials;
 use super::Pipe;
 
 pub fn build_operator(

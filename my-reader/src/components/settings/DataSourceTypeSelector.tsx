@@ -2,7 +2,7 @@ import { Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 
-export type DataSourceType = "local" | "webdav"
+export type DataSourceType = "local" | "webdav" | "onedrive"
 
 interface DataSourceTypeSelectorProps {
   value: DataSourceType
@@ -75,10 +75,34 @@ export function DataSourceTypeSelector({
       selectedIconBg: "bg-primary/15",
       selectedIconColor: "text-primary",
     },
+    {
+      key: "onedrive",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+        </svg>
+      ),
+      title: t("addDataSourceForm.typeOnedrive"),
+      desc: t("addDataSourceForm.typeOnedriveDesc"),
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-500",
+      selectedIconBg: "bg-blue-500/15",
+      selectedIconColor: "text-blue-500",
+    },
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className="grid grid-cols-3 gap-2.5">
       {types.map((type) => {
         const isSelected = value === type.key
         return (

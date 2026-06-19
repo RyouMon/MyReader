@@ -17,7 +17,7 @@ import { useLibraryUiStore } from "@/stores/libraryUiStore"
 export default function LibrariesSection() {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibrariesQuery()
-  const { addLibrary, addWebdavLibrary, removeLibrary } = useLibraryMutations()
+  const { addLibrary, addWebdavLibrary, addOnedriveLibrary, removeLibrary } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -75,7 +75,12 @@ export default function LibrariesSection() {
 
         <AddLibraryPanel
           onAddLibrary={addLibrary}
-          onAddWebdavLibrary={(dataSourceId, remotePath) => addWebdavLibrary({ dataSourceId, rootPath: remotePath })}
+          onAddWebdavLibrary={(dataSourceId, remotePath) =>
+            addWebdavLibrary({ dataSourceId, rootPath: remotePath })
+          }
+          onAddOnedriveLibrary={(dataSourceId, remotePath) =>
+            addOnedriveLibrary({ dataSourceId, rootPath: remotePath })
+          }
         />
 
         {/* Hint */}
@@ -106,7 +111,8 @@ function LibraryCard({
 }: LibraryCardProps) {
   const { t } = useTranslation()
   const isWebdav = lib.sourceType === "webdav"
-  const rowIcon = isWebdav ? "cloud" : "folder"
+  const isOnedrive = lib.sourceType === "onedrive"
+  const rowIcon = isOnedrive ? "cloud" : isWebdav ? "cloud" : "folder"
 
   return (
     <GroupListItem
@@ -125,12 +131,17 @@ function LibraryCard({
         detailClassName="font-mono"
         tail={
           <div className="flex items-center gap-2">
+            {isOnedrive && (
+              <span className="rounded-sm bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-blue-500">
+                OneDrive
+              </span>
+            )}
             {isWebdav && (
               <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-primary">
                 WebDAV
               </span>
             )}
-            {!isWebdav && (
+            {!isWebdav && !isOnedrive && (
               <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
                 {t("addLibraryForm.typeLocal")}
               </span>

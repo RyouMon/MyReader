@@ -5,25 +5,24 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	listLibraries: () => typedError<LibraryInfo[], ErrorKind>(__TAURI_INVOKE("list_libraries")),
-	/**  返回已配置的数据源列表（敏感字段会在 DTO 层做脱敏）。 */
 	listDataSources: () => typedError<DataSourceDto[], ErrorKind>(__TAURI_INVOKE("list_data_sources")),
-	/**  使用真实 WebDAV 请求进行连接测试，成功返回 `Ok(())`。 */
 	testWebdavConnection: (input: TestWebdavConnectionInput) => typedError<null, ErrorKind>(__TAURI_INVOKE("test_webdav_connection", { input })),
 	addLibrary: (path: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_library", { path, name })),
 	addWebdavLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_webdav_library", { dataSourceId, remotePath, name })),
+	addOnedriveLibrary: (dataSourceId: string, remotePath: string, name: string | null) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("add_onedrive_library", { dataSourceId, remotePath, name })),
 	refreshLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_library", { id })),
 	refreshWebdavLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_webdav_library", { id })),
-	/**  新增本地目录类型数据源。 */
+	refreshOnedriveLibrary: (id: string) => typedError<LibraryInfo, ErrorKind>(__TAURI_INVOKE("refresh_onedrive_library", { id })),
 	addLocalDataSource: (input: NewLocalDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_local_data_source", { input })),
-	/**  新增 WebDAV 类型数据源。 */
 	addWebdavDataSource: (input: NewWebdavDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_webdav_data_source", { input })),
 	removeLibrary: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_library", { id })),
-	/**  删除指定数据源。 */
 	removeDataSource: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_data_source", { id })),
 	switchLibrary: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("switch_library", { id })),
 	getActiveLibraryId: () => typedError<string | null, ErrorKind>(__TAURI_INVOKE("get_active_library_id")),
-	/**  列出指定 WebDAV 数据源中某个路径下的所有文件夹。 */
 	webdavListFolders: (dataSourceId: string, path: string) => typedError<WebdavFolderEntry[], ErrorKind>(__TAURI_INVOKE("webdav_list_folders", { dataSourceId, path })),
+	onedriveStartAuth: (input: OnedriveStartAuthInput) => typedError<OnedriveAuthResultDto, ErrorKind>(__TAURI_INVOKE("onedrive_start_auth", { input })),
+	addOnedriveDataSource: (input: NewOnedriveDataSourceInput) => typedError<DataSourceDto, ErrorKind>(__TAURI_INVOKE("add_onedrive_data_source", { input })),
+	onedriveListFolders: (dataSourceId: string, path: string) => typedError<OnedriveFolderEntry[], ErrorKind>(__TAURI_INVOKE("onedrive_list_folders", { dataSourceId, path })),
 	getBooks: (libraryId: string | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_books", { libraryId })),
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
@@ -98,9 +97,9 @@ export type CacheUsageDto = {
 	maxBytes: number,
 };
 
-export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null };
+export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };
 
-/**  前端展示用数据源 DTO，WebDAV 仅回传是否已配置密码，避免在设置页明文回显。 */
+/**  Data source DTO for the frontend. For WebDAV only whether a password is configured is returned, to avoid echoing plaintext secrets on the settings page. */
 export type DataSourceDto = {
 	id: string,
 	name: string,
@@ -112,7 +111,7 @@ export type DbSyncReport = {
 	pulled: number,
 };
 
-export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string };
+export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Sync"; message: string };
 
 export type FileStateRow = {
 	path: string,
@@ -153,13 +152,40 @@ export type NewLocalDataSourceInput = {
 	rootPath: string,
 };
 
-/**  新建 WebDAV 数据源时的入参。 */
+export type NewOnedriveDataSourceInput = {
+	name: string,
+	clientId: string | null,
+	tenantId: string | null,
+	rootPath: string | null,
+	userName: string | null,
+	userEmail: string | null,
+	refreshToken: string | null,
+};
+
 export type NewWebdavDataSourceInput = {
 	name: string,
 	endpoint: string,
 	username: string,
 	password: string,
 	rootPath: string | null,
+};
+
+export type OnedriveAuthResultDto = {
+	accessToken: string,
+	refreshToken: string,
+	userName: string,
+	userEmail: string | null,
+};
+
+export type OnedriveFolderEntry = {
+	name: string,
+	path: string,
+	itemId: string | null,
+};
+
+export type OnedriveStartAuthInput = {
+	clientId: string | null,
+	tenantId: string | null,
 };
 
 export type PaginatedBooks = {
@@ -207,7 +233,7 @@ export type ReaderUiPreferences_Serialize = {
 	cache: CachePreferencesDto,
 };
 
-/**  `get_reading_progress` 返回：Readium `Locator` 的 JSON（与 `@readium/shared` 一致）。 */
+/**  Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`). */
 export type ReadingProgressDto = {
 	libraryId: string,
 	bookId: number,
@@ -235,7 +261,6 @@ export type SyncBackendInfo = {
 	isLocalDirect: boolean,
 };
 
-/**  测试 WebDAV 连接时的入参。 */
 export type TestWebdavConnectionInput = {
 	endpoint: string,
 	username: string,

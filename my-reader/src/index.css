@@ -205,6 +205,28 @@
   }
 }
 
+/* Folder browser row entrance */
+@keyframes folder-browser-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.folder-browser-row {
+  animation: folder-browser-row-in 150ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder-browser-row {
+    animation: none !important;
+  }
+}
+
 /* Settings library card entrance */
 @keyframes settings-card-in {
   from {

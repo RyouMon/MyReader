@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { StatusNotice } from "@/components/common/StatusNotice"
+import { DataSourceTypeSelector, type DataSourceType } from "@/components/settings/DataSourceTypeSelector"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -15,30 +16,24 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { useDataSourceMutations } from "@/hooks/queries/useDataSourcesQuery"
+import {
+  type CreateDataSourceInput,
+  useDataSourceMutations,
+} from "@/hooks/queries/useDataSourcesQuery"
+import { OnedriveDataSourceForm } from "./OnedriveDataSourceForm"
 
 interface AddDataSourcePanelProps {
-  onCreateDataSource: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
+  onCreateDataSource: (input: CreateDataSourceInput) => Promise<unknown>
 }
 
-/**
- * 统一“添加数据源”入口按钮与表单面板，避免设置分区内的新增逻辑分散。
- */
 export function AddDataSourcePanel({
   onCreateDataSource,
 }: AddDataSourcePanelProps) {
   const { t } = useTranslation()
   const { testConnection } = useDataSourceMutations()
   const [addPanelOpen, setAddPanelOpen] = useState(false)
+  const [selectedType, setSelectedType] = useState<DataSourceType>("webdav")
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -52,11 +47,11 @@ export function AddDataSourcePanel({
     setTestFeedback(null)
   }
 
-  async function handleSubmitWebdav(datasource: DataSourceWebdav & { password?: string }) {
+  async function handleSubmit(input: CreateDataSourceInput) {
     setSubmitting(true)
     clearMessages()
     try {
-      await onCreateDataSource(datasource)
+      await onCreateDataSource(input)
       setAddPanelOpen(false)
     } catch (error) {
       setSubmitError(String(error))
@@ -85,45 +80,76 @@ export function AddDataSourcePanel({
 
       {addPanelOpen && (
         <div className="border-t border-border bg-card px-4 py-4 animate-in slide-in-from-top-1 fade-in-0 duration-200">
-          <WebdavDataSourceForm
-            loading={submitting || testing}
-            testing={testing}
-            onSubmit={handleSubmitWebdav}
-            onClearMessages={clearMessages}
-            onTestConnection={async (datasource) => {
-              clearMessages()
-              if (!isTauri()) {
-                setTestFeedback({
-                  tone: "error",
-                  message: t("addDataSourceForm.testDesktopOnly"),
-                })
-                return
-              }
-              setTesting(true)
-              try {
-                const result = await testConnection(datasource)
-                if (result.ok) {
-                  setTestFeedback({
-                    tone: "success",
-                    message: t("addDataSourceForm.testSuccess"),
-                  })
-                } else {
-                  setTestFeedback({
-                    tone: "error",
-                    message: result.message,
-                  })
-                }
-              } finally {
-                setTesting(false)
-              }
-            }}
+          <DataSourceTypeSelector
+            value={selectedType}
+            onChange={setSelectedType}
+            disabled={submitting || testing}
           />
+
+          <div className="mt-4">
+            {selectedType === "webdav" && (
+              <WebdavDataSourceForm
+                loading={submitting || testing}
+                testing={testing}
+                onSubmit={handleSubmit}
+                onClearMessages={clearMessages}
+                onTestConnection={async (datasource) => {
+                  clearMessages()
+                  if (!isTauri()) {
+                    setTestFeedback({
+                      tone: "error",
+                      message: t("addDataSourceForm.testDesktopOnly"),
+                    })
+                    return
+                  }
+                  setTesting(true)
+                  try {
+                    const result = await testConnection(datasource)
+                    if (result.ok) {
+                      setTestFeedback({
+                        tone: "success",
+                        message: t("addDataSourceForm.testSuccess"),
+                      })
+                    } else {
+                      setTestFeedback({
+                        tone: "error",
+                        message: result.message,
+                      })
+                    }
+                  } finally {
+                    setTesting(false)
+                  }
+                }}
+              />
+            )}
+            {selectedType === "onedrive" && (
+              <OnedriveDataSourceForm
+                loading={submitting}
+                onSubmit={async (data) => {
+                  await handleSubmit({
+                    type: "onedrive",
+                    id: "",
+                    name: data.name,
+                    enabled: true,
+                    clientId: "",
+                    tenantId: "consumers",
+                    rootPath: data.rootPath ?? null,
+                    hasRefreshToken: true,
+                    displayName: data.displayName ?? null,
+                    email: data.email ?? null,
+                    refreshToken: data.refreshToken,
+                  })
+                }}
+              />
+            )}
+          </div>
+
           {submitError && (
             <StatusNotice tone="error" className="mt-3">
               {submitError}
             </StatusNotice>
           )}
-          {testFeedback && (
+          {testFeedback && selectedType === "webdav" && (
             <StatusNotice
               tone={testFeedback.tone === "success" ? "success" : "error"}
               className="mt-3"
@@ -152,9 +178,6 @@ type WebdavFieldName =
   | "password"
   | "rootPath"
 
-/**
- * WebDAV 输入表单，保留常见最小连接参数，便于后续接入校验与探活。
- */
 function WebdavDataSourceForm({
   loading,
   testing,
@@ -270,9 +293,6 @@ function WebdavDataSourceForm({
     return buildWebdavDataSourceFromForm(value)
   }
 
-  /**
-   * 点击测试连接时先执行 schema 校验，校验通过后再发起真实 WebDAV 探活。
-   */
   async function handleTestConnection() {
     const parsed = addWebdavSchema.safeParse(webdavForm.state.values)
     if (!parsed.success) {
@@ -313,36 +333,6 @@ function WebdavDataSourceForm({
       }}
     >
       <FieldGroup>
-        <webdavForm.Field name="type">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.typeLabel")}</FieldLabel>
-              <Select
-                name={field.name}
-                value={field.state.value}
-                onValueChange={(value) => {
-                  field.handleChange(value as "webdav")
-                  clearTestValidationErrors()
-                  onClearMessages()
-                }}
-                disabled={loading}
-              >
-                <SelectTrigger
-                  id={field.name}
-                  className="w-full"
-                  onBlur={field.handleBlur}
-                >
-                  <SelectValue placeholder={t("addDataSourceForm.selectType")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="webdav">WebDAV</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        </webdavForm.Field>
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_136px]">
           <webdavForm.Field name="endpoint">
             {(field) => {
