@@ -4,6 +4,7 @@ pub mod cache;
 pub mod clients;
 pub mod commands;
 mod config;
+mod constants;
 mod db;
 mod entities;
 mod error;
@@ -12,8 +13,8 @@ mod protocols;
 mod reader_ui_prefs;
 pub mod repositories;
 pub mod services;
-mod storage_paths;
 pub mod streamer;
+mod storage;
 pub mod sync;
 mod utils;
 
@@ -28,7 +29,8 @@ use tokio::sync::RwLock;
 use commands::AppState;
 use streamer::StreamerState;
 
-/// 本地日期时间 + 毫秒（无法解析本地时区时回退 UTC）。勿使用错误嵌套的 `[[[year]…]]`。
+/// Local datetime with millisecond precision. Falls back to UTC when the local
+/// timezone cannot be resolved. Do not use incorrectly nested `[[[year]…]]`.
 const LOG_LINE_TIMESTAMP: &[time::format_description::FormatItem<'static>] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
@@ -70,14 +72,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::cache::get_cache_usage,
             commands::cache::clear_cache,
             commands::cache::enforce_cache_limit,
-            sync::commands::sync_list_backends,
-            sync::commands::sync_test_backend,
-            sync::commands::sync_list_file_states,
-            sync::commands::sync_download_file,
-            sync::commands::sync_evict_local_file,
-            sync::commands::sync_delete_file_everywhere,
-            sync::commands::sync_db_now,
-            sync::commands::sync_db_for_library,
+            commands::sync::sync_db_for_library,
         ]);
 
     #[cfg(debug_assertions)]
@@ -136,8 +131,8 @@ pub fn run() -> Result<(), tauri::Error> {
             info!("Success to initialize application.");
             Ok(())
         })
-        .register_uri_scheme_protocol("bookcover", protocols::bookcover_handler)
-        .register_uri_scheme_protocol("bookfile", protocols::bookfile_handler)
+        .register_asynchronous_uri_scheme_protocol("bookcover", protocols::bookcover_handler)
+        .register_asynchronous_uri_scheme_protocol("bookfile", protocols::bookfile_handler)
         .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())
 }

@@ -78,20 +78,6 @@ export const en = {
       finished: "Finished",
       reading: "Reading",
     },
-    downloadButton: {
-      downloadFile: "Download file",
-      downloading: "Downloading",
-      download: "Download",
-      downloaded: "Downloaded",
-      downloadedLocal: "Downloaded locally",
-      evictLocal: "Release local space (keep remote)",
-      evict: "Release",
-      deleteLocal: "Permanently delete from local library",
-      deleteEverywhere: "Delete everywhere and remove from manifest",
-      delete: "Delete",
-      confirmDelete: "Click again to confirm delete",
-      failed: "Failed",
-    },
     bookDetail: {
       loading: "Loading book detail…",
       loadFailed: "Failed to load",
@@ -160,7 +146,6 @@ export const en = {
       nav: {
         libraries: "Libraries",
         dataSources: "Data Sources",
-        sync: "Sync & Download",
         appearance: "Appearance",
         reading: "Reading",
         about: "About",
@@ -190,36 +175,6 @@ export const en = {
         builtIn: "Built-in",
         confirmDelete: "Click again to confirm",
         deleteTitle: "Delete data source",
-      },
-      sync: {
-        title: "Sync & Download",
-        description:
-          "Select library and data source to test connection, sync database, and manage file download status",
-        libraryLabel: "Library",
-        libraryPlaceholder: "No library selected",
-        dataSourceLabel: "Data source",
-        dataSourcePlaceholder: "No data source selected",
-        dataSourcePlaceholderLoading: "Loading…",
-        testConnection: "Test connection",
-        connectionOk: "Connection OK",
-        selectLibraryAndDataSource: "Select library and data source",
-        connectionAndSync: "Connection & database sync",
-        fileStates: "Local file states",
-        refresh: "Refresh",
-        pushPullReport: "push {{pushed}} / pull {{pulled}}",
-        localDirectHint:
-          "Local direct data source: DB sync is skipped, files can only be permanently deleted.",
-        pleaseSelectLibrary: "Please select a library",
-        selectDataSourceHint: "Please select a data source",
-        syncDb: "Sync database",
-        localDirectNoSync: "Local direct mode does not require DB sync",
-        syncNow: "Push/pull database changes now",
-        syncing: "Syncing…",
-        noTrackedFiles:
-          "No tracked files yet (will appear after first download or push)",
-        loadingFileStates: "Loading…",
-        fileStatesEmpty:
-          "No tracked files yet (will appear after first download or push)",
       },
       reading: {
         title: "Reading & Cache",
@@ -399,7 +354,6 @@ export const en = {
       createNotSupported: "Creating data sources is not supported in this environment",
       editNotSupported:
         "Editing data sources is not yet supported on desktop. Delete and re-add instead.",
-      syncNotSupported: "Sync is only available on desktop Tauri",
     },
     common: {
       add: "Add",

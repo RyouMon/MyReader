@@ -55,33 +55,6 @@ pub fn build_client(timeout_secs: u64) -> Result<reqwest::Client, AppError> {
         .build()?)
 }
 
-/// Send an HTTP GET with Basic Auth and map common transport errors to `AppError::Config`.
-pub async fn send_get(
-    client: &reqwest::Client,
-    url: &reqwest::Url,
-    username: &str,
-    password: &str,
-) -> Result<reqwest::Response, AppError> {
-    client
-        .get(url.clone())
-        .basic_auth(username, Some(password))
-        .send()
-        .await
-        .map_err(|err| {
-            if err.is_timeout() {
-                return AppError::Config(format!(
-                    "WEBDAV_TIMEOUT: request did not complete within timeout ({url})"
-                ));
-            }
-            if err.is_connect() {
-                return AppError::Config(format!(
-                    "WEBDAV_CONNECT_FAILED: check server address, port or network ({url})"
-                ));
-            }
-            AppError::Config(format!("WEBDAV_REQUEST_FAILED: {err} ({url})"))
-        })
-}
-
 /// Map a non-2xx HTTP status to a typed `AppError::Config`.
 pub fn map_status_error(status: reqwest::StatusCode, url: &reqwest::Url) -> AppError {
     if status == reqwest::StatusCode::UNAUTHORIZED {

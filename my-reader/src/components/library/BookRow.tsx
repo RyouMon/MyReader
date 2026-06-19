@@ -71,6 +71,7 @@ const BookRow = memo(function BookRow({
         className="h-[42px] w-[30px] shrink-0 rounded-[5px]"
         titleClassName="sr-only"
         spineClassName="w-1"
+        showFallbackMeta={false}
       />
 
       <div className="min-w-0 flex-1">

@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { buildCoverUrl } from "@/lib/cover"
+import { generateCoverGradient } from "@/lib/cover-gradient"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { isReadableInAppFormat, pickReadableFormat } from "@/lib/readFormats"
 import { api } from "@/lib/tauri-api"
@@ -34,15 +35,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function generateCoverGradient(title: string): string {
-  let hash = 0
-  for (let i = 0; i < title.length; i++) {
-    hash = ((hash << 5) - hash + title.charCodeAt(i)) | 0
-  }
-  const hue = Math.abs(hash) % 360
-  return `linear-gradient(160deg, hsl(${hue}, 30%, 30%) 0%, hsl(${hue + 30}, 25%, 20%) 50%, hsl(${hue + 15}, 20%, 15%) 100%)`
 }
 
 const FORMAT_TONES: Record<string, string> = {
@@ -373,6 +365,12 @@ function BookDetailPage() {
             {/* Cover */}
             <div className="detail-cover-wrap w-[220px] shrink-0">
               <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-cover">
+                <div
+                  className="absolute inset-0"
+                  style={{ background: generateCoverGradient(book.title) }}
+                  aria-hidden="true"
+                />
+
                 {coverSrc ? (
                   <img
                     src={coverSrc}
@@ -381,10 +379,7 @@ function BookDetailPage() {
                     onError={handleCoverError}
                   />
                 ) : (
-                  <div
-                    className="absolute inset-0 flex flex-col items-center justify-center px-6 py-6 text-center"
-                    style={{ background: generateCoverGradient(book.title) }}
-                  >
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-6 py-6 text-center">
                     <div
                       className="pointer-events-none absolute inset-0"
                       style={{
@@ -887,12 +882,18 @@ function RelatedBookCard({
       onClick={onClick}
       className="group/related w-[120px] shrink-0 text-start"
     >
-      <div className="aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-card transition-all duration-200 group-hover/related:-translate-y-[3px]">
+      <div className="relative aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-card transition-all duration-200 group-hover/related:-translate-y-[3px]">
+        <div
+          className="absolute inset-0"
+          style={{ background: generateCoverGradient(book.title) }}
+          aria-hidden="true"
+        />
+
         {coverSrc ? (
           <img
             src={coverSrc}
             alt={book.title}
-            className="size-full object-cover"
+            className="absolute inset-0 size-full object-cover"
             loading="lazy"
             onError={() => {
               brokenCovers.add(book.path)
@@ -900,10 +901,7 @@ function RelatedBookCard({
             }}
           />
         ) : (
-          <div
-            className="flex size-full flex-col items-center justify-center px-2 py-3 text-center"
-            style={{ background: generateCoverGradient(book.title) }}
-          >
+          <div className="absolute inset-0 flex size-full flex-col items-center justify-center px-2 py-3 text-center">
             <span className="font-serif text-[13px] font-semibold text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>

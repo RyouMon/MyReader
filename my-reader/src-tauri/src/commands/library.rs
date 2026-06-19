@@ -32,14 +32,19 @@ pub async fn add_library(
     name: Option<String>,
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to add library. path: \"{path}\", requested name: {name:?}");
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
+
     let mut config = {
         let guard = state.lock().unwrap_or_else(|e| e.into_inner());
         guard.clone()
     };
 
-    let info = LibraryService::add_library(&path, name.as_deref(), &mut config).await?;
+    let info = LibraryService::add_library(&app_data_dir, &path, name.as_deref(), &mut config).await?;
 
-    let config_path = app.path().app_data_dir()?.join("config.json");
+    let config_path = app_data_dir.join("config.json");
     {
         let mut guard = state.lock().unwrap_or_else(|e| e.into_inner());
         *guard = config.clone();
@@ -111,13 +116,6 @@ pub async fn add_webdav_library(
         info.id, info.name, info.book_count
     );
 
-    // Start background cover download — don't block the response
-    let config_snapshot = {
-        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
-    };
-    LibraryService::spawn_cover_download(&app, &info.id, &config_snapshot);
-
     Ok(info)
 }
 
@@ -174,13 +172,6 @@ pub async fn add_onedrive_library(
         info.id, info.name, info.book_count
     );
 
-    // Start background cover download — don't block the response
-    let config_snapshot = {
-        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
-    };
-    LibraryService::spawn_cover_download(&app, &info.id, &config_snapshot);
-
     Ok(info)
 }
 
@@ -209,9 +200,6 @@ pub async fn refresh_webdav_library(
         info.id, info.name, info.book_count
     );
 
-    // Start background cover download — don't block the response
-    LibraryService::spawn_cover_download(&app, &info.id, &config);
-
     Ok(info)
 }
 
@@ -239,9 +227,6 @@ pub async fn refresh_onedrive_library(
         "Success to refresh OneDrive library. id: \"{}\", name: \"{}\", book count: {}",
         info.id, info.name, info.book_count
     );
-
-    // Start background cover download — don't block the response
-    LibraryService::spawn_cover_download(&app, &info.id, &config);
 
     Ok(info)
 }
@@ -276,10 +261,11 @@ pub fn remove_library(
 ) -> Result<(), AppError> {
     info!("Start to remove library. id: \"{id}\"");
     let result = (|| {
+        let app_data_dir = app.path().app_data_dir()?;
         let mut config = state.lock().unwrap_or_else(|e| e.into_inner());
-        LibraryService::remove_library(&id, &mut config)?;
+        LibraryService::remove_library(&app_data_dir, &id, &mut config)?;
 
-        let config_path = app.path().app_data_dir()?.join("config.json");
+        let config_path = app_data_dir.join("config.json");
         config::save_config(&config_path, &config)?;
         Ok(())
     })();

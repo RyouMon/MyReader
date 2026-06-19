@@ -1,6 +1,6 @@
-//! Credential storage wrapper that reuses the `keyring` crate v3.
+//! Credential storage wrapper around the `keyring` crate v3.
 //!
-//! `crate::commands` uses this module to save and delete WebDAV passwords and OneDrive refresh tokens.
+//! Commands use this module to save and delete WebDAV passwords and OneDrive refresh tokens.
 
 use std::sync::Arc;
 
@@ -36,17 +36,18 @@ impl Service {
 
 /// Low-level credential storage abstraction.
 ///
-/// By abstracting the concrete keyring implementation, unit tests can use a memory backend and avoid polluting the system credential store.
-pub trait StorageBackend: Send + Sync {
+/// Abstracting the concrete keyring implementation lets unit tests use a memory backend
+/// and avoids polluting the system credential store.
+pub trait CredentialBackend: Send + Sync {
     fn set_password(&self, service: &str, account: &str, secret: &str) -> Result<(), AppError>;
     fn get_password(&self, service: &str, account: &str) -> Result<Option<String>, AppError>;
     fn delete_credential(&self, service: &str, account: &str) -> Result<(), AppError>;
 }
 
-/// Storage backend based on the system keyring.
+/// Credential backend backed by the system keyring.
 pub struct KeyringBackend;
 
-impl StorageBackend for KeyringBackend {
+impl CredentialBackend for KeyringBackend {
     fn set_password(&self, service: &str, account: &str, secret: &str) -> Result<(), AppError> {
         open_entry(service, account)?
             .set_password(secret)
@@ -76,7 +77,7 @@ fn open_entry(service: &str, account: &str) -> Result<Entry, AppError> {
 
 /// Credential storage entry point.
 pub struct CredentialStore {
-    backend: Arc<dyn StorageBackend>,
+    backend: Arc<dyn CredentialBackend>,
 }
 
 impl CredentialStore {
@@ -137,8 +138,6 @@ fn store() -> CredentialStore {
     CredentialStore::keyring()
 }
 
-// ── WebDAV ────────────────────────────────────────────────────────
-
 pub fn webdav_password_account(data_source_id: &str) -> String {
     format!("webdav-password-{data_source_id}")
 }
@@ -154,8 +153,6 @@ pub fn read_webdav_password(account: &str) -> Result<Option<String>, AppError> {
 pub fn delete_webdav_password(account: &str) -> Result<(), AppError> {
     store().delete(Service::Webdav, account)
 }
-
-// ── OneDrive ────────────────────────────────────────────────────────
 
 pub fn onedrive_refresh_token_account(data_source_id: &str) -> String {
     format!("onedriveres-{data_source_id}")
@@ -175,25 +172,22 @@ pub fn delete_onedrive_refresh_token(data_source_id: &str) -> Result<(), AppErro
     store().delete(Service::Onedrive, &account)
 }
 
-// ── Test support ────────────────────────────────────────────────────
-//
-// Everything below this line is only compiled in test builds.
-
 #[cfg(test)]
 pub mod test_support {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, MutexGuard};
 
     use crate::error::AppError;
-    use super::StorageBackend;
+    use super::CredentialBackend;
 
-    /// Global test backend. Non-test builds always see `None`; unit tests can replace it with a memory backend via `use_test_backend`.
-    static TEST_BACKEND: Mutex<Option<Arc<dyn StorageBackend>>> = Mutex::new(None);
+    /// Global test backend. Non-test builds always see `None`; unit tests can install
+    /// a memory backend via `use_test_backend`.
+    static TEST_BACKEND: Mutex<Option<Arc<dyn CredentialBackend>>> = Mutex::new(None);
 
-    /// Serializes tests that mutate the global credential backend to avoid concurrent interference.
+    /// Serializes tests that mutate the global credential backend.
     static TEST_BACKEND_LOCK: Mutex<()> = Mutex::new(());
 
-    /// Test guard: forces the specified backend while held and restores the system keyring when dropped.
+    /// Forces the specified backend while held and restores the system keyring when dropped.
     pub struct TestBackendGuard {
         _lock: MutexGuard<'static, ()>,
     }
@@ -204,26 +198,26 @@ pub mod test_support {
         }
     }
 
-    /// Sets the global credential backend only in tests so cross-module tests do not pollute the system keyring.
-    /// The returned guard must live until the end of the test to serialize access to the backend.
-    pub fn use_test_backend(backend: impl StorageBackend + 'static) -> TestBackendGuard {
+    /// Sets the global credential backend in tests so cross-module tests do not pollute
+    /// the system keyring. The returned guard must live until the end of the test.
+    pub fn use_test_backend(backend: impl CredentialBackend + 'static) -> TestBackendGuard {
         let lock = TEST_BACKEND_LOCK.lock().unwrap();
         *TEST_BACKEND.lock().unwrap() = Some(Arc::new(backend));
         TestBackendGuard { _lock: lock }
     }
 
     /// Returns the currently installed test backend, if any.
-    pub(crate) fn get_backend() -> Option<Arc<dyn StorageBackend>> {
+    pub(crate) fn get_backend() -> Option<Arc<dyn CredentialBackend>> {
         TEST_BACKEND.lock().unwrap().clone()
     }
 
-    /// In-memory storage backend for tests only.
+    /// In-memory credential backend for tests only.
     #[derive(Debug, Default, Clone)]
     pub struct MemoryBackend {
         store: Arc<Mutex<HashMap<(String, String), String>>>,
     }
 
-    impl StorageBackend for MemoryBackend {
+    impl CredentialBackend for MemoryBackend {
         fn set_password(&self, service: &str, account: &str, secret: &str) -> Result<(), AppError> {
             self.store
                 .lock()
@@ -250,10 +244,10 @@ pub mod test_support {
         }
     }
 
-    /// A storage backend that always fails, used to verify `CredentialStore` error wrapping logic.
+    /// A credential backend that always fails, used to verify `CredentialStore` error wrapping.
     pub struct FailingBackend;
 
-    impl StorageBackend for FailingBackend {
+    impl CredentialBackend for FailingBackend {
         fn set_password(
             &self,
             _service: &str,
@@ -281,11 +275,8 @@ pub mod test_support {
     }
 }
 
-// Re-export test helpers so other modules can use `crate::auth::credentials::use_test_backend`.
 #[cfg(test)]
 pub use test_support::{use_test_backend, MemoryBackend};
-
-// ── Inline tests ──────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -351,7 +342,6 @@ mod tests {
         store.delete(Service::Onedrive, account).unwrap();
         assert_eq!(store.read(Service::Onedrive, account).unwrap(), None);
 
-        // Deleting a non-existent entry should not error.
         store.delete(Service::Onedrive, account).unwrap();
     }
 

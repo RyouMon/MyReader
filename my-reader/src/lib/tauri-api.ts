@@ -59,12 +59,5 @@ export const api = {
   getCacheUsage: wrap(raw.getCacheUsage),
   clearCache: wrap(raw.clearCache),
   enforceCacheLimit: wrap(raw.enforceCacheLimit),
-  syncListBackends: wrap(raw.syncListBackends),
-  syncTestBackend: wrap(raw.syncTestBackend),
-  syncListFileStates: wrap(raw.syncListFileStates),
-  syncDownloadFile: wrap(raw.syncDownloadFile),
-  syncEvictLocalFile: wrap(raw.syncEvictLocalFile),
-  syncDeleteFileEverywhere: wrap(raw.syncDeleteFileEverywhere),
-  syncDbNow: wrap(raw.syncDbNow),
   syncDbForLibrary: wrap(raw.syncDbForLibrary),
 }

@@ -1,11 +1,11 @@
-//! WebDAV 远端后端：`endpoint` 形如 `https://host/dav`，`root_path` 相对 endpoint。
+//! WebDAV remote backend. `endpoint` looks like `https://host/dav`,
+//! and `root_path` is relative to that endpoint.
 
 use opendal::{services, Operator};
 
-use crate::error::AppError;
-
 use crate::auth::credentials;
-use super::Pipe;
+use crate::error::AppError;
+use crate::utils::pipe::Pipe;
 
 pub fn build_operator(
     endpoint: &str,

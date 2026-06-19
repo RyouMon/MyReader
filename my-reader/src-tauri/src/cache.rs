@@ -43,6 +43,15 @@ pub fn build_archive_cache_key(library_id: &str, book_id: i64, format: &str) -> 
     )
 }
 
+pub fn clear_library_container_dir(app_data_dir: &Path, library_id: &str) -> Result<(), AppError> {
+    use crate::constants::path::LIBRARIES_DIR_NAME;
+    let container = app_data_dir.join(LIBRARIES_DIR_NAME).join(library_id);
+    if container.exists() {
+        std::fs::remove_dir_all(&container)?;
+    }
+    Ok(())
+}
+
 pub fn clear_library_cache_files(library_id: &str) -> Result<(), AppError> {
     let root = reader_cache_extracted_root();
     if !root.exists() {

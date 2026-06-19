@@ -43,13 +43,6 @@ export const commands = {
 	getCacheUsage: () => typedError<CacheUsageDto, ErrorKind>(__TAURI_INVOKE("get_cache_usage")),
 	clearCache: () => typedError<null, ErrorKind>(__TAURI_INVOKE("clear_cache")),
 	enforceCacheLimit: () => typedError<null, ErrorKind>(__TAURI_INVOKE("enforce_cache_limit")),
-	syncListBackends: () => typedError<SyncBackendInfo[], ErrorKind>(__TAURI_INVOKE("sync_list_backends")),
-	syncTestBackend: (id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_test_backend", { id })),
-	syncListFileStates: (libraryId: string, filter: string | null) => typedError<FileStateRow[], ErrorKind>(__TAURI_INVOKE("sync_list_file_states", { libraryId, filter })),
-	syncDownloadFile: (libraryId: string, dataSourceId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_download_file", { libraryId, dataSourceId, relativePath })),
-	syncEvictLocalFile: (libraryId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_evict_local_file", { libraryId, relativePath })),
-	syncDeleteFileEverywhere: (libraryId: string, dataSourceId: string, relativePath: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("sync_delete_file_everywhere", { libraryId, dataSourceId, relativePath })),
-	syncDbNow: (libraryId: string, dataSourceId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_now", { libraryId, dataSourceId })),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
 };
 
@@ -112,14 +105,6 @@ export type DbSyncReport = {
 };
 
 export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Sync"; message: string };
-
-export type FileStateRow = {
-	path: string,
-	localState: string,
-	localBlake3: string | null,
-	localSize: number | null,
-	localMtime: number | null,
-};
 
 /**  与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。 */
 export type FixedLayoutSettingsDto = {
@@ -250,15 +235,6 @@ export type ReflowTtsDto = {
 export type ReflowableReaderPreferencesDto = {
 	settings?: ReaderSettingsDto,
 	tts?: ReflowTtsDto,
-};
-
-export type SyncBackendInfo = {
-	id: string,
-	name: string,
-	enabled: boolean,
-	kind: string,
-	summary: string,
-	isLocalDirect: boolean,
 };
 
 export type TestWebdavConnectionInput = {

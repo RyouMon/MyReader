@@ -17,6 +17,19 @@ pub struct LibraryConfig {
     pub source_path: Option<String>,
 }
 
+impl LibraryConfig {
+    pub fn is_local(&self) -> bool {
+        self.source_type.as_deref() == Some("local")
+    }
+
+    pub fn is_remote(&self) -> bool {
+        matches!(
+            self.source_type.as_deref(),
+            Some("webdav") | Some("onedrive")
+        )
+    }
+}
+
 /// Data source configuration; persisted locally to describe connectable data locations (local directories, WebDAV, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

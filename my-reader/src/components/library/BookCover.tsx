@@ -1,8 +1,7 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
-import { isTauri } from "@tauri-apps/api/core"
-import { listen } from "@tauri-apps/api/event"
-import { memo, useCallback, useEffect, useState } from "react"
-import { buildCoverUrl, bumpCoverVersion } from "@/lib/cover"
+import { memo, useCallback, useState } from "react"
+import { buildCoverUrl } from "@/lib/cover"
+import { generateCoverGradient } from "@/lib/cover-gradient"
 import { cn } from "@/lib/utils"
 
 export interface BookProgressSnapshot {
@@ -13,22 +12,9 @@ export interface BookProgressSnapshot {
 
 const brokenCovers = new Set<string>()
 
-/**
- * Generates a stable fallback gradient from the book title.
- */
-export function generateCoverGradient(title: string): string {
-  let hash = 0
-  for (let i = 0; i < title.length; i++) {
-    hash = ((hash << 5) - hash + title.charCodeAt(i)) | 0
-  }
-  const hue = Math.abs(hash) % 360
-  return `linear-gradient(148deg, hsl(${hue}, 32%, 30%) 0%, hsl(${(hue + 24) % 360}, 28%, 18%) 100%)`
-}
-
-/** Clear the broken-covers cache and bump version so covers re-render. */
+/** Clear the broken-covers cache so covers re-render. */
 export function resetBrokenCovers() {
   brokenCovers.clear()
-  bumpCoverVersion()
 }
 
 interface BookCoverProps {
@@ -41,6 +27,8 @@ interface BookCoverProps {
   spineClassName?: string
   progress?: BookProgressSnapshot
   showProgress?: boolean
+  /** Show title/author on the generated fallback cover. Defaults to true. */
+  showFallbackMeta?: boolean
 }
 
 /**
@@ -56,19 +44,10 @@ export const BookCover = memo(function BookCover({
   spineClassName,
   progress,
   showProgress = true,
+  showFallbackMeta = true,
 }: BookCoverProps) {
   const [imgFailed, setImgFailed] = useState(() => brokenCovers.has(book.path))
-  // When WebDAV covers finish downloading, clear broken state so covers re-render
-  useEffect(() => {
-    if (!isTauri()) return
-    const unlisten = listen<string>("webdav-covers-downloaded", () => {
-      brokenCovers.delete(book.path)
-      setImgFailed(false)
-    })
-    return () => {
-      unlisten.then((fn) => fn())
-    }
-  }, [book.path])
+  const [imgLoaded, setImgLoaded] = useState(false)
   const coverSrc =
     book.hasCover && libraryId && !imgFailed
       ? buildCoverUrl(libraryId, book.path)
@@ -78,8 +57,13 @@ export const BookCover = memo(function BookCover({
       ? Math.max(0, Math.min(100, progress.percent))
       : undefined
 
+  const handleImgLoad = useCallback(() => {
+    setImgLoaded(true)
+  }, [])
+
   const handleImgError = useCallback(() => {
     brokenCovers.add(book.path)
+    setImgLoaded(false)
     setImgFailed(true)
   }, [book.path])
 
@@ -90,6 +74,13 @@ export const BookCover = memo(function BookCover({
         className,
       )}
     >
+      {/* Base colored layer: always visible so the cover area never looks blank while an image is loading/decoding. */}
+      <div
+        className="absolute inset-0"
+        style={{ background: generateCoverGradient(book.title) }}
+        aria-hidden="true"
+      />
+
       {coverSrc ? (
         <img
           src={coverSrc}
@@ -99,27 +90,42 @@ export const BookCover = memo(function BookCover({
             imageClassName,
           )}
           loading="lazy"
-          decoding="async"
+          onLoad={handleImgLoad}
           onError={handleImgError}
         />
-      ) : (
+      ) : null}
+
+      {showFallbackMeta ? (
         <div
           className={cn(
-            "absolute inset-0 flex size-full flex-col items-center justify-end px-2.5 py-3 text-center",
+            "absolute inset-0 flex size-full flex-col items-center justify-center px-3 py-4 text-center transition-opacity duration-300",
+            coverSrc && imgLoaded ? "pointer-events-none opacity-0" : "opacity-100",
             fallbackClassName,
           )}
-          style={{ background: generateCoverGradient(book.title) }}
         >
+          {/* Bottom scrim to match the design's ::before overlay. */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.15))",
+            }}
+          />
           <span
             className={cn(
-              "relative z-10 line-clamp-3 font-serif text-[10px] font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]",
+              "relative z-10 line-clamp-3 font-serif text-base font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
               titleClassName,
             )}
           >
             {book.title}
           </span>
+          {book.authors.length > 0 ? (
+            <span className="relative z-10 mt-1.5 line-clamp-1 text-[11px] text-ink-inverse/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
+              {book.authors.join(", ")}
+            </span>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       <div
         className={cn(

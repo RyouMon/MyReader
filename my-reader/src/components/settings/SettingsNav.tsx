@@ -5,7 +5,6 @@ import {
   Info,
   type LucideIcon,
   Palette,
-  RefreshCw,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
@@ -26,15 +25,11 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "libraries", tKey: "settings.nav.libraries", Icon: FolderOpen },
   { key: "dataSources", tKey: "settings.nav.dataSources", Icon: Database },
-  { key: "sync", tKey: "settings.nav.sync", Icon: RefreshCw },
   { key: "appearance", tKey: "settings.nav.appearance", Icon: Palette },
   { key: "reading", tKey: "settings.nav.reading", Icon: BookOpen },
   { key: "about", tKey: "settings.nav.about", Icon: Info },
 ]
 
-/**
- * 设置侧边导航。
- */
 export default function SettingsNav({
   activeSection,
   onSectionChange,

@@ -27,3 +27,4 @@ pub mod library;
 pub mod progress;
 pub mod reader;
 pub mod source;
+pub mod sync;

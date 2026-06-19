@@ -28,14 +28,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::cache::get_cache_usage,
             my_reader_lib::commands::cache::clear_cache,
             my_reader_lib::commands::cache::enforce_cache_limit,
-            my_reader_lib::sync::commands::sync_list_backends,
-            my_reader_lib::sync::commands::sync_test_backend,
-            my_reader_lib::sync::commands::sync_list_file_states,
-            my_reader_lib::sync::commands::sync_download_file,
-            my_reader_lib::sync::commands::sync_evict_local_file,
-            my_reader_lib::sync::commands::sync_delete_file_everywhere,
-            my_reader_lib::sync::commands::sync_db_now,
-            my_reader_lib::sync::commands::sync_db_for_library,
+            my_reader_lib::commands::sync::sync_db_for_library,
         ])
         .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
         .unwrap();

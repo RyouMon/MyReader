@@ -23,6 +23,7 @@ pub fn write_epub_readium_manifest(
 #[tauri::command]
 #[specta::specta]
 pub async fn prepare_book_source(
+    app: AppHandle,
     state: State<'_, AppState>,
     library_id: Option<String>,
     book_id: i64,
@@ -31,9 +32,11 @@ pub async fn prepare_book_source(
     info!(
         "Start to prepare book source. library id: {library_id:?}, book id: {book_id}, format: \"{format}\""
     );
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
     let (lib_id, lib_path) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (id, path) = LibraryService::resolve_library_path(library_id.as_deref(), &config)?;
+        let (id, path) = LibraryService::resolve_library_path(library_id.as_deref(), &app_data_dir, &config)?;
         drop(config);
         (id, path)
     };

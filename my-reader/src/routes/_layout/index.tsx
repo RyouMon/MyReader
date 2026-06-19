@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
-import { useSyncActions } from "@/hooks/sync/useSyncActions"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryMutations, useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
@@ -35,7 +35,6 @@ function LibraryPage() {
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
     usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
-  const { syncDbForLibrary } = useSyncActions()
 
   const loading = libLoading || initialLoading
 
@@ -48,7 +47,7 @@ function LibraryPage() {
       console.error("Failed to refresh library:", e)
     }
     try {
-      await syncDbForLibrary(activeLibraryId)
+      await api.syncDbForLibrary(activeLibraryId)
     } catch (e) {
       console.error("Failed to sync db:", e)
     }
