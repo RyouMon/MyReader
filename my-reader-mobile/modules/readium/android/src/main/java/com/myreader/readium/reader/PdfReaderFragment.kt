@@ -1,5 +1,6 @@
 package com.myreader.readium.reader
 
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -42,6 +43,44 @@ class PdfReaderFragment : VisualReaderFragment(), PdfNavigatorFragment.Listener 
         } else {
             pendingPreferences = pdfPreferences
         }
+    }
+
+    // Background color for the PDF letterbox, applied via the actual PDFView child.
+    private var readerBackgroundColorString: String? = null
+
+    override fun setReaderBackgroundColor(colorString: String?) {
+        super.setReaderBackgroundColor(colorString)
+        readerBackgroundColorString = colorString
+        applyPdfBackgroundColor()
+    }
+
+    private fun applyPdfBackgroundColor() {
+        val colorString = readerBackgroundColorString ?: return
+        val colorInt = try {
+            AndroidColor.parseColor(colorString)
+        } catch (e: IllegalArgumentException) {
+            android.util.Log.w("PdfReaderFragment", "Invalid PDF background color: $colorString")
+            return
+        }
+        findPdfView()?.let {
+            it.setBackgroundColor(colorInt)
+            it.postInvalidate()
+        }
+    }
+
+    private fun findPdfView(): PDFView? {
+        return findPdfViewIn(view)
+    }
+
+    private fun findPdfViewIn(root: View?): PDFView? {
+        if (root == null) return null
+        if (root is PDFView) return root
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                findPdfViewIn(root.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

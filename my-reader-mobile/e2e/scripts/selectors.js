@@ -4,6 +4,11 @@
  * Prefer Maestro `text` (accessibilityLabel / visible label) over `id`/`testID`:
  * matches real user interaction and keeps UI accessible. Use bilingual regex
  * (`中文|English`) so flows work in any app locale.
+ *
+ * For reader settings controls, option selectors use the full accessible name
+ * exposed by the control (`<section label>: <option label>`). This is required
+ * because iOS exposes the combined accessibilityLabel rather than the visible
+ * text alone.
  */
 output.selectors = {
   tabs: {
@@ -60,5 +65,58 @@ output.selectors = {
     settingsButton: "阅读设置|Reading Settings",
     tocSheet: "目录面板|Table of Contents panel",
     settingsSheet: "阅读设置面板|Reading Settings panel",
+  },
+
+  // Reader settings sheet controls. Values are the *full accessible name* the
+  // control exposes (section label + option label). A trailing `.*` tolerance
+  // lets the same selector match both the unselected name and the selected
+  // state (`背景: 自动, 已选择`), so flows can tap an option even when it is
+  // already active by default.
+  readerSettings: {
+    background: {
+      label: "背景|Background",
+      auto: "背景: 自动.*|Background: Auto.*",
+      black: "背景: 黑色.*|Background: Black.*",
+      white: "背景: 白色.*|Background: White.*",
+    },
+    pageDirection: {
+      label: "翻页方向|Page Direction",
+      horizontal: "翻页方向: 左右翻页.*|Page Direction: Horizontal.*",
+      vertical: "翻页方向: 上下翻页.*|Page Direction: Vertical.*",
+    },
+    progression: {
+      label: "阅读方向|Reading Direction",
+      ltr: "阅读方向: 从左到右.*|Reading Direction: Left to Right.*",
+      rtl: "阅读方向: 从右到左.*|Reading Direction: Right to Left.*",
+    },
+    spread: {
+      label: "页面布局|Page Layout",
+      auto: "页面布局: 自动.*|Page Layout: Auto.*",
+      single: "页面布局: 始终单栏.*|Page Layout: Always Single.*",
+    },
+    // FontPicker options are hardcoded (not i18n): "Serif"/"Sans"/"系统".
+    font: {
+      label: "字体|Font",
+      serif: "字体: Serif.*|Font: Serif.*",
+      sans: "字体: Sans.*|Font: Sans.*",
+    },
+    fontSize: { label: "字号|Font Size" },
+    lineHeight: { label: "行距|Line Height" },
+    margin: { label: "边距|Margin" },
+    alignment: {
+      label: "对齐|Alignment",
+      auto: "对齐: 自动.*|Alignment: Auto.*",
+      justify: "对齐: 两端对齐.*|Alignment: Justify.*",
+      start: "对齐: 左对齐.*|Alignment: Left.*",
+    },
+    column: {
+      label: "栏|Columns",
+      auto: "栏: 自动.*|Columns: Auto.*",
+      single: "栏: 始终单栏.*|Columns: Always Single.*",
+    },
+    theme: {
+      label: "主题|Theme",
+      night: "主题: 夜间.*|Theme: Night.*",
+    },
   },
 };

@@ -154,7 +154,22 @@ output.selectors = {
 
 Selector 值为 **accessibilityLabel / 可见文案** 的中英文正则（`中文|English`），fixture 数据用稳定英文名。仅在原生控件无 label 时保留 `testID`。
 
-## 八、工作流
+## 八、无障碍与 Selector 优先级（强制）
+
+### Selector 优先级
+
+1. **首选 `text` / 可见文案 / `accessibilityLabel`** — 模拟真实用户（包括 VoiceOver）交互，同时保证 UI 可访问。
+2. **次选 `id` / `testID`** — 仅在原生控件确实无 label、且无法通过文案定位时保留。
+3. **禁止为 E2E 单独添加 `testID`** — 如果控件缺少 label，优先修复组件的可访问性（添加 `accessibilityLabel` / `accessibilityRole` / `accessibilityState`），而不是绕路用 `testID`。
+
+### 断言策略
+
+- **优先确定性断言**（`assertVisible`、`assertNotVisible`、`extendedWaitUntil`、页面计数变化、swipe 后状态变化、JS 脚本断言）。
+- **AI 断言（`extractTextWithAI` / `assertWithAI`）仅用于无法通过结构/行为验证的场景**，例如受 dev-build 渲染差异影响的复杂视觉布局。
+- **每个保留的 AI 断言必须在 YAML 注释中写明保留理由**。
+- **设置面板控件**（Slider、SegmentPicker、FontPicker、ThemeSwatches 等）必须暴露 `accessibilityLabel`、`accessibilityRole`、`accessibilityState.selected`，既是产品可访问性要求，也是 E2E 定位依据。
+
+## 九、工作流
 
 ```
 1. 确定要覆盖的行为
@@ -168,7 +183,7 @@ Selector 值为 **accessibilityLabel / 可见文案** 的中英文正则（`中�
 5. 本地运行 maestro test 验证
 ```
 
-## 九、编辑覆盖策略
+## 十、编辑覆盖策略
 
 | 文件 | 覆盖策略 |
 |---|---|
@@ -178,7 +193,7 @@ Selector 值为 **accessibilityLabel / 可见文案** 的中英文正则（`中�
 | `.feature` | **不再维护**，已删除 |
 | `steps/` | **不再维护**，已删除 |
 
-## 十、迁移前结构（归档参考）
+## 十一、迁移前结构（归档参考）
 
 旧结构采用 L0/L1/L2 三层 BDD：
 

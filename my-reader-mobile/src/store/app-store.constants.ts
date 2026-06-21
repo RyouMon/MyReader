@@ -12,18 +12,18 @@ export const defaultSettings: ReaderSettings = {
   enableAutoSync: true,
   reflowable: {
     theme: "paper",
+    fontFamily: "serif",
     fontSize: 18,
     lineHeight: 1.85,
     paddingX: 20,
-    brightness: 100,
     textAlign: "auto",
     columnCount: "auto",
   },
   fixed: {
-    theme: "night",
+    background: "auto",
     navigationMode: "horizontal",
-    brightness: 100,
-    zoomScale: 1,
+    readingProgression: "ltr",
+    spread: "auto",
   },
 };
 

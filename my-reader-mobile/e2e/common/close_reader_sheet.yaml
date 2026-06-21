@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: Close the reader settings sheet (leaves chrome visible)
+tags:
+  - skip
+---
+- runScript: ../scripts/selectors.js
+# Tap above the sheet (outside its 60% snap region) to dismiss it.
+- tapOn:
+    point: "50%,20%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: ${output.selectors.reader.settingsSheet}

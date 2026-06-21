@@ -1,6 +1,8 @@
 flows:
   - "*/**"
 
+testOutputDir: e2e/.artifacts
+
 excludeTags:
   - skip
   - wip

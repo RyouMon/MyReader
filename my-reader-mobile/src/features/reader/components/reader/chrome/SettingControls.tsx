@@ -16,6 +16,9 @@ import { READER_THEME_OPTIONS } from "./readerChromeConstants";
 function SectionLabel({ label, color }: { label: string; color: string }) {
   return (
     <Text
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       className="mb-2 mt-3 text-xs font-bold uppercase tracking-[0.8px]"
       style={{ color }}
     >
@@ -54,6 +57,11 @@ export function ThemeSwatches({
                 borderColor: active ? palette.accent : "transparent",
               }}
               onPress={() => onChange(option.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${t("reader.settingsTheme")}: ${t(option.label)}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <View style={StyleSheet.absoluteFill} className="items-center justify-center">
                 <Text
@@ -96,6 +104,7 @@ export function SegmentPicker<T extends string>({
   onChange: (key: T) => void;
   palette: ReaderChromePalette;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       {label ? <SectionLabel label={label} color={palette.textMuted} /> : null}
@@ -112,6 +121,11 @@ export function SegmentPicker<T extends string>({
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${label ?? ""}${label ? ": " : ""}${opt.label}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <Text
                 className="text-sm font-semibold"
@@ -163,6 +177,11 @@ export function FontPicker({
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${t("reader.font")}: ${opt.label}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <Text
                 className="text-sm font-semibold"
@@ -209,6 +228,10 @@ export function SliderControl({
         style={{ backgroundColor: palette.segmentIdle }}
       >
         <Slider
+          accessibilityLabel={label}
+          accessibilityValue={{ text: formatValue(value) }}
+          accessibilityRole="adjustable"
+          tapToSeek
           style={{ flex: 1 }}
           minimumValue={min}
           maximumValue={max}
@@ -226,34 +249,6 @@ export function SliderControl({
         </View>
       </View>
     </>
-  );
-}
-
-/* ═══════════════════════════════════════
-   Brightness control
-   ═══════════════════════════════════════ */
-
-export function BrightnessControl({
-  value,
-  onChange,
-  palette,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  palette: ReaderChromePalette;
-}) {
-  const { t } = useTranslation();
-  return (
-    <SliderControl
-      label={t("reader.brightness")}
-      value={value}
-      onChange={onChange}
-      min={40}
-      max={120}
-      step={10}
-      formatValue={(v) => `${v}%`}
-      palette={palette}
-    />
   );
 }
 

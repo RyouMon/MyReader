@@ -130,4 +130,5 @@ pnpm test:e2e:ui
 ## 项目文档
 
 - [架构文档](./ARCHITECTURE.md) — 系统架构、模块设计与技术决策
+- [项目 Roadmap](./ROADMAP.md) — 跨平台功能规划与支持矩阵（含阅读设置等）
 

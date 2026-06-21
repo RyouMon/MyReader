@@ -7,6 +7,7 @@ class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
     private var selectionActionHandler: SelectionActionHandler?
     weak var selectionActionDelegate: SelectionActionDelegate?
     var onSelectionChange: ((ReadiumShared.Locator, String) -> Void)?
+    var onTap: ((CGPoint) -> Void)?
 
     init(
       publication: Publication,
@@ -43,8 +44,7 @@ class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
         initialLocation: locator,
         config: PDFNavigatorViewController.Configuration(
           editingActions: editingActions
-        ),
-        httpServer: EPUBHTTPServer.shared
+        )
       )
 
       super.init(
@@ -112,6 +112,35 @@ extension PDFViewController: PDFNavigatorDelegate {
   func navigator(_ navigator: SelectableNavigator, shouldShowMenuForSelection selection: Selection) -> Bool {
     onSelectionChange?(selection.locator, selection.locator.text.highlight ?? "")
     return true
+  }
+
+  func navigator(_ navigator: PDFNavigatorViewController, setupPDFView view: PDFDocumentView) {
+    guard onTap != nil else { return }
+
+    let tap = UITapGestureRecognizer(target: self, action: #selector(handlePdfTap(_:)))
+    tap.cancelsTouchesInView = false
+    tap.delegate = self
+    view.addGestureRecognizer(tap)
+  }
+
+  @objc private func handlePdfTap(_ gesture: UITapGestureRecognizer) {
+    guard let view = gesture.view as? PDFDocumentView else { return }
+    // Let a tap that clears an active text selection only clear the selection,
+    // without also toggling the chrome.
+    guard view.currentSelection == nil else { return }
+
+    let point = gesture.location(in: view)
+    let bounds = view.bounds
+    guard bounds.width > 0 && bounds.height > 0 else { return }
+
+    let xRatio = point.x / bounds.width
+    let yRatio = point.y / bounds.height
+    let inCenterRegion =
+      xRatio >= 0.25 && xRatio <= 0.75 &&
+      yRatio >= 0.25 && yRatio <= 0.75
+    guard inCenterRegion else { return }
+
+    onTap?(point)
   }
 }
 

@@ -25,7 +25,6 @@ export {
   FontPicker,
   SliderControl,
   StepperControl,
-  BrightnessControl,
 } from "./SettingControls";
 
 export { READER_THEME_OPTIONS } from "./readerChromeConstants";

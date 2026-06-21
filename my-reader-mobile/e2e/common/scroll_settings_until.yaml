@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+name: Scroll the reader settings sheet until the target option is visible
+# Required env: TARGET (text/accessibilityLabel regex of the option to find).
+tags:
+  - skip
+---
+# The sheet content occupies the bottom ~60% of the screen.
+# Swipe inside that area (start low, end high) to scroll the sheet content down
+# and reveal options near the bottom (e.g. spread/column).
+- repeat:
+    times: 5
+    while:
+      notVisible: ${TARGET}
+    commands:
+      - swipe:
+          start: "50%,75%"
+          end: "50%,55%"
+      - waitForAnimationToEnd:
+          timeout: 500

@@ -12,22 +12,26 @@ export type LibraryViewMode = "grid" | "list";
 
 export type TextAlignment = "auto" | "justify" | "start";
 export type ColumnCount = "1" | "auto";
+export type FontFamilyKey = "serif" | "sans" | "system";
+export type FixedBackground = "auto" | "black" | "white";
+export type Spread = "auto" | "never" | "always";
+export type ReadingProgression = "ltr" | "rtl";
 
 export type ReflowableReaderSettings = {
   theme: ReaderTheme;
+  fontFamily: FontFamilyKey;
   fontSize: number;
   lineHeight: number;
   paddingX: number;
-  brightness: number;
   textAlign: TextAlignment;
   columnCount: ColumnCount;
 };
 
 export type FixedReaderSettings = {
-  theme: ReaderTheme;
+  background: FixedBackground;
   navigationMode: FixedNavigationMode;
-  brightness: number;
-  zoomScale: number;
+  readingProgression: ReadingProgression;
+  spread: Spread;
 };
 
 export type ReaderSettings = {

@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.280">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>roadmap</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="ROADMAP_files/libs/clipboard/clipboard.min.js"></script>
+<script src="ROADMAP_files/libs/quarto-html/quarto.js"></script>
+<script src="ROADMAP_files/libs/quarto-html/popper.min.js"></script>
+<script src="ROADMAP_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="ROADMAP_files/libs/quarto-html/anchor.min.js"></script>
+<link href="ROADMAP_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="ROADMAP_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="ROADMAP_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="ROADMAP_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="ROADMAP_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+<section id="myreader-roadmap" class="level1">
+<h1>MyReader Roadmap</h1>
+<blockquote class="blockquote">
+<p>跨平台功能规划与支持矩阵总览。按功能域分组，每组按 <strong>Desktop（Tauri）</strong> 与 <strong>Mobile（iOS / Android）</strong>、<strong>格式 / 场景</strong> 分别标注当前状态。</p>
+</blockquote>
+<section id="图例" class="level2">
+<h2 class="anchored" data-anchor-id="图例">图例</h2>
+<table class="table">
+<thead>
+<tr class="header">
+<th>符号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>✅</td>
+<td>已实现并在 UI 暴露</td>
+</tr>
+<tr class="even">
+<td>⚠️</td>
+<td>底层已实现或部分可用，但 UI 未暴露 / 平台受限 / 只读</td>
+</tr>
+<tr class="odd">
+<td>❌</td>
+<td>未实现</td>
+</tr>
+<tr class="even">
+<td>🗑️</td>
+<td>曾在类型或旧代码中存在，已移除</td>
+</tr>
+<tr class="odd">
+<td>—</td>
+<td>不适用</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="阅读设置-reader-settings" class="level2">
+<h2 class="anchored" data-anchor-id="阅读设置-reader-settings">阅读设置 / Reader Settings</h2>
+<blockquote class="blockquote">
+<p>覆盖三种格式：<strong>Reflow（EPUB）</strong>、<strong>Fixed（PDF）</strong>、<strong>Fixed（CBZ）</strong>。</p>
+</blockquote>
+<section id="已实现设置" class="level3">
+<h3 class="anchored" data-anchor-id="已实现设置">已实现设置</h3>
+<section id="主题-theme" class="level4">
+<h4 class="anchored" data-anchor-id="主题-theme">主题 / Theme</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ 8 种预设</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ 8 种预设</td>
+<td>✅ 通过背景色切换（亮/暗/跟随系统）</td>
+<td>✅ 通过背景色切换（亮/暗/跟随系统）</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ 8 种预设</td>
+<td>✅ 通过背景色切换（亮/暗/跟随系统）</td>
+<td>✅ 通过背景色切换（亮/暗/跟随系统）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Fixed 格式没有独立的主题面板，但移动端通过「背景」选项提供亮色/暗色/跟随系统切换；Desktop 通过 Fixed 背景色行实现类似效果。</li>
+</ul>
+</section>
+<section id="字体-font-family" class="level4">
+<h4 class="anchored" data-anchor-id="字体-font-family">字体 / Font Family</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>⚠️ <code>serif</code> / <code>sans</code> / <code>system</code> <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>⚠️ <code>serif</code> / <code>sans</code> / <code>system</code> <a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>⚠️ <code>serif</code> / <code>sans</code> / <code>system</code> <a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="字号-font-size" class="level4">
+<h4 class="anchored" data-anchor-id="字号-font-size">字号 / Font Size</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ 14–26 px</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ 14–28 px</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ 14–28 px</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="行距-line-height" class="level4">
+<h4 class="anchored" data-anchor-id="行距-line-height">行距 / Line Height</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ 1.35–2.0</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ 1.4–2.4</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ 1.4–2.4</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="边距-page-margin" class="level4">
+<h4 class="anchored" data-anchor-id="边距-page-margin">边距 / Page Margin</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ 0–4（rem 档位）</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ 12–36 px</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ 12–36 px</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="对齐方式-text-alignment" class="level4">
+<h4 class="anchored" data-anchor-id="对齐方式-text-alignment">对齐方式 / Text Alignment</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ <code>auto</code> / <code>justify</code> / <code>start</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ <code>auto</code> / <code>justify</code> / <code>start</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ <code>auto</code> / <code>justify</code> / <code>start</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="栏数-column-count" class="level4">
+<h4 class="anchored" data-anchor-id="栏数-column-count">栏数 / Column Count</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ <code>auto</code> / <code>1</code> / <code>2</code></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>✅ <code>auto</code> / <code>1</code> <a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>✅ <code>auto</code> / <code>1</code> <a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="阅读布局-reading-layout分页-滚动" class="level4">
+<h4 class="anchored" data-anchor-id="阅读布局-reading-layout分页-滚动">阅读布局 / Reading Layout（分页 / 滚动）</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ <code>paginate</code> / <code>scroll</code></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a></td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn12" class="footnote-ref" id="fnref12" role="doc-noteref"><sup>12</sup></a></td>
+<td>❌ 仅 <code>paginate</code> <a href="#fn13" class="footnote-ref" id="fnref13" role="doc-noteref"><sup>13</sup></a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="背景色-backgroundfixed" class="level4">
+<h4 class="anchored" data-anchor-id="背景色-backgroundfixed">背景色 / Background（Fixed）</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>—</td>
+<td>✅ <code>black</code> / <code>dim</code> / <code>paper</code></td>
+<td>✅ <code>black</code> / <code>dim</code> / <code>paper</code></td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>—</td>
+<td>✅ <code>auto</code> / <code>black</code> / <code>white</code></td>
+<td>✅ <code>auto</code> / <code>black</code> / <code>white</code></td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>—</td>
+<td>✅ <code>auto</code> / <code>black</code> / <code>white</code> <a href="#fn14" class="footnote-ref" id="fnref14" role="doc-noteref"><sup>14</sup></a></td>
+<td>✅ <code>auto</code> / <code>black</code> / <code>white</code> <a href="#fn15" class="footnote-ref" id="fnref15" role="doc-noteref"><sup>15</sup></a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="翻页方向-page-direction" class="level4">
+<h4 class="anchored" data-anchor-id="翻页方向-page-direction">翻页方向 / Page Direction</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>—</td>
+<td>⚠️ 影响导航方向，未在设置面板暴露 <a href="#fn16" class="footnote-ref" id="fnref16" role="doc-noteref"><sup>16</sup></a></td>
+<td>— <a href="#fn17" class="footnote-ref" id="fnref17" role="doc-noteref"><sup>17</sup></a></td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>—</td>
+<td>✅ <code>horizontal</code> / <code>vertical</code></td>
+<td>— <a href="#fn18" class="footnote-ref" id="fnref18" role="doc-noteref"><sup>18</sup></a></td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>—</td>
+<td>✅ <code>horizontal</code> / <code>vertical</code></td>
+<td>— <a href="#fn19" class="footnote-ref" id="fnref19" role="doc-noteref"><sup>19</sup></a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="阅读方向-reading-direction" class="level4">
+<h4 class="anchored" data-anchor-id="阅读方向-reading-direction">阅读方向 / Reading Direction</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>⚠️ 存储在全局偏好，未在 EPUB 面板暴露 <a href="#fn20" class="footnote-ref" id="fnref20" role="doc-noteref"><sup>20</sup></a></td>
+<td>⚠️ 影响导航方向，未在 Fixed 面板暴露 <a href="#fn21" class="footnote-ref" id="fnref21" role="doc-noteref"><sup>21</sup></a></td>
+<td>⚠️ 影响导航方向，未在 Fixed 面板暴露 <a href="#fn22" class="footnote-ref" id="fnref22" role="doc-noteref"><sup>22</sup></a></td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>—</td>
+<td>✅ <code>ltr</code> / <code>rtl</code></td>
+<td>✅ <code>ltr</code> / <code>rtl</code></td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>—</td>
+<td>✅ <code>ltr</code> / <code>rtl</code></td>
+<td>✅ <code>ltr</code> / <code>rtl</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="页面布局-spread" class="level4">
+<h4 class="anchored" data-anchor-id="页面布局-spread">页面布局 / Spread</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>⚠️ FXL EPUB：<code>auto</code> / <code>single</code> / <code>double</code></td>
+<td>✅ <code>auto</code> / <code>single</code> / <code>double</code></td>
+<td>✅ <code>auto</code> / <code>single</code> / <code>double</code></td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>—</td>
+<td>✅ <code>auto</code> / <code>never</code></td>
+<td>✅ <code>auto</code> / <code>never</code></td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>—</td>
+<td>❌ 未暴露 picker <a href="#fn23" class="footnote-ref" id="fnref23" role="doc-noteref"><sup>23</sup></a></td>
+<td>❌ 未暴露 picker <a href="#fn24" class="footnote-ref" id="fnref24" role="doc-noteref"><sup>24</sup></a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="缩放-zoomrender-scale" class="level4">
+<h4 class="anchored" data-anchor-id="缩放-zoomrender-scale">缩放 / Zoom（Render Scale）</h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>—</td>
+<td>✅ 0.75–3.0</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>—</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>—</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="未实现但底层已支持" class="level3">
+<h3 class="anchored" data-anchor-id="未实现但底层已支持">未实现但底层已支持</h3>
+<p>这些设置属于 Readium REP-009 偏好，或产品层面已规划，但当前 UI 未暴露，以控制设置面板复杂度。</p>
+<section id="滚动模式-scroll-mode" class="level4">
+<h4 class="anchored" data-anchor-id="滚动模式-scroll-mode">滚动模式 / Scroll Mode</h4>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>✅ 已实现（见阅读布局）</td>
+<td>❌ 仅分页</td>
+<td>❌ 仅分页</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>⚠️ 底层支持</td>
+<td>⚠️ 底层支持（可用翻页方向部分替代）</td>
+<td>⚠️ 底层支持</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>⚠️ 底层支持</td>
+<td>⚠️ 底层支持（可用翻页方向部分替代）</td>
+<td>⚠️ 底层支持</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="强制双栏-columncount-2" class="level4">
+<h4 class="anchored" data-anchor-id="强制双栏-columncount-2">强制双栏 / <code>columnCount: 2</code></h4>
+<table class="table">
+<thead>
+<tr class="header">
+<th>平台</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Desktop</td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Mobile iOS</td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>Mobile Android</td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="其他排版微调" class="level4">
+<h4 class="anchored" data-anchor-id="其他排版微调">其他排版微调</h4>
+<table class="table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>设置项</th>
+<th>EPUB</th>
+<th>PDF</th>
+<th>CBZ</th>
+<th>未暴露原因</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>字重 <code>fontWeight</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="even">
+<td>字间距 <code>letterSpacing</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="odd">
+<td>词间距 <code>wordSpacing</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="even">
+<td>段间距 <code>paragraphSpacing</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="odd">
+<td>段缩进 <code>paragraphIndent</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="even">
+<td>连字符 <code>hyphens</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="odd">
+<td>合字 <code>ligatures</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="even">
+<td>文本规范化 <code>textNormalization</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="odd">
+<td>图片滤镜 <code>imageFilter</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="even">
+<td>字体缩放比例 <code>typeScale</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>需求优先级低</td>
+</tr>
+<tr class="odd">
+<td>竖排文本 <code>verticalText</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>中日文 EPUB 可能用到，当前未支持</td>
+</tr>
+<tr class="even">
+<td>出版商样式 <code>publisherStyles</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>当前强制覆盖，保证主题/字体生效；后续可作高级开关</td>
+</tr>
+<tr class="odd">
+<td>语言 <code>language</code></td>
+<td>⚠️ 底层支持</td>
+<td>—</td>
+<td>—</td>
+<td>跟随系统语言，未提供单独覆盖</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="已移除设置" class="level3">
+<h3 class="anchored" data-anchor-id="已移除设置">已移除设置</h3>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>设置项</th>
+<th>曾在哪</th>
+<th>移除原因</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>亮度 <code>brightness</code></td>
+<td>Reflow &amp; Fixed 旧 <code>ReaderSettings</code></td>
+<td>Readium 没有亮度偏好；旧实现用半透明黑色遮罩叠加，不可靠且影响渲染</td>
+</tr>
+<tr class="even">
+<td>缩放比例 <code>zoomScale</code></td>
+<td>Fixed 旧 <code>ReaderSettings</code></td>
+<td>Fixed 格式使用原生双指捏合缩放；程序式 <code>zoomScale</code> 与 PDFKit/Pinch 冲突</td>
+</tr>
+<tr class="odd">
+<td>Fixed 主题 <code>fixed.theme</code></td>
+<td>Fixed 旧 <code>ReaderSettings</code></td>
+<td>FXL/PDF navigator 不支持主题 token，只能用背景色替代</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="其他功能域-other-domains" class="level2">
+<h2 class="anchored" data-anchor-id="其他功能域-other-domains">其他功能域 / Other Domains</h2>
+<blockquote class="blockquote">
+<p>待后续补充：书库管理、同步、TTS、ComfyUI 创意生成等。</p>
+</blockquote>
+</section>
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>当前仅提供三类字体族开关，尚未实现按书籍语言加载对应字体栈（如中文使用 <code>Noto Serif SC</code>，英文使用 <code>Lora</code>/<code>Merriweather</code> 等）。<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>当前仅提供三类字体族开关，尚未实现按书籍语言加载对应字体栈（如中文使用 <code>Noto Serif SC</code>，英文使用 <code>Lora</code>/<code>Merriweather</code> 等）。<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>当前仅提供三类字体族开关，尚未实现按书籍语言加载对应字体栈（如中文使用 <code>Noto Serif SC</code>，英文使用 <code>Lora</code>/<code>Merriweather</code> 等）。<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>Mobile 不暴露 <code>2</code>：手机双栏可读性差，iPad 横屏用 <code>auto</code> 即可双栏。<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Mobile 不暴露 <code>2</code>：手机双栏可读性差，iPad 横屏用 <code>auto</code> 即可双栏。<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn11"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn12"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref12" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn13"><p>Mobile 未暴露滚动模式；PDF 可通过「翻页方向」切换到纵向滚动，CBZ 因 FXL navigator 限制不支持纵向。<a href="#fnref13" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn14"><p>Android 通过桥接层直接设置 navigator view 背景色，因为 Readium pdfium / image navigator 不原生支持 <code>backgroundColor</code> 偏好。<a href="#fnref14" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn15"><p>Android 通过桥接层直接设置 navigator view 背景色，因为 Readium pdfium / image navigator 不原生支持 <code>backgroundColor</code> 偏好。<a href="#fnref15" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn16"><p>CBZ 的 FXL navigator 只支持横向分页，设置面板隐藏「翻页方向」；Desktop 未在 Fixed 面板暴露该选项。<a href="#fnref16" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn17"><p>CBZ 的 FXL navigator 只支持横向分页，设置面板隐藏「翻页方向」；Desktop 未在 Fixed 面板暴露该选项。<a href="#fnref17" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn18"><p>CBZ 的 FXL navigator 只支持横向分页，设置面板隐藏「翻页方向」；Desktop 未在 Fixed 面板暴露该选项。<a href="#fnref18" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn19"><p>CBZ 的 FXL navigator 只支持横向分页，设置面板隐藏「翻页方向」；Desktop 未在 Fixed 面板暴露该选项。<a href="#fnref19" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn20"><p>Desktop 阅读方向为隐式行为：<code>direction</code>（ltr/rtl）存储在全局 <code>fixedLayout</code> 偏好中，影响所有格式的边缘翻页方向，但当前未在阅读设置面板中单独暴露。<a href="#fnref20" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn21"><p>Desktop 阅读方向为隐式行为：<code>direction</code>（ltr/rtl）存储在全局 <code>fixedLayout</code> 偏好中，影响所有格式的边缘翻页方向，但当前未在阅读设置面板中单独暴露。<a href="#fnref21" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn22"><p>Desktop 阅读方向为隐式行为：<code>direction</code>（ltr/rtl）存储在全局 <code>fixedLayout</code> 偏好中，影响所有格式的边缘翻页方向，但当前未在阅读设置面板中单独暴露。<a href="#fnref22" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn23"><p>Fixed 页面布局仅 iOS 暴露：<code>spread</code> picker 只在 Mobile iOS 设置面板中显示；Mobile Android 当前未暴露。<a href="#fnref23" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn24"><p>Fixed 页面布局仅 iOS 暴露：<code>spread</code> picker 只在 Mobile iOS 设置面板中显示；Mobile Android 当前未暴露。<a href="#fnref24" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

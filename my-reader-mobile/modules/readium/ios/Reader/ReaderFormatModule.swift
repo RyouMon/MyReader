@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import ReadiumShared
 
-/// A ReaderFormatModule is a sub-module of ReaderModule that handles publication of a given format (eg. EPUB, CBZ).
+/// A ReaderFormatModule is a sub-module of ReaderModule that handles publication of a given format (eg. EPUB, PDF).
 protocol ReaderFormatModule {
 
   var delegate: ReaderFormatModuleDelegate? { get }

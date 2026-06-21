@@ -1,6 +1,7 @@
 package com.myreader.readium.reader
 
 import android.os.Bundle
+import android.graphics.Color as AndroidColor
 import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -36,6 +37,13 @@ abstract class BaseReaderFragment : Fragment() {
   protected abstract val model: ReaderViewModel
   protected abstract val navigator: Navigator
 
+  /**
+   * Navigators whose reading-direction semantics are not handled by Readium
+   * itself (e.g. the CBZ image navigator) override this to reverse the edge-tap
+   * navigation mapping when the user selects RTL.
+   */
+  protected open fun shouldReverseEdgeNavigation(): Boolean = false
+
   // Exposes the live Publication so the bridge (PublicationStore) can key
   // content/snapshot lookups off the same object the navigator renders.
   val publication: org.readium.r2.shared.publication.Publication
@@ -46,6 +54,9 @@ abstract class BaseReaderFragment : Fragment() {
 
   // Store decorations if they're set before navigator is ready
   private var pendingDecorations: Map<String, List<Decoration>>? = null
+
+  // Store background color if it's set before the navigator view is ready
+  private var pendingBackgroundColor: String? = null
 
   // Center tap zone used to toggle chrome. Taps outside this zone are left
   // for Readium's default edge navigation (page turns, etc.).
@@ -76,10 +87,13 @@ abstract class BaseReaderFragment : Fragment() {
 
       // On Android, returning false from an input listener does not reliably
       // trigger Readium's default edge-tap page turn, so navigate explicitly.
+      // The image navigator ignores readingProgression, so we reverse the edge
+      // mapping ourselves when the user selected RTL.
       val overflowNav = navigator as? OverflowableNavigator ?: return false
+      val reverseEdges = shouldReverseEdgeNavigation()
       return when {
-        xRatio < CENTER_TAP_START_RATIO -> overflowNav.goBackward(animated = true)
-        xRatio > CENTER_TAP_END_RATIO -> overflowNav.goForward(animated = true)
+        xRatio < CENTER_TAP_START_RATIO -> if (reverseEdges) overflowNav.goForward(animated = true) else overflowNav.goBackward(animated = true)
+        xRatio > CENTER_TAP_END_RATIO -> if (reverseEdges) overflowNav.goBackward(animated = true) else overflowNav.goForward(animated = true)
         else -> false
       }
     }
@@ -191,6 +205,39 @@ abstract class BaseReaderFragment : Fragment() {
     if (!isNavigatorReady) return false
     val overflowNav = navigator as? OverflowableNavigator ?: return false
     return overflowNav.goBackward(animated = true)
+  }
+
+  /**
+   * Apply the user-selected reading progression ("ltr" / "rtl") to the
+   * navigator. EPUB and PDF navigators consume this through their preferences
+   * API; image-based navigators can override this to implement the behavior
+   * manually.
+   */
+  open fun applyReadingProgression(readingProgression: String?) {}
+
+  /**
+   * Apply a background color to the navigator surface. This is used on Android
+   * for formats whose Readium navigator does not expose a backgroundColor
+   * preference (PDF via pdfium, CBZ via image navigator).
+   */
+  open fun setReaderBackgroundColor(colorString: String?) {
+    pendingBackgroundColor = colorString
+    applyReaderBackgroundColor()
+  }
+
+  private fun applyReaderBackgroundColor() {
+    if (!isNavigatorReady) return
+    val colorString = pendingBackgroundColor ?: return
+    val colorInt = try {
+      AndroidColor.parseColor(colorString)
+    } catch (e: IllegalArgumentException) {
+      android.util.Log.w("BaseReaderFragment", "Invalid background color: $colorString")
+      return
+    }
+
+    // Try the navigator's own publication view first; fall back to the fragment root.
+    (navigator as? VisualNavigator)?.publicationView?.setBackgroundColor(colorInt)
+    view?.setBackgroundColor(colorInt)
   }
 
   /**

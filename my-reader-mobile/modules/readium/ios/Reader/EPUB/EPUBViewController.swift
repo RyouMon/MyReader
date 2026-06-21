@@ -50,8 +50,7 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
         initialLocation: locator,
         config: EPUBNavigatorViewController.Configuration(
           editingActions: editingActions
-        ),
-        httpServer: EPUBHTTPServer.shared
+        )
       )
 
       super.init(

@@ -1,0 +1,179 @@
+appId: ${APP_ID}
+name: change_pdf_settings
+tags:
+  - reader
+  - settings
+  - pdf
+  - phone
+---
+# PDF book 5 = Pride and Prejudice.
+# Open the app and book once, then walk through the settings sequentially.
+# Background-color and layout/direction changes are verified through control
+# selected-state and page-indicator behavior, not AI.
+
+- setOrientation: PORTRAIT
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../../common/open_reader_by_id.yaml
+    env:
+      BOOK_ID: "5"
+
+# ============================================================
+# Scenario: Black background fills the letterbox around the page
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.background.black}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "背景.*黑色.*已选择|Background: Black, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+
+# ============================================================
+# Scenario: White background fills the letterbox around the page
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.background.white}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "背景.*白色.*已选择|Background: White, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+
+# ============================================================
+# Scenario: Spread "single" always shows one page at a time
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.spread.single}
+- tapOn: ${output.selectors.readerSettings.spread.single}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "页面布局.*始终单栏.*已选择|Page Layout: Always Single, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / .*"
+    timeout: 10000
+# Return to page 1 so the next scenario starts from a known page.
+- swipe:
+    direction: RIGHT
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 10000
+
+# ============================================================
+# Scenario: "auto" spread degrades to a single page on a narrow screen
+# ============================================================
+# Readium FXL spread=auto degrades to single page on narrow viewports.
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.spread.auto}
+- tapOn: ${output.selectors.readerSettings.spread.auto}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "页面布局.*自动.*已选择|Page Layout: Auto, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / .*"
+    timeout: 10000
+- assertNotVisible: "3 / .*"
+# Return to page 1 so the next scenario starts from a known page.
+- swipe:
+    direction: RIGHT
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 10000
+
+# ============================================================
+# Scenario: Reading direction RTL reverses the page-turn swipe
+# ============================================================
+# LTR default: swipe LEFT = next page. With RTL: swipe RIGHT = next page.
+# PDF uses the FXL navigator, so page turns are swipes, not edge taps.
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.progression.rtl}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "阅读方向.*从右到左.*已选择|Reading Direction: Right to Left, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- swipe:
+    direction: RIGHT
+- extendedWaitUntil:
+    visible: "2 / .*"
+    timeout: 10000
+# Return to page 1 so the next scenario starts from a known page.
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 10000
+
+# ============================================================
+# Scenario: Switch page direction to vertical scroll
+# ============================================================
+# Vertical scroll changes the swipe axis; a downward drag advances the document.
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.pageDirection.vertical}
+- tapOn: ${output.selectors.readerSettings.pageDirection.vertical}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "翻页方向.*上下翻页.*已选择|Page Direction: Vertical, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- waitForAnimationToEnd:
+    timeout: 2000
+# A vertical scroll is continuous; one long swipe can skip past page 2.
+- extendedWaitUntil:
+    visible: "[2-9] / .*"
+    timeout: 10000

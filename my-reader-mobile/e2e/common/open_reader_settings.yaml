@@ -1,0 +1,24 @@
+appId: ${APP_ID}
+name: Open the reader settings sheet from any chrome state
+tags:
+  - skip
+---
+- runScript: ../scripts/selectors.js
+# Chrome starts hidden after opening a book. Reveal it (center tap toggles chrome).
+- runFlow:
+    when:
+      notVisible: ${output.selectors.reader.moreActions}
+    commands:
+      - tapOn:
+          point: "50%,50%"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible: ${output.selectors.reader.moreActions}
+- tapOn: ${output.selectors.reader.moreActions}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: ${output.selectors.reader.settingsButton}
+- tapOn: ${output.selectors.reader.settingsButton}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: ${output.selectors.reader.settingsSheet}

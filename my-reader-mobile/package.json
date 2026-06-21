@@ -14,8 +14,8 @@
     "test": "jest",
     "test:ci": "jest --runInBand",
     "test:update-snapshots": "jest -u --coverage=false",
-    "test:e2e:ios": "maestro test e2e -e APP_ID=ryoumon.myreadermobile --platform ios",
-    "test:e2e:android": "maestro test e2e -e APP_ID=ryoumon.myreadermobile --platform android",
+    "test:e2e:ios": "maestro test --config=e2e/config.yaml e2e -e APP_ID=ryoumon.myreadermobile --platform ios",
+    "test:e2e:android": "maestro test --config=e2e/config.yaml e2e -e APP_ID=ryoumon.myreadermobile --platform android",
     "zip:fixtures": "cd ../calibre-library && zip -r ../my-reader-mobile/assets/e2e-fixtures/Example1.zip Example1/",
     "build:dev:android": "npx eas-cli@latest build --platform android --profile development --local",
     "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local"
@@ -105,6 +105,8 @@
     "performanceMode": true
   },
   "devDependencies": {
+    "@expo/config-plugins": "~56.0.8",
+    "@sentry/cli": "2.58.4",
     "@testing-library/react-native": "^13.3.3",
     "@types/base-64": "^1.0.2",
     "@types/chroma-js": "^3.1.0",

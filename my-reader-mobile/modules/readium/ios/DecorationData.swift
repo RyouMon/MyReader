@@ -18,29 +18,17 @@ struct LocatorData: Codable {
       return nil
     }
 
-    var locationsDict: [String: Any] = [:]
+    var fragments: [String] = []
     if let fragment = normalized.fragment {
-      locationsDict["fragments"] = [fragment]
-    }
-    if let locations = locations {
-      if let progression = locations.progression {
-        locationsDict["progression"] = progression
-      }
-      if let position = locations.position {
-        locationsDict["position"] = position
-      }
-      if let totalProgression = locations.totalProgression {
-        locationsDict["totalProgression"] = totalProgression
-      }
+      fragments.append(fragment)
     }
 
-    // Try to create Locator.Locations from JSON, fall back to empty if it fails
-    let locatorLocations: ReadiumShared.Locator.Locations
-    do {
-      locatorLocations = try ReadiumShared.Locator.Locations(json: locationsDict.isEmpty ? nil : locationsDict)
-    } catch {
-      locatorLocations = ReadiumShared.Locator.Locations()
-    }
+    let locatorLocations = ReadiumShared.Locator.Locations(
+      fragments: fragments,
+      progression: locations?.progression,
+      totalProgression: locations?.totalProgression,
+      position: locations?.position
+    )
 
     // Convert text data to Locator.Text if present
     let locatorText: ReadiumShared.Locator.Text

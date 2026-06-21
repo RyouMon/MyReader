@@ -26,6 +26,7 @@ import com.myreader.readium.Types.ReadiumFileRecord
 import com.myreader.readium.Types.SelectionActionRecord
 import com.myreader.readium.reader.BaseReaderFragment
 import com.myreader.readium.reader.EpubReaderFragment
+import com.myreader.readium.reader.ImageReaderFragment
 import com.myreader.readium.reader.PdfReaderFragment
 import com.myreader.readium.reader.ReaderService
 import com.myreader.readium.reader.ReaderViewModel
@@ -147,11 +148,18 @@ class ReadiumView(
 
   private fun updatePreferences() {
     val prefs = preferences ?: return
-    when (val frag = fragment) {
+    val frag = fragment ?: return
+    when (frag) {
       is EpubReaderFragment -> frag.updatePreferences(preferencesRecordToEpub(prefs))
       is PdfReaderFragment -> frag.updatePreferences(preferencesRecordToPdf(prefs))
-      else -> return
+      is ImageReaderFragment -> { /* image navigator has no preferences API; background is handled below */ }
+      else -> {}
     }
+    // Apply reading direction to navigators that need manual help (CBZ).
+    frag.applyReadingProgression(prefs.readingProgression)
+    // Apply background color through the bridge for all navigators, since Android
+    // pdfium and image navigators don't expose backgroundColor in their preferences.
+    frag.setReaderBackgroundColor(prefs.backgroundColor)
   }
 
   // MARK: - Decorations
@@ -329,6 +337,10 @@ class ReadiumView(
         )
       }
     } ?: Log.w(TAG, "addFragment: fragment view is null after commitNow!")
+
+    // Apply the reader background color now that the fragment (and its child
+    // navigator) has a view. EPUB handles this via CSS; PDF/CBZ need the bridge.
+    preferences?.backgroundColor?.let { frag.setReaderBackgroundColor(it) }
 
     frag.channel.receive(frag) { event ->
       when (event) {

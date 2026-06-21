@@ -129,6 +129,9 @@ final class ReadiumView: ExpoView {
             pdfVC.onSelectionChange = { [weak self] locator, selectedText in
               self?.emitSelectionChange(locator: locator, selectedText: selectedText)
             }
+            pdfVC.onTap = { [weak self] point in
+              self?.dispatchTapEvent(at: point)
+            }
           }
 
           self.addViewControllerAsSubview(vc)
@@ -205,9 +208,13 @@ final class ReadiumView: ExpoView {
 
     // Forward single taps in the center 50% to JS so the React Native chrome
     // can toggle; edge taps are left for Readium's default navigation gestures.
+    // PDF is handled separately through a dedicated gesture recognizer because
+    // PDFKit consumes the navigator's generic tap observer.
     if let visualNavigator = vc.navigator as? VisualNavigator {
+      let isPDF = vc.navigator is PDFNavigatorViewController
       let tapToken = visualNavigator.addObserver(.tap { [weak self, weak visualNavigator] event in
         guard let self, event.phase != .cancel else { return false }
+        guard !isPDF else { return false }
         guard let bounds = visualNavigator?.view.bounds,
               bounds.width > 0 && bounds.height > 0 else { return false }
 
@@ -218,9 +225,7 @@ final class ReadiumView: ExpoView {
           yRatio >= 0.25 && yRatio <= 0.75
         guard inCenterRegion else { return false }
 
-        self.dispatchEvent("onTap", payload: [
-          "point": ["x": Double(event.location.x), "y": Double(event.location.y)] as [String: Any]
-        ] as [String: Any])
+        self.dispatchTapEvent(at: event.location)
         return false
       })
       tapToken.store(in: &inputObserverTokens)
@@ -262,6 +267,14 @@ final class ReadiumView: ExpoView {
         "metadata": metadata,
       ] as [String: Any])
     }
+  }
+
+  // MARK: - Tap forwarding
+
+  private func dispatchTapEvent(at point: CGPoint) {
+    dispatchEvent("onTap", payload: [
+      "point": ["x": Double(point.x), "y": Double(point.y)] as [String: Any]
+    ] as [String: Any])
   }
 
   // MARK: - Imperative navigation (called by ReadiumModule via tag lookup)

@@ -1,0 +1,35 @@
+appId: ${APP_ID}
+name: Open a specific book in the reader (book-only, no launch/seed)
+tags:
+  - skip
+# BOOK_ID MUST be passed by the caller via `runFlow: { env: { BOOK_ID: "2" } }`.
+# Do NOT declare a default `env: BOOK_ID` here: a subflow's own declared env
+# overrides the caller's passed env in Maestro, so a default would silently
+# pin every flow to that book.
+#
+# This subflow assumes the app is already running (usually after
+# launch_and_prepare.yaml + seed_library.yaml) and just deep-links into the
+# reader for the requested book.
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - openLink: myreadermobile://reader/${BOOK_ID}
+      - runFlow: confirm_deep_link.yaml
+      - extendedWaitUntil:
+          visible:
+            id: "reader-screen"
+          timeout: 15000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - openLink:
+          link: exp+my-reader-mobile://reader/${BOOK_ID}
+          autoVerify: true
+      - runFlow: confirm_deep_link.yaml
+      - extendedWaitUntil:
+          visible:
+            id: "reader-screen"
+          timeout: 15000
