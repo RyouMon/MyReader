@@ -1,3 +1,4 @@
+export { ButtonGroup } from "./button-group";
 export {
   Button,
   HeaderCloseButton,

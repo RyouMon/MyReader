@@ -18,7 +18,7 @@ import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
 import { SectionCard, SettingsRow } from "@/src/components";
-import { Button } from "@/src/components/ui/button";
+import { Button, ButtonGroup } from "@/src/components/ui";
 import { Screen } from "@/src/components/ui/screen";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 
@@ -216,37 +216,35 @@ export default function LibraryDetailScreen() {
         <View className="flex-1" style={{ backgroundColor: palette.background }}>
           <View className="flex-1 gap-8">
             <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} t={t} />
-            <View className="items-center">
-              <View className="w-full flex-row gap-3 px-4" style={{ maxWidth: 400 }}>
-                <Button
-                  className="flex-1"
-                  disabled={Boolean(isActive)}
-                  onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    void switchActiveLibrary(library.id);
-                  }}
-                  title={t("libraryDetail.useLibrary")}
-                  variant="primary"
-                />
-                <Button
-                  className="flex-1"
-                  disabled={isSyncing}
-                  onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    void (async () => {
-                      try {
-                        await syncNow(library.id);
-                        notifyLibraryRefresh("done");
-                      } catch (e) {
-                        notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
-                      }
-                    })();
-                  }}
-                  title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
-                  variant="secondary"
-                />
-              </View>
-            </View>
+            <ButtonGroup>
+              <Button
+                className="flex-1"
+                disabled={Boolean(isActive)}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  void switchActiveLibrary(library.id);
+                }}
+                title={t("libraryDetail.useLibrary")}
+                variant="primary"
+              />
+              <Button
+                className="flex-1"
+                disabled={isSyncing}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  void (async () => {
+                    try {
+                      await syncNow(library.id);
+                      notifyLibraryRefresh("done");
+                    } catch (e) {
+                      notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
+                    }
+                  })();
+                }}
+                title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
+                variant="secondary"
+              />
+            </ButtonGroup>
             <SectionCard>
               <SettingsRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
               <SettingsRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />

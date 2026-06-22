@@ -218,13 +218,20 @@
       "detail": "它可能已从当前书库移除，或页面参数已经失效。"
     },
     "seriesInfo": "{{series}} · 第 {{index}} 部",
+    "series": "丛书",
+    "seriesIndex": "丛书编号",
     "infoSection": "详细信息",
+    "bookTitle": "书名",
+    "titleSort": "排序书名",
+    "authors": "作者",
     "authorSort": "排序作者",
     "pubDate": "出版日期",
     "language": "语言",
-    "libraryPath": "库中路径",
-    "addedAt": "添加时间",
-    "lastModified": "最后修改",
+    "publisher": "出版商",
+    "rating": "评分",
+    "tags": "标签",
+    "identifiers": "标识符",
+    "createdAt": "创建日期",
     "downloadStarted": "已开始下载",
     "downloadStartedDetail": "{{format}} 下载完成后即可阅读。",
     "noReadableFormat": "无可读格式",
@@ -244,21 +251,24 @@
     "formatSection": {
       "title": "文件格式",
       "count": "{{count}} 种格式",
-      "default": "默认",
+      "default": "默认阅读格式",
       "readable": "可阅读",
       "unsupported": "不支持",
       "queued": "排队中",
       "preparing": "准备中",
       "notStarted": "未开始阅读",
       "cancel": "取消",
-      "cancelDownload": "取消下载 {{format}}",
+      "cancelDownload": "取消下载",
       "download": "下载",
-      "downloadFormat": "下载 {{format}}",
-      "deleteLocalFile": "删除本地文件",
-      "deleteLocalFileFormat": "删除本地文件 {{format}}",
-      "notDownloaded": "未下载"
+      "downloadFormat": "下载",
+      "notDownloaded": "未下载",
+      "setDefault": "设为默认阅读格式",
+      "more": "更多"
     },
-    "synopsis": "简介"
+    "synopsis": "简介",
+    "setReadingFormat": "设置阅读格式",
+    "expand": "展开",
+    "collapse": "收起"
   },
   "bookRow": {
     "unread": "未读",
@@ -477,15 +487,6 @@
     "unnamedLibrary": "未命名书库",
     "selected": "已选择",
     "unselected": "未选择"
-  },
-  "bookFormats": {
-    "epub": "可重排版",
-    "pdf": "固定版式",
-    "mobi": "Kindle 格式",
-    "azw3": "Kindle 格式",
-    "txt": "纯文本",
-    "cbz": "漫画归档",
-    "djvu": "扫描文档"
   },
   "bookLang": {
     "zho": "中文",

@@ -18,7 +18,7 @@ import { mixInk } from "@/src/design/reader-chrome-palette";
 import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-const ROW_CLASS = "flex-row items-center justify-between gap-3 px-4 py-4";
+const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4";
 const TITLE_CLASS = "text-[16px] leading-6";
 const DETAIL_CLASS = "text-[13px] leading-5";
 const ROW_ICON_SIZE = 22;
@@ -116,18 +116,22 @@ function SettingsRowBody({
   return (
     <>
       {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
-      <View className="flex-1 gap-1">
-        <Text selectable className={TITLE_CLASS} style={settingsRowTextStyle(palette.text)}>
+      <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
+        <Text selectable className={TITLE_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
           {title}
         </Text>
         {detail ? (
-          <Text selectable className={DETAIL_CLASS} style={settingsRowTextStyle(palette.textMuted)}>
+          <Text selectable className={DETAIL_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
             {detail}
           </Text>
         ) : null}
       </View>
       {hasValue ? (
-        <Text selectable className={`shrink ${TITLE_CLASS}`} style={settingsRowTextStyle(palette.textMuted)}>
+        <Text
+          selectable
+          className={`shrink ${TITLE_CLASS}`}
+          style={[settingsRowTextStyle(palette.textMuted), { flexShrink: 1 }]}
+        >
           {value}
         </Text>
       ) : null}

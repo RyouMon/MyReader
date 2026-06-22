@@ -218,13 +218,20 @@
       "detail": "It may have been removed from the library or the page parameters are invalid."
     },
     "seriesInfo": "{{series}} · #{{index}}",
+    "series": "Series",
+    "seriesIndex": "Series Index",
     "infoSection": "Details",
+    "bookTitle": "Title",
+    "titleSort": "Title Sort",
+    "authors": "Authors",
     "authorSort": "Author Sort",
     "pubDate": "Pub Date",
     "language": "Language",
-    "libraryPath": "Library Path",
-    "addedAt": "Added At",
-    "lastModified": "Last Modified",
+    "publisher": "Publisher",
+    "rating": "Rating",
+    "tags": "Tags",
+    "identifiers": "Identifiers",
+    "createdAt": "Created At",
     "downloadStarted": "Download started",
     "downloadStartedDetail": "{{format}} will be ready to read once downloaded.",
     "noReadableFormat": "No readable format",
@@ -244,21 +251,24 @@
     "formatSection": {
       "title": "File Formats",
       "count": "{{count}} formats",
-      "default": "Default",
+      "default": "Default Reading Format",
       "readable": "Readable",
       "unsupported": "Unsupported",
       "queued": "Queued",
       "preparing": "Preparing",
       "notStarted": "Not started",
       "cancel": "Cancel",
-      "cancelDownload": "Cancel {{format}} download",
+      "cancelDownload": "Cancel Download",
       "download": "Download",
-      "downloadFormat": "Download {{format}}",
-      "deleteLocalFile": "Delete local file",
-      "deleteLocalFileFormat": "Delete local file {{format}}",
-      "notDownloaded": "Not downloaded"
+      "downloadFormat": "Download",
+      "notDownloaded": "Not downloaded",
+      "setDefault": "Set as default reading format",
+      "more": "More"
     },
-    "synopsis": "Synopsis"
+    "synopsis": "Synopsis",
+    "setReadingFormat": "Set Reading Format",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "bookRow": {
     "unread": "Unread",
@@ -477,15 +487,6 @@
     "unnamedLibrary": "Unnamed Library",
     "selected": "Selected",
     "unselected": "Unselected"
-  },
-  "bookFormats": {
-    "epub": "Reflowable",
-    "pdf": "Fixed-layout",
-    "mobi": "Kindle Format",
-    "azw3": "Kindle Format",
-    "txt": "Plain Text",
-    "cbz": "Comic Archive",
-    "djvu": "Scanned Document"
   },
   "bookLang": {
     "zho": "中文",

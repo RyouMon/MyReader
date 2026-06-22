@@ -66,12 +66,16 @@ type ScrollViewCssProps = React.ComponentProps<typeof RNScrollView> & {
 
 const RNScrollViewForCss = RNScrollView as React.ComponentType<ScrollViewCssProps>;
 
-export const ScrollView = (props: ScrollViewCssProps) => {
-  return cssElement(RNScrollViewForCss, props, {
-    className: "style",
-    contentContainerClassName: "contentContainerStyle",
-  });
-};
+export const ScrollView = React.forwardRef<RNScrollView, ScrollViewCssProps>(function ScrollView(props, ref) {
+  return cssElement(
+    RNScrollViewForCss,
+    { ref, ...props },
+    {
+      className: "style",
+      contentContainerClassName: "contentContainerStyle",
+    },
+  );
+});
 ScrollView.displayName = "CSS(ScrollView)";
 
 export const Pressable = (
@@ -96,17 +100,20 @@ type AnimatedScrollViewProps = React.ComponentProps<
   contentContainerClassName?: string;
 };
 
-export function AnimatedScrollView(props: AnimatedScrollViewProps) {
+export const AnimatedScrollView = React.forwardRef<
+  Animated.ScrollView,
+  AnimatedScrollViewProps
+>(function AnimatedScrollView(props, ref) {
   return cssElement(
     Animated.ScrollView as React.ComponentType<Record<string, unknown>>,
-    props,
+    { ref, ...props },
     {
       className: "style",
       contentClassName: "contentContainerStyle",
       contentContainerClassName: "contentContainerStyle",
     }
   );
-}
+});
 
 function XXTouchableHighlight(
   props: React.ComponentProps<typeof RNTouchableHighlight>

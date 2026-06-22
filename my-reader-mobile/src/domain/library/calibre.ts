@@ -269,6 +269,7 @@ export async function readBookDetailFromMetadata(
   return {
     id: book.id,
     title: book.title || i18n.t("common.unnamedBook"),
+    titleSort: book.sort ?? "",
     authorSort: book.authorSort ?? "",
     authors: bookAuthors,
     tags: bookTags,

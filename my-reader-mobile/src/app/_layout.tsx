@@ -102,8 +102,8 @@ function RootNavigator() {
         <StatusBar style={statusBarStyle} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="book" />
-          <Stack.Screen name="library-book" />
+          <Stack.Screen name="book" options={{ presentation: "modal" }} />
+          <Stack.Screen name="library-book" options={{ presentation: "modal" }} />
           <Stack.Screen
             name="reader"
             options={{

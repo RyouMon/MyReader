@@ -27,6 +27,7 @@ export interface CalibreBook {
 export interface BookDetail {
   id: number
   title: string
+  titleSort: string
   authorSort: string
   authors: string[]
   tags: string[]

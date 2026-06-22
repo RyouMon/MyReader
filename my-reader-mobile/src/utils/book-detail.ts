@@ -16,17 +16,6 @@ export const IDENTIFIER_LABELS: Record<string, string> = {
   barnesnoble: "B&N",
 };
 
-export const FORMAT_LABELS: Record<string, string> = {
-  EPUB: i18n.t("bookFormats.epub"),
-  PDF: i18n.t("bookFormats.pdf"),
-  MOBI: i18n.t("bookFormats.mobi"),
-  AZW3: i18n.t("bookFormats.azw3"),
-  TXT: i18n.t("bookFormats.txt"),
-  CBZ: i18n.t("bookFormats.cbz"),
-  DJVU: i18n.t("bookFormats.djvu"),
-  FB2: "FictionBook",
-};
-
 export function formatLanguage(code: string): string {
   const map: Record<string, string> = {
     zho: i18n.t("bookLang.zho"),
