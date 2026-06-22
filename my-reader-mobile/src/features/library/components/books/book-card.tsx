@@ -3,13 +3,13 @@ import { memo, useCallback, useMemo } from "react";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "expo-symbols";
-import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
 
-import { buildBookMenuActions } from "../../utils/book-menu";
-import type { BookItem } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
+import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
+import { buildBookMenuActions } from "../../utils/book-menu";
 
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { ProgressBar } from "@/src/components/ui/progress-bar";
@@ -171,10 +171,10 @@ function BookCardImpl({
           </View>
         </TouchableHighlight>
       </View>
-      <Text selectable className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={2}>
+      <Text selectable className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
         {book.title}
       </Text>
-      <View className="mt-1 flex-row items-center">
+      <View className="flex-row items-center">
         <Text selectable className="flex-1 text-sm leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
           {book.author}
         </Text>
