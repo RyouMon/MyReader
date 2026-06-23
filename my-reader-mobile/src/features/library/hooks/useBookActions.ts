@@ -28,7 +28,7 @@ export function useBookActions(
   openMenuBookId: string | null,
   selectedFormatById: Record<string, string>,
   selectedLibrary: Library | null,
-  setSelectedFormatById: React.Dispatch<React.SetStateAction<Record<string, string>>> | null,
+  setBookReadingFormat: ((bookId: string, format: string | null) => Promise<void> | void) | null,
 ) {
   const isNavigatingRef = useRef(false);
 
@@ -42,7 +42,7 @@ export function useBookActions(
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    setSelectedFormatById,
+    setBookReadingFormat,
   });
   stateRef.current = {
     books,
@@ -52,7 +52,7 @@ export function useBookActions(
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    setSelectedFormatById,
+    setBookReadingFormat,
   };
 
   const downloadBook = useCallback(async (book: BookItem, targetFormat?: string) => {
@@ -100,10 +100,10 @@ export function useBookActions(
         showAlertWithStatusBarRestore(i18n.t("sync.noReadableFormat"), i18n.t("sync.noReadableFormatDetail"));
         return;
       }
-      const setFormat = stateRef.current.setSelectedFormatById;
+      const setFormat = stateRef.current.setBookReadingFormat;
       if (readableFormats.length === 1) {
         if (setFormat) {
-          setFormat((prev) => ({ ...prev, [book.id]: readableFormats[0]! }));
+          void setFormat(book.id, readableFormats[0]!);
         }
         showAlertWithStatusBarRestore(i18n.t("sync.defaultFormatSet"), readableFormats[0]);
         return;
@@ -119,7 +119,7 @@ export function useBookActions(
             text: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
             onPress: () => {
               if (setFormat) {
-                setFormat((prev) => ({ ...prev, [book.id]: fmt }));
+                void setFormat(book.id, fmt);
               }
             },
           })),
@@ -173,16 +173,12 @@ export function useBookActions(
       }
       if (actionId.startsWith("setDefaultFormat:")) {
         const format = actionId.slice("setDefaultFormat:".length);
-        const setFormat = latest.setSelectedFormatById;
+        const setFormat = latest.setBookReadingFormat;
         if (!setFormat) return;
         if (format === "auto") {
-          setFormat((prev) => {
-            const next = { ...prev };
-            delete next[bookId];
-            return next;
-          });
+          void setFormat(bookId, null);
         } else {
-          setFormat((prev) => ({ ...prev, [bookId]: format }));
+          void setFormat(bookId, format);
         }
         return;
       }

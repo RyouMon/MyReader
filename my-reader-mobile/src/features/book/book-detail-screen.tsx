@@ -15,6 +15,7 @@ import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
+import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
 import { useAppStore } from "@/src/store/app-store";
 
 type DetailCacheEntry = {
@@ -37,9 +38,9 @@ export default function BookDetailScreen() {
   const dataSources = useAppStore((s) => s.dataSources);
   const [currentId, setCurrentId] = useState<string | null>(id ?? null);
   const [detailCache, setDetailCache] = useState<Record<string, DetailCacheEntry>>({});
-  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string | null>>({});
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary, books);
 
   useEffect(() => {
     if (id && currentId === null) {
@@ -49,7 +50,6 @@ export default function BookDetailScreen() {
 
   useEffect(() => {
     setDetailCache({});
-    setSelectedFormatById({});
     loadingIdsRef.current.clear();
   }, [activeLibraryId]);
 
@@ -101,11 +101,7 @@ export default function BookDetailScreen() {
           },
         }));
         if (next) {
-          setSelectedFormatById((prev) =>
-            Object.prototype.hasOwnProperty.call(prev, currentId)
-              ? prev
-              : { ...prev, [currentId]: pickReadableFormat(next.formats) }
-          );
+          // Format selection is loaded from persisted preferences; do not override on detail load.
         }
       })
       .catch((e) => {
@@ -207,8 +203,8 @@ export default function BookDetailScreen() {
   );
 
   const handleSelectFormat = useCallback((bookId: string, format: string | null) => {
-    setSelectedFormatById((prev) => ({ ...prev, [bookId]: format }));
-  }, []);
+    void setBookReadingFormat(bookId, format);
+  }, [setBookReadingFormat]);
 
   const openReader = useCallback((bookId: string, format: string | null) => {
     if (!format) return;

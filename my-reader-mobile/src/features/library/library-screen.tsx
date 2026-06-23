@@ -17,6 +17,7 @@ import {
   SectionHeading,
 } from "@/src/components";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
+import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { BookItem } from "@/src/domain/types";
@@ -85,7 +86,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const { query, setQuery, debouncedQuery, clearQuery } = useSearchQuery(effectiveLibraryId);
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
   const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
-  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
   const isGridView = viewMode === "grid";
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
@@ -121,6 +121,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     () => (effectiveLibraryId ? libraries.find((library) => library.id === effectiveLibraryId) ?? null : null),
     [libraries, effectiveLibraryId],
   );
+
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(selectedLibrary, books);
 
   const variant = resolveLibraryScreenVariant({
     storeReady,
@@ -207,7 +209,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    setSelectedFormatById,
+    setBookReadingFormat,
   );
 
   const isMenuOpen = openMenuBookId !== null;
