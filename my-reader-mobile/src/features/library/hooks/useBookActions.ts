@@ -4,15 +4,14 @@ import { router } from "expo-router";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import {
-  dismissTasksForPath,
+  cancel as cancelDownload,
   enqueue as enqueueDownload,
+  useDownloadStatusTasks,
 } from "@/src/domain/download/download-store";
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
 import type { FileStateRow } from "@/src/domain/sync/actions";
-import {
-  evictLocalFileForLibrary,
-} from "@/src/domain/sync/file-actions";
+import { confirmDeleteLocalDownload } from "../utils/delete-download";
 import type { BookItem, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
@@ -31,6 +30,7 @@ export function useBookActions(
   setBookReadingFormat: ((bookId: string, format: string | null) => Promise<void> | void) | null,
 ) {
   const isNavigatingRef = useRef(false);
+  const tasks = useDownloadStatusTasks();
 
   // Sync latest props into a ref so callbacks always read current values
   // without rebuilding their references on every parent render.
@@ -43,6 +43,7 @@ export function useBookActions(
     selectedFormatById,
     selectedLibrary,
     setBookReadingFormat,
+    tasks,
   });
   stateRef.current = {
     books,
@@ -53,6 +54,7 @@ export function useBookActions(
     selectedFormatById,
     selectedLibrary,
     setBookReadingFormat,
+    tasks,
   };
 
   const downloadBook = useCallback(async (book: BookItem, targetFormat?: string) => {
@@ -167,6 +169,17 @@ export function useBookActions(
         void downloadBook(book, targetFormat);
         return;
       }
+      if (actionId === "cancelDownload") {
+        const activeTasks = latest.tasks.filter(
+          (task) =>
+            task.bookId === bookId &&
+            (task.status === "queued" || task.status === "starting" || task.status === "downloading"),
+        );
+        for (const task of activeTasks) {
+          cancelDownload(task.id);
+        }
+        return;
+      }
       if (actionId === "detail") {
         router.push({ pathname: "/library-book/[id]", params: { id: bookId } });
         return;
@@ -192,28 +205,10 @@ export function useBookActions(
         if (downloadedRows.length === 0) return;
         const lib = latest.selectedLibrary;
         if (!lib) return;
-        showAlertWithStatusBarRestore(
-          i18n.t("sync.deleteDownloadFile"),
-          i18n.t("sync.confirmDeleteDownload", { title: book.title }),
-          [
-            { text: i18n.t("common.cancel"), style: "cancel" },
-            {
-              text: i18n.t("common.delete"),
-              style: "destructive",
-              onPress: () => {
-                void (async () => {
-                  try {
-                    for (const row of downloadedRows) {
-                      await evictLocalFileForLibrary(lib.id, row.path);
-                      dismissTasksForPath(lib.id, row.path);
-                    }
-                  } catch (err) {
-                    showAlertWithStatusBarRestore(i18n.t("sync.deleteFailed"), err instanceof Error ? err.message : String(err));
-                  }
-                })();
-              },
-            },
-          ],
+        confirmDeleteLocalDownload(
+          book.title,
+          lib.id,
+          downloadedRows.map((row) => row.path),
         );
       }
     },

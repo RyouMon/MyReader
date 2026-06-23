@@ -10,12 +10,12 @@ import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
 
 import { EmptyState } from "@/src/components";
-import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
+import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
-import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
+import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import { useAppStore } from "@/src/store/app-store";
 
 type DetailCacheEntry = {
@@ -146,17 +146,20 @@ export default function BookDetailScreen() {
   const detailColors = useMemo(() => getDetailColors(palette, colorScheme), [palette, colorScheme]);
   const noop = useCallback(() => {}, []);
 
-  const leftActions = useMemo<ScreenHeaderAction[]>(
-    () => [
-      {
-        label: t("bookDetail.back"),
-        onPress: handleGoBack,
-        icon: <Feather name="arrow-left" size={20} color={palette.text} />,
-        iosSfSymbol: "chevron.left",
-        iconOnly: true,
-        color: palette.text,
-      },
-    ],
+  const leftActions = useMemo<ScreenHeaderAction[] | undefined>(
+    () =>
+      Platform.OS === "ios"
+        ? undefined
+        : [
+            {
+              label: t("bookDetail.back"),
+              onPress: handleGoBack,
+              icon: <Feather name="arrow-left" size={20} color={palette.text} />,
+              iosSfSymbol: "chevron.left",
+              iconOnly: true,
+              color: palette.text,
+            },
+          ],
     [handleGoBack, palette.text, t]
   );
 
@@ -185,6 +188,7 @@ export default function BookDetailScreen() {
   const { options: baseOptions, toolbar } = useScreenHeader({
     title: t("bookDetail.title"),
     back: "hidden",
+    close: Platform.OS === "ios" ? { label: t("common.close") } : undefined,
     left: leftActions,
     right: rightActions,
   });

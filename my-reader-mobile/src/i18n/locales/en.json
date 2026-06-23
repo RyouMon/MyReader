@@ -498,6 +498,7 @@
     "detail": "Book Details",
     "download": "Download",
     "downloadFormat": "Download ({{format}})",
+    "cancelDownload": "Cancel Download",
     "defaultFormat": "Default reading format: {{format}}",
     "deleteDownload": "Delete downloaded file"
   },

@@ -38,9 +38,21 @@ import { useAppStore } from "@/src/store/app-store";
 import { useBookActions } from "./hooks/useBookActions";
 
 const defaultSortOption: SortOption = "recentlyAdded";
+
+/** Grid layout constants. Adjust these to tune the grid's horizontal margins and gutters.
+ *
+ * - GRID_PADDING_X: horizontal space between the screen edge and the outermost cards.
+ * - GRID_CARD_GAP: space between adjacent cards (both rows and columns).
+ *   Each card wrapper gets GRID_CARD_GAP / 2 of horizontal padding so that two
+ *   neighboring wrappers together form the full gap; FlashList's content padding
+ *   is reduced by the same half-gap to keep the outer edge flush with GRID_PADDING_X.
+ */
 const GRID_MIN_CARD_WIDTH = 150;
 const GRID_MIN_COLUMNS = 2;
 const GRID_MAX_COLUMNS = 6;
+const GRID_PADDING_X = 16;
+const GRID_CARD_GAP = 12;
+const LIST_PADDING_X = GRID_PADDING_X;
 
 type LibraryScreenProps = {
   libraryId?: string;
@@ -58,7 +70,7 @@ type LibraryItemSeparator = NonNullable<
 >;
 
 const SeparatorGrid = memo(function SeparatorGrid() {
-  return <View className="h-3" />;
+  return <View style={{ height: GRID_CARD_GAP }} />;
 }) as LibraryItemSeparator;
 const SeparatorList = memo(function SeparatorList() {
   return null;
@@ -68,12 +80,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const { t } = useTranslation();
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
-  const GRID_GAP = 12;
-  const GRID_PADDING_H = 16;
-  const gridColumns = getResponsiveGridColumns(width, GRID_GAP, GRID_PADDING_H);
-  const GRID_HALF_GAP = GRID_GAP / 2;
-  const LIST_PADDING_H = GRID_PADDING_H;
-  const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
+  const gridColumns = getResponsiveGridColumns(width, GRID_CARD_GAP, GRID_PADDING_X);
+  const cardWidth = (width - GRID_PADDING_X * 2 - GRID_CARD_GAP * (gridColumns - 1)) / gridColumns;
   const { switchLibrary } = { switchLibrary: switchActiveLibrary };
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
@@ -226,7 +234,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
       if (isGridView) {
         return (
-          <View className="px-1.5">
+          <View style={{ paddingHorizontal: GRID_CARD_GAP / 2 }}>
             <BookCard
               book={item}
               downloadStatus={status}
@@ -258,14 +266,14 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           onMenuAction={handleBookMenuAction}
           onMenuOpen={handleMenuOpen}
           onMenuClose={handleMenuClose}
-          horizontalPadding={LIST_PADDING_H}
+          horizontalPadding={LIST_PADDING_X}
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
         />
       );
     },
     [
-      LIST_PADDING_H,
+      LIST_PADDING_X,
       bookActiveFormatsById,
       bookDownloadStatusById,
       bookFormatMetaById,
@@ -353,7 +361,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   }
 
   const listHeader = (
-    <View style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
+    <View style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? GRID_CARD_GAP / 2 : LIST_PADDING_X }}>
       <SectionHeading
         title={getLibraryDownloadFilterLabel(t, downloadFilter)}
         detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
@@ -403,7 +411,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         className="flex-1"
         style={{ backgroundColor: palette.background }}
         contentContainerStyle={{
-          paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
+          paddingHorizontal: isGridView ? GRID_PADDING_X - GRID_CARD_GAP / 2 : 0,
           paddingTop: 16,
           paddingBottom: 40,
         }}
@@ -415,8 +423,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               viewMode={viewMode}
               cardWidth={cardWidth}
               gridColumns={gridColumns}
-              gridGap={GRID_GAP}
-              listPaddingH={LIST_PADDING_H}
+              gridGap={GRID_CARD_GAP}
+              listPaddingX={LIST_PADDING_X}
             />
           ) : booksError ? (
             <EmptyState title={t("library.loadError.title")} detail={booksError.message} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />

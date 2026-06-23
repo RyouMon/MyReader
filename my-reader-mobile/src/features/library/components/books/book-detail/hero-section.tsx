@@ -1,13 +1,13 @@
+import type { BookDetail } from "@my-reader/tools/types/book";
 import type { MenuAction } from "@react-native-menu/menu";
 import { MenuView } from "@react-native-menu/menu";
-import type { BookDetail } from "@my-reader/tools/types/book";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, ButtonGroup } from "@/src/components/ui";
 import { FONT_DISPLAY, FONT_UI } from "@/src/design/typography";
-import { Image, Text, View } from "@/tw";
 import type { BookItem } from "@/src/domain/types";
+import { Image, Text, View } from "@/tw";
 import type { DetailColors } from "./types";
 
 type HeroSectionProps = {
@@ -67,7 +67,7 @@ export function HeroSection({
               style={{ backgroundColor: colors.palette.surface }}
             >
               <Text
-                className="text-center text-sm leading-5"
+                className="text-center text-[15px] leading-5"
                 numberOfLines={4}
                 style={{
                   color: colors.text,
@@ -91,7 +91,7 @@ export function HeroSection({
             {book.title}
           </Text>
           <Text
-            className="text-[16px] leading-6"
+            className="text-[15px] leading-5"
             numberOfLines={2}
             style={{ color: colors.accent, fontFamily: FONT_UI, fontWeight: "600" }}
           >

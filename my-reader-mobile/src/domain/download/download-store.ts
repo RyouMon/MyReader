@@ -412,12 +412,16 @@ async function _startTask(taskId: string): Promise<void> {
     if (!afterCheck || afterCheck.status === "cancelled") return;
 
     const ctx = await openDownloadContextForLibrary(task.libraryId, getStoreLibraries(), getStoreDataSources());
+    const afterCtx = state.tasks.find((t) => t.id === taskId);
+    if (!afterCtx || afterCtx.status === "cancelled") return;
+
     await downloadContextFile(
       ctx,
       task.relativePath,
       (received, total) => {
         transitionTask(taskId, { type: "progress", received, total });
       },
+      { taskId },
     );
     if (state.tasks.find((t) => t.id === taskId)?.status !== "cancelled") {
       transitionTask(taskId, { type: "done" });

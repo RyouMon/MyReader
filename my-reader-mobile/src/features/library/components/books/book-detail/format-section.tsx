@@ -1,14 +1,13 @@
-import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import type { BookDetail } from "@my-reader/tools/types/book";
 import type { MenuAction } from "@react-native-menu/menu";
 import { MenuView } from "@react-native-menu/menu";
-import type { BookDetail } from "@my-reader/tools/types/book";
 import { SymbolView } from "expo-symbols";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 
-import { CircularProgress, SectionCard, SettingsSectionLabel } from "@/src/components";
+import { CircularProgress, MoreActionsIcon, SectionCard, SettingsSectionLabel } from "@/src/components";
 import { FONT_UI } from "@/src/design/typography";
 import {
   cancel,
@@ -192,6 +191,7 @@ function FormatRow({
   const statusIcon = isDownloading ? (
     <CircularProgress
       color={colors.accent}
+      indeterminate={downloadProgress === 0}
       progress={downloadProgress}
       size={14}
       trackColor={colors.progressTrack}
@@ -229,7 +229,7 @@ function FormatRow({
           </Text>
         </View>
 
-        <Feather name="more-vertical" size={18} color={iconTint} />
+        <MoreActionsIcon size={18} color={iconTint} />
       </View>
 
       <MenuView

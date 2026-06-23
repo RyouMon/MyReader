@@ -25,21 +25,29 @@ export function buildBookMenuActions(
   const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormat);
   const actions: MenuAction[] = [{ id: "detail", title: i18n.t("bookMenu.detail") }];
 
-  if (isRemote && downloadStatus !== "downloaded") {
-    if (readableFormats.length === 1) {
+  if (isRemote) {
+    if (downloadStatus === "downloading") {
       actions.push({
-        id: `download:${readableFormats[0]}`,
-        title: i18n.t("bookMenu.downloadFormat", { format: readableFormats[0] }),
+        id: "cancelDownload",
+        title: i18n.t("bookMenu.cancelDownload"),
+        attributes: { destructive: true },
       });
-    } else if (readableFormats.length > 1) {
-      actions.push({
-        id: "download",
-        title: i18n.t("bookMenu.download"),
-        subactions: readableFormats.map((fmt) => ({
-          id: `download:${fmt}`,
-          title: fmt,
-        })),
-      });
+    } else if (downloadStatus !== "downloaded") {
+      if (readableFormats.length === 1) {
+        actions.push({
+          id: `download:${readableFormats[0]}`,
+          title: i18n.t("bookMenu.downloadFormat", { format: readableFormats[0] }),
+        });
+      } else if (readableFormats.length > 1) {
+        actions.push({
+          id: "download",
+          title: i18n.t("bookMenu.download"),
+          subactions: readableFormats.map((fmt) => ({
+            id: `download:${fmt}`,
+            title: fmt,
+          })),
+        });
+      }
     }
   }
 

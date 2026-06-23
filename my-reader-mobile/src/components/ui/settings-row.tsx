@@ -117,11 +117,11 @@ function SettingsRowBody({
     <>
       {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
       <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
-        <Text selectable className={TITLE_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
+        <Text className={TITLE_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
           {title}
         </Text>
         {detail ? (
-          <Text selectable className={DETAIL_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
+          <Text className={DETAIL_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
             {detail}
           </Text>
         ) : null}

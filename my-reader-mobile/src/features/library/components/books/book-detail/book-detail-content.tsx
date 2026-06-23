@@ -6,7 +6,6 @@ import { Alert } from "react-native";
 
 import { EmptyState } from "@/src/components/ui";
 import {
-  dismissTasksForPath,
   enqueue,
   isTaskErrorAlerted,
   markTaskErrorAlerted,
@@ -17,7 +16,6 @@ import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
-import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import {
   formatDate,
@@ -33,6 +31,7 @@ import { HeroSection } from "./hero-section";
 import { InfoRowSection } from "./info-row-section";
 import { SynopsisSection } from "./synopsis-section";
 import type { DetailColors, InfoCardItem } from "./types";
+import { confirmDeleteLocalDownload } from "../../../utils/delete-download";
 
 type FormatInfo = { relativePath: string; localState: LocalState | null };
 
@@ -211,38 +210,43 @@ export function BookDetailContent({
   );
 
   const handleDeleteFormat = useCallback(
-    async (format: string) => {
+    (format: string) => {
       const info = formatInfoMap[format];
-      if (!info) return;
-      deletedLocalPathKeysRef.current.add(`${activeLibrary.id}${info.relativePath}`);
-      for (const task of downloadStatusTasks) {
-        if (
-          task.libraryId === activeLibrary.id &&
-          task.relativePath === info.relativePath &&
-          task.status === "done"
-        ) {
-          consumedDownloadTaskIdsRef.current.add(task.id);
-        }
-      }
-      // Optimistic update: hide the delete button immediately.
-      setFormatInfoMap((prev) => ({
-        ...prev,
-        [format]: { ...prev[format]!, localState: "remote_only" },
-      }));
-      try {
-        await evictLocalFileForLibrary(activeLibrary.id, info.relativePath);
-        dismissTasksForPath(activeLibrary.id, info.relativePath);
-      } catch (err) {
-        // Roll back the optimistic update.
-        setFormatInfoMap((prev) => ({
-          ...prev,
-          [format]: { ...prev[format]!, localState: "present" },
-        }));
-        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
-        Alert.alert(t("bookDetail.deleteLocalFailed"), err instanceof Error ? err.message : String(err));
-      }
+      if (!info || !detail) return;
+      const pathKey = `${activeLibrary.id}${info.relativePath}`;
+      confirmDeleteLocalDownload(detail.title, activeLibrary.id, info.relativePath, {
+        onConfirm: () => {
+          deletedLocalPathKeysRef.current.add(pathKey);
+          for (const task of downloadStatusTasks) {
+            if (
+              task.libraryId === activeLibrary.id &&
+              task.relativePath === info.relativePath &&
+              task.status === "done"
+            ) {
+              consumedDownloadTaskIdsRef.current.add(task.id);
+            }
+          }
+          // Optimistic update: hide the delete button immediately.
+          setFormatInfoMap((prev) => ({
+            ...prev,
+            [format]: { ...prev[format]!, localState: "remote_only" },
+          }));
+        },
+        onError: (err) => {
+          // Roll back the optimistic update.
+          setFormatInfoMap((prev) => ({
+            ...prev,
+            [format]: { ...prev[format]!, localState: "present" },
+          }));
+          deletedLocalPathKeysRef.current.delete(pathKey);
+          Alert.alert(
+            t("bookDetail.deleteLocalFailed"),
+            err instanceof Error ? err.message : String(err),
+          );
+        },
+      });
     },
-    [formatInfoMap, downloadStatusTasks, activeLibrary.id, t]
+    [formatInfoMap, downloadStatusTasks, activeLibrary.id, detail, t],
   );
 
   const handleSetDefaultFormat = useCallback(

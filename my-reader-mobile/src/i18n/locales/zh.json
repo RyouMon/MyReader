@@ -498,6 +498,7 @@
     "detail": "图书详情",
     "download": "下载",
     "downloadFormat": "下载（{{format}}）",
+    "cancelDownload": "取消下载",
     "defaultFormat": "默认阅读格式：{{format}}",
     "deleteDownload": "删除下载文件"
   },

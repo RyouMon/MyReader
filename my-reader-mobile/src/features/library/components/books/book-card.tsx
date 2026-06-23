@@ -7,11 +7,13 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
+import { TEXT_SIZE } from "@/src/design/typography";
 import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
 
 import { CircularProgress } from "@/src/components/ui/circular-progress";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { ProgressBar } from "@/src/components/ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 import { DownloadProgressIndicator } from "./download-progress-indicator";
@@ -123,11 +125,7 @@ function BookCardImpl({
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </Pressable>
   );
 
@@ -138,11 +136,7 @@ function BookCardImpl({
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -171,19 +165,19 @@ function BookCardImpl({
           </View>
         </TouchableHighlight>
       </View>
-      <Text selectable className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
+      <Text className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
         {book.title}
       </Text>
       <View className="flex-row items-center">
-        <Text selectable className="flex-1 text-sm leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
+        <Text className="flex-1 text-[15px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
           {book.author}
         </Text>
         <View className="flex-row items-center">
           {showCloudIcon ? (
             Platform.OS === "ios" ? (
-              <SymbolView name="cloud.fill" size={14} tintColor={palette.textMuted} />
+              <SymbolView name="cloud.fill" size={TEXT_SIZE.base} tintColor={palette.textMuted} />
             ) : (
-              <MaterialIcons name="cloud" size={14} color={palette.textMuted} />
+              <MaterialIcons name="cloud" size={TEXT_SIZE.base} color={palette.textMuted} />
             )
           ) : showProgressIndicator ? (
             hasSubscription ? (
@@ -191,13 +185,13 @@ function BookCardImpl({
                 libraryId={subscriptionLibraryId ?? ""}
                 bookId={book.id}
                 format={subscriptionFormat ?? ""}
-                size={14}
+                size={TEXT_SIZE.base}
                 strokeWidth={1.5}
                 color={palette.primary}
                 fallbackProgress={downloadProgress}
               />
             ) : (
-              <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={14} strokeWidth={1.5} color={palette.primary} />
+              <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={TEXT_SIZE.base} strokeWidth={1.5} color={palette.primary} />
             )
           ) : null}
           {hasMenu ? (

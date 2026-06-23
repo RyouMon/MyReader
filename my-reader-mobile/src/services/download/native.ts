@@ -89,12 +89,20 @@ type NativeUploadResult = {
 };
 
 const NATIVE_DOWNLOAD_START_TIMEOUT_MS = 15000;
+const CANCELLED_BEFORE_START_TTL_MS = 30000;
 
 const activeTasks = new Map<string, BackgroundDownloadTask>();
 const activeUploadTasks = new Map<string, BackgroundUploadTask>();
 
 /** Abort handlers registered by in-flight startNativeDownload / startNativeUpload promises. */
 const nativeAbortHandlers = new Map<string, () => void>();
+
+/**
+ * Task IDs that were cancelled before the native task was created. Checked when
+ * startNativeDownload/startNativeUpload eventually runs so a cancelled task is
+ * not started in the native layer.
+ */
+const cancelledBeforeStart = new Set<string>();
 
 /**
  * Converts Expo file URIs into the filesystem paths expected by the native downloader.
@@ -117,6 +125,7 @@ export function startNativeDownload({
   options = {},
 }: NativeDownloadRequest): Promise<NativeDownloadResult> {
   const taskId = options.taskId ?? `download:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  cancelledBeforeStart.delete(taskId);
 
   const task = createDownloadTask({
     id: taskId,
@@ -128,6 +137,17 @@ export function startNativeDownload({
 
   activeTasks.set(taskId, task);
   options.onNativeTask?.(task);
+
+  // If cancel was requested after task creation but before the promise executor
+  // registered the abort handler, stop immediately.
+  if (cancelledBeforeStart.has(taskId)) {
+    cancelledBeforeStart.delete(taskId);
+    void task.stop();
+    activeTasks.delete(taskId);
+    const err = new Error(i18n.t("sync.downloadCancelled"));
+    err.name = "AbortError";
+    return Promise.reject(err);
+  }
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -253,6 +273,7 @@ export function startNativeUpload({
   options = {},
 }: NativeUploadRequest): Promise<NativeUploadResult> {
   const taskId = options.taskId ?? `upload:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+  cancelledBeforeStart.delete(taskId);
 
   const task = createUploadTask({
     id: taskId,
@@ -265,6 +286,17 @@ export function startNativeUpload({
 
   activeUploadTasks.set(taskId, task);
   options.onNativeTask?.(task);
+
+  // If cancel was requested after task creation but before the promise executor
+  // registered the abort handler, stop immediately.
+  if (cancelledBeforeStart.has(taskId)) {
+    cancelledBeforeStart.delete(taskId);
+    void task.stop();
+    activeUploadTasks.delete(taskId);
+    const err = new Error(i18n.t("sync.uploadCancelled"));
+    err.name = "AbortError";
+    return Promise.reject(err);
+  }
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -448,13 +480,25 @@ export async function recoverNativeUploads(): Promise<RecoveredNativeUpload[]> {
  * Stops a known native task without touching the JS queue state.
  */
 export function cancelNativeDownload(taskId: string): void {
-  nativeAbortHandlers.get(taskId)?.();
+  // Stop the native task first; the abort handler removes it from activeTasks,
+  // so calling stop after abort would be a no-op and leave the native download running.
   void activeTasks.get(taskId)?.stop();
+  nativeAbortHandlers.get(taskId)?.();
+  // If the native task has not been created yet (e.g. still fetching auth headers),
+  // mark it so startNativeDownload rejects as soon as it is invoked.
+  if (!activeTasks.has(taskId)) {
+    cancelledBeforeStart.add(taskId);
+    setTimeout(() => cancelledBeforeStart.delete(taskId), CANCELLED_BEFORE_START_TTL_MS);
+  }
 }
 
 export function cancelNativeUpload(taskId: string): void {
-  nativeAbortHandlers.get(taskId)?.();
   void activeUploadTasks.get(taskId)?.stop();
+  nativeAbortHandlers.get(taskId)?.();
+  if (!activeUploadTasks.has(taskId)) {
+    cancelledBeforeStart.add(taskId);
+    setTimeout(() => cancelledBeforeStart.delete(taskId), CANCELLED_BEFORE_START_TTL_MS);
+  }
 }
 
 /**
