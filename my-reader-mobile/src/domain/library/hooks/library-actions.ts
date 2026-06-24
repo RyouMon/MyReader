@@ -48,7 +48,7 @@ export async function hydrateLibraries(): Promise<void> {
   }
 }
 
-/** Registers a new library, dedupes, and runs add-trigger Calibre sync. */
+/** Registers a new library, dedupes, and runs add-trigger full sync. */
 export async function registerLibrary(library: Library): Promise<Library | null> {
   const state = useAppStore.getState();
   const prepared = isRemoteSourceType(library.sourceType)
