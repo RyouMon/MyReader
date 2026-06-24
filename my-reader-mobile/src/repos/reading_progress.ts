@@ -3,7 +3,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { uuid } from "@/src/utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import type { ReadingProgress } from "@my-reader/db/types";
-import { getLibraryDatabase } from "../domain/library/library-db";
+import { getLibraryDatabase } from "@/src/services/db/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 export async function getReadingProgressRow(
@@ -69,6 +69,21 @@ export type ReadingProgressChangeRow = {
   locatorJson: string;
   updatedAt: number;
 };
+
+export async function listAllReadingProgress(
+  library: Library,
+): Promise<ReadingProgressChangeRow[]> {
+  const { db } = await getLibraryDatabase(library);
+  return db
+    .select({
+      bookId: readingProgress.bookId,
+      format: readingProgress.format,
+      locatorJson: readingProgress.locatorJson,
+      updatedAt: readingProgress.updatedAt,
+    })
+    .from(readingProgress)
+    .orderBy(readingProgress.updatedAt);
+}
 
 export async function listReadingProgressSince(
   library: Library,

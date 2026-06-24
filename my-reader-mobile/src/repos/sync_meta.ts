@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { uuid } from "@/src/utils/common";
 import { syncMeta } from "@my-reader/db/schema";
-import { getLibraryDatabase } from "../domain/library/library-db";
+import { getLibraryDatabase } from "@/src/services/db/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 export async function getSyncMeta(library: Library, key: string): Promise<string | null> {

@@ -6,7 +6,7 @@ import {
   readBookDetailFromMetadata,
   resolveBookFileForRead,
 } from "@/src/domain/library/calibre";
-import { libraryBookFileUri } from "@/src/domain/library/locations";
+import { libraryBookFileUri } from "@/src/services/fs/library-paths";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
 import { getReadingProgress } from "@/src/domain/reading-progress";
 import { getFileState } from "@/src/domain/sync/actions";

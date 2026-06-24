@@ -6,7 +6,7 @@ import { ensureLibraryMetadataCached, readBookCountFromLibrary } from "@/src/dom
 import { libraryQueryKeys } from "@/src/domain/library/calibre";
 import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { libraryContainerRootUri, usesIosContainerSidecar } from "@/src/domain/library/locations";
+import { libraryContainerRootUri, usesIosContainerSidecar } from "@/src/services/fs/library-paths";
 import { Directory } from "expo-file-system";
 import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";

@@ -1,15 +1,14 @@
 import { Directory, File } from "expo-file-system";
 import { Platform } from "react-native";
 
+import type { Library } from "@my-reader/tools/types/library";
 import type { RemoteBackend } from "@/src/services/remote/backend";
 import {
   canonicalRelativePath,
   ensureDocumentSubdirUri,
   fileUriFor,
   joinRelativePath,
-} from "@/src/services/fs/path";
-import type { BookItem, Library } from "../types";
-import { isRemoteSourceType } from "../types";
+} from "./path";
 
 export const COVER_FILE_NAME = "cover.jpg";
 export const METADATA_DB_RELATIVE = "metadata.db";
@@ -17,14 +16,16 @@ export const LIBRARY_MYREADER_DIR = ".myreader";
 
 const LIBRARIES_DOCUMENT_DIR = "libraries";
 
+function isRemoteSourceType(sourceType?: string | null): boolean {
+  return sourceType === "webdav" || sourceType === "onedrive";
+}
+
 /** App container root for a library (`Documents/libraries/{id}/`). */
 export function libraryContainerRootUri(libraryId: string): string {
   return ensureDocumentSubdirUri(LIBRARIES_DOCUMENT_DIR, libraryId);
 }
 
-/**
- * iOS local external: Calibre content is read via bookmark; sidecar lives in app container.
- */
+/** iOS local external libraries keep sidecar data in the app container. */
 export function usesIosContainerSidecar(library: Library): boolean {
   return (
     Platform.OS === "ios" &&
@@ -103,7 +104,7 @@ export function resolveCoverUri(
   bookPath: string | null,
   hasCover: boolean,
   backend?: RemoteBackend,
-): BookItem["coverUri"] | undefined {
+): string | { uri: string; headers?: Record<string, string> } | undefined {
   if (!bookPath || !hasCover) return undefined;
 
   if (!isRemoteSourceType(library.sourceType) && hasLocalCoverFile(library, bookPath)) {

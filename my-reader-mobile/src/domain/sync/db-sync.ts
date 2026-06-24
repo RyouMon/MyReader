@@ -9,7 +9,7 @@ import {
   ensureLibrarySidecarDirectory,
   librarySidecarRootUri,
   usesIosContainerSidecar,
-} from "../library/locations";
+} from "@/src/services/fs/library-paths";
 import type { Library } from "../types";
 import { getOrCreateDeviceId } from "./device";
 import { LocalDirectBackend } from "./local";

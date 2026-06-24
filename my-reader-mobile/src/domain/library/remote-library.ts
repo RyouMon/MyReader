@@ -1,7 +1,7 @@
 import { createRemoteBackend } from "../../services/remote/factory";
 import type { RemoteBackend } from "../../services/remote/backend";
 import type { BookItem, DataSource, Library } from "../types";
-import { resolveCoverUri } from "./locations";
+import { resolveCoverUri } from "@/src/services/fs/library-paths";
 import { createLibraryFromPath, forceRefreshMetadata, readBooks } from "./remote-library-shared";
 
 // -- Types (kept here for backward compat) --

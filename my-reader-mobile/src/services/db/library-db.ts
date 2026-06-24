@@ -1,4 +1,4 @@
-import { Directory, File } from "expo-file-system";
+import { Directory } from "expo-file-system";
 import { open, type DB } from "@op-engineering/op-sqlite";
 import { drizzle } from "drizzle-orm/op-sqlite";
 import { migrate } from "drizzle-orm/op-sqlite/migrator";
@@ -6,12 +6,11 @@ import * as schema from "@my-reader/db/schema";
 import migrations from "@my-reader/db/drizzle/migrations";
 
 import type { Library } from "@my-reader/tools/types/library";
-import { fileUriFor } from "@/src/services/fs/path";
-import { librarySidecarRootUri } from "./locations";
+import { fileUriFor } from "../fs/path";
+import { librarySidecarRootUri, LIBRARY_MYREADER_DIR } from "../fs/library-paths";
 
-const LIBRARY_DB_DIR_NAME = ".myreader";
 const LIBRARY_DB_FILE_NAME = "myreader.db";
-const SIDECAR_RELATIVE_PATH = `${LIBRARY_DB_DIR_NAME}/${LIBRARY_DB_FILE_NAME}`;
+const SIDECAR_RELATIVE_PATH = `${LIBRARY_MYREADER_DIR}/${LIBRARY_DB_FILE_NAME}`;
 
 export type LibraryDbHandle = {
   raw: DB;
@@ -22,7 +21,7 @@ const dbCache = new Map<string, LibraryDbHandle>();
 const dbInitPromise = new Map<string, Promise<LibraryDbHandle>>();
 
 function ensureLibraryDataDir(libraryRoot: string): string {
-  const dir = new Directory(libraryRoot, LIBRARY_DB_DIR_NAME);
+  const dir = new Directory(libraryRoot, LIBRARY_MYREADER_DIR);
   if (!dir.exists) {
     dir.create({ idempotent: true, intermediates: true });
   }

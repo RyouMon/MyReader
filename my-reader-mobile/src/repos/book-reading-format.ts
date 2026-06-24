@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { uuid } from "@/src/utils/common";
 import { bookReadingFormat } from "@my-reader/db/schema";
 import type { BookReadingFormat } from "@my-reader/db/types";
-import { getLibraryDatabase } from "../domain/library/library-db";
+import { getLibraryDatabase } from "@/src/services/db/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 type Listener = () => void;

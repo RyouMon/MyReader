@@ -1,4 +1,4 @@
-import type { Library } from "../types";
+import type { Library } from "@my-reader/tools/types/library";
 
 jest.mock("@/src/services/fs/path", () => ({
   ensureDocumentSubdirUri: (...segments: string[]) => `file:///documents/${segments.join("/")}`,
@@ -35,7 +35,7 @@ import {
   librarySidecarRootUri,
   resolveCoverUri,
   usesIosContainerSidecar,
-} from "./locations";
+} from "./library-paths";
 
 function localLibrary(overrides: Partial<Library> = {}): Library {
   return {

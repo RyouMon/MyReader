@@ -5,7 +5,7 @@ import type { NativeDownloadOptions } from "../../services/download/native";
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
 import { deleteFileAtUri } from "../../services/fs/file-io";
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
-import { libraryContainerRootUri } from "../library/locations";
+import { libraryContainerRootUri } from "@/src/services/fs/library-paths";
 import type { Library } from "../types";
 import { isRemoteSourceType } from "../types";
 import type { SyncTargetContext } from "./context";

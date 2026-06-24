@@ -5,7 +5,7 @@ import { getBookFormatRows } from "../../repos/calibre/data";
 import { forceRefreshLibraryMetadata } from "../library/calibre";
 import { fetchBooks } from "../library/calibre";
 import { forceRefreshMetadata } from "../library/remote-library-shared";
-import { COVER_FILE_NAME, METADATA_DB_RELATIVE } from "../library/locations";
+import { COVER_FILE_NAME, METADATA_DB_RELATIVE } from "@/src/services/fs/library-paths";
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content";
 import type { Library } from "../types";
 import { isRemoteSourceType } from "../types";

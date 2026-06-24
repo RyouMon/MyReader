@@ -25,7 +25,7 @@ import {
   libraryMetadataUri,
   METADATA_DB_RELATIVE,
   resolveCoverUri,
-} from "./locations";
+} from "@/src/services/fs/library-paths";
 import {
   resolveLocalLibraryMetadataUri,
   withLocalLibraryCalibreRoot,
