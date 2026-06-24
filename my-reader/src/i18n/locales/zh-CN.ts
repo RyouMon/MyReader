@@ -140,6 +140,10 @@ export const zhCN = {
       series: "{{series}} · 第 {{index}} 部",
       synced: "已同步",
       notConnected: "未连接",
+      downloadFile: "下载文件",
+      deleteFile: "删除本地文件",
+      downloadingFile: "下载中…",
+      cancelDownload: "取消下载",
     },
     settings: {
       title: "设置",
@@ -341,6 +345,12 @@ export const zhCN = {
       loadingPdf: "正在加载 PDF…",
       pageCount: "第 {{current}} / {{total}} 页",
       defaultTitle: "阅读",
+      downloadingBook: "正在下载图书文件…",
+      downloading: "正在下载",
+      downloadProgress: "已下载 {{percent}}%",
+      downloadFailed: "下载失败",
+      downloadCancelled: "下载已取消",
+      retryDownload: "重试",
     },
     constants: {
       localDataSourceName: "本地存储",

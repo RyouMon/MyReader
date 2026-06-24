@@ -57,6 +57,7 @@ percent-encoding = "2"
 [dev-dependencies]
 bytes = "1"
 tempfile = "3"
+tauri = { version = "2", features = ["test"] }
 
 [profile.release]
 opt-level = "s"

@@ -60,4 +60,8 @@ export const api = {
   clearCache: wrap(raw.clearCache),
   enforceCacheLimit: wrap(raw.enforceCacheLimit),
   syncDbForLibrary: wrap(raw.syncDbForLibrary),
+  checkBookFileState: wrap(raw.checkBookFileState),
+  downloadBookFile: wrap(raw.downloadBookFile),
+  deleteLocalBookFile: wrap(raw.deleteLocalBookFile),
+  cancelBookDownload: wrap(raw.cancelBookDownload),
 }

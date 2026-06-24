@@ -44,6 +44,10 @@ export const commands = {
 	clearCache: () => typedError<null, ErrorKind>(__TAURI_INVOKE("clear_cache")),
 	enforceCacheLimit: () => typedError<null, ErrorKind>(__TAURI_INVOKE("enforce_cache_limit")),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
+	checkBookFileState: (libraryId: string, bookId: number, format: string) => typedError<FileStateDto, ErrorKind>(__TAURI_INVOKE("check_book_file_state", { libraryId, bookId, format })),
+	downloadBookFile: (libraryId: string, bookId: number, format: string) => typedError<string, ErrorKind>(__TAURI_INVOKE("download_book_file", { libraryId, bookId, format })),
+	deleteLocalBookFile: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_local_book_file", { libraryId, bookId, format })),
+	cancelBookDownload: (libraryId: string, bookId: number, format: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("cancel_book_download", { libraryId, bookId, format })),
 };
 
 /* Types */
@@ -105,6 +109,13 @@ export type DbSyncReport = {
 };
 
 export type ErrorKind = { kind: "Io"; message: string } | { kind: "Database"; message: string } | { kind: "NotFound"; message: string } | { kind: "Config"; message: string } | { kind: "Serialize"; message: string } | { kind: "Request"; message: string } | { kind: "Zip"; message: string } | { kind: "Task"; message: string } | { kind: "Auth"; message: string } | { kind: "Credential"; message: string } | { kind: "Sync"; message: string };
+
+/**  Returned by `check_book_file_state`: describes whether a book file is cached locally. */
+export type FileStateDto = {
+	path: string,
+	localState: string,
+	localSize: number | null,
+};
 
 /**  与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。 */
 export type FixedLayoutSettingsDto = {

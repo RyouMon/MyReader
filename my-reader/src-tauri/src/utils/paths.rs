@@ -1,6 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
 use crate::constants::path::{LIBRARIES_DIR_NAME, MYREADER_LIBRARY_DIR_NAME};
+use crate::error::AppError;
 use crate::models::LibraryConfig;
 
 /// App container root for a library (`{app_data_dir}/libraries/{library_id}/`).
@@ -48,6 +49,29 @@ pub fn library_book_file_path(
     relative: &str,
 ) -> PathBuf {
     library_root_path(lib, app_data_dir).join(relative)
+}
+
+/// Compute a Calibre book file's path relative to the library root, using forward
+/// slashes regardless of platform.
+pub fn compute_book_relative_path(
+    file_path: &Path,
+    lib_root: &Path,
+) -> Result<String, AppError> {
+    file_path
+        .strip_prefix(lib_root)
+        .map_err(|_| {
+            AppError::Config(format!(
+                "BOOK_FILE_NOT_UNDER_LIBRARY_ROOT: file={}, root={}",
+                file_path.display(),
+                lib_root.display()
+            ))
+        })
+        .map(|p| {
+            p.to_string_lossy()
+                .replace(MAIN_SEPARATOR, "/")
+                .trim_start_matches('/')
+                .to_string()
+        })
 }
 
 #[cfg(test)]
@@ -179,5 +203,50 @@ mod tests {
             ),
             PathBuf::from("/app-data/libraries/lib-webdav/Stephen King/It/cover.jpg")
         );
+    }
+
+    #[test]
+    fn compute_book_relative_path_should_strip_library_root() {
+        let lib_root = PathBuf::from("/app-data/libraries/lib-1");
+        let file_path = PathBuf::from("/app-data/libraries/lib-1/Author/Title/book.epub");
+        assert_eq!(
+            compute_book_relative_path(&file_path, &lib_root).unwrap(),
+            "Author/Title/book.epub"
+        );
+    }
+
+    #[test]
+    fn compute_book_relative_path_should_convert_backslashes() {
+        // 用 PathBuf::join 构造路径，自动使用当前平台的路径分隔符。
+        // Windows 下会生成反斜杠路径，验证函数把它们转成正斜杠；
+        // Linux/WSL 下会生成正斜杠路径，验证函数保持正斜杠输出。
+        let lib_root = PathBuf::from("app-data")
+            .join("libraries")
+            .join("lib-1");
+        let file_path = lib_root
+            .join("Author")
+            .join("Title")
+            .join("book.epub");
+        assert_eq!(
+            compute_book_relative_path(&file_path, &lib_root).unwrap(),
+            "Author/Title/book.epub"
+        );
+    }
+
+    #[test]
+    fn compute_book_relative_path_should_trim_leading_slashes() {
+        let lib_root = PathBuf::from("/app-data/libraries/lib-1");
+        let file_path = PathBuf::from("/app-data/libraries/lib-1//Author/Title/book.epub");
+        assert_eq!(
+            compute_book_relative_path(&file_path, &lib_root).unwrap(),
+            "Author/Title/book.epub"
+        );
+    }
+
+    #[test]
+    fn compute_book_relative_path_should_fail_when_file_not_under_root() {
+        let lib_root = PathBuf::from("/app-data/libraries/lib-1");
+        let file_path = PathBuf::from("/other/Author/Title/book.epub");
+        assert!(compute_book_relative_path(&file_path, &lib_root).is_err());
     }
 }

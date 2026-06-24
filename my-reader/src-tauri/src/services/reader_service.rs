@@ -33,6 +33,7 @@ impl ReaderService {
     pub async fn prepare_book_source(
         lib_id: &str,
         lib_path: &str,
+        is_remote: bool,
         book_id: i64,
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
@@ -46,6 +47,12 @@ impl ReaderService {
                     "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
                 ))
             })?;
+
+        if is_remote && !file_path.exists() {
+            return Err(AppError::NotFound(format!(
+                "BOOK_FORMAT_NOT_DOWNLOADED: book={book_id}, format={format}"
+            )));
+        }
 
         let format_upper = format.to_uppercase();
         if format_upper == "EPUB" || format_upper == "CBZ" {

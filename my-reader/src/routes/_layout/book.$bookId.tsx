@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
 import {
+  AlertCircle,
   ArrowLeft,
   BookOpen,
   Check,
@@ -8,15 +9,29 @@ import {
   Download,
   EllipsisVertical,
   FolderOpen,
+  Loader2,
   Plus,
-  Send,
   Star,
+  Trash2,
+  X,
 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useBookFileState, bookFileStateKeys } from "@/hooks/queries/useBookFileState"
+import { useDownloadProgress } from "@/hooks/useDownloadProgress"
 import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Progress } from "@/components/ui/progress"
 import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
@@ -254,27 +269,37 @@ function BookDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-        <div className="size-8 animate-spin rounded-full border-2 border-muted-foreground border-t-primary" />
-        <p className="text-sm">{t("bookDetail.loading")}</p>
-      </div>
+      <Empty className="min-h-0 flex-1">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Loader2 className="animate-spin" />
+          </EmptyMedia>
+          <EmptyTitle>{t("bookDetail.loading")}</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
   if (error || !book) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
-        <p className="text-base font-medium">{t("bookDetail.loadFailed")}</p>
-        <p className="max-w-md text-sm opacity-80">{error}</p>
-        <Button
-          variant="link"
-          size="sm"
-          onClick={() => navigate({ to: "/" })}
-          className="mt-2 px-0 text-sm"
-        >
-          {t("bookDetail.backToLibrary")}
-        </Button>
-      </div>
+      <Empty className="min-h-0 flex-1">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle className="text-destructive" />
+          </EmptyMedia>
+          <EmptyTitle>{t("bookDetail.loadFailed")}</EmptyTitle>
+          <EmptyDescription>{error}</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: "/" })}
+          >
+            {t("bookDetail.backToLibrary")}
+          </Button>
+        </EmptyContent>
+      </Empty>
     )
   }
 
@@ -292,6 +317,7 @@ function BookDetailPage() {
   )
   const readableFormats = book.formats.filter(isReadableInAppFormat)
   const canReadInApp = readableFormats.length > 0
+  const isRemoteLibrary = activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
 
   const seriesLabel =
     book.series && book.seriesIndex
@@ -597,11 +623,6 @@ function BookDetailPage() {
                   )}
                   {onShelf ? t("bookDetail.onShelf") : t("bookDetail.addToShelf")}
                 </Button>
-
-                <Button variant="outline" className="gap-[5px] px-3.5">
-                  <Download className="size-[15px]" />
-                  下载
-                </Button>
               </div>
             </div>
           </div>
@@ -700,20 +721,13 @@ function BookDetailPage() {
                                 {t("bookDetail.notSupported")}
                               </span>
                             )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="size-7 p-0"
-                            >
-                              <Download className="size-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="size-7 p-0"
-                            >
-                              <Send className="size-3" />
-                            </Button>
+                            {isRemoteLibrary && activeLibraryId && (
+                              <FormatActionCell
+                                libraryId={activeLibraryId}
+                                bookId={book.id}
+                                format={fmt}
+                              />
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -809,6 +823,160 @@ function BookDetailPage() {
         </div>
       </footer>
     </>
+  )
+}
+
+function FormatActionCell({
+  libraryId,
+  bookId,
+  format,
+}: {
+  libraryId: string
+  bookId: number
+  format: string
+}) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const fmt = format.toUpperCase()
+  const [pending, setPending] = useState(false)
+  const { data: state, isLoading: stateLoading } = useBookFileState(
+    libraryId,
+    bookId,
+    fmt,
+  )
+  const progress = useDownloadProgress(libraryId, bookId, fmt)
+
+  useEffect(() => {
+    if (
+      progress?.status === "done" ||
+      progress?.status === "error" ||
+      progress?.status === "cancelled"
+    ) {
+      void queryClient.invalidateQueries({
+        queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
+      })
+    }
+  }, [progress?.status, libraryId, bookId, fmt, queryClient])
+
+  const isDownloading =
+    pending ||
+    progress?.status === "starting" ||
+    progress?.status === "downloading"
+  const isPresent = state?.localState === "present"
+
+  const percent =
+    progress?.totalBytes && progress.totalBytes > 0
+      ? Math.min(
+          100,
+          Math.round((progress.bytesWritten / progress.totalBytes) * 100),
+        )
+      : undefined
+
+  const handleDownload = useCallback(() => {
+    if (isDownloading) return
+    setPending(true)
+    api
+      .downloadBookFile(libraryId, bookId, fmt)
+      .catch((err) => {
+        console.error(
+          `Failed to download book file from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
+          err,
+        )
+      })
+      .finally(() => {
+        setPending(false)
+      })
+  }, [libraryId, bookId, fmt, isDownloading])
+
+  const handleDelete = useCallback(() => {
+    api
+      .deleteLocalBookFile(libraryId, bookId, fmt)
+      .then(() => {
+        void queryClient.invalidateQueries({
+          queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
+        })
+      })
+      .catch((err) => {
+        console.error(
+          `Failed to delete local book file from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
+          err,
+        )
+      })
+  }, [libraryId, bookId, fmt, queryClient])
+
+  const handleCancel = useCallback(() => {
+    api
+      .cancelBookDownload(libraryId, bookId, fmt)
+      .then(() => {
+        void queryClient.invalidateQueries({
+          queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
+        })
+      })
+      .catch((err) => {
+        console.error(
+          `Failed to cancel book download from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
+          err,
+        )
+      })
+  }, [libraryId, bookId, fmt, queryClient])
+
+  if (stateLoading) {
+    return (
+      <Button variant="outline" size="sm" className="size-7 p-0" disabled>
+        <Loader2 className="size-3 animate-spin" />
+      </Button>
+    )
+  }
+
+  if (isDownloading) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <Field className="w-full max-w-[140px]">
+          <FieldLabel className="w-full text-xs text-muted-foreground">
+            <span>{t("bookDetail.downloadingFile")}</span>
+            <span className="ml-auto tabular-nums">
+              {percent != null ? `${percent}%` : "—"}
+            </span>
+          </FieldLabel>
+          <Progress value={percent} />
+        </Field>
+        <Button
+          variant="outline"
+          size="sm"
+          className="size-7 p-0"
+          title={t("bookDetail.cancelDownload")}
+          onClick={handleCancel}
+        >
+          <X className="size-3" />
+        </Button>
+      </div>
+    )
+  }
+
+  if (isPresent) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="size-7 p-0 text-destructive hover:text-destructive"
+        title={t("bookDetail.deleteFile")}
+        onClick={handleDelete}
+      >
+        <Trash2 className="size-3" />
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="size-7 p-0"
+      title={t("bookDetail.downloadFile")}
+      onClick={handleDownload}
+    >
+      <Download className="size-3" />
+    </Button>
   )
 }
 

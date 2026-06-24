@@ -276,6 +276,15 @@ pub struct ReadingProgressDto {
     pub updated_at: f64,
 }
 
+/// Returned by `check_book_file_state`: describes whether a book file is cached locally.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStateDto {
+    pub path: String,
+    pub local_state: String,
+    pub local_size: Option<i64>,
+}
+
 /// Wrapper around `serde_json::Value` that exports as TypeScript `any` via specta.
 /// The inner value is public so callers can access `.0` directly.
 #[derive(Debug, Clone, Deserialize, Serialize)]

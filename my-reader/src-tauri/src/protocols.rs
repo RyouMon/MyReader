@@ -302,11 +302,6 @@ pub fn bookfile_handler<R: tauri::Runtime>(
         return responder.respond(not_found_file());
     };
 
-    // Remote libraries don't serve book files through this protocol yet.
-    if lib.is_remote() {
-        return responder.respond(not_found_file());
-    }
-
     tauri::async_runtime::spawn(async move {
         let response = serve_local_book_file(&lib, &app_data_dir, book_id, &format)
             .await

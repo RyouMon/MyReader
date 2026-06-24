@@ -34,14 +34,20 @@ pub async fn prepare_book_source(
     );
     let app_data_dir = app.path().app_data_dir()
         .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
-    let (lib_id, lib_path) = {
+    let (lib_id, lib_path, is_remote) = {
         let config = state.lock().unwrap_or_else(|e| e.into_inner());
-        let (id, path) = LibraryService::resolve_library_path(library_id.as_deref(), &app_data_dir, &config)?;
+        let lib = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+        let id = lib.id.clone();
+        let path = crate::utils::paths::library_root_path(&lib, &app_data_dir)
+            .to_string_lossy()
+            .to_string();
+        let remote = lib.is_remote();
         drop(config);
-        (id, path)
+        (id, path, remote)
     };
 
-    let result = ReaderService::prepare_book_source(&lib_id, &lib_path, book_id, &format).await;
+    let result = ReaderService::prepare_book_source(&lib_id, &lib_path, is_remote, book_id, &format
+    ).await;
 
     match &result {
         Ok(src) => info!(

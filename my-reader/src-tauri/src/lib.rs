@@ -27,6 +27,7 @@ use time::{macros::format_description, OffsetDateTime};
 use tokio::sync::RwLock;
 
 use commands::AppState;
+use services::download_service::DownloadService;
 use streamer::StreamerState;
 
 /// Local datetime with millisecond precision. Falls back to UTC when the local
@@ -73,6 +74,10 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::cache::clear_cache,
             commands::cache::enforce_cache_limit,
             commands::sync::sync_db_for_library,
+            commands::download::check_book_file_state,
+            commands::download::download_book_file,
+            commands::download::delete_local_book_file,
+            commands::download::cancel_book_download,
         ]);
 
     #[cfg(debug_assertions)]
@@ -117,6 +122,7 @@ pub fn run() -> Result<(), tauri::Error> {
     builder
         .manage(std::sync::Mutex::new(models::AppConfig::default()))
         .manage(StreamerState::new(RwLock::new(HashMap::new())))
+        .manage(DownloadService::new())
         .setup(|app| {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);

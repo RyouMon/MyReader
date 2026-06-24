@@ -140,6 +140,10 @@ export const en = {
       series: "{{series}} · Vol. {{index}}",
       synced: "Synced",
       notConnected: "Not connected",
+      downloadFile: "Download file",
+      deleteFile: "Delete local file",
+      downloadingFile: "Downloading…",
+      cancelDownload: "Cancel download",
     },
     settings: {
       title: "Settings",
@@ -346,6 +350,12 @@ export const en = {
       loadingPdf: "Loading PDF…",
       pageCount: "Page {{current}} / {{total}}",
       defaultTitle: "Reading",
+      downloadingBook: "Downloading book file…",
+      downloading: "Downloading",
+      downloadProgress: "{{percent}}% downloaded",
+      downloadFailed: "Download failed",
+      downloadCancelled: "Download cancelled",
+      retryDownload: "Retry",
     },
     constants: {
       localDataSourceName: "Local Storage",

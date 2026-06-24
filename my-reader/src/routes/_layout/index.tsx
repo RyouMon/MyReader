@@ -1,10 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { BookX } from "lucide-react"
+import { AlertCircle, BookOpen, Library } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { api } from "@/lib/tauri-api"
@@ -93,27 +102,40 @@ function LibraryPage() {
       {loading && !error && <LibrarySkeletonGrid viewMode={viewMode} />}
 
       {!loading && error && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center text-destructive">
-          <p className="text-base font-medium">{t("library.loadingFailed")}</p>
-          <p className="text-sm opacity-80 max-w-md">{error}</p>
-        </div>
+        <Empty className="min-h-0 flex-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertCircle className="text-destructive" />
+            </EmptyMedia>
+            <EmptyTitle>{t("library.loadingFailed")}</EmptyTitle>
+            <EmptyDescription>{error}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" size="sm" onClick={refresh}>
+              {t("common.retry")}
+            </Button>
+          </EmptyContent>
+        </Empty>
       )}
 
       {!loading && !error && hasNoLibrary && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-          <BookX className="size-12 opacity-40" />
-          <p className="text-base font-medium">{t("library.empty.noLibraryTitle")}</p>
-          <p className="text-sm opacity-60">
-            {t("library.empty.noLibraryDesc")}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/settings" })}
-            className="mt-2 text-sm text-primary hover:underline"
-          >
-            {t("library.empty.goToSettings")}
-          </button>
-        </div>
+        <Empty className="min-h-0 flex-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Library />
+            </EmptyMedia>
+            <EmptyTitle>{t("library.empty.noLibraryTitle")}</EmptyTitle>
+            <EmptyDescription>{t("library.empty.noLibraryDesc")}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              size="sm"
+              onClick={() => navigate({ to: "/settings" })}
+            >
+              {t("library.empty.goToSettings")}
+            </Button>
+          </EmptyContent>
+        </Empty>
       )}
 
       {!loading && !error && !hasNoLibrary && total > 0 && (
@@ -129,12 +151,19 @@ function LibraryPage() {
       )}
 
       {!loading && !error && !hasNoLibrary && total === 0 && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center text-muted-foreground">
-          <p className="text-base">{t("library.empty.noBooks")}</p>
-          <p className="text-sm mt-1 opacity-60">
-            {searchQuery ? t("library.empty.tryOtherKeywords") : t("library.empty.noBooksInLibrary")}
-          </p>
-        </div>
+        <Empty className="min-h-0 flex-1">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BookOpen />
+            </EmptyMedia>
+            <EmptyTitle>{t("library.empty.noBooks")}</EmptyTitle>
+            <EmptyDescription>
+              {searchQuery
+                ? t("library.empty.tryOtherKeywords")
+                : t("library.empty.noBooksInLibrary")}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
 
       <footer className="flex items-center justify-between px-6 py-2 text-xs text-muted-foreground shrink-0 border-t border-border bg-background">

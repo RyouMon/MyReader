@@ -8,6 +8,8 @@
     "core:event:default",
     "core:path:default",
     "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
     "core:webview:default",
     "log:default"
   ]

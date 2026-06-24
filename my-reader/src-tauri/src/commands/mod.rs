@@ -23,6 +23,7 @@ pub struct CacheUsageDto {
 
 pub mod book;
 pub mod cache;
+pub mod download;
 pub mod library;
 pub mod progress;
 pub mod reader;
