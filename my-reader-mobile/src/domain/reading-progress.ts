@@ -10,12 +10,30 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function parseStoredLocator(raw: unknown): Locator | null {
+export function parseStoredLocator(raw: unknown): Locator | null {
   if (!isPlainObject(raw)) return null;
   const { href, type } = raw;
   if (typeof href !== "string" || href.length === 0) return null;
   if (typeof type !== "string" || type.length === 0) return null;
   return raw as unknown as Locator;
+}
+
+/**
+ * Derive a 0-100 percentage from a Locator.
+ * Prefers `totalProgression` (book-wide), falls back to `progression` (resource-relative).
+ * Returns `undefined` when no usable progression exists.
+ */
+export function locatorToPercent(locator: Locator | null | undefined): number | undefined {
+  if (!locator) return undefined;
+  const totalProgression = locator.locations?.totalProgression;
+  if (typeof totalProgression === "number") {
+    return Math.max(0, Math.min(1, totalProgression)) * 100;
+  }
+  const progression = locator.locations?.progression;
+  if (typeof progression === "number") {
+    return Math.max(0, Math.min(1, progression)) * 100;
+  }
+  return undefined;
 }
 
 /**

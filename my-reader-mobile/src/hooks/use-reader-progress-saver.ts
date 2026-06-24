@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+
 import { setReadingProgress } from "@/src/domain/reading-progress";
 import type { Library } from "@/src/domain/types";
 import type { ReaderState } from "@/src/features/reader/components/reader/types";
+import { queryClient } from "@/src/services/query/query-client";
 import { useAppStore } from "@/src/store/app-store";
 
 const SAVE_DEBOUNCE_MS = 1600;
@@ -45,6 +47,7 @@ export function useReaderProgressSaver(
             ctx.format,
             readerState.locator!,
           );
+          console.info("[mobile-reader] Saved progress to library.");
         } catch (e) {
           console.error("[mobile-reader] save-progress-error", e);
         }
@@ -53,4 +56,14 @@ export function useReaderProgressSaver(
 
     return () => clearTimeout(t);
   }, [readerState?.ready, readerState?.locator]);
+
+  useEffect(() => {
+    return () => {
+      const ctx = bookContextRef.current;
+      if (ctx) {
+        queryClient.invalidateQueries({ queryKey: ["reading-progress", ctx.library.id] });
+        console.info("[mobile-reader] Invalidated queryKey: reading-progress.");
+      }
+    };
+  }, []);
 }

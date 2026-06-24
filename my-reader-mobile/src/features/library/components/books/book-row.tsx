@@ -14,31 +14,15 @@ import { buildBookMenuActions } from "../../utils/book-menu";
 
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { ProgressBar } from "@/src/components/ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 import { DownloadProgressIndicator } from "./download-progress-indicator";
+import { ProgressLabel } from "./progress-label";
 
 /** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
 const BOOK_ROW_COVER_HEIGHT = 84;
 const BOOK_ROW_COVER_BORDER_RADIUS = 4;
 const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3;
 const BOOK_ROW_COVER_WIDTH = Math.round(BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO);
-
-/**
- * Returns the mobile row status label for an optional progress snapshot.
- */
-function getProgressLabel(progress: BookProgressSnapshot | undefined, t: (key: string) => string) {
-  if (progress?.statusLabel) {
-    return progress.statusLabel;
-  }
-  if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return t("bookRow.unread");
-  }
-  if (progress.percent >= 100) {
-    return t("bookRow.finished");
-  }
-  return t("bookRow.reading");
-}
 
 export type BookRowProps = {
   book: BookItem;
@@ -96,9 +80,6 @@ function BookRowImpl({
 }: BookRowProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const hasProgress = typeof progress?.percent === "number";
-  const progressValue = hasProgress ? Math.max(0, Math.min(100, progress.percent ?? 0)) / 100 : undefined;
-  const isUnread = !hasProgress || (progress.percent ?? 0) <= 0;
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
@@ -189,25 +170,7 @@ function BookRowImpl({
           </View>
           <View className="gap-1">
             <View className="flex-row flex-wrap items-center gap-1.5">
-              <Text
-                className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                style={{
-                  backgroundColor: isUnread ? palette.surface : "rgba(217,119,87,0.14)",
-                  color: isUnread ? palette.textMuted : palette.primary,
-                }}
-              >
-                {getProgressLabel(progress, t)}
-              </Text>
-              {hasProgress ? (
-                <Text className="text-xs" style={{ color: palette.textMuted }}>
-                  {Math.round(progress.percent ?? 0)}%
-                </Text>
-              ) : null}
-              {progress?.syncedLabel ? (
-                <Text className="text-xs" style={{ color: palette.textMuted }}>
-                  {progress.syncedLabel}
-                </Text>
-              ) : null}
+              <ProgressLabel progress={progress} />
               <View className="ml-auto flex-row items-center">
                 {showCloudIcon ? (
                   Platform.OS === "ios" ? (
@@ -249,11 +212,6 @@ function BookRowImpl({
                 ) : null}
               </View>
             </View>
-            {typeof progressValue === "number" ? (
-              <View className="w-14">
-                <ProgressBar progress={progressValue} />
-              </View>
-            ) : null}
           </View>
         </View>
       </View>

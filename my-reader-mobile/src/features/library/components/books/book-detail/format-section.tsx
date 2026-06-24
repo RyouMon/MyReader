@@ -17,6 +17,7 @@ import {
 import type { LocalState } from "@/src/domain/types";
 import { formatFileSize } from "@/src/utils/book-detail";
 import { Text, View } from "@/tw";
+import { getProgressDisplay } from "../progress-label";
 import type { DetailColors } from "./types";
 
 type FormatSectionProps = {
@@ -30,6 +31,7 @@ type FormatSectionProps = {
   onDeleteFormat: (format: string) => void;
   onDownloadFormat: (format: string) => void;
   onSetDefaultFormat: (format: string) => void;
+  progressByFormat?: Record<string, number>;
   readableFormats: string[];
 };
 
@@ -44,6 +46,7 @@ export function FormatSection({
   onDeleteFormat,
   onDownloadFormat,
   onSetDefaultFormat,
+  progressByFormat,
   readableFormats,
 }: FormatSectionProps) {
   const { t } = useTranslation();
@@ -72,6 +75,7 @@ export function FormatSection({
               onDelete={() => onDeleteFormat(upper)}
               onDownload={() => onDownloadFormat(upper)}
               onSetDefault={() => onSetDefaultFormat(upper)}
+              progressPercent={progressByFormat?.[upper]}
               relativePath={formatInfo?.relativePath}
               size={formatSizeMap.get(upper) ?? 0}
             />
@@ -95,6 +99,7 @@ function FormatRow({
   onDelete,
   onDownload,
   onSetDefault,
+  progressPercent,
   relativePath,
   size,
 }: {
@@ -110,6 +115,7 @@ function FormatRow({
   onDelete: () => void;
   onDownload: () => void;
   onSetDefault: () => void;
+  progressPercent?: number;
   relativePath: string | undefined;
   size: number;
 }) {
@@ -131,6 +137,10 @@ function FormatRow({
   const isPresent = fileLocalState === "present";
   const isDefault = defaultFormatKey === format;
   const isRemote = isNetworkSource && isReadable && Boolean(relativePath) && !isPresent && !isDownloading;
+  const { text: statusText } = getProgressDisplay(
+    progressPercent !== undefined ? { percent: progressPercent } : undefined,
+    t,
+  );
 
   const menuActions = useMemo<MenuAction[]>(
     () => [
@@ -223,8 +233,10 @@ function FormatRow({
           <Text
             className="mt-0.5 text-[16px] leading-6"
             style={{ color: colors.tertiary, fontFamily: FONT_UI }}
+            numberOfLines={1}
           >
             {formatFileSize(size)}
+            {` · ${statusText}`}
             {isDefault ? ` · ${t("bookDetail.formatSection.default")}` : ""}
           </Text>
         </View>

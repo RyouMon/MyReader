@@ -272,8 +272,7 @@
   },
   "bookRow": {
     "unread": "未读",
-    "finished": "已读完",
-    "reading": "阅读中"
+    "finished": "已读"
   },
   "downloadButton": {
     "queued": "排队中",

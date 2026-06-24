@@ -53,33 +53,35 @@ export function HeroSection({
   return (
     <View className="px-4 pt-4">
       <View className="flex-row gap-4">
-        <View className="h-[188px] w-[128px] overflow-hidden rounded-lg">
-          {coverUri ? (
-            <Image
-              source={coverUri}
-              className="h-full w-full object-cover"
-              cachePolicy="memory-disk"
-              recyclingKey={String(book.id)}
-            />
-          ) : (
-            <View
-              className="h-full w-full justify-end px-3 py-4"
-              style={{ backgroundColor: colors.palette.surface }}
-            >
-              <Text
-                className="text-center text-[15px] leading-5"
-                numberOfLines={4}
-                style={{
-                  color: colors.text,
-                  fontFamily: FONT_DISPLAY,
-                  fontWeight: "700",
-                  opacity: 0.6,
-                }}
+        <View className="relative h-[188px] w-[128px]">
+          <View className="h-full w-full overflow-hidden rounded-lg">
+            {coverUri ? (
+              <Image
+                source={coverUri}
+                className="h-full w-full object-cover"
+                cachePolicy="memory-disk"
+                recyclingKey={String(book.id)}
+              />
+            ) : (
+              <View
+                className="h-full w-full justify-end px-3 py-4"
+                style={{ backgroundColor: colors.palette.surface }}
               >
-                {book.title}
-              </Text>
-            </View>
-          )}
+                <Text
+                  className="text-center text-[15px] leading-5"
+                  numberOfLines={4}
+                  style={{
+                    color: colors.text,
+                    fontFamily: FONT_DISPLAY,
+                    fontWeight: "700",
+                    opacity: 0.6,
+                  }}
+                >
+                  {book.title}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View className="flex-1 gap-3 py-1">

@@ -272,8 +272,7 @@
   },
   "bookRow": {
     "unread": "Unread",
-    "finished": "Finished",
-    "reading": "Reading"
+    "finished": "Finished"
   },
   "downloadButton": {
     "queued": "Queued",

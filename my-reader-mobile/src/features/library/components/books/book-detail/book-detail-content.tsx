@@ -16,6 +16,7 @@ import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
+import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
 import { useFileStateRevision } from "@/src/hooks/useFileState";
 import {
   formatDate,
@@ -26,12 +27,12 @@ import {
 } from "@/src/utils/book-detail";
 import { ScrollView, Text, View } from "@/tw";
 import type { BookDetail } from "@my-reader/tools/types/book";
+import { confirmDeleteLocalDownload } from "../../../utils/delete-download";
 import { FormatSection } from "./format-section";
 import { HeroSection } from "./hero-section";
 import { InfoRowSection } from "./info-row-section";
 import { SynopsisSection } from "./synopsis-section";
 import type { DetailColors, InfoCardItem } from "./types";
-import { confirmDeleteLocalDownload } from "../../../utils/delete-download";
 
 type FormatInfo = { relativePath: string; localState: LocalState | null };
 
@@ -65,6 +66,7 @@ export function BookDetailContent({
   const { t } = useTranslation();
 
   const [coverUri, setCoverUri] = useState<BookItem["coverUri"] | undefined>(listBook?.coverUri);
+  const { data: progressByBookId } = useBookReadingProgress(activeLibrary);
 
   useEffect(() => {
     if (!detail) {
@@ -76,8 +78,6 @@ export function BookDetailContent({
       .then((resolved) => { if (!cancelled) setCoverUri(resolved); });
     return () => { cancelled = true; };
   }, [activeLibrary, detail, listBook?.coverUri, dataSources]);
-
-  const progress = typeof listBook?.progress === "number" ? listBook.progress : 0;
 
   const readableFormats = useMemo(
     () => (detail ? detail.formats.filter(isReadableInAppFormat) : []),
@@ -289,6 +289,11 @@ export function BookDetailContent({
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null;
   const synopsisText = book.comment ? stripHtml(book.comment) : "";
   const readableSelectedFormat = selectedFormat ?? pickReadableFormat(book.formats);
+  const progressByFormat = progressByBookId?.[bookId];
+  const detailProgress = readableSelectedFormat
+    ? progressByFormat?.[readableSelectedFormat.toUpperCase()]
+    : undefined;
+  const progress = detailProgress ?? 0;
   const canReadInApp = readableFormats.length > 0;
   const bookInfoRows: InfoCardItem[] = [
     { label: t("bookDetail.bookTitle"), value: book.title },
@@ -366,6 +371,7 @@ export function BookDetailContent({
               onDeleteFormat={(format) => void handleDeleteFormat(format)}
               onDownloadFormat={handleDownloadFormat}
               onSetDefaultFormat={handleSetDefaultFormat}
+              progressByFormat={progressByFormat}
               readableFormats={readableFormats}
             />
           ) : null}

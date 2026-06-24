@@ -12,9 +12,9 @@ import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
 
+import { ProgressLabel } from "./progress-label";
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { ProgressBar } from "@/src/components/ui/progress-bar";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 import { DownloadProgressIndicator } from "./download-progress-indicator";
 
@@ -75,7 +75,6 @@ function BookCardImpl({
   const { t } = useTranslation();
   const palette = useThemePalette();
   const coverHeight = Math.round(width * 1.43);
-  const progressValue = typeof progress?.percent === "number" ? Math.max(0, Math.min(100, progress.percent)) / 100 : undefined;
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
@@ -165,13 +164,15 @@ function BookCardImpl({
           </View>
         </TouchableHighlight>
       </View>
-      <Text className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
-        {book.title}
-      </Text>
-      <View className="flex-row items-center">
-        <Text className="flex-1 text-[15px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
-          {book.author}
+      <View className="mt-2 flex-row items-center gap-1.5">
+        <Text className="flex-1 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
+          {book.title}
         </Text>
+      </View>
+      <View className="flex-row items-center">
+        <View className="flex-1">
+          <ProgressLabel progress={progress} />
+        </View>
         <View className="flex-row items-center">
           {showCloudIcon ? (
             Platform.OS === "ios" ? (
@@ -211,11 +212,6 @@ function BookCardImpl({
           ) : null}
         </View>
       </View>
-      {typeof progressValue === "number" ? (
-        <View className="mt-2">
-          <ProgressBar progress={progressValue} />
-        </View>
-      ) : null}
     </View>
   );
 }

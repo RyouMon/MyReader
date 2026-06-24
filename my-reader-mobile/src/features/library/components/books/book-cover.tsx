@@ -9,7 +9,6 @@ export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
 export type BookProgressSnapshot = {
   percent?: number;
   statusLabel?: string;
-  syncedLabel?: string;
 };
 
 /**

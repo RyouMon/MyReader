@@ -27,13 +27,15 @@ import {
   BookRow,
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
+import type { BookProgressSnapshot } from "@/src/features/library/components/books/book-cover";
+import { useBookFilter, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
+import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
+import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { getLibraryDownloadFilterLabel } from "@/src/features/library/utils/library-header-config";
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
-import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
-import { useBookFilter, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
 import { useAppStore } from "@/src/store/app-store";
 import { useBookActions } from "./hooks/useBookActions";
 
@@ -144,6 +146,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     books,
     selectedFormatById,
   );
+  const { data: progressByBookId } = useBookReadingProgress(selectedLibrary);
   const { visibleBooks } = useBookFilter(
     books,
     debouncedQuery,
@@ -226,6 +229,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     ({ item }: { item: BookItem }) => {
       const status = bookDownloadStatusById[item.id] ?? "notDownloaded";
       const effectiveFormat = bookFormatMetaById.get(item.id)?.effectiveFormat;
+      const progressByFormat = progressByBookId?.[item.id];
+      const progressPercent = effectiveFormat ? progressByFormat?.[effectiveFormat] : undefined;
+      const progress: BookProgressSnapshot | undefined =
+        typeof progressPercent === "number" ? { percent: progressPercent } : undefined;
       const subscriptionLibraryId = isRemote && status === "downloading" ? selectedLibraryId : undefined;
       const activeFormat = effectiveFormat ?? (status === "downloading" ? bookActiveFormatsById.get(item.id) : undefined);
       const subscriptionFormat = subscriptionLibraryId ? activeFormat : undefined;
@@ -249,6 +256,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               onMenuClose={handleMenuClose}
               subscriptionLibraryId={subscriptionLibraryId}
               subscriptionFormat={subscriptionFormat}
+              progress={progress}
             />
           </View>
         );
@@ -269,6 +277,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           horizontalPadding={LIST_PADDING_X}
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
+          progress={progress}
         />
       );
     },
@@ -286,6 +295,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       isGridView,
       isMenuOpen,
       isRemote,
+      progressByBookId,
       selectedFormatById,
       selectedLibraryId,
     ],
