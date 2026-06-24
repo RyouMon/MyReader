@@ -26,20 +26,18 @@ const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
 };
 
 /** Cross-platform row icon — SF Symbol on iOS, Material Icons on Android (`expo-symbols`). */
-export type SettingsRowIcon = {
+export type ListRowIcon = {
   ios: string;
   android: string;
 };
 
-const TITLE_LINE_HEIGHT = 24;
-
-function settingsRowTextStyle(color: string) {
+function listRowTextStyle(color: string) {
   return Platform.OS === "android"
     ? { color, includeFontPadding: false as const }
     : { color };
 }
 
-function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
+function listRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
   if (colorScheme === "light") {
     return mixInk(palette.text, palette.surface, 12);
   }
@@ -47,7 +45,7 @@ function settingsRowPressedBackground(colorScheme: "light" | "dark", palette: Th
   return chroma(palette.surface).brighten(0.5).hex();
 }
 
-function settingsRowAndroidPressBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
+function listRowAndroidPressBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
   if (colorScheme === "light") {
     return TouchableNativeFeedback.Ripple(chroma(palette.text).alpha(0.14).css(), false);
   }
@@ -62,12 +60,12 @@ function rowSeparatorStyle(isLast: boolean | undefined, palette: ThemePalette): 
   };
 }
 
-type SettingsRowProps = {
+type ListRowProps = {
   title: string;
   /** Overrides `accessibilityLabel`; defaults to `title` when omitted. */
   label?: string;
   /** Leading icon — SF Symbol (iOS) and Material Icons name (Android). */
-  icon?: SettingsRowIcon;
+  icon?: ListRowIcon;
   /** Muted secondary text shown below the title. */
   detail?: string;
   /** Right-side label (same size as title, muted color). */
@@ -77,13 +75,13 @@ type SettingsRowProps = {
   testID?: string;
 };
 
-type SettingsMenuRowProps = Omit<SettingsRowProps, "onPress"> & {
+type ListMenuRowProps = Omit<ListRowProps, "onPress"> & {
   actions: MenuAction[];
   onPressAction: (event: { nativeEvent: { event: string } }) => void;
   isAnchoredToRight?: boolean;
 };
 
-function SettingsRowIconView({ icon, palette }: { icon: SettingsRowIcon; palette: ThemePalette }) {
+function ListRowIconView({ icon, palette }: { icon: ListRowIcon; palette: ThemePalette }) {
   const tintColor = palette.textMuted;
 
   return (
@@ -102,24 +100,24 @@ function SettingsRowIconView({ icon, palette }: { icon: SettingsRowIcon; palette
   );
 }
 
-function SettingsRowBody({
+function ListRowBody({
   title,
   icon,
   detail,
   value,
   palette,
-}: Pick<SettingsRowProps, "title" | "icon" | "detail" | "value"> & { palette: ThemePalette }) {
+}: Pick<ListRowProps, "title" | "icon" | "detail" | "value"> & { palette: ThemePalette }) {
   const hasValue = value != null && value.length > 0;
 
   return (
     <>
-      {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
+      {icon ? <ListRowIconView icon={icon} palette={palette} /> : null}
       <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
-        <Text className="text-base" numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
+        <Text className="text-base font-bold" numberOfLines={1} style={listRowTextStyle(palette.text)}>
           {title}
         </Text>
         {detail ? (
-          <Text className="text-base" numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
+          <Text className="text-base" numberOfLines={1} style={listRowTextStyle(palette.textMuted)}>
             {detail}
           </Text>
         ) : null}
@@ -128,7 +126,7 @@ function SettingsRowBody({
         <Text
           selectable
           className="shrink text-base"
-          style={[settingsRowTextStyle(palette.textMuted), { flexShrink: 1 }]}
+          style={[listRowTextStyle(palette.textMuted), { flexShrink: 1 }]}
         >
           {value}
         </Text>
@@ -137,7 +135,7 @@ function SettingsRowBody({
   );
 }
 
-function SettingsRowPressable({
+function ListRowPressable({
   onPress,
   isLast,
   omitSeparator,
@@ -155,8 +153,8 @@ function SettingsRowPressable({
   const { colorScheme } = useTheme();
   const palette = useThemePalette();
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light";
-  const rowPressedBackground = settingsRowPressedBackground(resolvedScheme, palette);
-  const androidPressBackground = settingsRowAndroidPressBackground(resolvedScheme, palette);
+  const rowPressedBackground = listRowPressedBackground(resolvedScheme, palette);
+  const androidPressBackground = listRowAndroidPressBackground(resolvedScheme, palette);
   const separatorStyle = omitSeparator ? undefined : rowSeparatorStyle(isLast, palette);
 
   if (!onPress) {
@@ -204,7 +202,7 @@ function SettingsRowPressable({
 function showIOSMenuActionSheet(
   actions: MenuAction[],
   cancelLabel: string,
-  onPressAction: SettingsMenuRowProps["onPressAction"],
+  onPressAction: ListMenuRowProps["onPressAction"],
 ) {
   const cancelButtonIndex = actions.length;
 
@@ -226,8 +224,8 @@ function showIOSMenuActionSheet(
   );
 }
 
-/** Settings row that opens a native menu with the same press feedback as SettingsRow. */
-export function SettingsMenuRow({
+/** Grouped list row that opens a native menu with the same press feedback as ListRow. */
+export function ListMenuRow({
   actions,
   onPressAction,
   isAnchoredToRight,
@@ -237,11 +235,11 @@ export function SettingsMenuRow({
   detail,
   value,
   isLast,
-}: SettingsMenuRowProps) {
+}: ListMenuRowProps) {
   const { t } = useTranslation();
   const menuRef = useRef<MenuComponentRef>(null);
   const palette = useThemePalette();
-  const body = <SettingsRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
+  const body = <ListRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
 
   const handlePress = useCallback(() => {
     if (Platform.OS === "ios") {
@@ -266,21 +264,21 @@ export function SettingsMenuRow({
             <View style={styles.menuAnchorFill} />
           </MenuView>
         </View>
-        <SettingsRowPressable accessibilityLabel={label ?? title} omitSeparator onPress={handlePress}>
+        <ListRowPressable accessibilityLabel={label ?? title} omitSeparator onPress={handlePress}>
           {body}
-        </SettingsRowPressable>
+        </ListRowPressable>
       </View>
     );
   }
 
   return (
-    <SettingsRowPressable accessibilityLabel={label ?? title} isLast={isLast} onPress={handlePress}>
+    <ListRowPressable accessibilityLabel={label ?? title} isLast={isLast} onPress={handlePress}>
       {body}
-    </SettingsRowPressable>
+    </ListRowPressable>
   );
 }
 
-export function SettingsRow({
+export function ListRow({
   title,
   label,
   icon,
@@ -289,19 +287,19 @@ export function SettingsRow({
   onPress,
   isLast,
   testID,
-}: SettingsRowProps) {
+}: ListRowProps) {
   const palette = useThemePalette();
-  const body = <SettingsRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
+  const body = <ListRowBody title={title} icon={icon} detail={detail} value={value} palette={palette} />;
 
   return (
-    <SettingsRowPressable
+    <ListRowPressable
       accessibilityLabel={label ?? title}
       onPress={onPress}
       isLast={isLast}
       testID={testID}
     >
       {body}
-    </SettingsRowPressable>
+    </ListRowPressable>
   );
 }
 
@@ -314,7 +312,6 @@ const styles = StyleSheet.create({
   },
   iconSlot: {
     width: ROW_ICON_SIZE,
-    height: TITLE_LINE_HEIGHT,
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",

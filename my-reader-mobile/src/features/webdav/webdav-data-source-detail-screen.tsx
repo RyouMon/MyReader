@@ -12,7 +12,7 @@ import type { DataSourceWebdav } from "@/src/domain/types";
 import { DataSourceInUseError } from "@/src/errors";
 import { Text, View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow } from "@/src/components";
+import { Screen, SectionCard, ListRow } from "@/src/components";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import { useAppStore } from "@/src/store/app-store";
@@ -196,16 +196,16 @@ export default function WebDavDataSourceDetailScreen() {
         <View className="flex-1 gap-8">
           <WebDavDetailHero source={webdavSource} accent={accent} />
           <SectionCard>
-            <SettingsRow title={t("webdav.type")} detail="WebDAV" />
-            <SettingsRow title={t("webdav.serverAddress")} detail={webdavSource.endpoint} />
-            <SettingsRow title={t("webdav.username")} detail={webdavSource.username} />
-            <SettingsRow
+            <ListRow title={t("webdav.type")} detail="WebDAV" />
+            <ListRow title={t("webdav.serverAddress")} detail={webdavSource.endpoint} />
+            <ListRow title={t("webdav.username")} detail={webdavSource.username} />
+            <ListRow
               title={t("webdav.password")}
               detail={webdavSource.hasPassword ? t("webdav.passwordSaved") : t("webdav.passwordNotSet")}
             />
-            <SettingsRow title={t("webdav.basePath")} detail={webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"} />
-            <SettingsRow title={t("webdav.status")} detail={webdavSource.enabled ? t("webdav.enabled") : t("webdav.disabled")} />
-            <SettingsRow title={t("webdav.addedAt")} detail={formatDate(webdavSource.createdAt)} isLast />
+            <ListRow title={t("webdav.basePath")} detail={webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"} />
+            <ListRow title={t("webdav.status")} detail={webdavSource.enabled ? t("webdav.enabled") : t("webdav.disabled")} />
+            <ListRow title={t("webdav.addedAt")} detail={formatDate(webdavSource.createdAt)} isLast />
           </SectionCard>
         </View>
       </View>

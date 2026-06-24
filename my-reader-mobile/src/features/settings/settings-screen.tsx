@@ -8,7 +8,7 @@ import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SettingsMenuRow, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { Screen, SectionCard, ListMenuRow, ListRow, SectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function SettingsScreen() {
@@ -84,10 +84,10 @@ export default function SettingsScreen() {
     <>
       <Screen>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.librarySection")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.librarySection")}</SectionLabel>
           <SectionCard>
             {libraries.map((library) => (
-              <SettingsRow
+              <ListRow
                 key={library.id}
                 testID={`settings-library-row-${library.id}`}
                 title={library.name}
@@ -100,7 +100,7 @@ export default function SettingsScreen() {
                 }
               />
             ))}
-            <SettingsRow
+            <ListRow
               testID="settings-add-library-row"
               title={t("settings.addLibrary")}
               isLast
@@ -109,15 +109,15 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.remoteDataSources")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.remoteDataSources")}</SectionLabel>
           <SectionCard>
-            <SettingsRow
+            <ListRow
               testID="settings-webdav-row"
               title="WebDAV"
               detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
-            <SettingsRow
+            <ListRow
               testID="settings-onedrive-row"
               title="OneDrive"
               detail={t("settings.onedriveDetail")}
@@ -127,9 +127,9 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.appearance")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.appearance")}</SectionLabel>
           <SectionCard>
-            <SettingsMenuRow
+            <ListMenuRow
               actions={languageMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
               title={t("settings.language")}
               value={languageLabels[effectiveLanguage]}
             />
-            <SettingsMenuRow
+            <ListMenuRow
               actions={themeMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {

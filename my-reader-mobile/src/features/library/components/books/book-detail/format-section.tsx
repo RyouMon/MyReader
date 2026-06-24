@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 
-import { CircularProgress, MoreActionsIcon, SectionCard, SettingsSectionLabel } from "@/src/components";
+import { CircularProgress, MoreActionsIcon, SectionCard, SectionLabel } from "@/src/components";
 import { FONT_UI } from "@/src/design/typography";
 import {
   cancel,
@@ -55,7 +55,7 @@ export function FormatSection({
 
   return (
     <View className="gap-3 px-4">
-      <SettingsSectionLabel>{t("bookDetail.formatSection.title")}</SettingsSectionLabel>
+      <SectionLabel>{t("bookDetail.formatSection.title")}</SectionLabel>
       <SectionCard>
         {book.formats.map((format, index) => {
           const upper = format.toUpperCase();

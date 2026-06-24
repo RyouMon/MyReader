@@ -1,4 +1,4 @@
-import { SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { SectionCard, ListRow, SectionLabel } from "@/src/components";
 import { View } from "@/tw";
 import type { InfoCardItem } from "./types";
 
@@ -10,10 +10,10 @@ type InfoRowSectionProps = {
 export function InfoRowSection({ items, title }: InfoRowSectionProps) {
   return (
     <View className="gap-3 px-4">
-      <SettingsSectionLabel>{title}</SettingsSectionLabel>
+      <SectionLabel>{title}</SectionLabel>
       <SectionCard>
         {items.map((item, index) => (
-          <SettingsRow
+          <ListRow
             key={`${item.label}-${item.value}`}
             isLast={index === items.length - 1}
             title={item.label}

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
-import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
+import { EmptyState, Screen, SectionCard, ListRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
@@ -141,7 +141,7 @@ export function RemoteDirectoryBrowserScreen({
             ) : (
               <SectionCard>
                 {entries.map((entry, index) => (
-                  <SettingsRow
+                  <ListRow
                     key={entry.path}
                     title={entry.name}
                     icon={{ ios: "folder.fill", android: "folder" }}

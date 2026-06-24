@@ -17,6 +17,6 @@ export { ProgressBar } from "./progress-bar";
 export { Screen } from "./screen";
 export { SectionCard } from "./section-card";
 export { SectionHeading } from "./section-heading";
-export { SettingsMenuRow, SettingsRow, type SettingsRowIcon } from "./settings-row";
-export { SettingsSectionLabel } from "./settings-section-label";
+export { ListMenuRow, ListRow, type ListRowIcon } from "./list-row";
+export { SectionLabel } from "./section-label";
 

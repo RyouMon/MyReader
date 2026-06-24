@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { useTranslation } from "react-i18next";
 
-import { SectionCard, SettingsSectionLabel } from "@/src/components/ui";
+import { SectionCard, SectionLabel } from "@/src/components/ui";
 import { FONT_UI } from "@/src/design/typography";
 import { Pressable, Text, View } from "@/tw";
 import type { DetailColors } from "./types";
@@ -21,7 +21,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
 
   return (
     <View className="gap-3 px-4">
-      <SettingsSectionLabel>{t("bookDetail.synopsis")}</SettingsSectionLabel>
+      <SectionLabel>{t("bookDetail.synopsis")}</SectionLabel>
       <SectionCard>
         <View className="p-4">
           <Text

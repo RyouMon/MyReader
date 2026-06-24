@@ -17,7 +17,7 @@ import { isRemoteSourceType } from "@/src/domain/types";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
-import { EmptyState, SectionCard, SettingsRow } from "@/src/components";
+import { EmptyState, SectionCard, ListRow } from "@/src/components";
 import { Button, ButtonGroup } from "@/src/components/ui";
 import { Screen } from "@/src/components/ui/screen";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
@@ -241,11 +241,11 @@ export default function LibraryDetailScreen() {
               />
             </ButtonGroup>
             <SectionCard>
-              <SettingsRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
-              <SettingsRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
-              <SettingsRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
-              <SettingsRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
-              <SettingsRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
+              <ListRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
+              <ListRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
+              <ListRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
+              <ListRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
+              <ListRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
             </SectionCard>
           </View>
       </View>
