@@ -274,20 +274,6 @@
     "unread": "Unread",
     "finished": "Finished"
   },
-  "downloadButton": {
-    "queued": "Queued",
-    "preparing": "Preparing",
-    "downloading": "Downloading",
-    "download": "Download",
-    "downloadFailed": "File download failed: {{path}}",
-    "downloaded": "Downloaded",
-    "evicting": "Evicting",
-    "evict": "Evict",
-    "deleting": "Deleting",
-    "confirmDelete": "Tap again to confirm",
-    "delete": "Delete",
-    "failed": "Failed"
-  },
   "addLibrary": {
     "existingSources": "Existing Sources",
     "addSources": "Add Sources",
