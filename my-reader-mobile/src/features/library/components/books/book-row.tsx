@@ -161,10 +161,10 @@ function BookRowImpl({
         />
         <View className="min-w-0 flex-1 justify-between">
           <View className="gap-0.5">
-            <Text className="text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
+            <Text className="text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
               {book.title}
             </Text>
-            <Text className="text-[15px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
+            <Text className="text-base" style={{ color: palette.textMuted }} numberOfLines={1}>
               {book.author}
             </Text>
           </View>

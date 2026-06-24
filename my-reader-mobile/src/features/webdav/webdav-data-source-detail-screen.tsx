@@ -72,7 +72,7 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
 
       <View className="items-center gap-2">
         <Text
-          className="text-center text-[32px] leading-[38px]"
+          className="text-center text-3xl"
           style={{
             color: palette.text,
             fontFamily: undefined,
@@ -177,10 +177,10 @@ export default function WebDavDataSourceDetailScreen() {
         <Stack.Screen options={options} />
         {toolbar}
         <View className="flex-1 items-center justify-center">
-          <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
+          <Text className="text-2xl font-bold" style={{ color: palette.text }}>
             {t("webdav.notFound.title")}
           </Text>
-          <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
+          <Text className="mt-3 text-center text-sm" style={{ color: palette.textMuted }}>
             {t("webdav.notFound.detail")}
           </Text>
         </View>

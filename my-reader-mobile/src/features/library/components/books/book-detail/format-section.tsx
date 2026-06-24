@@ -223,7 +223,7 @@ function FormatRow({
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
             <Text
-              className="text-[16px] leading-6"
+              className="text-base"
               style={{ color: colors.text, fontFamily: FONT_UI }}
             >
               {format}
@@ -231,7 +231,7 @@ function FormatRow({
             {statusIcon}
           </View>
           <Text
-            className="mt-0.5 text-[16px] leading-6"
+            className="mt-0.5 text-base"
             style={{ color: colors.tertiary, fontFamily: FONT_UI }}
             numberOfLines={1}
           >

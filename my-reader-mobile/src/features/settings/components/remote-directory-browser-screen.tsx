@@ -7,9 +7,9 @@ import { Text, View } from "@/tw";
 
 import { EmptyState, Screen, SectionCard, SettingsRow } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
+import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers";
-import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
 
 type RemoteDirectoryBrowserScreenProps = {
   sourceType: "webdav" | "onedrive";
@@ -110,7 +110,7 @@ export function RemoteDirectoryBrowserScreen({
           onRetry={() => { /* effect re-triggers via loading/error state */ }}
         >
           <View className="gap-3">
-            <Text className="px-4 text-[16px] text-muted" style={{ color: palette.textMuted }}>
+            <Text className="px-4 text-base text-muted" style={{ color: palette.textMuted }}>
               {label("currentPath", { path: currentPath })}
             </Text>
 

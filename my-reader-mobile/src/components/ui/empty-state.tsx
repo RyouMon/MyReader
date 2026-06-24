@@ -1,9 +1,9 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useHeaderHeight } from "expo-router/react-navigation";
 import { SymbolView } from "expo-symbols";
 import { type ReactNode } from "react";
 import { Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "expo-router/react-navigation";
 
 import { useThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
@@ -53,13 +53,13 @@ export function EmptyState({
 
       <View className="items-center" style={{ gap: 8 }}>
         <Text
-          className="text-center text-[17px] leading-6"
+          className="text-center text-lg"
           style={{ color: palette.text, fontWeight: "600" }}
         >
           {title}
         </Text>
         <Text
-          className="text-center text-[15px] leading-6"
+          className="text-center text-base"
           style={{ color: palette.textMuted, maxWidth: 280 }}
         >
           {detail}

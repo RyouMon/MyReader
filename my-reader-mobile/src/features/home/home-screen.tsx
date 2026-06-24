@@ -52,11 +52,11 @@ export default function HomeScreen() {
             <View className="gap-4">
               <View className="flex-row items-start justify-between gap-3">
                 <View className="gap-1">
-                  <Text className="text-[16px] leading-6" style={{ color: palette.textMuted, fontWeight: "600" }}>
+                  <Text className="text-base" style={{ color: palette.textMuted, fontWeight: "600" }}>
                     {t("home.continueReading")}
                   </Text>
                   <Text
-                    className="text-[30px] leading-[36px]"
+                    className="text-4xl"
                     style={{ color: palette.text, fontWeight: "700", letterSpacing: -0.2 }}
                   >
                     {currentBook.title}
@@ -89,10 +89,10 @@ export default function HomeScreen() {
                 )}
                 <View className="flex-1 gap-3">
                   <View className="gap-1">
-                    <Text className="text-base font-semibold leading-6" style={{ color: palette.text }}>
+                    <Text className="text-base font-semibold" style={{ color: palette.text }}>
                       {currentBook.author}
                     </Text>
-                    <Text className="text-sm leading-6" style={{ color: palette.textMuted }}>
+                    <Text className="text-sm" style={{ color: palette.textMuted }}>
                       {t("home.currentLibrary", { name: activeLibrary.name, count: books.length })}
                     </Text>
                   </View>

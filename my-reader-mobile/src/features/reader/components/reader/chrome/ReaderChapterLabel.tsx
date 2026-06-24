@@ -19,7 +19,7 @@ export function ReaderChapterLabel({
       pointerEvents="none"
     >
       <Text
-        className="text-[13px] font-medium"
+        className="text-base font-medium"
         style={{ color: palette.textMuted }}
         numberOfLines={1}
       >

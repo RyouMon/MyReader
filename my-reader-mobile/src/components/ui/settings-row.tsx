@@ -10,17 +10,15 @@ import {
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction, type MenuComponentRef } from "@react-native-menu/menu";
+import chroma from "chroma-js";
 import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
-import chroma from "chroma-js";
 
 import { mixInk } from "@/src/design/reader-chrome-palette";
 import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/tokens";
 import { Text, View } from "@/tw";
 
 const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4";
-const TITLE_CLASS = "text-[16px] leading-6";
-const DETAIL_CLASS = "text-[13px] leading-5";
 const ROW_ICON_SIZE = 22;
 const HIDDEN_MENU_ANCHOR_STYLE: ViewStyle = {
   ...StyleSheet.absoluteFill,
@@ -117,11 +115,11 @@ function SettingsRowBody({
     <>
       {icon ? <SettingsRowIconView icon={icon} palette={palette} /> : null}
       <View className="flex-1 gap-1" style={{ minWidth: 96 }}>
-        <Text className={TITLE_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
+        <Text className="text-base" numberOfLines={1} style={settingsRowTextStyle(palette.text)}>
           {title}
         </Text>
         {detail ? (
-          <Text className={DETAIL_CLASS} numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
+          <Text className="text-base" numberOfLines={1} style={settingsRowTextStyle(palette.textMuted)}>
             {detail}
           </Text>
         ) : null}
@@ -129,7 +127,7 @@ function SettingsRowBody({
       {hasValue ? (
         <Text
           selectable
-          className={`shrink ${TITLE_CLASS}`}
+          className="shrink text-base"
           style={[settingsRowTextStyle(palette.textMuted), { flexShrink: 1 }]}
         >
           {value}

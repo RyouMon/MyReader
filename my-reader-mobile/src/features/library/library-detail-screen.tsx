@@ -9,15 +9,15 @@ import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
+import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
-import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
-import { SectionCard, SettingsRow } from "@/src/components";
+import { EmptyState, SectionCard, SettingsRow } from "@/src/components";
 import { Button, ButtonGroup } from "@/src/components/ui";
 import { Screen } from "@/src/components/ui/screen";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
@@ -98,7 +98,7 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
 
       <View className="items-center gap-2">
         <Text
-          className="text-center text-[32px] leading-[38px]"
+          className="text-center text-2xl"
           style={{
             color: palette.text,
             fontFamily: undefined,
@@ -108,7 +108,7 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
         >
           {library.name}
         </Text>
-        <Text className="text-[16px] leading-6" style={{ color: palette.textMuted }}>
+        <Text style={{ color: palette.textMuted }}>
           {t("libraryDetail.bookCount", { count: library.bookCount })}
           {isActive ? t("libraryDetail.currentlyUsed") : ""}
         </Text>
@@ -193,16 +193,11 @@ export default function LibraryDetailScreen() {
         <Stack.Screen options={options} />
         {toolbar}
         <Screen>
-          <View className="flex-1">
-            <View className="flex-1 items-center justify-center">
-              <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-                {t("libraryDetail.notFound.title")}
-              </Text>
-              <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-                {t("libraryDetail.notFound.detail")}
-              </Text>
-            </View>
-          </View>
+          <EmptyState
+            title={t("libraryDetail.notFound.title")}
+            detail={t("libraryDetail.notFound.detail")}
+            icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+          />
         </Screen>
       </>
     );

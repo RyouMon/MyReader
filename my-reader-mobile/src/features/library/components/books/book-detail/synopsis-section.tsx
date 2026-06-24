@@ -25,7 +25,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
       <SectionCard>
         <View className="p-4">
           <Text
-            className="text-[16px] leading-6"
+            className="text-base"
             numberOfLines={expanded ? undefined : 3}
             style={{ color: colors.muted, fontFamily: FONT_UI }}
           >
@@ -39,7 +39,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
               onPress={() => setExpanded((prev) => !prev)}
             >
               <Text
-                className="text-[16px] leading-6 font-medium"
+                className="text-base font-medium"
                 style={{ color: colors.accent, fontFamily: FONT_UI }}
               >
                 {expanded ? t("bookDetail.collapse") : t("bookDetail.expand")}
@@ -47,7 +47,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
             </Pressable>
           )}
           <Text
-            className="text-[16px] leading-6"
+            className="text-base"
             numberOfLines={undefined}
             onTextLayout={(e) => setTotalLines(e.nativeEvent.lines.length)}
             style={{

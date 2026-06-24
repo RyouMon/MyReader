@@ -7,13 +7,13 @@ export function SectionHeading({ title, detail }: { title: string; detail?: stri
   return (
     <View className="gap-1 px-1">
       <Text
-        className="text-[28px] leading-[34px]"
+        className="text-3xl"
         style={{ color: palette.text, fontWeight: "700", letterSpacing: -0.2 }}
       >
         {title}
       </Text>
       {detail ? (
-        <Text className="text-sm leading-5" style={{ color: palette.textMuted }}>
+        <Text className="text-sm" style={{ color: palette.textMuted }}>
           {detail}
         </Text>
       ) : null}

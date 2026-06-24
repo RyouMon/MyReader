@@ -7,7 +7,7 @@ import { Text } from "@/tw";
 export function SettingsSectionLabel({ children }: { children: ReactNode }) {
   const palette = useThemePalette();
   return (
-    <Text className="px-4 text-[16px] leading-6 font-bold" style={{ color: palette.text }}>
+    <Text className="px-4 text-base font-bold" style={{ color: palette.text }}>
       {children}
     </Text>
   );

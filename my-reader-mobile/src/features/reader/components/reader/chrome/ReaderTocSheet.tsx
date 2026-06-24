@@ -1,7 +1,7 @@
-import { useCallback, forwardRef } from "react";
-import { Dimensions, StyleSheet, View as RNView } from "react-native";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { forwardRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Dimensions, View as RNView, StyleSheet } from "react-native";
 
 import { underlayFromSurface, type ReaderChromePalette } from "@/src/design/reader-chrome-palette";
 import type { ReaderTocItem } from "@/src/features/reader/components/reader/types";
@@ -72,7 +72,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
                 onPress={() => onSelectPage(item.pageIndex)}
               >
                 <Text
-                  className="text-[15px] flex-1"
+                  className="text-base flex-1"
                   style={{ color: isActive ? palette.accentText : palette.text }}
                   numberOfLines={1}
                   ellipsizeMode="tail"

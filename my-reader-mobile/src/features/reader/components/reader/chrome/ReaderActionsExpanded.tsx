@@ -82,10 +82,10 @@ export default function ReaderActionsExpanded({
               {/* actionText layer — full width background text */}
               <RNView style={styles.pillContent}>
                 <RNView style={styles.tocLabelGroup}>
-                  <Text className="text-[15px] font-semibold" style={{ color: palette.actionText }}>
+                  <Text className="text-base font-semibold" style={{ color: palette.actionText }}>
                     {t("reader.toc")}
                   </Text>
-                  <Text className="text-[12px] font-semibold" style={{ color: palette.actionText }}>
+                  <Text className="text-base font-semibold" style={{ color: palette.actionText }}>
                     {progressPercent}%
                   </Text>
                 </RNView>
@@ -96,10 +96,10 @@ export default function ReaderActionsExpanded({
                 <RNView style={{ width: ACTION_PILL_WIDTH, paddingHorizontal: 18, paddingVertical: 14 }}>
                   <RNView style={styles.pillContent}>
                     <RNView style={styles.tocLabelGroup}>
-                      <Text className="text-[15px] font-semibold" style={{ color: palette.progressText }}>
+                      <Text className="text-base font-semibold" style={{ color: palette.progressText }}>
                         {t("reader.toc")}
                       </Text>
-                      <Text className="text-[12px] font-semibold" style={{ color: palette.progressText }}>
+                      <Text className="text-base font-semibold" style={{ color: palette.progressText }}>
                         {progressPercent}%
                       </Text>
                     </RNView>
@@ -122,7 +122,7 @@ export default function ReaderActionsExpanded({
           >
             <RNView style={styles.pillContent} accessibilityElementsHidden={true}>
               <Text
-                className="text-[15px] font-semibold"
+                className="text-base font-semibold"
                 style={{ color: palette.actionText }}
               >
                 {t("reader.settings")}

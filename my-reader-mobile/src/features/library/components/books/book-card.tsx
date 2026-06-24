@@ -12,11 +12,11 @@ import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
 
-import { ProgressLabel } from "./progress-label";
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
 import { DownloadProgressIndicator } from "./download-progress-indicator";
+import { ProgressLabel } from "./progress-label";
 
 export type BookCardProps = {
   book: BookItem;
@@ -165,7 +165,7 @@ function BookCardImpl({
         </TouchableHighlight>
       </View>
       <View className="mt-2 flex-row items-center gap-1.5">
-        <Text className="flex-1 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
+        <Text className="flex-1 text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
           {book.title}
         </Text>
       </View>

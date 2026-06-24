@@ -1,12 +1,10 @@
+import { mixInk, type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
+import { Text, TouchableHighlight, View } from "@/tw";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Slider from "@react-native-community/slider";
-import { StyleSheet } from "react-native";
-import { mixInk } from "@/src/design/reader-chrome-palette";
-import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
-import { Text, View, TouchableHighlight } from "@/tw";
 import { useTranslation } from "react-i18next";
+import { StyleSheet } from "react-native";
 
-import type { ThemeOption } from "./readerChromeConstants";
 import { READER_THEME_OPTIONS } from "./readerChromeConstants";
 
 /* ═══════════════════════════════════════
@@ -19,7 +17,7 @@ function SectionLabel({ label, color }: { label: string; color: string }) {
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="mb-2 mt-3 text-xs font-bold uppercase tracking-[0.8px]"
+      className="mb-2 mt-3 text-base font-bold uppercase tracking-[0.8px]"
       style={{ color }}
     >
       {label}
@@ -65,7 +63,7 @@ export function ThemeSwatches({
             >
               <View style={StyleSheet.absoluteFill} className="items-center justify-center">
                 <Text
-                  className="text-[13px] font-semibold"
+                  className="text-base font-semibold"
                   style={{ color: option.fg }}
                 >
                   {t(option.label)}
@@ -128,7 +126,7 @@ export function SegmentPicker<T extends string>({
               }`}
             >
               <Text
-                className="text-sm font-semibold"
+                className="text-base font-semibold"
                 style={{ color: active ? palette.accentText : palette.textMuted }}
               >
                 {opt.label}
@@ -184,7 +182,7 @@ export function FontPicker({
               }`}
             >
               <Text
-                className="text-sm font-semibold"
+                className="text-base font-semibold"
                 style={{ color: active ? palette.accentText : palette.textMuted }}
               >
                 {opt.label}
@@ -243,7 +241,7 @@ export function SliderControl({
           thumbTintColor={palette.accent}
         />
         <View className="min-w-[52px] items-end">
-          <Text className="text-[13px] font-semibold" style={{ color: palette.text }}>
+          <Text className="text-base font-semibold" style={{ color: palette.text }}>
             {formatValue(value)}
           </Text>
         </View>

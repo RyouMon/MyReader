@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
 import { useThemePalette } from "@/src/design/tokens";
 import type { DataSource } from "@/src/domain/types";
-import { View, Text } from "@/tw";
+import { Text, View } from "@/tw";
 
 import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
@@ -111,13 +111,13 @@ export default function AddLibraryDataSourceScreen() {
           {!hasExistingSources && (
             <View className="py-6 px-4 gap-2">
               <Text
-                className="text-center text-base leading-6"
+                className="text-center text-base"
                 style={{ color: palette.text, fontWeight: "600" }}
               >
                 {t("addLibrary.noSources.title")}
               </Text>
               <Text
-                className="text-center text-base leading-6"
+                className="text-center text-base"
                 style={{ color: palette.textMuted }}
               >
                 {t("addLibrary.noSources.detail")}

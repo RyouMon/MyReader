@@ -68,7 +68,7 @@ export function HeroSection({
                 style={{ backgroundColor: colors.palette.surface }}
               >
                 <Text
-                  className="text-center text-[15px] leading-5"
+                  className="text-center text-base"
                   numberOfLines={4}
                   style={{
                     color: colors.text,
@@ -86,14 +86,14 @@ export function HeroSection({
 
         <View className="flex-1 gap-3 py-1">
           <Text
-            className="text-[26px] leading-8"
+            className="text-2xl"
             numberOfLines={3}
             style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "700" }}
           >
             {book.title}
           </Text>
           <Text
-            className="text-[15px] leading-5"
+            className="text-base"
             numberOfLines={2}
             style={{ color: colors.accent, fontFamily: FONT_UI, fontWeight: "600" }}
           >
@@ -108,7 +108,7 @@ export function HeroSection({
                   style={{ borderColor: colors.border }}
                 >
                   <Text
-                    className="text-[16px] leading-6"
+                    className="text-base"
                     style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "500" }}
                   >
                     {tag}

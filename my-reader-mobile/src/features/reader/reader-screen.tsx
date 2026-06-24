@@ -23,9 +23,9 @@ import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet";
 import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
+import { toNativeFilesystemPath } from "@/src/services/fs/path";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReaderTheme } from "@/src/store/app-store.types";
-import { toNativeFilesystemPath } from "@/src/services/fs/path";
 import { Animated, Pressable, Text, View } from "@/tw";
 
 const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));
@@ -213,7 +213,7 @@ export default function ReaderScreen() {
           <Text className="text-center text-lg font-bold mb-3" style={{ color: READER_CHROME.textStrong }}>
             {t("reader.cannotOpen")}
           </Text>
-          <Text className="text-center text-[15px] leading-[22px]" style={{ color: READER_CHROME.textSecondary }}>
+          <Text className="text-center text-base" style={{ color: READER_CHROME.textSecondary }}>
             {loadState.message}
           </Text>
           <Pressable
@@ -223,7 +223,7 @@ export default function ReaderScreen() {
             style={{ backgroundColor: READER_CHROME.surfaceIdle, borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
             onPress={handleBack}
           >
-            <Text className="text-[15px] font-semibold" style={{ color: READER_CHROME.textStrong }}>
+            <Text className="text-base font-semibold" style={{ color: READER_CHROME.textStrong }}>
               {t("reader.back")}
             </Text>
           </Pressable>
