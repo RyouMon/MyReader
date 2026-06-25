@@ -37,6 +37,12 @@
       "notDownloaded": "Not Downloaded",
       "downloading": "Downloading"
     },
+    "filterTitle": {
+      "all": "All Books",
+      "downloaded": "Downloaded",
+      "notDownloaded": "Not Downloaded",
+      "downloading": "Downloading"
+    },
     "sort": {
       "title": "Title",
       "author": "Author",

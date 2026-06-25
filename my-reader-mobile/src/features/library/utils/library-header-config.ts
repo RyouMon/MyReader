@@ -19,8 +19,21 @@ export const libraryViewOptions: { value: LibraryViewMode; labelKey: string }[] 
   { value: "list", labelKey: "library.view.list" },
 ];
 
+export const libraryDownloadFilterTitleOptions = [
+  { value: "all", labelKey: "library.filterTitle.all" as const },
+  { value: "downloaded", labelKey: "library.filterTitle.downloaded" as const },
+  { value: "notDownloaded", labelKey: "library.filterTitle.notDownloaded" as const },
+  { value: "downloading", labelKey: "library.filterTitle.downloading" as const },
+] as const;
+
 /** Returns the display label for the active download-state filter. */
 export function getLibraryDownloadFilterLabel(t: (key: string) => string, option: DownloadFilterOption) {
   const item = libraryDownloadFilterOptions.find((entry) => entry.value === option);
   return item ? t(item.labelKey) : t("library.filter.all");
+}
+
+/** Returns the header title for the active download-state filter. */
+export function getLibraryDownloadFilterTitle(t: (key: string) => string, option: DownloadFilterOption) {
+  const item = libraryDownloadFilterTitleOptions.find((entry) => entry.value === option);
+  return item ? t(item.labelKey) : t("library.filterTitle.all");
 }

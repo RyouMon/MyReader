@@ -3,7 +3,7 @@ import { type ReactNode } from "react";
 import { useThemePalette } from "@/src/design/tokens";
 import { Text } from "@/tw";
 
-/** Section title above grouped list rows — body size, bold. */
+/** Section label above grouped list rows — body size, bold. */
 export function SectionLabel({ children }: { children: ReactNode }) {
   const palette = useThemePalette();
   return (

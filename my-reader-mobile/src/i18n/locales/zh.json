@@ -37,6 +37,12 @@
       "notDownloaded": "未下载",
       "downloading": "正在下载"
     },
+    "filterTitle": {
+      "all": "全部图书",
+      "downloaded": "已下载",
+      "notDownloaded": "未下载",
+      "downloading": "正在下载"
+    },
     "sort": {
       "title": "书名",
       "author": "作者",

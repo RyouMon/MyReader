@@ -18,6 +18,5 @@ export { MoreActionsIcon } from "./more-actions-icon";
 export { ProgressBar } from "./progress-bar";
 export { Screen } from "./screen";
 export { SectionCard } from "./section-card";
-export { SectionHeading } from "./section-heading";
 export { SectionLabel } from "./section-label";
 

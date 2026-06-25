@@ -14,7 +14,6 @@ import {
   PrimaryButton,
   RoundIconButton,
   Screen,
-  SectionHeading,
 } from "@/src/components";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
@@ -33,7 +32,6 @@ import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-re
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
-import { getLibraryDownloadFilterLabel } from "@/src/features/library/utils/library-header-config";
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useAppStore } from "@/src/store/app-store";
@@ -370,15 +368,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  const listHeader = (
-    <View style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? GRID_CARD_GAP / 2 : LIST_PADDING_X }}>
-      <SectionHeading
-        title={getLibraryDownloadFilterLabel(t, downloadFilter)}
-        detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
-      />
-    </View>
-  );
-
   const emptyState = useMemo(() => {
     if (query.length > 0) {
       return {
@@ -426,7 +415,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           paddingBottom: 40,
         }}
         ItemSeparatorComponent={isGridView ? SeparatorGrid : SeparatorList}
-        ListHeaderComponent={listHeader}
         ListEmptyComponent={
           isLoadingNewContent ? (
             <LibrarySkeletonContent

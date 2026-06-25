@@ -8,6 +8,7 @@ import { useThemePalette } from "@/src/design/tokens";
 import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import type { Library } from "@/src/domain/types";
 import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
+import { getLibraryDownloadFilterTitle } from "@/src/features/library/utils/library-header-config";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import { LibraryIosHeaderToolbar } from "../components/library-header/ios-header-toolbar";
@@ -61,7 +62,9 @@ export function useLibraryHeaderChrome({
   const leftMenuRef = useRef(null);
   const rightMenuRef = useRef(null);
   const chromeMode = resolveLibraryHeaderChromeMode(variant);
-  const title = variant === "loaded" && selectedLibrary ? selectedLibrary.name : t("library.title");
+  const title = variant === "loaded" && selectedLibrary
+    ? getLibraryDownloadFilterTitle(t, downloadFilter)
+    : t("library.title");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleSearchOpen = useCallback(() => setIsSearchOpen(true), []);

@@ -10,7 +10,7 @@ import {
   EmptyState,
   PrimaryButton,
   Screen,
-  SectionHeading,
+  SectionLabel,
 } from "@/src/components";
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
 import { isRemoteSourceType } from "@/src/domain/types";
@@ -121,7 +121,7 @@ export default function HomeScreen() {
         ) : currentBook ? (
           <>
             <View className="gap-3">
-              <SectionHeading title={t("home.continueReading")} />
+              <SectionLabel>{t("home.continueReading")}</SectionLabel>
               <ContinueReadingCard
                 book={currentBook}
                 downloadStatus={currentBookStatus}
@@ -137,7 +137,7 @@ export default function HomeScreen() {
             </View>
 
             <View className="gap-3">
-              <SectionHeading title={t("home.recentReading")} />
+              <SectionLabel>{t("home.recentReading")}</SectionLabel>
               <ReadingShelf
                 data={readingBooksWithMeta.slice(1)}
                 onSelectBook={handleSelectBook}
