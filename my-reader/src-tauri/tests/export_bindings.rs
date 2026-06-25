@@ -1,34 +1,51 @@
+//! Regenerates `src/lib/tauri-specta.ts` from the live command list. Keep the
+//! `collect_commands!` invocation here in lock-step with `lib::run()` — drift between
+//! the two leaves the TS bindings stale and silently strips commands from the frontend
+//! API surface on the next test run.
+
 #[test]
 fn export_tauri_specta_typescript_bindings() {
     tauri_specta::Builder::<tauri::Wry>::new()
         .dangerously_cast_bigints_to_number()
         .commands(tauri_specta::collect_commands![
             my_reader_lib::commands::library::list_libraries,
+            my_reader_lib::commands::library::add_library::<tauri::Wry>,
+            my_reader_lib::commands::library::add_webdav_library::<tauri::Wry>,
+            my_reader_lib::commands::library::add_onedrive_library::<tauri::Wry>,
+            my_reader_lib::commands::library::refresh_library,
+            my_reader_lib::commands::library::refresh_webdav_library::<tauri::Wry>,
+            my_reader_lib::commands::library::refresh_onedrive_library::<tauri::Wry>,
+            my_reader_lib::commands::library::remove_library::<tauri::Wry>,
+            my_reader_lib::commands::library::switch_library::<tauri::Wry>,
+            my_reader_lib::commands::library::get_active_library_id,
             my_reader_lib::commands::source::list_data_sources,
             my_reader_lib::commands::source::test_webdav_connection,
-            my_reader_lib::commands::library::add_library,
-            my_reader_lib::commands::library::refresh_library,
-            my_reader_lib::commands::source::add_local_data_source,
-            my_reader_lib::commands::source::add_webdav_data_source,
-            my_reader_lib::commands::library::remove_library,
-            my_reader_lib::commands::source::remove_data_source,
-            my_reader_lib::commands::library::switch_library,
-            my_reader_lib::commands::library::get_active_library_id,
-            my_reader_lib::commands::book::get_books,
-            my_reader_lib::commands::book::get_books_page,
-            my_reader_lib::commands::book::get_book_detail,
-            my_reader_lib::commands::book::get_series_books,
-            my_reader_lib::commands::progress::get_reading_progress,
-            my_reader_lib::commands::progress::set_reading_progress,
+            my_reader_lib::commands::source::add_local_data_source::<tauri::Wry>,
+            my_reader_lib::commands::source::add_webdav_data_source::<tauri::Wry>,
+            my_reader_lib::commands::source::remove_data_source::<tauri::Wry>,
+            my_reader_lib::commands::source::webdav_list_folders,
+            my_reader_lib::commands::source::onedrive_start_auth,
+            my_reader_lib::commands::source::add_onedrive_data_source::<tauri::Wry>,
+            my_reader_lib::commands::source::onedrive_list_folders,
+            my_reader_lib::commands::book::get_books::<tauri::Wry>,
+            my_reader_lib::commands::book::get_books_page::<tauri::Wry>,
+            my_reader_lib::commands::book::get_book_detail::<tauri::Wry>,
+            my_reader_lib::commands::book::get_series_books::<tauri::Wry>,
+            my_reader_lib::commands::progress::get_reading_progress::<tauri::Wry>,
+            my_reader_lib::commands::progress::set_reading_progress::<tauri::Wry>,
             my_reader_lib::commands::reader::get_reader_ui_preferences,
-            my_reader_lib::commands::reader::set_reader_ui_preferences,
-            my_reader_lib::commands::reader::prepare_book_source,
+            my_reader_lib::commands::reader::set_reader_ui_preferences::<tauri::Wry>,
+            my_reader_lib::commands::reader::prepare_book_source::<tauri::Wry>,
             my_reader_lib::commands::reader::write_epub_readium_manifest,
             my_reader_lib::commands::reader::close_book_streamer,
             my_reader_lib::commands::cache::get_cache_usage,
             my_reader_lib::commands::cache::clear_cache,
             my_reader_lib::commands::cache::enforce_cache_limit,
-            my_reader_lib::commands::sync::sync_db_for_library,
+            my_reader_lib::commands::sync::sync_db_for_library::<tauri::Wry>,
+            my_reader_lib::commands::download::check_book_file_state::<tauri::Wry>,
+            my_reader_lib::commands::download::download_book_file::<tauri::Wry>,
+            my_reader_lib::commands::download::delete_local_book_file::<tauri::Wry>,
+            my_reader_lib::commands::download::cancel_book_download,
         ])
         .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
         .unwrap();

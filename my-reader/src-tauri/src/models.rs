@@ -228,7 +228,7 @@ pub struct BookIdentifier {
     pub value: String,
 }
 
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryInfo {
     pub id: String,

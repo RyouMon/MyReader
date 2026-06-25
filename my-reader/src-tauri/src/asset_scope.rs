@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager};
 use crate::commands::AppState;
 
 /// Allows the OS temp dir (extracted EPUB/CBZ cache) and every Calibre library root for asset URLs.
-pub fn sync_for_reader_libraries(app: &AppHandle) -> tauri::Result<()> {
+pub fn sync_for_reader_libraries<R: tauri::Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let scope = app.asset_protocol_scope();
     scope.allow_directory(std::env::temp_dir(), true)?;
     let state = app.state::<AppState>();

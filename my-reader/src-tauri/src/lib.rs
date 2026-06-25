@@ -18,6 +18,11 @@ mod storage;
 pub mod sync;
 mod utils;
 
+// Re-exports for integration tests under `src-tauri/tests/`.
+// Curated; do not grow this list without a use-case (hard cap at 8 names).
+pub use config::{config_path, load_config, save_config};
+pub use error::AppError;
+
 use std::collections::HashMap;
 
 use log::LevelFilter;
@@ -43,40 +48,40 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::library::list_libraries,
             commands::source::list_data_sources,
             commands::source::test_webdav_connection,
-            commands::library::add_library,
-            commands::library::add_webdav_library,
-            commands::library::add_onedrive_library,
+            commands::library::add_library::<tauri::Wry>,
+            commands::library::add_webdav_library::<tauri::Wry>,
+            commands::library::add_onedrive_library::<tauri::Wry>,
             commands::library::refresh_library,
-            commands::library::refresh_webdav_library,
-            commands::library::refresh_onedrive_library,
-            commands::source::add_local_data_source,
-            commands::source::add_webdav_data_source,
-            commands::library::remove_library,
-            commands::source::remove_data_source,
-            commands::library::switch_library,
+            commands::library::refresh_webdav_library::<tauri::Wry>,
+            commands::library::refresh_onedrive_library::<tauri::Wry>,
+            commands::source::add_local_data_source::<tauri::Wry>,
+            commands::source::add_webdav_data_source::<tauri::Wry>,
+            commands::library::remove_library::<tauri::Wry>,
+            commands::source::remove_data_source::<tauri::Wry>,
+            commands::library::switch_library::<tauri::Wry>,
             commands::library::get_active_library_id,
             commands::source::webdav_list_folders,
             commands::source::onedrive_start_auth,
-            commands::source::add_onedrive_data_source,
+            commands::source::add_onedrive_data_source::<tauri::Wry>,
             commands::source::onedrive_list_folders,
-            commands::book::get_books,
-            commands::book::get_books_page,
-            commands::book::get_book_detail,
-            commands::book::get_series_books,
-            commands::progress::get_reading_progress,
-            commands::progress::set_reading_progress,
+            commands::book::get_books::<tauri::Wry>,
+            commands::book::get_books_page::<tauri::Wry>,
+            commands::book::get_book_detail::<tauri::Wry>,
+            commands::book::get_series_books::<tauri::Wry>,
+            commands::progress::get_reading_progress::<tauri::Wry>,
+            commands::progress::set_reading_progress::<tauri::Wry>,
             commands::reader::get_reader_ui_preferences,
-            commands::reader::set_reader_ui_preferences,
-            commands::reader::prepare_book_source,
+            commands::reader::set_reader_ui_preferences::<tauri::Wry>,
+            commands::reader::prepare_book_source::<tauri::Wry>,
             commands::reader::write_epub_readium_manifest,
             commands::reader::close_book_streamer,
             commands::cache::get_cache_usage,
             commands::cache::clear_cache,
             commands::cache::enforce_cache_limit,
-            commands::sync::sync_db_for_library,
-            commands::download::check_book_file_state,
-            commands::download::download_book_file,
-            commands::download::delete_local_book_file,
+            commands::sync::sync_db_for_library::<tauri::Wry>,
+            commands::download::check_book_file_state::<tauri::Wry>,
+            commands::download::download_book_file::<tauri::Wry>,
+            commands::download::delete_local_book_file::<tauri::Wry>,
             commands::download::cancel_book_download,
         ]);
 

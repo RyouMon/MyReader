@@ -1,6 +1,7 @@
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 use tracing::{error, info};
 
+use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::FileStateDto;
@@ -8,8 +9,8 @@ use crate::services::download_service::DownloadService;
 
 #[tauri::command]
 #[specta::specta]
-pub async fn check_book_file_state(
-    app: AppHandle,
+pub async fn check_book_file_state<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     library_id: String,
     book_id: i64,
@@ -20,14 +21,8 @@ pub async fn check_book_file_state(
         library_id, book_id, format
     );
 
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
-    let config = {
-        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
-    };
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
 
     let result = DownloadService::check_file_state(
         &app_data_dir,
@@ -54,8 +49,8 @@ pub async fn check_book_file_state(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn download_book_file(
-    app: AppHandle,
+pub async fn download_book_file<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     service: State<'_, DownloadService>,
     library_id: String,
@@ -82,14 +77,8 @@ pub async fn download_book_file(
         }
     };
 
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
-    let config = {
-        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
-    };
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
 
     let app_clone = app.clone();
     let library_id_clone = library_id.clone();
@@ -153,8 +142,8 @@ pub async fn cancel_book_download(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn delete_local_book_file(
-    app: AppHandle,
+pub async fn delete_local_book_file<R: tauri::Runtime>(
+    app: AppHandle<R>,
     state: State<'_, AppState>,
     library_id: String,
     book_id: i64,
@@ -165,14 +154,8 @@ pub async fn delete_local_book_file(
         library_id, book_id, format
     );
 
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Config(format!("APP_DATA_DIR_ERROR: {e}")))?;
-    let config = {
-        let guard = state.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clone()
-    };
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
 
     DownloadService::delete_local_file(
         &app_data_dir,

@@ -32,7 +32,8 @@ The project uses a five-layer test architecture. Each layer has its own stack, r
 │  Tools: cargo test + tauri::test (mock_app / mock_builder)   │
 │  Goal: Validate Tauri commands and backend collaboration     │
 │  Scope: Command handlers, state injection, multi-module I/O  │
-│  Location: src-tauri/tests/                                 │
+│  Location: src-tauri/tests/ (single integration binary       │
+│            tests/integration.rs; subtree mirrors src/commands)│
 ├─────────────────────────────────────────────────────────────┤
 │  Layer 2: Backend unit tests                                 │
 │  Tools: cargo test + #[cfg(test)]                            │
@@ -134,9 +135,24 @@ my-reader/
 │   │   │   └── file.rs
 │   │   └── utils.rs
 │   ├── tests/
+│   │   ├── integration.rs          # Single integration-test entry (mod common; mod commands;)
 │   │   ├── common/
-│   │   │   └── mod.rs              # Shared test helpers
-│   │   └── commands_integration_test.rs  # Integration tests (Layer 3)
+│   │   │   ├── mod.rs              # Re-exports app/config/ipc/calibre fixtures
+│   │   │   ├── app.rs              # TestApp builder over tauri::test::mock_builder
+│   │   │   ├── config.rs           # Seed/read AppConfig JSON fixtures
+│   │   │   ├── ipc.rs              # invoke_ok / invoke_err helpers
+│   │   │   └── calibre.rs          # Minimal Calibre metadata.db fixture
+│   │   ├── commands/               # Mirrors src/commands/*.rs
+│   │   │   ├── mod.rs              # pub mod book_test; pub mod cache_test; …
+│   │   │   ├── book_test.rs        # Tests for src/commands/book.rs
+│   │   │   ├── cache_test.rs
+│   │   │   ├── download_test.rs
+│   │   │   ├── library_test.rs
+│   │   │   ├── progress_test.rs
+│   │   │   ├── reader_test.rs
+│   │   │   ├── source_test.rs
+│   │   │   └── sync_test.rs
+│   │   └── export_bindings.rs      # Separate binary: regenerates TS bindings
 │   └── Cargo.toml
 │
 ├── e2e-frontend/                   # E2E frontend (Layer 4)
@@ -183,7 +199,7 @@ my-reader/
 | Frontend unit | `*.test.{ts,tsx}` | `cover.test.ts` | `src/**/__tests__/` |
 | Frontend integration | `*.integration.test.ts` | `ipc.integration.test.ts` | under `src/` |
 | Rust unit | inline `#[cfg(test)] mod tests` | — | inside source files |
-| Rust integration | `*_test.rs` or `*_integration_test.rs` | `commands_integration_test.rs` | `src-tauri/tests/` |
+| Rust integration | `<file>_test.rs` under `tests/commands/`, wired via `tests/integration.rs` | `library_test.rs` | `src-tauri/tests/commands/` |
 | E2E frontend feature | `*.feature` | `settings.feature` | `e2e-frontend/features/` |
 | E2E frontend steps | `*-steps.ts` | `settings-steps.ts` | `e2e-frontend/step-definitions/` |
 | E2E desktop feature | `*.feature` | `critical-path.feature` | `e2e/features/` |
@@ -245,6 +261,12 @@ describe('SettingsForm', () => {
 ```
 
 ### 4.2 Rust tests
+
+> **Privacy policy (hybrid)**: Private free-function unit tests (private helpers, parsers, normalizers) live inline in `#[cfg(test)] mod tests` next to the production code — Rust's natural unit-test home. Command-layer and cross-module integration tests live under `src-tauri/tests/` and go through `tauri::test::mock_builder()` like the production IPC boundary. **Do not move private-helper tests just to mirror `src/` structure under `tests/`; do not widen visibility (`pub(crate)` → `pub`) purely so an integration test can name a private item.** If a test needs to reach private state, route it through a command call.
+>
+> **Naming**: integration test functions follow `unit_under_test_should_expected_behavior_when_condition`.
+>
+> **Layout**: a single integration binary at `tests/integration.rs` does `mod common; mod commands;`. Cargo auto-compiles only top-level `tests/*.rs`, so files under `tests/commands/*_test.rs` and `tests/common/*.rs` are reached *only* via `mod` declarations from the entry — one link product, one shared fixture tree.
 
 ```rust
 // src-tauri/src/commands/greet.rs
@@ -495,8 +517,16 @@ A: No. Step definitions differ (Playwright vs WebdriverIO APIs), and scope diffe
 **Q: `mock_app()` vs `mock_builder()`?**  
 A: Prefer `mock_builder()` as the default entry; use `mock_app()` only for quick spikes. `mock_builder()` supports plugins, multiple commands, state injection, etc.
 
-**Q: `STATUS_ENTRYPOINT_NOT_FOUND` on Windows `cargo test`?**  
-A: Known Tauri issue (#13419). Mitigations: conditional manifest embedding in `src-tauri/build.rs`, or run Rust tests primarily on Linux in CI.
+**Q: `STATUS_ENTRYPOINT_NOT_FOUND` on Windows `cargo test --lib`?**  
+A: Known Tauri issue (#13419). Tauri links `comctl32` v6, but `cargo test --lib` test binaries do not embed the required Windows application manifest. The same applies to `cargo test --test integration` — the integration binary spins up `tauri::test::mock_builder()` and hits the same manifest gap. We do not add Windows-only manifest workarounds to `src-tauri/build.rs` to keep the build script simple and avoid conflicts with Tauri's own resource manifest. On Windows, run Rust unit *and* integration tests inside **WSL** (or any Linux environment) instead:
+
+```bash
+cd my-reader/src-tauri
+cargo test --lib
+cargo test --test integration
+```
+
+Windows native `cargo build` is unaffected and remains the supported way to build the desktop app.
 
 **Q: Does Playwright E2E need the Rust backend running?**  
 A: No. Layer 4 starts Vite via `webServer.command: 'npm run dev'` and mocks backend via `mockIPC()`. That separation is the point of Layer 4.
@@ -509,6 +539,6 @@ A: `src/__mocks__/` (e.g. `setup.ts`) holds global Vitest setup and shared mock 
 
 ---
 
-> **Version**: 2.1 
+> **Version**: 2.2 
 > **Based on**: Tauri v2 + React 18 + Vite 6  
-> **Last updated**: 2026-05-14
+> **Last updated**: 2026-06-25
