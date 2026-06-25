@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>封面取色背景原型</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+  <style>
+    :root {
+      --radius-big: 28px;
+      --radius-small: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #121212;
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      padding: 48px 20px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+      color: #e8e8e8;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="file"] {
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .stage {
+      width: min(720px, 92vw);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 卡片公共样式 */
+    .card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* 取色后的环境背景层 */
+    .ambient-bg {
+      position: absolute;
+      inset: -40px;
+      background: var(--ambient-gradient);
+      filter: blur(56px) saturate(1.2) brightness(0.7);
+      opacity: 0.85;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* 遮罩层：让文字可读，同时保留色彩氛围 */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(0, 0, 0, 0.18) 0%,
+        rgba(0, 0, 0, 0.32) 100%
+      );
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    /* 大卡片 */
+    .big-card {
+      border-radius: var(--radius-big);
+    }
+
+    .big-card .content {
+      padding: 24px;
+    }
+
+    .big-card .cover {
+      width: 132px;
+      height: 198px;
+      object-fit: cover;
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      flex-shrink: 0;
+    }
+
+    .big-card .info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .big-card .title {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    .big-card .author {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .big-card .progress {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.65);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      width: 160px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar > div {
+      height: 100%;
+      width: 64%;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 2px;
+    }
+
+    /* 小卡片 */
+    .small-card {
+      border-radius: var(--radius-small);
+      max-width: 420px;
+    }
+
+    .small-card .content {
+      padding: 16px;
+    }
+
+    .small-card .cover {
+      width: 72px;
+      height: 108px;
+      object-fit: cover;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
+    }
+
+    .small-card .info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .small-card .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+    }
+
+    .small-card .author {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.72);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .small-card .progress {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.65);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .more {
+      margin-left: auto;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>封面取色 · 卡片背景原型</h1>
+
+  <div class="controls">
+    <input type="file" id="coverInput" accept="image/*" />
+    <div class="palette" id="palette"></div>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <script>
+    const colorThief = new ColorThief();
+    const stage = document.getElementById("stage");
+    const paletteEl = document.getElementById("palette");
+    const input = document.getElementById("coverInput");
+
+    // 生成一张默认封面（多彩几何）用于首次展示
+    function defaultCoverDataUrl() {
+      const canvas = document.createElement("canvas");
+      canvas.width = 360;
+      canvas.height = 540;
+      const ctx = canvas.getContext("2d");
+
+      // 暖色底
+      const grd = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grd.addColorStop(0, "#C4622D");
+      grd.addColorStop(0.45, "#3A5A78");
+      grd.addColorStop(1, "#1E2A38");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 装饰色块
+      const shapes = [
+        { x: 40, y: 80, r: 90, color: "#E8B891" },
+        { x: 260, y: 160, r: 120, color: "#6B8CAE" },
+        { x: 120, y: 340, r: 140, color: "#9C4B22" },
+        { x: 280, y: 460, r: 80, color: "#D6A476" },
+      ];
+
+      shapes.forEach((s) => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = 0.55;
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      return canvas.toDataURL("image/png");
+    }
+
+    function rgbToCss(rgb) {
+      return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    }
+
+    function buildGradient(colors) {
+      const c = colors.slice(0, 5).map(rgbToCss);
+      // 用几个主色做 135deg 渐变，并在右下角加一个亮色聚焦
+      return `linear-gradient(
+        135deg,
+        ${c[0]} 0%,
+        ${c[1] ?? c[0]} 35%,
+        ${c[2] ?? c[0]} 70%,
+        ${c[3] ?? c[0]} 100%
+      )`;
+    }
+
+    function renderPalette(colors) {
+      paletteEl.innerHTML = "";
+      colors.slice(0, 6).forEach((rgb) => {
+        const div = document.createElement("div");
+        div.className = "swatch";
+        div.style.backgroundColor = rgbToCss(rgb);
+        paletteEl.appendChild(div);
+      });
+    }
+
+    function renderCards(src, colors) {
+      stage.innerHTML = "";
+      stage.style.setProperty("--ambient-gradient", buildGradient(colors));
+
+      stage.innerHTML = `
+        <div class="card big-card">
+          <div class="ambient-bg"></div>
+          <div class="overlay"></div>
+          <div class="content">
+            <img class="cover" src="${src}" alt="cover" />
+            <div class="info">
+              <div class="title">百年孤独</div>
+              <div class="author">加西亚·马尔克斯</div>
+              <div class="progress">64%</div>
+              <div class="progress-bar"><div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card small-card">
+          <div class="ambient-bg"></div>
+          <div class="overlay"></div>
+          <div class="content">
+            <img class="cover" src="${src}" alt="cover" />
+            <div class="info">
+              <div class="title">百年孤独</div>
+              <div class="author">加西亚·马尔克斯</div>
+              <div class="progress">64%</div>
+            </div>
+            <div class="more">⋯</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateFromImage(img) {
+      const palette = colorThief.getPalette(img, 6);
+      renderPalette(palette);
+      renderCards(img.src, palette);
+    }
+
+    // 初始展示
+    const defaultImg = new Image();
+    defaultImg.crossOrigin = "Anonymous";
+    defaultImg.src = defaultCoverDataUrl();
+    defaultImg.onload = () => updateFromImage(defaultImg);
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      img.onload = () => updateFromImage(img);
+    });
+  </script>
+</body>
+</html>

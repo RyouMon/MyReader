@@ -2,6 +2,7 @@ import { FlatList, useWindowDimensions } from "react-native";
 
 import type { BookItem } from "@/src/domain/types";
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
+import type { HomeCardStyle } from "@/src/store/app-store.types";
 import { ReadingListCard } from "./reading-list-card";
 
 function getCardWidth(screenWidth: number): number {
@@ -22,6 +23,7 @@ export type ReadingShelfProps = {
   onMenuOpen?: (bookId: string) => void;
   onMenuClose?: () => void;
   isAnyMenuOpen?: boolean;
+  homeCardStyle?: HomeCardStyle;
 };
 
 export function ReadingShelf({
@@ -36,6 +38,7 @@ export function ReadingShelf({
   onMenuOpen,
   onMenuClose,
   isAnyMenuOpen,
+  homeCardStyle,
 }: ReadingShelfProps) {
   const { width } = useWindowDimensions();
   const cardWidth = getCardWidth(width);
@@ -62,6 +65,7 @@ export function ReadingShelf({
           onMenuOpen={onMenuOpen}
           onMenuClose={onMenuClose}
           isAnyMenuOpen={isAnyMenuOpen}
+          homeCardStyle={homeCardStyle}
         />
       )}
     />

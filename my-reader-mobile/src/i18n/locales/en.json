@@ -138,7 +138,10 @@
       "dark": "Dark"
     },
     "language": "Language",
-    "languageDetail": "Change display language"
+    "languageDetail": "Change display language",
+    "homeCardStyle": "Home Card Style",
+    "homeCardStyle.adaptive": "Adaptive",
+    "homeCardStyle.coverBlur": "Blurred Cover"
   },
   "reader": {
     "cannotOpen": "Cannot open book",

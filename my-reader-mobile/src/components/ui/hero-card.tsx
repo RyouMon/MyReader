@@ -8,7 +8,7 @@ export function HeroCard({ children }: { children: ReactNode }) {
 
   return (
     <View
-      className="rounded-[28px]"
+      className="overflow-hidden rounded-[28px]"
       style={{
         backgroundColor: palette.surface,
         borderColor: palette.border,

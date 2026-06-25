@@ -10,6 +10,7 @@ export const defaultSettings: ReaderSettings = {
   language: "",
   syncOnStartup: true,
   enableAutoSync: true,
+  homeCardStyle: "adaptive",
   reflowable: {
     theme: "paper",
     fontFamily: "serif",

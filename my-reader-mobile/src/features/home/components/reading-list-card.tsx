@@ -8,6 +8,7 @@ import { useTheme, useThemePalette } from "@/src/design/tokens";
 import { TEXT_SIZE } from "@/src/design/typography";
 import { pressedBackgroundColor, androidRippleColor } from "@/src/design/press-feedback";
 import type { BookItem } from "@/src/domain/types";
+import type { HomeCardStyle } from "@/src/store/app-store.types";
 import { Pressable, Text, View } from "@/tw";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import {
@@ -15,6 +16,8 @@ import {
   type BookDownloadStatus,
 } from "@/src/features/library/components/books/book-cover";
 import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
+import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
+import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu";
 
 const COVER_HEIGHT = 100;
@@ -36,6 +39,7 @@ export type ReadingListCardProps = {
   onMenuOpen?: (bookId: string) => void;
   onMenuClose?: () => void;
   isAnyMenuOpen?: boolean;
+  homeCardStyle?: HomeCardStyle;
 };
 
 function ReadingListCardImpl({
@@ -52,11 +56,13 @@ function ReadingListCardImpl({
   onMenuOpen,
   onMenuClose,
   isAnyMenuOpen,
+  homeCardStyle,
 }: ReadingListCardProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
   const { colorScheme } = useTheme();
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light";
+  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme);
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
@@ -164,8 +170,16 @@ function ReadingListCardImpl({
         borderColor: palette.border,
         borderWidth: 1,
         boxShadow: palette.shadowMd,
+        overflow: "hidden",
       }}
     >
+      <CoverAdaptiveBackground
+        coverUri={book.coverUri}
+        rawColors={coverRawColors}
+        colorScheme={resolvedScheme}
+        borderRadius={16}
+        variant={homeCardStyle}
+      />
       <Pressable
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={t("bookDetail.openBook", { title: book.title })}

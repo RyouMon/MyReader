@@ -138,7 +138,10 @@
       "dark": "深色"
     },
     "language": "语言",
-    "languageDetail": "切换界面显示语言"
+    "languageDetail": "切换界面显示语言",
+    "homeCardStyle": "主页卡片风格",
+    "homeCardStyle.adaptive": "自适应",
+    "homeCardStyle.coverBlur": "模糊封面"
   },
   "reader": {
     "cannotOpen": "无法打开书籍",

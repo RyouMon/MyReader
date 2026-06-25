@@ -9,6 +9,7 @@ import type { SettingsSlice, ProgramSlice } from "./settings-slice";
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";
+export type HomeCardStyle = "adaptive" | "coverBlur";
 
 export type TextAlignment = "auto" | "justify" | "start";
 export type ColumnCount = "1" | "auto";
@@ -39,6 +40,7 @@ export type ReaderSettings = {
   language: string;
   syncOnStartup: boolean;
   enableAutoSync: boolean;
+  homeCardStyle: HomeCardStyle;
   reflowable: ReflowableReaderSettings;
   fixed: FixedReaderSettings;
 };

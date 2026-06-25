@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
+import type { HomeCardStyle } from "@/src/store/app-store.types";
 import { View } from "@/tw";
 
 import { Screen, SectionCard, ListMenuRow, ListRow, SectionLabel } from "@/src/components";
@@ -80,6 +81,25 @@ export default function SettingsScreen() {
     [effectiveLanguage, languageLabels]
   );
 
+  const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle);
+  const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle);
+  const homeCardStyleLabels = useMemo<Record<HomeCardStyle, string>>(
+    () => ({
+      adaptive: t("settings.homeCardStyle.adaptive"),
+      coverBlur: t("settings.homeCardStyle.coverBlur"),
+    }),
+    [t]
+  );
+  const homeCardStyleValue = homeCardStyleLabels[homeCardStyle];
+  const homeCardStyleMenuActions = useMemo<MenuAction[]>(
+    () =>
+      (["adaptive", "coverBlur"] as HomeCardStyle[]).map((style) => ({
+        id: `homeCardStyle:${style}`,
+        title: `${homeCardStyle === style ? "✓ " : ""}${homeCardStyleLabels[style]}`,
+      })),
+    [homeCardStyle, homeCardStyleLabels]
+  );
+
   return (
     <>
       <Screen>
@@ -149,6 +169,16 @@ export default function SettingsScreen() {
               }}
               title={t("settings.darkMode")}
               value={themeMode}
+            />
+            <ListMenuRow
+              actions={homeCardStyleMenuActions}
+              isAnchoredToRight
+              onPressAction={({ nativeEvent }) => {
+                const nextStyle = nativeEvent.event.replace("homeCardStyle:", "") as HomeCardStyle;
+                setHomeCardStyle(nextStyle);
+              }}
+              title={t("settings.homeCardStyle")}
+              value={homeCardStyleValue}
               isLast
             />
           </SectionCard>

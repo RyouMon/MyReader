@@ -16,6 +16,7 @@ type BookDownloadStatusIndicatorProps = {
   fallbackProgress?: number;
   size?: number;
   strokeWidth?: number;
+  color?: string;
 };
 
 type DownloadingProgressProps = {
@@ -52,13 +53,16 @@ export function BookDownloadStatusIndicator({
   fallbackProgress,
   size = TEXT_SIZE.base,
   strokeWidth = 1.5,
+  color: overrideColor,
 }: BookDownloadStatusIndicatorProps) {
   const palette = useThemePalette();
+  const cloudColor = overrideColor ?? palette.textMuted;
+  const progressColor = overrideColor ?? palette.primary;
 
   if (!status) return null;
 
   if (status === "notDownloaded") {
-    return <CloudIcon size={size} color={palette.textMuted} />;
+    return <CloudIcon size={size} color={cloudColor} />;
   }
 
   if (status === "downloading") {
@@ -70,7 +74,7 @@ export function BookDownloadStatusIndicator({
           format={format}
           size={size}
           strokeWidth={strokeWidth}
-          color={palette.primary}
+          color={progressColor}
           fallbackProgress={fallbackProgress}
         />
       );
@@ -81,7 +85,7 @@ export function BookDownloadStatusIndicator({
         indeterminate={!fallbackProgress}
         size={size}
         strokeWidth={strokeWidth}
-        color={palette.primary}
+        color={progressColor}
       />
     );
   }
