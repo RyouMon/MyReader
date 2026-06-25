@@ -6,7 +6,7 @@
     "settings": "设置"
   },
   "home": {
-    "title": "我的阅读",
+    "title": "主页",
     "continueReading": "继续阅读",
     "noCover": "无封面",
     "currentLibrary": "当前书库：{{name}} · 共 {{count}} 本",

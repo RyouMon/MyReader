@@ -8,7 +8,7 @@ export function HeroCard({ children }: { children: ReactNode }) {
 
   return (
     <View
-      className="rounded-[28px] p-4"
+      className="rounded-[28px]"
       style={{
         backgroundColor: palette.surface,
         borderColor: palette.border,

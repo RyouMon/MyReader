@@ -10,12 +10,11 @@ import {
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction, type MenuComponentRef } from "@react-native-menu/menu";
-import chroma from "chroma-js";
 import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 
-import { mixInk } from "@/src/design/reader-chrome-palette";
 import { useTheme, useThemePalette, type ThemePalette } from "@/src/design/tokens";
+import { pressedBackgroundColor, androidRippleColor } from "@/src/design/press-feedback";
 import { Text, View } from "@/tw";
 
 const ROW_CLASS = "flex-row items-start justify-between gap-3 px-4 py-4";
@@ -38,16 +37,12 @@ function listRowTextStyle(color: string) {
 }
 
 function listRowPressedBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
-  if (colorScheme === "light") {
-    return mixInk(palette.text, palette.surface, 12);
-  }
-
-  return chroma(palette.surface).brighten(0.5).hex();
+  return pressedBackgroundColor(colorScheme, palette);
 }
 
 function listRowAndroidPressBackground(colorScheme: "light" | "dark", palette: ThemePalette) {
   if (colorScheme === "light") {
-    return TouchableNativeFeedback.Ripple(chroma(palette.text).alpha(0.14).css(), false);
+    return TouchableNativeFeedback.Ripple(androidRippleColor(colorScheme, palette), false);
   }
 
   return TouchableNativeFeedback.SelectableBackground();

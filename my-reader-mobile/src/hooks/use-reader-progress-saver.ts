@@ -62,7 +62,8 @@ export function useReaderProgressSaver(
       const ctx = bookContextRef.current;
       if (ctx) {
         queryClient.invalidateQueries({ queryKey: ["reading-progress", ctx.library.id] });
-        console.info("[mobile-reader] Invalidated queryKey: reading-progress.");
+        queryClient.invalidateQueries({ queryKey: ["reading-books", ctx.library.id] });
+        console.info("[mobile-reader] Invalidated queryKey: reading-progress, reading-books.");
       }
     };
   }, []);

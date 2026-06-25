@@ -6,7 +6,7 @@
     "settings": "Settings"
   },
   "home": {
-    "title": "My Reader",
+    "title": "Home",
     "continueReading": "Continue Reading",
     "noCover": "No Cover",
     "currentLibrary": "Library: {{name}} · {{count}} books",

@@ -1,8 +1,6 @@
 import { memo, useCallback, useMemo } from "react";
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { SymbolView } from "expo-symbols";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
@@ -12,10 +10,9 @@ import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
 
-import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
-import { DownloadProgressIndicator } from "./download-progress-indicator";
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
 import { ProgressLabel } from "./progress-label";
 
 export type BookCardProps = {
@@ -78,7 +75,6 @@ function BookCardImpl({
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
-  const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
 
   const hasMenuInputs = menuIsRemote !== undefined;
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
@@ -174,26 +170,14 @@ function BookCardImpl({
           <ProgressLabel progress={progress} />
         </View>
         <View className="flex-row items-center">
-          {showCloudIcon ? (
-            Platform.OS === "ios" ? (
-              <SymbolView name="cloud.fill" size={TEXT_SIZE.base} tintColor={palette.textMuted} />
-            ) : (
-              <MaterialIcons name="cloud" size={TEXT_SIZE.base} color={palette.textMuted} />
-            )
-          ) : showProgressIndicator ? (
-            hasSubscription ? (
-              <DownloadProgressIndicator
-                libraryId={subscriptionLibraryId ?? ""}
-                bookId={book.id}
-                format={subscriptionFormat ?? ""}
-                size={TEXT_SIZE.base}
-                strokeWidth={1.5}
-                color={palette.primary}
-                fallbackProgress={downloadProgress}
-              />
-            ) : (
-              <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={TEXT_SIZE.base} strokeWidth={1.5} color={palette.primary} />
-            )
+          {showCloudIcon || showProgressIndicator ? (
+            <BookDownloadStatusIndicator
+              status={downloadStatus}
+              libraryId={subscriptionLibraryId}
+              bookId={book.id}
+              format={subscriptionFormat}
+              fallbackProgress={downloadProgress}
+            />
           ) : null}
           {hasMenu ? (
             computedMenuActions && onMenuAction ? (
