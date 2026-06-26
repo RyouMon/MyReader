@@ -175,7 +175,7 @@ export default function BookDetailScreen() {
         ),
         iosSfSymbol: isCurrentFavorite ? "star.fill" : "star",
         iconOnly: true,
-        color: isCurrentFavorite ? palette.primary : detailColors.muted,
+        color: isCurrentFavorite ? palette.primary : undefined,
       },
     ];
   }, [currentDetail, detailColors.muted, handleToggleFavorite, isCurrentFavorite, palette.primary, t]);
