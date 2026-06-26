@@ -1,19 +1,28 @@
-import { Link, useLocation } from "@tanstack/react-router"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import {
   BookCopy,
   Check,
   ChevronsUpDown,
   Clock,
   Library,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PlusCircle,
   Settings,
   Star,
   Tags,
   User,
 } from "lucide-react"
-import { useLayoutEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
 import { useTranslation } from "react-i18next"
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -27,175 +36,109 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export type SidebarView = "all" | "recent" | "favorites"
 
-type LibMenuRect = { top: number; left: number; width: number }
-
 export default function AppSidebar() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { state, toggleSidebar } = useSidebar()
+  const isCollapsed = state === "collapsed"
   const { data: libraries = [] } = useLibrariesQuery()
   const { activeLibraryId, switchLibrary } = useLibraryUiStore()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const location = useLocation()
-  const [libMenuOpen, setLibMenuOpen] = useState(false)
-  const [libMenuRect, setLibMenuRect] = useState<LibMenuRect | null>(null)
-  const libTriggerRef = useRef<HTMLButtonElement>(null)
-
-  useLayoutEffect(() => {
-    if (!libMenuOpen) {
-      setLibMenuRect(null)
-      return
-    }
-
-    const update = () => {
-      const el = libTriggerRef.current
-      if (!el) return
-      const r = el.getBoundingClientRect()
-      setLibMenuRect({
-        top: r.bottom + 4,
-        left: r.left,
-        width: r.width,
-      })
-    }
-
-    window.addEventListener("scroll", update, true)
-    window.addEventListener("resize", update)
-    return () => {
-      window.removeEventListener("scroll", update, true)
-      window.removeEventListener("resize", update)
-    }
-  }, [libMenuOpen])
 
   const isSettingsActive = location.pathname === "/settings"
   const isLibraryActive = location.pathname === "/"
   const totalCount = activeLibrary?.bookCount ?? 0
+  const libraryLabel = activeLibrary?.name ?? t("sidebar.noLibrary")
 
   return (
     <Sidebar
       collapsible="icon"
       className="min-w-0 overflow-x-hidden touch-pan-y overscroll-x-none"
     >
-      <SidebarHeader className="gap-0 pt-3 pb-2 overflow-x-hidden relative">
-        <SidebarTrigger className="absolute top-2 end-2 z-10 group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:end-auto group-data-[collapsible=icon]:top-auto group-data-[collapsible=icon]:mx-auto" />
-        <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:hidden">
-          <div
-            className="font-serif flex size-9 shrink-0 items-center justify-center rounded-lg text-base font-bold text-ink-inverse"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--primary), var(--secondary))",
-            }}
-          >
-            M
-          </div>
-          <span className="font-serif text-lg font-bold tracking-tight group-data-[collapsible=icon]:hidden">
-            MyReader
-          </span>
-        </div>
-
-        <div className="relative group-data-[collapsible=icon]:hidden">
-          <button
-            ref={libTriggerRef}
-            type="button"
-            onClick={() => {
-              if (libMenuOpen) {
-                setLibMenuOpen(false)
-                return
-              }
-              const el = libTriggerRef.current
-              if (el) {
-                const r = el.getBoundingClientRect()
-                setLibMenuRect({
-                  top: r.bottom + 4,
-                  left: r.left,
-                  width: r.width,
-                })
-              }
-              setLibMenuOpen(true)
-            }}
-            className={cn(
-              "mt-1 mx-1 w-[calc(100%-8px)] flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
-              "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              libMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground",
-            )}
-          >
-            <span className="sr-only">
-              {activeLibrary ? t("sidebar.connected") : t("sidebar.disconnected")}
-            </span>
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-2 shrink-0 rounded-full",
-                activeLibrary
-                  ? "bg-library-indicator-on"
-                  : "bg-library-indicator-off",
-              )}
-            />
-            <span className="flex-1 truncate text-start">
-              {activeLibrary?.name ?? t("sidebar.noLibrary")}
-            </span>
-            <ChevronsUpDown className="size-3 opacity-50" />
-          </button>
-
-          {libMenuOpen &&
-            libMenuRect &&
-            createPortal(
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  aria-hidden
-                  onClick={() => setLibMenuOpen(false)}
-                />
-                <div
-                  className="fixed z-50 min-w-0 rounded-lg border border-border bg-popover py-1 shadow-lg animate-in fade-in-0 zoom-in-95 duration-150"
-                  style={{
-                    top: libMenuRect.top,
-                    left: libMenuRect.left,
-                    width: libMenuRect.width,
-                  }}
+      <SidebarHeader className="gap-0 overflow-x-hidden">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  tooltip={t("sidebar.switchLibrary")}
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  {libraries.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      {t("sidebar.noLibraries")}
-                    </div>
-                  ) : (
-                    libraries.map((lib) => (
-                      <button
-                        type="button"
-                        key={lib.id}
-                        onClick={() => {
-                          switchLibrary(lib.id)
-                          setLibMenuOpen(false)
-                        }}
-                        className={cn(
-                          "flex w-full min-w-0 items-center gap-2 px-3 py-2 text-xs transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground",
-                          lib.id === activeLibrary?.id &&
-                            "font-medium text-primary",
-                        )}
-                      >
-                        <span className="min-w-0 flex-1 truncate text-start">
-                          {lib.name}
-                        </span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-                          {t("sidebar.booksCount", { count: lib.bookCount })}
-                        </span>
-                        {lib.id === activeLibrary?.id && (
-                          <Check className="size-3 shrink-0 text-primary" />
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </>,
-              document.body,
-            )}
-        </div>
+                  <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                    <Library className="size-4" />
+                  </div>
+                  <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                    <span className="truncate font-semibold">
+                      {libraryLabel}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {activeLibrary
+                        ? t("sidebar.connected")
+                        : t("sidebar.disconnected")}
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="right"
+                align="start"
+                sideOffset={4}
+              >
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  {t("sidebar.libraries")}
+                </DropdownMenuLabel>
+
+                {libraries.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {t("sidebar.noLibraries")}
+                  </div>
+                ) : (
+                  libraries.map((lib) => (
+                    <DropdownMenuItem
+                      key={lib.id}
+                      onClick={() => switchLibrary(lib.id)}
+                      className="gap-2 p-2"
+                    >
+                      <Library className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">
+                        {lib.name}
+                      </span>
+                      {lib.id === activeLibraryId && (
+                        <Check
+                          data-testid="active-library-check"
+                          className="ml-auto size-4 shrink-0 text-primary"
+                        />
+                      )}
+                    </DropdownMenuItem>
+                  ))
+                )}
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => navigate({ to: "/settings" })}
+                  className="gap-2 p-2"
+                >
+                  <PlusCircle className="size-4 shrink-0" />
+                  <span className="font-medium text-muted-foreground">
+                    {t("addLibraryForm.label")}
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarSeparator />
@@ -271,7 +214,7 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="overflow-x-hidden">
+      <SidebarFooter className="overflow-x-hidden p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -284,6 +227,25 @@ export default function AppSidebar() {
                 <span>{t("sidebar.settings")}</span>
               </Link>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem className="flex justify-end">
+            <button
+              type="button"
+              data-testid="sidebar-toggle-button"
+              onClick={toggleSidebar}
+              title={isCollapsed ? t("sidebar.expand") : t("sidebar.collapse")}
+              aria-label={
+                isCollapsed ? t("sidebar.expand") : t("sidebar.collapse")
+              }
+              className="inline-flex size-8 items-center justify-center rounded-md text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2"
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </button>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

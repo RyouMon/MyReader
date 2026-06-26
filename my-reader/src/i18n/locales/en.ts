@@ -11,7 +11,8 @@ export const en = {
       AUTH_ERROR: "Authentication error: {{detail}}",
       CREDENTIAL_ERROR: "Credential error: {{detail}}",
       SYNC_ERROR: "Sync error: {{detail}}",
-      ONEDRIVE_CLIENT_ID_REQUIRED: "OneDrive client ID is required. Please fill in the default client ID or provide one in advanced settings.",
+      ONEDRIVE_CLIENT_ID_REQUIRED:
+        "OneDrive client ID is required. Please fill in the default client ID or provide one in advanced settings.",
       WEBDAV_UNAUTHORIZED:
         "Connection failed: 401 Unauthorized, invalid username or password ({{detail}})",
       WEBDAV_FORBIDDEN:
@@ -19,8 +20,10 @@ export const en = {
       WEBDAV_NOT_FOUND:
         "Connection failed: 404 Not Found, remote root path does not exist ({{detail}})",
       WEBDAV_UNEXPECTED_STATUS: "Connection failed: status {{detail}}",
-      WEBDAV_METADATA_DOWNLOAD_FAILED: "Failed to download library data (metadata.db), check network and WebDAV config",
-      WEBDAV_LIBRARY_MISSING_DATASOURCE: "WebDAV library missing linked data source",
+      WEBDAV_METADATA_DOWNLOAD_FAILED:
+        "Failed to download library data (metadata.db), check network and WebDAV config",
+      WEBDAV_LIBRARY_MISSING_DATASOURCE:
+        "WebDAV library missing linked data source",
       WEBDAV_LIBRARY_MISSING_SOURCE_PATH: "WebDAV library missing remote path",
     },
     sidebar: {
@@ -35,6 +38,10 @@ export const en = {
       disconnected: "Disconnected",
       noLibrary: "No library selected",
       noLibraries: "No libraries",
+      libraries: "Libraries",
+      switchLibrary: "Switch library",
+      expand: "Expand sidebar",
+      collapse: "Collapse sidebar",
       booksCount: "{{count}} books",
       browse: "Browse",
     },
@@ -212,8 +219,10 @@ export const en = {
       typeWebdavDesc: "Network storage service",
       dataSourceLabel: "Data source",
       selectDataSource: "Select configured data source",
-      webdavSourceHint: "WebDAV data sources can be configured in the Data Sources settings",
-      onedriveSourceHint: "OneDrive data sources can be configured in the Data Sources settings",
+      webdavSourceHint:
+        "WebDAV data sources can be configured in the Data Sources settings",
+      onedriveSourceHint:
+        "OneDrive data sources can be configured in the Data Sources settings",
       pathPlaceholder: "Enter Calibre library path, e.g. D:\\CalibreLibrary",
       pathLabel: "Library path",
       browse: "Browse",
@@ -275,8 +284,10 @@ export const en = {
       openWindow: "Opening reader window…",
       loadingBook: "Loading book…",
       loadingReadium: "Loading Readium book…",
-      noActiveLibrary: "No active library. Select a library in the main window first",
-      noReadableFormat: "No readable format available. EPUB, CBZ, or PDF required",
+      noActiveLibrary:
+        "No active library. Select a library in the main window first",
+      noReadableFormat:
+        "No readable format available. EPUB, CBZ, or PDF required",
       loadEpubFailed: "Failed to load EPUB",
       loadComicFailed: "Failed to load comic",
       comicDirUnavailable: "Comic extraction directory unavailable",
@@ -361,7 +372,8 @@ export const en = {
       localDataSourceName: "Local Storage",
     },
     stores: {
-      createNotSupported: "Creating data sources is not supported in this environment",
+      createNotSupported:
+        "Creating data sources is not supported in this environment",
       editNotSupported:
         "Editing data sources is not yet supported on desktop. Delete and re-add instead.",
     },

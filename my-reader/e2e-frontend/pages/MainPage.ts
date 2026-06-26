@@ -44,14 +44,14 @@ export class MainPage {
   // Desktop trigger (also used as mobile icon-strip trigger)
   getSidebarTriggerButton() {
     return this.page.locator(
-      '[data-slot="sidebar"]:not([data-mobile]) [data-slot="sidebar-trigger"]',
+      '[data-slot="sidebar"]:not([data-mobile]) [data-testid="sidebar-toggle-button"]',
     )
   }
 
   // Mobile Sheet trigger (inside the overlay)
   getMobileSheetTriggerButton() {
     return this.page.locator(
-      '[data-slot="sidebar"][data-mobile="true"] [data-slot="sidebar-trigger"]',
+      '[data-slot="sidebar"][data-mobile="true"] [data-testid="sidebar-toggle-button"]',
     )
   }
 
@@ -69,15 +69,42 @@ export class MainPage {
     return this.getDesktopSidebar().getByTestId("sidebar-expand-icon")
   }
 
+  // --- Library switcher locators ---
+  getLibrarySwitcherButton() {
+    return this.page
+      .locator('[data-slot="sidebar"] [data-slot="sidebar-menu-button"]')
+      .first()
+  }
+
+  getLibrarySwitcherDropdown() {
+    return this.page.locator('[data-slot="dropdown-menu-content"]')
+  }
+
+  getLibrarySwitcherMenuItems() {
+    return this.page
+      .locator('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]')
+      .filter({ hasNotText: "添加书库" })
+  }
+
+  getLibrarySwitcherAddButton() {
+    return this.page
+      .locator('[data-slot="dropdown-menu-content"]')
+      .getByText("添加书库")
+  }
+
+  getLibrarySwitcherEmptyHint() {
+    return this.page
+      .locator('[data-slot="dropdown-menu-content"]')
+      .getByText("暂无书库")
+  }
+
   // --- Sidebar assertions ---
   async assertSidebarExpanded() {
     await expect(this.getDesktopSidebar()).toHaveAttribute(
       "data-state",
       "expanded",
     )
-    await expect(
-      this.getDesktopSidebar().getByTestId("sidebar-collapse-icon"),
-    ).toBeVisible()
+    await expect(this.getSidebarTriggerButton()).toBeVisible()
   }
 
   async assertSidebarCollapsed() {
@@ -86,28 +113,54 @@ export class MainPage {
       "data-state",
       "collapsed",
     )
-    await expect(
-      this.getDesktopSidebar().getByTestId("sidebar-expand-icon"),
-    ).toBeVisible()
+    await expect(this.getSidebarTriggerButton()).toBeVisible()
   }
 
   async assertMobileSheetOpen() {
     await expect(this.getMobileSheet()).toBeVisible()
-    await expect(
-      this.getMobileSheet().getByTestId("sidebar-collapse-icon"),
-    ).toBeVisible()
+    await expect(this.getMobileSheetTriggerButton()).toBeVisible()
   }
 
   async assertMobileSheetClosed() {
     await expect(this.getMobileSheet()).not.toBeVisible()
+    await expect(this.getSidebarTriggerButton()).toBeVisible()
+  }
+
+  // --- Library switcher assertions ---
+  async assertLibrarySwitcherDropdownVisible() {
+    await expect(this.getLibrarySwitcherDropdown()).toBeVisible()
+  }
+
+  async assertLibrarySwitcherDropdownHidden() {
+    await expect(this.getLibrarySwitcherDropdown()).not.toBeVisible()
+  }
+
+  async assertLibraryMenuItemsCount(expectedCount: number) {
+    await expect(this.getLibrarySwitcherMenuItems()).toHaveCount(expectedCount)
+  }
+
+  async assertActiveLibraryHighlighted(name: string) {
+    const item = this.page
+      .locator('[data-slot="dropdown-menu-content"]')
+      .getByRole("menuitem")
+      .filter({ hasText: name })
+    await expect(item).toBeVisible()
     await expect(
-      this.getDesktopSidebar().getByTestId("sidebar-expand-icon"),
+      item.locator('[data-testid="active-library-check"]'),
     ).toBeVisible()
+  }
+
+  async assertLibrarySwitcherHeaderShows(name: string) {
+    const header = this.page
+      .locator('[data-slot="sidebar-header"]')
+      .locator('[data-slot="sidebar-menu-button"]')
+    await expect(header).toContainText(name)
   }
 
   // --- Sidebar actions ---
   async clickSidebarCollapseButton() {
-    const isMobile = (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
+    const isMobile =
+      (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
     if (isMobile) {
       await this.getMobileSheetTriggerButton().click()
     } else {
@@ -124,5 +177,22 @@ export class MainPage {
     await this.getSheetOverlay().click({
       position: { x: (viewport?.width ?? 767) - 5, y: 5 },
     })
+  }
+
+  // --- Library switcher actions ---
+  async clickLibrarySwitcherButton() {
+    await this.getLibrarySwitcherButton().click()
+  }
+
+  async clickLibraryMenuItem(name: string) {
+    await this.page
+      .locator('[data-slot="dropdown-menu-content"]')
+      .getByRole("menuitem")
+      .filter({ hasText: name })
+      .click()
+  }
+
+  async clickLibrarySwitcherAddButton() {
+    await this.getLibrarySwitcherAddButton().click()
   }
 }

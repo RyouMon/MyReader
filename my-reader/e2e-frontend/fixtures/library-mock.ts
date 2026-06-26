@@ -20,6 +20,13 @@ export interface MockBook {
   uuid: string | null
 }
 
+export interface MockLibrary {
+  id: string
+  name: string
+  path: string
+  bookCount: number
+}
+
 export const TEST_LIBRARY_ID = "test-lib-01"
 
 export function generateBooks(count: number): MockBook[] {
@@ -44,24 +51,51 @@ export function generateBooks(count: number): MockBook[] {
   }))
 }
 
-export async function setupLibraryMocks(page: Page, bookCount = 100) {
-  const libraryId = TEST_LIBRARY_ID
-  const books = generateBooks(bookCount)
+export function createMockLibrary(
+  id: string,
+  name: string,
+  bookCount: number,
+  path?: string,
+): MockLibrary {
+  return {
+    id,
+    name,
+    path: path ?? `/test/library/${id}`,
+    bookCount,
+  }
+}
+
+export async function setupLibrariesMock(
+  page: Page,
+  libraries: MockLibrary[],
+  activeLibraryId?: string,
+) {
+  const books = generateBooks(
+    libraries.reduce((sum, lib) => sum + lib.bookCount, 0) || 1,
+  )
 
   await page.addInitScript(
-    (arg: { libId: string; bookList: MockBook[] }) => {
-      const { libId, bookList } = arg
+    (arg: {
+      libraries: MockLibrary[]
+      activeId: string | null
+      bookList: MockBook[]
+    }) => {
+      const { libraries: libs, activeId, bookList } = arg
+      let currentActiveId = activeId ?? (libs[0]?.id ?? null)
 
-      const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
-        list_libraries: () => [
-          {
-            id: libId,
-            name: "测试书库",
-            path: "/test/library",
-            bookCount: bookList.length,
-          },
-        ],
-        get_active_library_id: () => libId,
+      const handlers: Record<
+        string,
+        (args: Record<string, unknown>) => unknown
+      > = {
+        list_libraries: () => libs,
+        get_active_library_id: () => currentActiveId,
+        switch_library: (args: Record<string, unknown>) => {
+          const id = args?.id as string | undefined
+          if (id) {
+            currentActiveId = id
+          }
+          return null
+        },
         get_books_page: (args: Record<string, unknown>) => {
           const offset = (args?.offset as number) ?? 0
           const limit = (args?.limit as number) ?? 100
@@ -100,8 +134,19 @@ export async function setupLibraryMocks(page: Page, bookCount = 100) {
         sync_list_backends: () => [],
       }
 
-      ;(window as unknown as Record<string, unknown>).__TAURI_IPC_HANDLERS__ = handlers
+      ;(
+        window as unknown as Record<string, unknown>
+      ).__TAURI_IPC_HANDLERS__ = handlers
     },
-    { libId: libraryId, bookList: books },
+    {
+      libraries,
+      activeId: activeLibraryId ?? libraries[0]?.id ?? null,
+      bookList: books,
+    },
   )
+}
+
+export async function setupLibraryMocks(page: Page, bookCount = 100) {
+  const library = createMockLibrary(TEST_LIBRARY_ID, "测试书库", bookCount)
+  await setupLibrariesMock(page, [library])
 }

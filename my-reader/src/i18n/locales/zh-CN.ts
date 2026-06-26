@@ -11,7 +11,8 @@ export const zhCN = {
       AUTH_ERROR: "认证错误: {{detail}}",
       CREDENTIAL_ERROR: "凭据错误: {{detail}}",
       SYNC_ERROR: "同步错误: {{detail}}",
-      ONEDRIVE_CLIENT_ID_REQUIRED: "需要提供 OneDrive 客户端 ID。请填写默认客户端 ID，或在高级设置中提供。",
+      ONEDRIVE_CLIENT_ID_REQUIRED:
+        "需要提供 OneDrive 客户端 ID。请填写默认客户端 ID，或在高级设置中提供。",
       WEBDAV_UNAUTHORIZED:
         "连接失败：服务返回 401 Unauthorized，用户名或密码错误（{{detail}}）",
       WEBDAV_FORBIDDEN:
@@ -19,7 +20,8 @@ export const zhCN = {
       WEBDAV_NOT_FOUND:
         "连接失败：服务返回 404 Not Found，远程根路径不存在（{{detail}}）",
       WEBDAV_UNEXPECTED_STATUS: "连接失败：服务返回状态码 {{detail}}",
-      WEBDAV_METADATA_DOWNLOAD_FAILED: "无法下载书库数据（metadata.db），请检查网络和 WebDAV 配置",
+      WEBDAV_METADATA_DOWNLOAD_FAILED:
+        "无法下载书库数据（metadata.db），请检查网络和 WebDAV 配置",
       WEBDAV_LIBRARY_MISSING_DATASOURCE: "WebDAV 书库缺少关联数据源",
       WEBDAV_LIBRARY_MISSING_SOURCE_PATH: "WebDAV 书库缺少远程路径",
     },
@@ -35,6 +37,10 @@ export const zhCN = {
       disconnected: "未连接",
       noLibrary: "未选择书库",
       noLibraries: "暂无书库",
+      libraries: "书库",
+      switchLibrary: "切换书库",
+      expand: "展开侧边栏",
+      collapse: "收起侧边栏",
       booksCount: "{{count}} 本",
       browse: "分类浏览",
     },
