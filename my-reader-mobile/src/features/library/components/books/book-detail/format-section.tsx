@@ -179,7 +179,7 @@ function FormatRow({
         id: "share",
         title: t("bookDetail.formatSection.shareFormat"),
       },
-      ...(isPresent
+      ...(isPresent && isNetworkSource
         ? [
             {
               id: "delete",
@@ -189,7 +189,7 @@ function FormatRow({
           ]
         : []),
     ],
-    [format, isDefault, isDownloading, isPresent, isReadable, isRemote, t]
+    [format, isDefault, isDownloading, isNetworkSource, isPresent, isReadable, isRemote, t]
   );
 
   const handleMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {

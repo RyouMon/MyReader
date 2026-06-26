@@ -113,8 +113,8 @@ describe("FormatSection", () => {
     expect(screen.getByText("PDF")).toBeTruthy();
   });
 
-  it("should show share and delete actions when format is present", () => {
-    renderFormatSection({ fileLocalState: "present" });
+  it("should show share and delete actions when network format is present", () => {
+    renderFormatSection({ fileLocalState: "present", isNetworkSource: true });
 
     const actions = getMenuActions();
     expect(actions.map((a) => a.id)).toEqual([
@@ -126,6 +126,14 @@ describe("FormatSection", () => {
 
   it("should not show delete action when format is not present", () => {
     renderFormatSection({ fileLocalState: "remote_only" });
+
+    const actions = getMenuActions();
+    expect(actions.map((a) => a.id)).toEqual(["setDefault", "share"]);
+    expect(actions.find((a) => a.id === "delete")).toBeUndefined();
+  });
+
+  it("should not show delete action for local library when format is present", () => {
+    renderFormatSection({ fileLocalState: "present", isNetworkSource: false });
 
     const actions = getMenuActions();
     expect(actions.map((a) => a.id)).toEqual(["setDefault", "share"]);
@@ -152,7 +160,7 @@ describe("FormatSection", () => {
   });
 
   it("should not show setDefault action when format is not readable", () => {
-    renderFormatSection({ fileLocalState: "present", isReadable: false });
+    renderFormatSection({ fileLocalState: "present", isNetworkSource: true, isReadable: false });
 
     const actions = getMenuActions();
     expect(actions.map((a) => a.id)).toEqual(["share", "delete"]);
