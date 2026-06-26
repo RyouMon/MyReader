@@ -90,7 +90,8 @@
       "@sentry/react-native",
       "expo-asset",
       "expo-localization",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

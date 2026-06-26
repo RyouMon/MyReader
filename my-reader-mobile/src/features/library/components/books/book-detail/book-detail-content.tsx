@@ -1,39 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 
-import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
 import { useTranslation } from "react-i18next";
-import { Alert } from "react-native";
 
 import { EmptyState } from "@/src/components/ui";
-import {
-  enqueue,
-  isTaskErrorAlerted,
-  markTaskErrorAlerted,
-  useDownloadStatusTasks,
-} from "@/src/domain/download/download-store";
-import { getBookFormatPaths } from "@/src/domain/library/calibre";
-import { useFileStates } from "@/src/domain/sync/hooks/use-file-states";
-import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
-import { isRemoteSourceType } from "@/src/domain/types";
-import { describeDownloadError } from "@/src/errors";
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
+import type { BookItem, DataSource, Library } from "@/src/domain/types";
+import { isRemoteSourceType } from "@/src/domain/types";
+import type { BookDetail } from "@my-reader/tools/types/book";
 import {
   formatDate,
   formatLanguage,
   IDENTIFIER_LABELS,
-  resolveCoverForDetail,
   stripHtml,
 } from "@/src/utils/book-detail";
 import { ScrollView, Text, View } from "@/tw";
-import type { BookDetail } from "@my-reader/tools/types/book";
-import { confirmDeleteLocalDownload } from "../../../utils/delete-download";
+import { useBookCoverUri } from "../../../hooks/use-book-cover-uri";
+import { useBookDetailFormats } from "../../../hooks/use-book-detail-formats";
+import { useBookDetailReadState } from "../../../hooks/use-book-detail-read-state";
 import { FormatSection } from "./format-section";
 import { HeroSection } from "./hero-section";
 import { InfoRowSection } from "./info-row-section";
 import { SynopsisSection } from "./synopsis-section";
 import type { DetailColors, InfoCardItem } from "./types";
-
-type FormatInfo = { relativePath: string; localState: LocalState | null };
 
 type BookDetailContentProps = {
   activeLibrary: Library;
@@ -64,23 +52,40 @@ export function BookDetailContent({
 }: BookDetailContentProps) {
   const { t } = useTranslation();
 
-  const [coverUri, setCoverUri] = useState<BookItem["coverUri"] | undefined>(listBook?.coverUri);
   const { data: progressByBookId } = useBookReadingProgress(activeLibrary);
+  const { coverUri } = useBookCoverUri(activeLibrary, detail, listBook, dataSources);
 
-  useEffect(() => {
-    if (!detail) {
-      queueMicrotask(() => setCoverUri(listBook?.coverUri));
-      return;
-    }
-    let cancelled = false;
-    void resolveCoverForDetail(activeLibrary, detail, dataSources, listBook?.coverUri)
-      .then((resolved) => { if (!cancelled) setCoverUri(resolved); });
-    return () => { cancelled = true; };
-  }, [activeLibrary, detail, listBook?.coverUri, dataSources]);
+  const {
+    formatInfoMap,
+    handleDownloadFormat,
+    handleDeleteFormat,
+    handleShareFormat,
+  } = useBookDetailFormats(activeLibrary, bookId, detail);
 
-  const readableFormats = useMemo(
-    () => (detail ? detail.formats.filter(isReadableInAppFormat) : []),
-    [detail]
+  const progressByFormat = progressByBookId?.[bookId];
+
+  const {
+    readableFormats,
+    readableSelectedFormat,
+    canReadInApp,
+    handleReadAction,
+    readButtonTitle,
+  } = useBookDetailReadState(
+    activeLibrary,
+    bookId,
+    detail,
+    selectedFormat,
+    progressByFormat,
+    formatInfoMap,
+    onOpenReader,
+    handleDownloadFormat,
+  );
+
+  const handleSetDefaultFormat = useCallback(
+    (format: string) => {
+      onSelectFormat(bookId, format);
+    },
+    [bookId, onSelectFormat],
   );
 
   const formatSizeMap = useMemo(() => {
@@ -91,169 +96,6 @@ export function BookDetailContent({
     }
     return m;
   }, [detail]);
-
-  const [formatInfoMap, setFormatInfoMap] = useState<Record<string, FormatInfo>>({});
-  const formatInfoMapRef = useRef(formatInfoMap);
-
-  useEffect(() => {
-    formatInfoMapRef.current = formatInfoMap;
-  });
-
-  const { data: fileStateRows = [] } = useFileStates(activeLibrary);
-  const downloadStatusTasks = useDownloadStatusTasks();
-  const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
-  const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!detail || !isRemoteSourceType(activeLibrary.sourceType) || !activeLibrary.dataSourceId) {
-      queueMicrotask(() => setFormatInfoMap({}));
-      return;
-    }
-    let cancelled = false;
-    void getBookFormatPaths(activeLibrary, detail.id)
-      .then((paths) => {
-        const map: Record<string, FormatInfo> = {};
-        for (const { format, relativePath } of paths) {
-          const row = fileStateRows.find((r) => r.path === relativePath);
-          map[format] = { relativePath, localState: row?.localState ?? null };
-        }
-        if (cancelled) return;
-        setFormatInfoMap(map);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          Alert.alert(t("bookDetail.readFileStateFailed"), err instanceof Error ? err.message : String(err));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeLibrary, bookId, detail, fileStateRows, t]);
-
-  useEffect(() => {
-    if (!detail) return;
-    const latestMap = formatInfoMapRef.current;
-    const relevantTasks = downloadStatusTasks.filter(
-      (task) =>
-        task.libraryId === activeLibrary.id &&
-        (task.bookId === bookId ||
-          Object.values(latestMap).some((info) => info.relativePath === task.relativePath)),
-    );
-
-    for (const task of relevantTasks) {
-      if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
-        markTaskErrorAlerted(task.id);
-        const { title, message } = describeDownloadError(task.error ?? t("bookDetail.downloadFailed", { path: task.relativePath }));
-        Alert.alert(title, message);
-      }
-    }
-
-    for (const id of Array.from(consumedDownloadTaskIdsRef.current)) {
-      const task = relevantTasks.find((t) => t.id === id);
-      if (!task || task.status !== "done") {
-        consumedDownloadTaskIdsRef.current.delete(id);
-      }
-    }
-
-    const doneTasks = relevantTasks.filter(
-      (task) =>
-        task.status === "done" &&
-        !consumedDownloadTaskIdsRef.current.has(task.id) &&
-        !deletedLocalPathKeysRef.current.has(`${task.libraryId}${task.relativePath}`),
-    );
-    if (doneTasks.length === 0) return;
-
-    setFormatInfoMap((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const task of doneTasks) {
-        const format =
-          task.format ??
-          Object.entries(prev).find(([, info]) => info.relativePath === task.relativePath)?.[0];
-        if (!format) continue;
-        consumedDownloadTaskIdsRef.current.add(task.id);
-        const current = next[format];
-        if (current?.localState === "present" && current.relativePath === task.relativePath) continue;
-        next[format] = {
-          relativePath: current?.relativePath ?? task.relativePath,
-          localState: "present",
-        };
-        changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [activeLibrary.id, bookId, detail, downloadStatusTasks, t]);
-
-  const handleDownloadFormat = useCallback(
-    async (format: string) => {
-      const info = formatInfoMap[format];
-      if (!info || !detail) {
-        Alert.alert(t("bookDetail.cannotStartDownload"), t("bookDetail.noFormatPath", { format }));
-        return;
-      }
-      try {
-        await enqueue({
-          libraryId: activeLibrary.id,
-          bookId,
-          format,
-          relativePath: info.relativePath,
-          label: `${detail.title} · ${format}`,
-        });
-        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
-      } catch (err) {
-        const { title, message } = describeDownloadError(err);
-        Alert.alert(title, message);
-      }
-    },
-    [formatInfoMap, activeLibrary.id, bookId, detail, t]
-  );
-
-  const handleDeleteFormat = useCallback(
-    (format: string) => {
-      const info = formatInfoMap[format];
-      if (!info || !detail) return;
-      const pathKey = `${activeLibrary.id}${info.relativePath}`;
-      confirmDeleteLocalDownload(detail.title, activeLibrary.id, info.relativePath, {
-        onConfirm: () => {
-          deletedLocalPathKeysRef.current.add(pathKey);
-          for (const task of downloadStatusTasks) {
-            if (
-              task.libraryId === activeLibrary.id &&
-              task.relativePath === info.relativePath &&
-              task.status === "done"
-            ) {
-              consumedDownloadTaskIdsRef.current.add(task.id);
-            }
-          }
-          // Optimistic update: hide the delete button immediately.
-          setFormatInfoMap((prev) => ({
-            ...prev,
-            [format]: { ...prev[format]!, localState: "remote_only" },
-          }));
-        },
-        onError: (err) => {
-          // Roll back the optimistic update.
-          setFormatInfoMap((prev) => ({
-            ...prev,
-            [format]: { ...prev[format]!, localState: "present" },
-          }));
-          deletedLocalPathKeysRef.current.delete(pathKey);
-          Alert.alert(
-            t("bookDetail.deleteLocalFailed"),
-            err instanceof Error ? err.message : String(err),
-          );
-        },
-      });
-    },
-    [formatInfoMap, downloadStatusTasks, activeLibrary.id, detail, t],
-  );
-
-  const handleSetDefaultFormat = useCallback(
-    (format: string) => {
-      onSelectFormat(bookId, format);
-    },
-    [bookId, onSelectFormat]
-  );
 
   if (loadingDetail) {
     return (
@@ -287,13 +129,7 @@ export function BookDetailContent({
   const ratingStars = book.rating ? Math.round(book.rating / 2) : 0;
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null;
   const synopsisText = book.comment ? stripHtml(book.comment) : "";
-  const readableSelectedFormat = selectedFormat ?? pickReadableFormat(book.formats);
-  const progressByFormat = progressByBookId?.[bookId];
-  const detailProgress = readableSelectedFormat
-    ? progressByFormat?.[readableSelectedFormat.toUpperCase()]
-    : undefined;
-  const progress = detailProgress ?? 0;
-  const canReadInApp = readableFormats.length > 0;
+
   const bookInfoRows: InfoCardItem[] = [
     { label: t("bookDetail.bookTitle"), value: book.title },
     { label: t("bookDetail.titleSort"), value: book.titleSort || "—" },
@@ -309,29 +145,6 @@ export function BookDetailContent({
     { label: t("bookDetail.publisher"), value: book.publisher || "—" },
     { label: t("bookDetail.language"), value: langDisplay || "—" },
   ];
-
-  const selectedFormatUpper = readableSelectedFormat?.toUpperCase() ?? null;
-  const selectedFormatInfo = selectedFormatUpper ? formatInfoMap[selectedFormatUpper] : null;
-  const isSelectedFormatPresent = selectedFormatInfo?.localState === "present";
-
-  const handleReadAction = () => {
-    if (!canReadInApp || !readableSelectedFormat) return;
-    if (isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent) {
-      handleDownloadFormat(readableSelectedFormat);
-      Alert.alert(t("bookDetail.downloadStarted"), t("bookDetail.downloadStartedDetail", { format: readableSelectedFormat }));
-      return;
-    }
-    onOpenReader(bookId, readableSelectedFormat);
-  };
-
-  const readButtonTitle =
-    !canReadInApp || !readableSelectedFormat
-      ? t("bookDetail.noReadableFormat")
-      : isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent
-        ? t("bookDetail.downloadAndRead")
-        : progress > 0
-          ? t("bookDetail.continueReading")
-          : t("bookDetail.startReading");
 
   return (
     <View className="flex-1">
@@ -370,6 +183,7 @@ export function BookDetailContent({
               onDeleteFormat={(format) => void handleDeleteFormat(format)}
               onDownloadFormat={handleDownloadFormat}
               onSetDefaultFormat={handleSetDefaultFormat}
+              onShareFormat={handleShareFormat}
               progressByFormat={progressByFormat}
               readableFormats={readableFormats}
             />

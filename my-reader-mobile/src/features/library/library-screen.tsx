@@ -307,6 +307,31 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const getItemType = useCallback(() => (isGridView ? "grid" : "list"), [isGridView]);
 
+  const flashListExtraData = useMemo(
+    () => ({
+      bookActiveFormatsById,
+      bookDownloadStatusById,
+      bookFormatMetaById,
+      bookFormatsById,
+      favoriteSet,
+      isMenuOpen,
+      progressByBookId,
+      selectedFormatById,
+      selectedLibraryId,
+    }),
+    [
+      bookActiveFormatsById,
+      bookDownloadStatusById,
+      bookFormatMetaById,
+      bookFormatsById,
+      favoriteSet,
+      isMenuOpen,
+      progressByBookId,
+      selectedFormatById,
+      selectedLibraryId,
+    ],
+  );
+
   const header = (
     <>
       <Stack.Screen options={options} />
@@ -416,6 +441,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       <FlashList
         key={`${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
         data={isLoadingNewContent ? [] : visibleBooks}
+        extraData={flashListExtraData}
         numColumns={isGridView ? gridColumns : 1}
         keyExtractor={(item) => item.id}
         getItemType={getItemType}

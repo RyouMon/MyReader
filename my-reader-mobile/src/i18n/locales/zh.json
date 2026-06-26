@@ -278,12 +278,18 @@
       "downloadFormat": "下载",
       "notDownloaded": "未下载",
       "setDefault": "设为默认阅读格式",
+      "shareFormat": "分享",
       "more": "更多"
     },
     "synopsis": "简介",
     "setReadingFormat": "设置阅读格式",
     "expand": "展开",
     "collapse": "收起"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "文件未下载",
+    "fileNotDownloadedMessage": "《{{title}}》（{{format}}）需要先下载。",
+    "shareFailed": "分享失败"
   },
   "bookRow": {
     "unread": "未读",
@@ -502,7 +508,8 @@
     "downloadFormat": "下载（{{format}}）",
     "cancelDownload": "取消下载",
     "defaultFormat": "默认阅读格式：{{format}}",
-    "deleteDownload": "删除下载文件"
+    "deleteDownload": "删除下载文件",
+    "share": "分享"
   },
   "bookLoader": {
     "loadingBook": "正在加载书籍…",

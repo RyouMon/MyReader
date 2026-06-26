@@ -30,6 +30,27 @@ export function buildBookMenuActions(
     title: isFavorite ? i18n.t("bookMenu.removeFromFavorites") : i18n.t("bookMenu.addToFavorites"),
   });
 
+  if (readableFormats.length === 1) {
+    actions.push({
+      id: `share:${readableFormats[0]}`,
+      title: i18n.t("bookMenu.share"),
+    });
+  } else if (readableFormats.length > 1) {
+    actions.push({
+      id: "share",
+      title: i18n.t("bookMenu.share"),
+      subactions: readableFormats.map((fmt) => ({
+        id: `share:${fmt}`,
+        title: fmt,
+      })),
+    });
+  } else {
+    actions.push({
+      id: "share",
+      title: i18n.t("bookMenu.share"),
+    });
+  }
+
   if (isRemote) {
     if (downloadStatus === "downloading") {
       actions.push({
@@ -59,7 +80,7 @@ export function buildBookMenuActions(
   if (readableFormats.length > 1) {
     actions.push({
       id: "setDefaultFormat",
-      title: i18n.t("bookMenu.defaultFormat", { format: effectiveFormat ?? "-" }),
+      title: i18n.t("bookMenu.defaultFormat", { format: effectiveFormat }),
       subactions: readableFormats.map((fmt) => ({
         id: `setDefaultFormat:${fmt}`,
         title: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,

@@ -10,6 +10,7 @@ import {
 } from "@/src/domain/download/download-store";
 import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
+import { resolveShareableFormat, shareBookFile } from "@/src/domain/library/share-book-file";
 import type { FileStateRow } from "@/src/domain/sync/actions";
 import { confirmDeleteLocalDownload } from "../utils/delete-download";
 import type { BookItem, Library } from "@/src/domain/types";
@@ -109,10 +110,12 @@ export function useBookActions(
       }
       const setFormat = stateRef.current.setBookReadingFormat;
       if (readableFormats.length === 1) {
+        const format = readableFormats[0];
+        if (!format) return;
         if (setFormat) {
-          void setFormat(book.id, readableFormats[0]!);
+          void setFormat(book.id, format);
         }
-        showAlertWithStatusBarRestore(i18n.t("sync.defaultFormatSet"), readableFormats[0]);
+        showAlertWithStatusBarRestore(i18n.t("sync.defaultFormatSet"), format);
         return;
       }
 
@@ -120,7 +123,7 @@ export function useBookActions(
       const effectiveFormat = resolveEffectiveFormat(readableFormats, current);
       showAlertWithStatusBarRestore(
         i18n.t("sync.setDefaultFormat"),
-        i18n.t("sync.currentDefault", { format: effectiveFormat ?? "-" }),
+        i18n.t("sync.currentDefault", { format: effectiveFormat }),
         [
           ...readableFormats.map((fmt) => ({
             text: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
@@ -222,6 +225,51 @@ export function useBookActions(
           lib.id,
           downloadedRows.map((row) => row.path),
         );
+        return;
+      }
+      if (actionId === "share" || actionId.startsWith("share:")) {
+        const targetFormat = actionId === "share" ? undefined : actionId.slice("share:".length);
+        const lib = latest.selectedLibrary;
+        if (!lib) return;
+        void (async () => {
+          try {
+            const calibreId = Number(book.id);
+            if (!Number.isFinite(calibreId) || calibreId <= 0) return;
+            let resolved: { format: string; relativePath: string; fileUri: string; isLocal: boolean } | null = null;
+            if (targetFormat) {
+              resolved = await resolveShareableFormat(lib, calibreId, targetFormat);
+            } else {
+              const paths = await getBookFormatPaths(lib, calibreId);
+              const readableFormats = getReadableFormats(paths.map((path) => path.format));
+              const defaultFormat = resolveEffectiveFormat(readableFormats, latest.selectedFormatById[book.id]);
+              const pick = defaultFormat ?? readableFormats[0];
+              if (pick) {
+                resolved = await resolveShareableFormat(lib, calibreId, pick);
+              }
+            }
+            if (!resolved) {
+              showAlertWithStatusBarRestore(
+                i18n.t("share.shareFailed"),
+                i18n.t("sync.noReadableFormatForDownload"),
+              );
+              return;
+            }
+            if (!resolved.isLocal) {
+              showAlertWithStatusBarRestore(
+                i18n.t("share.fileNotDownloadedTitle"),
+                i18n.t("share.fileNotDownloadedMessage", { title: book.title, format: resolved.format }),
+              );
+              return;
+            }
+            await shareBookFile(resolved.fileUri, resolved.format);
+          } catch (e) {
+            showAlertWithStatusBarRestore(
+              i18n.t("share.shareFailed"),
+              e instanceof Error ? e.message : String(e),
+            );
+          }
+        })();
+        return;
       }
     },
     [downloadBook, promptSetDefaultFormat],

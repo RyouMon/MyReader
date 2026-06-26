@@ -87,6 +87,7 @@ export function mapListRowsToBookItems(
       title: row.title || i18n.t("common.unnamedBook"),
       author: row.authors[0] || row.authorSort || i18n.t("common.unknownAuthor"),
       authors: row.authors,
+      formats: row.formats,
       path: row.path || undefined,
       hasCover,
       timestamp: row.timestamp,

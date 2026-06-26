@@ -184,6 +184,7 @@ function BookRowImpl({
                   computedMenuActions && onMenuAction ? (
                     <View onStartShouldSetResponder={() => true}>
                       <MenuView
+                        key={computedMenuActions.some((a) => (a.id === "share" || a.id?.startsWith("share:")) && !a.attributes?.disabled) ? "share-enabled" : "share-disabled"}
                         actions={computedMenuActions}
                         isAnchoredToRight={Platform.OS === "android"}
                         onOpenMenu={handleMenuOpenLocal}

@@ -5,7 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { pickReadableFormat } from "@my-reader/tools/utils";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Platform, Share } from "react-native";
+import { Platform } from "react-native";
 
 import { useTheme } from "@/src/design/tokens";
 import { View } from "@/tw";
@@ -130,18 +130,6 @@ export default function BookDetailScreen() {
   const currentEntry = currentId ? detailCache[currentId] : undefined;
   const currentDetail = currentEntry?.detail ?? null;
 
-  const handleShare = useCallback(() => {
-    if (!currentDetail) return;
-    const lines = [
-      currentDetail.title,
-      currentDetail.authors.filter(Boolean).join(", ") || currentDetail.authorSort,
-    ].filter((line): line is string => Boolean(line));
-    void Share.share({
-      title: currentDetail.title,
-      message: lines.join("\n"),
-    });
-  }, [currentDetail]);
-
   const handleGoBack = useCallback(() => {
     router.back();
   }, []);
@@ -189,16 +177,8 @@ export default function BookDetailScreen() {
         iconOnly: true,
         color: isCurrentFavorite ? palette.primary : detailColors.muted,
       },
-      {
-        label: t("bookDetail.share"),
-        onPress: handleShare,
-        icon: <Feather name="share-2" size={19} color={detailColors.muted} />,
-        iosSfSymbol: "square.and.arrow.up",
-        iconOnly: true,
-        color: detailColors.muted,
-      },
     ];
-  }, [currentDetail, detailColors.muted, handleShare, handleToggleFavorite, isCurrentFavorite, palette.primary, t]);
+  }, [currentDetail, detailColors.muted, handleToggleFavorite, isCurrentFavorite, palette.primary, t]);
 
   const { options: baseOptions, toolbar } = useScreenHeader({
     title: t("bookDetail.title"),

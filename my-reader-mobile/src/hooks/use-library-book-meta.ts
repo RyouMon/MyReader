@@ -33,7 +33,7 @@ export function useLibraryBookMeta(
       if (!selectedLibrary) return {};
       return getAllBookFormats(selectedLibrary);
     },
-    enabled: !!selectedLibrary,
+    enabled: true,
     staleTime: 0,
   });
   const { data: fileStateRows = [] } = useFileStates(selectedLibrary);
@@ -66,7 +66,7 @@ export function useLibraryBookMeta(
   const bookFormatMetaById = useMemo(() => {
     const map = new Map<string, BookFormatMeta>();
     for (const book of books) {
-      const readableFormats = getReadableFormats(bookFormatsById[book.id]);
+      const readableFormats = getReadableFormats(book.formats ?? bookFormatsById[book.id]);
       const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
       map.set(book.id, { readableFormats, effectiveFormat });
     }

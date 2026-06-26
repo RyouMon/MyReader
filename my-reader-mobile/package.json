@@ -68,6 +68,7 @@
     "expo-modules-core": "~56.0.14",
     "expo-router": "~56.2.8",
     "expo-secure-store": "^56.0.4",
+    "expo-sharing": "~56.0.18",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
     "expo-symbols": "~56.0.5",
@@ -133,6 +134,7 @@
       "**/?(*.)+(spec|test).[tj]s?(x)"
     ],
     "moduleNameMapper": {
+      "^@/tw$": "<rootDir>/__mocks__/tw.tsx",
       "^@/(.*)$": "<rootDir>/$1",
       "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
       "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",

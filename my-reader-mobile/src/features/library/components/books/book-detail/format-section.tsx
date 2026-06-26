@@ -31,6 +31,7 @@ type FormatSectionProps = {
   onDeleteFormat: (format: string) => void;
   onDownloadFormat: (format: string) => void;
   onSetDefaultFormat: (format: string) => void;
+  onShareFormat: (format: string) => void;
   progressByFormat?: Record<string, number>;
   readableFormats: string[];
 };
@@ -46,6 +47,7 @@ export function FormatSection({
   onDeleteFormat,
   onDownloadFormat,
   onSetDefaultFormat,
+  onShareFormat,
   progressByFormat,
   readableFormats,
 }: FormatSectionProps) {
@@ -75,6 +77,7 @@ export function FormatSection({
               onDelete={() => onDeleteFormat(upper)}
               onDownload={() => onDownloadFormat(upper)}
               onSetDefault={() => onSetDefaultFormat(upper)}
+              onShare={() => onShareFormat(upper)}
               progressPercent={progressByFormat?.[upper]}
               relativePath={formatInfo?.relativePath}
               size={formatSizeMap.get(upper) ?? 0}
@@ -99,6 +102,7 @@ function FormatRow({
   onDelete,
   onDownload,
   onSetDefault,
+  onShare,
   progressPercent,
   relativePath,
   size,
@@ -115,6 +119,7 @@ function FormatRow({
   onDelete: () => void;
   onDownload: () => void;
   onSetDefault: () => void;
+  onShare: () => void;
   progressPercent?: number;
   relativePath: string | undefined;
   size: number;
@@ -170,6 +175,10 @@ function FormatRow({
             },
           ]
         : []),
+      {
+        id: "share",
+        title: t("bookDetail.formatSection.shareFormat"),
+      },
       ...(isPresent
         ? [
             {
@@ -187,6 +196,7 @@ function FormatRow({
     if (nativeEvent.event === "setDefault") onSetDefault();
     if (nativeEvent.event === "download") onDownload();
     if (nativeEvent.event === "cancel" && activeTask) cancel(activeTask.id);
+    if (nativeEvent.event === "share") onShare();
     if (nativeEvent.event === "delete") onDelete();
   };
 

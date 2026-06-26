@@ -278,12 +278,18 @@
       "downloadFormat": "Download",
       "notDownloaded": "Not downloaded",
       "setDefault": "Set as default reading format",
+      "shareFormat": "Share",
       "more": "More"
     },
     "synopsis": "Synopsis",
     "setReadingFormat": "Set Reading Format",
     "expand": "Expand",
     "collapse": "Collapse"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "File not downloaded",
+    "fileNotDownloadedMessage": "\"{{title}}\" ({{format}}) must be downloaded first.",
+    "shareFailed": "Share failed"
   },
   "bookRow": {
     "unread": "Unread",
@@ -502,7 +508,8 @@
     "downloadFormat": "Download ({{format}})",
     "cancelDownload": "Cancel Download",
     "defaultFormat": "Default reading format: {{format}}",
-    "deleteDownload": "Delete downloaded file"
+    "deleteDownload": "Delete downloaded file",
+    "share": "Share"
   },
   "bookLoader": {
     "loadingBook": "Loading book…",
