@@ -4,27 +4,25 @@
 
 export {
   openSyncContext,
-  type SyncTargetContext,
+  type SyncTargetContext
 } from "./context";
 
 export {
-  downloadFileDirect,
+  deleteFileEverywhere, downloadFileDirect,
   downloadFileDirectWithProgress,
   evictLocalFile,
-  evictLocalFileOfflineSafe,
-  deleteFileEverywhere,
+  evictLocalFileOfflineSafe
 } from "./transfer";
 
 export {
   deleteFileEverywhereForLibrary,
   deleteRemoteFileForLibrary,
-  evictLocalFileForLibrary,
+  evictLocalFileForLibrary
 } from "./file-actions";
 
+export type { FileState as FileStateRow } from "@my-reader/db/types";
 export {
   getFileState,
-  listFileStates,
-  subscribeFileState,
-  getFileStateRevision,
-} from "../../repos/file_state";
-export type { FileState as FileStateRow } from "@my-reader/db/types";
+  listFileStates
+} from "../../repos/file-state";
+

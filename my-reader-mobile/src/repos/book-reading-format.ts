@@ -1,31 +1,11 @@
 import { eq } from "drizzle-orm";
 
-import { uuid } from "@/src/utils/common";
 import { bookReadingFormat } from "@my-reader/db/schema";
 import type { BookReadingFormat } from "@my-reader/db/types";
 import { getLibraryDatabase } from "@/src/services/db/library-db";
+import { invalidateBookReadingFormat } from "@/src/services/query/invalidate-table";
+import { uuid } from "@/src/utils/common";
 import type { Library } from "@my-reader/tools/types/library";
-
-type Listener = () => void;
-
-const listeners = new Set<Listener>();
-let revision = 0;
-
-function emitBookReadingFormatChanged(): void {
-  revision += 1;
-  for (const listener of listeners) listener();
-}
-
-export function subscribeBookReadingFormat(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function getBookReadingFormatRevision(): number {
-  return revision;
-}
 
 export async function getBookReadingFormat(
   library: Library,
@@ -64,7 +44,7 @@ export async function setBookReadingFormat(
       target: [bookReadingFormat.bookId],
       set: { readingFormat: fmt, updatedAt },
     });
-  emitBookReadingFormatChanged();
+  await invalidateBookReadingFormat(library.id);
 }
 
 export async function clearBookReadingFormat(
@@ -73,11 +53,11 @@ export async function clearBookReadingFormat(
 ): Promise<void> {
   const { db } = await getLibraryDatabase(library);
   await db.delete(bookReadingFormat).where(eq(bookReadingFormat.bookId, bookId));
-  emitBookReadingFormatChanged();
+  await invalidateBookReadingFormat(library.id);
 }
 
 export async function clearBookReadingFormatsForLibrary(library: Library): Promise<void> {
   const { db } = await getLibraryDatabase(library);
   await db.delete(bookReadingFormat);
-  emitBookReadingFormatChanged();
+  await invalidateBookReadingFormat(library.id);
 }

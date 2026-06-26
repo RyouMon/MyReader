@@ -1,17 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 
 import type { Library } from "@/src/domain/types";
+import { queryKeys } from "@/src/services/query/query-keys";
 
 export function useBookReadingProgress(library: Library | null) {
   return useQuery({
-    queryKey: ["reading-progress", library?.id],
+    queryKey: queryKeys.readingProgress(library?.id),
     queryFn: async () => {
       if (!library) return {} as Record<string, Record<string, number>>;
 
       const [{ listAllReadingProgress }, { parseStoredLocator, locatorToPercent }] =
         await Promise.all([
-          import("@/src/repos/reading_progress"),
-          import("@/src/domain/reading-progress"),
+          import("@/src/repos/reading-progress"),
+          import("@/src/domain/library/reading-progress"),
         ]);
 
       const rows = await listAllReadingProgress(library);

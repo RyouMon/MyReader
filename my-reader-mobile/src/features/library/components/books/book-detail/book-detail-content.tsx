@@ -12,12 +12,11 @@ import {
   useDownloadStatusTasks,
 } from "@/src/domain/download/download-store";
 import { getBookFormatPaths } from "@/src/domain/library/calibre";
-import { getFileState } from "@/src/domain/sync/actions";
+import { useFileStates } from "@/src/domain/sync/hooks/use-file-states";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { describeDownloadError } from "@/src/errors";
-import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
-import { useFileStateRevision } from "@/src/hooks/useFileState";
+import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
 import {
   formatDate,
   formatLanguage,
@@ -100,7 +99,7 @@ export function BookDetailContent({
     formatInfoMapRef.current = formatInfoMap;
   });
 
-  const fileStateRevision = useFileStateRevision();
+  const { data: fileStateRows = [] } = useFileStates(activeLibrary);
   const downloadStatusTasks = useDownloadStatusTasks();
   const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
   const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
@@ -112,10 +111,10 @@ export function BookDetailContent({
     }
     let cancelled = false;
     void getBookFormatPaths(activeLibrary, detail.id)
-      .then(async (paths) => {
+      .then((paths) => {
         const map: Record<string, FormatInfo> = {};
         for (const { format, relativePath } of paths) {
-          const row = await getFileState(activeLibrary, relativePath);
+          const row = fileStateRows.find((r) => r.path === relativePath);
           map[format] = { relativePath, localState: row?.localState ?? null };
         }
         if (cancelled) return;
@@ -129,7 +128,7 @@ export function BookDetailContent({
     return () => {
       cancelled = true;
     };
-  }, [activeLibrary, bookId, detail, fileStateRevision, t]);
+  }, [activeLibrary, bookId, detail, fileStateRows, t]);
 
   useEffect(() => {
     if (!detail) return;

@@ -17,7 +17,7 @@ import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books"
 import { isRemoteSourceType } from "@/src/domain/types";
 import { ContinueReadingCard, ReadingShelf } from "@/src/features/home/components";
 import { useBookActions } from "@/src/features/library/hooks/use-book-actions";
-import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
+import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
@@ -41,7 +41,7 @@ export default function HomeScreen() {
   const readingBooks = useRecentlyReadBooks(activeLibrary, books);
   const { data: progressByBookId = {} } = useBookReadingProgress(activeLibrary);
 
-  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary, books);
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary);
   const { favoriteSet, toggleFavorite } = useFavoriteBooks(activeLibrary, books);
   const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById } =
     useLibraryBookMeta(activeLibrary, books, selectedFormatById);

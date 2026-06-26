@@ -42,7 +42,7 @@ export default function BookDetailScreen() {
   const [detailCache, setDetailCache] = useState<Record<string, DetailCacheEntry>>({});
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
-  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary, books);
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary);
   const { isFavorite, toggleFavorite } = useFavoriteBooks(activeLibrary, books);
 
   useEffect(() => {

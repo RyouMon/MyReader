@@ -1,54 +1,42 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+
+import { useQuery } from "@tanstack/react-query";
 
 import { getAllBookFormats } from "@/src/domain/library/calibre";
-import type { BookItem, Library } from "@/src/domain/types";
+import type { Library } from "@/src/domain/types";
 import {
   clearBookReadingFormat,
   listBookReadingFormats,
   setBookReadingFormat as setBookReadingFormatRepo,
-  subscribeBookReadingFormat,
 } from "@/src/repos/book-reading-format";
+import { queryKeys } from "@/src/services/query/query-keys";
 import { getReadableFormats } from "../book-formats";
 
-export function useBookReadingFormat(selectedLibrary: Library | null, books: BookItem[]) {
-  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
+export async function fetchBookReadingFormats(
+  selectedLibrary: Library | null,
+): Promise<Record<string, string>> {
+  if (!selectedLibrary) return {};
+  const [rows, allFormats] = await Promise.all([
+    listBookReadingFormats(selectedLibrary),
+    getAllBookFormats(selectedLibrary),
+  ]);
+  const map: Record<string, string> = {};
+  for (const row of rows) {
+    const bookId = String(row.bookId);
+    const readableFormats = getReadableFormats(allFormats[bookId]);
+    if (readableFormats.length <= 1) continue;
+    map[bookId] = row.readingFormat;
+  }
+  return map;
+}
 
-  useEffect(() => {
-    if (!selectedLibrary) {
-      queueMicrotask(() => setSelectedFormatById({}));
-      return;
-    }
-
-    let cancelled = false;
-    const load = async () => {
-      const [rows, allFormats] = await Promise.all([
-        listBookReadingFormats(selectedLibrary),
-        getAllBookFormats(selectedLibrary),
-      ]);
-      if (cancelled) return;
-
-      const map: Record<string, string> = {};
-      for (const book of books) {
-        const readableFormats = getReadableFormats(allFormats[book.id]);
-        if (readableFormats.length <= 1) continue; // short-circuit: single-format books use their only format
-        const row = rows.find((r) => String(r.bookId) === book.id);
-        if (row) map[book.id] = row.readingFormat;
-      }
-      queueMicrotask(() => {
-        if (!cancelled) setSelectedFormatById(map);
-      });
-    };
-
-    void load();
-    const unsubscribe = subscribeBookReadingFormat(() => {
-      if (!cancelled) void load();
-    });
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [selectedLibrary, books]);
+export function useBookReadingFormat(selectedLibrary: Library | null) {
+  const query = useQuery({
+    queryKey: queryKeys.bookReadingFormat(selectedLibrary?.id),
+    queryFn: () => fetchBookReadingFormats(selectedLibrary),
+    enabled: !!selectedLibrary,
+    staleTime: 0,
+  });
 
   const setBookReadingFormat = useCallback(
     async (bookId: string, format: string | null) => {
@@ -62,7 +50,6 @@ export function useBookReadingFormat(selectedLibrary: Library | null, books: Boo
       const allFormats = await getAllBookFormats(selectedLibrary);
       const readableFormats = getReadableFormats(allFormats[bookId]);
       if (readableFormats.length <= 1) {
-        // Single-format books short-circuit; clear any stale persisted row.
         await clearBookReadingFormat(selectedLibrary, Number(bookId));
         return;
       }
@@ -72,5 +59,5 @@ export function useBookReadingFormat(selectedLibrary: Library | null, books: Boo
     [selectedLibrary],
   );
 
-  return { selectedFormatById, setBookReadingFormat };
+  return { selectedFormatById: query.data ?? {}, setBookReadingFormat };
 }

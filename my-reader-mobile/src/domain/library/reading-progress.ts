@@ -3,8 +3,8 @@ import type { Locator } from "@my-reader/readium";
 import {
   getReadingProgressRow,
   upsertReadingProgress,
-} from "../repos/reading_progress";
-import type { Library } from "./types";
+} from "../../repos/reading-progress";
+import type { Library } from "../types";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -85,6 +85,7 @@ export async function setReadingProgress(
   bookId: number,
   format: string,
   locator: Locator,
+  options?: { invalidate?: boolean },
 ): Promise<void> {
   const fmt = format.toUpperCase();
   const updatedAt = Date.now();
@@ -95,12 +96,16 @@ export async function setReadingProgress(
   const locatorJson = JSON.stringify(normalized);
 
   try {
-    await upsertReadingProgress(library, {
-      bookId,
-      format: fmt,
-      locatorJson,
-      updatedAt,
-    });
+    await upsertReadingProgress(
+      library,
+      {
+        bookId,
+        format: fmt,
+        locatorJson,
+        updatedAt,
+      },
+      options,
+    );
   } catch (e) {
     console.error("[reading-progress] set:error", { bookId, format: fmt, error: e });
   }

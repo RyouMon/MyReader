@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { listAllReadingProgress } from "@/src/repos/reading_progress";
 import type { BookItem, Library } from "@/src/domain/types";
+import { listAllReadingProgress } from "@/src/repos/reading-progress";
+import { queryKeys } from "@/src/services/query/query-keys";
 
 /**
  * Returns books with reading progress for the given library, sorted by most
@@ -10,7 +11,7 @@ import type { BookItem, Library } from "@/src/domain/types";
  */
 export function useRecentlyReadBooks(library: Library | null, books: BookItem[]) {
   const { data: progressRows = [] } = useQuery({
-    queryKey: ["reading-books", library?.id],
+    queryKey: queryKeys.recentlyReadBooks(library?.id),
     queryFn: async () => {
       if (!library) return [];
       return listAllReadingProgress(library);

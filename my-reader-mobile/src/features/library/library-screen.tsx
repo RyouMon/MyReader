@@ -29,7 +29,7 @@ import {
 } from "@/src/features/library/components/books";
 import type { BookProgressSnapshot } from "@/src/features/library/components/books/book-cover";
 import { useBookFilter, type LibraryFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
-import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
+import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
@@ -131,7 +131,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     [libraries, effectiveLibraryId],
   );
 
-  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(selectedLibrary, books);
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(selectedLibrary);
   const { favoriteSet, toggleFavorite } = useFavoriteBooks(selectedLibrary, books);
 
   const variant = resolveLibraryScreenVariant({

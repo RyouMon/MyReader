@@ -8,7 +8,7 @@ import {
 } from "@/src/domain/library/calibre";
 import { libraryBookFileUri } from "@/src/services/fs/library-paths";
 import { createRemoteOps } from "@/src/domain/library/remote-library";
-import { getReadingProgress } from "@/src/domain/reading-progress";
+import { getReadingProgress } from "@/src/domain/library/reading-progress";
 import { getFileState } from "@/src/domain/sync/actions";
 import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";

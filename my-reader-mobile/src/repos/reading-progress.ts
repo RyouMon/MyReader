@@ -1,10 +1,15 @@
 import { and, eq, gt } from "drizzle-orm";
 
+import { getLibraryDatabase } from "@/src/services/db/library-db";
 import { uuid } from "@/src/utils/common";
 import { readingProgress } from "@my-reader/db/schema";
 import type { ReadingProgress } from "@my-reader/db/types";
-import { getLibraryDatabase } from "@/src/services/db/library-db";
 import type { Library } from "@my-reader/tools/types/library";
+
+import {
+  invalidateReadingProgress,
+  invalidateRecentlyReadBooks,
+} from "@/src/services/query/invalidate-table";
 
 export async function getReadingProgressRow(
   library: Library,
@@ -42,9 +47,14 @@ export type ReadingProgressUpsert = {
   updatedAt: number;
 };
 
+export type UpsertReadingProgressOptions = {
+  invalidate?: boolean;
+};
+
 export async function upsertReadingProgress(
   library: Library,
   patch: ReadingProgressUpsert,
+  options?: UpsertReadingProgressOptions,
 ): Promise<void> {
   const fmt = patch.format.toUpperCase();
   const { db } = await getLibraryDatabase(library);
@@ -61,6 +71,11 @@ export async function upsertReadingProgress(
       target: [readingProgress.bookId, readingProgress.format],
       set: { locatorJson: patch.locatorJson, updatedAt: patch.updatedAt },
     });
+
+  if (options?.invalidate ?? true) {
+    void invalidateReadingProgress(library.id);
+    void invalidateRecentlyReadBooks(library.id);
+  }
 }
 
 export type ReadingProgressChangeRow = {

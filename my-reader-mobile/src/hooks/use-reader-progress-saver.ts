@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 
-import { setReadingProgress } from "@/src/domain/reading-progress";
+import { setReadingProgress } from "@/src/domain/library/reading-progress";
 import type { Library } from "@/src/domain/types";
 import type { ReaderState } from "@/src/features/reader/components/reader/types";
 import { queryClient } from "@/src/services/query/query-client";
+import { queryKeys } from "@/src/services/query/query-keys";
 import { useAppStore } from "@/src/store/app-store";
 
 const SAVE_DEBOUNCE_MS = 1600;
@@ -46,6 +47,7 @@ export function useReaderProgressSaver(
             ctx.bookId,
             ctx.format,
             readerState.locator!,
+            { invalidate: false },
           );
           console.info("[mobile-reader] Saved progress to library.");
         } catch (e) {
@@ -61,9 +63,9 @@ export function useReaderProgressSaver(
     return () => {
       const ctx = bookContextRef.current;
       if (ctx) {
-        queryClient.invalidateQueries({ queryKey: ["reading-progress", ctx.library.id] });
-        queryClient.invalidateQueries({ queryKey: ["reading-books", ctx.library.id] });
-        console.info("[mobile-reader] Invalidated queryKey: reading-progress, reading-books.");
+        queryClient.invalidateQueries({ queryKey: queryKeys.readingProgress(ctx.library.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.recentlyReadBooks(ctx.library.id) });
+        console.info("[mobile-reader] Invalidated queryKey: reading-progress, recently-read-books.");
       }
     };
   }, []);

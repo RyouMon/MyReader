@@ -1,35 +1,15 @@
 import { eq } from "drizzle-orm";
 
+import { getLibraryDatabase } from "@/src/services/db/library-db";
+import { invalidateFileStates } from "@/src/services/query/invalidate-table";
 import { uuid } from "@/src/utils/common";
 import { fileState } from "@my-reader/db/schema";
 import type { FileState as FileStateRow } from "@my-reader/db/types";
-import { getLibraryDatabase } from "@/src/services/db/library-db";
 import type { Library } from "@my-reader/tools/types/library";
 
 type LocalState = "present" | "remote_only" | "local_only" | "dirty_push";
-export type { LocalState };
 export type { FileState as FileStateRow } from "@my-reader/db/types";
-
-type Listener = () => void;
-
-const listeners = new Set<Listener>();
-let revision = 0;
-
-function emitFileStateChanged(): void {
-  revision += 1;
-  for (const listener of listeners) listener();
-}
-
-export function subscribeFileState(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function getFileStateRevision(): number {
-  return revision;
-}
+export type { LocalState };
 
 export async function upsertFileState(
   library: Library,
@@ -65,7 +45,7 @@ export async function upsertFileState(
         updatedAt,
       },
     });
-  emitFileStateChanged();
+  await invalidateFileStates(library.id);
 }
 
 export async function getFileState(
@@ -91,11 +71,11 @@ export async function deleteFileState(
 ): Promise<void> {
   const { db } = await getLibraryDatabase(library);
   await db.delete(fileState).where(eq(fileState.path, path));
-  emitFileStateChanged();
+  await invalidateFileStates(library.id);
 }
 
 export async function clearFileStatesForLibrary(library: Library): Promise<void> {
   const { db } = await getLibraryDatabase(library);
   await db.delete(fileState);
-  emitFileStateChanged();
+  await invalidateFileStates(library.id);
 }

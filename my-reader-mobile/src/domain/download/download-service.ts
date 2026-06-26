@@ -1,14 +1,14 @@
 import i18n from "@/src/i18n";
 
-import type { DataSource, Library } from "../types";
 import { AppInvariantError } from "../../errors";
+import type { DataSource, Library } from "../types";
 
-import { upsertFileState } from "../../repos/file_state";
+import { upsertFileState } from "../../repos/file-state";
+import type { NativeDownloadOptions } from "../../services/download/native";
 import { readFileStat } from "../../services/fs/file-io";
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
 import { openSyncContext, type SyncTargetContext } from "../sync/actions";
 import { downloadFileDirectWithProgress, type DownloadOutcome } from "../sync/transfer";
-import type { NativeDownloadOptions } from "../../services/download/native";
 
 type BackgroundDownloadOptions = NativeDownloadOptions;
 
