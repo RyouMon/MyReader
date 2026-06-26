@@ -132,8 +132,8 @@ pub fn run() -> Result<(), tauri::Error> {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
-            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config;
-            if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle()) {
+            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config.clone();
+            if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle(), &config.libraries) {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",
                     e

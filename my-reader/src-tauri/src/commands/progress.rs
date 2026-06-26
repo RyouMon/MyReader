@@ -5,9 +5,7 @@ use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::{JsonAny, ReadingProgressDto};
-use crate::services::library_service::LibraryService;
 use crate::services::progress_service::ProgressService;
-use crate::utils::paths::library_sidecar_path;
 
 #[tauri::command]
 #[specta::specta]
@@ -21,14 +19,15 @@ pub async fn get_reading_progress<R: tauri::Runtime>(
     info!("Start to get reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{format}\"");
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    let lib = LibraryService::resolve_library(library_id.as_deref(), &config)?;
-    let sidecar_root = library_sidecar_path(&lib, &app_data_dir)
-        .to_string_lossy()
-        .to_string();
-    let lib_id = lib.id.clone();
 
-    let result =
-        ProgressService::get_reading_progress(&sidecar_root, &lib_id, book_id, &format).await;
+    let result = ProgressService::get_reading_progress_for_library(
+        &app_data_dir,
+        &config,
+        library_id.as_deref(),
+        book_id,
+        &format,
+    )
+    .await;
 
     match &result {
         Ok(progress) => info!(
@@ -62,13 +61,16 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
     );
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    let lib = LibraryService::resolve_library(library_id.as_deref(), &config)?;
-    let sidecar_root = library_sidecar_path(&lib, &app_data_dir)
-        .to_string_lossy()
-        .to_string();
 
-    let result =
-        ProgressService::set_reading_progress(&sidecar_root, book_id, &format, &locator.0).await;
+    let result = ProgressService::set_reading_progress_for_library(
+        &app_data_dir,
+        &config,
+        library_id.as_deref(),
+        book_id,
+        &format,
+        &locator.0,
+    )
+    .await;
 
     match &result {
         Ok(()) => info!("Success to set reading progress. book id: {book_id}, format: \"{format}\""),

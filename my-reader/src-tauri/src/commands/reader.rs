@@ -1,7 +1,6 @@
 use tracing::{error, info};
 use tauri::{AppHandle, State};
 
-use crate::cache;
 use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
@@ -66,15 +65,11 @@ pub async fn close_book_streamer(
     library_id: String,
     book_id: i64,
 ) -> Result<(), AppError> {
-    let session_key = format!("{}-{}", cache::sanitize_key_part(&library_id), book_id);
-    let mut streamers = streamer_state.write().await;
-    if let Some(mut streamer) = streamers.remove(&session_key) {
-        streamer.shutdown();
-        info!(
-            "Closed EPUB streamer for library: {}, book: {}",
-            library_id, book_id
-        );
-    }
+    ReaderService::close_streamer(&streamer_state, &library_id, book_id).await;
+    info!(
+        "Closed EPUB streamer for library: {}, book: {}",
+        library_id, book_id
+    );
     Ok(())
 }
 

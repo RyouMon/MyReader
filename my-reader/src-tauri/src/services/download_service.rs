@@ -97,6 +97,79 @@ impl DownloadService {
         format!("{library_id}/{book_id}/{format}")
     }
 
+    /// Enqueue a book file download. Returns an empty string immediately; the actual
+    /// download runs in a background task. If a download for the same key is already
+    /// active, this is a no-op deduplication.
+    pub async fn enqueue_book_file_download<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Result<String, AppError> {
+        let fmt = format.to_uppercase();
+
+        let cancel_rx = match self.start(library_id, book_id, &fmt) {
+            Some(rx) => rx,
+            None => {
+                info!(
+                    "Download already in progress, return existing path. library id: \"{}\", book id: {}, format: \"{}\"",
+                    library_id, book_id, fmt
+                );
+                return Ok(String::new());
+            }
+        };
+
+        let app_clone = app.clone();
+        let app_data_dir = app_data_dir.to_path_buf();
+        let config = config.clone();
+        let library_id_clone = library_id.to_string();
+        let fmt_clone = fmt.clone();
+        let service_clone = self.clone();
+
+        tauri::async_runtime::spawn(async move {
+            let result = DownloadService::execute_download(
+                &app_clone,
+                &app_data_dir,
+                &config,
+                &library_id_clone,
+                book_id,
+                &fmt,
+                cancel_rx,
+            )
+            .await;
+
+            if let Err(e) = &result {
+                if !matches!(e, AppError::Config(msg) if msg.starts_with("BOOK_DOWNLOAD_CANCELLED")) {
+                    DownloadService::emit_download_error(
+                        &app_clone,
+                        &library_id_clone,
+                        book_id,
+                        &fmt_clone,
+                        e,
+                    );
+                }
+            }
+
+            service_clone.finish(&library_id_clone, book_id, &fmt_clone);
+            result
+        });
+
+        Ok(String::new())
+    }
+
+    /// Check whether a download is currently active.
+    pub fn is_active(&self,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> bool {
+        let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
+        active.contains_key(&Self::make_key(library_id, book_id, format))
+    }
+
     /// Register a new download. Returns a cancellation receiver if the download
     /// was started, or `None` if a download for the same key is already running.
     ///
@@ -1091,6 +1164,88 @@ mod tests {
     // STATUS_ENTRYPOINT_NOT_FOUND. See tauri-apps/tauri#13419.
     fn mock_app_handle() -> tauri::AppHandle<tauri::test::MockRuntime> {
         tauri::test::mock_app().handle().clone()
+    }
+
+    #[tokio::test]
+    async fn enqueue_book_file_download_should_honour_pre_start_cancellation() {
+        let app = mock_app_handle();
+        let service = DownloadService::new();
+        let app_data = tempdir().unwrap();
+        let lib_root = tempdir().unwrap();
+        let (book_id, format, expected_path) =
+            create_minimal_calibre_library(lib_root.path()).await;
+        let config = AppConfig {
+            libraries: vec![local_test_library("lib-cancel", lib_root.path())],
+            ..Default::default()
+        };
+
+        // Cancel before the download has started.
+        assert!(service.cancel("lib-cancel", book_id, &format));
+
+        let result = service
+            .enqueue_book_file_download(
+                &app,
+                app_data.path(),
+                &config,
+                "lib-cancel",
+                book_id,
+                &format,
+            )
+            .await;
+
+        assert_eq!(result.unwrap(), "");
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(!service.is_active("lib-cancel", book_id, &format));
+        // Local library returns the path without writing; with cancellation it should
+        // still complete cleanly and not leave the entry stuck.
+    }
+
+    #[tokio::test]
+    async fn enqueue_book_file_download_should_spawn_and_complete_for_local_library() {
+        let app = mock_app_handle();
+        let service = DownloadService::new();
+        let app_data = tempdir().unwrap();
+        let lib_root = tempdir().unwrap();
+        let (book_id, format, expected_path) =
+            create_minimal_calibre_library(lib_root.path()).await;
+        let config = AppConfig {
+            libraries: vec![local_test_library("lib-local-enqueue", lib_root.path())],
+            ..Default::default()
+        };
+
+        let result = service
+            .enqueue_book_file_download(
+                &app,
+                app_data.path(),
+                &config,
+                "lib-local-enqueue",
+                book_id,
+                &format,
+            )
+            .await;
+
+        assert_eq!(result.unwrap(), "");
+        // Wait for the spawned task to finish.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(!service.is_active("lib-local-enqueue", book_id, &format));
+        assert!(tokio::fs::try_exists(&expected_path).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn download_book_file_should_return_empty_without_spawning_when_already_active() {
+        let app = mock_app_handle();
+        let service = DownloadService::new();
+        let app_data = tempdir().unwrap();
+        let config = AppConfig::default();
+
+        // Pre-register a download as if it were already running.
+        let _rx = service.start("lib", 1, "EPUB").unwrap();
+
+        let result = service
+            .enqueue_book_file_download(&app, app_data.path(), &config, "lib", 1, "EPUB")
+            .await;
+
+        assert_eq!(result.unwrap(), "");
     }
 
     #[tokio::test]

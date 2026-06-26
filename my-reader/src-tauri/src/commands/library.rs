@@ -33,15 +33,13 @@ pub async fn add_library<R: tauri::Runtime>(
 
     let mut config = common::config_snapshot(&state);
 
-    let info =
-        LibraryService::add_library(&app_data_dir, &path, name.as_deref(), &mut config).await?;
+    let info = LibraryService::add_library_with_scope_sync(
+        &app, &app_data_dir, &path, name.as_deref(), &mut config
+    ).await?;
 
     common::with_config_mut(&state, |cfg| *cfg = config.clone());
     common::persist_config(&app, &config)?;
 
-    if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
-        error!("Failed to extend asset protocol scope after adding library. error: {e}");
-    }
     info!(
         "Success to add library. id: \"{}\", name: \"{}\", book count: {}",
         info.id, info.name, info.book_count
@@ -65,21 +63,13 @@ pub async fn add_webdav_library<R: tauri::Runtime>(
 
     let mut config = common::config_snapshot(&state);
 
-    let info = LibraryService::add_webdav_library(
-        &app_data_dir,
-        &data_source_id,
-        &remote_path,
-        name.as_deref(),
-        &mut config,
+    let info = LibraryService::add_webdav_library_with_scope_sync(
+        &app, &app_data_dir, &data_source_id, &remote_path, name.as_deref(), &mut config
     )
     .await?;
 
     common::with_config_mut(&state, |cfg| *cfg = config.clone());
     common::persist_config(&app, &config)?;
-
-    if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
-        error!("Failed to extend asset protocol scope after adding WebDAV library. error: {e}");
-    }
 
     info!(
         "Success to add WebDAV library. id: \"{}\", name: \"{}\", book count: {}",
@@ -105,21 +95,13 @@ pub async fn add_onedrive_library<R: tauri::Runtime>(
 
     let mut config = common::config_snapshot(&state);
 
-    let info = LibraryService::add_onedrive_library(
-        &app_data_dir,
-        &data_source_id,
-        &remote_path,
-        name.as_deref(),
-        &mut config,
+    let info = LibraryService::add_onedrive_library_with_scope_sync(
+        &app, &app_data_dir, &data_source_id, &remote_path, name.as_deref(), &mut config
     )
     .await?;
 
     common::with_config_mut(&state, |cfg| *cfg = config.clone());
     common::persist_config(&app, &config)?;
-
-    if let Err(e) = crate::asset_scope::sync_for_reader_libraries(&app) {
-        error!("Failed to extend asset protocol scope after adding OneDrive library. error: {e}");
-    }
 
     info!(
         "Success to add OneDrive library. id: \"{}\", name: \"{}\", book count: {}",

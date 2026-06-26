@@ -1,5 +1,8 @@
 use std::path::Path;
 
+use tauri::AppHandle;
+
+use crate::asset_scope;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
@@ -94,6 +97,21 @@ impl LibraryService {
         })
     }
 
+    /// Add a local library and refresh the asset protocol scope so the reader can fetch files.
+    pub async fn add_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        path: &str,
+        name: Option<&str>,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = Self::add_library(app_data_dir, path, name, config).await?;
+        if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!("Failed to extend asset protocol scope after adding library. error: {e}");
+        }
+        Ok(info)
+    }
+
     /// Add a WebDAV library: download metadata.db into the app container.
     pub async fn add_webdav_library(
         app_data_dir: &Path,
@@ -163,6 +181,22 @@ impl LibraryService {
         })
     }
 
+    /// Add a WebDAV library and refresh the asset protocol scope.
+    pub async fn add_webdav_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        data_source_id: &str,
+        remote_path: &str,
+        name: Option<&str>,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = Self::add_webdav_library(app_data_dir, data_source_id, remote_path, name, config).await?;
+        if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!("Failed to extend asset protocol scope after adding WebDAV library. error: {e}");
+        }
+        Ok(info)
+    }
+
     /// Add a OneDrive library: download metadata.db into the app container.
     pub async fn add_onedrive_library(
         app_data_dir: &Path,
@@ -230,6 +264,22 @@ impl LibraryService {
             data_source_id: Some(data_source_id.to_string()),
             source_path: Some(remote_path.to_string()),
         })
+    }
+
+    /// Add a OneDrive library and refresh the asset protocol scope.
+    pub async fn add_onedrive_library_with_scope_sync<R: tauri::Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        data_source_id: &str,
+        remote_path: &str,
+        name: Option<&str>,
+        config: &mut AppConfig,
+    ) -> Result<LibraryInfo, AppError> {
+        let info = Self::add_onedrive_library(app_data_dir, data_source_id, remote_path, name, config).await?;
+        if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
+            tracing::error!("Failed to extend asset protocol scope after adding OneDrive library. error: {e}");
+        }
+        Ok(info)
     }
 
     /// Refresh a WebDAV library: re-download metadata.db.
@@ -465,7 +515,68 @@ impl LibraryService {
 mod tests {
     use std::path::PathBuf;
 
+    use sea_orm::ConnectionTrait;
+    use tempfile::tempdir;
+
     use super::*;
+
+    fn mock_app_handle() -> tauri::AppHandle<tauri::test::MockRuntime> {
+        tauri::test::mock_app().handle().clone()
+    }
+
+    async fn create_minimal_calibre_library(root: &std::path::Path) {
+        let db_path = root.join("metadata.db");
+        let url = format!("sqlite://{}?mode=rwc", db_path.to_str().expect("valid utf8"));
+        let db = sea_orm::Database::connect(&url)
+            .await
+            .expect("connect to setup db");
+        let schema = "
+            CREATE TABLE books (id INTEGER PRIMARY KEY, path TEXT);
+            CREATE TABLE data (id INTEGER PRIMARY KEY, book INTEGER NOT NULL, format TEXT NOT NULL, uncompressed_size INTEGER NOT NULL, name TEXT NOT NULL);
+        ";
+        db.execute_unprepared(schema)
+            .await
+            .expect("create calibre schema");
+        db.execute_unprepared("INSERT INTO books (id, path) VALUES (1, 'It');")
+            .await
+            .expect("insert book");
+        db.execute_unprepared("INSERT INTO data (id, book, format, uncompressed_size, name) VALUES (1, 1, 'EPUB', 12, 'It');")
+            .await
+            .expect("insert data");
+    }
+
+    #[tokio::test]
+    async fn add_library_with_scope_sync_should_return_same_info_as_add_library() {
+        let app = mock_app_handle();
+        let app_data = tempdir().unwrap();
+        let lib_root = tempdir().unwrap();
+        create_minimal_calibre_library(lib_root.path()).await;
+        let mut config = AppConfig::default();
+
+        let mut config_without_sync = config.clone();
+        let info_direct = LibraryService::add_library(
+            app_data.path(),
+            &lib_root.path().to_string_lossy(),
+            Some("Synced"),
+            &mut config_without_sync,
+        )
+        .await
+        .expect("direct add should succeed");
+
+        let info_wrapped = LibraryService::add_library_with_scope_sync(
+            &app,
+            app_data.path(),
+            &lib_root.path().to_string_lossy(),
+            Some("Synced"),
+            &mut config,
+        )
+        .await
+        .expect("wrapped add should succeed");
+
+        assert_eq!(info_direct.name, info_wrapped.name);
+        assert_eq!(info_direct.path, info_wrapped.path);
+        assert_eq!(info_direct.book_count, info_wrapped.book_count);
+    }
 
     fn local_library() -> LibraryConfig {
         LibraryConfig {

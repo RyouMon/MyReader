@@ -90,4 +90,46 @@ impl ReaderService {
     pub fn set_reader_ui_preferences(config: &mut AppConfig, prefs: ReaderUiPreferences) {
         config.reader_ui = prefs;
     }
+
+    pub async fn close_streamer(
+        streamer_state: &crate::streamer::StreamerState,
+        library_id: &str,
+        book_id: i64,
+    ) {
+        let session_key = format!("{}-{}", cache::sanitize_key_part(library_id), book_id);
+        let mut streamers = streamer_state.write().await;
+        if let Some(mut streamer) = streamers.remove(&session_key) {
+            streamer.shutdown();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use tokio::sync::RwLock;
+
+    use crate::streamer::{EpubStreamer, StreamerState};
+
+    use super::ReaderService;
+
+    #[tokio::test]
+    async fn close_streamer_should_remove_active_streamer() {
+        let temp = tempfile::tempdir().unwrap();
+        let (streamer, _url) = EpubStreamer::serve_dir(temp.path().to_path_buf())
+            .await
+            .expect("streamer should start");
+
+        let state: StreamerState = StreamerState::new(RwLock::new(HashMap::new()));
+        {
+            let mut guard = state.write().await;
+            guard.insert("lib-1-42".to_string(), streamer);
+        }
+
+        ReaderService::close_streamer(&state, "lib-1", 42).await;
+
+        let guard = state.read().await;
+        assert!(guard.is_empty(), "streamer should be removed from state");
+    }
 }

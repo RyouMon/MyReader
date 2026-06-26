@@ -57,70 +57,32 @@ pub async fn download_book_file<R: tauri::Runtime>(
     book_id: i64,
     format: String,
 ) -> Result<String, AppError> {
-    let fmt = format.to_uppercase();
     info!(
         "Start to download book file. library id: \"{}\", book id: {}, format: \"{}\"",
-        library_id, book_id, fmt
+        library_id, book_id, format
     );
-
-    // Register the download as early as possible so that a cancel request that
-    // arrives before the background task is spawned will still be honoured: the
-    // cancellation receiver will already be signalled when the task starts.
-    let cancel_rx = match service.start(&library_id, book_id, &fmt) {
-        Some(rx) => rx,
-        None => {
-            info!(
-                "Download already in progress, return existing path. library id: \"{}\", book id: {}, format: \"{}\"",
-                library_id, book_id, fmt
-            );
-            return Ok(String::new());
-        }
-    };
 
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
 
-    let app_clone = app.clone();
-    let library_id_clone = library_id.clone();
-    let fmt_clone = fmt.clone();
-    let service_clone = (*service).clone();
-
-    tauri::async_runtime::spawn(async move {
-        let result = DownloadService::execute_download(
-            &app_clone,
-            &app_data_dir,
-            &config,
-            &library_id_clone,
-            book_id,
-            &format,
-            cancel_rx,
+    let result = service
+        .enqueue_book_file_download(
+            &app, &app_data_dir, &config, &library_id, book_id, &format
         )
         .await;
 
-        if let Err(e) = &result {
-            // Cancellation events are emitted by DownloadService; the command only
-            // emits errors that happen before or outside the service call.
-            if !matches!(e, AppError::Config(msg) if msg.starts_with("BOOK_DOWNLOAD_CANCELLED")) {
-                DownloadService::emit_download_error(
-                    &app_clone,
-                    &library_id_clone,
-                    book_id,
-                    &fmt_clone,
-                    e,
-                );
-            }
-        }
+    match &result {
+        Ok(_) => info!(
+            "Download task enqueued. library id: \"{}\", book id: {}, format: \"{}\"",
+            library_id, book_id, format
+        ),
+        Err(err) => error!(
+            "Failed to enqueue book download. library id: \"{}\", book id: {}, format: \"{}\", error: {}",
+            library_id, book_id, format, err
+        ),
+    }
 
-        service_clone.finish(&library_id_clone, book_id, &fmt_clone);
-        result
-    });
-
-    info!(
-        "Download task spawned. library id: \"{}\", book id: {}, format: \"{}\"",
-        library_id, book_id, fmt
-    );
-
-    Ok(String::new())
+    result
 }
 
 #[tauri::command]
