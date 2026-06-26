@@ -141,25 +141,15 @@ function ReadingListCardImpl({
         </View>
       </View>
       {hasMenu ? (
-        <View onStartShouldSetResponder={() => true}>
-          <MenuView
-            actions={computedMenuActions}
-            isAnchoredToRight={Platform.OS === "android"}
-            onOpenMenu={handleMenuOpenLocal}
-            onCloseMenu={onMenuClose}
-            onPressAction={handleMenuPressAction}
-          >
-            {menuTrigger}
-          </MenuView>
-        </View>
+        <View className="h-8 w-8" />
       ) : (
-        <Pressable
+        <View
           accessibilityRole="button"
           accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
           className="h-8 w-8 items-center justify-center"
         >
           <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
-        </Pressable>
+        </View>
       )}
     </View>
   );
@@ -196,6 +186,22 @@ function ReadingListCardImpl({
       >
         {cardContent}
       </Pressable>
+      {hasMenu ? (
+        <MenuView
+          actions={computedMenuActions}
+          isAnchoredToRight={Platform.OS === "android"}
+          onOpenMenu={handleMenuOpenLocal}
+          onCloseMenu={onMenuClose}
+          onPressAction={handleMenuPressAction}
+          style={{
+            position: "absolute",
+            top: 12 + (COVER_HEIGHT - 32) / 2,
+            right: 12,
+          }}
+        >
+          {menuTrigger}
+        </MenuView>
+      ) : null}
     </View>
   );
 }

@@ -78,17 +78,16 @@ export function ContinueReadingCard({
           variant={homeCardStyle}
         />
         {menuActions && menuActions.length > 0 ? (
-          <View className="absolute right-3 top-3 z-10" onStartShouldSetResponder={() => true}>
-            <MenuView
-              actions={menuActions}
-              isAnchoredToRight={Platform.OS === "android"}
-              onOpenMenu={onMenuOpen}
-              onCloseMenu={onMenuClose}
-              onPressAction={handleMenuAction}
-            >
-              {menuTrigger}
-            </MenuView>
-          </View>
+          <MenuView
+            actions={menuActions}
+            isAnchoredToRight={Platform.OS === "android"}
+            onOpenMenu={onMenuOpen}
+            onCloseMenu={onMenuClose}
+            onPressAction={handleMenuAction}
+            style={{ position: "absolute", right: 12, top: 12, zIndex: 10 }}
+          >
+            {menuTrigger}
+          </MenuView>
         ) : null}
 
         <Pressable
