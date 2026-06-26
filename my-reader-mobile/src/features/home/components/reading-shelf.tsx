@@ -24,6 +24,7 @@ export type ReadingShelfProps = {
   onMenuClose?: () => void;
   isAnyMenuOpen?: boolean;
   homeCardStyle?: HomeCardStyle;
+  favoriteBookIds?: Set<string>;
 };
 
 export function ReadingShelf({
@@ -39,6 +40,7 @@ export function ReadingShelf({
   onMenuClose,
   isAnyMenuOpen,
   homeCardStyle,
+  favoriteBookIds,
 }: ReadingShelfProps) {
   const { width } = useWindowDimensions();
   const cardWidth = getCardWidth(width);
@@ -60,6 +62,7 @@ export function ReadingShelf({
           menuIsRemote={menuIsRemote}
           menuFormats={bookFormatsById?.[item.id]}
           menuSelectedFormat={selectedFormatById?.[item.id]}
+          isFavorite={favoriteBookIds?.has(item.id)}
           onPress={onSelectBook ? () => onSelectBook(item) : undefined}
           onMenuAction={onMenuAction}
           onMenuOpen={onMenuOpen}

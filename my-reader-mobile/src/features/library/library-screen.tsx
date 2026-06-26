@@ -17,6 +17,7 @@ import {
 } from "@/src/components";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
+import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { BookItem } from "@/src/domain/types";
@@ -27,7 +28,7 @@ import {
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
 import type { BookProgressSnapshot } from "@/src/features/library/components/books/book-cover";
-import { useBookFilter, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
+import { useBookFilter, type LibraryFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
 import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
@@ -35,7 +36,7 @@ import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
 import { useAppStore } from "@/src/store/app-store";
-import { useBookActions } from "./hooks/useBookActions";
+import { useBookActions } from "./hooks/use-book-actions";
 
 const defaultSortOption: SortOption = "recentlyAdded";
 
@@ -93,7 +94,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const { query, setQuery, debouncedQuery, clearQuery } = useSearchQuery(effectiveLibraryId);
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
-  const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
+  const [filter, setFilter] = useState<LibraryFilterOption>("all");
   const isGridView = viewMode === "grid";
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
@@ -131,6 +132,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   );
 
   const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(selectedLibrary, books);
+  const { favoriteSet, toggleFavorite } = useFavoriteBooks(selectedLibrary, books);
 
   const variant = resolveLibraryScreenVariant({
     storeReady,
@@ -149,8 +151,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     books,
     debouncedQuery,
     sortBy,
-    downloadFilter,
+    filter,
     bookDownloadStatusById,
+    favoriteSet,
   );
 
   /** Opens a platform-neutral library picker menu without navigation. */
@@ -186,13 +189,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     selectedLibrary,
     libraries,
     effectiveLibraryId,
-    downloadFilter,
+    filter,
     sortBy,
     viewMode,
     onSyncCurrentLibrary: handleSyncCurrentLibrary,
     onSelectLibrary: applyLibrarySelection,
     onOpenLibrarySwitchMenu: openLibrarySwitchMenu,
-    onSetDownloadFilter: setDownloadFilter,
+    onSetFilter: setFilter,
     onSetSortBy: setSortBy,
     onSetViewMode: setViewMode,
     onQueryChange: setQuery,
@@ -219,6 +222,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     selectedFormatById,
     selectedLibrary,
     setBookReadingFormat,
+    toggleFavorite,
   );
 
   const isMenuOpen = openMenuBookId !== null;
@@ -249,6 +253,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               menuIsRemote={isRemote}
               menuFormats={menuFormats}
               menuSelectedFormat={menuSelectedFormat}
+              isFavorite={favoriteSet.has(item.id)}
               onMenuAction={handleBookMenuAction}
               onMenuOpen={handleMenuOpen}
               onMenuClose={handleMenuClose}
@@ -269,6 +274,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           menuIsRemote={isRemote}
           menuFormats={menuFormats}
           menuSelectedFormat={menuSelectedFormat}
+          isFavorite={favoriteSet.has(item.id)}
           onMenuAction={handleBookMenuAction}
           onMenuOpen={handleMenuOpen}
           onMenuClose={handleMenuClose}
@@ -280,12 +286,12 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       );
     },
     [
-      LIST_PADDING_X,
       bookActiveFormatsById,
       bookDownloadStatusById,
       bookFormatMetaById,
       bookFormatsById,
       cardWidth,
+      favoriteSet,
       handleBookMenuAction,
       handleBookPress,
       handleMenuClose,
@@ -307,6 +313,42 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       {toolbar}
     </>
   );
+
+  const emptyState = useMemo(() => {
+    if (query.length > 0) {
+      return {
+        title: t("library.noMatch.search.title"),
+        detail: t("library.noMatch.search.detail"),
+        icon: { ios: "magnifyingglass", android: "search" } as const,
+      };
+    }
+    if (filter === "favorites") {
+      return {
+        title: t("library.noMatch.favorites.title"),
+        detail: t("library.noMatch.favorites.detail"),
+        icon: { ios: "star.fill", android: "star" } as const,
+      };
+    }
+    if (books.length === 0) {
+      return {
+        title: t("library.noMatch.empty.title"),
+        detail: t("library.noMatch.empty.detail"),
+        icon: { ios: "books.vertical", android: "library-books" } as const,
+      };
+    }
+    if (filter !== "all") {
+      return {
+        title: t("library.noMatch.filter.title"),
+        detail: t("library.noMatch.filter.detail"),
+        icon: { ios: "line.3.horizontal.decrease.circle", android: "filter-list" } as const,
+      };
+    }
+    return {
+      title: t("library.noMatch.search.title"),
+      detail: t("library.noMatch.search.detail"),
+      icon: { ios: "magnifyingglass", android: "search" } as const,
+    };
+  }, [query.length, books.length, filter, t]);
 
   if (variant === "loading") {
     return (
@@ -367,35 +409,6 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       </>
     );
   }
-
-  const emptyState = useMemo(() => {
-    if (query.length > 0) {
-      return {
-        title: t("library.noMatch.search.title"),
-        detail: t("library.noMatch.search.detail"),
-        icon: { ios: "magnifyingglass", android: "search" } as const,
-      };
-    }
-    if (books.length === 0) {
-      return {
-        title: t("library.noMatch.empty.title"),
-        detail: t("library.noMatch.empty.detail"),
-        icon: { ios: "books.vertical", android: "library-books" } as const,
-      };
-    }
-    if (downloadFilter !== "all") {
-      return {
-        title: t("library.noMatch.filter.title"),
-        detail: t("library.noMatch.filter.detail"),
-        icon: { ios: "line.3.horizontal.decrease.circle", android: "filter-list" } as const,
-      };
-    }
-    return {
-      title: t("library.noMatch.search.title"),
-      detail: t("library.noMatch.search.detail"),
-      icon: { ios: "magnifyingglass", android: "search" } as const,
-    };
-  }, [query.length, books.length, downloadFilter, t]);
 
   return (
     <>

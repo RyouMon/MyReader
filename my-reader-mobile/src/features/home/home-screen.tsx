@@ -13,10 +13,11 @@ import {
   SectionLabel,
 } from "@/src/components";
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
+import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books";
 import { isRemoteSourceType } from "@/src/domain/types";
 import { ContinueReadingCard, ReadingShelf } from "@/src/features/home/components";
+import { useBookActions } from "@/src/features/library/hooks/use-book-actions";
 import { useBookReadingProgress } from "@/src/features/library/hooks/use-book-reading-progress";
-import { useBookActions } from "@/src/features/library/hooks/useBookActions";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
@@ -41,6 +42,7 @@ export default function HomeScreen() {
   const { data: progressByBookId = {} } = useBookReadingProgress(activeLibrary);
 
   const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary, books);
+  const { favoriteSet, toggleFavorite } = useFavoriteBooks(activeLibrary, books);
   const { bookFormatsById, bookFormatMetaById, fileStateBundle, bookDownloadStatusById } =
     useLibraryBookMeta(activeLibrary, books, selectedFormatById);
 
@@ -68,6 +70,7 @@ export default function HomeScreen() {
     selectedFormatById,
     activeLibrary,
     setBookReadingFormat,
+    toggleFavorite,
   );
 
   const handleSelectBook = useCallback(
@@ -90,10 +93,11 @@ export default function HomeScreen() {
     if (!currentBook) return [];
     return buildBookMenuActions(currentBookStatus, {
       isRemote,
+      isFavorite: favoriteSet.has(currentBook.id),
       formats: bookFormatsById[currentBook.id],
       selectedFormat: selectedFormatById[currentBook.id],
     });
-  }, [currentBook, currentBookStatus, isRemote, bookFormatsById, selectedFormatById]);
+  }, [currentBook, currentBookStatus, isRemote, bookFormatsById, selectedFormatById, favoriteSet]);
 
   const handleCurrentBookMenuAction = useCallback(
     (actionId: string) => {
@@ -151,6 +155,7 @@ export default function HomeScreen() {
                 onMenuClose={handleMenuClose}
                 isAnyMenuOpen={isMenuOpen}
                 homeCardStyle={homeCardStyle}
+                favoriteBookIds={favoriteSet}
               />
             </View>
           </>

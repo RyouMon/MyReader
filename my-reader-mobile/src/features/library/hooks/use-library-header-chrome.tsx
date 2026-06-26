@@ -7,8 +7,8 @@ import { Platform } from "react-native";
 import { useThemePalette } from "@/src/design/tokens";
 import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import type { Library } from "@/src/domain/types";
-import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
-import { getLibraryDownloadFilterTitle } from "@/src/features/library/utils/library-header-config";
+import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
+import { getLibraryFilterTitle } from "@/src/features/library/utils/library-header-config";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import { LibraryIosHeaderToolbar } from "../components/library-header/ios-header-toolbar";
@@ -21,13 +21,13 @@ type UseLibraryHeaderChromeParams = {
   selectedLibrary: Library | null;
   libraries: Library[];
   effectiveLibraryId?: string;
-  downloadFilter: DownloadFilterOption;
+  filter: LibraryFilterOption;
   sortBy: SortOption;
   viewMode: LibraryViewMode;
   onSyncCurrentLibrary: () => void;
   onSelectLibrary: (libraryId: string) => void;
   onOpenLibrarySwitchMenu: () => void;
-  onSetDownloadFilter: (value: DownloadFilterOption) => void;
+  onSetFilter: (value: LibraryFilterOption) => void;
   onSetSortBy: (value: SortOption) => void;
   onSetViewMode: (value: LibraryViewMode) => void;
   onQueryChange: (query: string) => void;
@@ -45,13 +45,13 @@ export function useLibraryHeaderChrome({
   selectedLibrary,
   libraries,
   effectiveLibraryId,
-  downloadFilter,
+  filter,
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
   onSelectLibrary,
   onOpenLibrarySwitchMenu,
-  onSetDownloadFilter,
+  onSetFilter,
   onSetSortBy,
   onSetViewMode,
   onQueryChange,
@@ -63,7 +63,7 @@ export function useLibraryHeaderChrome({
   const rightMenuRef = useRef(null);
   const chromeMode = resolveLibraryHeaderChromeMode(variant);
   const title = variant === "loaded" && selectedLibrary
-    ? getLibraryDownloadFilterTitle(t, downloadFilter)
+    ? getLibraryFilterTitle(t, filter)
     : t("library.title");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -78,12 +78,12 @@ export function useLibraryHeaderChrome({
     rightMenuRef,
     libraries,
     effectiveLibraryId,
-    downloadFilter,
+    filter,
     sortBy,
     viewMode,
     onSyncCurrentLibrary,
     onSelectLibrary,
-    onSetDownloadFilter,
+    onSetFilter,
     onSetSortBy,
     onSetViewMode,
   });
@@ -157,7 +157,7 @@ export function useLibraryHeaderChrome({
     }
 
     return merged;
-  }, [baseOptions, androidMenuOptions, chromeMode, variant, t, onQueryChange, onSearchCancel, isSearchOpen, handleSearchOpen, handleSearchClose]);
+  }, [baseOptions, androidMenuOptions, chromeMode, variant, t, onQueryChange, onSearchCancel, isSearchOpen, handleSearchOpen, handleSearchClose, palette.text, palette.textMuted]);
 
   const toolbar = useMemo((): ReactNode => {
     if (chromeMode === "platform-menus" && Platform.OS === "ios") {
@@ -165,12 +165,12 @@ export function useLibraryHeaderChrome({
         <LibraryIosHeaderToolbar
           libraries={libraries}
           effectiveLibraryId={effectiveLibraryId}
-          downloadFilter={downloadFilter}
+          filter={filter}
           sortBy={sortBy}
           viewMode={viewMode}
           onSyncCurrentLibrary={onSyncCurrentLibrary}
           onSelectLibrary={onSelectLibrary}
-          onSetDownloadFilter={onSetDownloadFilter}
+          onSetFilter={onSetFilter}
           onSetSortBy={onSetSortBy}
           onSetViewMode={onSetViewMode}
         />
@@ -182,12 +182,12 @@ export function useLibraryHeaderChrome({
     chromeMode,
     libraries,
     effectiveLibraryId,
-    downloadFilter,
+    filter,
     sortBy,
     viewMode,
     onSyncCurrentLibrary,
     onSelectLibrary,
-    onSetDownloadFilter,
+    onSetFilter,
     onSetSortBy,
     onSetViewMode,
   ]);

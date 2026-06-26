@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Feather from "@expo/vector-icons/Feather";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { pickReadableFormat } from "@my-reader/tools/utils";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -13,6 +14,7 @@ import { EmptyState } from "@/src/components";
 import { ErrorBoundary } from "@/src/components/error-boundary";
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre";
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
+import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books";
 import { BookDetailContent, getDetailColors } from "@/src/features/library/components/books/book-detail";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
 import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
@@ -41,6 +43,7 @@ export default function BookDetailScreen() {
   const detailCacheRef = useRef(detailCache);
   const loadingIdsRef = useRef(new Set<string>());
   const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(activeLibrary, books);
+  const { isFavorite, toggleFavorite } = useFavoriteBooks(activeLibrary, books);
 
   useEffect(() => {
     if (id && currentId === null) {
@@ -144,7 +147,13 @@ export default function BookDetailScreen() {
   }, []);
 
   const detailColors = useMemo(() => getDetailColors(palette, colorScheme), [palette, colorScheme]);
-  const noop = useCallback(() => {}, []);
+
+  const handleToggleFavorite = useCallback(() => {
+    if (!currentId) return;
+    void toggleFavorite(currentId);
+  }, [currentId, toggleFavorite]);
+
+  const isCurrentFavorite = currentId ? isFavorite(currentId) : false;
 
   const leftActions = useMemo<ScreenHeaderAction[] | undefined>(
     () =>
@@ -168,11 +177,17 @@ export default function BookDetailScreen() {
     return [
       {
         label: t("bookDetail.favorite"),
-        onPress: noop,
-        icon: <Feather name="star" size={20} color={detailColors.muted} />,
-        iosSfSymbol: "star",
+        onPress: handleToggleFavorite,
+        icon: (
+          <MaterialIcons
+            name={isCurrentFavorite ? "star" : "star-border"}
+            size={22}
+            color={isCurrentFavorite ? palette.primary : detailColors.muted}
+          />
+        ),
+        iosSfSymbol: isCurrentFavorite ? "star.fill" : "star",
         iconOnly: true,
-        color: detailColors.muted,
+        color: isCurrentFavorite ? palette.primary : detailColors.muted,
       },
       {
         label: t("bookDetail.share"),
@@ -183,7 +198,7 @@ export default function BookDetailScreen() {
         color: detailColors.muted,
       },
     ];
-  }, [currentDetail, detailColors.muted, handleShare, noop, t]);
+  }, [currentDetail, detailColors.muted, handleShare, handleToggleFavorite, isCurrentFavorite, palette.primary, t]);
 
   const { options: baseOptions, toolbar } = useScreenHeader({
     title: t("bookDetail.title"),

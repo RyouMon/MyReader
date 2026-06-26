@@ -1,8 +1,10 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { bookReadingFormat, readingProgress, fileState, syncMeta } from "./schema";
+import { bookReadingFormat, favoriteBooks, readingProgress, fileState, syncMeta } from "./schema";
 
 export type BookReadingFormat = InferSelectModel<typeof bookReadingFormat>;
 export type NewBookReadingFormat = InferInsertModel<typeof bookReadingFormat>;
+export type FavoriteBook = InferSelectModel<typeof favoriteBooks>;
+export type NewFavoriteBook = InferInsertModel<typeof favoriteBooks>;
 export type ReadingProgress = InferSelectModel<typeof readingProgress>;
 export type NewReadingProgress = InferInsertModel<typeof readingProgress>;
 export type FileState = InferSelectModel<typeof fileState>;

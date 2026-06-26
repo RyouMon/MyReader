@@ -41,6 +41,7 @@ export type BookCardProps = {
   menuIsRemote?: boolean;
   menuFormats?: string[];
   menuSelectedFormat?: string;
+  isFavorite?: boolean;
   /**
    * When set together, the card subscribes directly to the download store for
    * this book+format so progress updates do not re-render the parent list.
@@ -66,6 +67,7 @@ function BookCardImpl({
   menuIsRemote,
   menuFormats,
   menuSelectedFormat,
+  isFavorite,
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookCardProps) {
@@ -81,10 +83,11 @@ function BookCardImpl({
     if (!hasMenuInputs) return menuActions;
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
+      isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat]);
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat, isFavorite]);
 
   const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
 

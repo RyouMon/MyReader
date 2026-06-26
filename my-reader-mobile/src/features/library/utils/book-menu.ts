@@ -8,6 +8,7 @@ import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library
 
 export type BookMenuConfig = {
   isRemote: boolean;
+  isFavorite?: boolean;
   formats?: string[];
   selectedFormat?: string;
 };
@@ -20,10 +21,14 @@ export function buildBookMenuActions(
   downloadStatus: BookDownloadStatus | undefined,
   menuConfig: BookMenuConfig,
 ): MenuAction[] {
-  const { isRemote, formats, selectedFormat } = menuConfig;
+  const { isRemote, isFavorite, formats, selectedFormat } = menuConfig;
   const readableFormats = getReadableFormats(formats);
   const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormat);
   const actions: MenuAction[] = [{ id: "detail", title: i18n.t("bookMenu.detail") }];
+  actions.push({
+    id: "favorite",
+    title: isFavorite ? i18n.t("bookMenu.removeFromFavorites") : i18n.t("bookMenu.addToFavorites"),
+  });
 
   if (isRemote) {
     if (downloadStatus === "downloading") {

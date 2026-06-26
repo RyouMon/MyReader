@@ -35,13 +35,15 @@
       "all": "全部",
       "downloaded": "已下载",
       "notDownloaded": "未下载",
-      "downloading": "正在下载"
+      "downloading": "正在下载",
+      "favorites": "收藏"
     },
     "filterTitle": {
       "all": "全部图书",
       "downloaded": "已下载",
       "notDownloaded": "未下载",
-      "downloading": "正在下载"
+      "downloading": "正在下载",
+      "favorites": "收藏"
     },
     "sort": {
       "title": "书名",
@@ -94,6 +96,10 @@
       "filter": {
         "title": "筛选无结果",
         "detail": "当前筛选条件下没有图书，请尝试其他筛选条件。"
+      },
+      "favorites": {
+        "title": "还没有收藏书籍",
+        "detail": "在任意书籍详情页点击星标即可添加到收藏。"
       }
     }
   },
@@ -490,6 +496,8 @@
   },
   "bookMenu": {
     "detail": "图书详情",
+    "addToFavorites": "加入收藏",
+    "removeFromFavorites": "取消收藏",
     "download": "下载",
     "downloadFormat": "下载（{{format}}）",
     "cancelDownload": "取消下载",

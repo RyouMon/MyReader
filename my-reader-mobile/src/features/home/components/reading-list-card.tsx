@@ -34,6 +34,7 @@ export type ReadingListCardProps = {
   menuIsRemote?: boolean;
   menuFormats?: string[];
   menuSelectedFormat?: string;
+  isFavorite?: boolean;
   onPress?: (bookId: string) => void;
   onMenuAction?: (bookId: string, actionId: string) => void;
   onMenuOpen?: (bookId: string) => void;
@@ -51,6 +52,7 @@ function ReadingListCardImpl({
   menuIsRemote,
   menuFormats,
   menuSelectedFormat,
+  isFavorite,
   onPress,
   onMenuAction,
   onMenuOpen,
@@ -71,10 +73,11 @@ function ReadingListCardImpl({
     if (menuIsRemote === undefined) return undefined;
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote,
+      isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     });
-  }, [downloadStatus, menuIsRemote, menuFormats, menuSelectedFormat]);
+  }, [downloadStatus, menuIsRemote, menuFormats, menuSelectedFormat, isFavorite]);
 
   const hasMenu = computedMenuActions && computedMenuActions.length > 0 && onMenuAction;
 

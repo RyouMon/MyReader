@@ -35,13 +35,15 @@
       "all": "All",
       "downloaded": "Downloaded",
       "notDownloaded": "Not Downloaded",
-      "downloading": "Downloading"
+      "downloading": "Downloading",
+      "favorites": "Favorites"
     },
     "filterTitle": {
       "all": "All Books",
       "downloaded": "Downloaded",
       "notDownloaded": "Not Downloaded",
-      "downloading": "Downloading"
+      "downloading": "Downloading",
+      "favorites": "Favorites"
     },
     "sort": {
       "title": "Title",
@@ -94,6 +96,10 @@
       "filter": {
         "title": "No filtered results",
         "detail": "No books match the current filter. Try a different filter."
+      },
+      "favorites": {
+        "title": "No favorites yet",
+        "detail": "Tap the star icon on any book to add it to your favorites."
       }
     }
   },
@@ -490,6 +496,8 @@
   },
   "bookMenu": {
     "detail": "Book Details",
+    "addToFavorites": "Add to Favorites",
+    "removeFromFavorites": "Remove from Favorites",
     "download": "Download",
     "downloadFormat": "Download ({{format}})",
     "cancelDownload": "Cancel Download",

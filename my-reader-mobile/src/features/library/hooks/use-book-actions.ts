@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { router } from "expo-router";
 
@@ -28,6 +28,7 @@ export function useBookActions(
   selectedFormatById: Record<string, string>,
   selectedLibrary: Library | null,
   setBookReadingFormat: ((bookId: string, format: string | null) => Promise<void> | void) | null,
+  toggleFavorite?: (bookId: string) => Promise<void> | void,
 ) {
   const isNavigatingRef = useRef(false);
   const tasks = useDownloadStatusTasks();
@@ -44,18 +45,22 @@ export function useBookActions(
     selectedLibrary,
     setBookReadingFormat,
     tasks,
+    toggleFavorite,
   });
-  stateRef.current = {
-    books,
-    bookDownloadStatusById,
-    bookFormatMetaById,
-    fileStateBundle,
-    openMenuBookId,
-    selectedFormatById,
-    selectedLibrary,
-    setBookReadingFormat,
-    tasks,
-  };
+  useEffect(() => {
+    stateRef.current = {
+      books,
+      bookDownloadStatusById,
+      bookFormatMetaById,
+      fileStateBundle,
+      openMenuBookId,
+      selectedFormatById,
+      selectedLibrary,
+      setBookReadingFormat,
+      tasks,
+      toggleFavorite,
+    };
+  });
 
   const downloadBook = useCallback(async (book: BookItem, targetFormat?: string) => {
     const { selectedLibrary: lib, selectedFormatById: formatById } = stateRef.current;
@@ -182,6 +187,13 @@ export function useBookActions(
       }
       if (actionId === "detail") {
         router.push({ pathname: "/library-book/[id]", params: { id: bookId } });
+        return;
+      }
+      if (actionId === "favorite") {
+        const toggle = latest.toggleFavorite;
+        if (toggle) {
+          void toggle(bookId);
+        }
         return;
       }
       if (actionId.startsWith("setDefaultFormat:")) {

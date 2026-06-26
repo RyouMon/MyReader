@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { BookItem } from "@/src/domain/types";
 
 export type SortOption = "title" | "author" | "recentlyAdded";
-export type DownloadFilterOption = "all" | "downloaded" | "notDownloaded" | "downloading";
+export type LibraryFilterOption = "all" | "favorites" | "downloaded" | "notDownloaded" | "downloading";
 
 /** Compares newest Calibre additions first, falling back to id for older rows without timestamps. */
 function compareRecentlyAdded(left: BookItem, right: BookItem): number {
@@ -19,13 +19,14 @@ function compareRecentlyAdded(left: BookItem, right: BookItem): number {
   return left.id.localeCompare(right.id, "zh-CN", { numeric: true });
 }
 
-/** Filters and sorts books by query (title / author / authors), then by download status. */
+/** Filters and sorts books by query (title / author / authors), then by the active library filter. */
 export function useBookFilter(
   books: BookItem[],
   debouncedQuery: string,
   sortBy: SortOption,
-  downloadFilter: DownloadFilterOption,
+  filter: LibraryFilterOption,
   bookDownloadStatusById: Record<string, string>,
+  favoriteBookIds: Set<string> = new Set(),
 ) {
   const sortedSearchedBooks = useMemo(() => {
     const needle = debouncedQuery.trim().toLowerCase();
@@ -54,11 +55,14 @@ export function useBookFilter(
   }, [books, debouncedQuery, sortBy]);
 
   const visibleBooks = useMemo(() => {
-    if (downloadFilter === "all") return sortedSearchedBooks;
+    if (filter === "favorites") {
+      return sortedSearchedBooks.filter((book) => favoriteBookIds.has(book.id));
+    }
+    if (filter === "all") return sortedSearchedBooks;
     return sortedSearchedBooks.filter(
-      (book) => (bookDownloadStatusById[book.id] ?? "notDownloaded") === downloadFilter,
+      (book) => (bookDownloadStatusById[book.id] ?? "notDownloaded") === filter,
     );
-  }, [bookDownloadStatusById, downloadFilter, sortedSearchedBooks]);
+  }, [bookDownloadStatusById, favoriteBookIds, filter, sortedSearchedBooks]);
 
   return { sortedSearchedBooks, visibleBooks };
 }
