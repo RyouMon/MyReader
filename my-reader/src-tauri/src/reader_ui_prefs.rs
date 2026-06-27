@@ -153,12 +153,13 @@ pub struct ReflowableReaderPreferencesDto {
     pub tts: ReflowTtsDto,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReaderUiPreferences {
     #[serde(default = "default_version")]
     pub version: u32,
+    #[serde(default = "default_app_theme")]
+    pub app_theme: String,
     #[serde(default = "default_library_view_mode")]
     pub library_view_mode: String,
     #[serde(default)]
@@ -170,7 +171,11 @@ pub struct ReaderUiPreferences {
 }
 
 fn default_version() -> u32 {
-    4
+    5
+}
+
+fn default_app_theme() -> String {
+    "system".into()
 }
 
 fn default_library_view_mode() -> String {
@@ -181,6 +186,7 @@ impl Default for ReaderUiPreferences {
     fn default() -> Self {
         Self {
             version: default_version(),
+            app_theme: default_app_theme(),
             library_view_mode: default_library_view_mode(),
             fixed_layout: FixedLayoutSettingsDto::default(),
             reflowable: ReflowableReaderPreferencesDto::default(),

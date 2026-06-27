@@ -366,8 +366,12 @@
       } else {
         document.documentElement.setAttribute("data-theme", "dark");
       }
+      const nowDark = !isDark;
       renderTokens();
       renderBridge();
+      document.querySelectorAll("iframe").forEach(iframe => {
+        iframe.contentWindow?.postMessage({ type: "theme-change", dark: nowDark }, "*");
+      });
     });
 
     renderTokens();

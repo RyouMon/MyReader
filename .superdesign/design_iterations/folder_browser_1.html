@@ -32,6 +32,24 @@
       --focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
     }
 
+    [data-theme="dark"] {
+      --primary: #d4803a;
+      --secondary: #B8895A;
+      --bg: #1f1b17;
+      --bg-secondary: #2a2520;
+      --ink-1: #f5efe6;
+      --ink-2: #b8afa6;
+      --ink-inverse: #3b2f2f;
+      --success: #5AAD7E;
+      --warning: #D4A844;
+      --danger: #d46a5a;
+      --border: rgba(245, 239, 230, 0.12);
+      --border-strong: rgba(245, 239, 230, 0.22);
+      --hover-bg: color-mix(in srgb, var(--ink-1) 5%, transparent);
+      --active-bg: color-mix(in srgb, var(--primary) 12%, transparent);
+      --focus-ring: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -112,7 +130,8 @@
     }
 
     .folder-row:hover {
-      background: var(--hover-bg);
+      background: var(--active-bg);
+      color: var(--ink-1);
     }
 
     .folder-row:active {
@@ -164,7 +183,7 @@
     }
 
     .icon-button:hover {
-      background: var(--hover-bg);
+      background: var(--active-bg);
       color: var(--ink-1);
     }
 
@@ -246,7 +265,7 @@
     }
 
     .close-button:hover {
-      background: var(--hover-bg);
+      background: var(--active-bg);
       color: var(--ink-1);
     }
 
@@ -343,7 +362,7 @@
     }
 
     .btn-secondary:hover {
-      background: var(--hover-bg);
+      background: var(--active-bg);
     }
 
     .btn-primary {
@@ -435,6 +454,16 @@
 
   <script>
     lucide.createIcons();
+
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'theme-change') {
+        if (e.data.dark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      }
+    });
   </script>
 </body>
 </html>

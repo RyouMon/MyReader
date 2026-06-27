@@ -5,21 +5,28 @@ import {
   ChevronsUpDown,
   Clock,
   Library,
+  Monitor,
+  Moon,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   PlusCircle,
   Settings,
   Star,
+  Sun,
   Tags,
   User,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
+import { useTheme } from "@/components/AppThemeProvider"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -40,8 +47,19 @@ import {
 } from "@/components/ui/sidebar"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
+import type { AppThemeMode } from "@/types/readerUiPreferences"
 
 export type SidebarView = "all" | "recent" | "favorites"
+
+const THEME_OPTIONS: Array<{
+  value: AppThemeMode
+  icon: typeof Sun
+  tKey: string
+}> = [
+  { value: "light", icon: Sun, tKey: "theme.light" },
+  { value: "dark", icon: Moon, tKey: "theme.dark" },
+  { value: "system", icon: Monitor, tKey: "theme.system" },
+]
 
 export default function AppSidebar() {
   const { t } = useTranslation()
@@ -50,6 +68,7 @@ export default function AppSidebar() {
   const isCollapsed = state === "collapsed"
   const { data: libraries = [] } = useLibrariesQuery()
   const { activeLibraryId, switchLibrary } = useLibraryUiStore()
+  const { theme, setTheme } = useTheme()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const location = useLocation()
 
@@ -216,6 +235,37 @@ export default function AppSidebar() {
 
       <SidebarFooter className="overflow-x-hidden p-2">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton tooltip={t("theme.label")}>
+                  <Palette />
+                  <span>{t("theme.label")}</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" sideOffset={8}>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  {t("theme.label")}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={theme}
+                  onValueChange={(value) => setTheme(value as AppThemeMode)}
+                >
+                  {THEME_OPTIONS.map(({ value, icon: Icon, tKey }) => (
+                    <DropdownMenuRadioItem
+                      key={value}
+                      value={value}
+                      className="gap-2"
+                    >
+                      <Icon className="size-4" />
+                      <span>{t(tKey)}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild

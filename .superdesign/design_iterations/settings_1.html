@@ -36,6 +36,27 @@
     --radius: 0.75rem;
   }
 
+  [data-theme="dark"] {
+    --background:        #1f1b17;
+    --foreground:        #f5efe6;
+    --card:              #2a2520;
+    --card-foreground:   #f5efe6;
+    --primary:           #d4803a;
+    --primary-foreground:#3b2f2f;
+    --secondary:         #3a332c;
+    --muted:             #36302a;
+    --muted-foreground:  #b8afa6;
+    --accent:            #3a332c;
+    --destructive:       #d46a5a;
+    --border:            rgba(245, 239, 230, 0.12);
+    --input:             #3a332c;
+    --ring:              #d4803a;
+    --sidebar-bg:        #2a2520;
+    --sidebar-fg:        #f5efe6;
+    --sidebar-border:    rgba(245, 239, 230, 0.12);
+    --settings-nav-bg:   #2a2520;
+  }
+
   html, body {
     height: 100% !important;
     overflow: hidden !important;
@@ -117,7 +138,7 @@
     color: var(--muted-foreground);
     font-size: 12px;
   }
-  .library-selector:hover { background: #e2d8c8; }
+  .library-selector:hover { background: var(--accent); }
 
   .lib-dot {
     width: 7px;
@@ -159,9 +180,10 @@
   }
   .sidebar-item:hover {
     background: #e2d8c8;
+    color: var(--foreground);
   }
   .sidebar-item.active {
-    background: color-mix(in srgb, #b5651d 12%, transparent);
+    background: var(--accent);
     color: var(--primary);
     font-weight: 500;
   }
@@ -203,6 +225,53 @@
   .sidebar-footer {
     padding: 8px;
     border-top: 1px solid var(--sidebar-border);
+    position: relative;
+  }
+
+  .theme-menu {
+    position: absolute;
+    left: calc(100% + 6px);
+    bottom: 0;
+    width: 140px;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--popover);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    opacity: 0;
+    transform: translateX(-4px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 50;
+  }
+  .theme-menu.open {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+  }
+  .theme-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--foreground);
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .theme-option:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .theme-option.active {
+    color: var(--primary);
+    font-weight: 500;
+  }
+  .theme-check {
+    width: 16px;
+    text-align: center;
+    opacity: 0.7;
   }
 
   /* ── Column 2: Settings Nav ──────────────────────── */
@@ -247,9 +316,9 @@
     user-select: none;
     position: relative;
   }
-  .settings-nav-item:hover { background: #e5ddd0; }
+  .settings-nav-item:hover { background: var(--accent); }
   .settings-nav-item.active {
-    background: color-mix(in srgb, #b5651d 10%, transparent);
+    background: var(--accent);
     color: var(--primary);
     font-weight: 500;
   }
@@ -517,12 +586,12 @@
   .btn:active { transform: scale(0.97); }
 
   .btn-secondary {
-    background: var(--secondary) !important;
+    background: var(--card) !important;
     color: var(--foreground) !important;
     border-color: var(--border);
   }
   .btn-secondary:hover {
-    background: #ddd3be !important;
+    background: var(--accent) !important;
     box-shadow: 0 1px 4px rgba(59,47,47,0.10);
   }
 
@@ -532,7 +601,7 @@
     border-color: transparent;
   }
   .btn-primary:hover {
-    background: #a05618 !important;
+    filter: brightness(1.08);
     box-shadow: 0 2px 8px rgba(181,101,29,0.30);
   }
 
@@ -646,7 +715,26 @@
     </div>
 
     <div class="sidebar-footer">
-      <div class="sidebar-item active">
+      <div class="sidebar-item" onclick="toggleThemeMenu(event)">
+        <i data-lucide="palette" class="item-icon"></i>
+        <span>主题</span>
+        <i data-lucide="chevron-right" style="width:14px;height:14px;margin-left:auto;opacity:0.5;" id="theme-chevron"></i>
+      </div>
+      <div class="theme-menu" id="theme-menu">
+        <div class="theme-option" data-value="light" onclick="setThemeMode('light')">
+          <span class="theme-check" id="check-light"></span>
+          <span>浅色</span>
+        </div>
+        <div class="theme-option" data-value="dark" onclick="setThemeMode('dark')">
+          <span class="theme-check" id="check-dark"></span>
+          <span>深色</span>
+        </div>
+        <div class="theme-option active" data-value="system" onclick="setThemeMode('system')">
+          <span class="theme-check" id="check-system">✓</span>
+          <span>跟随系统</span>
+        </div>
+      </div>
+      <div class="sidebar-item active" style="margin-top:4px;">
         <i data-lucide="settings" class="item-icon"></i>
         <span>设置</span>
       </div>
@@ -952,6 +1040,66 @@
   function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  const themeMenu = document.getElementById('theme-menu');
+  const themeChevron = document.getElementById('theme-chevron');
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  let themeMode = 'system';
+
+  function applyTheme() {
+    const prefersDark = mediaQuery.matches;
+    const isDark = themeMode === 'dark' || (themeMode === 'system' && prefersDark);
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+
+  function updateThemeUI() {
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      const active = opt.dataset.value === themeMode;
+      opt.classList.toggle('active', active);
+      const check = opt.querySelector('.theme-check');
+      if (check) check.textContent = active ? '✓' : '';
+    });
+  }
+
+  window.toggleThemeMenu = function (e) {
+    e.stopPropagation();
+    const open = themeMenu.classList.toggle('open');
+    themeChevron.style.transform = open ? 'rotate(180deg)' : '';
+  };
+
+  window.setThemeMode = function (mode) {
+    themeMode = mode;
+    applyTheme();
+    updateThemeUI();
+    themeMenu.classList.remove('open');
+    themeChevron.style.transform = '';
+  };
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#theme-menu') && !e.target.closest('.sidebar-footer')) {
+      themeMenu.classList.remove('open');
+      themeChevron.style.transform = '';
+    }
+  });
+
+  mediaQuery.addEventListener('change', () => {
+    if (themeMode === 'system') applyTheme();
+  });
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'theme-change') {
+      themeMode = e.data.dark ? 'dark' : 'light';
+      applyTheme();
+      updateThemeUI();
+    }
+  });
+
+  updateThemeUI();
+  applyTheme();
 </script>
 </body>
 </html>

@@ -98,6 +98,38 @@
       --radius-xl: 1rem;
     }
 
+    [data-theme="dark"] {
+      --background: #1f1b17;
+      --foreground: #f5efe6;
+      --card: #2a2520;
+      --card-foreground: #f5efe6;
+      --popover: #2f2923;
+      --popover-foreground: #f5efe6;
+      --primary: #d4803a;
+      --primary-foreground: #3b2f2f;
+      --secondary: #3a332c;
+      --secondary-foreground: #f5efe6;
+      --muted: #36302a;
+      --muted-foreground: #b8afa6;
+      --accent: #3a332c;
+      --accent-foreground: #f5efe6;
+      --destructive: #d46a5a;
+      --destructive-foreground: #f5efe6;
+      --border: rgba(245, 239, 230, 0.12);
+      --input: #3a332c;
+      --ring: #d4803a;
+      --sidebar: #2a2520;
+      --sidebar-foreground: #f5efe6;
+      --sidebar-primary: #d4803a;
+      --sidebar-primary-foreground: #3b2f2f;
+      --sidebar-accent: #3a332c;
+      --sidebar-accent-foreground: #f5efe6;
+      --sidebar-border: rgba(245, 239, 230, 0.12);
+      --sidebar-ring: #d4803a;
+      --progress: #d4803a;
+      --progress-track: #3a332c;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
@@ -206,11 +238,21 @@
     }
 
     .sidebar-item:hover {
-      background: rgba(0,0,0,0.04);
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+    html:not([data-theme="dark"]) .sidebar-item:hover {
+      background: #e2d8c8;
+      color: var(--sidebar-foreground);
+    }
+    html:not([data-theme="dark"]) .sidebar-item.active,
+    html:not([data-theme="dark"]) .sidebar-item.active:hover {
+      background: #e2d8c8;
+      color: var(--primary);
     }
 
     .sidebar-item.active {
-      background: rgba(181, 101, 29, 0.10);
+      background: var(--accent);
       color: var(--primary);
       font-weight: 550;
     }
@@ -246,6 +288,61 @@
       margin-top: auto;
       padding: 12px;
       border-top: 1px solid var(--sidebar-border);
+      position: relative;
+    }
+
+    .theme-menu {
+      position: absolute;
+      left: calc(100% + 6px);
+      bottom: 0;
+      width: 140px;
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--popover);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      opacity: 0;
+      transform: translateX(-4px) scale(0.98);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 50;
+    }
+    .theme-menu.open {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+    }
+    .theme-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .theme-option:hover {
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+    html:not([data-theme="dark"]) .theme-option:hover {
+      background: #e2d8c8;
+      color: var(--foreground);
+    }
+    .theme-option.active {
+      color: var(--primary);
+      font-weight: 500;
+    }
+    html:not([data-theme="dark"]) .theme-option.active,
+    html:not([data-theme="dark"]) .theme-option.active:hover {
+      color: var(--primary);
+    }
+    .theme-check {
+      width: 16px;
+      text-align: center;
+      opacity: 0.7;
     }
 
     /* ─── Library Selector ─── */
@@ -253,7 +350,7 @@
       margin: 0 12px 4px;
       padding: 8px 10px;
       border-radius: var(--radius-sm);
-      background: rgba(0,0,0,0.03);
+      background: var(--card);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -263,7 +360,8 @@
       transition: background 0.2s;
     }
 
-    .library-selector:hover { background: rgba(0,0,0,0.06); }
+        .library-selector:hover { background: var(--accent); color: var(--accent-foreground); }
+    html:not([data-theme="dark"]) .library-selector:hover { background: #e2d8c8; color: var(--muted-foreground); }
 
     .library-selector .lib-dot {
       width: 8px;
@@ -349,12 +447,21 @@
     }
 
     .toolbar-btn:hover {
-      background: var(--secondary);
-      color: var(--foreground);
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+    html:not([data-theme="dark"]) .toolbar-btn:hover {
+      background: #e2d8c8;
+      color: var(--muted-foreground);
     }
 
     .toolbar-btn.active {
-      background: var(--secondary);
+      background: var(--accent);
+      color: var(--primary);
+    }
+    html:not([data-theme="dark"]) .toolbar-btn.active,
+    html:not([data-theme="dark"]) .toolbar-btn.active:hover {
+      background: #e2d8c8;
       color: var(--primary);
     }
 
@@ -642,6 +749,7 @@
 
     .sidebar:hover .sidebar-toggle { opacity: 1; }
     .sidebar-toggle:hover { background: var(--secondary); }
+    html:not([data-theme="dark"]) .sidebar-toggle:hover { background: #e2d8c8; }
 
     /* ─── Section title in grid ─── */
     .grid-section-title {
@@ -664,7 +772,7 @@
 
     /* ─── Continue reading banner ─── */
     .continue-banner {
-      background: linear-gradient(135deg, var(--card) 0%, var(--secondary) 100%);
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
       padding: 20px 24px;
@@ -804,7 +912,26 @@
 
       <!-- Bottom -->
       <div class="sidebar-bottom">
-        <div class="sidebar-item">
+        <div class="sidebar-item" onclick="toggleThemeMenu(event)">
+          <i data-lucide="palette" style="width:18px; height:18px;"></i>
+          主题
+          <i data-lucide="chevron-right" style="width:14px; height:14px; margin-left:auto; opacity:0.5;" id="theme-chevron"></i>
+        </div>
+        <div class="theme-menu" id="theme-menu">
+          <div class="theme-option" data-value="light" onclick="setThemeMode('light')">
+            <span class="theme-check" id="check-light"></span>
+            <span>浅色</span>
+          </div>
+          <div class="theme-option" data-value="dark" onclick="setThemeMode('dark')">
+            <span class="theme-check" id="check-dark"></span>
+            <span>深色</span>
+          </div>
+          <div class="theme-option active" data-value="system" onclick="setThemeMode('system')">
+            <span class="theme-check" id="check-system">✓</span>
+            <span>跟随系统</span>
+          </div>
+        </div>
+        <div class="sidebar-item" style="margin-top:4px;">
           <i data-lucide="settings" style="width:18px; height:18px;"></i>
           设置
         </div>
@@ -1155,6 +1282,66 @@
 
   <script>
     lucide.createIcons();
+
+    const themeMenu = document.getElementById('theme-menu');
+    const themeChevron = document.getElementById('theme-chevron');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    let themeMode = 'system';
+
+    function applyTheme() {
+      const prefersDark = mediaQuery.matches;
+      const isDark = themeMode === 'dark' || (themeMode === 'system' && prefersDark);
+      if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+
+    function updateThemeUI() {
+      document.querySelectorAll('.theme-option').forEach(opt => {
+        const active = opt.dataset.value === themeMode;
+        opt.classList.toggle('active', active);
+        const check = opt.querySelector('.theme-check');
+        if (check) check.textContent = active ? '✓' : '';
+      });
+    }
+
+    window.toggleThemeMenu = function (e) {
+      e.stopPropagation();
+      const open = themeMenu.classList.toggle('open');
+      themeChevron.style.transform = open ? 'rotate(180deg)' : '';
+    };
+
+    window.setThemeMode = function (mode) {
+      themeMode = mode;
+      applyTheme();
+      updateThemeUI();
+      themeMenu.classList.remove('open');
+      themeChevron.style.transform = '';
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#theme-menu') && !e.target.closest('.sidebar-bottom')) {
+        themeMenu.classList.remove('open');
+        themeChevron.style.transform = '';
+      }
+    });
+
+    mediaQuery.addEventListener('change', () => {
+      if (themeMode === 'system') applyTheme();
+    });
+
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'theme-change') {
+        themeMode = e.data.dark ? 'dark' : 'light';
+        applyTheme();
+        updateThemeUI();
+      }
+    });
+
+    updateThemeUI();
+    applyTheme();
   </script>
 </body>
 </html>

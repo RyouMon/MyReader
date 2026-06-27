@@ -1131,6 +1131,12 @@
       });
     }
 
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'theme-change') {
+        setTheme(e.data.dark ? 'dark' : 'paper');
+      }
+    });
+
     /* ═══ Font setting ═══ */
     function setFont(el, fontValue) {
       document.querySelectorAll('.font-option').forEach(o => {

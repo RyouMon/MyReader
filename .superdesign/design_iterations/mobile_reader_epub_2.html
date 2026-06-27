@@ -691,6 +691,12 @@
     });
   }
 
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'theme-change') {
+      setReaderTheme(e.data.dark ? 'night' : 'neutral');
+    }
+  });
+
   /* ═══ Settings controls ═══ */
   function stepFontSize(delta) {
     fontSize = Math.max(14, Math.min(28, fontSize + delta));

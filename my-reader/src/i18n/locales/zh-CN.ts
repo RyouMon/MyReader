@@ -44,6 +44,12 @@ export const zhCN = {
       booksCount: "{{count}} 本",
       browse: "分类浏览",
     },
+    theme: {
+      label: "主题",
+      light: "浅色",
+      dark: "深色",
+      system: "跟随系统",
+    },
     library: {
       title: "全部书籍",
       favoritesTitle: "收藏书籍",
@@ -204,6 +210,11 @@ export const zhCN = {
         title: "外观",
         description: "自定义主题、字体与界面风格",
         comingSoon: "即将推出",
+        themeTitle: "应用主题",
+        themeDescription: "选择 MyReader 桌面界面的显示方式。",
+        themeLightDescription: "适合白天阅读的暖纸色界面。",
+        themeDarkDescription: "适合夜间阅读的低眩光深色界面。",
+        themeSystemDescription: "跟随操作系统的外观设置。",
       },
     },
     addLibraryForm: {

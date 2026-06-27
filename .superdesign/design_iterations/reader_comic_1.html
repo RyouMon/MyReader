@@ -857,6 +857,12 @@
       document.getElementById('gap-val').textContent = val + 'px';
     }
 
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'theme-change') {
+        document.documentElement.setAttribute('data-reader-theme', e.data.dark ? 'dark' : 'paper');
+      }
+    });
+
     /* ═══ Keyboard shortcuts ═══ */
     document.addEventListener('keydown', (e) => {
       switch (e.key) {

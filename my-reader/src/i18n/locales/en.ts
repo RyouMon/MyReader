@@ -45,6 +45,12 @@ export const en = {
       booksCount: "{{count}} books",
       browse: "Browse",
     },
+    theme: {
+      label: "Theme",
+      light: "Light",
+      dark: "Dark",
+      system: "System",
+    },
     library: {
       title: "All Books",
       favoritesTitle: "Favorites",
@@ -208,6 +214,11 @@ export const en = {
         title: "Appearance",
         description: "Customize theme, font and UI style",
         comingSoon: "Coming soon",
+        themeTitle: "App theme",
+        themeDescription: "Choose how MyReader renders the desktop interface.",
+        themeLightDescription: "Warm paper surfaces for daytime reading.",
+        themeDarkDescription: "Low-glare dark surfaces for night reading.",
+        themeSystemDescription: "Match the operating system setting.",
       },
     },
     addLibraryForm: {

@@ -9,6 +9,25 @@
     :root {
       --radius-big: 28px;
       --radius-small: 16px;
+      --page-bg: #f5efe6;
+      --page-fg: #3b2f2f;
+      --card-border: rgba(59, 47, 47, 0.10);
+      --card-shadow: 0 24px 60px rgba(28, 23, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      --title-color: #fff;
+      --subtitle-color: rgba(255, 255, 255, 0.72);
+      --overlay-start: rgba(0, 0, 0, 0.18);
+      --overlay-end: rgba(0, 0, 0, 0.32);
+    }
+
+    [data-theme="dark"] {
+      --page-bg: #121212;
+      --page-fg: #f5f5f5;
+      --card-border: rgba(255, 255, 255, 0.12);
+      --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      --title-color: #fff;
+      --subtitle-color: rgba(255, 255, 255, 0.72);
+      --overlay-start: rgba(0, 0, 0, 0.18);
+      --overlay-end: rgba(0, 0, 0, 0.32);
     }
 
     * {
@@ -19,20 +38,21 @@
       margin: 0;
       min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: #121212;
-      color: #f5f5f5;
+      background: var(--page-bg);
+      color: var(--page-fg);
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 32px;
       padding: 48px 20px;
+      transition: background 350ms ease, color 350ms ease;
     }
 
     h1 {
       font-size: 20px;
       font-weight: 600;
       margin: 0;
-      color: #e8e8e8;
+      color: var(--page-fg);
     }
 
     .controls {
@@ -43,7 +63,7 @@
     }
 
     input[type="file"] {
-      color: #aaa;
+      color: var(--page-fg);
       font-size: 14px;
     }
 
@@ -71,11 +91,9 @@
     .card {
       position: relative;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow:
-        0 24px 60px rgba(0, 0, 0, 0.45),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      transition: transform 0.2s ease;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s ease, border-color 350ms ease, box-shadow 350ms ease;
     }
 
     .card:hover {
@@ -99,8 +117,8 @@
       inset: 0;
       background: linear-gradient(
         135deg,
-        rgba(0, 0, 0, 0.18) 0%,
-        rgba(0, 0, 0, 0.32) 100%
+        var(--overlay-start) 0%,
+        var(--overlay-end) 100%
       );
       z-index: 1;
       pointer-events: none;
@@ -143,18 +161,18 @@
       font-size: 24px;
       font-weight: 700;
       line-height: 1.2;
-      color: #fff;
+      color: var(--title-color);
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
     }
 
     .big-card .author {
       font-size: 15px;
-      color: rgba(255, 255, 255, 0.72);
+      color: var(--subtitle-color);
     }
 
     .big-card .progress {
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.65);
+      color: var(--subtitle-color);
       font-variant-numeric: tabular-nums;
     }
 
@@ -203,7 +221,7 @@
     .small-card .title {
       font-size: 16px;
       font-weight: 700;
-      color: #fff;
+      color: var(--title-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -212,7 +230,7 @@
 
     .small-card .author {
       font-size: 14px;
-      color: rgba(255, 255, 255, 0.72);
+      color: var(--subtitle-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -220,7 +238,7 @@
 
     .small-card .progress {
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.65);
+      color: var(--subtitle-color);
       font-variant-numeric: tabular-nums;
     }
 
@@ -231,7 +249,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--subtitle-color);
       font-size: 18px;
       flex-shrink: 0;
     }
@@ -368,6 +386,16 @@
       const img = new Image();
       img.src = url;
       img.onload = () => updateFromImage(img);
+    });
+
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'theme-change') {
+        if (e.data.dark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      }
     });
   </script>
 </body>
