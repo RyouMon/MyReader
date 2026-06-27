@@ -61,7 +61,7 @@ export function AppRow({
     <Component className={cn("flex min-w-0 items-start gap-3", className)}>
       {Icon && (
         <div className="mt-0.5 shrink-0" data-slot="row-head">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <div className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <Icon className="size-4" />
           </div>
         </div>

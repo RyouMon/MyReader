@@ -238,7 +238,7 @@ function EpubSettingsPanel({
                   className={cn(
                     "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
                     spreadMode === value
-                      ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                      ? "border-primary bg-accent text-reader-chrome-fg"
                       : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                   )}
                 >
@@ -372,7 +372,7 @@ function EpubSettingsPanel({
                     className={cn(
                       "flex-1 rounded-md border px-1 py-1.5 text-[12px] transition-colors",
                       readerSettings.lineHeight === lh
-                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        ? "border-primary bg-accent text-reader-chrome-fg"
                         : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                     )}
                   >
@@ -404,7 +404,7 @@ function EpubSettingsPanel({
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors",
                       readerSettings.readingLayout === value
-                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        ? "border-primary bg-accent text-reader-chrome-fg"
                         : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                     )}
                   >
@@ -436,7 +436,7 @@ function EpubSettingsPanel({
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors",
                       readerSettings.textAlign === value
-                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        ? "border-primary bg-accent text-reader-chrome-fg"
                         : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                     )}
                   >
@@ -469,7 +469,7 @@ function EpubSettingsPanel({
                       className={cn(
                         "flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-[12px] transition-colors",
                         readerSettings.colCount === value
-                          ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                          ? "border-primary bg-accent text-reader-chrome-fg"
                           : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                       )}
                     >

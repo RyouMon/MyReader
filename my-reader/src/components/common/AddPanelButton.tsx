@@ -20,7 +20,7 @@ export function AddPanelButton({
     <button
       type={type}
       className={cn(
-        "flex w-full items-center gap-2.5 bg-primary/5 px-4 py-3 text-[13.5px] font-medium text-primary transition-colors hover:bg-primary/10",
+        "flex w-full items-center gap-2.5 bg-card px-4 py-3 text-[13.5px] font-medium text-primary transition-colors hover:bg-accent hover:text-accent-foreground",
         className,
       )}
       {...props}

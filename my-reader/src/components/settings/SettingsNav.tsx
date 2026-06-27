@@ -54,7 +54,7 @@ export default function SettingsNav({
               className={cn(
                 "relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors",
                 isActive
-                  ? "bg-primary/10 font-medium text-primary"
+                  ? "bg-accent font-medium text-accent-foreground"
                   : "text-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >

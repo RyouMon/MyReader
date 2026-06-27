@@ -117,8 +117,7 @@ function LibraryCard({
   return (
     <GroupListItem
       className={cn(
-        "bg-card transition-[opacity,transform,background-color]",
-        "hover:bg-muted/40",
+        "transition-[opacity,transform,background-color] hover:bg-accent",
         isRemoving &&
           "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}
@@ -137,7 +136,7 @@ function LibraryCard({
               </span>
             )}
             {isWebdav && (
-              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-primary">
+              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.05em] text-accent-foreground">
                 WebDAV
               </span>
             )}
@@ -147,7 +146,7 @@ function LibraryCard({
               </span>
             )}
             {isActive && (
-              <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+              <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">
                 {t("settings.libraries.current")}
               </span>
             )}

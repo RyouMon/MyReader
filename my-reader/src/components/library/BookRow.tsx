@@ -57,7 +57,7 @@ const BookRow = memo(function BookRow({
   return (
     // biome-ignore lint/a11y/useSemanticElements: The row contains nested action buttons, so the outer target cannot be a button.
     <div
-      className="group/row flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-hover-bg focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/row flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
@@ -88,7 +88,7 @@ const BookRow = memo(function BookRow({
               "rounded-sm border-0 px-1.5 py-0 text-[9px] font-semibold",
               isUnread
                 ? "bg-muted text-muted-foreground"
-                : "bg-accent-ui text-primary",
+                : "bg-accent text-accent-foreground",
             )}
           >
             {useProgressLabel(progress)}
@@ -128,7 +128,7 @@ const BookRow = memo(function BookRow({
           size="icon-sm"
           title={readLabel}
           aria-label={readLabel}
-          className="size-7 text-primary hover:bg-accent-ui"
+          className="size-7 text-primary hover:bg-accent hover:text-accent-foreground"
           onClick={(event) => {
             event.stopPropagation()
             onRead?.(book)
@@ -142,7 +142,7 @@ const BookRow = memo(function BookRow({
           size="icon-sm"
           title={t("bookCard.moreActions")}
           aria-label={t("bookCard.moreActions")}
-          className="size-7 text-muted-foreground hover:bg-hover-bg hover:text-foreground"
+          className="size-7 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           onClick={(event) => {
             event.stopPropagation()
             onMore?.(book)

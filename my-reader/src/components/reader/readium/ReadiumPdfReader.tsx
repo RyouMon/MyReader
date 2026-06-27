@@ -274,7 +274,7 @@ export function ReadiumPdfReader({
                     className={cn(
                       "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
                       spreadMode === value
-                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        ? "border-primary bg-accent text-reader-chrome-fg"
                         : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                     )}
                   >
@@ -302,7 +302,7 @@ export function ReadiumPdfReader({
                     className={cn(
                       "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
                       surface === value
-                        ? "border-primary bg-primary/10 text-reader-chrome-fg"
+                        ? "border-primary bg-accent text-reader-chrome-fg"
                         : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
                     )}
                   >

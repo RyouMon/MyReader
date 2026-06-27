@@ -340,7 +340,7 @@ function BookDetailPage() {
           variant="ghost"
           size="sm"
           onClick={() => navigate({ to: "/" })}
-          className="group/back text-[13.5px] text-muted-foreground hover:bg-secondary hover:text-foreground"
+          className="group/back text-[13.5px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         >
           <ArrowLeft
             data-icon="inline-start"

@@ -31,7 +31,7 @@ export function StatusNotice({
       ? "border-success/30 bg-success-soft"
       : tone === "error"
         ? "border-destructive/30 bg-destructive/10"
-        : "border-primary/20 bg-primary/5"
+        : "border-primary/20 bg-card"
 
   return (
     <div

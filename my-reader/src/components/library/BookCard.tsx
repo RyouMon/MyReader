@@ -126,7 +126,7 @@ const BookCard = memo(function BookCard({
           <div className="mt-1 flex items-center gap-1.5">
             <Badge
               variant="secondary"
-              className="rounded-sm border-0 bg-accent-ui px-1.5 py-0 text-[9px] font-semibold text-primary"
+              className="rounded-sm border-0 bg-accent px-1.5 py-0 text-[9px] font-semibold text-accent-foreground"
             >
               {Math.round(progress.percent ?? 0)}%
             </Badge>

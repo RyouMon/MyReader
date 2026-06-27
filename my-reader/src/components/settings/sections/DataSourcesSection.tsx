@@ -85,7 +85,7 @@ export default function DataSourcesSection() {
 function LocalStorageStaticRow() {
   const { t } = useTranslation()
   return (
-    <GroupListItem className="bg-card transition-[opacity,transform,background-color] hover:bg-muted/40">
+    <GroupListItem className="transition-[opacity,transform,background-color] hover:bg-accent">
       <AppRow
         icon="hardDrive"
         body={t("constants.localDataSourceName")}
@@ -96,7 +96,7 @@ function LocalStorageStaticRow() {
             <span className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-[0.05em] text-muted-foreground">
               {t("settings.dataSources.localLabel")}
             </span>
-            <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+            <span className="rounded-sm bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground">
               {t("settings.dataSources.builtIn")}
             </span>
           </div>
@@ -144,8 +144,7 @@ function DataSourceCard({
   return (
     <GroupListItem
       className={cn(
-        "bg-card transition-[opacity,transform,background-color]",
-        "hover:bg-muted/40",
+        "transition-[opacity,transform,background-color] hover:bg-accent",
         isRemoving &&
           "pointer-events-none ltr:translate-x-2 rtl:-translate-x-2 opacity-0",
       )}

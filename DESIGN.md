@@ -6,18 +6,18 @@ description: >
   warm editorial aesthetic. Designed for sustained long-session reading and
   calm library management across desktop and mobile.
 colors:
-  primary: "#D97757"
+  primary: "#b5651d"
   secondary: "#A87E62"
-  bg: "#EDE8DF"
-  bg-secondary: "#F7F3EC"
-  ink-1: "#1C1714"
-  ink-2: "#5C5349"
-  ink-inverse: "#FAF6F0"
+  bg: "#f5efe6"
+  bg-secondary: "#f0e8db"
+  ink-1: "#3b2f2f"
+  ink-2: "#7a6b5d"
+  ink-inverse: "#faf5ef"
   success: "#3A7D5A"
   warning: "#C4922D"
-  danger: "#B53A2F"
-  border: "rgba(28, 23, 20, 0.10)"
-  border-strong: "rgba(28, 23, 20, 0.20)"
+  danger: "#b44a3a"
+  border: "#ddd2c0"
+  border-strong: "#d9cebb"
 
 ---
 

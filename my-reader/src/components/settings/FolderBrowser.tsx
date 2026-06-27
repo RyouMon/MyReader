@@ -119,7 +119,7 @@ export function FolderBrowser({
             onClick={handleGoBack}
             className={cn(
               "inline-flex items-center justify-center size-8 rounded-md border border-border bg-transparent text-ink-2 transition-colors",
-              "hover:bg-hover-bg hover:text-ink-1",
+              "hover:bg-accent hover:text-accent-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               "disabled:opacity-40 disabled:pointer-events-none"
             )}
@@ -224,7 +224,7 @@ export function FolderBrowser({
               onClick={onRefresh}
               className={cn(
                 "inline-flex items-center justify-center size-8 rounded-md border border-border bg-transparent text-ink-2 transition-colors",
-                "hover:bg-hover-bg hover:text-ink-1",
+                "hover:bg-accent hover:text-accent-foreground",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                 "disabled:opacity-40 disabled:pointer-events-none"
               )}
@@ -295,7 +295,7 @@ export function FolderBrowser({
                   className={cn(
                     "folder-browser-row flex items-center gap-3 w-full h-11 px-3 rounded-md text-left",
                     "text-sm text-ink-1 bg-transparent",
-                    "hover:bg-hover-bg",
+                    "hover:bg-accent hover:text-accent-foreground",
                     "active:scale-[0.995] transition-all",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   )}
@@ -320,7 +320,7 @@ export function FolderBrowser({
               className={cn(
                 "inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-medium",
                 "border border-border bg-transparent text-ink-1",
-                "hover:bg-hover-bg transition-colors",
+                "hover:bg-accent hover:text-accent-foreground transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               )}
             >

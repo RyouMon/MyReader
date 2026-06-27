@@ -18,7 +18,7 @@ export type ReaderThemeColors = {
 
 export const READER_THEMES = {
   neutral:   { bg: "#FFFFFF", fg: "#2C2420", muted: "#6B5E54", link: "#D97757" },
-  paper:     { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#D97757" },
+  paper:     { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#b5651d" },
   sepia:     { bg: "#F1E7D0", fg: "#5F4B37", muted: "#8F7D6F", link: "#D97757" },
   green:     { bg: "#CCE8CC", fg: "#2D4A2D", muted: "#5F7161", link: "#577A45" },
   ocean:     { bg: "#D0E0F0", fg: "#2D3E5F", muted: "#5F7080", link: "#4A6A8A" },
@@ -31,14 +31,14 @@ export type ReaderThemeName = keyof typeof READER_THEMES;
 
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
-  active: "rgba(240, 235, 225, 0.20)",
+  active: "rgba(245, 239, 230, 0.22)",
   error: "rgba(255,255,255,0.08)",
 } as const;
 
 /** Chrome UI tokens — used for controls/chrome overlay. Always dark. */
 export const READER_CHROME = {
   /** Primary accent (bookmark, slider active, segment active). */
-  accent: "#C4602A",
+  accent: "#d4803a",
 
   /** Canvas/surface for chrome overlays. */
   surface: "#110D0A",

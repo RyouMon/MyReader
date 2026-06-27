@@ -16,35 +16,37 @@
      Hover / press states are left to the framework via
      color-mix() or filter: brightness(). Do NOT add more.
   ───────────────────────────────────────────────────────── */
-  --primary:   #D97757;   /* Claude orange — CTAs, links, highlights */
-  --secondary: #A87E62;   /* warm amber-brown, muted — tags, secondary actions */
+  --primary:   #b5651d;   /* warm terracotta — CTAs, links, highlights */
+  --secondary: #A87E62;   /* warm taupe — softer accent, tags, hover tints */
 
   /* ── BACKGROUNDS ──────────────────────────────────────────
-     Two levels: muted page canvas and elevated surfaces.
+     Low-contrast paper-like surfaces. Quiet editorial.
+     Cards sit slightly darker than the page so they read as
+     layered paper, not floating panels.
   ───────────────────────────────────────────────────────── */
-  --bg:           #EDE8DF;   /* page canvas — warm muted ground */
-  --bg-secondary: #F7F3EC;   /* elevated — cards, sidebars, popovers */
+  --bg:           #f5efe6;   /* page canvas — warm muted ground */
+  --bg-secondary: #f0e8db;   /* cards, sidebars — sit slightly darker than page */
 
   /* ── TEXT (Ink) ───────────────────────────────────────────
      Two levels only: primary + weak emphasis.
      Not brand colors — typography utility only.
   ───────────────────────────────────────────────────────── */
-  --ink-1:       #1C1714;   /* primary — body, headings */
-  --ink-2:       #5C5349;   /* weak emphasis — metadata, captions, labels */
-  --ink-inverse: #FAF6F0;   /* on dark/colored surfaces */
+  --ink-1:       #3b2f2f;   /* primary — body, headings */
+  --ink-2:       #7a6b5d;   /* weak emphasis — metadata, captions, labels */
+  --ink-inverse: #faf5ef;   /* on dark/colored surfaces */
 
   /* ── SEMANTIC ─────────────────────────────────────────────
      One value each. Tints computed via color-mix() at usage.
   ───────────────────────────────────────────────────────── */
   --success: #3A7D5A;
   --warning: #C4922D;
-  --danger:  #B53A2F;
+  --danger:  #b44a3a;
 
   /* ── BORDER ───────────────────────────────────────────────
      Two levels: default separator and strong emphasis.
   ───────────────────────────────────────────────────────── */
-  --border:        rgba(28, 23, 20, 0.10);
-  --border-strong: rgba(28, 23, 20, 0.20);
+  --border:        #ddd2c0;
+  --border-strong: #d9cebb;
 }
 
 /* ============================================================
@@ -52,22 +54,22 @@
    ============================================================ */
 
 [data-theme="dark"] {
-  --primary:      #C4602A;   /* darker Claude orange — less glare on dark bg */
-  --secondary:    #B8895A;   /* lighter warm amber — readable on dark bg */
+  --primary:      #d4803a;   /* brightened terracotta for dark bg */
+  --secondary:    #B8895A;   /* muted gold for dark bg */
 
-  --bg:           #1C1814;
-  --bg-secondary: #26211D;
+  --bg:           #1f1b17;
+  --bg-secondary: #2a2520;
 
-  --ink-1:       #F0EBE1;
-  --ink-2:       #B8AFA6;
-  --ink-inverse: #1C1714;
+  --ink-1:       #f5efe6;
+  --ink-2:       #b8afa6;
+  --ink-inverse: #3b2f2f;
 
   --success: #5AAD7E;
   --warning: #D4A844;
-  --danger:  #D46060;
+  --danger:  #d46a5a;
 
-  --border:        rgba(240, 235, 225, 0.10);
-  --border-strong: rgba(240, 235, 225, 0.20);
+  --border:        rgba(245, 239, 230, 0.12);
+  --border-strong: rgba(245, 239, 230, 0.22);
 }
 
 
