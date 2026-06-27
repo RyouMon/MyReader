@@ -17,8 +17,13 @@ import {
 } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useBookFileState, bookFileStateKeys } from "@/hooks/queries/useBookFileState"
+import {
+  useFavoriteBookMutations,
+  useFavoriteBookSet,
+} from "@/hooks/queries/useFavoriteBooksQuery"
 import { useDownloadProgress } from "@/hooks/useDownloadProgress"
-import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
+import type { CalibreBook } from "@my-reader/tools/types/book"
+import type { BookDetail } from "@/lib/tauri-api"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
@@ -145,6 +150,9 @@ function BookDetailPage() {
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const { data: libraries = [] } = useLibrariesQuery()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
+  const { favoriteSet } = useFavoriteBookSet(activeLibraryId)
+  const { addFavoriteBook, removeFavoriteBook, isPending: favoritePending } =
+    useFavoriteBookMutations(activeLibraryId)
   const formatLabels = useFormatLabels()
   const identifierLabels = useIdentifierLabels()
   const languageMap = useLanguageMap()
@@ -153,7 +161,6 @@ function BookDetailPage() {
   const [seriesBooks, setSeriesBooks] = useState<CalibreBook[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [onShelf, setOnShelf] = useState(true)
   const [synopsisExpanded, setSynopsisExpanded] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
@@ -230,6 +237,24 @@ function BookDetailPage() {
       setCoverFailed(true)
     }
   }, [book])
+
+  const isFavorite = favoriteSet.has(Number(bookId))
+  const handleToggleFavorite = useCallback(() => {
+    if (!activeLibraryId) return
+    const id = Number(bookId)
+    if (!Number.isFinite(id) || id <= 0) return
+    if (isFavorite) {
+      void removeFavoriteBook(id)
+    } else {
+      void addFavoriteBook(id)
+    }
+  }, [
+    activeLibraryId,
+    addFavoriteBook,
+    bookId,
+    isFavorite,
+    removeFavoriteBook,
+  ])
 
   const navigateToRead = useCallback(
     async (id: number, fmt?: string) => {
@@ -358,7 +383,8 @@ function BookDetailPage() {
               isFavorite && "text-primary hover:text-primary",
             )}
             title={isFavorite ? t("bookDetail.unfavorite") : t("bookDetail.favorite")}
-            onClick={() => setIsFavorite(!isFavorite)}
+            disabled={favoritePending}
+            onClick={handleToggleFavorite}
           >
             <Star
               className="size-[18px]"

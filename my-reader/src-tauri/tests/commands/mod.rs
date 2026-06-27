@@ -3,6 +3,7 @@
 pub mod book_test;
 pub mod cache_test;
 pub mod download_test;
+pub mod favorite_test;
 pub mod library_test;
 pub mod progress_test;
 pub mod reader_test;

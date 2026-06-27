@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod favorite_books;
 pub mod file_state;
 pub mod reading_progress;
 pub mod sync_meta;

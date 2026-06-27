@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { AlertCircle, BookOpen, Library } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
 import Toolbar, { type SortOption } from "@/components/library/Toolbar"
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/empty"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -31,10 +32,10 @@ function LibraryPage() {
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
   const { refreshLibrary } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
+  const activeView = useLibraryUiStore((s) => s.activeView)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const navigate = useNavigate()
 
-  const activeView = "all" as const
   const [searchQuery, setSearchQuery] = useState("")
   const viewMode = useAppUiStore((s) => s.libraryViewMode)
   const setViewMode = useAppUiStore((s) => s.setLibraryViewMode)
@@ -44,14 +45,44 @@ function LibraryPage() {
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
     usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
+  const favoriteBooksQuery = useFavoriteBooks(
+    activeLibraryId,
+    sortBy,
+    debouncedSearch,
+  )
+  const favoriteBooks = useMemo(() => {
+    const m = new Map<number, CalibreBook>()
+    for (const [index, book] of (favoriteBooksQuery.data?.items ?? []).entries()) {
+      m.set(index, book)
+    }
+    return m
+  }, [favoriteBooksQuery.data?.items])
 
-  const loading = libLoading || initialLoading
+  const displayedBooks = activeView === "favorites" ? favoriteBooks : books
+  const displayedTotal =
+    activeView === "favorites" ? (favoriteBooksQuery.data?.total ?? 0) : total
+  const displayedLoading =
+    activeView === "favorites" ? favoriteBooksQuery.isLoading : initialLoading
+  const displayedError =
+    activeView === "favorites"
+      ? favoriteBooksQuery.error
+        ? String(favoriteBooksQuery.error)
+        : null
+      : error
+  const displayedEnsureRange =
+    activeView === "favorites" ? () => undefined : ensureRange
+  const displayedRefresh =
+    activeView === "favorites"
+      ? () => void favoriteBooksQuery.refetch()
+      : refresh
+  const loading = libLoading || displayedLoading
 
   const handleRefresh = async () => {
     if (!activeLibraryId) return
     try {
       await refreshLibrary(activeLibraryId)
       refresh()
+      void favoriteBooksQuery.refetch()
     } catch (e) {
       console.error("Failed to refresh library:", e)
     }
@@ -82,7 +113,7 @@ function LibraryPage() {
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
       <h2 className="text-xl font-semibold">{sectionLabel}</h2>
       <span className="text-sm text-muted-foreground font-normal">
-        {t("library.booksCount", { count: total })}
+        {t("library.booksCount", { count: displayedTotal })}
       </span>
     </div>
   )
@@ -99,26 +130,26 @@ function LibraryPage() {
         onRefresh={handleRefresh}
       />
 
-      {loading && !error && <LibrarySkeletonGrid viewMode={viewMode} />}
+      {loading && !displayedError && <LibrarySkeletonGrid viewMode={viewMode} />}
 
-      {!loading && error && (
+      {!loading && displayedError && (
         <Empty className="min-h-0 flex-1">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <AlertCircle className="text-destructive" />
             </EmptyMedia>
             <EmptyTitle>{t("library.loadingFailed")}</EmptyTitle>
-            <EmptyDescription>{error}</EmptyDescription>
+            <EmptyDescription>{displayedError}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" size="sm" onClick={refresh}>
+            <Button variant="outline" size="sm" onClick={displayedRefresh}>
               {t("common.retry")}
             </Button>
           </EmptyContent>
         </Empty>
       )}
 
-      {!loading && !error && hasNoLibrary && (
+      {!loading && !displayedError && hasNoLibrary && (
         <Empty className="min-h-0 flex-1">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -138,19 +169,19 @@ function LibraryPage() {
         </Empty>
       )}
 
-      {!loading && !error && !hasNoLibrary && total > 0 && (
+      {!loading && !displayedError && !hasNoLibrary && displayedTotal > 0 && (
         <BookGrid
-          books={books}
-          total={total}
+          books={displayedBooks}
+          total={displayedTotal}
           libraryId={activeLibraryId}
           onRead={handleRead}
-          ensureRange={ensureRange}
+          ensureRange={displayedEnsureRange}
           header={gridHeader}
           viewMode={viewMode}
         />
       )}
 
-      {!loading && !error && !hasNoLibrary && total === 0 && (
+      {!loading && !displayedError && !hasNoLibrary && displayedTotal === 0 && (
         <Empty className="min-h-0 flex-1">
           <EmptyHeader>
             <EmptyMedia variant="icon">

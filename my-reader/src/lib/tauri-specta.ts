@@ -27,6 +27,9 @@ export const commands = {
 	getBooksPage: (libraryId: string | null, offset: number, limit: number, sortBy: string | null, search: string | null) => typedError<PaginatedBooks, ErrorKind>(__TAURI_INVOKE("get_books_page", { libraryId, offset, limit, sortBy, search })),
 	getBookDetail: (libraryId: string | null, bookId: number) => typedError<BookDetail, ErrorKind>(__TAURI_INVOKE("get_book_detail", { libraryId, bookId })),
 	getSeriesBooks: (libraryId: string | null, seriesName: string, excludeBookId: number | null) => typedError<BookEntry[], ErrorKind>(__TAURI_INVOKE("get_series_books", { libraryId, seriesName, excludeBookId })),
+	listFavoriteBookIds: (libraryId: string | null) => typedError<number[], ErrorKind>(__TAURI_INVOKE("list_favorite_book_ids", { libraryId })),
+	addFavoriteBook: (libraryId: string | null, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("add_favorite_book", { libraryId, bookId })),
+	removeFavoriteBook: (libraryId: string | null, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("remove_favorite_book", { libraryId, bookId })),
 	getReadingProgress: (libraryId: string | null, bookId: number, format: string) => typedError<{
 	libraryId: string,
 	bookId: number,

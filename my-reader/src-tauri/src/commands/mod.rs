@@ -25,6 +25,7 @@ pub mod book;
 pub mod cache;
 pub(crate) mod common;
 pub mod download;
+pub mod favorite;
 pub mod library;
 pub mod progress;
 pub mod reader;

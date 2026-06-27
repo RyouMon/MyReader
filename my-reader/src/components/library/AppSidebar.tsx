@@ -46,6 +46,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useFavoriteBookIds } from "@/hooks/queries/useFavoriteBooksQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { AppThemeMode } from "@/types/readerUiPreferences"
 
@@ -67,13 +68,17 @@ export default function AppSidebar() {
   const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === "collapsed"
   const { data: libraries = [] } = useLibrariesQuery()
-  const { activeLibraryId, switchLibrary } = useLibraryUiStore()
+  const { activeLibraryId, activeView, setActiveView, switchLibrary } =
+    useLibraryUiStore()
   const { theme, setTheme } = useTheme()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
+  const { data: favoriteIds = [] } = useFavoriteBookIds(activeLibraryId)
   const location = useLocation()
 
   const isSettingsActive = location.pathname === "/settings"
-  const isLibraryActive = location.pathname === "/"
+  const isLibraryActive = location.pathname === "/" && activeView === "all"
+  const isFavoritesActive =
+    location.pathname === "/" && activeView === "favorites"
   const totalCount = activeLibrary?.bookCount ?? 0
   const libraryLabel = activeLibrary?.name ?? t("sidebar.noLibrary")
 
@@ -168,14 +173,15 @@ export default function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  asChild
                   isActive={isLibraryActive}
                   tooltip={t("sidebar.all")}
+                  onClick={() => {
+                    setActiveView("all")
+                    navigate({ to: "/" })
+                  }}
                 >
-                  <Link to="/">
-                    <Library />
-                    <span>{t("sidebar.all")}</span>
-                  </Link>
+                  <Library />
+                  <span>{t("sidebar.all")}</span>
                 </SidebarMenuButton>
                 <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
                   {totalCount.toLocaleString()}
@@ -190,12 +196,19 @@ export default function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t("sidebar.favorites")}>
+                <SidebarMenuButton
+                  isActive={isFavoritesActive}
+                  tooltip={t("sidebar.favorites")}
+                  onClick={() => {
+                    setActiveView("favorites")
+                    navigate({ to: "/" })
+                  }}
+                >
                   <Star />
                   <span>{t("sidebar.favorites")}</span>
                 </SidebarMenuButton>
                 <SidebarMenuBadge className="group-data-[collapsible=icon]:hidden">
-                  0
+                  {favoriteIds.length.toLocaleString()}
                 </SidebarMenuBadge>
               </SidebarMenuItem>
             </SidebarMenu>
