@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyReader Design System & Iterations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #b5651d;
+      --secondary: #A87E62;
+      --bg: #f5efe6;
+      --bg-secondary: #f0e8db;
+      --ink-1: #3b2f2f;
+      --ink-2: #7a6b5d;
+      --ink-inverse: #faf5ef;
+      --success: #3A7D5A;
+      --warning: #C4922D;
+      --danger: #b44a3a;
+      --border: #ddd2c0;
+      --border-strong: #d9cebb;
+
+      --background: var(--bg);
+      --foreground: var(--ink-1);
+      --card: var(--bg-secondary);
+      --card-foreground: var(--ink-1);
+      --popover: #f7f1e8;
+      --popover-foreground: var(--ink-1);
+      --primary-foreground: var(--ink-inverse);
+      --secondary-foreground: var(--ink-inverse);
+      --muted: #ebe3d5;
+      --muted-foreground: #7a6b5d;
+      --accent: #e2d8c8;
+      --accent-foreground: var(--ink-1);
+      --destructive: var(--danger);
+      --destructive-foreground: var(--ink-inverse);
+      --input: #e3d8c8;
+      --ring: var(--primary);
+      --sidebar: #ebe3d3;
+      --sidebar-foreground: #3e3228;
+      --sidebar-primary: var(--primary);
+      --sidebar-primary-foreground: var(--ink-inverse);
+      --sidebar-accent: var(--accent);
+      --sidebar-accent-foreground: var(--accent-foreground);
+      --sidebar-border: #d9cebb;
+      --sidebar-ring: var(--primary);
+      --progress: var(--primary);
+      --progress-track: #e3d8c8;
+    }
+
+    [data-theme="dark"] {
+      --primary: #d4803a;
+      --secondary: #B8895A;
+      --bg: #1f1b17;
+      --bg-secondary: #2a2520;
+      --ink-1: #f5efe6;
+      --ink-2: #b8afa6;
+      --ink-inverse: #3b2f2f;
+      --success: #5AAD7E;
+      --warning: #D4A844;
+      --danger: #d46a5a;
+      --border: rgba(245, 239, 230, 0.12);
+      --border-strong: rgba(245, 239, 230, 0.22);
+
+      --background: var(--bg);
+      --foreground: var(--ink-1);
+      --card: var(--bg-secondary);
+      --card-foreground: var(--ink-1);
+      --popover: #2f2923;
+      --popover-foreground: var(--ink-1);
+      --primary-foreground: var(--ink-inverse);
+      --secondary-foreground: var(--ink-inverse);
+      --muted: #36302a;
+      --muted-foreground: #b8afa6;
+      --accent: #3a332c;
+      --accent-foreground: var(--ink-1);
+      --destructive: var(--danger);
+      --destructive-foreground: var(--ink-inverse);
+      --input: #3a332c;
+      --ring: var(--primary);
+      --sidebar: #2a2520;
+      --sidebar-foreground: #f5efe6;
+      --sidebar-primary: var(--primary);
+      --sidebar-primary-foreground: var(--ink-inverse);
+      --sidebar-accent: var(--accent);
+      --sidebar-accent-foreground: var(--accent-foreground);
+      --sidebar-border: rgba(245, 239, 230, 0.12);
+      --sidebar-ring: var(--primary);
+      --progress: var(--primary);
+      --progress-track: #3a332c;
+    }
+
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink-1);
+    }
+
+    .token-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-secondary);
+    }
+
+    .token-swatch {
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .design-frame {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+
+    iframe { display: block; width: 100%; border: 0; }
+
+    .toc-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--sidebar-foreground);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .toc-link:hover {
+      background: var(--sidebar-accent);
+      color: var(--sidebar-accent-foreground);
+    }
+    .toc-link.active {
+      background: var(--sidebar-accent);
+      color: var(--sidebar-accent-foreground);
+      font-weight: 500;
+    }
+    .toc-group-title {
+      padding: 0.5rem 0.75rem 0.25rem;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="flex min-h-screen">
+    <!-- Sidebar TOC -->
+    <aside class="fixed inset-y-0 left-0 w-56 border-r overflow-y-auto" style="background: var(--sidebar); border-color: var(--sidebar-border);">
+      <div class="p-4">
+        <div class="flex items-center gap-2 px-3 mb-6">
+          <div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background: var(--primary); color: var(--primary-foreground);">M</div>
+          <div class="font-semibold text-sm" style="color: var(--sidebar-foreground);">Design System</div>
+        </div>
+        <nav id="toc" class="space-y-5">
+          <div>
+            <div class="toc-group-title">Tokens</div>
+            <ul class="space-y-0.5">
+              <li><a class="toc-link" href="#semantic-tokens">Semantic Tokens</a></li>
+              <li><a class="toc-link" href="#bridge-tokens">shadcn / Tailwind Bridge</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="toc-group-title">Desktop Iterations</div>
+            <ul class="space-y-0.5">
+              <li><a class="toc-link" href="#iter-library-grid">Library Grid</a></li>
+              <li><a class="toc-link" href="#iter-book-detail">Book Detail</a></li>
+              <li><a class="toc-link" href="#iter-settings-libraries">Settings — Libraries</a></li>
+              <li><a class="toc-link" href="#iter-reader-text">Reader — Text</a></li>
+              <li><a class="toc-link" href="#iter-reader-comic">Reader — Comic</a></li>
+              <li><a class="toc-link" href="#iter-folder-browser">Folder Browser</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="toc-group-title">Mobile Iterations</div>
+            <ul class="space-y-0.5">
+              <li><a class="toc-link" href="#iter-mobile-reader-epub">Reader — EPUB</a></li>
+              <li><a class="toc-link" href="#iter-mobile-home-card">Home Card</a></li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 ml-56">
+      <div class="max-w-7xl mx-auto px-6 py-10">
+        <header class="mb-10 flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-semibold tracking-tight">MyReader Design System & Iterations</h1>
+            <p class="mt-1 text-[15px]" style="color: var(--ink-2);">Current tokens + all design explorations from .superdesign/design_iterations.</p>
+          </div>
+          <button
+            id="themeToggle"
+            class="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium"
+            style="border-color: var(--border); background: var(--card); color: var(--ink-1);"
+          >
+            Toggle dark
+          </button>
+        </header>
+
+        <!-- Tokens -->
+        <section id="semantic-tokens" class="mb-12 scroll-mt-6">
+          <h2 class="text-xl font-semibold mb-4">Semantic Tokens</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="tokenGrid"></div>
+        </section>
+
+        <section id="bridge-tokens" class="mb-12 scroll-mt-6">
+          <h2 class="text-xl font-semibold mb-4">shadcn / Tailwind Bridge</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="bridgeGrid"></div>
+        </section>
+
+        <!-- Design Iterations -->
+        <section class="mb-6 scroll-mt-6">
+          <h2 class="text-xl font-semibold mb-4">Design Iterations</h2>
+        </section>
+
+        <div class="space-y-10">
+          <section id="iter-library-grid" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Library Grid</div>
+              <a href="../design_iterations/library_grid_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/library_grid_1.html" height="720"></iframe>
+          </section>
+
+          <section id="iter-book-detail" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Book Detail</div>
+              <a href="../design_iterations/book_detail_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/book_detail_1.html" height="760"></iframe>
+          </section>
+
+          <section id="iter-settings-libraries" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Settings — Libraries</div>
+              <a href="../design_iterations/settings_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/settings_1.html" height="720"></iframe>
+          </section>
+
+          <section id="iter-reader-text" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Reader — Text</div>
+              <a href="../design_iterations/reader_text_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/reader_text_1.html" height="720"></iframe>
+          </section>
+
+          <section id="iter-reader-comic" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Reader — Comic</div>
+              <a href="../design_iterations/reader_comic_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/reader_comic_1.html" height="720"></iframe>
+          </section>
+
+          <section id="iter-folder-browser" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Folder Browser</div>
+              <a href="../design_iterations/folder_browser_1.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/folder_browser_1.html" height="560"></iframe>
+          </section>
+
+          <section id="iter-mobile-reader-epub" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Mobile — Reader EPUB</div>
+              <a href="../design_iterations/mobile_reader_epub_2.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/mobile_reader_epub_2.html" height="820"></iframe>
+          </section>
+
+          <section id="iter-mobile-home-card" class="design-frame scroll-mt-6">
+            <div class="px-4 py-3 border-b flex items-center justify-between" style="border-color: var(--border); background: var(--card);">
+              <div class="font-medium">Mobile — Home Card</div>
+              <a href="../design_iterations/prototype-cover-background.html" target="_blank" class="text-sm hover:underline" style="color: var(--ink-2);">Open →</a>
+            </div>
+            <iframe src="../design_iterations/prototype-cover-background.html" height="720"></iframe>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const tokens = [
+      ["--primary", "CTAs / links / highlights"],
+      ["--secondary", "Tags / secondary actions"],
+      ["--bg", "Page canvas"],
+      ["--bg-secondary", "Cards / sidebars"],
+      ["--ink-1", "Body / headings"],
+      ["--ink-2", "Metadata / captions"],
+      ["--ink-inverse", "On dark / colored surfaces"],
+      ["--success", "Success states"],
+      ["--warning", "Warning states"],
+      ["--danger", "Destructive states"],
+      ["--border", "Default separators"],
+      ["--border-strong", "Strong separators"],
+    ];
+
+    const bridge = [
+      ["--background", "var(--bg)"],
+      ["--foreground", "var(--ink-1)"],
+      ["--card", "var(--bg-secondary)"],
+      ["--card-foreground", "var(--ink-1)"],
+      ["--popover", "#f7f1e8 / #2f2923"],
+      ["--popover-foreground", "var(--ink-1)"],
+      ["--primary-foreground", "var(--ink-inverse)"],
+      ["--secondary-foreground", "var(--ink-inverse)"],
+      ["--muted", "#ebe3d5 / #36302a"],
+      ["--muted-foreground", "var(--ink-2)"],
+      ["--accent", "#e2d8c8 / #3a332c"],
+      ["--accent-foreground", "var(--ink-1)"],
+      ["--destructive", "var(--danger)"],
+      ["--destructive-foreground", "var(--ink-inverse)"],
+      ["--input", "#e3d8c8 / #3a332c"],
+      ["--ring", "var(--primary)"],
+      ["--sidebar", "#ebe3d3 / #2a2520"],
+      ["--sidebar-foreground", "#3e3228 / #f5efe6"],
+      ["--sidebar-accent", "var(--accent)"],
+      ["--sidebar-accent-foreground", "var(--accent-foreground)"],
+      ["--sidebar-border", "var(--border)"],
+      ["--sidebar-ring", "var(--primary)"],
+      ["--progress", "var(--primary)"],
+      ["--progress-track", "#e3d8c8 / #3a332c"],
+    ];
+
+    function computed(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function renderTokens() {
+      const grid = document.getElementById("tokenGrid");
+      grid.innerHTML = tokens.map(([name, desc]) => `
+        <div class="token-card p-3">
+          <div class="token-swatch w-full h-12 mb-2" style="background: var(${name})"></div>
+          <div class="text-xs font-mono opacity-70">${name}</div>
+          <div class="text-xs font-medium truncate">${computed(name)}</div>
+          <div class="text-[11px] mt-1 opacity-60">${desc}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderBridge() {
+      const grid = document.getElementById("bridgeGrid");
+      grid.innerHTML = bridge.map(([name, fallback]) => `
+        <div class="token-card p-3 flex items-center gap-3">
+          <div class="token-swatch w-10 h-10 shrink-0" style="background: var(${name})"></div>
+          <div class="min-w-0">
+            <div class="text-xs font-mono opacity-70 truncate">${name}</div>
+            <div class="text-xs font-medium truncate">${computed(name) || fallback}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      const isDark = document.documentElement.hasAttribute("data-theme");
+      if (isDark) {
+        document.documentElement.removeAttribute("data-theme");
+      } else {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+      renderTokens();
+      renderBridge();
+    });
+
+    renderTokens();
+    renderBridge();
+
+    // Active TOC highlight on scroll
+    const sections = Array.from(document.querySelectorAll("[id]"));
+    const tocLinks = Array.from(document.querySelectorAll(".toc-link"));
+    function updateActiveToc() {
+      const scrollPos = window.scrollY + 80;
+      let activeId = null;
+      for (const section of sections) {
+        if (section.offsetTop <= scrollPos) {
+          activeId = section.id;
+        }
+      }
+      tocLinks.forEach(link => {
+        const href = link.getAttribute("href").slice(1);
+        link.classList.toggle("active", href === activeId);
+      });
+    }
+    window.addEventListener("scroll", updateActiveToc, { passive: true });
+    updateActiveToc();
+  </script>
+</body>
+</html>
