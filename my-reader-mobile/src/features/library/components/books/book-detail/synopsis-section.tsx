@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SectionCard, SectionLabel } from "@/src/components/ui";
-import { FONT_UI } from "@/src/design/typography";
 import { Pressable, Text, View } from "@/tw";
 import type { DetailColors } from "./types";
 
@@ -27,7 +26,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
           <Text
             className="text-base"
             numberOfLines={expanded ? undefined : 3}
-            style={{ color: colors.muted, fontFamily: FONT_UI }}
+            style={{ color: colors.muted }}
           >
             {text}
           </Text>
@@ -40,7 +39,7 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
             >
               <Text
                 className="text-base font-medium"
-                style={{ color: colors.accent, fontFamily: FONT_UI }}
+                style={{ color: colors.accent }}
               >
                 {expanded ? t("bookDetail.collapse") : t("bookDetail.expand")}
               </Text>
@@ -52,7 +51,6 @@ export function SynopsisSection({ colors, text }: SynopsisSectionProps) {
             onTextLayout={(e) => setTotalLines(e.nativeEvent.lines.length)}
             style={{
               color: colors.muted,
-              fontFamily: FONT_UI,
               position: "absolute",
               opacity: 0,
               left: 0,

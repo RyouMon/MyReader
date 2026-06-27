@@ -177,7 +177,7 @@ function renderListRow(
 export function BookRowSkeleton() {
   return (
     <div className="flex min-h-14 animate-pulse items-center gap-3 rounded-md px-2.5 py-1.5">
-      <div className="h-[42px] w-[30px] shrink-0 rounded-[5px] bg-muted" />
+      <div className="h-[42px] w-[30px] shrink-0 rounded-sm bg-muted" />
       <div className="min-w-0 flex-1">
         <div className="h-3.5 w-1/2 rounded bg-muted" />
         <div className="mt-0.5 h-3 w-1/3 rounded bg-muted" />

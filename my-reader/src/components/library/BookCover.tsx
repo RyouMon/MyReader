@@ -113,7 +113,7 @@ export const BookCover = memo(function BookCover({
           />
           <span
             className={cn(
-              "relative z-10 line-clamp-3 font-serif text-base font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
+              "relative z-10 line-clamp-3 text-base font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
               titleClassName,
             )}
           >

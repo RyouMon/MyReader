@@ -5,6 +5,8 @@
 
 /* ============================================================
    DESIGN TOKENS — CSS Custom Properties
+   Only colors are controlled by the product design system.
+   Spacing, radius, fonts, and shadows use Tailwind defaults.
    ============================================================ */
 
 :root {
@@ -43,73 +45,6 @@
   ───────────────────────────────────────────────────────── */
   --border:        rgba(28, 23, 20, 0.10);
   --border-strong: rgba(28, 23, 20, 0.20);
-
-  /* ── SPACING ──────────────────────────────────────────────
-     4px base · 4 steps only.
-     xs = micro gaps, sm = inner padding, md = component gap,
-     lg = section / layout gap.
-  ───────────────────────────────────────────────────────── */
-  --space-xs:  4px;
-  --space-sm:  8px;
-  --space-md:  16px;
-  --space-lg:  32px;
-
-  /* ── RADIUS ───────────────────────────────────────────────
-     4 steps: tag → button → card → pill.
-  ───────────────────────────────────────────────────────── */
-  --radius-sm:   4px;    /* chips, tags */
-  --radius-md:   8px;    /* buttons, inputs, small cards */
-  --radius-lg:   16px;   /* large cards, sheets, modals */
-  --radius-full: 9999px; /* pill, avatar */
-
-  /* ── SHADOW ───────────────────────────────────────────────
-     3 levels: inline → floating → overlay.
-  ───────────────────────────────────────────────────────── */
-  --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08);
-  --shadow-md: 0 2px 8px  rgba(28, 23, 20, 0.10),
-               0 8px 24px rgba(28, 23, 20, 0.07);
-  --shadow-lg: 0 4px 16px rgba(28, 23, 20, 0.12),
-               0 24px 64px rgba(28, 23, 20, 0.14);
-
-  /* ── ANIMATION ────────────────────────────────────────── */
-  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
-  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
-  --dur-micro:  120ms;
-  --dur-fast:   200ms;
-  --dur-normal: 340ms;
-  --dur-slow:   500ms;
-
-  /* ── Z-INDEX ──────────────────────────────────────────── */
-  --z-base:    0;
-  --z-raised:  10;
-  --z-dropdown:100;
-  --z-sticky:  200;
-  --z-overlay: 300;
-  --z-modal:   400;
-  --z-toast:   500;
-
-  /* ── PLATFORM: Desktop ────────────────────────────────── */
-  --dt-btn-h:           32px;
-  --dt-input-h:         32px;
-  --dt-row-h:           36px;
-  --dt-icon-sm:         14px;
-  --dt-icon-md:         16px;
-  --dt-sidebar-w:       220px;
-  --dt-cover-grid:      110px;
-
-  /* ── PLATFORM: Mobile ─────────────────────────────────── */
-  --mb-touch-min:       44px;
-  --mb-btn-h:           48px;
-  --mb-input-h:         48px;
-  --mb-row-h:           60px;
-  --mb-tab-h:           56px;
-  --mb-icon-sm:         18px;
-  --mb-icon-md:         22px;
-  --mb-icon-lg:         26px;
-  --mb-cover-grid:      30vw;
-  --mb-safe-bottom:     env(safe-area-inset-bottom, 16px);
 }
 
 /* ============================================================
@@ -133,12 +68,6 @@
 
   --border:        rgba(240, 235, 225, 0.10);
   --border-strong: rgba(240, 235, 225, 0.20);
-
-  --shadow-sm: 0 1px 3px  rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 2px 8px  rgba(0, 0, 0, 0.32),
-               0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.40),
-               0 24px 64px rgba(0, 0, 0, 0.35);
 }
 
 

@@ -71,7 +71,7 @@ export default function ReaderActionsExpanded({
             accessibilityRole="button"
             accessibilityLabel={t("reader.toc")}
             underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
-            className="rounded-[20px]"
+            className="rounded-2xl"
             style={[styles.pillButton, { backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
             onPress={onOpenToc}
           >
@@ -116,7 +116,7 @@ export default function ReaderActionsExpanded({
             accessibilityRole="button"
             accessibilityLabel={t("reader.settings")}
             underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
-            className="rounded-[20px] px-[18px] py-[14px]"
+            className="rounded-2xl px-[18px] py-[14px]"
             style={[{ backgroundColor: palette.actionSurface, width: ACTION_PILL_WIDTH }]}
             onPress={onOpenSettings}
           >

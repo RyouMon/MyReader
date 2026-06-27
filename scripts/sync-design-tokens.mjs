@@ -18,9 +18,12 @@ const mobileTokenPath = path.join(repoRoot, "my-reader-mobile/src/design/tokens.
 const readerTokenPath = path.join(repoRoot, "my-reader-mobile/src/design/reader-tokens.ts");
 
 /**
- * Escapes a string for safe use inside RegExp patterns.
- * @param {string} value
- * @returns {string}
+ * Syncs color tokens from the single source of truth
+ * (.agents/skills/myreader-design-system/colors_and_type.css)
+ * to DESIGN.md, the desktop CSS file, and the mobile theme palette.
+ *
+ * Spacing, radius, fonts, and shadows are intentionally NOT synchronized;
+ * they are handled by Tailwind / NativeWind default themes.
  */
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -234,55 +237,10 @@ const COLOR_PAIRS = [
   ["border-strong", "--border-strong"],
 ];
 
-const REQUIRED_TOKENS = [
-  ...COLOR_PAIRS.map(([, tokenName]) => tokenName),
-  "--space-xs",
-  "--space-sm",
-  "--space-md",
-  "--space-lg",
-  "--radius-sm",
-  "--radius-md",
-  "--radius-lg",
-  "--radius-full",
-  "--shadow-sm",
-  "--shadow-md",
-  "--shadow-lg",
-  "--ease-standard",
-  "--ease-spring",
-  "--ease-in",
-  "--ease-out",
-  "--dur-micro",
-  "--dur-fast",
-  "--dur-normal",
-  "--dur-slow",
-  "--z-base",
-  "--z-raised",
-  "--z-dropdown",
-  "--z-sticky",
-  "--z-overlay",
-  "--z-modal",
-  "--z-toast",
-  "--dt-btn-h",
-  "--dt-input-h",
-  "--dt-row-h",
-  "--dt-icon-sm",
-  "--dt-icon-md",
-  "--dt-sidebar-w",
-  "--dt-cover-grid",
-  "--mb-touch-min",
-  "--mb-btn-h",
-  "--mb-input-h",
-  "--mb-row-h",
-  "--mb-tab-h",
-  "--mb-icon-sm",
-  "--mb-icon-md",
-  "--mb-icon-lg",
-  "--mb-cover-grid",
-  "--mb-safe-bottom",
-];
+const REQUIRED_TOKENS = COLOR_PAIRS.map(([, tokenName]) => tokenName);
 
 /**
- * Ensures the source CSS contains every token needed by platform outputs.
+ * Ensures the source CSS contains every color token needed by platform outputs.
  * @param {Map<string, string>} rootVars
  * @returns {void}
  */
@@ -311,8 +269,8 @@ function syncDesignFrontmatterColors(designDoc, rootVars) {
     return `  ${name}: "${value}"`;
   });
 
-  const replacement = `\ncolors:\n${colorLines.join("\n")}\ntypography:\n`;
-  const colorsSectionRegex = /\r?\ncolors:\r?\n[\s\S]*?\r?\ntypography:\r?\n/m;
+  const replacement = `\ncolors:\n${colorLines.join("\n")}\n`;
+  const colorsSectionRegex = /\r?\ncolors:\r?\n[\s\S]*?(?=\r?\n---)/m;
   if (!colorsSectionRegex.test(designDoc)) {
     throw new Error("Cannot find frontmatter colors section in DESIGN.md");
   }
@@ -321,6 +279,8 @@ function syncDesignFrontmatterColors(designDoc, rootVars) {
 
 /**
  * Updates desktop CSS tokens from source CSS token maps.
+ * Only color tokens are synchronized; spacing, radius, fonts, and shadows are
+ * managed by Tailwind's default theme.
  * @param {string} desktopCss
  * @param {Map<string, string>} rootVars
  * @param {Map<string, string>} darkVars
@@ -342,17 +302,6 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     "--danger",
     "--border",
     "--border-strong",
-    "--space-xs",
-    "--space-sm",
-    "--space-md",
-    "--space-lg",
-    "--radius-sm",
-    "--radius-md",
-    "--radius-lg",
-    "--radius-full",
-    "--shadow-sm",
-    "--shadow-md",
-    "--shadow-lg",
   ];
 
   for (const tokenName of lightTokenNames) {
@@ -373,9 +322,6 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
     "--danger",
     "--border",
     "--border-strong",
-    "--shadow-sm",
-    "--shadow-md",
-    "--shadow-lg",
   ];
 
   for (const tokenName of darkTokenNames) {
@@ -388,6 +334,7 @@ function syncDesktopTokens(desktopCss, rootVars, darkVars) {
 
 /**
  * Updates mobile theme palette file from source CSS token maps.
+ * Only color tokens are synchronized.
  * @param {string} mobileTokens
  * @param {Map<string, string>} rootVars
  * @param {Map<string, string>} darkVars
@@ -402,7 +349,7 @@ function syncMobileTokens(mobileTokens, rootVars, darkVars) {
   const borderStrongDark = getTokenValue(rootVars, darkVars, "--border-strong", "dark");
 
   output = output.replace(
-    /(const APP_BORDER = \{\n  light: \{)[\s\S]*?(  \},\n  dark: \{)[\s\S]*?(\n  \},\n\} as const;)/m,
+    /(const APP_BORDER = \{\n  light: \{)[\s\S]*?(  \},\n  dark: \{)[\s\S]*(\n  \},\n\} as const;)/m,
     `$1
     default: "${borderValueLight}",
     strong: "${borderStrongLight}",
@@ -434,9 +381,6 @@ $3`
     ["warning", "--warning"],
     ["error", "--danger"],
     ["danger", "--danger"],
-    ["shadowSm", "--shadow-sm"],
-    ["shadowMd", "--shadow-md"],
-    ["shadowLg", "--shadow-lg"],
   ];
 
   for (const [key, tokenName] of lightMapping) {
@@ -488,9 +432,6 @@ $3`
     ["warning", "--warning"],
     ["error", "--danger"],
     ["danger", "--danger"],
-    ["shadowSm", "--shadow-sm"],
-    ["shadowMd", "--shadow-md"],
-    ["shadowLg", "--shadow-lg"],
   ];
 
   for (const [key, tokenName] of darkMapping) {

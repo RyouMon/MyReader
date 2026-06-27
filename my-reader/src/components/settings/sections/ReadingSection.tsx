@@ -80,7 +80,7 @@ export default function ReadingSection() {
         </p>
       </div>
       <div className="flex-1 px-7 py-5">
-        <div className="max-w-xl rounded-[var(--radius)] border border-border bg-card p-4 space-y-3">
+        <div className="max-w-xl rounded-lg border border-border bg-card p-4 space-y-3">
           <p className="text-xs uppercase tracking-[0.06em] text-muted-foreground">
             {t("settings.reading.cacheManagement")}
           </p>

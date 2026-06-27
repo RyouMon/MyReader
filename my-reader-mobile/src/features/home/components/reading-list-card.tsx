@@ -4,21 +4,21 @@ import { MenuView, type MenuAction } from "@react-native-menu/menu";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
-import { useTheme, useThemePalette } from "@/src/design/tokens";
-import { TEXT_SIZE } from "@/src/design/typography";
-import { pressedBackgroundColor, androidRippleColor } from "@/src/design/press-feedback";
-import type { BookItem } from "@/src/domain/types";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
-import { Pressable, Text, View } from "@/tw";
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
+import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
+import { ICON_SIZE } from "@/src/design/icon-sizes";
+import { androidRippleColor, pressedBackgroundColor } from "@/src/design/press-feedback";
+import { useTheme, useThemePalette } from "@/src/design/tokens";
+import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
+import type { BookItem } from "@/src/domain/types";
 import {
   BookCover,
   type BookDownloadStatus,
 } from "@/src/features/library/components/books/book-cover";
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
-import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
-import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu";
+import type { HomeCardStyle } from "@/src/store/app-store.types";
+import { Pressable, Text, View } from "@/tw";
 
 const COVER_HEIGHT = 100;
 const COVER_ASPECT_RATIO = 2 / 3;
@@ -103,7 +103,7 @@ function ReadingListCardImpl({
       accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
     >
-      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -148,7 +148,7 @@ function ReadingListCardImpl({
           accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
           className="h-8 w-8 items-center justify-center"
         >
-          <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+          <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
         </View>
       )}
     </View>
@@ -156,21 +156,18 @@ function ReadingListCardImpl({
 
   return (
     <View
+      className="overflow-hidden rounded-2xl shadow-lg"
       style={{
         width,
-        borderRadius: 16,
         backgroundColor: palette.surface,
         borderColor: palette.border,
         borderWidth: 1,
-        boxShadow: palette.shadowMd,
-        overflow: "hidden",
       }}
     >
       <CoverAdaptiveBackground
         coverUri={book.coverUri}
         rawColors={coverRawColors}
         colorScheme={resolvedScheme}
-        borderRadius={16}
         variant={homeCardStyle}
       />
       <Pressable
@@ -179,7 +176,6 @@ function ReadingListCardImpl({
         onPress={handlePress}
         android_ripple={{ color: androidRippleColor(resolvedScheme, palette), foreground: true }}
         style={({ pressed }) => ({
-          borderRadius: 16,
           overflow: "hidden",
           backgroundColor: Platform.OS === "ios" && pressed ? pressedBackgroundColor(resolvedScheme, palette) : undefined,
         })}

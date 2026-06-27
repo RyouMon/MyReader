@@ -8,12 +8,11 @@ export function HeroCard({ children }: { children: ReactNode }) {
 
   return (
     <View
-      className="overflow-hidden rounded-[28px]"
+      className="overflow-hidden rounded-3xl shadow-lg"
       style={{
         backgroundColor: palette.surface,
         borderColor: palette.border,
         borderWidth: 1,
-        boxShadow: palette.shadowMd,
       }}
     >
       {children}

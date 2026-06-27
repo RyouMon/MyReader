@@ -80,7 +80,7 @@ function LibraryPage() {
 
   const gridHeader = (
     <div className="flex items-baseline gap-2.5 mb-4 pt-5">
-      <h2 className="font-serif text-xl font-semibold">{sectionLabel}</h2>
+      <h2 className="text-xl font-semibold">{sectionLabel}</h2>
       <span className="text-sm text-muted-foreground font-normal">
         {t("library.booksCount", { count: total })}
       </span>

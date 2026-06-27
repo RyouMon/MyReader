@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 
 import { CircularProgress, MoreActionsIcon, SectionCard, SectionLabel } from "@/src/components";
-import { FONT_UI } from "@/src/design/typography";
 import {
   cancel,
   useDownloadTaskForBookFormat,
@@ -234,7 +233,7 @@ function FormatRow({
           <View className="flex-row items-center gap-2">
             <Text
               className="text-base"
-              style={{ color: colors.text, fontFamily: FONT_UI }}
+              style={{ color: colors.text }}
             >
               {format}
             </Text>
@@ -242,7 +241,7 @@ function FormatRow({
           </View>
           <Text
             className="mt-0.5 text-base"
-            style={{ color: colors.tertiary, fontFamily: FONT_UI }}
+            style={{ color: colors.tertiary }}
             numberOfLines={1}
           >
             {formatFileSize(size)}

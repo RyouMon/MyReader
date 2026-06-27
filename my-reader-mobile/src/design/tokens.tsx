@@ -20,9 +20,6 @@ export type ThemePalette = {
   primaryForeground: string;
   border: string;
   borderStrong: string;
-  shadowSm: string;
-  shadowMd: string;
-  shadowLg: string;
   success: string;
   successSoft: string;
   warning: string;
@@ -68,9 +65,6 @@ const lightPaletteBase = {
   primaryForeground: "#FAF6F0",
   border: APP_BORDER.light.default,
   borderStrong: APP_BORDER.light.strong,
-  shadowSm: "0 1px 3px rgba(28, 23, 20, 0.08)",
-  shadowMd: "0 2px 8px  rgba(28, 23, 20, 0.10), 0 8px 24px rgba(28, 23, 20, 0.07)",
-  shadowLg: "0 4px 16px rgba(28, 23, 20, 0.12), 0 24px 64px rgba(28, 23, 20, 0.14)",
   success: "#3A7D5A",
   successSoft: "rgba(58, 125, 90, 0.16)",
   warning: "#C4922D",
@@ -101,9 +95,6 @@ const darkPaletteBase = {
   primaryForeground: "#1C1714",
   border: APP_BORDER.dark.default,
   borderStrong: APP_BORDER.dark.strong,
-  shadowSm: "0 1px 3px  rgba(0, 0, 0, 0.25)",
-  shadowMd: "0 2px 8px  rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.25)",
-  shadowLg: "0 4px 16px rgba(0, 0, 0, 0.40), 0 24px 64px rgba(0, 0, 0, 0.35)",
   success: "#5AAD7E",
   successSoft: "rgba(90, 173, 126, 0.18)",
   warning: "#D4A844",

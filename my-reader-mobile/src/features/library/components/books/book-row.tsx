@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { TEXT_SIZE } from "@/src/design/typography";
+import { ICON_SIZE } from "@/src/design/icon-sizes";
 import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
@@ -128,7 +128,7 @@ function BookRowImpl({
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
     >
-      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </Pressable>
   );
 
@@ -139,7 +139,7 @@ function BookRowImpl({
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
-      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
   );
 

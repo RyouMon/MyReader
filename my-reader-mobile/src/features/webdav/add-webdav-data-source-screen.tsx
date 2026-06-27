@@ -216,7 +216,7 @@ export default function AddWebDavDataSourceScreen() {
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">
-          <View className="gap-3 rounded-[24px] px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
+          <View className="gap-3 rounded-3xl px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
             <form.Field name="serverUrl">
               {(field) => (
                 <FormLabeledFieldRow label={t("webdav.add.serverAddressLabel")} required error={fieldError("serverUrl")}>

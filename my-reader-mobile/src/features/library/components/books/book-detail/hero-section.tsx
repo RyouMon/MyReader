@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button, ButtonGroup } from "@/src/components/ui";
-import { FONT_DISPLAY, FONT_UI } from "@/src/design/typography";
 import type { BookItem } from "@/src/domain/types";
 import { Image, Text, View } from "@/tw";
 import type { DetailColors } from "./types";
@@ -72,7 +71,6 @@ export function HeroSection({
                   numberOfLines={4}
                   style={{
                     color: colors.text,
-                    fontFamily: FONT_DISPLAY,
                     fontWeight: "700",
                     opacity: 0.6,
                   }}
@@ -88,14 +86,14 @@ export function HeroSection({
           <Text
             className="text-2xl"
             numberOfLines={3}
-            style={{ color: colors.text, fontFamily: FONT_DISPLAY, fontWeight: "700" }}
+            style={{ color: colors.text, fontWeight: "700" }}
           >
             {book.title}
           </Text>
           <Text
             className="text-base"
             numberOfLines={2}
-            style={{ color: colors.accent, fontFamily: FONT_UI, fontWeight: "600" }}
+            style={{ color: colors.accent, fontWeight: "600" }}
           >
             {authors}
           </Text>
@@ -109,7 +107,7 @@ export function HeroSection({
                 >
                   <Text
                     className="text-base"
-                    style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "500" }}
+                    style={{ color: colors.muted, fontWeight: "500" }}
                   >
                     {tag}
                   </Text>
@@ -133,7 +131,7 @@ export function HeroSection({
           disabled={!canReadInApp}
           onPress={onRead}
           size="lg"
-          textStyle={{ fontFamily: FONT_UI }}
+          textStyle={{ fontWeight: "600" }}
           title={readButtonTitle}
           variant="primary"
         />
@@ -143,7 +141,7 @@ export function HeroSection({
             className="flex-1"
             onPress={() => {}}
             size="lg"
-            textStyle={{ fontFamily: FONT_UI }}
+            textStyle={{ fontWeight: "600" }}
             title={t("bookDetail.setReadingFormat")}
             variant="secondary"
           />

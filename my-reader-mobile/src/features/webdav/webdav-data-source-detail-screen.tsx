@@ -43,7 +43,7 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
   return (
     <View className="items-center gap-5 pb-1 pt-2">
       <View
-        className="size-36 items-center justify-center rounded-[32px] border"
+        className="size-36 items-center justify-center rounded-3xl border"
         style={{
           backgroundColor: palette.surface,
           borderColor: palette.border,

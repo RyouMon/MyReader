@@ -240,7 +240,7 @@ export function FolderBrowser({
         {loading ? (
           <div
             className={cn(
-              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-[var(--radius-lg)] border border-border p-1.5 bg-bg-secondary",
+              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
               "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2"
             )}
             role="status"
@@ -252,7 +252,7 @@ export function FolderBrowser({
         ) : error ? (
           <div
             className={cn(
-              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-[var(--radius-lg)] border border-border p-1.5 bg-bg-secondary",
+              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
               "flex flex-col items-center justify-center h-[220px] text-danger text-sm gap-2 px-4 text-center"
             )}
             role="alert"
@@ -272,7 +272,7 @@ export function FolderBrowser({
         ) : folders.length === 0 ? (
           <div
             className={cn(
-              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-[var(--radius-lg)] border border-border p-1.5 bg-bg-secondary",
+              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
               "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2"
             )}
           >
@@ -282,7 +282,7 @@ export function FolderBrowser({
         ) : (
           <ul
             className={cn(
-              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-[var(--radius-lg)] border border-border p-1.5 bg-bg-secondary"
+              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary"
             )}
             aria-label={title}
           >

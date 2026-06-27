@@ -1,6 +1,8 @@
 /*
  * MyReader design-tokens.css
  * Synced from .agents/skills/myreader-design-system/colors_and_type.css.
+ * Only color tokens are maintained here. Spacing, radius, fonts, and
+ * shadows are handled by Tailwind's default theme.
  */
 
 :root {
@@ -16,25 +18,6 @@
   --danger: #B53A2F;
   --border: rgba(28, 23, 20, 0.10);
   --border-strong: rgba(28, 23, 20, 0.20);
-
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 32px;
-
-  --radius: 0.5rem;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-
-  --shadow-sm: 0 1px 3px rgba(28, 23, 20, 0.08);
-  --shadow-md:
-    0 2px 8px  rgba(28, 23, 20, 0.10),
-               0 8px 24px rgba(28, 23, 20, 0.07);
-  --shadow-lg:
-    0 4px 16px rgba(28, 23, 20, 0.12),
-               0 24px 64px rgba(28, 23, 20, 0.14);
 
   --overlay: rgba(28, 23, 20, 0.22);
   --overlay-strong: rgba(28, 23, 20, 0.5);
@@ -86,11 +69,6 @@
   --danger: #D46060;
   --border: rgba(240, 235, 225, 0.10);
   --border-strong: rgba(240, 235, 225, 0.20);
-  --shadow-sm: 0 1px 3px  rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 2px 8px  rgba(0, 0, 0, 0.32),
-               0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.40),
-               0 24px 64px rgba(0, 0, 0, 0.35);
 
   --overlay: rgba(0, 0, 0, 0.38);
   --overlay-strong: rgba(0, 0, 0, 0.65);

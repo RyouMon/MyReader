@@ -18,110 +18,7 @@ colors:
   danger: "#B53A2F"
   border: "rgba(28, 23, 20, 0.10)"
   border-strong: "rgba(28, 23, 20, 0.20)"
-typography:
-  display:
-    fontFamily: "Noto Serif SC, Lora, Georgia, serif"
-    fontSize: 36px
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: -0.02em
-  h1:
-    fontFamily: "Noto Serif SC, Lora, serif"
-    fontSize: 30px
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: -0.02em
-  h2:
-    fontFamily: "Noto Serif SC, Lora, serif"
-    fontSize: 24px
-    fontWeight: 500
-    lineHeight: 1.4
-  h3:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 20px
-    fontWeight: 600
-    lineHeight: 1.4
-  body-lg:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 18px
-    fontWeight: 400
-    lineHeight: 1.75
-  body-md:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 16px
-    fontWeight: 400
-    lineHeight: 1.6
-  body-sm:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.6
-  caption:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 12px
-    fontWeight: 400
-    lineHeight: 1.6
-  label:
-    fontFamily: "Noto Sans SC, DM Sans, system-ui, sans-serif"
-    fontSize: 12px
-    fontWeight: 500
-    letterSpacing: 0.06em
-  mono:
-    fontFamily: "JetBrains Mono, Fira Code, monospace"
-    fontSize: 14px
-    fontWeight: 400
-  reading:
-    fontFamily: "Merriweather, Noto Serif SC, Georgia, serif"
-    fontSize: 18px
-    fontWeight: 400
-    lineHeight: 1.8
-rounded:
-  xs: 2px
-  sm: 4px
-  md: 8px
-  lg: 12px
-  xl: 20px
-  full: 9999px
-spacing:
-  1: 4px
-  2: 8px
-  3: 12px
-  4: 16px
-  5: 20px
-  6: 24px
-  8: 32px
-  10: 40px
-  12: 48px
-  16: 64px
-  24: 96px
-components:
-  button-primary:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.ink-inverse}"
-    rounded: "{rounded.md}"
-    padding: "8px 16px"
-    height: 32px
-  button-primary-hover:
-    backgroundColor: "{colors.accent-hover}"
-  button-primary-active:
-    backgroundColor: "{colors.accent-press}"
-  button-secondary:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink-1}"
-    rounded: "{rounded.md}"
-  button-destructive:
-    backgroundColor: "{colors.danger}"
-    textColor: "{colors.ink-inverse}"
-    rounded: "{rounded.md}"
-  card:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.lg}"
-    padding: 16px
-  book-card:
-    rounded: "{rounded.lg}"
-  reader-chrome:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink-1}"
+
 ---
 
 # MyReader Design System
@@ -138,16 +35,23 @@ good reading environment first, tool chrome second.
 **Brand tone:** Calm, precise, respectful. Short literal microcopy. Error
 states recovery-oriented, never alarming.
 
+### Design system scope
+
+The product design system controls **only colors**. Spacing, radius, fonts,
+shadows, and typography scale are intentionally delegated to Tailwind / NativeWind
+default utilities. This keeps the system minimal and avoids duplicating platform
+semantics that Tailwind already provides.
+
 ### Platform layers
 - **Shared** (this file): aesthetic direction, brand tone, semantic colors,
-  typography roles, accessibility floor.
-- **`my-reader/src/design-tokens.css`**: pointer/keyboard density, hover-driven interaction,
-  multi-pane layout specifics.
-- **`my-reader-mobile/src/design/tokens.tsx`**: touch-first spacing, gesture, safe-area handling.
-- Platform docs may extend but **never redefine** shared semantic values.
+  accessibility floor.
+- **`my-reader/src/design-tokens.css`**: semantic color CSS custom properties for desktop.
+- **`my-reader/src/index.css`**: Tailwind v4 `@theme inline` color mapping.
+- **`my-reader-mobile/src/design/tokens.tsx`**: mobile JS color palette.
+- **`my-reader-mobile/src/design/reader-tokens.ts`**: reader-chrome color layer.
 
 ### Code sources of truth
-- `.agents/skills/myreader-design-system/colors_and_type.css` — machine-readable canonical token values.
+- `.agents/skills/myreader-design-system/colors_and_type.css` — machine-readable canonical color values.
 - `my-reader/src/design-tokens.css` — desktop CSS implementation.
 - `my-reader/src/index.css` — Tailwind v4 `@theme inline` mapping.
 - `my-reader-mobile/src/design/tokens.tsx` — mobile JS palette.
@@ -192,21 +96,13 @@ slightly warmer to `#D4703A` for better visibility on dark surfaces.
 
 ## Typography
 
-Two-family strategy: **serif for display/headings** (editorial gravity),
-**sans-serif for UI** (clarity at density).
+The product design system does not define font families or typography roles.
+UI text uses the platform / Tailwind default sans-serif stack. Reading text
+inside the reader may use a serif stack configured by the reader theme, but that
+is separate from the app UI design system.
 
-- **Display / Headings:** `Noto Serif SC` primary (CN support), `Lora` fallback
-  for Latin-heavy contexts. Tight tracking, strong weight.
-- **Body / UI controls:** `Noto Sans SC` + `DM Sans`. Clean, readable at
-  14–16px desktop density.
-- **Reading (in-reader):** `Merriweather` + `Noto Serif SC`. Optimized
-  for long-form sustained reading; 18px base, 1.8 line-height.
-- **Mono:** `JetBrains Mono` for code, metadata, data display.
-
-**Rules:**
-- Role separation is stable across platforms. Display = serif, UI = sans.
-- Never use novelty fonts for feature screens.
-- Do not drop below platform baseline body size (14px desktop, 16px mobile).
+Use Tailwind text utilities (`text-sm`, `font-medium`, `text-base`, etc.) for all
+UI surfaces.
 
 ---
 
@@ -215,6 +111,9 @@ Two-family strategy: **serif for display/headings** (editorial gravity),
 ### Base grid
 - **Desktop:** 4pt grid, 8pt major rhythm. Dense scanning layouts.
 - **Mobile:** 8pt grid, 4pt micro-adjustment. Generous touch targets.
+
+Use Tailwind spacing utilities (`p-4`, `gap-2`, `px-3`, etc.) for all layout
+values.
 
 ### Reading surface
 - Content column width: `66ch` (optimal reading measure).
@@ -231,14 +130,7 @@ always dominates; navigation chrome recedes.
 
 Depth via **tonal layering + subtle shadow** — not heavy drop shadows.
 Background (`bg`) → Surface → Surface-2 → Surface-3 creates natural hierarchy.
-
-| Tier | Usage | Shadow |
-|------|-------|--------|
-| `elev-xs` | Subtle row separation | `0 1px 2px rgba(28,23,20,0.06)` |
-| `elev-card` | Cards, list groups | `0 1px 3px …0.08, 0 4px 12px …0.06` |
-| `elev-cover` | Book covers, hero art | `2px 4px 16px …0.18, 0 1px 3px …0.12` |
-| `elev-panel` | Panels, sidesheets | `0 2px 8px …0.10, 0 12px 32px …0.08` |
-| `elev-modal` | Dialogs, popovers | `0 4px 16px …0.12, 0 24px 64px …0.14` |
+Use Tailwind shadow utilities (`shadow-sm`, `shadow-md`, `shadow-lg`) for elevation.
 
 Dark mode: shadows deepen (`rgba(0,0,0,…)` replaces warm tones).
 
@@ -246,16 +138,9 @@ Dark mode: shadows deepen (`rgba(0,0,0,…)` replaces warm tones).
 
 ## Shapes
 
-**Architectural softness** — rounded but not playful.
-
-| Token | Value | Use |
-|-------|-------|-----|
-| `radius-xs` | 2px | Chips, tags, tiny badges |
-| `radius-sm` | 4px | Minor controls, inline elements |
-| `radius-md` | 8px | Buttons, inputs, list items |
-| `radius-lg` | 12px | Cards, grouped containers |
-| `radius-xl` | 20px | Hero containers, modals |
-| `radius-full` | 9999px | Pill badges, avatar circles |
+**Architectural softness** — rounded but not playful. Use Tailwind radius
+utilities (`rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-3xl`,
+`rounded-full`).
 
 Never mix sharp and heavily-rounded corners in the same view.
 
@@ -299,14 +184,12 @@ mode, chrome goes dark regardless of app theme.
 ## Do's and Don'ts
 
 - **Do** use `accent` for the single most important action per screen.
-- **Do** use semantic tokens (`--ink-1`, `--accent-soft`, `--danger`) — never raw hex.
-- **Do** keep role separation: serif = editorial, sans = UI, reading font = reader only.
+- **Do** use semantic color tokens (`--ink-1`, `--accent-soft`, `--danger`) — never raw hex.
 - **Do** provide WCAG AA contrast for body text; target stronger than AA for critical controls.
 - **Do** define `prefers-reduced-motion` behavior for all non-essential animation.
 - **Don't** use raw Tailwind palette classes (`bg-black`, `text-white`, `emerald-500`).
 - **Don't** hardcode `rgba(...)` values in component files — use CSS custom properties.
 - **Don't** let reader chrome visually compete with reading content.
-- **Don't** mix `rounded-[Npx]` arbitrary values — use radius token utilities.
 - **Don't** redefine shared semantic color values in platform-specific files.
 - **Don't** use more than two font weights on a single non-reading screen.
 - **Don't** use novelty or promotional fonts for any app surface.
@@ -321,3 +204,4 @@ mode, chrome goes dark regardless of app theme.
 | 2026-04-07 | Quiet editorial direction, warm neutral palette | Long-session readability + reading-product identity |
 | 2026-04-23 | Upgrade to design.md spec format (YAML frontmatter) | Machine-readable tokens for AI tooling and Figma sync |
 | 2026-04-23 | Align token values to .designsystem/colors_and_type.css | Single visual source of truth; accent updated to terracotta #C4622D; ink tier replaces text/text-muted |
+| 2026-06-27 | Reduce design system to colors only | Tailwind already provides spacing, radius, font, and shadow semantics; fewer tokens to maintain and fewer arbitrary overrides |

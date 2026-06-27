@@ -52,7 +52,7 @@ export function ReaderSidePanelHeader({
 }: ReaderSidePanelHeaderProps) {
   const { t } = useTranslation()
   return (
-    <div className="font-serif flex min-h-[52px] items-center justify-between gap-2 border-b border-reader-chrome-border px-4 py-3 text-[15px] font-semibold text-reader-chrome-fg sm:px-5">
+    <div className="flex min-h-[52px] items-center justify-between gap-2 border-b border-reader-chrome-border px-4 py-3 text-[15px] font-semibold text-reader-chrome-fg sm:px-5">
       <div className="flex min-w-0 items-center gap-2.5">
         <Icon className="size-[18px] shrink-0 opacity-60" />
         <span className="truncate">{title}</span>

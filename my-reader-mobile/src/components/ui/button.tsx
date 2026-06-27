@@ -223,7 +223,7 @@ export function RoundIconButton({
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
-      className={cx("overflow-hidden", isLarge ? "rounded-[20px]" : "rounded-3xl")}
+      className={cx("overflow-hidden", isLarge ? "rounded-2xl" : "rounded-3xl")}
       disabled={disabled}
       onPress={onPress}
       underlayColor={palette.backgroundSecondary}

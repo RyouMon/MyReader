@@ -122,7 +122,7 @@ export function DataSourceTypeSelector({
           >
             <div
               className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-[10px]",
+                "flex size-10 shrink-0 items-center justify-center rounded-lg",
                 isSelected ? type.selectedIconBg : type.iconBg,
               )}
             >

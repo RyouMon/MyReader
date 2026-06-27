@@ -14,7 +14,7 @@ export function GroupList({ className, children }: GroupListProps) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--radius)] border border-border bg-card",
+        "overflow-hidden rounded-lg border border-border bg-card",
         className,
       )}
     >

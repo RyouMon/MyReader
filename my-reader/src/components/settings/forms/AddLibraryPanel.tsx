@@ -156,7 +156,7 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--radius)] transition-colors",
+        "overflow-hidden rounded-lg transition-colors",
         addPanelOpen
           ? "border border-primary"
           : "border border-dashed border-border",

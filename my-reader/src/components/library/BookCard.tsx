@@ -113,7 +113,7 @@ const BookCard = memo(function BookCard({
       <div className="mt-2 h-[70px] overflow-hidden px-0.5">
         <p
           className={cn(
-            "truncate font-serif text-sm font-medium leading-[1.35] text-foreground transition-colors duration-200",
+            "truncate text-sm font-medium leading-[1.35] text-foreground transition-colors duration-200",
             "group-hover/card:text-primary",
           )}
         >

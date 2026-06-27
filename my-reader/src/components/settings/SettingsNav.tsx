@@ -38,7 +38,7 @@ export default function SettingsNav({
   return (
     <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav">
       <div className="shrink-0 border-b border-border px-4 py-[18px] pb-3">
-        <h2 className="font-serif text-[15px] font-semibold text-foreground">
+        <h2 className="text-[15px] font-semibold text-foreground">
           {t("settings.title")}
         </h2>
       </div>

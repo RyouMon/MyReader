@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 import { useThemePalette } from "@/src/design/tokens";
-import { TEXT_SIZE } from "@/src/design/typography";
+import { ICON_SIZE } from "@/src/design/icon-sizes";
 import { CloudIcon } from "@/src/components/ui/cloud-icon";
 import { CircularProgress } from "@/src/components/ui/circular-progress";
 import { useDownloadTaskForBookFormat } from "@/src/domain/download/download-store";
@@ -51,7 +51,7 @@ export function BookDownloadStatusIndicator({
   bookId,
   format,
   fallbackProgress,
-  size = TEXT_SIZE.base,
+  size = ICON_SIZE.base,
   strokeWidth = 1.5,
   color: overrideColor,
 }: BookDownloadStatusIndicatorProps) {

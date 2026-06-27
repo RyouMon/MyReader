@@ -64,29 +64,22 @@ Content-first means the reading surface is neutral — warm paper tone, no chrom
 - **Dark bg** `--bg-dark`: `#1C1814` — night/sepia dark mode base
 
 ### Typography
-- **Display serif** — Lora — used for book titles in library, chapter headings
-- **UI sans** — DM Sans — all navigation, labels, metadata, settings
-- **Reading body** — Merriweather — the in-reader paragraph font; excellent at small sizes
-- **Mono** — JetBrains Mono — technical strings, path display, sync IDs
-- Both Chinese and Latin scripts are supported; fallback stack includes `"Noto Serif SC"` and `"PingFang SC"` / `"Microsoft YaHei"`
+- The app UI uses the system / Tailwind default sans-serif stack.
+- Reading body font inside the reader may use a serif stack configured by the reader theme, but that is separate from the app UI design system.
+- Both Chinese and Latin scripts are supported via the system font stack.
 
 ### Spacing
-- Base unit: **4px**. Scale: 4, 8, 12, 16, 24, 32, 48, 64, 96
-- Reading margins: generous — `clamp(24px, 8vw, 96px)` horizontal
-- Component padding: typically 12–16px inner, 24px between sections
+- Use Tailwind spacing utilities (`p-4`, `gap-2`, `px-3`, etc.).
+- Reading margins: generous — `clamp(24px, 8vw, 96px)` horizontal.
+- Component padding: typically 12–16px inner, 24px between sections.
 
 ### Corner Radii
-- `--radius-sm`: 4px — tags, chips, small elements
-- `--radius-md`: 8px — cards, inputs, buttons
-- `--radius-lg`: 12px — modals, popovers, book covers
-- `--radius-xl`: 20px — bottom sheets, mobile cards
-- No pill/full-round shapes except progress bars and toggle switches
+- Use Tailwind radius utilities (`rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-3xl`, `rounded-full`).
+- No pill/full-round shapes except progress bars and toggle switches.
 
 ### Shadows
-- `--shadow-card`: `0 1px 3px rgba(28,23,20,.08), 0 4px 12px rgba(28,23,20,.06)` — book covers, cards
-- `--shadow-panel`: `0 2px 8px rgba(28,23,20,.10), 0 12px 32px rgba(28,23,20,.08)` — panels, drawers
-- `--shadow-cover`: `2px 4px 16px rgba(28,23,20,.18)` — book covers (mimics physical shadow)
-- Shadows are warm-tinted (not pure grey/blue). No colored glow shadows.
+- Use Tailwind shadow utilities (`shadow-sm`, `shadow-md`, `shadow-lg`).
+- Shadows are warm-tinted on light mode (via the underlying surface color), neutral on dark mode. No colored glow shadows.
 
 ### Backgrounds
 - No gradient backgrounds on surfaces. Solid fills only.
@@ -119,8 +112,8 @@ Content-first means the reading surface is neutral — warm paper tone, no chrom
 - Used sparingly — not on cards or general UI
 
 ### Cards
-- Book cover card: rounded `--radius-lg`, `--shadow-cover`, no border
-- Metadata card (settings, sync status): `--shadow-card`, `--radius-md`, `--border`
+- Book cover card: rounded `rounded-lg` / `rounded-xl`, subtle shadow, no border
+- Metadata card (settings, sync status): `shadow-sm`/`shadow-md`, `rounded-lg`, `--border`
 - No colored left-border accent cards — that pattern is explicitly avoided
 
 ### Dark / Night Mode
@@ -150,7 +143,7 @@ No proprietary icon font is attached. This system uses **Lucide Icons** (CDN: `h
 /
 ├── README.md                    ← This file
 ├── SKILL.md                     ← Agent skill definition
-├── colors_and_type.css          ← All CSS variables & font imports
+├── colors_and_type.css          ← Color-only CSS custom properties
 ├── assets/
 │   ├── logo.svg                 ← MyReader wordmark + icon
 │   └── logo-dark.svg            ← Dark variant
@@ -159,11 +152,6 @@ No proprietary icon font is attached. This system uses **Lucide Icons** (CDN: `h
 │   ├── colors-neutral.html      ← Neutral ink + bg scale
 │   ├── colors-semantic.html     ← Status / semantic colors
 │   ├── colors-dark.html         ← Dark mode palette
-│   ├── type-scale.html          ← Display + heading scale
-│   ├── type-body.html           ← Body + UI + reading specimens
-│   ├── type-chinese.html        ← Chinese type specimens
-│   ├── spacing-tokens.html      ← Spacing scale tokens
-│   ├── spacing-radius.html      ← Radius + shadow system
 │   ├── components-buttons.html  ← Button variants
 │   ├── components-book-card.html← Book cover card
 │   ├── components-progress.html ← Reading progress + sync

@@ -8,7 +8,7 @@ export function SectionCard({ children }: { children: ReactNode }) {
 
   return (
     <View
-      className="overflow-hidden rounded-[24px]"
+      className="overflow-hidden rounded-3xl"
       style={{
         backgroundColor: palette.surface,
         borderColor: palette.border,

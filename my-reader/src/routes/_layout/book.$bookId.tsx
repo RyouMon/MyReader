@@ -390,7 +390,7 @@ function BookDetailPage() {
           <div className="detail-hero mb-8 flex gap-9">
             {/* Cover */}
             <div className="detail-cover-wrap w-[220px] shrink-0">
-              <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-cover">
+              <div className="relative aspect-[2/3] w-[220px] overflow-hidden rounded-xl shadow-md">
                 <div
                   className="absolute inset-0"
                   style={{ background: generateCoverGradient(book.title) }}
@@ -413,7 +413,7 @@ function BookDetailPage() {
                           "linear-gradient(180deg, transparent 55%, var(--cover-scrim-rest))",
                       }}
                     />
-                    <span className="relative z-10 font-serif text-2xl leading-[1.35] font-bold text-ink-inverse [text-shadow:0_2px_6px_rgba(0,0,0,0.3)]">
+                    <span className="relative z-10 text-2xl leading-[1.35] font-bold text-ink-inverse [text-shadow:0_2px_6px_rgba(0,0,0,0.3)]">
                       {book.title}
                     </span>
                     <span className="relative z-10 mt-2 text-[13px] text-ink-inverse/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.2)]">
@@ -441,7 +441,7 @@ function BookDetailPage() {
 
             {/* Meta */}
             <div className="detail-meta flex min-w-0 flex-1 flex-col pt-1">
-              <h1 className="detail-anim-1 font-serif text-[28px] leading-[1.3] font-bold">
+              <h1 className="detail-anim-1 text-[28px] leading-[1.3] font-bold">
                 {book.title}
               </h1>
 
@@ -580,7 +580,7 @@ function BookDetailPage() {
                           >
                             <div
                               className={cn(
-                                "flex size-8 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold uppercase",
+                                "flex size-8 shrink-0 items-center justify-center rounded-md text-[11px] font-bold uppercase",
                                 getFormatTone(fmt),
                               )}
                             >
@@ -997,7 +997,7 @@ function DetailSection({
 }) {
   return (
     <div className={cn("mt-9", className)}>
-      <h2 className="mb-3.5 border-b border-border pb-2.5 font-serif text-lg font-semibold">
+      <h2 className="mb-3.5 border-b border-border pb-2.5 text-lg font-semibold">
         {title}
       </h2>
       {children}
@@ -1050,7 +1050,7 @@ function RelatedBookCard({
       onClick={onClick}
       className="group/related w-[120px] shrink-0 text-start"
     >
-      <div className="relative aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-card transition-all duration-200 group-hover/related:-translate-y-[3px]">
+      <div className="relative aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-md transition-all duration-200 group-hover/related:-translate-y-[3px]">
         <div
           className="absolute inset-0"
           style={{ background: generateCoverGradient(book.title) }}
@@ -1070,13 +1070,13 @@ function RelatedBookCard({
           />
         ) : (
           <div className="absolute inset-0 flex size-full flex-col items-center justify-center px-2 py-3 text-center">
-            <span className="font-serif text-[13px] font-semibold text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
+            <span className="text-[13px] font-semibold text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>
           </div>
         )}
       </div>
-      <p className="mt-2 line-clamp-2 font-serif text-[12.5px] leading-[1.3] font-semibold transition-colors duration-200 group-hover/related:text-primary">
+      <p className="mt-2 line-clamp-2 text-[12.5px] leading-[1.3] font-semibold transition-colors duration-200 group-hover/related:text-primary">
         {book.title}
       </p>
       <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">

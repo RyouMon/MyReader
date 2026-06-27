@@ -207,7 +207,7 @@ export default function ReaderScreen() {
       <View className="flex-1 w-full items-center justify-center px-7" style={{ backgroundColor: palette.background }}>
         <StatusBar hidden={false} barStyle={colorScheme === "dark" ? "light-content" : "dark-content"} />
         <View
-          className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-[20px] border"
+          className="w-full max-w-[400px] items-center py-7 px-[22px] rounded-2xl border"
           style={{ backgroundColor: READER_CHROME.errorCardBg, borderColor: READER_CHROME.errorCardBorder }}
         >
           <Text className="text-center text-lg font-bold mb-3" style={{ color: READER_CHROME.textStrong }}>

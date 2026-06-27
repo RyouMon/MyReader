@@ -40,7 +40,6 @@ jest.mock("@/src/design/tokens", () => ({
     textMuted: "#666",
     surface: "#fff",
     border: "#ccc",
-    shadowMd: undefined,
   })),
 }));
 

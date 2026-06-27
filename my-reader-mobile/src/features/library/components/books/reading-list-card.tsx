@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { useThemePalette } from "@/src/design/tokens";
-import { TEXT_SIZE } from "@/src/design/typography";
+import { ICON_SIZE } from "@/src/design/icon-sizes";
 import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
 import { buildBookMenuActions } from "../../utils/book-menu";
@@ -82,7 +82,7 @@ function ReadingListCardImpl({
       accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
     >
-      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -141,7 +141,7 @@ function ReadingListCardImpl({
             accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
             className="h-8 w-8 items-center justify-center"
           >
-            <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+            <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
           </Pressable>
         )}
       </View>

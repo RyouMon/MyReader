@@ -3,17 +3,17 @@ import { Platform } from "react-native";
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
 
+import { ICON_SIZE } from "@/src/design/icon-sizes";
 import { androidRippleColor, pressedBackgroundColor } from "@/src/design/press-feedback";
 import { useTheme, useThemePalette } from "@/src/design/tokens";
-import { TEXT_SIZE } from "@/src/design/typography";
 import { Image, Pressable, Text, View } from "@/tw";
 
+import { HeroCard, ProgressBar } from "@/src/components";
 import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
 import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
-import { HeroCard, ProgressBar } from "@/src/components";
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import type { BookItem } from "@/src/domain/types";
 import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
+import type { BookItem } from "@/src/domain/types";
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
 import type { HomeCardStyle } from "@/src/store/app-store.types";
 
@@ -63,7 +63,7 @@ export function ContinueReadingCard({
       accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
       className="h-8 w-8 items-center justify-center"
     >
-      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -74,7 +74,6 @@ export function ContinueReadingCard({
           coverUri={book.coverUri}
           rawColors={coverRawColors}
           colorScheme={resolvedScheme}
-          borderRadius={28}
           variant={homeCardStyle}
         />
         {menuActions && menuActions.length > 0 ? (
@@ -96,7 +95,6 @@ export function ContinueReadingCard({
           onPress={handlePress}
           android_ripple={{ color: androidRippleColor(resolvedScheme, palette), foreground: true }}
           style={({ pressed }) => ({
-            borderRadius: 28,
             overflow: "hidden",
             backgroundColor: Platform.OS === "ios" && pressed ? pressedBackgroundColor(resolvedScheme, palette) : undefined,
           })}
@@ -105,13 +103,13 @@ export function ContinueReadingCard({
             {book.coverUri ? (
               <Image
                 source={book.coverUri}
-                className="h-[168px] w-[112px] rounded-[18px]"
+                className="h-[168px] w-[112px] rounded-2xl"
                 cachePolicy="memory-disk"
                 recyclingKey={book.id}
               />
             ) : (
               <View
-                className="h-[168px] w-[112px] items-center justify-center rounded-[18px]"
+                className="h-[168px] w-[112px] items-center justify-center rounded-2xl"
                 style={{ backgroundColor: palette.background }}
               >
                 <Text
