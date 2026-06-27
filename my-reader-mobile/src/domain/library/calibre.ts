@@ -25,7 +25,7 @@ import {
   libraryMetadataUri,
   METADATA_DB_RELATIVE,
   resolveCoverUri,
-} from "./locations";
+} from "@/src/services/fs/library-paths";
 import {
   resolveLocalLibraryMetadataUri,
   withLocalLibraryCalibreRoot,
@@ -87,6 +87,7 @@ export function mapListRowsToBookItems(
       title: row.title || i18n.t("common.unnamedBook"),
       author: row.authors[0] || row.authorSort || i18n.t("common.unknownAuthor"),
       authors: row.authors,
+      formats: row.formats,
       path: row.path || undefined,
       hasCover,
       timestamp: row.timestamp,
@@ -269,6 +270,7 @@ export async function readBookDetailFromMetadata(
   return {
     id: book.id,
     title: book.title || i18n.t("common.unnamedBook"),
+    titleSort: book.sort ?? "",
     authorSort: book.authorSort ?? "",
     authors: bookAuthors,
     tags: bookTags,

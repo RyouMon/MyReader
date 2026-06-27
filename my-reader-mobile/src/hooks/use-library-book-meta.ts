@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+
+import { useQuery } from "@tanstack/react-query";
 
 import { useDownloadStatusTasks, type DownloadStatusTask } from "@/src/domain/download/download-store";
 import { getFormatFromPath, getReadableFormats, pathBelongsToBook, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
 import { getAllBookFormats } from "@/src/domain/library/calibre";
-import { listFileStates, type FileStateRow } from "@/src/domain/sync/actions";
+import { useFileStates } from "@/src/domain/sync/hooks/use-file-states";
+import type { FileStateRow } from "@/src/domain/sync/actions";
 import type { BookItem, Library, LocalState } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
-import { useFileStateRevision } from "@/src/hooks/useFileState";
+import { queryKeys } from "@/src/services/query/query-keys";
 
 const downloadedStates = new Set<LocalState>(["present", "local_only", "dirty_push"]);
 
@@ -24,72 +27,52 @@ export function useLibraryBookMeta(
   books: BookItem[],
   selectedFormatById: Record<string, string>,
 ) {
-  const [bookFormatsById, setBookFormatsById] = useState<Record<string, string[]>>({});
-  const [fileStateBundle, setFileStateBundle] = useState<BookFileStateBundle>(EMPTY_FILE_STATE_BUNDLE);
-  const fileStateRevision = useFileStateRevision();
+  const { data: bookFormatsById = {} } = useQuery({
+    queryKey: queryKeys.bookFormats(selectedLibrary?.id, books.length),
+    queryFn: async () => {
+      if (!selectedLibrary) return {};
+      return getAllBookFormats(selectedLibrary);
+    },
+    enabled: true,
+    staleTime: 0,
+  });
+  const { data: fileStateRows = [] } = useFileStates(selectedLibrary);
   const statusTasks = useDownloadStatusTasks();
 
-  useEffect(() => {
-    if (!selectedLibrary) {
-      setBookFormatsById({});
-      return;
-    }
-    let cancelled = false;
-    void getAllBookFormats(selectedLibrary).then((formats) => {
-      if (cancelled) return;
-      setBookFormatsById(formats);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [books, selectedLibrary]);
+  const isRemote = isRemoteSourceType(selectedLibrary?.sourceType);
 
-  useEffect(() => {
+  const fileStateBundle = useMemo<BookFileStateBundle>(() => {
     if (!selectedLibrary) {
-      setFileStateBundle(EMPTY_FILE_STATE_BUNDLE);
-      return;
+      return EMPTY_FILE_STATE_BUNDLE;
     }
-
-    if (!isRemoteSourceType(selectedLibrary.sourceType) || !selectedLibrary.dataSourceId) {
+    if (!isRemote || !selectedLibrary.dataSourceId) {
       const statuses: BookFileStateMap = {};
       for (const book of books) statuses[book.id] = "downloaded";
-      setFileStateBundle({ statuses, rows: {} });
-      return;
+      return { statuses, rows: {} };
     }
 
-    let cancelled = false;
-    void listFileStates(
-      selectedLibrary,
-    ).then((rows) => {
-      if (cancelled) return;
-      const statuses: BookFileStateMap = {};
-      const rowsByBook: BookFileStateRowMap = {};
-      for (const book of books) {
-        const matchedRows = rows.filter((row) => pathBelongsToBook(row.path, book.path));
-        rowsByBook[book.id] = matchedRows;
-        statuses[book.id] = matchedRows.some((row) => downloadedStates.has(row.localState))
-          ? "downloaded"
-          : "notDownloaded";
-      }
-      setFileStateBundle({ statuses, rows: rowsByBook });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [books, fileStateRevision, selectedLibrary]);
+    const statuses: BookFileStateMap = {};
+    const rowsByBook: BookFileStateRowMap = {};
+    for (const book of books) {
+      const matchedRows = fileStateRows.filter((row) => pathBelongsToBook(row.path, book.path));
+      rowsByBook[book.id] = matchedRows;
+      statuses[book.id] = matchedRows.some((row) => downloadedStates.has(row.localState))
+        ? "downloaded"
+        : "notDownloaded";
+    }
+    return { statuses, rows: rowsByBook };
+  }, [books, fileStateRows, isRemote, selectedLibrary]);
 
   const bookFormatMetaById = useMemo(() => {
     const map = new Map<string, BookFormatMeta>();
     for (const book of books) {
-      const readableFormats = getReadableFormats(bookFormatsById[book.id]);
+      const readableFormats = getReadableFormats(book.formats ?? bookFormatsById[book.id]);
       const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormatById[book.id]);
       map.set(book.id, { readableFormats, effectiveFormat });
     }
     return map;
   }, [books, bookFormatsById, selectedFormatById]);
 
-  const isRemote = isRemoteSourceType(selectedLibrary?.sourceType);
   const selectedLibraryId = selectedLibrary?.id;
 
   const tasksByBookId = useMemo(() => {

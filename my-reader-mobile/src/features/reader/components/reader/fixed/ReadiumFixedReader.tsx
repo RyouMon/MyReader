@@ -10,9 +10,8 @@ import type {
 import { useTranslation } from "react-i18next";
 import i18n from "@/src/i18n";
 
-import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import type { ReaderTheme } from "@/src/store/app-store.types";
+import type { FixedNavigationMode, ReadingProgression, Spread } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 
@@ -31,8 +30,10 @@ export type ReadiumFixedReaderProps = {
   onToggleChrome?: () => void;
   /** Page index from TOC sheet selection. */
   gotoPageCommand?: number;
-  brightness?: number;
-  theme?: ReaderTheme;
+  backgroundColor: string;
+  navigationMode: FixedNavigationMode;
+  readingProgression: ReadingProgression;
+  spread: Spread;
 };
 
 function buildTocItemId(prefix: string, path: readonly number[]) {
@@ -103,8 +104,10 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
       onTocReady,
       onToggleChrome,
       gotoPageCommand,
-      brightness = 100,
-      theme = "night",
+      backgroundColor,
+      navigationMode,
+      readingProgression,
+      spread,
     },
     ref,
   ) {
@@ -127,14 +130,15 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
       [filePath],
     );
 
-    const preferences = useMemo(() => {
-      const t = READER_THEMES[theme] ?? READER_THEMES.neutral;
-      const isDarkTheme = theme === "night" || theme === "contrast2";
-      return {
-        theme: (isDarkTheme ? "dark" : "light") as "light" | "dark" | "sepia",
-        backgroundColor: t.bg,
-      };
-    }, [theme]);
+    const preferences = useMemo(
+      () => ({
+        backgroundColor,
+        scroll: navigationMode === "vertical",
+        readingProgression,
+        spread,
+      }),
+      [backgroundColor, navigationMode, readingProgression, spread],
+    );
 
     const handlePublicationReady = useCallback(
       (event: PublicationReadyEvent) => {
@@ -240,15 +244,6 @@ const ReadiumFixedReader = forwardRef<ReadiumFixedReaderRef, ReadiumFixedReaderP
           // reader view consumes them.
           onTap={onToggleChrome}
         />
-        {brightness < 100 && (
-          <View
-            style={[
-              { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
-              { backgroundColor: "black", opacity: (100 - brightness) / 100 },
-            ]}
-            pointerEvents="none"
-          />
-        )}
       </View>
     );
   },

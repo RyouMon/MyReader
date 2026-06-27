@@ -2,11 +2,11 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 
 import type { Library } from "@/src/domain/types";
-import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
+import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import {
-  libraryDownloadFilterOptions,
+  libraryFilterOptions,
   librarySortOptions,
   libraryViewOptions,
 } from "../../utils/library-header-config";
@@ -14,12 +14,12 @@ import {
 type LibraryIosHeaderToolbarProps = {
   libraries: Library[];
   effectiveLibraryId?: string;
-  downloadFilter: DownloadFilterOption;
+  filter: LibraryFilterOption;
   sortBy: SortOption;
   viewMode: LibraryViewMode;
   onSyncCurrentLibrary: () => void;
   onSelectLibrary: (libraryId: string) => void;
-  onSetDownloadFilter: (value: DownloadFilterOption) => void;
+  onSetFilter: (value: LibraryFilterOption) => void;
   onSetSortBy: (value: SortOption) => void;
   onSetViewMode: (value: LibraryViewMode) => void;
 };
@@ -28,12 +28,12 @@ type LibraryIosHeaderToolbarProps = {
 export function LibraryIosHeaderToolbar({
   libraries,
   effectiveLibraryId,
-  downloadFilter,
+  filter,
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
   onSelectLibrary,
-  onSetDownloadFilter,
+  onSetFilter,
   onSetSortBy,
   onSetViewMode,
 }: LibraryIosHeaderToolbarProps) {
@@ -62,11 +62,11 @@ export function LibraryIosHeaderToolbar({
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon="line.3.horizontal.decrease">
           <Stack.Toolbar.Menu inline title={t("library.filterLabel")}>
-            {libraryDownloadFilterOptions.map((option) => (
+            {libraryFilterOptions.map((option) => (
               <Stack.Toolbar.MenuAction
                 key={`download-filter-${option.value}`}
-                isOn={downloadFilter === option.value}
-                onPress={() => onSetDownloadFilter(option.value)}
+                isOn={filter === option.value}
+                onPress={() => onSetFilter(option.value)}
               >
                 {t(option.labelKey)}
               </Stack.Toolbar.MenuAction>

@@ -1,0 +1,72 @@
+appId: ${APP_ID}
+name: change_epub_settings_on_pad
+tags:
+  - reader
+  - settings
+  - epub
+  - visual
+  - ipad
+  - wip
+---
+# EPUB book 1 = 898 pages.
+# iPad-specific column layout scenarios for EPUB settings.
+#
+# NOTE: The current dev-client build renders in portrait on iPad and is then
+# rotated by the system, making column-count assertions unreliable. This flow
+# is marked @wip until verified on a release / non-dev build.
+
+- setOrientation: PORTRAIT
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../../common/open_reader_by_id.yaml
+    env:
+      BOOK_ID: "1"
+
+# ============================================================
+# Scenario: iPad landscape + column=auto (default) expands to two columns
+# ============================================================
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- extractTextWithAI:
+    query: "The screenshot may be rotated. Mentally rotate it so the text is upright. Does the page then show two columns of text side by side? Reply yes or no."
+    optional: false
+- assertTrue: ${(aiOutput || '').toLowerCase().includes('yes')}
+
+# ============================================================
+# Scenario: iPad portrait + column=auto (default) degrades to a single column
+# ============================================================
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- extractTextWithAI:
+    query: "The screenshot may be rotated. Mentally rotate it so the text is upright. Does the page then show a single column of text (not two columns side by side)? Reply yes or no."
+    optional: false
+- assertTrue: ${(aiOutput || '').toLowerCase().includes('yes')}
+
+# ============================================================
+# Scenario: iPad landscape + forced always-single column overrides auto
+# ============================================================
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.column.single}
+- tapOn: ${output.selectors.readerSettings.column.single}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "栏.*始终单栏.*已选择|Columns: Always Single, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- extractTextWithAI:
+    query: "The screenshot may be rotated. Mentally rotate it so the text is upright. The screen is wide. Does the page show a single column of text (not two columns side by side)? Reply yes or no."
+    optional: false
+- assertTrue: ${(aiOutput || '').toLowerCase().includes('yes')}

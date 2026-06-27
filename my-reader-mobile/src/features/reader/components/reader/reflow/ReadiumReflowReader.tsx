@@ -12,7 +12,7 @@ import type {
 
 import { READER_THEMES } from "@/src/design/reader-tokens";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
-import type { ReaderTheme, TextAlignment, ColumnCount } from "@/src/store/app-store.types";
+import type { ReaderTheme, TextAlignment, ColumnCount, FontFamilyKey } from "@/src/store/app-store.types";
 
 const PROGRESS_PERCENT_MULTIPLIER = 100;
 
@@ -32,10 +32,10 @@ export type ReadiumReflowReaderProps = {
   /** 与 {@link ReaderTocItem.pageIndex} 一致，由目录 sheet 选择触发。 */
   gotoTocIndex?: number;
   theme?: ReaderTheme;
+  fontFamily?: FontFamilyKey;
   fontSize?: number;
   lineHeight?: number;
   paddingX?: number;
-  brightness?: number;
   textAlign?: TextAlignment;
   columnCount?: ColumnCount;
 };
@@ -113,8 +113,9 @@ function toReadiumThemeToken(theme: ReaderTheme): "light" | "dark" | "sepia" {
   }
 }
 
-function buildPreferences(
+export function buildPreferences(
   theme: ReaderTheme,
+  fontFamily: FontFamilyKey,
   fontSize: number,
   lineHeight: number,
   paddingX: number,
@@ -132,6 +133,12 @@ function buildPreferences(
     backgroundColor: t.bg,
     publisherStyles: false,
   };
+  if (fontFamily === "serif") {
+    prefs.fontFamily = "serif";
+  } else if (fontFamily === "sans") {
+    prefs.fontFamily = "sans-serif";
+  }
+  // "system" → omit fontFamily, use Readium default
   if (textAlign !== "auto") {
     prefs.textAlign = textAlign === "justify" ? "justify" : "start";
   }
@@ -184,6 +191,7 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
       onToggleChrome,
       gotoTocIndex,
       theme = "paper",
+      fontFamily = "serif",
       fontSize = 18,
       lineHeight = 1.85,
       paddingX = 20,
@@ -211,8 +219,8 @@ const ReadiumReflowReader = forwardRef<ReadiumReflowReaderRef, ReadiumReflowRead
     );
 
     const preferences = useMemo(
-      () => buildPreferences(theme, fontSize, lineHeight, paddingX, textAlign, columnCount),
-      [theme, fontSize, lineHeight, paddingX, textAlign, columnCount],
+      () => buildPreferences(theme, fontFamily, fontSize, lineHeight, paddingX, textAlign, columnCount),
+      [theme, fontFamily, fontSize, lineHeight, paddingX, textAlign, columnCount],
     );
 
     const handlePublicationReady = useCallback(

@@ -2,7 +2,7 @@ import type { Library, DataSource } from "../types";
 import type { RemoteBackend } from "../../services/remote/backend";
 import { createRemoteBackend } from "../../services/remote/factory";
 import { forceRefreshMetadata } from "./remote-library-shared";
-import { METADATA_DB_RELATIVE } from "./locations";
+import { METADATA_DB_RELATIVE } from "@/src/services/fs/library-paths";
 
 type MetadataCheckResult =
   | { changed: false; etag: string }

@@ -14,9 +14,10 @@ import {
   PrimaryButton,
   RoundIconButton,
   Screen,
-  SectionHeading,
 } from "@/src/components";
 import { switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
+import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format";
+import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
 import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { BookItem } from "@/src/domain/types";
@@ -26,20 +27,33 @@ import {
   BookRow,
   LibrarySkeletonContent,
 } from "@/src/features/library/components/books";
+import type { BookProgressSnapshot } from "@/src/features/library/components/books/book-cover";
+import { useBookFilter, type LibraryFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
+import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome";
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query";
-import { getLibraryDownloadFilterLabel } from "@/src/features/library/utils/library-header-config";
-import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery";
+import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant";
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta";
-import { useBookFilter, type DownloadFilterOption, type SortOption } from "@/src/features/library/hooks/use-book-filter";
 import { useAppStore } from "@/src/store/app-store";
-import { useBookActions } from "./hooks/useBookActions";
+import { useBookActions } from "./hooks/use-book-actions";
 
 const defaultSortOption: SortOption = "recentlyAdded";
+
+/** Grid layout constants. Adjust these to tune the grid's horizontal margins and gutters.
+ *
+ * - GRID_PADDING_X: horizontal space between the screen edge and the outermost cards.
+ * - GRID_CARD_GAP: space between adjacent cards (both rows and columns).
+ *   Each card wrapper gets GRID_CARD_GAP / 2 of horizontal padding so that two
+ *   neighboring wrappers together form the full gap; FlashList's content padding
+ *   is reduced by the same half-gap to keep the outer edge flush with GRID_PADDING_X.
+ */
 const GRID_MIN_CARD_WIDTH = 150;
 const GRID_MIN_COLUMNS = 2;
 const GRID_MAX_COLUMNS = 6;
+const GRID_PADDING_X = 16;
+const GRID_CARD_GAP = 12;
+const LIST_PADDING_X = GRID_PADDING_X;
 
 type LibraryScreenProps = {
   libraryId?: string;
@@ -57,7 +71,7 @@ type LibraryItemSeparator = NonNullable<
 >;
 
 const SeparatorGrid = memo(function SeparatorGrid() {
-  return <View className="h-3" />;
+  return <View style={{ height: GRID_CARD_GAP }} />;
 }) as LibraryItemSeparator;
 const SeparatorList = memo(function SeparatorList() {
   return null;
@@ -67,12 +81,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const { t } = useTranslation();
   const palette = useThemePalette();
   const { width } = useWindowDimensions();
-  const GRID_GAP = 12;
-  const GRID_PADDING_H = 16;
-  const gridColumns = getResponsiveGridColumns(width, GRID_GAP, GRID_PADDING_H);
-  const GRID_HALF_GAP = GRID_GAP / 2;
-  const LIST_PADDING_H = GRID_PADDING_H;
-  const cardWidth = (width - GRID_PADDING_H * 2 - GRID_GAP * (gridColumns - 1)) / gridColumns;
+  const gridColumns = getResponsiveGridColumns(width, GRID_CARD_GAP, GRID_PADDING_X);
+  const cardWidth = (width - GRID_PADDING_X * 2 - GRID_CARD_GAP * (gridColumns - 1)) / gridColumns;
   const { switchLibrary } = { switchLibrary: switchActiveLibrary };
   const libraries = useAppStore((s) => s.libraries);
   const activeLibraryId = useAppStore((s) => s.activeLibraryId);
@@ -84,8 +94,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
   const setViewMode = useAppStore((s) => s.setLibraryViewMode);
   const { query, setQuery, debouncedQuery, clearQuery } = useSearchQuery(effectiveLibraryId);
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption);
-  const [downloadFilter, setDownloadFilter] = useState<DownloadFilterOption>("all");
-  const [selectedFormatById, setSelectedFormatById] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<LibraryFilterOption>("all");
   const isGridView = viewMode === "grid";
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null);
@@ -122,6 +131,9 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     [libraries, effectiveLibraryId],
   );
 
+  const { selectedFormatById, setBookReadingFormat } = useBookReadingFormat(selectedLibrary);
+  const { favoriteSet, toggleFavorite } = useFavoriteBooks(selectedLibrary, books);
+
   const variant = resolveLibraryScreenVariant({
     storeReady,
     effectiveLibraryId,
@@ -134,12 +146,14 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     books,
     selectedFormatById,
   );
+  const { data: progressByBookId } = useBookReadingProgress(selectedLibrary);
   const { visibleBooks } = useBookFilter(
     books,
     debouncedQuery,
     sortBy,
-    downloadFilter,
+    filter,
     bookDownloadStatusById,
+    favoriteSet,
   );
 
   /** Opens a platform-neutral library picker menu without navigation. */
@@ -175,13 +189,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     selectedLibrary,
     libraries,
     effectiveLibraryId,
-    downloadFilter,
+    filter,
     sortBy,
     viewMode,
     onSyncCurrentLibrary: handleSyncCurrentLibrary,
     onSelectLibrary: applyLibrarySelection,
     onOpenLibrarySwitchMenu: openLibrarySwitchMenu,
-    onSetDownloadFilter: setDownloadFilter,
+    onSetFilter: setFilter,
     onSetSortBy: setSortBy,
     onSetViewMode: setViewMode,
     onQueryChange: setQuery,
@@ -207,7 +221,8 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     openMenuBookId,
     selectedFormatById,
     selectedLibrary,
-    setSelectedFormatById,
+    setBookReadingFormat,
+    toggleFavorite,
   );
 
   const isMenuOpen = openMenuBookId !== null;
@@ -216,6 +231,10 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     ({ item }: { item: BookItem }) => {
       const status = bookDownloadStatusById[item.id] ?? "notDownloaded";
       const effectiveFormat = bookFormatMetaById.get(item.id)?.effectiveFormat;
+      const progressByFormat = progressByBookId?.[item.id];
+      const progressPercent = effectiveFormat ? progressByFormat?.[effectiveFormat] : undefined;
+      const progress: BookProgressSnapshot | undefined =
+        typeof progressPercent === "number" ? { percent: progressPercent } : undefined;
       const subscriptionLibraryId = isRemote && status === "downloading" ? selectedLibraryId : undefined;
       const activeFormat = effectiveFormat ?? (status === "downloading" ? bookActiveFormatsById.get(item.id) : undefined);
       const subscriptionFormat = subscriptionLibraryId ? activeFormat : undefined;
@@ -224,7 +243,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
       if (isGridView) {
         return (
-          <View className="px-1.5">
+          <View style={{ paddingHorizontal: GRID_CARD_GAP / 2 }}>
             <BookCard
               book={item}
               downloadStatus={status}
@@ -234,11 +253,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
               menuIsRemote={isRemote}
               menuFormats={menuFormats}
               menuSelectedFormat={menuSelectedFormat}
+              isFavorite={favoriteSet.has(item.id)}
               onMenuAction={handleBookMenuAction}
               onMenuOpen={handleMenuOpen}
               onMenuClose={handleMenuClose}
               subscriptionLibraryId={subscriptionLibraryId}
               subscriptionFormat={subscriptionFormat}
+              progress={progress}
             />
           </View>
         );
@@ -253,22 +274,24 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
           menuIsRemote={isRemote}
           menuFormats={menuFormats}
           menuSelectedFormat={menuSelectedFormat}
+          isFavorite={favoriteSet.has(item.id)}
           onMenuAction={handleBookMenuAction}
           onMenuOpen={handleMenuOpen}
           onMenuClose={handleMenuClose}
-          horizontalPadding={LIST_PADDING_H}
+          horizontalPadding={LIST_PADDING_X}
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
+          progress={progress}
         />
       );
     },
     [
-      LIST_PADDING_H,
       bookActiveFormatsById,
       bookDownloadStatusById,
       bookFormatMetaById,
       bookFormatsById,
       cardWidth,
+      favoriteSet,
       handleBookMenuAction,
       handleBookPress,
       handleMenuClose,
@@ -276,6 +299,7 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
       isGridView,
       isMenuOpen,
       isRemote,
+      progressByBookId,
       selectedFormatById,
       selectedLibraryId,
     ],
@@ -283,12 +307,73 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
 
   const getItemType = useCallback(() => (isGridView ? "grid" : "list"), [isGridView]);
 
+  const flashListExtraData = useMemo(
+    () => ({
+      bookActiveFormatsById,
+      bookDownloadStatusById,
+      bookFormatMetaById,
+      bookFormatsById,
+      favoriteSet,
+      isMenuOpen,
+      progressByBookId,
+      selectedFormatById,
+      selectedLibraryId,
+    }),
+    [
+      bookActiveFormatsById,
+      bookDownloadStatusById,
+      bookFormatMetaById,
+      bookFormatsById,
+      favoriteSet,
+      isMenuOpen,
+      progressByBookId,
+      selectedFormatById,
+      selectedLibraryId,
+    ],
+  );
+
   const header = (
     <>
       <Stack.Screen options={options} />
       {toolbar}
     </>
   );
+
+  const emptyState = useMemo(() => {
+    if (query.length > 0) {
+      return {
+        title: t("library.noMatch.search.title"),
+        detail: t("library.noMatch.search.detail"),
+        icon: { ios: "magnifyingglass", android: "search" } as const,
+      };
+    }
+    if (filter === "favorites") {
+      return {
+        title: t("library.noMatch.favorites.title"),
+        detail: t("library.noMatch.favorites.detail"),
+        icon: { ios: "star.fill", android: "star" } as const,
+      };
+    }
+    if (books.length === 0) {
+      return {
+        title: t("library.noMatch.empty.title"),
+        detail: t("library.noMatch.empty.detail"),
+        icon: { ios: "books.vertical", android: "library-books" } as const,
+      };
+    }
+    if (filter !== "all") {
+      return {
+        title: t("library.noMatch.filter.title"),
+        detail: t("library.noMatch.filter.detail"),
+        icon: { ios: "line.3.horizontal.decrease.circle", android: "filter-list" } as const,
+      };
+    }
+    return {
+      title: t("library.noMatch.search.title"),
+      detail: t("library.noMatch.search.detail"),
+      icon: { ios: "magnifyingglass", android: "search" } as const,
+    };
+  }, [query.length, books.length, filter, t]);
 
   if (variant === "loading") {
     return (
@@ -350,50 +435,13 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
     );
   }
 
-  const listHeader = (
-    <View style={{ marginBottom: isGridView ? 8 : 0, paddingHorizontal: isGridView ? 0 : LIST_PADDING_H }}>
-      <SectionHeading
-        title={getLibraryDownloadFilterLabel(t, downloadFilter)}
-        detail={t("library.bookCountRatio", { visible: visibleBooks.length, total: books.length })}
-      />
-    </View>
-  );
-
-  const emptyState = useMemo(() => {
-    if (query.length > 0) {
-      return {
-        title: t("library.noMatch.search.title"),
-        detail: t("library.noMatch.search.detail"),
-        icon: { ios: "magnifyingglass", android: "search" } as const,
-      };
-    }
-    if (books.length === 0) {
-      return {
-        title: t("library.noMatch.empty.title"),
-        detail: t("library.noMatch.empty.detail"),
-        icon: { ios: "books.vertical", android: "library-books" } as const,
-      };
-    }
-    if (downloadFilter !== "all") {
-      return {
-        title: t("library.noMatch.filter.title"),
-        detail: t("library.noMatch.filter.detail"),
-        icon: { ios: "line.3.horizontal.decrease.circle", android: "filter-list" } as const,
-      };
-    }
-    return {
-      title: t("library.noMatch.search.title"),
-      detail: t("library.noMatch.search.detail"),
-      icon: { ios: "magnifyingglass", android: "search" } as const,
-    };
-  }, [query.length, books.length, downloadFilter, t]);
-
   return (
     <>
       {header}
       <FlashList
         key={`${viewMode}-${gridColumns}-${activeLibraryId ?? "none"}`}
         data={isLoadingNewContent ? [] : visibleBooks}
+        extraData={flashListExtraData}
         numColumns={isGridView ? gridColumns : 1}
         keyExtractor={(item) => item.id}
         getItemType={getItemType}
@@ -401,20 +449,19 @@ export default function LibraryScreen({ libraryId: libraryIdProp }: LibraryScree
         className="flex-1"
         style={{ backgroundColor: palette.background }}
         contentContainerStyle={{
-          paddingHorizontal: isGridView ? GRID_PADDING_H - GRID_HALF_GAP : 0,
+          paddingHorizontal: isGridView ? GRID_PADDING_X - GRID_CARD_GAP / 2 : 0,
           paddingTop: 16,
           paddingBottom: 40,
         }}
         ItemSeparatorComponent={isGridView ? SeparatorGrid : SeparatorList}
-        ListHeaderComponent={listHeader}
         ListEmptyComponent={
           isLoadingNewContent ? (
             <LibrarySkeletonContent
               viewMode={viewMode}
               cardWidth={cardWidth}
               gridColumns={gridColumns}
-              gridGap={GRID_GAP}
-              listPaddingH={LIST_PADDING_H}
+              gridGap={GRID_CARD_GAP}
+              listPaddingX={LIST_PADDING_X}
             />
           ) : booksError ? (
             <EmptyState title={t("library.loadError.title")} detail={booksError.message} icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }} />

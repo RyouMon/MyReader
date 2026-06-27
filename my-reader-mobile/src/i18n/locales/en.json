@@ -6,7 +6,7 @@
     "settings": "Settings"
   },
   "home": {
-    "title": "My Reader",
+    "title": "Home",
     "continueReading": "Continue Reading",
     "noCover": "No Cover",
     "currentLibrary": "Library: {{name}} · {{count}} books",
@@ -35,7 +35,15 @@
       "all": "All",
       "downloaded": "Downloaded",
       "notDownloaded": "Not Downloaded",
-      "downloading": "Downloading"
+      "downloading": "Downloading",
+      "favorites": "Favorites"
+    },
+    "filterTitle": {
+      "all": "All Books",
+      "downloaded": "Downloaded",
+      "notDownloaded": "Not Downloaded",
+      "downloading": "Downloading",
+      "favorites": "Favorites"
     },
     "sort": {
       "title": "Title",
@@ -88,6 +96,10 @@
       "filter": {
         "title": "No filtered results",
         "detail": "No books match the current filter. Try a different filter."
+      },
+      "favorites": {
+        "title": "No favorites yet",
+        "detail": "Tap the star icon on any book to add it to your favorites."
       }
     }
   },
@@ -138,7 +150,10 @@
       "dark": "Dark"
     },
     "language": "Language",
-    "languageDetail": "Change display language"
+    "languageDetail": "Change display language",
+    "homeCardStyle": "Home Card Style",
+    "homeCardStyle.adaptive": "Adaptive",
+    "homeCardStyle.coverBlur": "Blurred Cover"
   },
   "reader": {
     "cannotOpen": "Cannot open book",
@@ -158,17 +173,26 @@
     "settingsTheme": "Theme",
     "readingMode": "Reading Mode",
     "pageDirection": "Page Direction",
-    "brightness": "Brightness",
+    "background": "Background",
+    "backgroundAuto": "Auto",
+    "backgroundBlack": "Black",
+    "backgroundWhite": "White",
     "alignment": "Alignment",
     "alignmentAuto": "Auto",
     "alignmentJustify": "Justify",
     "alignmentStart": "Left",
     "column": "Columns",
-    "column1": "Single",
+    "column1": "Always Single",
     "columnAuto": "Auto",
     "fontSize": "Font Size",
     "lineHeight": "Line Height",
     "margin": "Margin",
+    "spread": "Page Layout",
+    "spreadAuto": "Auto",
+    "spreadSingle": "Always Single",
+    "readingProgression": "Reading Direction",
+    "directionLtr": "Left to Right",
+    "directionRtl": "Right to Left",
     "zoom": "Zoom",
     "pinchZoomHint": "Fixed-layout supports pinch-to-zoom.",
     "themeNeutral": "Neutral",
@@ -209,13 +233,20 @@
       "detail": "It may have been removed from the library or the page parameters are invalid."
     },
     "seriesInfo": "{{series}} · #{{index}}",
+    "series": "Series",
+    "seriesIndex": "Series Index",
     "infoSection": "Details",
+    "bookTitle": "Title",
+    "titleSort": "Title Sort",
+    "authors": "Authors",
     "authorSort": "Author Sort",
     "pubDate": "Pub Date",
     "language": "Language",
-    "libraryPath": "Library Path",
-    "addedAt": "Added At",
-    "lastModified": "Last Modified",
+    "publisher": "Publisher",
+    "rating": "Rating",
+    "tags": "Tags",
+    "identifiers": "Identifiers",
+    "createdAt": "Created At",
     "downloadStarted": "Download started",
     "downloadStartedDetail": "{{format}} will be ready to read once downloaded.",
     "noReadableFormat": "No readable format",
@@ -235,40 +266,34 @@
     "formatSection": {
       "title": "File Formats",
       "count": "{{count}} formats",
-      "default": "Default",
+      "default": "Default Reading Format",
       "readable": "Readable",
       "unsupported": "Unsupported",
       "queued": "Queued",
       "preparing": "Preparing",
       "notStarted": "Not started",
       "cancel": "Cancel",
-      "cancelDownload": "Cancel {{format}} download",
+      "cancelDownload": "Cancel Download",
       "download": "Download",
-      "downloadFormat": "Download {{format}}",
-      "deleteLocalFile": "Delete local file",
-      "deleteLocalFileFormat": "Delete local file {{format}}",
-      "notDownloaded": "Not downloaded"
+      "downloadFormat": "Download",
+      "notDownloaded": "Not downloaded",
+      "setDefault": "Set as default reading format",
+      "shareFormat": "Share",
+      "more": "More"
     },
-    "synopsis": "Synopsis"
+    "synopsis": "Synopsis",
+    "setReadingFormat": "Set Reading Format",
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
+  "share": {
+    "fileNotDownloadedTitle": "File not downloaded",
+    "fileNotDownloadedMessage": "\"{{title}}\" ({{format}}) must be downloaded first.",
+    "shareFailed": "Share failed"
   },
   "bookRow": {
     "unread": "Unread",
-    "finished": "Finished",
-    "reading": "Reading"
-  },
-  "downloadButton": {
-    "queued": "Queued",
-    "preparing": "Preparing",
-    "downloading": "Downloading",
-    "download": "Download",
-    "downloadFailed": "File download failed: {{path}}",
-    "downloaded": "Downloaded",
-    "evicting": "Evicting",
-    "evict": "Evict",
-    "deleting": "Deleting",
-    "confirmDelete": "Tap again to confirm",
-    "delete": "Delete",
-    "failed": "Failed"
+    "finished": "Finished"
   },
   "addLibrary": {
     "existingSources": "Existing Sources",
@@ -465,16 +490,9 @@
     "localStorage": "Local Storage",
     "unnamedBook": "Unnamed Book",
     "unknownAuthor": "Unknown Author",
-    "unnamedLibrary": "Unnamed Library"
-  },
-  "bookFormats": {
-    "epub": "Reflowable",
-    "pdf": "Fixed-layout",
-    "mobi": "Kindle Format",
-    "azw3": "Kindle Format",
-    "txt": "Plain Text",
-    "cbz": "Comic Archive",
-    "djvu": "Scanned Document"
+    "unnamedLibrary": "Unnamed Library",
+    "selected": "Selected",
+    "unselected": "Unselected"
   },
   "bookLang": {
     "zho": "中文",
@@ -484,10 +502,14 @@
   },
   "bookMenu": {
     "detail": "Book Details",
+    "addToFavorites": "Add to Favorites",
+    "removeFromFavorites": "Remove from Favorites",
     "download": "Download",
     "downloadFormat": "Download ({{format}})",
+    "cancelDownload": "Cancel Download",
     "defaultFormat": "Default reading format: {{format}}",
-    "deleteDownload": "Delete downloaded file"
+    "deleteDownload": "Delete downloaded file",
+    "share": "Share"
   },
   "bookLoader": {
     "loadingBook": "Loading book…",

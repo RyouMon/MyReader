@@ -1,7 +1,7 @@
 import type { DataSource, Library, WebDavDataSource } from "../types";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../../constants/local-library-data-source";
 import { readWebDavPassword, readOneDriveRefreshToken } from "../../services/storage/credentials";
-import { libraryRootUri, librarySidecarRootUri } from "../library/locations";
+import { libraryRootUri, librarySidecarRootUri } from "@/src/services/fs/library-paths";
 import { SyncConfigError } from "../../errors";
 import { createRemoteBackend } from "../../services/remote/factory";
 import type { RemoteBackend } from "../../services/remote/backend";

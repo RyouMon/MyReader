@@ -61,23 +61,27 @@ tags:
 - assertVisible: ${output.selectors.reader.moreActions}
 - assertNotVisible: ${output.selectors.reader.settingsButton}
 
-# Scenario: 隐藏 chrome 后点击右边缘翻到下一页
+# Scenario: 隐藏 chrome 后向右下方轻扫翻到下一页
+# EPUB reflow 的屏幕边缘 tap 容易触发超链接或失效；在底部安全区域做水平
+# 滑动来翻页更稳定。
 - tapOn:
     point: "50%,50%"
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible: ${output.selectors.reader.moreActions}
 - assertVisible: "1 / 898"
-- tapOn:
-    point: "85%,50%"
+- swipe:
+    start: "80%,90%"
+    end: "20%,90%"
 - extendedWaitUntil:
     visible: "2 / 898"
     timeout: 10000
 - assertNotVisible: ${output.selectors.reader.moreActions}
 
-# Scenario: 点击左边缘翻到上一页
-- tapOn:
-    point: "10%,50%"
+# Scenario: 向左下方轻扫翻回上一页
+- swipe:
+    start: "20%,90%"
+    end: "80%,90%"
 - extendedWaitUntil:
     visible: "1 / 898"
     timeout: 10000

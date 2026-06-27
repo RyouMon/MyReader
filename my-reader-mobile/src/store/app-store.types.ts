@@ -9,25 +9,30 @@ import type { SettingsSlice, ProgramSlice } from "./settings-slice";
 export type ReaderTheme = "neutral" | "paper" | "sepia" | "green" | "ocean" | "contrast1" | "night" | "contrast2";
 export type FixedNavigationMode = "horizontal" | "vertical";
 export type LibraryViewMode = "grid" | "list";
+export type HomeCardStyle = "adaptive" | "coverBlur";
 
 export type TextAlignment = "auto" | "justify" | "start";
 export type ColumnCount = "1" | "auto";
+export type FontFamilyKey = "serif" | "sans" | "system";
+export type FixedBackground = "auto" | "black" | "white";
+export type Spread = "auto" | "never" | "always";
+export type ReadingProgression = "ltr" | "rtl";
 
 export type ReflowableReaderSettings = {
   theme: ReaderTheme;
+  fontFamily: FontFamilyKey;
   fontSize: number;
   lineHeight: number;
   paddingX: number;
-  brightness: number;
   textAlign: TextAlignment;
   columnCount: ColumnCount;
 };
 
 export type FixedReaderSettings = {
-  theme: ReaderTheme;
+  background: FixedBackground;
   navigationMode: FixedNavigationMode;
-  brightness: number;
-  zoomScale: number;
+  readingProgression: ReadingProgression;
+  spread: Spread;
 };
 
 export type ReaderSettings = {
@@ -35,6 +40,7 @@ export type ReaderSettings = {
   language: string;
   syncOnStartup: boolean;
   enableAutoSync: boolean;
+  homeCardStyle: HomeCardStyle;
   reflowable: ReflowableReaderSettings;
   fixed: FixedReaderSettings;
 };

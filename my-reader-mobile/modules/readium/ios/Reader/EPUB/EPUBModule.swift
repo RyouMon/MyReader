@@ -13,6 +13,7 @@ final class EPUBModule: ReaderFormatModule {
     func supports(_ publication: Publication) -> Bool {
       publication.conforms(to: .epub)
         || publication.readingOrder.allAreHTML
+        || publication.conforms(to: .divina)
     }
 
     func makeReaderViewController(
@@ -21,7 +22,8 @@ final class EPUBModule: ReaderFormatModule {
       bookId: String,
       selectionActions: [SelectionActionData]?
     ) throws -> ReaderViewController {
-        guard publication.metadata.identifier != nil else {
+        // CBZ/Divina publications often lack an identifier; only require one for EPUB.
+        guard !publication.conforms(to: .epub) || publication.metadata.identifier != nil else {
             throw ReaderError.epubNotValid
         }
 

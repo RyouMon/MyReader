@@ -46,3 +46,6 @@ app-example
 
 # Maestro
 report.xml
+e2e/.artifacts/*
+!e2e/.artifacts/.gitkeep
+e2e/.maestro/

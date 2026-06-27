@@ -12,7 +12,7 @@ import type { DataSourceOnedrive } from "@/src/domain/types";
 import { DataSourceInUseError } from "@/src/errors";
 import { Text, View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow } from "@/src/components";
+import { Screen, SectionCard, ListRow } from "@/src/components";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
 import { useAppStore } from "@/src/store/app-store";
@@ -61,7 +61,7 @@ function OneDriveDetailHero({ source, accent }: { source: DataSourceOnedrive; ac
 
       <View className="items-center gap-2">
         <Text
-          className="text-center text-[32px] leading-[38px]"
+          className="text-center text-3xl"
           style={{ color: palette.text, fontFamily: undefined, fontWeight: "700", letterSpacing: -0.4 }}
         >
           {source.name}
@@ -157,10 +157,10 @@ export default function OneDriveDataSourceDetailScreen() {
         <Stack.Screen options={options} />
         {toolbar}
         <View className="flex-1 items-center justify-center">
-          <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
+          <Text className="text-2xl font-bold" style={{ color: palette.text }}>
             {t("onedrive.notFound.title")}
           </Text>
-          <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
+          <Text className="mt-3 text-center text-sm" style={{ color: palette.textMuted }}>
             {t("onedrive.notFound.detail")}
           </Text>
         </View>
@@ -176,12 +176,12 @@ export default function OneDriveDataSourceDetailScreen() {
         <View className="flex-1 gap-8">
           <OneDriveDetailHero source={onedriveSource} accent={accent} />
           <SectionCard>
-            <SettingsRow title={t("onedrive.type")} detail="OneDrive" />
-            <SettingsRow title={t("onedrive.displayName")} detail={onedriveSource.displayName ?? ""} />
-            <SettingsRow title={t("onedrive.email")} detail={onedriveSource.email ?? ""} />
-            <SettingsRow title={t("onedrive.basePath")} detail={onedriveSource.rootPath?.trim() ? onedriveSource.rootPath : "/"} />
-            <SettingsRow title={t("onedrive.authStatus")} detail={onedriveSource.hasRefreshToken ? t("onedrive.authenticated") : t("onedrive.notAuthenticated")} />
-            <SettingsRow title={t("onedrive.addedAt")} detail={formatDate(onedriveSource.createdAt)} isLast />
+            <ListRow title={t("onedrive.type")} detail="OneDrive" />
+            <ListRow title={t("onedrive.displayName")} detail={onedriveSource.displayName ?? ""} />
+            <ListRow title={t("onedrive.email")} detail={onedriveSource.email ?? ""} />
+            <ListRow title={t("onedrive.basePath")} detail={onedriveSource.rootPath?.trim() ? onedriveSource.rootPath : "/"} />
+            <ListRow title={t("onedrive.authStatus")} detail={onedriveSource.hasRefreshToken ? t("onedrive.authenticated") : t("onedrive.notAuthenticated")} />
+            <ListRow title={t("onedrive.addedAt")} detail={formatDate(onedriveSource.createdAt)} isLast />
           </SectionCard>
         </View>
       </View>

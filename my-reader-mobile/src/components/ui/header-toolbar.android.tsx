@@ -47,6 +47,7 @@ function HeaderToolbarActionButton({ action }: { action: HeaderToolbarAction }) 
     <AndroidHeaderIconButton
       icon={materialIcon}
       accessibilityLabel={action.label}
+      color={action.color}
       disabled={!enabled}
       loading={action.loading}
       onPress={action.onPress}

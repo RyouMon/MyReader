@@ -1,44 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 
-import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
 import { useTranslation } from "react-i18next";
-import { Alert } from "react-native";
-import { useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, EmptyState } from "@/src/components/ui";
-import { FONT_UI } from "@/src/design/typography";
-import {
-  dismissTasksForPath,
-  enqueue,
-  isTaskErrorAlerted,
-  markTaskErrorAlerted,
-  useDownloadStatusTasks,
-} from "@/src/domain/download/download-store";
-import { getBookFormatPaths } from "@/src/domain/library/calibre";
-import { getFileState } from "@/src/domain/sync/actions";
-import type { BookItem, DataSource, Library, LocalState } from "@/src/domain/types";
+import { EmptyState } from "@/src/components/ui";
+import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress";
+import type { BookItem, DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { describeDownloadError } from "@/src/errors";
-import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions";
-import { useFileStateRevision } from "@/src/hooks/useFileState";
+import type { BookDetail } from "@my-reader/tools/types/book";
 import {
-  extractYear,
   formatDate,
   formatLanguage,
   IDENTIFIER_LABELS,
-  resolveCoverForDetail,
   stripHtml,
 } from "@/src/utils/book-detail";
-import { AnimatedScrollView, Text, View } from "@/tw";
-import type { BookDetail } from "@my-reader/tools/types/book";
+import { ScrollView, Text, View } from "@/tw";
+import { useBookCoverUri } from "../../../hooks/use-book-cover-uri";
+import { useBookDetailFormats } from "../../../hooks/use-book-detail-formats";
+import { useBookDetailReadState } from "../../../hooks/use-book-detail-read-state";
 import { FormatSection } from "./format-section";
 import { HeroSection } from "./hero-section";
 import { InfoRowSection } from "./info-row-section";
 import { SynopsisSection } from "./synopsis-section";
 import type { DetailColors, InfoCardItem } from "./types";
-
-type FormatInfo = { relativePath: string; localState: LocalState | null };
 
 type BookDetailContentProps = {
   activeLibrary: Library;
@@ -68,33 +51,41 @@ export function BookDetailContent({
   dataSources,
 }: BookDetailContentProps) {
   const { t } = useTranslation();
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.set(event.contentOffset.y);
+
+  const { data: progressByBookId } = useBookReadingProgress(activeLibrary);
+  const { coverUri } = useBookCoverUri(activeLibrary, detail, listBook, dataSources);
+
+  const {
+    formatInfoMap,
+    handleDownloadFormat,
+    handleDeleteFormat,
+    handleShareFormat,
+  } = useBookDetailFormats(activeLibrary, bookId, detail);
+
+  const progressByFormat = progressByBookId?.[bookId];
+
+  const {
+    readableFormats,
+    readableSelectedFormat,
+    canReadInApp,
+    handleReadAction,
+    readButtonTitle,
+  } = useBookDetailReadState(
+    activeLibrary,
+    bookId,
+    detail,
+    selectedFormat,
+    progressByFormat,
+    formatInfoMap,
+    onOpenReader,
+    handleDownloadFormat,
+  );
+
+  const handleSetDefaultFormat = useCallback(
+    (format: string) => {
+      onSelectFormat(bookId, format);
     },
-  });
-  const insets = useSafeAreaInsets();
-
-  const [coverUri, setCoverUri] = useState<BookItem["coverUri"] | undefined>(listBook?.coverUri);
-
-  useEffect(() => {
-    if (!detail) {
-      setCoverUri(listBook?.coverUri);
-      return;
-    }
-    let cancelled = false;
-    void resolveCoverForDetail(activeLibrary, detail, dataSources, listBook?.coverUri)
-      .then((resolved) => { if (!cancelled) setCoverUri(resolved); });
-    return () => { cancelled = true; };
-  }, [activeLibrary, detail, listBook?.coverUri, dataSources]);
-
-  const progress = typeof listBook?.progress === "number" ? listBook.progress : 0;
-  const progressLabel = `${Math.round(progress * 100)}%`;
-
-  const readableFormats = useMemo(
-    () => (detail ? detail.formats.filter(isReadableInAppFormat) : []),
-    [detail]
+    [bookId, onSelectFormat],
   );
 
   const formatSizeMap = useMemo(() => {
@@ -105,161 +96,6 @@ export function BookDetailContent({
     }
     return m;
   }, [detail]);
-
-  const [formatInfoMap, setFormatInfoMap] = useState<Record<string, FormatInfo>>({});
-  const formatInfoMapRef = useRef(formatInfoMap);
-  formatInfoMapRef.current = formatInfoMap;
-
-  const fileStateRevision = useFileStateRevision();
-  const downloadStatusTasks = useDownloadStatusTasks();
-  const consumedDownloadTaskIdsRef = useRef<Set<string>>(new Set());
-  const deletedLocalPathKeysRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!detail || !isRemoteSourceType(activeLibrary.sourceType) || !activeLibrary.dataSourceId) {
-      setFormatInfoMap({});
-      return;
-    }
-    let cancelled = false;
-    void getBookFormatPaths(activeLibrary, detail.id)
-      .then(async (paths) => {
-        const map: Record<string, FormatInfo> = {};
-        for (const { format, relativePath } of paths) {
-          const row = await getFileState(activeLibrary, relativePath);
-          map[format] = { relativePath, localState: row?.localState ?? null };
-        }
-        if (cancelled) return;
-        setFormatInfoMap(map);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          Alert.alert(t("bookDetail.readFileStateFailed"), err instanceof Error ? err.message : String(err));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeLibrary, bookId, detail, fileStateRevision, t]);
-
-  useEffect(() => {
-    if (!detail) return;
-    const latestMap = formatInfoMapRef.current;
-    const relevantTasks = downloadStatusTasks.filter(
-      (task) =>
-        task.libraryId === activeLibrary.id &&
-        (task.bookId === bookId ||
-          Object.values(latestMap).some((info) => info.relativePath === task.relativePath)),
-    );
-
-    for (const task of relevantTasks) {
-      if (task.status === "error" && !isTaskErrorAlerted(task.id)) {
-        markTaskErrorAlerted(task.id);
-        const { title, message } = describeDownloadError(task.error ?? t("bookDetail.downloadFailed", { path: task.relativePath }));
-        Alert.alert(title, message);
-      }
-    }
-
-    for (const id of Array.from(consumedDownloadTaskIdsRef.current)) {
-      const task = relevantTasks.find((t) => t.id === id);
-      if (!task || task.status !== "done") {
-        consumedDownloadTaskIdsRef.current.delete(id);
-      }
-    }
-
-    const doneTasks = relevantTasks.filter(
-      (task) =>
-        task.status === "done" &&
-        !consumedDownloadTaskIdsRef.current.has(task.id) &&
-        !deletedLocalPathKeysRef.current.has(`${task.libraryId}${task.relativePath}`),
-    );
-    if (doneTasks.length === 0) return;
-
-    setFormatInfoMap((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const task of doneTasks) {
-        const format =
-          task.format ??
-          Object.entries(prev).find(([, info]) => info.relativePath === task.relativePath)?.[0];
-        if (!format) continue;
-        consumedDownloadTaskIdsRef.current.add(task.id);
-        const current = next[format];
-        if (current?.localState === "present" && current.relativePath === task.relativePath) continue;
-        next[format] = {
-          relativePath: current?.relativePath ?? task.relativePath,
-          localState: "present",
-        };
-        changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [activeLibrary.id, bookId, detail, downloadStatusTasks, t]);
-
-  const handleDownloadFormat = useCallback(
-    async (format: string) => {
-      const info = formatInfoMap[format];
-      if (!info || !detail) {
-        Alert.alert(t("bookDetail.cannotStartDownload"), t("bookDetail.noFormatPath", { format }));
-        return;
-      }
-      try {
-        await enqueue({
-          libraryId: activeLibrary.id,
-          bookId,
-          format,
-          relativePath: info.relativePath,
-          label: `${detail.title} · ${format}`,
-        });
-        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
-      } catch (err) {
-        const { title, message } = describeDownloadError(err);
-        Alert.alert(title, message);
-      }
-    },
-    [formatInfoMap, activeLibrary.id, bookId, detail, t]
-  );
-
-  const handleDeleteFormat = useCallback(
-    async (format: string) => {
-      const info = formatInfoMap[format];
-      if (!info) return;
-      deletedLocalPathKeysRef.current.add(`${activeLibrary.id}${info.relativePath}`);
-      for (const task of downloadStatusTasks) {
-        if (
-          task.libraryId === activeLibrary.id &&
-          task.relativePath === info.relativePath &&
-          task.status === "done"
-        ) {
-          consumedDownloadTaskIdsRef.current.add(task.id);
-        }
-      }
-      // Optimistic update: hide the delete button immediately.
-      setFormatInfoMap((prev) => ({
-        ...prev,
-        [format]: { ...prev[format]!, localState: "remote_only" },
-      }));
-      try {
-        await evictLocalFileForLibrary(activeLibrary.id, info.relativePath);
-        dismissTasksForPath(activeLibrary.id, info.relativePath);
-      } catch (err) {
-        // Roll back the optimistic update.
-        setFormatInfoMap((prev) => ({
-          ...prev,
-          [format]: { ...prev[format]!, localState: "present" },
-        }));
-        deletedLocalPathKeysRef.current.delete(`${activeLibrary.id}${info.relativePath}`);
-        Alert.alert(t("bookDetail.deleteLocalFailed"), err instanceof Error ? err.message : String(err));
-      }
-    },
-    [formatInfoMap, downloadStatusTasks, activeLibrary.id, t]
-  );
-
-  const handleSetDefaultFormat = useCallback(
-    (format: string) => {
-      onSelectFormat(bookId, format);
-    },
-    [bookId, onSelectFormat]
-  );
 
   if (loadingDetail) {
     return (
@@ -283,77 +119,57 @@ export function BookDetailContent({
   }
 
   const book = detail;
-  const year = extractYear(book.pubdate);
+  const authorsText = book.authors.filter(Boolean).join(", ") || "—";
+  const tagsText = book.tags.filter(Boolean).join(", ") || "—";
+  const identifierValue = book.identifiers
+    .filter((ident) => ident.value.length > 0)
+    .map((ident) => `${IDENTIFIER_LABELS[ident.idType] ?? ident.idType}: ${ident.value}`)
+    .join("\n");
   const langDisplay = book.languages.map(formatLanguage).join(", ");
   const ratingStars = book.rating ? Math.round(book.rating / 2) : 0;
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null;
-  const seriesLabel =
-    book.series && book.seriesIndex !== null && book.seriesIndex !== undefined
-      ? t("bookDetail.seriesInfo", { series: book.series, index: Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1) })
-      : book.series;
   const synopsisText = book.comment ? stripHtml(book.comment) : "";
-  const readableSelectedFormat = selectedFormat ?? pickReadableFormat(book.formats);
-  const canReadInApp = readableFormats.length > 0;
-  const metaLine = [year, book.publisher, langDisplay].filter(Boolean).join(" · ");
+
   const bookInfoRows: InfoCardItem[] = [
+    { label: t("bookDetail.bookTitle"), value: book.title },
+    { label: t("bookDetail.titleSort"), value: book.titleSort || "—" },
+    { label: t("bookDetail.authors"), value: authorsText },
     { label: t("bookDetail.authorSort"), value: book.authorSort || "—" },
+    { label: t("bookDetail.series"), value: book.series || "—" },
+    { label: t("bookDetail.seriesIndex"), value: book.seriesIndex !== null ? String(book.seriesIndex) : "—" },
+    ...(ratingValue ? [{ label: t("bookDetail.rating"), value: `${"★".repeat(ratingStars)}${"☆".repeat(5 - ratingStars)} ${ratingValue}` }] : []),
+    { label: t("bookDetail.tags"), value: tagsText },
+    { label: t("bookDetail.identifiers"), value: identifierValue || "—" },
+    { label: t("bookDetail.createdAt"), value: formatDate(book.timestamp) },
     { label: t("bookDetail.pubDate"), value: formatDate(book.pubdate) },
+    { label: t("bookDetail.publisher"), value: book.publisher || "—" },
     { label: t("bookDetail.language"), value: langDisplay || "—" },
-    { label: t("bookDetail.libraryPath"), value: book.path || "—", mono: true },
-    { label: t("bookDetail.addedAt"), value: formatDate(book.timestamp) },
-    { label: t("bookDetail.lastModified"), value: formatDate(book.lastModified) },
-    ...(book.uuid ? [{ label: "UUID", value: book.uuid, mono: true }] : []),
-    ...book.identifiers.map((ident) => ({
-      label: IDENTIFIER_LABELS[ident.idType] ?? ident.idType,
-      value: ident.value,
-    })),
   ];
-
-  const selectedFormatUpper = readableSelectedFormat?.toUpperCase() ?? null;
-  const selectedFormatInfo = selectedFormatUpper ? formatInfoMap[selectedFormatUpper] : null;
-  const isSelectedFormatPresent = selectedFormatInfo?.localState === "present";
-  const isSelectedFormatReadable =
-    selectedFormatUpper !== null && readableFormats.map((f) => f.toUpperCase()).includes(selectedFormatUpper);
-
-  const handleReadAction = () => {
-    if (!canReadInApp || !readableSelectedFormat) return;
-    if (isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent) {
-      handleDownloadFormat(readableSelectedFormat);
-      Alert.alert(t("bookDetail.downloadStarted"), t("bookDetail.downloadStartedDetail", { format: readableSelectedFormat }));
-      return;
-    }
-    onOpenReader(bookId, readableSelectedFormat);
-  };
-
-  const readButtonTitle =
-    !canReadInApp || !readableSelectedFormat
-      ? t("bookDetail.noReadableFormat")
-      : isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent
-        ? t("bookDetail.downloadAndRead")
-        : progress > 0
-          ? t("bookDetail.continueReading")
-          : t("bookDetail.startReading");
 
   return (
     <View className="flex-1">
-      <AnimatedScrollView
+      <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="pb-36"
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
+        contentContainerClassName="pb-8"
         style={{ backgroundColor: colors.background }}
       >
-        <View>
+        <View className="gap-5">
           <HeroSection
             book={book}
+            canReadInApp={canReadInApp}
             colors={colors}
             coverUri={coverUri}
-            metaLine={metaLine}
-            ratingStars={ratingStars}
-            ratingValue={ratingValue}
-            seriesLabel={seriesLabel}
+            formats={readableFormats}
+            onRead={handleReadAction}
+            onSetFormat={handleSetDefaultFormat}
+            readButtonTitle={readButtonTitle}
+            selectedFormat={readableSelectedFormat}
           />
+
+          {synopsisText ? (
+            <SynopsisSection colors={colors} text={synopsisText} />
+          ) : null}
 
           {book.formats.length > 0 ? (
             <FormatSection
@@ -367,49 +183,15 @@ export function BookDetailContent({
               onDeleteFormat={(format) => void handleDeleteFormat(format)}
               onDownloadFormat={handleDownloadFormat}
               onSetDefaultFormat={handleSetDefaultFormat}
-              progress={progress}
-              progressLabel={progressLabel}
+              onShareFormat={handleShareFormat}
+              progressByFormat={progressByFormat}
               readableFormats={readableFormats}
             />
           ) : null}
 
-          {synopsisText ? (
-            <SynopsisSection colors={colors} text={synopsisText} />
-          ) : null}
-
-          <InfoRowSection colors={colors} items={bookInfoRows} title={t("bookDetail.infoSection")} />
+          <InfoRowSection items={bookInfoRows} title={t("bookDetail.infoSection")} />
         </View>
-      </AnimatedScrollView>
-
-      {/* Bottom action bar */}
-      {canReadInApp && readableSelectedFormat ? (
-        <View
-          className="absolute bottom-0 left-0 right-0 px-4 pt-3"
-          style={{
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            borderTopWidth: 1,
-            paddingBottom: insets.bottom + 12,
-          }}
-        >
-          <Button
-            accessibilityLabel={readButtonTitle}
-            className="rounded-2xl"
-            colors={{
-              backgroundColor: colors.accent,
-              borderColor: colors.accent,
-              textColor: colors.accentText,
-              underlayColor: colors.accentPressed,
-            }}
-            disabled={!isSelectedFormatReadable}
-            onPress={handleReadAction}
-            size="lg"
-            textStyle={{ fontFamily: FONT_UI }}
-            title={readButtonTitle}
-            variant="primary"
-          />
-        </View>
-      ) : null}
+      </ScrollView>
     </View>
   );
 }

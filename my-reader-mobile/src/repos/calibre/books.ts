@@ -17,6 +17,7 @@ export type BookWithAuthorsRow = {
   hasCover: number | null;
   timestamp: string | null;
   authors: string[];
+  formats: string[];
 };
 
 export type BookSummaryRow = {
@@ -63,6 +64,11 @@ export async function listBooksWithAuthors(
       .innerJoin(authors, eq(authors.id, booksAuthorsLink.author))
       .all();
 
+    const dataRows = await db
+      .select({ book: data.book, format: data.format })
+      .from(data)
+      .all();
+
     const authorMap = new Map<number, string[]>();
     for (const link of authorLinks) {
       const list = authorMap.get(link.book) ?? [];
@@ -70,6 +76,16 @@ export async function listBooksWithAuthors(
         list.push(link.name);
       }
       authorMap.set(link.book, list);
+    }
+
+    const formatMap = new Map<number, string[]>();
+    for (const row of dataRows) {
+      const list = formatMap.get(row.book) ?? [];
+      const upper = (row.format ?? "").toUpperCase();
+      if (!list.includes(upper)) {
+        list.push(upper);
+      }
+      formatMap.set(row.book, list);
     }
 
     return bookRows.map((row) => ({
@@ -80,6 +96,7 @@ export async function listBooksWithAuthors(
       hasCover: row.hasCover,
       timestamp: row.timestamp,
       authors: authorMap.get(row.id) ?? [],
+      formats: formatMap.get(row.id) ?? [],
     }));
   });
 }

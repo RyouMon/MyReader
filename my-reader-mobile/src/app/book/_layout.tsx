@@ -10,6 +10,8 @@ export default function BookLayout() {
         headerShown: true,
         title: t("bookDetail.title"),
       }}
-    />
+    >
+      <Stack.Screen name="[id]" />
+    </Stack>
   );
 }

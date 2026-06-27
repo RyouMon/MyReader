@@ -4,7 +4,7 @@ import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
 import { fileUriFor } from "@/src/services/fs/path";
 import type { Library } from "../types";
 import { isRemoteSourceType } from "../types";
-import { libraryLocalRootUri, METADATA_DB_RELATIVE, usesIosContainerSidecar } from "./locations";
+import { libraryLocalRootUri, METADATA_DB_RELATIVE, usesIosContainerSidecar } from "@/src/services/fs/library-paths";
 
 /**
  * Runs an operation against a local library's Calibre content root.

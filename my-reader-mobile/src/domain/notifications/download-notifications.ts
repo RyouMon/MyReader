@@ -40,7 +40,7 @@ export function notifyDownloadState(kind: DownloadNotificationKind, label: strin
   if (!initialized) return;
   if (AppState.currentState !== "active") return;
 
-  const title = kind === "start" ? i18n.t("notifications.downloadStart") : kind === "done" ? i18n.t("download.complete") : i18n.t("download.failed");
+  const title = kind === "start" ? i18n.t("notifications.downloadStart") : kind === "done" ? i18n.t("notifications.downloadDone") : i18n.t("notifications.downloadFailed");
   const notifKind = kind === "done" ? "success" : kind === "error" ? "error" : "info";
 
   Notifier.showNotification({

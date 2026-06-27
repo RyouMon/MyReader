@@ -1,6 +1,6 @@
+import { MoreActionsIcon } from "@/src/components";
 import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
 import { TouchableHighlight } from "@/tw";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Animated, {
@@ -66,7 +66,7 @@ export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
         underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
         className="h-[44px] w-[44px] items-center justify-center rounded-full"
       >
-        <MaterialIcons name="more-horiz" size={ICON_SIZE} color={palette.actionText} />
+        <MoreActionsIcon size={ICON_SIZE} color={palette.actionText} />
       </TouchableHighlight>
     </Animated.View>
   );

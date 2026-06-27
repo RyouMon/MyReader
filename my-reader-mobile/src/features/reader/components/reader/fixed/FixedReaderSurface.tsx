@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo } from "react";
 
 import type { Locator } from "@my-reader/readium";
 
-import type { ReaderTheme } from "@/src/store/app-store.types";
+import type { FixedNavigationMode, ReadingProgression, Spread } from "@/src/store/app-store.types";
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator";
 import type { ReaderState, ReaderTocItem } from "@/src/features/reader/components/reader/types";
 import { toNativeFilesystemPath } from "@/src/services/fs/path";
@@ -23,8 +23,10 @@ export type FixedReaderSurfaceProps = {
   onToggleChrome?: () => void;
   gotoPageCommand?: number;
   fallback: React.ReactNode;
-  theme?: ReaderTheme;
-  brightness?: number;
+  backgroundColor: string;
+  navigationMode: FixedNavigationMode;
+  readingProgression: ReadingProgression;
+  spread: Spread;
 };
 
 function isPdfFormat(format: string): boolean {
@@ -47,8 +49,10 @@ export default function FixedReaderSurface({
   onToggleChrome,
   gotoPageCommand,
   fallback,
-  theme = "night",
-  brightness = 100,
+  backgroundColor,
+  navigationMode,
+  readingProgression,
+  spread,
 }: FixedReaderSurfaceProps) {
   const domFallback = useMemo(() => fallback, [fallback]);
 
@@ -68,8 +72,10 @@ export default function FixedReaderSurface({
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
-          brightness={brightness}
-          theme={theme}
+          backgroundColor={backgroundColor}
+          navigationMode={navigationMode}
+          readingProgression={readingProgression}
+          spread={spread}
         />
       </Suspense>
     );
@@ -101,8 +107,10 @@ export default function FixedReaderSurface({
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
-          brightness={brightness}
-          theme={theme}
+          backgroundColor={backgroundColor}
+          navigationMode={navigationMode}
+          readingProgression={readingProgression}
+          spread={spread}
         />
       </Suspense>
     );

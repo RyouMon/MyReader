@@ -6,9 +6,10 @@ import { useTranslation } from "react-i18next";
 
 import { changeLanguage } from "@/src/i18n";
 import { useTheme, type ThemeMode } from "@/src/design/tokens";
+import type { HomeCardStyle } from "@/src/store/app-store.types";
 import { View } from "@/tw";
 
-import { Screen, SectionCard, SettingsMenuRow, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { Screen, SectionCard, ListMenuRow, ListRow, SectionLabel } from "@/src/components";
 import { useAppStore } from "@/src/store/app-store";
 
 export default function SettingsScreen() {
@@ -80,14 +81,33 @@ export default function SettingsScreen() {
     [effectiveLanguage, languageLabels]
   );
 
+  const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle);
+  const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle);
+  const homeCardStyleLabels = useMemo<Record<HomeCardStyle, string>>(
+    () => ({
+      adaptive: t("settings.homeCardStyle.adaptive"),
+      coverBlur: t("settings.homeCardStyle.coverBlur"),
+    }),
+    [t]
+  );
+  const homeCardStyleValue = homeCardStyleLabels[homeCardStyle];
+  const homeCardStyleMenuActions = useMemo<MenuAction[]>(
+    () =>
+      (["adaptive", "coverBlur"] as HomeCardStyle[]).map((style) => ({
+        id: `homeCardStyle:${style}`,
+        title: `${homeCardStyle === style ? "✓ " : ""}${homeCardStyleLabels[style]}`,
+      })),
+    [homeCardStyle, homeCardStyleLabels]
+  );
+
   return (
     <>
       <Screen>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.librarySection")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.librarySection")}</SectionLabel>
           <SectionCard>
             {libraries.map((library) => (
-              <SettingsRow
+              <ListRow
                 key={library.id}
                 testID={`settings-library-row-${library.id}`}
                 title={library.name}
@@ -100,7 +120,7 @@ export default function SettingsScreen() {
                 }
               />
             ))}
-            <SettingsRow
+            <ListRow
               testID="settings-add-library-row"
               title={t("settings.addLibrary")}
               isLast
@@ -109,15 +129,15 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.remoteDataSources")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.remoteDataSources")}</SectionLabel>
           <SectionCard>
-            <SettingsRow
+            <ListRow
               testID="settings-webdav-row"
               title="WebDAV"
               detail={t("settings.webdavDetail")}
               onPress={() => navigateTo("/settings/webdav")}
             />
-            <SettingsRow
+            <ListRow
               testID="settings-onedrive-row"
               title="OneDrive"
               detail={t("settings.onedriveDetail")}
@@ -127,9 +147,9 @@ export default function SettingsScreen() {
           </SectionCard>
         </View>
         <View className="gap-3">
-          <SettingsSectionLabel>{t("settings.appearance")}</SettingsSectionLabel>
+          <SectionLabel>{t("settings.appearance")}</SectionLabel>
           <SectionCard>
-            <SettingsMenuRow
+            <ListMenuRow
               actions={languageMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
@@ -140,7 +160,7 @@ export default function SettingsScreen() {
               title={t("settings.language")}
               value={languageLabels[effectiveLanguage]}
             />
-            <SettingsMenuRow
+            <ListMenuRow
               actions={themeMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
@@ -149,6 +169,16 @@ export default function SettingsScreen() {
               }}
               title={t("settings.darkMode")}
               value={themeMode}
+            />
+            <ListMenuRow
+              actions={homeCardStyleMenuActions}
+              isAnchoredToRight
+              onPressAction={({ nativeEvent }) => {
+                const nextStyle = nativeEvent.event.replace("homeCardStyle:", "") as HomeCardStyle;
+                setHomeCardStyle(nextStyle);
+              }}
+              title={t("settings.homeCardStyle")}
+              value={homeCardStyleValue}
               isLast
             />
           </SectionCard>

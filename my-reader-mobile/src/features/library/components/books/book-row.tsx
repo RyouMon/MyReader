@@ -1,36 +1,25 @@
 import { memo, useCallback, useMemo } from "react";
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { SymbolView } from "expo-symbols";
-import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
 
-import { buildBookMenuActions } from "../../utils/book-menu";
-import type { BookItem } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
+import { TEXT_SIZE } from "@/src/design/typography";
+import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
+import { buildBookMenuActions } from "../../utils/book-menu";
 
-import { CircularProgress } from "@/src/components/ui/circular-progress";
-import { ProgressBar } from "@/src/components/ui/progress-bar";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
-import { DownloadProgressIndicator } from "./download-progress-indicator";
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
+import { ProgressLabel } from "./progress-label";
 
-/**
- * Returns the mobile row status label for an optional progress snapshot.
- */
-function getProgressLabel(progress: BookProgressSnapshot | undefined, t: (key: string) => string) {
-  if (progress?.statusLabel) {
-    return progress.statusLabel;
-  }
-  if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return t("bookRow.unread");
-  }
-  if (progress.percent >= 100) {
-    return t("bookRow.finished");
-  }
-  return t("bookRow.reading");
-}
+/** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
+const BOOK_ROW_COVER_HEIGHT = 84;
+const BOOK_ROW_COVER_BORDER_RADIUS = 4;
+const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3;
+const BOOK_ROW_COVER_WIDTH = Math.round(BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO);
 
 export type BookRowProps = {
   book: BookItem;
@@ -58,6 +47,7 @@ export type BookRowProps = {
   menuIsRemote?: boolean;
   menuFormats?: string[];
   menuSelectedFormat?: string;
+  isFavorite?: boolean;
   /**
    * When set together, the row subscribes directly to the download store for
    * this book+format so progress updates do not re-render the parent list.
@@ -83,28 +73,26 @@ function BookRowImpl({
   menuIsRemote,
   menuFormats,
   menuSelectedFormat,
+  isFavorite,
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookRowProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
-  const hasProgress = typeof progress?.percent === "number";
-  const progressValue = hasProgress ? Math.max(0, Math.min(100, progress.percent ?? 0)) / 100 : undefined;
-  const isUnread = !hasProgress || (progress.percent ?? 0) <= 0;
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
-  const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
 
   const hasMenuInputs = menuIsRemote !== undefined;
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
     if (!hasMenuInputs) return menuActions;
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
+      isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat]);
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat, isFavorite]);
 
   const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
 
@@ -140,11 +128,7 @@ function BookRowImpl({
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={13} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </Pressable>
   );
 
@@ -155,11 +139,7 @@ function BookRowImpl({
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={13} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -170,87 +150,57 @@ function BookRowImpl({
       onPress={handlePress}
       underlayColor={palette.surface}
     >
-      <View className="flex-row items-center gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
+      <View className="flex-row items-stretch gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
         <BookCover
           book={book}
-          width={38}
-          height={54}
-          borderRadius={5}
+          width={BOOK_ROW_COVER_WIDTH}
+          height={BOOK_ROW_COVER_HEIGHT}
+          borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
           showTitle={false}
         />
-        <View className="min-w-0 flex-1">
-          <Text selectable className="text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={1}>
-            {book.title}
-          </Text>
-          <Text selectable className="mt-0.5 text-[13px] leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
-            {book.author}
-          </Text>
-          <View className="mt-0.5 flex-row flex-wrap items-center gap-1.5">
-            <Text
-              className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-              style={{
-                backgroundColor: isUnread ? palette.surface : "rgba(217,119,87,0.14)",
-                color: isUnread ? palette.textMuted : palette.primary,
-              }}
-            >
-              {getProgressLabel(progress, t)}
+        <View className="min-w-0 flex-1 justify-between">
+          <View className="gap-0.5">
+            <Text className="text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
+              {book.title}
             </Text>
-            {hasProgress ? (
-              <Text className="text-xs" style={{ color: palette.textMuted }}>
-                {Math.round(progress.percent ?? 0)}%
-              </Text>
-            ) : null}
-            {progress?.syncedLabel ? (
-              <Text className="text-xs" style={{ color: palette.textMuted }}>
-                {progress.syncedLabel}
-              </Text>
-            ) : null}
-            <View className="ml-auto flex-row items-center">
-              {showCloudIcon ? (
-                Platform.OS === "ios" ? (
-                  <SymbolView name="cloud.fill" size={13} tintColor={palette.textMuted} />
-                ) : (
-                  <MaterialIcons name="cloud" size={13} color={palette.textMuted} />
-                )
-              ) : showProgressIndicator ? (
-                hasSubscription ? (
-                  <DownloadProgressIndicator
-                    libraryId={subscriptionLibraryId ?? ""}
+            <Text className="text-base" style={{ color: palette.textMuted }} numberOfLines={1}>
+              {book.author}
+            </Text>
+          </View>
+          <View className="gap-1">
+            <View className="flex-row flex-wrap items-center gap-1.5">
+              <ProgressLabel progress={progress} />
+              <View className="ml-auto flex-row items-center">
+                {showCloudIcon || showProgressIndicator ? (
+                  <BookDownloadStatusIndicator
+                    status={downloadStatus}
+                    libraryId={subscriptionLibraryId}
                     bookId={book.id}
-                    format={subscriptionFormat ?? ""}
-                    size={13}
-                    strokeWidth={1.5}
-                    color={palette.primary}
+                    format={subscriptionFormat}
                     fallbackProgress={downloadProgress}
                   />
-                ) : (
-                  <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={13} strokeWidth={1.5} color={palette.primary} />
-                )
-              ) : null}
-              {hasMenu ? (
-                computedMenuActions && onMenuAction ? (
-                  <View onStartShouldSetResponder={() => true}>
-                    <MenuView
-                      actions={computedMenuActions}
-                      isAnchoredToRight={Platform.OS === "android"}
-                      onOpenMenu={handleMenuOpenLocal}
-                      onCloseMenu={onMenuClose}
-                      onPressAction={handleMenuPressAction}
-                    >
-                      {menuTrigger}
-                    </MenuView>
-                  </View>
-                ) : (
-                  moreButton
-                )
-              ) : null}
+                ) : null}
+                {hasMenu ? (
+                  computedMenuActions && onMenuAction ? (
+                    <View onStartShouldSetResponder={() => true}>
+                      <MenuView
+                        key={computedMenuActions.some((a) => (a.id === "share" || a.id?.startsWith("share:")) && !a.attributes?.disabled) ? "share-enabled" : "share-disabled"}
+                        actions={computedMenuActions}
+                        isAnchoredToRight={Platform.OS === "android"}
+                        onOpenMenu={handleMenuOpenLocal}
+                        onCloseMenu={onMenuClose}
+                        onPressAction={handleMenuPressAction}
+                      >
+                        {menuTrigger}
+                      </MenuView>
+                    </View>
+                  ) : (
+                    moreButton
+                  )
+                ) : null}
+              </View>
             </View>
           </View>
-          {typeof progressValue === "number" ? (
-            <View className="mt-1 w-14">
-              <ProgressBar progress={progressValue} />
-            </View>
-          ) : null}
         </View>
       </View>
     </TouchableHighlight>

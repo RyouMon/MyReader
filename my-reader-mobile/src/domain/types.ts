@@ -7,6 +7,7 @@ export type BookItem = {
   title: string;
   author: string;
   authors?: string[];
+  formats?: string[];
   coverUri?: string | { uri: string; headers?: Record<string, string> };
   progress?: number;
   path?: string;

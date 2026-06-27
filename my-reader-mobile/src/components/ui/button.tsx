@@ -43,17 +43,17 @@ const SIZE_CLASS: Record<ButtonSize, { content: string; text: string; gap: numbe
   sm: {
     content: "min-h-9 px-3 py-1.5",
     gap: 6,
-    text: "text-[12px]",
+    text: "text-sm",
   },
   md: {
     content: "min-h-11 px-4 py-2",
     gap: 8,
-    text: "text-[14px]",
+    text: "text-base",
   },
   lg: {
     content: "min-h-12 px-4 py-3",
     gap: 8,
-    text: "text-[15px]",
+    text: "text-lg",
   },
 };
 

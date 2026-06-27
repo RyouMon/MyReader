@@ -74,11 +74,3 @@ const styles = StyleSheet.create({
     marginLeft: 7,
   },
 });
-
-/** @deprecated use LibrarySyncPill */
-export const LibraryRefreshPill = LibrarySyncPill;
-
-/** @deprecated use useIsLibrarySyncing */
-export function useIsLibraryRefreshing(): boolean {
-  return useIsLibrarySyncing();
-}

@@ -1,20 +1,18 @@
-import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
+import { type MenuComponentRef } from "@react-native-menu/menu";
 import type { NativeStackNavigationOptions } from "expo-router";
-import { useMemo, type RefObject } from "react";
+import { useCallback, useMemo, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import MoreVertIcon from "@expo/material-symbols/more_vert.xml";
 import TuneIcon from "@expo/material-symbols/tune.xml";
 
-import {
-  AndroidHeaderMenuButton,
-} from "@/src/components/ui/android-header-menu-button";
+import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button";
 import type { Library } from "@/src/domain/types";
-import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
+import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
 import {
-  libraryDownloadFilterOptions,
+  libraryFilterOptions,
   librarySortOptions,
   libraryViewOptions,
 } from "../utils/library-header-config";
@@ -24,12 +22,12 @@ type UseLibraryAndroidHeaderMenuOptionsParams = {
   rightMenuRef: RefObject<MenuComponentRef | null>;
   libraries: Library[];
   effectiveLibraryId?: string;
-  downloadFilter: DownloadFilterOption;
+  filter: LibraryFilterOption;
   sortBy: SortOption;
   viewMode: LibraryViewMode;
   onSyncCurrentLibrary: () => void;
   onSelectLibrary: (libraryId: string) => void;
-  onSetDownloadFilter: (value: DownloadFilterOption) => void;
+  onSetFilter: (value: LibraryFilterOption) => void;
   onSetSortBy: (value: SortOption) => void;
   onSetViewMode: (value: LibraryViewMode) => void;
 };
@@ -40,12 +38,12 @@ export function useLibraryAndroidHeaderMenuOptions({
   rightMenuRef,
   libraries,
   effectiveLibraryId,
-  downloadFilter,
+  filter,
   sortBy,
   viewMode,
   onSyncCurrentLibrary,
   onSelectLibrary,
-  onSetDownloadFilter,
+  onSetFilter,
   onSetSortBy,
   onSetViewMode,
 }: UseLibraryAndroidHeaderMenuOptionsParams): Pick<
@@ -74,9 +72,9 @@ export function useLibraryAndroidHeaderMenuOptions({
       {
         id: "filter",
         title: t("library.filterLabel"),
-        subactions: libraryDownloadFilterOptions.map((option) => ({
+        subactions: libraryFilterOptions.map((option) => ({
           id: `filter:${option.value}`,
-          title: `${downloadFilter === option.value ? "✓ " : ""}${t(option.labelKey)}`,
+          title: `${filter === option.value ? "✓ " : ""}${t(option.labelKey)}`,
         })),
       },
       {
@@ -96,35 +94,41 @@ export function useLibraryAndroidHeaderMenuOptions({
         })),
       },
     ],
-    [downloadFilter, sortBy, viewMode, t],
+    [filter, sortBy, viewMode, t],
   );
 
-  function handleLeftMenuAction(event: string) {
-    if (event === "refreshLibrary") {
-      onSyncCurrentLibrary();
-      return;
-    }
+  const handleLeftMenuAction = useCallback(
+    (event: string) => {
+      if (event === "refreshLibrary") {
+        onSyncCurrentLibrary();
+        return;
+      }
 
-    if (event.startsWith("switchLibrary:")) {
-      onSelectLibrary(event.slice("switchLibrary:".length));
-    }
-  }
+      if (event.startsWith("switchLibrary:")) {
+        onSelectLibrary(event.slice("switchLibrary:".length));
+      }
+    },
+    [onSelectLibrary, onSyncCurrentLibrary],
+  );
 
-  function handleRightMenuAction(event: string) {
-    if (event.startsWith("filter:")) {
-      onSetDownloadFilter(event.slice("filter:".length) as DownloadFilterOption);
-      return;
-    }
+  const handleRightMenuAction = useCallback(
+    (event: string) => {
+      if (event.startsWith("filter:")) {
+        onSetFilter(event.slice("filter:".length) as LibraryFilterOption);
+        return;
+      }
 
-    if (event.startsWith("sort:")) {
-      onSetSortBy(event.slice("sort:".length) as SortOption);
-      return;
-    }
+      if (event.startsWith("sort:")) {
+        onSetSortBy(event.slice("sort:".length) as SortOption);
+        return;
+      }
 
-    if (event.startsWith("view:")) {
-      onSetViewMode(event.slice("view:".length) as LibraryViewMode);
-    }
-  }
+      if (event.startsWith("view:")) {
+        onSetViewMode(event.slice("view:".length) as LibraryViewMode);
+      }
+    },
+    [onSetFilter, onSetSortBy, onSetViewMode],
+  );
 
   return useMemo(
     () => ({
@@ -154,14 +158,11 @@ export function useLibraryAndroidHeaderMenuOptions({
     [
       leftActions,
       leftMenuRef,
-      onSelectLibrary,
-      onSetDownloadFilter,
-      onSetSortBy,
-      onSetViewMode,
-      onSyncCurrentLibrary,
       rightActions,
       rightMenuRef,
       t,
+      handleLeftMenuAction,
+      handleRightMenuAction,
     ],
   );
 }

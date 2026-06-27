@@ -1,20 +1,19 @@
 import { memo, useCallback, useMemo } from "react";
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { SymbolView } from "expo-symbols";
-import { Platform } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
 
-import { buildBookMenuActions } from "../../utils/book-menu";
-import type { BookItem } from "@/src/domain/types";
 import { useThemePalette } from "@/src/design/tokens";
+import { TEXT_SIZE } from "@/src/design/typography";
+import type { BookItem } from "@/src/domain/types";
 import { Pressable, Text, TouchableHighlight, View } from "@/tw";
+import { buildBookMenuActions } from "../../utils/book-menu";
 
-import { CircularProgress } from "@/src/components/ui/circular-progress";
-import { ProgressBar } from "@/src/components/ui/progress-bar";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
 import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
-import { DownloadProgressIndicator } from "./download-progress-indicator";
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
+import { ProgressLabel } from "./progress-label";
 
 export type BookCardProps = {
   book: BookItem;
@@ -42,6 +41,7 @@ export type BookCardProps = {
   menuIsRemote?: boolean;
   menuFormats?: string[];
   menuSelectedFormat?: string;
+  isFavorite?: boolean;
   /**
    * When set together, the card subscribes directly to the download store for
    * this book+format so progress updates do not re-render the parent list.
@@ -67,27 +67,27 @@ function BookCardImpl({
   menuIsRemote,
   menuFormats,
   menuSelectedFormat,
+  isFavorite,
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookCardProps) {
   const { t } = useTranslation();
   const palette = useThemePalette();
   const coverHeight = Math.round(width * 1.43);
-  const progressValue = typeof progress?.percent === "number" ? Math.max(0, Math.min(100, progress.percent)) / 100 : undefined;
 
   const showCloudIcon = downloadStatus === "notDownloaded";
   const showProgressIndicator = downloadStatus === "downloading";
-  const hasSubscription = Boolean(subscriptionLibraryId && subscriptionFormat);
 
   const hasMenuInputs = menuIsRemote !== undefined;
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
     if (!hasMenuInputs) return menuActions;
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
+      isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
     });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat]);
+  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat, isFavorite]);
 
   const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
 
@@ -123,11 +123,7 @@ function BookCardImpl({
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
       onPress={handleMorePress}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </Pressable>
   );
 
@@ -138,11 +134,7 @@ function BookCardImpl({
       className="h-8 w-8 items-center justify-center"
       style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
     >
-      {Platform.OS === "ios" ? (
-        <SymbolView name="ellipsis" size={14} tintColor={palette.textMuted} />
-      ) : (
-        <MaterialIcons name="more-horiz" size={22} color={palette.textMuted} />
-      )}
+      <MoreActionsIcon size={TEXT_SIZE.base} color={palette.textMuted} />
     </View>
   );
 
@@ -171,38 +163,29 @@ function BookCardImpl({
           </View>
         </TouchableHighlight>
       </View>
-      <Text selectable className="mt-2 text-[15px] font-semibold leading-5" style={{ color: palette.text }} numberOfLines={2}>
-        {book.title}
-      </Text>
-      <View className="mt-1 flex-row items-center">
-        <Text selectable className="flex-1 text-sm leading-5" style={{ color: palette.textMuted }} numberOfLines={1}>
-          {book.author}
+      <View className="mt-2 flex-row items-center gap-1.5">
+        <Text className="flex-1 text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
+          {book.title}
         </Text>
+      </View>
+      <View className="flex-row items-center">
+        <View className="flex-1">
+          <ProgressLabel progress={progress} />
+        </View>
         <View className="flex-row items-center">
-          {showCloudIcon ? (
-            Platform.OS === "ios" ? (
-              <SymbolView name="cloud.fill" size={14} tintColor={palette.textMuted} />
-            ) : (
-              <MaterialIcons name="cloud" size={14} color={palette.textMuted} />
-            )
-          ) : showProgressIndicator ? (
-            hasSubscription ? (
-              <DownloadProgressIndicator
-                libraryId={subscriptionLibraryId ?? ""}
-                bookId={book.id}
-                format={subscriptionFormat ?? ""}
-                size={14}
-                strokeWidth={1.5}
-                color={palette.primary}
-                fallbackProgress={downloadProgress}
-              />
-            ) : (
-              <CircularProgress progress={downloadProgress ?? 0} indeterminate={!downloadProgress} size={14} strokeWidth={1.5} color={palette.primary} />
-            )
+          {showCloudIcon || showProgressIndicator ? (
+            <BookDownloadStatusIndicator
+              status={downloadStatus}
+              libraryId={subscriptionLibraryId}
+              bookId={book.id}
+              format={subscriptionFormat}
+              fallbackProgress={downloadProgress}
+            />
           ) : null}
           {hasMenu ? (
             computedMenuActions && onMenuAction ? (
               <MenuView
+                key={computedMenuActions.some((a) => (a.id === "share" || a.id?.startsWith("share:")) && !a.attributes?.disabled) ? "share-enabled" : "share-disabled"}
                 actions={computedMenuActions}
                 isAnchoredToRight={Platform.OS === "android"}
                 onOpenMenu={handleMenuOpenLocal}
@@ -217,11 +200,6 @@ function BookCardImpl({
           ) : null}
         </View>
       </View>
-      {typeof progressValue === "number" ? (
-        <View className="mt-2">
-          <ProgressBar progress={progressValue} />
-        </View>
-      ) : null}
     </View>
   );
 }

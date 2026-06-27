@@ -27,7 +27,7 @@ function ErrorFallback({
         {title ?? t("errorBoundary.defaultTitle")}
       </Text>
       <Text
-        className="text-sm text-center leading-5"
+        className="text-sm text-center"
         style={{ color: palette.textMuted }}
       >
         {message ?? errorMessage}
@@ -38,7 +38,7 @@ function ErrorFallback({
         onPress={onRetry}
       >
         <Text
-          className="text-[15px] font-semibold"
+          className="text-base font-semibold"
           style={{ color: palette.textOnPrimary }}
         >
           {t("errorBoundary.retry")}

@@ -11,7 +11,7 @@ import {
   PrimaryButton,
   Screen,
   SectionCard,
-  SettingsRow,
+  ListRow,
 } from "@/src/components";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 import { createAddAction } from "@/src/navigation/toolbar-action-helpers";
@@ -58,7 +58,7 @@ export default function WebDavSourcesScreen() {
             ) : (
               <SectionCard>
                 {webdavSources.map((source, index) => (
-                  <SettingsRow
+                  <ListRow
                     key={source.id}
                     testID={`data-source-row-${source.id}`}
                     title={source.name}

@@ -9,16 +9,16 @@ import { Platform } from "react-native";
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
 import { useThemePalette } from "@/src/design/tokens";
+import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import type { DataSource, Library } from "@/src/domain/types";
 import { isRemoteSourceType } from "@/src/domain/types";
-import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
-import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
 import { useAppStore } from "@/src/store/app-store";
 import { Text, View } from "@/tw";
 
-import { SectionCard, SettingsRow } from "@/src/components";
-import { Button } from "@/src/components/ui/button";
+import { EmptyState, SectionCard, ListRow } from "@/src/components";
+import { Button, ButtonGroup } from "@/src/components/ui";
 import { Screen } from "@/src/components/ui/screen";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
 
@@ -98,7 +98,7 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
 
       <View className="items-center gap-2">
         <Text
-          className="text-center text-[32px] leading-[38px]"
+          className="text-center text-2xl"
           style={{
             color: palette.text,
             fontFamily: undefined,
@@ -108,7 +108,7 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
         >
           {library.name}
         </Text>
-        <Text className="text-[16px] leading-6" style={{ color: palette.textMuted }}>
+        <Text style={{ color: palette.textMuted }}>
           {t("libraryDetail.bookCount", { count: library.bookCount })}
           {isActive ? t("libraryDetail.currentlyUsed") : ""}
         </Text>
@@ -193,16 +193,11 @@ export default function LibraryDetailScreen() {
         <Stack.Screen options={options} />
         {toolbar}
         <Screen>
-          <View className="flex-1">
-            <View className="flex-1 items-center justify-center">
-              <Text className="text-[24px] font-bold" style={{ color: palette.text }}>
-                {t("libraryDetail.notFound.title")}
-              </Text>
-              <Text className="mt-3 text-center text-sm leading-6" style={{ color: palette.textMuted }}>
-                {t("libraryDetail.notFound.detail")}
-              </Text>
-            </View>
-          </View>
+          <EmptyState
+            title={t("libraryDetail.notFound.title")}
+            detail={t("libraryDetail.notFound.detail")}
+            icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+          />
         </Screen>
       </>
     );
@@ -216,43 +211,41 @@ export default function LibraryDetailScreen() {
         <View className="flex-1" style={{ backgroundColor: palette.background }}>
           <View className="flex-1 gap-8">
             <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} t={t} />
-            <View className="items-center">
-              <View className="w-full flex-row gap-3 px-4" style={{ maxWidth: 400 }}>
-                <Button
-                  className="flex-1"
-                  disabled={Boolean(isActive)}
-                  onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    void switchActiveLibrary(library.id);
-                  }}
-                  title={t("libraryDetail.useLibrary")}
-                  variant="primary"
-                />
-                <Button
-                  className="flex-1"
-                  disabled={isSyncing}
-                  onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    void (async () => {
-                      try {
-                        await syncNow(library.id);
-                        notifyLibraryRefresh("done");
-                      } catch (e) {
-                        notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
-                      }
-                    })();
-                  }}
-                  title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
-                  variant="secondary"
-                />
-              </View>
-            </View>
+            <ButtonGroup>
+              <Button
+                className="flex-1"
+                disabled={Boolean(isActive)}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  void switchActiveLibrary(library.id);
+                }}
+                title={t("libraryDetail.useLibrary")}
+                variant="primary"
+              />
+              <Button
+                className="flex-1"
+                disabled={isSyncing}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  void (async () => {
+                    try {
+                      await syncNow(library.id);
+                      notifyLibraryRefresh("done");
+                    } catch (e) {
+                      notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
+                    }
+                  })();
+                }}
+                title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
+                variant="secondary"
+              />
+            </ButtonGroup>
             <SectionCard>
-              <SettingsRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
-              <SettingsRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
-              <SettingsRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
-              <SettingsRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
-              <SettingsRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
+              <ListRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
+              <ListRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
+              <ListRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
+              <ListRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
+              <ListRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
             </SectionCard>
           </View>
       </View>

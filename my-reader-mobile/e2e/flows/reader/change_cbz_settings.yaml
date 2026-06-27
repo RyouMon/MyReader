@@ -1,0 +1,168 @@
+appId: ${APP_ID}
+name: change_cbz_settings
+tags:
+  - reader
+  - settings
+  - cbz
+  - phone
+---
+# CBZ book 2 = Bobby Make-Believe (4 pages).
+# Open the app and book once, then walk through the settings sequentially.
+# Background-color and spread/reading-direction changes are verified through
+# control selected-state and page-indicator behavior, not AI.
+
+- setOrientation: PORTRAIT
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../../common/open_reader_by_id.yaml
+    env:
+      BOOK_ID: "2"
+
+# ============================================================
+# Scenario: Black background fills the letterbox around the comic page
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.background.black}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "背景.*黑色.*已选择|Background: Black, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+
+# ============================================================
+# Scenario: White background fills the letterbox around the comic page
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.background.white}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "背景.*白色.*已选择|Background: White, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+
+# ============================================================
+# Scenario: CBZ does not offer vertical page-turn direction
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+# CBZ only exposes background + reading direction + spread; page direction is hidden.
+- assertVisible: ${output.selectors.readerSettings.background.auto}
+- assertVisible: ${output.selectors.readerSettings.progression.ltr}
+- assertNotVisible: ${output.selectors.readerSettings.pageDirection.horizontal}
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Spread "single" always shows one page at a time
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.spread.single}
+- tapOn: ${output.selectors.readerSettings.spread.single}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "页面布局.*始终单栏.*已选择|Page Layout: Always Single, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / 4"
+    timeout: 10000
+# Return to page 1 so the next scenario starts from a known page.
+- swipe:
+    direction: RIGHT
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 10000
+
+# ============================================================
+# Scenario: "auto" spread degrades to a single page on a narrow screen
+# ============================================================
+# Readium FXL spread=auto degrades to single page on narrow viewports.
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.spread.auto}
+- tapOn: ${output.selectors.readerSettings.spread.auto}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "页面布局.*自动.*已选择|Page Layout: Auto, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+- swipe:
+    direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / 4"
+    timeout: 10000
+- assertNotVisible: "3 / 4"
+# Return to page 1 so the next scenario starts from a known page.
+- swipe:
+    direction: RIGHT
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 10000
+
+# ============================================================
+# Scenario: Reading direction RTL reverses the page-turn swipe
+# ============================================================
+# LTR default: swipe LEFT = next page.
+# iOS FXL: with RTL swipe RIGHT advances to the next logical page.
+# Android ImageNavigatorFragment: with RTL the internal R2RTLViewPager flips
+# page order, so swipe LEFT advances to the next logical page.
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.progression.rtl}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "阅读方向.*从右到左.*已选择|Reading Direction: Right to Left, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          direction: RIGHT
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          direction: LEFT
+- extendedWaitUntil:
+    visible: "2 / 4"
+    timeout: 10000

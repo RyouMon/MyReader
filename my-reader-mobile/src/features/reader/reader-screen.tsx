@@ -23,9 +23,9 @@ import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet";
 import { useBookLoader } from "@/src/hooks/use-book-loader";
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver";
+import { toNativeFilesystemPath } from "@/src/services/fs/path";
 import { useAppStore } from "@/src/store/app-store";
 import type { ReaderTheme } from "@/src/store/app-store.types";
-import { toNativeFilesystemPath } from "@/src/services/fs/path";
 import { Animated, Pressable, Text, View } from "@/tw";
 
 const FixedReaderSurface = lazy(async () => import("@/src/features/reader/components/reader/fixed/FixedReaderSurface"));
@@ -152,10 +152,17 @@ export default function ReaderScreen() {
   const progressPercent = readerState?.progress ?? 0;
   const reflowSettings = settings.reflowable;
   const fixedSettings = settings.fixed;
-  void patchFixedReaderSettings;
 
-  const activeTheme = (loadState.status === "ready" && loadState.layoutMode === "reflowable") ? reflowSettings.theme : fixedSettings.theme;
-  const themeBgColor = (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg;
+  const isReflowReady = loadState.status === "ready" && loadState.layoutMode === "reflowable";
+  const fixedBgColor = fixedSettings.background === "black" ? "#000000"
+    : fixedSettings.background === "white" ? "#FFFFFF"
+    : (colorScheme === "dark" ? "#000000" : "#FFFFFF");
+  const activeTheme: ReaderTheme = isReflowReady
+    ? reflowSettings.theme
+    : (fixedBgColor === "#000000" ? "night" : "neutral");
+  const themeBgColor = isReflowReady
+    ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg
+    : fixedBgColor;
   const themeBg = useSharedValue(themeBgColor);
   const themeOverlayOpacity = useSharedValue(0);
   const prevThemeBgRef = useRef(themeBgColor);
@@ -206,7 +213,7 @@ export default function ReaderScreen() {
           <Text className="text-center text-lg font-bold mb-3" style={{ color: READER_CHROME.textStrong }}>
             {t("reader.cannotOpen")}
           </Text>
-          <Text className="text-center text-[15px] leading-[22px]" style={{ color: READER_CHROME.textSecondary }}>
+          <Text className="text-center text-base" style={{ color: READER_CHROME.textSecondary }}>
             {loadState.message}
           </Text>
           <Pressable
@@ -216,7 +223,7 @@ export default function ReaderScreen() {
             style={{ backgroundColor: READER_CHROME.surfaceIdle, borderColor: ERROR_BACK_BUTTON_BORDER_COLOR }}
             onPress={handleBack}
           >
-            <Text className="text-[15px] font-semibold" style={{ color: READER_CHROME.textStrong }}>
+            <Text className="text-base font-semibold" style={{ color: READER_CHROME.textStrong }}>
               {t("reader.back")}
             </Text>
           </Pressable>
@@ -227,6 +234,9 @@ export default function ReaderScreen() {
 
   const isReflowSurface = loadState.layoutMode === "reflowable";
   const isFixedSurface = loadState.layoutMode === "fixedLayout";
+  // CBZ renders through Readium's FXL EPUB navigator, whose paginator is
+  // horizontal-only and ignores `scroll` — so 上下翻页 can't apply to CBZ.
+  const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ";
 
   const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2";
   const statusBarStyle = isDarkTheme ? "light-content" : "dark-content";
@@ -259,10 +269,10 @@ export default function ReaderScreen() {
                     onToggleChrome={toggleChrome}
                     gotoTocIndex={gotoPageCmd}
                     theme={reflowSettings.theme}
+                    fontFamily={reflowSettings.fontFamily}
                     fontSize={reflowSettings.fontSize}
                     lineHeight={reflowSettings.lineHeight}
                     paddingX={reflowSettings.paddingX}
-                    brightness={reflowSettings.brightness}
                     textAlign={reflowSettings.textAlign}
                     columnCount={reflowSettings.columnCount}
                   />
@@ -281,8 +291,10 @@ export default function ReaderScreen() {
                 onToggleChrome={toggleChrome}
                 gotoPageCommand={gotoPageCmd}
                 fallback={domFallback}
-                theme={fixedSettings.theme}
-                brightness={fixedSettings.brightness}
+                backgroundColor={fixedBgColor}
+                navigationMode={fixedSettings.navigationMode}
+                readingProgression={fixedSettings.readingProgression}
+                spread={fixedSettings.spread}
               />
             ) : null}
 
@@ -344,29 +356,40 @@ export default function ReaderScreen() {
           ref={settingsSheetRef}
           palette={chromePalette}
           onDismiss={handleSettingsDismiss}
-          theme={isReflowSurface ? reflowSettings.theme : fixedSettings.theme}
-          onThemeChange={(key) => {
-            if (isReflowSurface) patchReflowableReaderSettings({ theme: key as ReaderTheme });
-            else patchFixedReaderSettings({ theme: key as ReaderTheme });
-          }}
-          font="serif"
-          onFontChange={() => { }}
-          fontSize={reflowSettings.fontSize}
-          onFontSizeChange={(v) => patchReflowableReaderSettings({ fontSize: v })}
-          fontSizeMin={14}
-          fontSizeMax={28}
-          lineHeight={reflowSettings.lineHeight}
-          onLineHeightChange={(v) => patchReflowableReaderSettings({ lineHeight: v })}
-          lineHeightMin={1.4}
-          lineHeightMax={2.4}
-          margin={reflowSettings.paddingX}
-          onMarginChange={(v) => patchReflowableReaderSettings({ paddingX: v })}
-          marginMin={12}
-          marginMax={36}
-          textAlign={reflowSettings.textAlign}
-          onTextAlignChange={(v) => patchReflowableReaderSettings({ textAlign: v })}
-          columnCount={reflowSettings.columnCount}
-          onColumnCountChange={(v) => patchReflowableReaderSettings({ columnCount: v })}
+          layout={isReflowSurface ? "reflowable" : "fixed"}
+          reflow={isReflowSurface ? {
+            theme: reflowSettings.theme,
+            onThemeChange: (key) => patchReflowableReaderSettings({ theme: key }),
+            fontFamily: reflowSettings.fontFamily,
+            onFontFamilyChange: (v) => patchReflowableReaderSettings({ fontFamily: v }),
+            fontSize: reflowSettings.fontSize,
+            onFontSizeChange: (v) => patchReflowableReaderSettings({ fontSize: v }),
+            fontSizeMin: 14,
+            fontSizeMax: 28,
+            lineHeight: reflowSettings.lineHeight,
+            onLineHeightChange: (v) => patchReflowableReaderSettings({ lineHeight: v }),
+            lineHeightMin: 1.4,
+            lineHeightMax: 2.4,
+            margin: reflowSettings.paddingX,
+            onMarginChange: (v) => patchReflowableReaderSettings({ paddingX: v }),
+            marginMin: 12,
+            marginMax: 36,
+            textAlign: reflowSettings.textAlign,
+            onTextAlignChange: (v) => patchReflowableReaderSettings({ textAlign: v }),
+            columnCount: reflowSettings.columnCount,
+            onColumnCountChange: (v) => patchReflowableReaderSettings({ columnCount: v }),
+          } : undefined}
+          fixed={!isReflowSurface ? {
+            background: fixedSettings.background,
+            onBackgroundChange: (v) => patchFixedReaderSettings({ background: v }),
+            navigationMode: fixedSettings.navigationMode,
+            onNavigationModeChange: (v) => patchFixedReaderSettings({ navigationMode: v }),
+            showPageDirection: !isCbzFixed,
+            readingProgression: fixedSettings.readingProgression,
+            onReadingProgressionChange: (v) => patchFixedReaderSettings({ readingProgression: v }),
+            spread: fixedSettings.spread,
+            onSpreadChange: (v) => patchFixedReaderSettings({ spread: v }),
+          } : undefined}
         />
       </Animated.View>
     </BottomSheetModalProvider>

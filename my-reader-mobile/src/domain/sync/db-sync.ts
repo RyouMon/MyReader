@@ -1,15 +1,15 @@
 import {
-  getReadingProgressUpdatedAt,
-  listReadingProgressSince,
-  upsertReadingProgress,
-} from "../../repos/reading_progress";
-import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta";
-import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
-import {
   ensureLibrarySidecarDirectory,
   librarySidecarRootUri,
   usesIosContainerSidecar,
-} from "../library/locations";
+} from "@/src/services/fs/library-paths";
+import {
+  getReadingProgressUpdatedAt,
+  listReadingProgressSince,
+  upsertReadingProgress,
+} from "../../repos/reading-progress";
+import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta";
+import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks";
 import type { Library } from "../types";
 import { getOrCreateDeviceId } from "./device";
 import { LocalDirectBackend } from "./local";

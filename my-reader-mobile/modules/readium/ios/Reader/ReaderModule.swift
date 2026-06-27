@@ -3,7 +3,7 @@ import UIKit
 import ReadiumShared
 
 /// The ReaderModule handles the presentation of publications to be read by the user.
-/// It contains sub-modules implementing ReaderFormatModule to handle each format of publication (eg. CBZ, EPUB).
+/// It contains sub-modules implementing ReaderFormatModule to handle each format of publication (eg. EPUB, PDF).
 protocol ReaderModuleAPI {
   var delegate: ReaderModuleDelegate? { get }
 
@@ -21,7 +21,7 @@ protocol ReaderModuleDelegate: ModuleDelegate {}
 final class ReaderModule: ReaderModuleAPI {
   weak var delegate: ReaderModuleDelegate?
 
-  /// Sub-modules to handle different publication formats (eg. EPUB, CBZ)
+  /// Sub-modules to handle different publication formats (eg. EPUB, PDF)
   var formatModules: [ReaderFormatModule] = []
 
   init(
@@ -30,7 +30,6 @@ final class ReaderModule: ReaderModuleAPI {
     self.delegate = delegate
 
     formatModules = [
-      CBZModule(delegate: self),
       EPUBModule(delegate: self),
       PDFModule(delegate: self),
     ]

@@ -1,12 +1,10 @@
+import { mixInk, type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
+import { Text, TouchableHighlight, View } from "@/tw";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Slider from "@react-native-community/slider";
-import { StyleSheet } from "react-native";
-import { mixInk } from "@/src/design/reader-chrome-palette";
-import { type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
-import { Text, View, TouchableHighlight } from "@/tw";
 import { useTranslation } from "react-i18next";
+import { StyleSheet } from "react-native";
 
-import type { ThemeOption } from "./readerChromeConstants";
 import { READER_THEME_OPTIONS } from "./readerChromeConstants";
 
 /* ═══════════════════════════════════════
@@ -16,7 +14,10 @@ import { READER_THEME_OPTIONS } from "./readerChromeConstants";
 function SectionLabel({ label, color }: { label: string; color: string }) {
   return (
     <Text
-      className="mb-2 mt-3 text-xs font-bold uppercase tracking-[0.8px]"
+      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      className="mb-2 mt-3 text-base font-bold uppercase tracking-[0.8px]"
       style={{ color }}
     >
       {label}
@@ -54,10 +55,15 @@ export function ThemeSwatches({
                 borderColor: active ? palette.accent : "transparent",
               }}
               onPress={() => onChange(option.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${t("reader.settingsTheme")}: ${t(option.label)}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <View style={StyleSheet.absoluteFill} className="items-center justify-center">
                 <Text
-                  className="text-[13px] font-semibold"
+                  className="text-base font-semibold"
                   style={{ color: option.fg }}
                 >
                   {t(option.label)}
@@ -96,6 +102,7 @@ export function SegmentPicker<T extends string>({
   onChange: (key: T) => void;
   palette: ReaderChromePalette;
 }) {
+  const { t } = useTranslation();
   return (
     <>
       {label ? <SectionLabel label={label} color={palette.textMuted} /> : null}
@@ -112,9 +119,14 @@ export function SegmentPicker<T extends string>({
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${label ?? ""}${label ? ": " : ""}${opt.label}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <Text
-                className="text-sm font-semibold"
+                className="text-base font-semibold"
                 style={{ color: active ? palette.accentText : palette.textMuted }}
               >
                 {opt.label}
@@ -163,9 +175,14 @@ export function FontPicker({
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${t("reader.font")}: ${opt.label}${
+                active ? `, ${t("common.selected")}` : ""
+              }`}
             >
               <Text
-                className="text-sm font-semibold"
+                className="text-base font-semibold"
                 style={{ color: active ? palette.accentText : palette.textMuted }}
               >
                 {opt.label}
@@ -209,6 +226,10 @@ export function SliderControl({
         style={{ backgroundColor: palette.segmentIdle }}
       >
         <Slider
+          accessibilityLabel={label}
+          accessibilityValue={{ text: formatValue(value) }}
+          accessibilityRole="adjustable"
+          tapToSeek
           style={{ flex: 1 }}
           minimumValue={min}
           maximumValue={max}
@@ -220,160 +241,11 @@ export function SliderControl({
           thumbTintColor={palette.accent}
         />
         <View className="min-w-[52px] items-end">
-          <Text className="text-[13px] font-semibold" style={{ color: palette.text }}>
+          <Text className="text-base font-semibold" style={{ color: palette.text }}>
             {formatValue(value)}
           </Text>
         </View>
       </View>
     </>
   );
-}
-
-/* ═══════════════════════════════════════
-   Brightness control
-   ═══════════════════════════════════════ */
-
-export function BrightnessControl({
-  value,
-  onChange,
-  palette,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  palette: ReaderChromePalette;
-}) {
-  const { t } = useTranslation();
-  return (
-    <SliderControl
-      label={t("reader.brightness")}
-      value={value}
-      onChange={onChange}
-      min={40}
-      max={120}
-      step={10}
-      formatValue={(v) => `${v}%`}
-      palette={palette}
-    />
-  );
-}
-
-/* ═══════════════════════════════════════
-   Legacy exports (kept for backward compat)
-   ═══════════════════════════════════════ */
-
-export function SettingSectionLabel({ label }: { label: string }) {
-  return <SectionLabel label={label} color="#636366" />;
-}
-
-export function SettingSegment({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableHighlight
-      underlayColor="rgba(255,255,255,0.08)"
-      className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
-      style={{
-        backgroundColor: active ? "rgba(196, 96, 42, 0.12)" : "rgba(255,255,255,0.06)",
-        borderColor: active ? "rgba(240, 235, 225, 0.20)" : "rgba(255,255,255,0.05)",
-      }}
-      onPress={onPress}
-    >
-      <Text
-        className="text-sm font-semibold"
-        style={{ color: active ? "#F4EEE6" : "#8E8E93" }}
-      >
-        {label}
-      </Text>
-    </TouchableHighlight>
-  );
-}
-
-export function SettingThemeCard({
-  option,
-  active,
-  onPress,
-}: {
-  option: ThemeOption;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <TouchableHighlight
-      underlayColor="rgba(255,255,255,0.08)"
-      className="min-h-[44px] w-[23%] items-center justify-center rounded-xl border py-2"
-      style={{
-        backgroundColor: active ? "rgba(196, 96, 42, 0.12)" : "rgba(255,255,255,0.06)",
-        borderColor: active ? "rgba(240, 235, 225, 0.20)" : "rgba(255,255,255,0.05)",
-      }}
-      onPress={onPress}
-    >
-      <View style={StyleSheet.absoluteFill} className="items-center gap-2">
-        <View
-          className="h-[42px] w-[42px] items-center justify-center rounded-full border border-black/[0.08]"
-          style={{ backgroundColor: option.swatch }}
-        >
-          <View className="h-4 w-4 rounded-full" style={{ backgroundColor: option.fg }} />
-        </View>
-        <Text
-          className="text-xs font-semibold"
-          style={{ color: active ? "#F4EEE6" : "#8E8E93" }}
-        >
-          {t(option.label)}
-        </Text>
-      </View>
-    </TouchableHighlight>
-  );
-}
-
-export function SettingStepper({
-  value,
-  onDecrease,
-  onIncrease,
-}: {
-  value: string;
-  onDecrease: () => void;
-  onIncrease: () => void;
-}) {
-  return (
-    <View
-      className="mb-2.5 min-h-14 flex-row items-center gap-3 rounded-xl px-3"
-      style={{
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.05)",
-        backgroundColor: "rgba(255,255,255,0.06)",
-      }}
-    >
-      <TouchableHighlight
-        underlayColor="rgba(255,255,255,0.12)"
-        className="h-[34px] w-[34px] items-center justify-center rounded-full"
-        style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-        onPress={onDecrease}
-      >
-        <Text className="text-lg font-bold" style={{ color: "#F4EEE6" }}>－</Text>
-      </TouchableHighlight>
-      <View className="flex-1 items-center">
-        <Text className="text-[13px] font-semibold" style={{ color: "#F4EEE6" }}>{value}</Text>
-      </View>
-      <TouchableHighlight
-        underlayColor="rgba(255,255,255,0.12)"
-        className="h-[34px] w-[34px] items-center justify-center rounded-full"
-        style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
-        onPress={onIncrease}
-      >
-        <Text className="text-lg font-bold" style={{ color: "#F4EEE6" }}>＋</Text>
-      </TouchableHighlight>
-    </View>
-  );
-}
-
-/** @deprecated Use SliderControl instead */
-export function StepperControl(props: Parameters<typeof SliderControl>[0]) {
-  return <SliderControl {...props} />;
 }

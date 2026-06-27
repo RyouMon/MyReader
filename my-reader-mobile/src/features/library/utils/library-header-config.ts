@@ -1,8 +1,9 @@
-import type { DownloadFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
+import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
 import type { LibraryViewMode } from "@/src/store/app-store.types";
 
-export const libraryDownloadFilterOptions = [
+export const libraryFilterOptions = [
   { value: "all", labelKey: "library.filter.all" as const },
+  { value: "favorites", labelKey: "library.filter.favorites" as const },
   { value: "downloaded", labelKey: "library.filter.downloaded" as const },
   { value: "notDownloaded", labelKey: "library.filter.notDownloaded" as const },
   { value: "downloading", labelKey: "library.filter.downloading" as const },
@@ -19,8 +20,22 @@ export const libraryViewOptions: { value: LibraryViewMode; labelKey: string }[] 
   { value: "list", labelKey: "library.view.list" },
 ];
 
-/** Returns the display label for the active download-state filter. */
-export function getLibraryDownloadFilterLabel(t: (key: string) => string, option: DownloadFilterOption) {
-  const item = libraryDownloadFilterOptions.find((entry) => entry.value === option);
+export const libraryFilterTitleOptions = [
+  { value: "all", labelKey: "library.filterTitle.all" as const },
+  { value: "downloaded", labelKey: "library.filterTitle.downloaded" as const },
+  { value: "notDownloaded", labelKey: "library.filterTitle.notDownloaded" as const },
+  { value: "downloading", labelKey: "library.filterTitle.downloading" as const },
+  { value: "favorites", labelKey: "library.filterTitle.favorites" as const },
+] as const;
+
+/** Returns the display label for the active library filter. */
+export function getLibraryFilterLabel(t: (key: string) => string, option: LibraryFilterOption) {
+  const item = libraryFilterOptions.find((entry) => entry.value === option);
   return item ? t(item.labelKey) : t("library.filter.all");
+}
+
+/** Returns the header title for the active library filter. */
+export function getLibraryFilterTitle(t: (key: string) => string, option: LibraryFilterOption) {
+  const item = libraryFilterTitleOptions.find((entry) => entry.value === option);
+  return item ? t(item.labelKey) : t("library.filterTitle.all");
 }

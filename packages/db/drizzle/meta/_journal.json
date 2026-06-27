@@ -6,7 +6,21 @@
       "idx": 0,
       "version": "6",
       "when": 1779021476646,
-      "tag": "0000_large_justin_hammer",
+      "tag": "0000_initial",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780000000000,
+      "tag": "0001_add_book_reading_format",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1780000000001,
+      "tag": "0002_add_favorite_books",
       "breakpoints": true
     }
   ]

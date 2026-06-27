@@ -5,7 +5,7 @@ import {
   IconButton,
 } from "@expo/ui/jetpack-compose";
 import { size } from "@expo/ui/jetpack-compose/modifiers";
-import { Pressable, type ImageSourcePropType } from "react-native";
+import { Pressable, type ColorValue, type ImageSourcePropType } from "react-native";
 
 import { useTheme } from "@/src/design/tokens";
 
@@ -15,6 +15,7 @@ type AndroidHeaderIconButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  color?: ColorValue;
   testID?: string;
 };
 
@@ -25,11 +26,13 @@ export function AndroidHeaderIconButton({
   onPress,
   disabled = false,
   loading = false,
+  color,
   testID,
 }: AndroidHeaderIconButtonProps) {
   const { palette, colorScheme } = useTheme();
   const isDark = colorScheme === "dark";
   const enabled = !disabled && !loading;
+  const contentColor = color ?? palette.text;
 
   return (
     <Pressable
@@ -49,7 +52,7 @@ export function AndroidHeaderIconButton({
       <Host matchContents pointerEvents="none" style={{ overflow: "visible" }}>
         <IconButton
           colors={{
-            contentColor: palette.text,
+            contentColor,
             disabledContentColor: palette.textMuted,
           }}
           enabled={enabled}

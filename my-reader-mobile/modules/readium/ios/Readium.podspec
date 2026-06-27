@@ -22,10 +22,9 @@ Pod::Spec.new do |s|
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'ReadiumShared',            '~> 3.5.0'
-  s.dependency 'ReadiumStreamer',          '~> 3.5.0'
-  s.dependency 'ReadiumNavigator',         '~> 3.5.0'
-  s.dependency 'ReadiumAdapterGCDWebServer', '~> 3.5.0'
+  s.dependency 'ReadiumShared',            '~> 3.9.0'
+  s.dependency 'ReadiumStreamer',          '~> 3.9.0'
+  s.dependency 'ReadiumNavigator',         '~> 3.9.0'
   s.dependency 'ReadiumInternal'
   # Used by ReaderViewController to sanitize noteref referrer/title markup.
   s.dependency 'SwiftSoup'

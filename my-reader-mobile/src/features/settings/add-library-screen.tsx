@@ -5,9 +5,9 @@ import { Platform } from "react-native";
 import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
 import { useThemePalette } from "@/src/design/tokens";
 import type { DataSource } from "@/src/domain/types";
-import { View, Text } from "@/tw";
+import { Text, View } from "@/tw";
 
-import { Screen, SectionCard, SettingsRow, SettingsSectionLabel } from "@/src/components";
+import { Screen, SectionCard, ListRow, SectionLabel } from "@/src/components";
 import { pickCalibreLibrary } from "@/src/domain/library/calibre";
 import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
 import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
@@ -82,10 +82,10 @@ export default function AddLibraryDataSourceScreen() {
       ) : (
       <>
       <View className="gap-3">
-        <SettingsSectionLabel>{t("addLibrary.existingSources")}</SettingsSectionLabel>
+        <SectionLabel>{t("addLibrary.existingSources")}</SectionLabel>
         <SectionCard>
           {showLocalLibraryOption && (
-            <SettingsRow
+            <ListRow
               title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
               onPress={() => {
                 void handleAddLocalLibrary();
@@ -99,7 +99,7 @@ export default function AddLibraryDataSourceScreen() {
               href={sourceBrowserPath(source)}
               asChild
             >
-              <SettingsRow
+              <ListRow
                 testID={`add-library-source-${source.id}`}
                 title={source.name}
                 detail={dataSourceHelpText(source)}
@@ -111,13 +111,13 @@ export default function AddLibraryDataSourceScreen() {
           {!hasExistingSources && (
             <View className="py-6 px-4 gap-2">
               <Text
-                className="text-center text-base leading-6"
+                className="text-center text-base"
                 style={{ color: palette.text, fontWeight: "600" }}
               >
                 {t("addLibrary.noSources.title")}
               </Text>
               <Text
-                className="text-center text-base leading-6"
+                className="text-center text-base"
                 style={{ color: palette.textMuted }}
               >
                 {t("addLibrary.noSources.detail")}
@@ -128,12 +128,12 @@ export default function AddLibraryDataSourceScreen() {
       </View>
 
       <View className="gap-3">
-        <SettingsSectionLabel>{t("addLibrary.addSources")}</SettingsSectionLabel>
+        <SectionLabel>{t("addLibrary.addSources")}</SectionLabel>
         <SectionCard>
           <Link href={{ pathname: "/settings/webdav/add", params: { from: "add-library" } }} asChild>
-            <SettingsRow title="WebDAV" label={t("webdav.addSource")} />
+            <ListRow title="WebDAV" label={t("webdav.addSource")} />
           </Link>
-          <SettingsRow
+          <ListRow
             title="OneDrive"
             label={t("onedrive.addSource")}
             onPress={() => void handleAddOneDrive()}

@@ -1,0 +1,54 @@
+appId: ${APP_ID}
+name: change_cbz_settings_on_pad
+tags:
+  - reader
+  - settings
+  - cbz
+  - ipad
+  - wip
+---
+# CBZ book 2 = Bobby Make-Believe (4 pages).
+# iPad-specific layout scenarios for CBZ settings.
+
+- setOrientation: PORTRAIT
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# ============================================================
+# Scenario: iPad landscape + auto spread shows two pages side by side
+# ============================================================
+# Open the reader in portrait first (deep-link prompt is more stable on iPad),
+# then rotate to landscape after the reader has loaded. Readium FXL spread=auto
+# uses two pages when the viewport is wide enough.
+- runFlow:
+    file: ../../common/open_reader_by_id.yaml
+    env:
+      BOOK_ID: "2"
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.spread.auto}
+- tapOn: ${output.selectors.readerSettings.spread.auto}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "页面布局.*自动.*已选择|Page Layout: Auto, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "1 / 4"
+    timeout: 15000
+- swipe:
+    direction: LEFT
+# With auto spread on a wide iPad, a single forward swipe should advance by two pages.
+- extendedWaitUntil:
+    visible: "3 / 4"
+    timeout: 10000

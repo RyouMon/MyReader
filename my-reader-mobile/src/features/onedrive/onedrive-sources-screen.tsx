@@ -11,7 +11,7 @@ import {
     PrimaryButton,
     Screen,
     SectionCard,
-    SettingsRow,
+    ListRow,
 } from "@/src/components";
 import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source";
 import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state";
@@ -70,7 +70,7 @@ export default function OneDriveSourcesScreen() {
             ) : (
               <SectionCard>
                 {onedriveSources.map((source, index) => (
-                  <SettingsRow
+                  <ListRow
                     key={source.id}
                     testID={`data-source-row-${source.id}`}
                     title={source.displayName ?? source.name}

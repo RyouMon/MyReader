@@ -3,40 +3,49 @@ name: Dismiss Expo dev launcher
 tags:
   - skip
 ---
-# In dev builds, the Expo Dev Launcher may appear if no dev server is running.
-# This step is a no-op in release builds (element not found = condition not met).
+# Handles the Expo Dev Launcher, iOS URL-scheme alert, splash screen, onboarding,
+# and any auto-opened dev menu after launching a development build.
+#
+# Release builds skip all of this. Every branch is guarded by a `when` condition,
+# so the same flow works for release/dev builds and for iOS/Android.
+
+# ============================================================
+# Step 1: Dismiss the iOS system alert
+# ============================================================
+# When the app is first launched via a custom URL scheme, iOS shows an "Open" confirmation.
+- runFlow:
+    when:
+      visible: "打开|Open"
+    commands:
+      - tapOn: "打开|Open"
+
+# ============================================================
+# Step 2: Connect to the Metro server
+# ============================================================
+# If the dev launcher is showing, use the dev-client deep link to connect directly
+# to the local Metro server. This avoids the manual "Enter URL" form and the
+# coordinate-tap anti-pattern.
+# Both iOS simulator and Android emulator use 127.0.0.1:8081. On Android emulator
+# you MUST run `adb reverse tcp:8081 tcp:8081` first; 10.0.2.2 is unreliable on
+# some emulator images (ENETUNREACH).
 - runFlow:
     when:
       visible: "DEVELOPMENT SERVERS"
     commands:
-      - runFlow:
-          when:
-            visible: "Forward"
-          commands:
-            - tapOn: "Forward"
-      - runFlow:
-          when:
-            visible: "Chevron"
-          commands:
-            - tapOn: "Chevron"
-      - runFlow:
-          when:
-            visible: "exp://"
-          commands:
-            - tapOn: "exp://"
-            - runFlow:
-                when:
-                  platform: iOS
-                commands:
-                  - inputText: "127.0.0.1:8081"
-            - runFlow:
-                when:
-                  platform: Android
-                commands:
-                  - inputText: "127.0.0.1:8081"
-                  - hideKeyboard
-            - tapOn: "Connect"
+      - openLink: "exp+my-reader-mobile://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
 
+# The deep link can also trigger the iOS "Open" alert.
+- runFlow:
+    when:
+      visible: "打开|Open"
+    commands:
+      - tapOn: "打开|Open"
+
+# ============================================================
+# Step 3: Wait for the app to become ready
+# ============================================================
+# The splash screen ("SplashScreenLogo") appears first; once it disappears the
+# onboarding "Continue" button is shown.
 - runFlow:
     commands:
       - extendedWaitUntil:
@@ -52,12 +61,20 @@ tags:
           timeout: 10000
           optional: true
 
+# ============================================================
+# Step 4: Dismiss the first-launch onboarding
+# ============================================================
 - runFlow:
     when:
       visible: "Continue"
     commands:
       - tapOn: "Continue"
 
+# ============================================================
+# Step 5: Close the Dev Menu / Tools sheet
+# ============================================================
+# Some dev builds open the dev menu automatically on launch (the "Reload" button
+# is visible). Scroll to the Tools button and close the sheet.
 - runFlow:
     when:
       visible: "Reload"
@@ -65,6 +82,8 @@ tags:
       - scrollUntilVisible:
           element:
             text: "Tools button"
+
+      # iOS: the "1" to the right of "Tools button" closes the sheet
       - runFlow:
           when:
             platform: iOS
@@ -74,13 +93,12 @@ tags:
                 index: 1
                 rightOf:
                   text: "Tools button"
+
+      # Android: tap the Tools button directly
       - runFlow:
           when:
             platform: Android
           commands:
             - tapOn: "Tools button"
-      - runFlow:
-          when:
-            visible: "Close"
-          commands:
-            - tapOn: "Close"
+
+      - tapOn: "Close"

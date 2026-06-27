@@ -16,7 +16,7 @@ export const DEFAULT_SYNC_POLICY: SyncTriggerPolicy = {
   },
   add: {
     enabled: true,
-    options: { scope: "calibre", forceCalibre: true, throwOnFailure: true },
+    options: { scope: "all", forceCalibre: true, throwOnFailure: true },
   },
   startup: {
     enabled: true,

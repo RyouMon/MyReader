@@ -9,7 +9,6 @@ export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
 export type BookProgressSnapshot = {
   percent?: number;
   statusLabel?: string;
-  syncedLabel?: string;
 };
 
 /**
@@ -69,7 +68,7 @@ function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = tru
       ) : (
         <View className="h-full w-full justify-end px-2 py-3">
           {showTitle ? (
-            <Text className="text-center text-[10px] font-semibold leading-4" style={{ color: palette.textOnPrimary }} numberOfLines={3} allowFontScaling={false}>
+            <Text className="text-center text-base font-semibold" style={{ color: palette.textOnPrimary }} numberOfLines={3} allowFontScaling={false}>
               {book.title}
             </Text>
           ) : null}

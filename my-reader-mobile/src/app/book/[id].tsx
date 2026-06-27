@@ -1,4 +1,4 @@
-import BookDetailScreen from "@/src/features/book/book-detail-screen";
+import BookDetailScreen from "@/src/features/library/book-detail-screen";
 
 export default function BookDetailRoute() {
   return <BookDetailScreen />;

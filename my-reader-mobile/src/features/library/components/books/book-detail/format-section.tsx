@@ -1,32 +1,38 @@
-import Feather from "@expo/vector-icons/Feather";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import type { BookDetail } from "@my-reader/tools/types/book";
+import type { MenuAction } from "@react-native-menu/menu";
+import { MenuView } from "@react-native-menu/menu";
+import { SymbolView } from "expo-symbols";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Platform, StyleSheet } from "react-native";
 
-import { Button } from "@/src/components/ui";
+import { CircularProgress, MoreActionsIcon, SectionCard, SectionLabel } from "@/src/components";
 import { FONT_UI } from "@/src/design/typography";
 import {
   cancel,
   useDownloadTaskForBookFormat,
   useDownloadTaskForPath,
 } from "@/src/domain/download/download-store";
-import { FORMAT_LABELS, formatFileSize } from "@/src/utils/book-detail";
-import { Pressable, ScrollView, Text, View } from "@/tw";
-import { SectionFrame, SectionHeader } from "./section-frame";
+import type { LocalState } from "@/src/domain/types";
+import { formatFileSize } from "@/src/utils/book-detail";
+import { Text, View } from "@/tw";
+import { getProgressDisplay } from "../progress-label";
 import type { DetailColors } from "./types";
 
 type FormatSectionProps = {
   book: BookDetail;
   colors: DetailColors;
   defaultFormat: string | null;
-  formatInfoMap: Record<string, { relativePath: string; localState: import("@/src/repos/file_state").LocalState | null }>;
+  formatInfoMap: Record<string, { relativePath: string; localState: LocalState | null }>;
   formatSizeMap: Map<string, number>;
   isNetworkSource: boolean;
   libraryId: string;
   onDeleteFormat: (format: string) => void;
   onDownloadFormat: (format: string) => void;
   onSetDefaultFormat: (format: string) => void;
-  progress: number;
-  progressLabel: string;
+  onShareFormat: (format: string) => void;
+  progressByFormat?: Record<string, number>;
   readableFormats: string[];
 };
 
@@ -41,8 +47,8 @@ export function FormatSection({
   onDeleteFormat,
   onDownloadFormat,
   onSetDefaultFormat,
-  progress,
-  progressLabel,
+  onShareFormat,
+  progressByFormat,
   readableFormats,
 }: FormatSectionProps) {
   const { t } = useTranslation();
@@ -50,68 +56,71 @@ export function FormatSection({
   const defaultFormatKey = defaultFormat?.toUpperCase() ?? null;
 
   return (
-    <SectionFrame colors={colors}>
-      <SectionHeader colors={colors} detail={t("bookDetail.formatSection.count", { count: book.formats.length })} title={t("bookDetail.formatSection.title")} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-        {book.formats.map((format) => {
+    <View className="gap-3 px-4">
+      <SectionLabel>{t("bookDetail.formatSection.title")}</SectionLabel>
+      <SectionCard>
+        {book.formats.map((format, index) => {
           const upper = format.toUpperCase();
           const formatInfo = formatInfoMap[upper];
           return (
-            <FormatCard
+            <FormatRow
               key={upper}
               bookId={String(book.id)}
               colors={colors}
               defaultFormatKey={defaultFormatKey}
               fileLocalState={formatInfo?.localState ?? null}
               format={upper}
+              isLast={index === book.formats.length - 1}
               isNetworkSource={isNetworkSource}
               isReadable={readableFormatSet.has(upper)}
               libraryId={libraryId}
               onDelete={() => onDeleteFormat(upper)}
               onDownload={() => onDownloadFormat(upper)}
               onSetDefault={() => onSetDefaultFormat(upper)}
-              progress={progress}
-              progressLabel={progressLabel}
+              onShare={() => onShareFormat(upper)}
+              progressPercent={progressByFormat?.[upper]}
               relativePath={formatInfo?.relativePath}
               size={formatSizeMap.get(upper) ?? 0}
             />
           );
         })}
-      </ScrollView>
-    </SectionFrame>
+      </SectionCard>
+    </View>
   );
 }
 
-function FormatCard({
+function FormatRow({
   bookId,
   colors,
   defaultFormatKey,
   fileLocalState,
   format,
+  isLast,
   isNetworkSource,
   isReadable,
   libraryId,
   onDelete,
   onDownload,
   onSetDefault,
-  progress,
-  progressLabel,
+  onShare,
+  progressPercent,
   relativePath,
   size,
 }: {
   bookId: string;
   colors: DetailColors;
   defaultFormatKey: string | null;
-  fileLocalState: import("@/src/repos/file_state").LocalState | null;
+  fileLocalState: LocalState | null;
   format: string;
+  isLast: boolean;
   isNetworkSource: boolean;
   isReadable: boolean;
   libraryId: string;
   onDelete: () => void;
   onDownload: () => void;
   onSetDefault: () => void;
-  progress: number;
-  progressLabel: string;
+  onShare: () => void;
+  progressPercent?: number;
   relativePath: string | undefined;
   size: number;
 }) {
@@ -131,164 +140,136 @@ function FormatCard({
     activeTask?.status === "queued";
   const downloadProgress = activeTask?.progress ?? 0;
   const isPresent = fileLocalState === "present";
-  const showDownload = isReadable && isNetworkSource && Boolean(relativePath) && !isPresent && !activeTask;
   const isDefault = defaultFormatKey === format;
+  const isRemote = isNetworkSource && isReadable && Boolean(relativePath) && !isPresent && !isDownloading;
+  const { text: statusText } = getProgressDisplay(
+    progressPercent !== undefined ? { percent: progressPercent } : undefined,
+    t,
+  );
+
+  const menuActions = useMemo<MenuAction[]>(
+    () => [
+      ...(isReadable
+        ? [
+            {
+              id: "setDefault",
+              title: t("bookDetail.formatSection.setDefault"),
+              state: isDefault ? ("on" as const) : undefined,
+            },
+          ]
+        : []),
+      ...(isRemote
+        ? [
+            {
+              id: "download",
+              title: t("bookDetail.formatSection.downloadFormat", { format }),
+            },
+          ]
+        : []),
+      ...(isDownloading
+        ? [
+            {
+              id: "cancel",
+              title: t("bookDetail.formatSection.cancelDownload", { format }),
+              attributes: { destructive: true },
+            },
+          ]
+        : []),
+      {
+        id: "share",
+        title: t("bookDetail.formatSection.shareFormat"),
+      },
+      ...(isPresent && isNetworkSource
+        ? [
+            {
+              id: "delete",
+              title: t("bookMenu.deleteDownload"),
+              attributes: { destructive: true },
+            },
+          ]
+        : []),
+    ],
+    [format, isDefault, isDownloading, isNetworkSource, isPresent, isReadable, isRemote, t]
+  );
+
+  const handleMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {
+    if (nativeEvent.event === "setDefault") onSetDefault();
+    if (nativeEvent.event === "download") onDownload();
+    if (nativeEvent.event === "cancel" && activeTask) cancel(activeTask.id);
+    if (nativeEvent.event === "share") onShare();
+    if (nativeEvent.event === "delete") onDelete();
+  };
+
+  const rowStyle = {
+    borderBottomColor: colors.border,
+    borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+    backgroundColor: colors.palette.surface,
+  };
+
+  const iconTint = colors.muted;
+
+  const statusIcon = isDownloading ? (
+    <CircularProgress
+      color={colors.accent}
+      indeterminate={downloadProgress === 0}
+      progress={downloadProgress}
+      size={14}
+      trackColor={colors.progressTrack}
+    />
+  ) : isRemote ? (
+    Platform.OS === "ios" ? (
+      <SymbolView name="cloud.fill" size={14} tintColor={iconTint} />
+    ) : (
+      <MaterialIcons name="cloud" size={14} color={iconTint} />
+    )
+  ) : null;
+
+  const menuTriggerWidth = Platform.OS === "ios" ? 44 : "100%";
+  const menuHitSlop = Platform.OS === "ios" ? { top: 0, bottom: 0, left: 9999, right: 0 } : undefined;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      className="w-[196px] gap-3 rounded-2xl border p-4"
-      onPress={onSetDefault}
-      style={{ borderColor: colors.border }}
-    >
-      <View className="flex-row items-center gap-2">
-        <Feather
-          name={isReadable ? "file-text" : "file"}
-          size={20}
-          color={isReadable ? colors.accent : colors.tertiary}
-        />
-        <Text
-          className="flex-1 text-base leading-6"
-          style={{ color: colors.text, fontFamily: FONT_UI, fontWeight: "600" }}
-        >
-          {format}
-        </Text>
-        <View
-          className="min-h-7 justify-center rounded-full border px-3"
-          style={{ borderColor: isReadable ? colors.success : colors.border }}
-        >
-          <Text
-            className="text-xs leading-4"
-            style={{
-              color: isReadable ? colors.success : colors.tertiary,
-              fontFamily: FONT_UI,
-              fontWeight: "600",
-            }}
-          >
-            {isReadable ? (isDefault ? t("bookDetail.formatSection.default") : t("bookDetail.formatSection.readable")) : t("bookDetail.formatSection.unsupported")}
-          </Text>
-        </View>
-      </View>
-      <Text className="text-sm leading-5" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-        {formatFileSize(size)}
-        {FORMAT_LABELS[format] ? ` · ${FORMAT_LABELS[format]}` : ""}
-      </Text>
-
-      {isDownloading ? (
-        <View className="gap-1">
+    <View className="px-4 py-3.5" style={rowStyle}>
+      <View className="flex-row items-center justify-between gap-3" pointerEvents="none">
+        <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <View
-              className="h-1.5 flex-1 overflow-hidden rounded-full"
-              style={{ backgroundColor: colors.progressTrack }}
-            >
-              <View
-                className="h-full rounded-full"
-                style={{
-                  backgroundColor: colors.accent,
-                  width: `${Math.max(0, Math.min(downloadProgress, 1)) * 100}%`,
-                }}
-              />
-            </View>
             <Text
-              className="text-xs leading-4"
-              style={{ color: colors.tertiary, fontFamily: FONT_UI }}
+              className="text-base"
+              style={{ color: colors.text, fontFamily: FONT_UI }}
             >
-              {activeTask?.status === "queued"
-                ? t("bookDetail.formatSection.queued")
-                : activeTask?.status === "starting"
-                  ? t("bookDetail.formatSection.preparing")
-                  : `${Math.round(downloadProgress * 100)}%`}
+              {format}
             </Text>
+            {statusIcon}
           </View>
-        </View>
-      ) : isReadable ? (
-        <View className="flex-row items-center gap-2">
-          <View
-            className="h-1.5 flex-1 overflow-hidden rounded-full"
-            style={{ backgroundColor: colors.progressTrack }}
-          >
-            <View
-              className="h-full rounded-full"
-              style={{
-                backgroundColor: colors.accent,
-                width: `${Math.max(0, Math.min(progress, 1)) * 100}%`,
-              }}
-            />
-          </View>
-          <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-            {progress > 0 ? progressLabel : "0%"}
-          </Text>
-        </View>
-      ) : (
-        <Text className="text-xs leading-4" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-          {t("bookDetail.formatSection.notStarted")}
-        </Text>
-      )}
-
-      {isDownloading ? (
-        <Pressable
-          accessibilityLabel={t("bookDetail.formatSection.cancelDownload", { format })}
-          accessibilityRole="button"
-          className="items-center rounded-xl border py-3"
-          onPress={(e) => {
-            e.stopPropagation();
-            activeTask && cancel(activeTask.id);
-          }}
-          style={{ borderColor: colors.border }}
-        >
           <Text
-            className="text-base"
-            style={{ color: colors.muted, fontFamily: FONT_UI, fontWeight: "500" }}
+            className="mt-0.5 text-base"
+            style={{ color: colors.tertiary, fontFamily: FONT_UI }}
+            numberOfLines={1}
           >
-            {t("bookDetail.formatSection.cancel")}
-          </Text>
-        </Pressable>
-      ) : showDownload ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={(e) => {
-            e.stopPropagation();
-            onDownload();
-          }}
-        >
-          <Button
-            accessibilityLabel={t("bookDetail.formatSection.downloadFormat", { format })}
-            className="rounded-xl"
-            colors={{
-              backgroundColor: colors.accent,
-              borderColor: colors.accent,
-              textColor: colors.accentText,
-              underlayColor: colors.accentPressed,
-            }}
-            onPress={onDownload}
-            size="lg"
-            textStyle={{ fontFamily: FONT_UI }}
-            title={t("bookDetail.formatSection.download")}
-            variant="primary"
-          />
-        </Pressable>
-      ) : isPresent ? (
-        <Pressable
-          accessibilityLabel={t("bookDetail.formatSection.deleteLocalFileFormat", { format })}
-          accessibilityRole="button"
-          className="items-center rounded-xl border py-3"
-          onPress={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          style={{ borderColor: colors.border }}
-        >
-          <Text className="text-sm" style={{ color: colors.muted, fontFamily: FONT_UI }}>
-            {t("bookDetail.formatSection.deleteLocalFile")}
-          </Text>
-        </Pressable>
-      ) : (
-        <View className="items-center rounded-xl border py-3" style={{ borderColor: colors.border }}>
-          <Text className="text-sm" style={{ color: colors.tertiary, fontFamily: FONT_UI }}>
-            {t("bookDetail.formatSection.notDownloaded")}
+            {formatFileSize(size)}
+            {` · ${statusText}`}
+            {isDefault ? ` · ${t("bookDetail.formatSection.default")}` : ""}
           </Text>
         </View>
-      )}
-    </Pressable>
+
+        <MoreActionsIcon size={18} color={iconTint} />
+      </View>
+
+      <MenuView
+        actions={menuActions}
+        hitSlop={menuHitSlop}
+        isAnchoredToRight={Platform.OS === "android"}
+        onPressAction={handleMenuAction}
+        shouldOpenOnLongPress={false}
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: menuTriggerWidth,
+        }}
+      >
+        <View style={{ width: "100%", height: "100%" }} />
+      </MenuView>
+    </View>
   );
 }

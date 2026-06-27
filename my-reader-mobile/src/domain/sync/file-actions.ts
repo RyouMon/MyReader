@@ -1,6 +1,7 @@
 import { useAppStore } from "@/src/store/app-store";
 
-import { deleteFileEverywhere, evictLocalFile, openSyncContext } from "@/src/domain/sync/actions";
+import { openSyncContext } from "./context";
+import { deleteFileEverywhere, evictLocalFile } from "./transfer";
 
 /** Evicts a downloaded file from local cache only. */
 export async function evictLocalFileForLibrary(

@@ -10,9 +10,9 @@ import { TextInput, View } from "@/tw";
 import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
 
 import {
-  FormFieldSwitch,
-  FormLabeledFieldRow,
-  Screen,
+    FormFieldSwitch,
+    FormLabeledFieldRow,
+    Screen,
 } from "@/src/components";
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
@@ -184,7 +184,7 @@ export default function AddWebDavDataSourceScreen() {
     }
   }
 
-  const inputClassName = "border-0 bg-transparent py-1 text-[15px]";
+  const inputClassName = "border-0 bg-transparent py-1 text-base";
 
   const isAddLibraryFlow = from === "add-library";
 
@@ -252,7 +252,7 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => basePathRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
                     style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
@@ -274,7 +274,7 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => usernameRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
                     style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
@@ -296,7 +296,7 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="next"
                     onSubmitEditing={() => passwordRef.current?.focus()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
                     style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>
@@ -317,7 +317,7 @@ export default function AddWebDavDataSourceScreen() {
                     underlineColorAndroid="transparent"
                     returnKeyType="done"
                     onSubmitEditing={() => void handleSave()}
-                    className="min-h-10 border-0 bg-transparent py-1 text-[15px]"
+                    className="min-h-10 border-0 bg-transparent py-1 text-base"
                     style={{ color: palette.text }}
                   />
                 </FormLabeledFieldRow>

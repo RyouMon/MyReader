@@ -17,6 +17,5 @@ export type DetailColors = {
 
 export type InfoCardItem = {
   label: string;
-  mono?: boolean;
   value: string;
 };

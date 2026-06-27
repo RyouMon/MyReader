@@ -123,11 +123,11 @@ function RowSkeleton({
  * Renders an animated skeleton grid/list that mirrors the real BookCard/BookRow layout.
  *
  * Grid: This component is placed as ListEmptyComponent inside FlashList, which already
- * applies contentContainerStyle paddingHorizontal = GRID_PADDING_H - GRID_HALF_GAP.
- * Rows therefore carry no extra horizontal padding; only each card slot adds GRID_HALF_GAP
+ * applies contentContainerStyle paddingHorizontal = GRID_PADDING_X - GRID_CARD_GAP / 2.
+ * Rows therefore carry no extra horizontal padding; only each card slot adds GRID_CARD_GAP / 2
  * on each side — identical to the real renderItem wrapper.
  *
- * List: contentContainerStyle paddingHorizontal = 0, so each row applies LIST_PADDING_H
+ * List: contentContainerStyle paddingHorizontal = 0, so each row applies LIST_PADDING_X
  * directly, matching BookRow's own paddingHorizontal.
  */
 export function LibrarySkeletonContent({
@@ -135,14 +135,14 @@ export function LibrarySkeletonContent({
   cardWidth,
   gridColumns,
   gridGap,
-  listPaddingH,
+  listPaddingX,
   count = 16,
 }: {
   viewMode: LibraryViewMode;
   cardWidth: number;
   gridColumns: number;
   gridGap: number;
-  listPaddingH: number;
+  listPaddingX: number;
   count?: number;
 }) {
   const palette = useThemePalette();
@@ -153,7 +153,7 @@ export function LibrarySkeletonContent({
     return (
       <Reanimated.View style={animatedStyle}>
         {Array.from({ length: count }, (_, i) => (
-          <RowSkeleton key={i} palette={palette} horizontalPadding={listPaddingH} />
+          <RowSkeleton key={i} palette={palette} horizontalPadding={listPaddingX} />
         ))}
       </Reanimated.View>
     );

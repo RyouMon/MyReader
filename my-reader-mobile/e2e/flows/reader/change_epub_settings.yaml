@@ -1,0 +1,142 @@
+appId: ${APP_ID}
+name: change_epub_settings
+tags:
+  - reader
+  - settings
+  - epub
+  - phone
+---
+# EPUB book 1 = 898 pages.
+# Open the app and book once, then walk through the settings sequentially.
+# Visual settings are verified through the controls' selected-state and slider
+# value labels; no AI assertions are needed.
+
+- setOrientation: PORTRAIT
+- runFlow: ../../common/launch_and_prepare.yaml
+- runFlow: ../../common/seed_library.yaml
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    file: ../../common/open_reader_by_id.yaml
+    env:
+      BOOK_ID: "1"
+
+# The book opens on the title page. Advance through the front matter so later
+# assertions reference body paragraphs, not the title page.
+- extendedWaitUntil:
+    visible: "1 / .*"
+    timeout: 15000
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          start: "80%,90%"
+          end: "20%,90%"
+      - waitForAnimationToEnd:
+          timeout: 1000
+# Six swipes reliably land in the early body pages (e.g., 8 / 898); we only need
+# to be past the title page, so accept any single-digit page number > 1.
+- assertVisible: "[2-9] / .*"
+
+# ============================================================
+# Scenario: Switch to night theme
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.theme.night}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "主题.*夜间.*已选择|Theme: Night, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Switch body font to sans-serif
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- tapOn: ${output.selectors.readerSettings.font.sans}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "字体.*Sans.*已选择|Font: Sans, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Switch paragraph alignment to justified
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.alignment.justify}
+- tapOn: ${output.selectors.readerSettings.alignment.justify}
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "对齐.*两端对齐.*已选择|Alignment: Justify, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Increase font size
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.fontSize.label}
+- tapOn:
+    text: ${output.selectors.readerSettings.fontSize.label}
+    point: "90%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "18px"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Increase line height
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.lineHeight.label}
+- tapOn:
+    text: ${output.selectors.readerSettings.lineHeight.label}
+    point: "90%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "1.85"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: Increase margin
+# ============================================================
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.margin.label}
+- tapOn:
+    text: ${output.selectors.readerSettings.margin.label}
+    point: "90%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: "20px"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# ============================================================
+# Scenario: On a narrow phone screen, column=auto degrades to a single column
+# ============================================================
+# The default column count on a narrow viewport is auto, which degrades to one column.
+- runFlow: ../../common/open_reader_settings.yaml
+- runFlow:
+    file: ../../common/scroll_settings_until.yaml
+    env:
+      TARGET: ${output.selectors.readerSettings.column.auto}
+- assertVisible: "栏.*自动.*已选择|Columns: Auto, Selected"
+- runFlow: ../../common/close_reader_sheet.yaml
+
+# Final sanity check: reader chrome still toggles and the page indicator is visible.
+- tapOn:
+    point: "50%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: "[2-9] / .*"
+    timeout: 15000

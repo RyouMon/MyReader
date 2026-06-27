@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { readBookCountFromLibrary } from "@/src/domain/library/calibre";
-import { libraryContainerRootUri, libraryMetadataUri } from "@/src/domain/library/locations";
+import { libraryContainerRootUri, libraryMetadataUri } from "@/src/services/fs/library-paths";
 import { useAppStore, useAppStoreReady } from "@/src/store/app-store";
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source";
 

@@ -1,11 +1,11 @@
 import i18n from "@/src/i18n";
+import { libraryContainerRootUri } from "@/src/services/fs/library-paths";
 import { AppInvariantError } from "../../errors";
-import { deleteFileState, upsertFileState } from "../../repos/file_state";
+import { deleteFileState, upsertFileState } from "../../repos/file-state";
 import type { NativeDownloadOptions } from "../../services/download/native";
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
 import { deleteFileAtUri } from "../../services/fs/file-io";
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
-import { libraryContainerRootUri } from "../library/locations";
 import type { Library } from "../types";
 import { isRemoteSourceType } from "../types";
 import type { SyncTargetContext } from "./context";
