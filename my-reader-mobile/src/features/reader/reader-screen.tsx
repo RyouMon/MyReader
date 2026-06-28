@@ -2,11 +2,7 @@ import {
   readerChromePalette,
   type ReaderChromePalette,
 } from "@/src/design/reader-chrome-palette"
-import {
-  READER_CHROME,
-  READER_FIXED,
-  READER_THEMES,
-} from "@/src/design/reader-tokens"
+import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import type {
   ReaderState,
   ReaderTocItem,
@@ -71,7 +67,7 @@ const ReadiumReflowReader = lazy(
 )
 
 const TOC_GOTO_RESET_DELAY_MS = 100
-const READER_SCREEN_BACKGROUND_COLOR = READER_FIXED.canvasBg
+const READER_CONTENT_FADE_MS = 220
 const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 
@@ -171,44 +167,15 @@ export default function ReaderScreen() {
     }
   }, [chromeState])
 
-  const domFallback = useMemo(
-    () => (
-      <DomReaderFallback
-        format={loadState.status === "ready" ? loadState.format : null}
-        title={loadState.status === "ready" ? loadState.title : null}
-      />
-    ),
-    [loadState],
-  )
-
-  const readerLoadingOverlay = useMemo(
-    () => (
-      <Animated.View
-        exiting={FadeOut.duration(300)}
-        className="absolute inset-0 z-20 items-center justify-center"
-        style={{ backgroundColor: READER_FIXED.canvasBg }}
-      >
-        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-        {loadState.status === "ready" ? (
-          <Text
-            className="mt-4 px-8 text-center text-sm"
-            style={{ color: READER_CHROME.textSecondary }}
-            numberOfLines={2}
-          >
-            {loadState.title}
-          </Text>
-        ) : null}
-      </Animated.View>
-    ),
-    [loadState],
-  )
-
   const progressPercent = readerState?.progress ?? 0
   const reflowSettings = settings.reflowable
   const fixedSettings = settings.fixed
 
   const isReflowReady =
     loadState.status === "ready" && loadState.layoutMode === "reflowable"
+  const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
+  const shouldUseReflowTheme =
+    isReflowReady || (loadState.status === "loading" && isReflowFormatHint)
   const fixedBgColor =
     fixedSettings.background === "black"
       ? "#000000"
@@ -217,14 +184,16 @@ export default function ReaderScreen() {
         : colorScheme === "dark"
           ? "#000000"
           : "#FFFFFF"
-  const activeTheme: ReaderTheme = isReflowReady
+  const activeTheme: ReaderTheme = shouldUseReflowTheme
     ? reflowSettings.theme
     : fixedBgColor === "#000000"
       ? "night"
       : "neutral"
-  const themeBgColor = isReflowReady
+  const themeBgColor = shouldUseReflowTheme
     ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg
     : fixedBgColor
+  const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2"
+  const statusBarStyle = isDarkTheme ? "light-content" : "dark-content"
   const themeBg = useSharedValue(themeBgColor)
   const themeOverlayOpacity = useSharedValue(0)
   const prevThemeBgRef = useRef(themeBgColor)
@@ -236,7 +205,7 @@ export default function ReaderScreen() {
       themeBg.value = withTiming(themeBgColor, { duration: 350 })
       prevThemeBgRef.current = themeBgColor
     }
-  }, [themeBgColor])
+  }, [themeBgColor, themeBg, themeOverlayOpacity])
   const themeBgStyle = useAnimatedStyle(() => ({
     backgroundColor: themeBg.value,
   }))
@@ -252,13 +221,46 @@ export default function ReaderScreen() {
     return readerChromePalette(option.fg, option.swatch)
   }, [activeTheme])
 
+  const domFallback = useMemo(
+    () => (
+      <DomReaderFallback
+        format={loadState.status === "ready" ? loadState.format : null}
+        title={loadState.status === "ready" ? loadState.title : null}
+        backgroundColor={themeBgColor}
+      />
+    ),
+    [loadState, themeBgColor],
+  )
+
+  const readerLoadingOverlay = useMemo(
+    () => (
+      <Animated.View
+        exiting={FadeOut.duration(READER_CONTENT_FADE_MS)}
+        className="absolute inset-0 z-20 items-center justify-center"
+        style={{ backgroundColor: themeBgColor }}
+      >
+        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
+        {loadState.status === "ready" ? (
+          <Text
+            className="mt-4 px-8 text-center text-sm"
+            style={{ color: READER_CHROME.textSecondary }}
+            numberOfLines={2}
+          >
+            {loadState.title}
+          </Text>
+        ) : null}
+      </Animated.View>
+    ),
+    [loadState, themeBgColor],
+  )
+
   if (loadState.status === "loading") {
     return (
       <View
         className="flex-1 items-center justify-center"
-        style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+        style={{ backgroundColor: themeBgColor }}
       >
-        <StatusBar hidden={false} barStyle="light-content" />
+        <StatusBar hidden={false} barStyle={statusBarStyle} />
         <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
         {bookTitle ? (
           <Text
@@ -337,16 +339,13 @@ export default function ReaderScreen() {
   // horizontal-only and ignores `scroll` — so 上下翻页 can't apply to CBZ.
   const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ"
 
-  const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2"
-  const statusBarStyle = isDarkTheme ? "light-content" : "dark-content"
-
   return (
     <BottomSheetModalProvider>
       <Animated.View
         testID="reader-screen"
-        entering={FadeIn.duration(300)}
+        entering={FadeIn.duration(READER_CONTENT_FADE_MS)}
         className="flex-1"
-        style={{ backgroundColor: READER_FIXED.canvasBg }}
+        style={{ backgroundColor: themeBgColor }}
       >
         <StatusBar
           hidden={chromeState === ChromeState.Reading}
@@ -543,16 +542,18 @@ export default function ReaderScreen() {
 const DomReaderFallback = memo(function DomReaderFallback({
   format,
   title,
+  backgroundColor,
 }: {
   format: string | null
   title: string | null
+  backgroundColor: string
 }) {
   const { t } = useTranslation()
 
   return (
     <View
       className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: READER_SCREEN_BACKGROUND_COLOR }}
+      style={{ backgroundColor }}
     >
       <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
       <Text

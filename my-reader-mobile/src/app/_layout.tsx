@@ -10,6 +10,7 @@ import {
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, type ComponentProps } from "react"
+import { Platform } from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { NotifierWrapper } from "react-native-notifier"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -119,7 +120,11 @@ function RootNavigator() {
             name="reader"
             options={{
               presentation: "fullScreenModal",
-              animation: "fade",
+              animation: Platform.select({
+                ios: "slide_from_bottom",
+                android: "slide_from_bottom",
+                default: "slide_from_bottom",
+              }),
               gestureEnabled: false,
               headerShown: false,
               headerTitle: "",
