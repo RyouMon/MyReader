@@ -92,7 +92,9 @@ export default function ReadingSection() {
               inputMode="numeric"
               className="w-48"
             />
-            <span className="text-sm text-muted-foreground">{t("settings.reading.mb")}</span>
+            <span className="text-sm text-muted-foreground">
+              {t("settings.reading.mb")}
+            </span>
             <Button size="sm" onClick={handleSaveLimit}>
               {t("settings.reading.saveLimit")}
             </Button>
@@ -103,7 +105,9 @@ export default function ReadingSection() {
             onClick={handleClearAllCache}
             disabled={loading}
           >
-            {loading ? t("settings.reading.clearing") : t("settings.reading.clearAllCache")}
+            {loading
+              ? t("settings.reading.clearing")
+              : t("settings.reading.clearAllCache")}
           </Button>
         </div>
       </div>

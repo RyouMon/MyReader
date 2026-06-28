@@ -74,7 +74,10 @@ export function ReadiumPdfReader({
     if (!nav || nav.totalPages < 1) return []
     return Array.from({ length: nav.totalPages }, (_, i) => ({
       depth: 0,
-      title: t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
+      title: t("reader.pageCount", { current: i + 1, total: "" }).replace(
+        " / ",
+        "",
+      ),
       href: `page-${i + 1}`,
       type: "application/pdf",
     }))
@@ -211,16 +214,19 @@ export function ReadiumPdfReader({
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">{t("reader.loadFailed")}</p>
+          <p className="text-destructive font-medium mb-2">
+            {t("reader.loadFailed")}
+          </p>
           <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
       </div>
     )
   }
 
-  const chapterTitle = totalPages > 0
-    ? t("reader.pageCount", { current: pageNum, total: totalPages })
-    : ""
+  const chapterTitle =
+    totalPages > 0
+      ? t("reader.pageCount", { current: pageNum, total: totalPages })
+      : ""
 
   return (
     <ReaderChromeShell
@@ -373,12 +379,11 @@ export function ReadiumPdfReader({
           )}
         >
           {!readiumNavReady ? (
-            <div className="text-sm text-muted-foreground">{t("reader.loadingPdf")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("reader.loadingPdf")}
+            </div>
           ) : (
-            <canvas
-              ref={canvasRef}
-              className="max-h-full max-w-full"
-            />
+            <canvas ref={canvasRef} className="max-h-full max-w-full" />
           )}
         </div>
       }

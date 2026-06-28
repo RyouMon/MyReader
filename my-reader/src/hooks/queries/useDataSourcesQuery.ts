@@ -11,7 +11,9 @@ export const dataSourceKeys = {
   all: ["dataSources"] as const,
 }
 
-function mapDataSourceFromBackendJson(raw: Record<string, unknown>): DataSource | null {
+function mapDataSourceFromBackendJson(
+  raw: Record<string, unknown>,
+): DataSource | null {
   const kind = raw.kind as string
   const base = {
     id: raw.id as string,
@@ -38,8 +40,14 @@ function mapDataSourceFromBackendJson(raw: Record<string, unknown>): DataSource 
       type: "onedrive",
       clientId: (raw.clientId ?? raw.client_id) as string,
       tenantId: (raw.tenantId ?? raw.tenant_id) as string | null | undefined,
-      displayName: (raw.userName ?? raw.user_name ?? raw.displayName) as string | null | undefined,
-      email: (raw.userEmail ?? raw.user_email ?? raw.email) as string | null | undefined,
+      displayName: (raw.userName ?? raw.user_name ?? raw.displayName) as
+        | string
+        | null
+        | undefined,
+      email: (raw.userEmail ?? raw.user_email ?? raw.email) as
+        | string
+        | null
+        | undefined,
       rootPath: (raw.rootPath ?? raw.root_path) as string | null | undefined,
       hasRefreshToken: Boolean(raw.hasRefreshToken ?? raw.has_refresh_token),
       readonly: raw.readonly as boolean | undefined,
@@ -52,7 +60,9 @@ function mapDataSourceFromBackendJson(raw: Record<string, unknown>): DataSource 
 
 async function fetchDataSources(): Promise<DataSource[]> {
   const rows = await api.listDataSources()
-  return rows.map(mapDataSourceFromBackendJson).filter((d): d is DataSource => d !== null)
+  return rows
+    .map(mapDataSourceFromBackendJson)
+    .filter((d): d is DataSource => d !== null)
 }
 
 export type CreateDataSourceInput =
@@ -108,7 +118,9 @@ export function useDataSourceMutations() {
   })
 
   const testConnection = useMutation({
-    mutationFn: async (input: DataSourceWebdav & { password?: string }): Promise<DataSourceConnectionTestResult> => {
+    mutationFn: async (
+      input: DataSourceWebdav & { password?: string },
+    ): Promise<DataSourceConnectionTestResult> => {
       try {
         await api.testWebdavConnection({
           endpoint: input.endpoint,

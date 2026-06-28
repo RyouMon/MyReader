@@ -11,13 +11,17 @@ import {
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { AddLibraryPanel } from "@/components/settings/forms/AddLibraryPanel"
 import { cn } from "@/lib/utils"
-import { useLibraryMutations, useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import {
+  useLibraryMutations,
+  useLibrariesQuery,
+} from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export default function LibrariesSection() {
   const { t } = useTranslation()
   const { data: libraries = [] } = useLibrariesQuery()
-  const { addLibrary, addWebdavLibrary, addOnedriveLibrary, removeLibrary } = useLibraryMutations()
+  const { addLibrary, addWebdavLibrary, addOnedriveLibrary, removeLibrary } =
+    useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -42,7 +46,9 @@ export default function LibrariesSection() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-7 py-5 pb-4 border-b border-border shrink-0">
-        <h1 className="text-xl font-semibold">{t("settings.libraries.title")}</h1>
+        <h1 className="text-xl font-semibold">
+          {t("settings.libraries.title")}
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {t("settings.libraries.description")}
         </p>

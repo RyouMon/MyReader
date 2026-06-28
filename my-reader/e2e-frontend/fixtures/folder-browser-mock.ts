@@ -117,8 +117,9 @@ export async function setupFolderBrowserMocks(page: Page) {
         return listWebdavFolders(path)
       }
 
-      const handlers = (window as unknown as Record<string, Record<string, IpcHandler>>)
-        .__TAURI_IPC_HANDLERS__ ?? {}
+      const handlers =
+        (window as unknown as Record<string, Record<string, IpcHandler>>)
+          .__TAURI_IPC_HANDLERS__ ?? {}
 
       handlers.list_data_sources = () => [
         {
@@ -154,14 +155,20 @@ export async function setupFolderBrowserMocks(page: Page) {
 
       handlers.list_libraries = () => []
 
-      handlers.webdav_list_folders = (args: { dataSourceId: string; path: string }) => {
+      handlers.webdav_list_folders = (args: {
+        dataSourceId: string
+        path: string
+      }) => {
         if (args.dataSourceId !== webdavId) {
           throw new Error(`Unknown WebDAV data source: ${args.dataSourceId}`)
         }
         return listWebdavFolders(args.path)
       }
 
-      handlers.onedrive_list_folders = (args: { dataSourceId: string; path: string }) => {
+      handlers.onedrive_list_folders = (args: {
+        dataSourceId: string
+        path: string
+      }) => {
         if (args.dataSourceId !== onedriveId) {
           throw new Error(`Unknown OneDrive data source: ${args.dataSourceId}`)
         }
@@ -188,8 +195,9 @@ export async function setupFolderBrowserMocks(page: Page) {
         sourcePath: "/Test",
       })
 
-      ;(window as unknown as Record<string, Record<string, IpcHandler>>).__TAURI_IPC_HANDLERS__ =
-        handlers
+      ;(
+        window as unknown as Record<string, Record<string, IpcHandler>>
+      ).__TAURI_IPC_HANDLERS__ = handlers
     },
     {
       webdavId: MOCK_WEBDAV_DATA_SOURCE_ID,

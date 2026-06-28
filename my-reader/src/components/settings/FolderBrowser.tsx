@@ -1,4 +1,11 @@
-import { ArrowLeft, ChevronRight, Folder, Loader2, MoreHorizontal, RefreshCw } from "lucide-react"
+import {
+  ArrowLeft,
+  ChevronRight,
+  Folder,
+  Loader2,
+  MoreHorizontal,
+  RefreshCw,
+} from "lucide-react"
 
 import {
   DropdownMenu,
@@ -68,7 +75,8 @@ export function FolderBrowser({
 }: FolderBrowserProps) {
   const { t } = useTranslation()
 
-  const pathParts = currentPath === "/" ? [] : currentPath.split("/").filter(Boolean)
+  const pathParts =
+    currentPath === "/" ? [] : currentPath.split("/").filter(Boolean)
   const canGoBack = currentPath !== "/"
 
   const ITEMS_TO_DISPLAY = 3
@@ -103,9 +111,13 @@ export function FolderBrowser({
         <DialogHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <DialogTitle className="text-base font-semibold text-ink-1">{title}</DialogTitle>
+              <DialogTitle className="text-base font-semibold text-ink-1">
+                {title}
+              </DialogTitle>
               {subtitle && (
-                <DialogDescription className="text-[13px] text-ink-2">{subtitle}</DialogDescription>
+                <DialogDescription className="text-[13px] text-ink-2">
+                  {subtitle}
+                </DialogDescription>
               )}
             </div>
           </div>
@@ -121,7 +133,7 @@ export function FolderBrowser({
               "inline-flex items-center justify-center size-8 rounded-md border border-border bg-transparent text-ink-2 transition-colors",
               "hover:bg-accent hover:text-accent-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              "disabled:opacity-40 disabled:pointer-events-none"
+              "disabled:opacity-40 disabled:pointer-events-none",
             )}
             aria-label={t("common.back")}
             title={t("common.back")}
@@ -129,18 +141,25 @@ export function FolderBrowser({
             <ArrowLeft className="size-4" />
           </button>
 
-          <Breadcrumb aria-label="Breadcrumb" className="flex-1 min-w-0 text-[13px] font-medium overflow-hidden">
+          <Breadcrumb
+            aria-label="Breadcrumb"
+            className="flex-1 min-w-0 text-[13px] font-medium overflow-hidden"
+          >
             <BreadcrumbList className="flex-nowrap overflow-hidden">
               <BreadcrumbItem>
                 {pathParts.length === 0 ? (
-                  <BreadcrumbPage dir="ltr" className="text-ink-1">/</BreadcrumbPage>
+                  <BreadcrumbPage dir="ltr" className="text-ink-1">
+                    /
+                  </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink
                     asChild
                     dir="ltr"
                     className="inline-flex shrink-0 items-center text-ink-2 transition-colors hover:text-primary"
                   >
-                    <button type="button" onClick={() => onNavigate("/")}>/</button>
+                    <button type="button" onClick={() => onNavigate("/")}>
+                      /
+                    </button>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
@@ -187,7 +206,10 @@ export function FolderBrowser({
 
                 return (
                   <>
-                    <BreadcrumbItem key={actualIndex} className="min-w-0 overflow-hidden">
+                    <BreadcrumbItem
+                      key={actualIndex}
+                      className="min-w-0 overflow-hidden"
+                    >
                       {isLast ? (
                         <BreadcrumbPage
                           dir="ltr"
@@ -210,7 +232,9 @@ export function FolderBrowser({
                         </BreadcrumbLink>
                       )}
                     </BreadcrumbItem>
-                    {!isLast && <BreadcrumbSeparator key={`sep-${actualIndex}`} />}
+                    {!isLast && (
+                      <BreadcrumbSeparator key={`sep-${actualIndex}`} />
+                    )}
                   </>
                 )
               })}
@@ -226,7 +250,7 @@ export function FolderBrowser({
                 "inline-flex items-center justify-center size-8 rounded-md border border-border bg-transparent text-ink-2 transition-colors",
                 "hover:bg-accent hover:text-accent-foreground",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                "disabled:opacity-40 disabled:pointer-events-none"
+                "disabled:opacity-40 disabled:pointer-events-none",
               )}
               aria-label={t("common.refresh")}
               title={t("common.refresh")}
@@ -241,7 +265,7 @@ export function FolderBrowser({
           <div
             className={cn(
               "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
-              "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2"
+              "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2",
             )}
             role="status"
             aria-live="polite"
@@ -253,7 +277,7 @@ export function FolderBrowser({
           <div
             className={cn(
               "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
-              "flex flex-col items-center justify-center h-[220px] text-danger text-sm gap-2 px-4 text-center"
+              "flex flex-col items-center justify-center h-[220px] text-danger text-sm gap-2 px-4 text-center",
             )}
             role="alert"
           >
@@ -273,7 +297,7 @@ export function FolderBrowser({
           <div
             className={cn(
               "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
-              "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2"
+              "flex flex-col items-center justify-center h-[220px] text-ink-2 text-sm gap-2",
             )}
           >
             <Folder className="size-8 opacity-40" />
@@ -282,7 +306,7 @@ export function FolderBrowser({
         ) : (
           <ul
             className={cn(
-              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary"
+              "min-h-[220px] max-h-[320px] overflow-y-auto rounded-xl border border-border p-1.5 bg-bg-secondary",
             )}
             aria-label={title}
           >
@@ -297,7 +321,7 @@ export function FolderBrowser({
                     "text-sm text-ink-1 bg-transparent",
                     "hover:bg-accent hover:text-accent-foreground",
                     "active:scale-[0.995] transition-all",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                   )}
                 >
                   <Folder className="size-[18px] shrink-0 text-primary" />
@@ -311,7 +335,9 @@ export function FolderBrowser({
 
         <DialogFooter className="mt-4 pt-3 border-t border-border flex-col-reverse sm:flex-row sm:justify-between sm:items-start gap-3">
           <span className="flex-1 min-w-0 text-[13px] text-ink-2 whitespace-normal break-words">
-            {t("addLibraryForm.selectedPath", { path: currentPath === "/" ? "/" : currentPath })}
+            {t("addLibraryForm.selectedPath", {
+              path: currentPath === "/" ? "/" : currentPath,
+            })}
           </span>
           <div className="flex gap-2 shrink-0">
             <button
@@ -321,7 +347,7 @@ export function FolderBrowser({
                 "inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-medium",
                 "border border-border bg-transparent text-ink-1",
                 "hover:bg-accent hover:text-accent-foreground transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               )}
             >
               {t("common.cancel")}
@@ -336,7 +362,7 @@ export function FolderBrowser({
                 "hover:brightness-105 transition-all",
                 "active:scale-[0.98]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                "disabled:opacity-50 disabled:pointer-events-none"
+                "disabled:opacity-50 disabled:pointer-events-none",
               )}
             >
               {selectLabel}

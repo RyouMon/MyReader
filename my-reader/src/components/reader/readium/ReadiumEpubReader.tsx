@@ -256,14 +256,29 @@ function EpubSettingsPanel({
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    ["neutral", t("reader.themes.neutral"), "#fefefe", "#000000"],
+                    [
+                      "neutral",
+                      t("reader.themes.neutral"),
+                      "#fefefe",
+                      "#000000",
+                    ],
                     ["paper", t("reader.themes.paper"), "#E9DDC8", "#000000"],
                     ["sepia", t("reader.themes.sepia"), "#faf4e8", "#000000"],
                     ["green", t("reader.themes.green"), "#C5E7CD", "#000000"],
                     ["ocean", t("reader.themes.ocean"), "#181842", "#ffffff"],
                     ["night", t("reader.themes.night"), "#121212", "#ffffff"],
-                    ["contrast1", t("reader.themes.contrast1"), "#000000", "#ffffff"],
-                    ["contrast2", t("reader.themes.contrast2"), "#000000", "#FFFF00"],
+                    [
+                      "contrast1",
+                      t("reader.themes.contrast1"),
+                      "#000000",
+                      "#ffffff",
+                    ],
+                    [
+                      "contrast2",
+                      t("reader.themes.contrast2"),
+                      "#000000",
+                      "#FFFF00",
+                    ],
                   ] as const
                 ).map(([value, label, bg, fg]) => (
                   <button
@@ -389,8 +404,16 @@ function EpubSettingsPanel({
               <div className="flex gap-1">
                 {(
                   [
-                    ["paginate", t("reader.readingModeOptions.paginate"), BookOpen],
-                    ["scroll", t("reader.readingModeOptions.scroll"), ScrollText],
+                    [
+                      "paginate",
+                      t("reader.readingModeOptions.paginate"),
+                      BookOpen,
+                    ],
+                    [
+                      "scroll",
+                      t("reader.readingModeOptions.scroll"),
+                      ScrollText,
+                    ],
                   ] as const
                 ).map(([value, label, Icon]) => (
                   <button
@@ -423,7 +446,11 @@ function EpubSettingsPanel({
                 {(
                   [
                     ["auto", t("reader.typographyOptions.auto"), TextInitial],
-                    ["justify", t("reader.typographyOptions.justify"), AlignJustify],
+                    [
+                      "justify",
+                      t("reader.typographyOptions.justify"),
+                      AlignJustify,
+                    ],
                     ["start", t("reader.typographyOptions.start"), AlignLeft],
                   ] as const
                 ).map(([value, label, Icon]) => (
@@ -455,7 +482,11 @@ function EpubSettingsPanel({
                 <div className="flex gap-1">
                   {(
                     [
-                      ["auto", t("reader.columnOptions.auto"), PanelLeftRightDashed],
+                      [
+                        "auto",
+                        t("reader.columnOptions.auto"),
+                        PanelLeftRightDashed,
+                      ],
                       ["1", t("reader.columnOptions.1"), Square],
                       ["2", t("reader.columnOptions.2"), Columns2],
                     ] as const

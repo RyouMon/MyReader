@@ -1,9 +1,6 @@
 import { expect } from "@playwright/test"
 import { createBdd } from "playwright-bdd"
-import {
-  createMockLibrary,
-  setupLibrariesMock,
-} from "../fixtures/library-mock"
+import { createMockLibrary, setupLibrariesMock } from "../fixtures/library-mock"
 import { test } from "../fixtures/test"
 import { LibraryPage } from "../pages/LibraryPage"
 import { MainPage } from "../pages/MainPage"
@@ -45,7 +42,7 @@ When("用户点击书库列表中的第二个书库", async ({ page }) => {
   await mainPage.clickLibraryMenuItem(LIBRARIES[1].name)
 })
 
-When("用户点击\"添加书库\"按钮", async ({ page }) => {
+When('用户点击"添加书库"按钮', async ({ page }) => {
   const mainPage = new MainPage(page)
   await mainPage.clickLibrarySwitcherAddButton()
 })
@@ -63,9 +60,7 @@ Then("书库切换菜单应该在侧边栏右侧显示", async ({ page }) => {
   expect(box).not.toBeNull()
   expect(triggerBox).not.toBeNull()
 
-  expect(box!.x + box!.width).toBeGreaterThan(
-    triggerBox!.x + triggerBox!.width,
-  )
+  expect(box!.x + box!.width).toBeGreaterThan(triggerBox!.x + triggerBox!.width)
 })
 
 Then("菜单中应该显示所有已配置书库", async ({ page }) => {
@@ -105,7 +100,7 @@ Then("侧边栏头部应该显示第二个书库名称", async ({ page }) => {
   await mainPage.assertLibrarySwitcherHeaderShows(LIBRARIES[1].name)
 })
 
-Then("书库切换菜单中应该显示\"添加书库\"按钮", async ({ page }) => {
+Then('书库切换菜单中应该显示"添加书库"按钮', async ({ page }) => {
   const mainPage = new MainPage(page)
   await expect(mainPage.getLibrarySwitcherAddButton()).toBeVisible()
 })
@@ -130,7 +125,7 @@ Then("该书库应该被高亮显示", async ({ page }) => {
   await mainPage.assertActiveLibraryHighlighted(LIBRARIES[0].name)
 })
 
-Then("菜单中应该显示\"暂无书库\"提示", async ({ page }) => {
+Then('菜单中应该显示"暂无书库"提示', async ({ page }) => {
   const mainPage = new MainPage(page)
   await expect(mainPage.getLibrarySwitcherEmptyHint()).toBeVisible()
 })

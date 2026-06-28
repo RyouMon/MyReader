@@ -177,10 +177,13 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
         const [row, preparedSource] = await Promise.all([
           progressP,
-          pTimeout(api.prepareBookSource(activeLibraryId, Number(bookId), fmt), {
-            milliseconds: 10000,
-            message: t("reader.loadTimeout"),
-          }),
+          pTimeout(
+            api.prepareBookSource(activeLibraryId, Number(bookId), fmt),
+            {
+              milliseconds: 10000,
+              message: t("reader.loadTimeout"),
+            },
+          ),
         ])
         if (cancelled) return
 
@@ -282,12 +285,12 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     if (!activeLibraryId || !format) return
     setDownloadState("downloading")
     setDownloadError(null)
-    api.downloadBookFile(activeLibraryId, Number(bookId), format).catch(
-      (err) => {
+    api
+      .downloadBookFile(activeLibraryId, Number(bookId), format)
+      .catch((err) => {
         setDownloadState("error")
         setDownloadError(String(err))
-      },
-    )
+      })
   }, [activeLibraryId, bookId, format])
 
   const handleCancelDownload = useCallback(async () => {
@@ -328,7 +331,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     return (
       <ReadBookError
         message={fetchError}
-        actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
+        actionLabel={
+          isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
+        }
         onAction={handleErrorClose}
       />
     )
@@ -340,7 +345,8 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         ? Math.min(
             100,
             Math.round(
-              (downloadProgress.bytesWritten / downloadProgress.totalBytes) * 100,
+              (downloadProgress.bytesWritten / downloadProgress.totalBytes) *
+                100,
             ),
           )
         : undefined
@@ -388,7 +394,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       return (
         <ReadBookError
           message={readiumPub.error ?? t("reader.loadEpubFailed")}
-          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
+          actionLabel={
+            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
+          }
           onAction={handleErrorClose}
         />
       )
@@ -411,7 +419,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       return (
         <ReadBookError
           message={t("reader.comicDirUnavailable")}
-          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
+          actionLabel={
+            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
+          }
           onAction={handleErrorClose}
         />
       )
@@ -423,7 +433,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       return (
         <ReadBookError
           message={divinaPub.error ?? t("reader.loadComicFailed")}
-          actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
+          actionLabel={
+            isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
+          }
           onAction={handleErrorClose}
         />
       )
@@ -458,7 +470,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   return (
     <ReadBookError
       message={t("reader.unsupportedFormat")}
-      actionLabel={isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")}
+      actionLabel={
+        isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
+      }
       onAction={handleErrorClose}
     />
   )

@@ -9,7 +9,9 @@ export class LibraryPage {
 
   async waitForBooksLoaded() {
     // Wait until book cards are rendered (not skeletons)
-    await this.page.waitForSelector('[role="button"][tabindex="0"]', { timeout: 10000 })
+    await this.page.waitForSelector('[role="button"][tabindex="0"]', {
+      timeout: 10000,
+    })
   }
 
   async setViewport(width: number, height = 900) {
@@ -25,6 +27,8 @@ export class LibraryPage {
   }
 
   async scrollToBottom() {
-    await this.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    await this.page.evaluate(() =>
+      window.scrollTo(0, document.body.scrollHeight),
+    )
   }
 }

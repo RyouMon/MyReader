@@ -81,7 +81,7 @@ export async function setupLibrariesMock(
       bookList: MockBook[]
     }) => {
       const { libraries: libs, activeId, bookList } = arg
-      let currentActiveId = activeId ?? (libs[0]?.id ?? null)
+      let currentActiveId = activeId ?? libs[0]?.id ?? null
 
       const handlers: Record<
         string,
@@ -134,9 +134,8 @@ export async function setupLibrariesMock(
         sync_list_backends: () => [],
       }
 
-      ;(
-        window as unknown as Record<string, unknown>
-      ).__TAURI_IPC_HANDLERS__ = handlers
+      ;(window as unknown as Record<string, unknown>).__TAURI_IPC_HANDLERS__ =
+        handlers
     },
     {
       libraries,

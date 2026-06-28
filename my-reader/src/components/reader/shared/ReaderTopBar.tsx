@@ -60,7 +60,12 @@ export function ReaderTopBar({
         <TopBarButton title={t("reader.toc")} onClick={onToggleToc}>
           <List className="size-[18px]" />
         </TopBarButton>
-        <TopBarButton title={isFullscreen ? t("reader.exitFullscreen") : t("reader.fullscreen")} onClick={toggleFullscreen}>
+        <TopBarButton
+          title={
+            isFullscreen ? t("reader.exitFullscreen") : t("reader.fullscreen")
+          }
+          onClick={toggleFullscreen}
+        >
           {isFullscreen ? (
             <Minimize className="size-[18px]" />
           ) : (

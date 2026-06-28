@@ -7,14 +7,14 @@
 
 :root {
   --primary: #b5651d;
-  --secondary: #A87E62;
+  --secondary: #a87e62;
   --bg: #f5efe6;
   --bg-secondary: #f0e8db;
   --ink-1: #3b2f2f;
   --ink-2: #7a6b5d;
   --ink-inverse: #faf5ef;
-  --success: #3A7D5A;
-  --warning: #C4922D;
+  --success: #3a7d5a;
+  --warning: #c4922d;
   --danger: #b44a3a;
   --border: #ddd2c0;
   --border-strong: #d9cebb;
@@ -56,21 +56,21 @@
 
 .dark {
   --primary: #d4803a;
-  --secondary: #B8895A;
+  --secondary: #b8895a;
   --bg: #1f1b17;
   --bg-secondary: #2a2520;
   --ink-1: #f5efe6;
   --ink-2: #b8afa6;
   --ink-inverse: #3b2f2f;
-  --success: #5AAD7E;
-  --warning: #D4A844;
+  --success: #5aad7e;
+  --warning: #d4a844;
   --danger: #d46a5a;
   --border: rgba(245, 239, 230, 0.12);
   --border-strong: rgba(245, 239, 230, 0.22);
 
   --overlay: rgba(0, 0, 0, 0.38);
   --overlay-strong: rgba(0, 0, 0, 0.65);
-  --focus-ring: 0 0 0 2px rgba(212, 128, 58, 0.40);
+  --focus-ring: 0 0 0 2px rgba(212, 128, 58, 0.4);
 
   --background: var(--bg);
   --foreground: var(--ink-1);

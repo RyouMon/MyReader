@@ -44,7 +44,9 @@ const BookRow = memo(function BookRow({
   const primaryFormat = book.formats[0] ?? ""
   const hasProgress = typeof progress?.percent === "number"
   const isUnread = !hasProgress || (progress.percent ?? 0) <= 0
-  const readLabel = isUnread ? t("bookCard.startReading") : t("bookCard.continueReading")
+  const readLabel = isUnread
+    ? t("bookCard.startReading")
+    : t("bookCard.continueReading")
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" && event.key !== " ") {

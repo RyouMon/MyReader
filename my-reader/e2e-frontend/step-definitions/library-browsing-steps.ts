@@ -38,7 +38,9 @@ Then("页面应该显示应用标题 {string}", async ({ page }, text: string) =
 })
 
 Then("页面应该显示主内容区域", async ({ page }) => {
-  await expect(page.locator('main, [class*="sidebar-inset"], [data-slot="sidebar-inset"]')).toBeVisible()
+  await expect(
+    page.locator('main, [class*="sidebar-inset"], [data-slot="sidebar-inset"]'),
+  ).toBeVisible()
 })
 
 Then("网格中每本书的封面和标题都完整可见", async ({ page }) => {
@@ -79,7 +81,9 @@ Then("没有任何书籍被其他书籍遮挡", async ({ page }) => {
       const overlapX = a.x < b.x + b.width && a.x + a.width > b.x
       const overlapY = a.y < b.y + b.height && a.y + a.height > b.y
       if (overlapX && overlapY) {
-        overlaps.push(`Card ${i} (${a.x},${a.y},${a.width}x${a.height}) overlaps with Card ${j} (${b.x},${b.y},${b.width}x${b.height})`)
+        overlaps.push(
+          `Card ${i} (${a.x},${a.y},${a.width}x${a.height}) overlaps with Card ${j} (${b.x},${b.y},${b.width}x${b.height})`,
+        )
       }
     }
   }
@@ -99,7 +103,9 @@ Then("可见区域内的每本书都完整显示", async ({ page }) => {
   }
 })
 
-async function getRowSpacing(page: import("@playwright/test").Page): Promise<number> {
+async function getRowSpacing(
+  page: import("@playwright/test").Page,
+): Promise<number> {
   const libraryPage = new LibraryPage(page)
   const cards = await libraryPage.getVisibleBookCards()
   const count = await cards.count()
@@ -117,7 +123,10 @@ async function getRowSpacing(page: import("@playwright/test").Page): Promise<num
   const firstRowY = boxes[0].y
   const firstRowBottom = boxes[0].y + boxes[0].height
   const secondRowBox = boxes.find((b) => b.y > firstRowY + 5)
-  expect(secondRowBox, "At least two rows of books should be visible").toBeDefined()
+  expect(
+    secondRowBox,
+    "At least two rows of books should be visible",
+  ).toBeDefined()
   const gap = secondRowBox!.y - firstRowBottom
   return Math.round(gap)
 }
@@ -129,21 +138,28 @@ When("记录第一行与第二行书籍之间的垂直间距", async ({ page }) 
 
 Then("第一行与第二行书籍之间的垂直间距应与记录值相同", async ({ page }) => {
   const spacing = await getRowSpacing(page)
-  const recorded = (page as unknown as Record<string, unknown>).recordedSpacing as number | undefined
-  expect(recorded, "No recorded spacing found. Ensure the '记录' step ran before this step.").toBeDefined()
+  const recorded = (page as unknown as Record<string, unknown>)
+    .recordedSpacing as number | undefined
+  expect(
+    recorded,
+    "No recorded spacing found. Ensure the '记录' step ran before this step.",
+  ).toBeDefined()
   expect(
     Math.abs(spacing - recorded!),
     `Spacing changed from ${recorded} to ${spacing}`,
   ).toBeLessThanOrEqual(2)
 })
 
-Then("第一行与第二行书籍之间的垂直间距应为 {int} 像素", async ({ page }, expected: number) => {
-  const spacing = await getRowSpacing(page)
-  expect(
-    Math.abs(spacing - expected),
-    `Expected spacing ${expected}, got ${spacing}`,
-  ).toBeLessThanOrEqual(2)
-})
+Then(
+  "第一行与第二行书籍之间的垂直间距应为 {int} 像素",
+  async ({ page }, expected: number) => {
+    const spacing = await getRowSpacing(page)
+    expect(
+      Math.abs(spacing - expected),
+      `Expected spacing ${expected}, got ${spacing}`,
+    ).toBeLessThanOrEqual(2)
+  },
+)
 
 Given("视图模式为网格", async () => {
   // Grid mode is the default; the IPC mock already returns "grid".

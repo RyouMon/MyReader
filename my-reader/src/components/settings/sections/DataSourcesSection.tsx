@@ -7,7 +7,10 @@ import type { AppRowIconName } from "@/components/common/AppRow"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { AddDataSourcePanel } from "@/components/settings/forms/AddDataSourcePanel"
 import { cn } from "@/lib/utils"
-import { useDataSourcesQuery, useDataSourceMutations } from "@/hooks/queries/useDataSourcesQuery"
+import {
+  useDataSourcesQuery,
+  useDataSourceMutations,
+} from "@/hooks/queries/useDataSourcesQuery"
 
 export default function DataSourcesSection() {
   const { t } = useTranslation()
@@ -45,7 +48,9 @@ export default function DataSourcesSection() {
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border px-7 py-5 pb-4">
-        <h1 className="text-xl font-semibold">{t("settings.dataSources.title")}</h1>
+        <h1 className="text-xl font-semibold">
+          {t("settings.dataSources.title")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {t("settings.dataSources.description")}
         </p>

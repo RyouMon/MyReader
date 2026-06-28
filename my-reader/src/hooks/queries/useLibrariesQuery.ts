@@ -45,8 +45,20 @@ export function useLibraryMutations() {
   })
 
   const addWebdavLibrary = useMutation({
-    mutationFn: async ({ dataSourceId, rootPath, name }: { dataSourceId: string; rootPath: string; name?: string }) => {
-      const info = await api.addWebdavLibrary(dataSourceId, rootPath, name ?? null)
+    mutationFn: async ({
+      dataSourceId,
+      rootPath,
+      name,
+    }: {
+      dataSourceId: string
+      rootPath: string
+      name?: string
+    }) => {
+      const info = await api.addWebdavLibrary(
+        dataSourceId,
+        rootPath,
+        name ?? null,
+      )
       return mapLibraryFromBackendJson(info)
     },
     onSuccess: () => {
@@ -55,8 +67,20 @@ export function useLibraryMutations() {
   })
 
   const addOnedriveLibrary = useMutation({
-    mutationFn: async ({ dataSourceId, rootPath, name }: { dataSourceId: string; rootPath: string; name?: string }) => {
-      const info = await api.addOnedriveLibrary(dataSourceId, rootPath, name ?? null)
+    mutationFn: async ({
+      dataSourceId,
+      rootPath,
+      name,
+    }: {
+      dataSourceId: string
+      rootPath: string
+      name?: string
+    }) => {
+      const info = await api.addOnedriveLibrary(
+        dataSourceId,
+        rootPath,
+        name ?? null,
+      )
       return mapLibraryFromBackendJson(info)
     },
     onSuccess: () => {

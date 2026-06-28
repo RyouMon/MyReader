@@ -97,7 +97,9 @@ export function useFavoriteBooks(
       ])
       const favoriteSet = new Set(favoriteIds)
       const items = sortBooks(
-        books.filter((book) => favoriteSet.has(book.id) && matchesSearch(book, search)),
+        books.filter(
+          (book) => favoriteSet.has(book.id) && matchesSearch(book, search),
+        ),
         sortBy,
       )
       return {

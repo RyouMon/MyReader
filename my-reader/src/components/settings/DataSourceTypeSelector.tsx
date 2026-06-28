@@ -145,12 +145,12 @@ export function DataSourceTypeSelector({
             <div
               className={cn(
                 "flex size-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
-                isSelected
-                  ? "border-primary bg-primary"
-                  : "border-border",
+                isSelected ? "border-primary bg-primary" : "border-border",
               )}
             >
-              {isSelected && <Check className="size-2.5 text-primary-foreground" />}
+              {isSelected && (
+                <Check className="size-2.5 text-primary-foreground" />
+              )}
             </div>
           </button>
         )

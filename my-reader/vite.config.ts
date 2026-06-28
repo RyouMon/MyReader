@@ -12,7 +12,9 @@ const host = process.env.TAURI_DEV_HOST
 
 /** pdf.js worker as a stable same-origin URL (Tauri + Vite hashed ?url workers often fail to import). */
 function syncPdfJsWorkerToPublic(): void {
-  const pkgDir = require.resolve("pdfjs-dist/package.json").replace(/[\\/]package\.json$/, "")
+  const pkgDir = require
+    .resolve("pdfjs-dist/package.json")
+    .replace(/[\\/]package\.json$/, "")
   const dest = path.join(__dirname, "public", "pdf.worker.min.mjs")
   const src = path.join(pkgDir, "build", "pdf.worker.min.mjs")
   try {

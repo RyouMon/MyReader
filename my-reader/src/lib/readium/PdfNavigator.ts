@@ -68,10 +68,7 @@ export class PdfNavigator {
   /** Page proxy cache: avoids re-fetching page data on every render. */
   private pageCache = new Map<number, PDFPageProxy>()
 
-  constructor(
-    fileUrl: string,
-    listeners: Partial<PdfNavigatorListeners> = {},
-  ) {
+  constructor(fileUrl: string, listeners: Partial<PdfNavigatorListeners> = {}) {
     this.fileUrl = fileUrl
     this.listeners = {
       positionChanged: listeners.positionChanged ?? (() => {}),
@@ -153,9 +150,10 @@ export class PdfNavigator {
   }
 
   get currentLocator(): Locator {
-    const prog = this._totalPages > 1
-      ? (this._currentPage - 1) / (this._totalPages - 1)
-      : 0
+    const prog =
+      this._totalPages > 1
+        ? (this._currentPage - 1) / (this._totalPages - 1)
+        : 0
     return new Locator({
       href: this.fileUrl,
       type: "application/pdf",

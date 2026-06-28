@@ -90,7 +90,9 @@ export function ReadiumDivinaReader({
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     return publication.readingOrder.items.map((item, i) => ({
       depth: 0,
-      title: item.title?.trim() || t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
+      title:
+        item.title?.trim() ||
+        t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
       href: item.href,
       type: item.type,
     }))
@@ -205,7 +207,13 @@ export function ReadiumDivinaReader({
               setCurrentLocator(locator)
               const idx = (locator.locations?.position ?? 1) - 1
               const itemTitle = items[idx]?.title?.trim()
-              setChapterTitle(itemTitle || t("reader.pageCount", { current: locator.locations?.position ?? 1, total: "" }).replace(" / ", ""))
+              setChapterTitle(
+                itemTitle ||
+                  t("reader.pageCount", {
+                    current: locator.locations?.position ?? 1,
+                    total: "",
+                  }).replace(" / ", ""),
+              )
             },
             tap: () => {
               showChrome()
@@ -282,7 +290,13 @@ export function ReadiumDivinaReader({
         setReadiumNavReady(true)
         setCurrentLocator(nav.currentLocator)
         const p0 = nav.currentLocator.locations?.position ?? 1
-        setChapterTitle(items[p0 - 1]?.title?.trim() || t("reader.pageCount", { current: p0, total: "" }).replace(" / ", ""))
+        setChapterTitle(
+          items[p0 - 1]?.title?.trim() ||
+            t("reader.pageCount", { current: p0, total: "" }).replace(
+              " / ",
+              "",
+            ),
+        )
       } catch (e) {
         console.error("[ReadiumDivina]", e)
         setInitError(String(e))
@@ -303,7 +317,9 @@ export function ReadiumDivinaReader({
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
         <div>
-          <p className="text-destructive font-medium mb-2">{t("reader.loadComicFailed")}</p>
+          <p className="text-destructive font-medium mb-2">
+            {t("reader.loadComicFailed")}
+          </p>
           <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
         </div>
       </div>

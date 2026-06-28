@@ -54,18 +54,30 @@ async function waitForPreviewServerReady() {
 async function startPreviewServer() {
   webServerProcess = spawn(
     "pnpm",
-    ["run", "preview", "--", "--port", `${webServerPort}`, "--host", previewServerHost, "--strictPort"],
-    { cwd: projectRoot, stdio: [null, process.stdout, process.stderr], shell: true },
+    [
+      "run",
+      "preview",
+      "--",
+      "--port",
+      `${webServerPort}`,
+      "--host",
+      previewServerHost,
+      "--strictPort",
+    ],
+    {
+      cwd: projectRoot,
+      stdio: [null, process.stdout, process.stderr],
+      shell: true,
+    },
   )
   await waitForPreviewServerReady()
 }
 
 function startEdgeDriver() {
-  edgeDriverProcess = spawn(
-    edgeDriverBinaryPath,
-    [`--port=${webDriverPort}`],
-    { stdio: [null, process.stdout, process.stderr], shell: true },
-  )
+  edgeDriverProcess = spawn(edgeDriverBinaryPath, [`--port=${webDriverPort}`], {
+    stdio: [null, process.stdout, process.stderr],
+    shell: true,
+  })
 }
 
 function cleanupProcesses() {
@@ -97,7 +109,7 @@ export const config = {
     timeout: 120000,
     strict: true,
     retry: 1,
-    retryTagFilter: '@flaky',
+    retryTagFilter: "@flaky",
   },
 
   connectionRetryCount: 0,

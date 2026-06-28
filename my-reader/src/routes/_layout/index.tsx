@@ -20,7 +20,10 @@ import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { useLibraryMutations, useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import {
+  useLibraryMutations,
+  useLibrariesQuery,
+} from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export const Route = createFileRoute("/_layout/")({
@@ -52,7 +55,9 @@ function LibraryPage() {
   )
   const favoriteBooks = useMemo(() => {
     const m = new Map<number, CalibreBook>()
-    for (const [index, book] of (favoriteBooksQuery.data?.items ?? []).entries()) {
+    for (const [index, book] of (
+      favoriteBooksQuery.data?.items ?? []
+    ).entries()) {
       m.set(index, book)
     }
     return m
@@ -130,7 +135,9 @@ function LibraryPage() {
         onRefresh={handleRefresh}
       />
 
-      {loading && !displayedError && <LibrarySkeletonGrid viewMode={viewMode} />}
+      {loading && !displayedError && (
+        <LibrarySkeletonGrid viewMode={viewMode} />
+      )}
 
       {!loading && displayedError && (
         <Empty className="min-h-0 flex-1">
@@ -156,13 +163,12 @@ function LibraryPage() {
               <Library />
             </EmptyMedia>
             <EmptyTitle>{t("library.empty.noLibraryTitle")}</EmptyTitle>
-            <EmptyDescription>{t("library.empty.noLibraryDesc")}</EmptyDescription>
+            <EmptyDescription>
+              {t("library.empty.noLibraryDesc")}
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button
-              size="sm"
-              onClick={() => navigate({ to: "/settings" })}
-            >
+            <Button size="sm" onClick={() => navigate({ to: "/settings" })}>
               {t("library.empty.goToSettings")}
             </Button>
           </EmptyContent>

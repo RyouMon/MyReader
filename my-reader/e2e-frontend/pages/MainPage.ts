@@ -82,7 +82,9 @@ export class MainPage {
 
   getLibrarySwitcherMenuItems() {
     return this.page
-      .locator('[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]')
+      .locator(
+        '[data-slot="dropdown-menu-content"] [data-slot="dropdown-menu-item"]',
+      )
       .filter({ hasNotText: "添加书库" })
   }
 
@@ -159,8 +161,7 @@ export class MainPage {
 
   // --- Sidebar actions ---
   async clickSidebarCollapseButton() {
-    const isMobile =
-      (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
+    const isMobile = (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
     if (isMobile) {
       await this.getMobileSheetTriggerButton().click()
     } else {

@@ -108,10 +108,13 @@ When("用户点击选择此文件夹按钮", async ({ page }) => {
   await settingsPage.clickSelectButton()
 })
 
-When("在设置页面将窗口宽度调整为 {int} 像素", async ({ page }, width: number) => {
-  const settingsPage = new SettingsPage(page)
-  await settingsPage.setViewport(width)
-})
+When(
+  "在设置页面将窗口宽度调整为 {int} 像素",
+  async ({ page }, width: number) => {
+    const settingsPage = new SettingsPage(page)
+    await settingsPage.setViewport(width)
+  },
+)
 
 When("用户点击刷新按钮", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
@@ -219,7 +222,7 @@ Then("路径过长时允许换行显示", async ({ page }) => {
   await expect(pathText).toHaveCSS("overflow-wrap", /break-word|anywhere/)
 })
 
-Then("\"选择此文件夹\" 按钮完整可见", async ({ page }) => {
+Then('"选择此文件夹" 按钮完整可见', async ({ page }) => {
   const settingsPage = new SettingsPage(page)
   const button = settingsPage.getSelectButton()
   await expect(button).toBeVisible()
@@ -229,7 +232,9 @@ Then("\"选择此文件夹\" 按钮完整可见", async ({ page }) => {
 
 Then("底部操作栏不超出弹窗边界", async ({ page }) => {
   const settingsPage = new SettingsPage(page)
-  const footer = settingsPage.getFolderBrowserDialog().locator("[data-slot='dialog-footer']")
+  const footer = settingsPage
+    .getFolderBrowserDialog()
+    .locator("[data-slot='dialog-footer']")
   await settingsPage.assertElementWithinDialog(footer)
 })
 

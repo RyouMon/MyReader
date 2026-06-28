@@ -16,11 +16,7 @@ export async function setupReaderMocks(
   page: Page,
   options: ReaderMockOptions = {},
 ) {
-  const {
-    bookId = 1,
-    hangPrepareBookSource = false,
-    format = "EPUB",
-  } = options
+  const { bookId = 1, hangPrepareBookSource = false, format = "EPUB" } = options
 
   const libraryId = TEST_LIBRARY_ID
 
@@ -46,12 +42,13 @@ export async function setupReaderMocks(
     }) => {
       const { libId, bookId: bid, hangPrepare, fmt } = arg
 
-      const existingHandlers = (
-        window as unknown as Record<
-          string,
-          Record<string, (args: Record<string, unknown>) => unknown>
-        >
-      ).__TAURI_IPC_HANDLERS__ ?? {}
+      const existingHandlers =
+        (
+          window as unknown as Record<
+            string,
+            Record<string, (args: Record<string, unknown>) => unknown>
+          >
+        ).__TAURI_IPC_HANDLERS__ ?? {}
 
       const handlers: Record<
         string,
@@ -95,9 +92,8 @@ export async function setupReaderMocks(
         close_book_streamer: () => {},
       }
 
-      ;(
-        window as unknown as Record<string, unknown>
-      ).__TAURI_IPC_HANDLERS__ = handlers
+      ;(window as unknown as Record<string, unknown>).__TAURI_IPC_HANDLERS__ =
+        handlers
     },
     {
       libId: libraryId,

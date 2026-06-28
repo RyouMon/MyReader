@@ -5,7 +5,10 @@ import { useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
-import { DataSourceTypeSelector, type DataSourceType } from "@/components/settings/DataSourceTypeSelector"
+import {
+  DataSourceTypeSelector,
+  type DataSourceType,
+} from "@/components/settings/DataSourceTypeSelector"
 import { WebdavFolderBrowser } from "@/components/settings/WebdavFolderBrowser"
 import { OnedriveFolderBrowser } from "@/components/settings/OnedriveFolderBrowser"
 import { Button } from "@/components/ui/button"
@@ -30,13 +33,24 @@ import { useDataSourcesQuery } from "@/hooks/queries/useDataSourcesQuery"
 
 interface AddLibraryPanelProps {
   onAddLibrary: (path: string) => Promise<unknown>
-  onAddWebdavLibrary: (dataSourceId: string, remotePath: string) => Promise<unknown>
-  onAddOnedriveLibrary: (dataSourceId: string, remotePath: string) => Promise<unknown>
+  onAddWebdavLibrary: (
+    dataSourceId: string,
+    remotePath: string,
+  ) => Promise<unknown>
+  onAddOnedriveLibrary: (
+    dataSourceId: string,
+    remotePath: string,
+  ) => Promise<unknown>
 }
 
-export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriveLibrary }: AddLibraryPanelProps) {
+export function AddLibraryPanel({
+  onAddLibrary,
+  onAddWebdavLibrary,
+  onAddOnedriveLibrary,
+}: AddLibraryPanelProps) {
   const { t } = useTranslation()
-  const { data: dataSources = [], isLoading: loadingDataSources } = useDataSourcesQuery()
+  const { data: dataSources = [], isLoading: loadingDataSources } =
+    useDataSourcesQuery()
 
   const [addPanelOpen, setAddPanelOpen] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -45,14 +59,24 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
   const [webdavBrowserOpen, setWebdavBrowserOpen] = useState(false)
   const [onedriveBrowserOpen, setOnedriveBrowserOpen] = useState(false)
   const pathInputRef = useRef<HTMLInputElement>(null)
-  const availableWebdavSources = dataSources.filter((row) => row.enabled && row.type === "webdav")
-  const availableOnedriveSources = dataSources.filter((row) => row.enabled && row.type === "onedrive")
+  const availableWebdavSources = dataSources.filter(
+    (row) => row.enabled && row.type === "webdav",
+  )
+  const availableOnedriveSources = dataSources.filter(
+    (row) => row.enabled && row.type === "onedrive",
+  )
 
   const addLibrarySchema = useMemo(
     () =>
       z.object({
-        dataSourceId: z.string().trim().min(1, t("addLibraryForm.validation.selectDataSource")),
-        path: z.string().trim().min(1, t("addLibraryForm.validation.pathRequired")),
+        dataSourceId: z
+          .string()
+          .trim()
+          .min(1, t("addLibraryForm.validation.selectDataSource")),
+        path: z
+          .string()
+          .trim()
+          .min(1, t("addLibraryForm.validation.pathRequired")),
       }),
     [t],
   )
@@ -108,7 +132,10 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
     } else if (type === "webdav" && availableWebdavSources.length > 0) {
       addLibraryForm.setFieldValue("dataSourceId", availableWebdavSources[0].id)
     } else if (type === "onedrive" && availableOnedriveSources.length > 0) {
-      addLibraryForm.setFieldValue("dataSourceId", availableOnedriveSources[0].id)
+      addLibraryForm.setFieldValue(
+        "dataSourceId",
+        availableOnedriveSources[0].id,
+      )
     } else {
       addLibraryForm.setFieldValue("dataSourceId", "")
     }
@@ -264,7 +291,11 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
                               onBlur={field.handleBlur}
                               aria-invalid={isInvalid}
                             >
-                              <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
+                              <SelectValue
+                                placeholder={t(
+                                  "addLibraryForm.selectDataSource",
+                                )}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
@@ -292,8 +323,7 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
                       const isPathInvalid =
                         pathField.state.meta.isTouched &&
                         !pathField.state.meta.isValid
-                      const browseDisabled =
-                        adding || !selectedWebdavSource
+                      const browseDisabled = adding || !selectedWebdavSource
                       return (
                         <Field data-invalid={isPathInvalid}>
                           <FieldLabel htmlFor={pathField.name}>
@@ -375,7 +405,11 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
                               onBlur={field.handleBlur}
                               aria-invalid={isInvalid}
                             >
-                              <SelectValue placeholder={t("addLibraryForm.selectDataSource")} />
+                              <SelectValue
+                                placeholder={t(
+                                  "addLibraryForm.selectDataSource",
+                                )}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
@@ -403,8 +437,7 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
                       const isPathInvalid =
                         pathField.state.meta.isTouched &&
                         !pathField.state.meta.isValid
-                      const browseDisabled =
-                        adding || !selectedOnedriveSource
+                      const browseDisabled = adding || !selectedOnedriveSource
                       return (
                         <Field data-invalid={isPathInvalid}>
                           <FieldLabel htmlFor={pathField.name}>
@@ -485,7 +518,9 @@ export function AddLibraryPanel({ onAddLibrary, onAddWebdavLibrary, onAddOnedriv
                   ) : (
                     <PlusCircle className="size-[13px]" />
                   )}
-                  {adding ? t("addLibraryForm.adding") : t("addLibraryForm.confirm")}
+                  {adding
+                    ? t("addLibraryForm.adding")
+                    : t("addLibraryForm.confirm")}
                 </Button>
               </div>
             </FieldGroup>

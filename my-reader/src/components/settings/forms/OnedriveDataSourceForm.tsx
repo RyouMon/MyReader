@@ -21,7 +21,9 @@ export function OnedriveDataSourceForm({
   loading,
 }: OnedriveDataSourceFormProps) {
   const { t } = useTranslation()
-  const [authResult, setAuthResult] = useState<OnedriveAuthResultDto | null>(null)
+  const [authResult, setAuthResult] = useState<OnedriveAuthResultDto | null>(
+    null,
+  )
   const [authLoading, setAuthLoading] = useState(false)
   const [createLoading, setCreateLoading] = useState(false)
   const [error, setError] = useState("")
@@ -30,7 +32,10 @@ export function OnedriveDataSourceForm({
     setAuthLoading(true)
     setError("")
     try {
-      const result = await api.onedriveStartAuth({ clientId: null, tenantId: null })
+      const result = await api.onedriveStartAuth({
+        clientId: null,
+        tenantId: null,
+      })
       setAuthResult(result)
       // Auto-create the data source after successful auth, matching mobile UX.
       await autoCreate(result)
@@ -78,7 +83,11 @@ export function OnedriveDataSourceForm({
       {(authLoading || createLoading || loading) && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[13px] text-foreground">
           <Loader2 className="size-4 animate-spin" />
-          <span>{authLoading ? t("addDataSourceForm.onedriveAuthenticating") : t("addDataSourceForm.onedriveAdding")}</span>
+          <span>
+            {authLoading
+              ? t("addDataSourceForm.onedriveAuthenticating")
+              : t("addDataSourceForm.onedriveAdding")}
+          </span>
         </div>
       )}
 
@@ -135,9 +144,7 @@ export function OnedriveDataSourceForm({
         </div>
       )}
 
-      {error && (
-        <p className="text-[12px] text-red-500">{error}</p>
-      )}
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
     </form>
   )
 }

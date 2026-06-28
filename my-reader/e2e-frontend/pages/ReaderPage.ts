@@ -9,19 +9,19 @@ export class ReaderPage {
   }
 
   getInitialLoading() {
-    return this.page.locator('role=status').filter({ hasText: /正在加载书籍/ })
+    return this.page.locator("role=status").filter({ hasText: /正在加载书籍/ })
   }
 
   getReadiumLoading() {
-    return this.page.locator('role=status').filter({ hasText: /正在加载/ })
+    return this.page.locator("role=status").filter({ hasText: /正在加载/ })
   }
 
   getErrorMessage() {
-    return this.page.locator('text=加载失败')
+    return this.page.locator("text=加载失败")
   }
 
   getReaderChrome() {
-    return this.page.locator('[data-reader-theme]')
+    return this.page.locator("[data-reader-theme]")
   }
 
   async isShowingInitialLoading(): Promise<boolean> {

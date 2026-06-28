@@ -99,7 +99,9 @@ export const BookCover = memo(function BookCover({
         <div
           className={cn(
             "absolute inset-0 flex size-full flex-col items-center justify-center px-3 py-4 text-center transition-opacity duration-300",
-            coverSrc && imgLoaded ? "pointer-events-none opacity-0" : "opacity-100",
+            coverSrc && imgLoaded
+              ? "pointer-events-none opacity-0"
+              : "opacity-100",
             fallbackClassName,
           )}
         >

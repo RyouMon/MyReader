@@ -7,7 +7,10 @@ import { useTranslation } from "react-i18next"
 import { z } from "zod"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { StatusNotice } from "@/components/common/StatusNotice"
-import { DataSourceTypeSelector, type DataSourceType } from "@/components/settings/DataSourceTypeSelector"
+import {
+  DataSourceTypeSelector,
+  type DataSourceType,
+} from "@/components/settings/DataSourceTypeSelector"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -166,9 +169,13 @@ export function AddDataSourcePanel({
 interface WebdavDataSourceFormProps {
   loading: boolean
   testing: boolean
-  onSubmit: (datasource: DataSourceWebdav & { password?: string }) => Promise<unknown>
+  onSubmit: (
+    datasource: DataSourceWebdav & { password?: string },
+  ) => Promise<unknown>
   onClearMessages: () => void
-  onTestConnection: (datasource: DataSourceWebdav & { password?: string }) => Promise<void>
+  onTestConnection: (
+    datasource: DataSourceWebdav & { password?: string },
+  ) => Promise<void>
 }
 
 type WebdavFieldName =
@@ -198,10 +205,14 @@ function WebdavDataSourceForm({
           .regex(/^\d*$/, t("addDataSourceForm.validation.portNumber"))
           .refine(
             (value) =>
-              value.length === 0 || (Number(value) >= 1 && Number(value) <= 65535),
+              value.length === 0 ||
+              (Number(value) >= 1 && Number(value) <= 65535),
             t("addDataSourceForm.validation.portRange"),
           ),
-        username: z.string().trim().min(1, t("addDataSourceForm.validation.username")),
+        username: z
+          .string()
+          .trim()
+          .min(1, t("addDataSourceForm.validation.username")),
         password: z.string().min(1, t("addDataSourceForm.validation.password")),
         rootPath: z.string().trim(),
       }),
@@ -341,7 +352,9 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.endpoint)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.endpointLabel")}</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>
+                    {t("addDataSourceForm.endpointLabel")}
+                  </FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -375,7 +388,9 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.port)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.portLabel")}</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>
+                    {t("addDataSourceForm.portLabel")}
+                  </FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -412,7 +427,9 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.username)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.usernameLabel")}</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>
+                    {t("addDataSourceForm.usernameLabel")}
+                  </FieldLabel>
                   <Input
                     id={field.name}
                     name={field.name}
@@ -446,7 +463,9 @@ function WebdavDataSourceForm({
                 Boolean(testValidationErrors.password)
               return (
                 <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.passwordLabel")}</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>
+                    {t("addDataSourceForm.passwordLabel")}
+                  </FieldLabel>
                   <Input
                     type="password"
                     id={field.name}
@@ -478,7 +497,9 @@ function WebdavDataSourceForm({
         <webdavForm.Field name="rootPath">
           {(field) => (
             <Field>
-              <FieldLabel htmlFor={field.name}>{t("addDataSourceForm.rootPathLabel")}</FieldLabel>
+              <FieldLabel htmlFor={field.name}>
+                {t("addDataSourceForm.rootPathLabel")}
+              </FieldLabel>
               <Input
                 id={field.name}
                 name={field.name}
@@ -503,7 +524,9 @@ function WebdavDataSourceForm({
             onClick={() => void handleTestConnection()}
             disabled={loading || testing}
           >
-            {testing ? t("addDataSourceForm.testing") : t("addDataSourceForm.testConnection")}
+            {testing
+              ? t("addDataSourceForm.testing")
+              : t("addDataSourceForm.testConnection")}
           </Button>
           <Button
             size="sm"

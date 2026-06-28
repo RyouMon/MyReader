@@ -38,7 +38,9 @@ export class SettingsPage {
     await option.waitFor({ state: "visible" })
     await option.click()
     // Wait for the selection to be reflected in the trigger
-    await expect(this.getDataSourceSelectTrigger()).toContainText(name, { timeout: 5000 })
+    await expect(this.getDataSourceSelectTrigger()).toContainText(name, {
+      timeout: 5000,
+    })
     // Wait for the browse button to become enabled
     await expect(this.getBrowseButton()).toBeEnabled({ timeout: 5000 })
   }
@@ -53,7 +55,9 @@ export class SettingsPage {
   }
 
   getPathInput() {
-    return this.page.locator('input[name="path"], input[placeholder*="Calibre"]')
+    return this.page.locator(
+      'input[name="path"], input[placeholder*="Calibre"]',
+    )
   }
 
   async getPathInputValue(): Promise<string> {
@@ -104,7 +108,9 @@ export class SettingsPage {
   }
 
   getBreadcrumbEllipsis() {
-    return this.getFolderBrowserDialog().locator('[data-testid="breadcrumb-ellipsis"]')
+    return this.getFolderBrowserDialog().locator(
+      '[data-testid="breadcrumb-ellipsis"]',
+    )
   }
 
   async openBreadcrumbEllipsis() {
@@ -162,7 +168,9 @@ export class SettingsPage {
   }
 
   getSelectButton() {
-    return this.getFolderBrowserDialog().getByRole("button", { name: "选择此文件夹" })
+    return this.getFolderBrowserDialog().getByRole("button", {
+      name: "选择此文件夹",
+    })
   }
 
   async clickSelectButton() {
@@ -192,10 +200,14 @@ export class SettingsPage {
     ).toBeLessThanOrEqual(viewport!.width)
 
     // Check no horizontal scrollbar on dialog content
-    const hasHorizontalScrollbar = await this.getFolderBrowserDialog().evaluate((el) => {
-      return el.scrollWidth > el.clientWidth
-    })
-    expect(hasHorizontalScrollbar, "Dialog has horizontal scrollbar").toBe(false)
+    const hasHorizontalScrollbar = await this.getFolderBrowserDialog().evaluate(
+      (el) => {
+        return el.scrollWidth > el.clientWidth
+      },
+    )
+    expect(hasHorizontalScrollbar, "Dialog has horizontal scrollbar").toBe(
+      false,
+    )
   }
 
   async assertElementWithinDialog(locator: Locator) {
