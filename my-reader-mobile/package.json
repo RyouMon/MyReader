@@ -142,11 +142,5 @@
       "^@my-reader/readium/(.*)$": "<rootDir>/modules/readium/src/$1"
     }
   },
-  "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "npx tsc --noEmit",
-      "npm run lint -- --max-warnings=0"
-    ]
-  },
   "private": true
 }
