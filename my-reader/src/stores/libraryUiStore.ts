@@ -3,8 +3,8 @@ import { api } from "@/lib/tauri-api"
 
 type LibraryUiState = {
   activeLibraryId: string | null
-  activeView: "all" | "favorites"
-  setActiveView: (view: "all" | "favorites") => void
+  activeView: "all" | "recent" | "favorites"
+  setActiveView: (view: "all" | "recent" | "favorites") => void
   switchLibrary: (id: string) => Promise<void>
   hydrateActiveLibraryId: () => Promise<void>
 }

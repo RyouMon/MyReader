@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 use crate::entities::app::reading_progress;
@@ -77,5 +79,27 @@ impl SqliteProgressRepository {
                 .map_err(|e| AppError::Database(e.to_string()))?;
         }
         Ok(())
+    }
+
+    pub async fn list_latest_book_updates(
+        db: &DatabaseConnection,
+    ) -> Result<HashMap<i64, f64>, AppError> {
+        let rows = reading_progress::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let mut latest = HashMap::new();
+        for row in rows {
+            latest
+                .entry(row.book_id)
+                .and_modify(|updated_at: &mut f64| {
+                    if row.updated_at > *updated_at {
+                        *updated_at = row.updated_at;
+                    }
+                })
+                .or_insert(row.updated_at);
+        }
+        Ok(latest)
     }
 }

@@ -7,6 +7,7 @@ use crate::error::AppError;
 use crate::models::{BookDetail, BookEntry, PaginatedBooks};
 use crate::services::book_service::BookService;
 use crate::services::library_service::LibraryService;
+use crate::utils::paths::library_sidecar_path;
 
 /// Resolve `(app_data_dir, lib_path)` for a book-scoped command in a single pass.
 /// Centralises the snapshot + path resolution every command in this file performs.
@@ -56,15 +57,33 @@ pub async fn get_books_page<R: tauri::Runtime>(
     info!(
         "Start to get books page. library id: {library_id:?}, offset: {offset}, limit: {limit}, sort by: {sort_by:?}, search: {search:?}"
     );
-    let lib_path = resolve_lib_path(&app, &state, library_id.as_deref())?;
-    let result = BookService::get_books_page(
-        &lib_path,
-        offset,
-        limit,
-        sort_by.as_deref(),
-        search.as_deref(),
-    )
-    .await;
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
+    let lib = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+    let lib_path =
+        LibraryService::resolve_library_path(library_id.as_deref(), &app_data_dir, &config)?.1;
+    let result = if sort_by.as_deref() == Some("lastRead") {
+        let sidecar_root = library_sidecar_path(&lib, &app_data_dir)
+            .to_string_lossy()
+            .to_string();
+        BookService::get_books_page_by_last_read(
+            &lib_path,
+            &sidecar_root,
+            offset,
+            limit,
+            search.as_deref(),
+        )
+        .await
+    } else {
+        BookService::get_books_page(
+            &lib_path,
+            offset,
+            limit,
+            sort_by.as_deref(),
+            search.as_deref(),
+        )
+        .await
+    };
 
     match &result {
         Ok(page) => info!(

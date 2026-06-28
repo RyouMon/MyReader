@@ -77,6 +77,7 @@ export default function AppSidebar() {
 
   const isSettingsActive = location.pathname === "/settings"
   const isLibraryActive = location.pathname === "/" && activeView === "all"
+  const isRecentActive = location.pathname === "/" && activeView === "recent"
   const isFavoritesActive =
     location.pathname === "/" && activeView === "favorites"
   const totalCount = activeLibrary?.bookCount ?? 0
@@ -189,7 +190,14 @@ export default function AppSidebar() {
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip={t("sidebar.recent")}>
+                <SidebarMenuButton
+                  isActive={isRecentActive}
+                  tooltip={t("sidebar.recent")}
+                  onClick={() => {
+                    setActiveView("recent")
+                    navigate({ to: "/" })
+                  }}
+                >
                   <Clock />
                   <span>{t("sidebar.recent")}</span>
                 </SidebarMenuButton>

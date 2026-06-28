@@ -45,9 +45,10 @@ function LibraryPage() {
   const [sortBy, setSortBy] = useState<SortOption>("recent")
 
   const debouncedSearch = useDebouncedValue(searchQuery, 300)
+  const booksSortBy = activeView === "recent" ? "lastRead" : sortBy
 
   const { books, total, initialLoading, error, ensureRange, refresh } =
-    usePaginatedBooks(activeLibraryId, sortBy, debouncedSearch)
+    usePaginatedBooks(activeLibraryId, booksSortBy, debouncedSearch)
   const favoriteBooksQuery = useFavoriteBooks(
     activeLibraryId,
     sortBy,
@@ -99,11 +100,11 @@ function LibraryPage() {
   }
 
   const sectionLabel =
-    activeView === "all"
-      ? t("library.title")
-      : activeView === "favorites"
-        ? t("library.favoritesTitle")
-        : t("library.recentTitle")
+    activeView === "favorites"
+      ? t("library.favoritesTitle")
+      : activeView === "recent"
+        ? t("library.recentTitle")
+        : t("library.title")
 
   function handleRead(book: CalibreBook) {
     navigate({
