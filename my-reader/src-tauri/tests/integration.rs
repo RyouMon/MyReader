@@ -20,5 +20,5 @@
 //! cd my-reader/src-tauri && cargo test --test integration
 //! ```
 
-mod common;
 mod commands;
+mod common;

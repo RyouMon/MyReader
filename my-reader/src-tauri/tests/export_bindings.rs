@@ -50,6 +50,9 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::download::delete_local_book_file::<tauri::Wry>,
             my_reader_lib::commands::download::cancel_book_download,
         ])
-        .export(specta_typescript::Typescript::default(), "../src/lib/tauri-specta.ts")
+        .export(
+            specta_typescript::Typescript::default(),
+            "../src/lib/tauri-specta.ts",
+        )
         .unwrap();
 }

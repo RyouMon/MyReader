@@ -61,7 +61,11 @@ async fn list_favorite_book_ids_should_return_empty_when_no_favorites_exist() {
         ..Default::default()
     });
 
-    let ids: Vec<i64> = invoke_ok(&app, "list_favorite_book_ids", json!({ "libraryId": "lib-a" }));
+    let ids: Vec<i64> = invoke_ok(
+        &app,
+        "list_favorite_book_ids",
+        json!({ "libraryId": "lib-a" }),
+    );
 
     assert!(ids.is_empty());
 }
@@ -85,7 +89,11 @@ async fn add_and_list_favorite_books_should_round_trip_book_ids() {
         json!({ "libraryId": "lib-a", "bookId": 42 }),
     );
 
-    let ids: Vec<i64> = invoke_ok(&app, "list_favorite_book_ids", json!({ "libraryId": "lib-a" }));
+    let ids: Vec<i64> = invoke_ok(
+        &app,
+        "list_favorite_book_ids",
+        json!({ "libraryId": "lib-a" }),
+    );
 
     assert_eq!(ids, vec![7, 42]);
 }
@@ -109,7 +117,11 @@ async fn add_favorite_book_should_be_idempotent_when_book_already_favorited() {
         json!({ "libraryId": "lib-a", "bookId": 7 }),
     );
 
-    let ids: Vec<i64> = invoke_ok(&app, "list_favorite_book_ids", json!({ "libraryId": "lib-a" }));
+    let ids: Vec<i64> = invoke_ok(
+        &app,
+        "list_favorite_book_ids",
+        json!({ "libraryId": "lib-a" }),
+    );
 
     assert_eq!(ids, vec![7]);
 }
@@ -138,7 +150,11 @@ async fn remove_favorite_book_should_delete_record_and_be_idempotent() {
         json!({ "libraryId": "lib-a", "bookId": 7 }),
     );
 
-    let ids: Vec<i64> = invoke_ok(&app, "list_favorite_book_ids", json!({ "libraryId": "lib-a" }));
+    let ids: Vec<i64> = invoke_ok(
+        &app,
+        "list_favorite_book_ids",
+        json!({ "libraryId": "lib-a" }),
+    );
 
     assert!(ids.is_empty());
 }

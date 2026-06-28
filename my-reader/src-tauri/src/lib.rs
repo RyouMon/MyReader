@@ -13,8 +13,8 @@ mod protocols;
 mod reader_ui_prefs;
 pub mod repositories;
 pub mod services;
-pub mod streamer;
 mod storage;
+pub mod streamer;
 pub mod sync;
 mod utils;
 
@@ -26,10 +26,10 @@ pub use error::AppError;
 use std::collections::HashMap;
 
 use log::LevelFilter;
-use tracing::{error, info};
 use tauri::Manager;
 use time::{macros::format_description, OffsetDateTime};
 use tokio::sync::RwLock;
+use tracing::{error, info};
 
 use commands::AppState;
 use services::download_service::DownloadService;
@@ -135,8 +135,11 @@ pub fn run() -> Result<(), tauri::Error> {
             info!("Start to initialize application.");
             let config_path = config::config_path(&app.path().app_data_dir()?);
             let config = config::load_config(&config_path).unwrap_or_default();
-            *app.state::<AppState>().lock().unwrap_or_else(|e| e.into_inner()) = config.clone();
-            if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle(), &config.libraries) {
+            *app.state::<AppState>()
+                .lock()
+                .unwrap_or_else(|e| e.into_inner()) = config.clone();
+            if let Err(e) = asset_scope::sync_for_reader_libraries(app.handle(), &config.libraries)
+            {
                 error!(
                     "Failed to extend asset protocol scope for reader file access. error: {}",
                     e

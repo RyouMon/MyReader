@@ -92,7 +92,6 @@ pub struct AppConfig {
     pub device_id: Option<String>,
 }
 
-
 /// Data source DTO for the frontend. For WebDAV only whether a password is configured is returned, to avoid echoing plaintext secrets on the settings page.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]

@@ -11,7 +11,10 @@ pub fn config_path(app_data_dir: &Path) -> PathBuf {
 }
 
 pub fn load_config(path: &Path) -> Result<AppConfig, AppError> {
-    info!("Start to load config from disk. path: \"{}\"", path.display());
+    info!(
+        "Start to load config from disk. path: \"{}\"",
+        path.display()
+    );
     if !path.exists() {
         info!("Config file not found, using default.");
         return Ok(AppConfig::default());
@@ -37,6 +40,9 @@ pub fn save_config(path: &Path, config: &AppConfig) -> Result<(), AppError> {
     }
     let json = serde_json::to_string_pretty(config)?;
     fs::write(path, json)?;
-    info!("Success to save application config. path: \"{}\"", path.display());
+    info!(
+        "Success to save application config. path: \"{}\"",
+        path.display()
+    );
     Ok(())
 }

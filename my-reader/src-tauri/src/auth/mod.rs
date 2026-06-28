@@ -4,5 +4,5 @@
 //! - [`credentials`]: secure credential storage based on `keyring`.
 //! - [`onedrive`]: OneDrive OAuth2 flow and token management.
 
-pub mod onedrive;
 pub(crate) mod credentials;
+pub mod onedrive;

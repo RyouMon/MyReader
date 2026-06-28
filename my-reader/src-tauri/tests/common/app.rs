@@ -123,7 +123,10 @@ impl TestApp {
         app.manage(StreamerState::new(RwLock::new(HashMap::new())));
         app.manage(DownloadService::new());
 
-        Self { app, _dir_guard: dir_guard }
+        Self {
+            app,
+            _dir_guard: dir_guard,
+        }
     }
 
     /// Snapshot the current `AppConfig` from the managed state. Tests use this to assert

@@ -1,6 +1,6 @@
+use crate::auth::credentials;
 use crate::error::AppError;
 use crate::models::{DataSourceConfig, DataSourceDetail, WebdavFolderEntry};
-use crate::auth::credentials;
 
 /// Extracted WebDAV credentials ready for HTTP requests.
 #[derive(Debug)]
@@ -28,17 +28,15 @@ pub fn extract_credentials(source: &DataSourceConfig) -> Result<WebdavCreds, App
         }
     };
 
-    let password = if let Some(account) =
-        credential_account.as_ref().filter(|s| !s.trim().is_empty())
-    {
-        credentials::read_webdav_password(account.trim())?.ok_or_else(|| {
-            AppError::Config("系统钥匙串未找到对应 WebDAV 密码".into())
-        })?
-    } else {
-        return Err(AppError::Config(
-            "缺少 WebDAV 密码（credential_account 为空）".into(),
-        ));
-    };
+    let password =
+        if let Some(account) = credential_account.as_ref().filter(|s| !s.trim().is_empty()) {
+            credentials::read_webdav_password(account.trim())?
+                .ok_or_else(|| AppError::Config("系统钥匙串未找到对应 WebDAV 密码".into()))?
+        } else {
+            return Err(AppError::Config(
+                "缺少 WebDAV 密码（credential_account 为空）".into(),
+            ));
+        };
 
     Ok(WebdavCreds {
         endpoint: endpoint.clone(),
@@ -234,9 +232,7 @@ pub fn parse_propfind_response(
             }
             Ok(Event::Eof) => break,
             Err(e) => {
-                return Err(AppError::Config(format!(
-                    "WEBDAV_XML_PARSE_FAILED: {e}"
-                )));
+                return Err(AppError::Config(format!("WEBDAV_XML_PARSE_FAILED: {e}")));
             }
             _ => {}
         }
@@ -380,11 +376,7 @@ mod tests {
     #[test]
     fn to_remote_entry_path_should_extract_path_when_href_is_full_url() {
         assert_eq!(
-            to_remote_entry_path(
-                "https://example.com/dav/books/Authors/",
-                "/dav/books",
-                true,
-            ),
+            to_remote_entry_path("https://example.com/dav/books/Authors/", "/dav/books", true,),
             "Authors/"
         );
     }
@@ -465,7 +457,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_propfind_response_should_decode_percent_encoded_name_when_response_has_percent_encoded_dir() {
+    fn parse_propfind_response_should_decode_percent_encoded_name_when_response_has_percent_encoded_dir(
+    ) {
         let xml = r#"<?xml version="1.0"?>
 <D:multistatus xmlns:D="DAV:">
   <D:response>
@@ -503,20 +496,27 @@ mod tests {
 
     #[test]
     fn build_test_url_should_prepend_slash_when_endpoint_has_no_path_and_root_is_relative() {
-        let url = build_test_url("https://example.com", Some("books"))
-            .expect("expected valid test url");
+        let url =
+            build_test_url("https://example.com", Some("books")).expect("expected valid test url");
         assert_eq!(url.as_str(), "https://example.com/books");
     }
 
     #[test]
     fn map_status_error_should_map_to_typed_error_when_status_is_known() {
         let url = reqwest::Url::parse("https://example.com/dav").unwrap();
-        assert!(format!("{}", map_status_error(reqwest::StatusCode::UNAUTHORIZED, &url))
-            .contains("WEBDAV_UNAUTHORIZED"));
-        assert!(format!("{}", map_status_error(reqwest::StatusCode::FORBIDDEN, &url))
-            .contains("WEBDAV_FORBIDDEN"));
-        assert!(format!("{}", map_status_error(reqwest::StatusCode::NOT_FOUND, &url))
-            .contains("WEBDAV_NOT_FOUND"));
+        assert!(format!(
+            "{}",
+            map_status_error(reqwest::StatusCode::UNAUTHORIZED, &url)
+        )
+        .contains("WEBDAV_UNAUTHORIZED"));
+        assert!(
+            format!("{}", map_status_error(reqwest::StatusCode::FORBIDDEN, &url))
+                .contains("WEBDAV_FORBIDDEN")
+        );
+        assert!(
+            format!("{}", map_status_error(reqwest::StatusCode::NOT_FOUND, &url))
+                .contains("WEBDAV_NOT_FOUND")
+        );
     }
 
     #[test]
@@ -542,7 +542,10 @@ mod tests {
 
     #[test]
     fn to_remote_entry_path_should_add_leading_slash_when_href_lacks_leading_slash() {
-        assert_eq!(to_remote_entry_path("Books/Authors/", "/Books", true), "Authors/");
+        assert_eq!(
+            to_remote_entry_path("Books/Authors/", "/Books", true),
+            "Authors/"
+        );
     }
 
     #[test]

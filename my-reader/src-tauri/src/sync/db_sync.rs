@@ -101,7 +101,10 @@ impl LwwProvider {
         if let Some(model) = existing {
             let mut active: sync_meta::ActiveModel = model.into();
             active.value = Set(value.to_string());
-            active.update(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .update(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         } else {
             let id = uuid::Uuid::new_v4().as_simple().to_string();
             let active = sync_meta::ActiveModel {
@@ -109,7 +112,10 @@ impl LwwProvider {
                 key: Set(key.to_string()),
                 value: Set(value.to_string()),
             };
-            active.insert(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .insert(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         }
         Ok(())
     }
@@ -131,7 +137,10 @@ impl LwwProvider {
             let mut key = serde_json::Map::new();
             let mut value = serde_json::Map::new();
             key.insert("book_id".to_string(), serde_json::Value::from(row.book_id));
-            key.insert("format".to_string(), serde_json::Value::String(row.format.clone()));
+            key.insert(
+                "format".to_string(),
+                serde_json::Value::String(row.format.clone()),
+            );
             value.insert(
                 "locator_json".to_string(),
                 serde_json::Value::String(row.locator_json.clone()),
@@ -186,9 +195,17 @@ impl LwwProvider {
             }
             // Update existing row
             let mut active: reading_progress::ActiveModel = model.clone().into();
-            active.locator_json = Set(change.value.get("locator_json").and_then(|v| v.as_str()).unwrap_or("").to_string());
+            active.locator_json = Set(change
+                .value
+                .get("locator_json")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string());
             active.updated_at = Set(incoming_ts);
-            active.update(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .update(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
             return Ok(true);
         }
 
@@ -207,7 +224,10 @@ impl LwwProvider {
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(incoming_ts),
         };
-        active.insert(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+        active
+            .insert(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
         Ok(true)
     }
 }
@@ -245,7 +265,8 @@ impl SyncProvider for LwwProvider {
 
         let mut payload = String::new();
         for row in &all {
-            let line = serde_json::to_string(row).map_err(|e| AppError::Serialize(e.to_string()))?;
+            let line =
+                serde_json::to_string(row).map_err(|e| AppError::Serialize(e.to_string()))?;
             payload.push_str(&line);
             payload.push('\n');
         }
@@ -273,7 +294,9 @@ impl SyncProvider for LwwProvider {
             Ok(e) => e,
             Err(err) if err.kind() == opendal::ErrorKind::NotFound => return Ok(0),
             Err(err) => {
-                return Err(AppError::Config(format!("List .myreader/changes/ failed: {err}")));
+                return Err(AppError::Config(format!(
+                    "List .myreader/changes/ failed: {err}"
+                )));
             }
         };
 
@@ -295,7 +318,9 @@ impl SyncProvider for LwwProvider {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0);
 
-            let file_entries = match op.list(&format!(".myreader/changes/{remote_device}/")).await
+            let file_entries = match op
+                .list(&format!(".myreader/changes/{remote_device}/"))
+                .await
             {
                 Ok(e) => e,
                 Err(err) => {
@@ -332,8 +357,9 @@ impl SyncProvider for LwwProvider {
                     if line.trim().is_empty() {
                         continue;
                     }
-                    let change: ChangeRow = serde_json::from_str(line)
-                        .map_err(|err| AppError::Serialize(format!("Parse change failed: {err}")))?;
+                    let change: ChangeRow = serde_json::from_str(line).map_err(|err| {
+                        AppError::Serialize(format!("Parse change failed: {err}"))
+                    })?;
                     for spec in &self.tables {
                         if Self::apply_row(db, spec, &change).await? {
                             applied += 1;

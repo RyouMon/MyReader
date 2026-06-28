@@ -24,14 +24,9 @@ pub async fn check_book_file_state<R: tauri::Runtime>(
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
 
-    let result = DownloadService::check_file_state(
-        &app_data_dir,
-        &config,
-        &library_id,
-        book_id,
-        &format,
-    )
-    .await;
+    let result =
+        DownloadService::check_file_state(&app_data_dir, &config, &library_id, book_id, &format)
+            .await;
 
     match &result {
         Ok(dto) => info!(
@@ -66,9 +61,7 @@ pub async fn download_book_file<R: tauri::Runtime>(
     let config = common::config_snapshot(&state);
 
     let result = service
-        .enqueue_book_file_download(
-            &app, &app_data_dir, &config, &library_id, book_id, &format
-        )
+        .enqueue_book_file_download(&app, &app_data_dir, &config, &library_id, book_id, &format)
         .await;
 
     match &result {
@@ -119,14 +112,8 @@ pub async fn delete_local_book_file<R: tauri::Runtime>(
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
 
-    DownloadService::delete_local_file(
-        &app_data_dir,
-        &config,
-        &library_id,
-        book_id,
-        &format,
-    )
-    .await?;
+    DownloadService::delete_local_file(&app_data_dir, &config, &library_id, book_id, &format)
+        .await?;
 
     info!(
         "Success to delete local book file. library id: \"{}\", book id: {}, format: \"{}\"",

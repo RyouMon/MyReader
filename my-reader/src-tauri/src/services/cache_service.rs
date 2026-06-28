@@ -1,6 +1,6 @@
+use crate::cache;
 use crate::commands::CacheUsageDto;
 use crate::error::AppError;
-use crate::cache;
 use crate::models::AppConfig;
 
 pub struct CacheService;
@@ -66,4 +66,3 @@ mod tests {
         assert_eq!(usage.max_bytes, 100 * 1024 * 1024);
     }
 }
-

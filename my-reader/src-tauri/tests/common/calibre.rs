@@ -28,9 +28,7 @@ pub async fn seed_minimal_calibre_library(root: &Path) -> SeededBook {
         "sqlite://{}?mode=rwc",
         db_path.to_str().expect("valid utf8")
     );
-    let db = Database::connect(&url)
-        .await
-        .expect("connect to setup db");
+    let db = Database::connect(&url).await.expect("connect to setup db");
 
     // Schema covers every table CalibreBookRepository joins against — even when a join
     // would return no rows, the table must exist or the query fails with "no such table".

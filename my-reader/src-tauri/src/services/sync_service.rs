@@ -38,8 +38,7 @@ impl SyncService {
 
         let (sidecar_path, _) =
             Self::resolve_library_sidecar_path(app_data_dir, config, library_id)?;
-        let (lib_path, kind, _) =
-            Self::resolve_library_path(app_data_dir, config, library_id)?;
+        let (lib_path, kind, _) = Self::resolve_library_path(app_data_dir, config, library_id)?;
 
         let device = Self::ensure_device_id(config);
         let db = Self::open_library_db(&sidecar_path).await?;
@@ -159,8 +158,7 @@ impl SyncService {
         }
 
         let original_files = Self::list_device_change_files(original_op, device_id).await?;
-        let original_set: HashSet<&str> =
-            original_files.iter().map(|s| s.as_str()).collect();
+        let original_set: HashSet<&str> = original_files.iter().map(|s| s.as_str()).collect();
 
         let prefix = Self::device_changes_dir(device_id);
         let mut mirrored = 0;
@@ -183,9 +181,7 @@ impl SyncService {
         }
 
         if mirrored > 0 {
-            info!(
-                "Mirrored {mirrored} changes to external directory for device {device_id}"
-            );
+            info!("Mirrored {mirrored} changes to external directory for device {device_id}");
         }
         Ok(mirrored)
     }
@@ -310,7 +306,10 @@ mod tests {
         let app_data = tempfile::tempdir().unwrap();
         let original = tempfile::tempdir().unwrap();
         let mut config = AppConfig::default();
-        config.libraries.push(local_library("lib-local", original.path().to_str().unwrap()));
+        config.libraries.push(local_library(
+            "lib-local",
+            original.path().to_str().unwrap(),
+        ));
 
         // First sync initializes the sidecar DB and device id.
         SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
@@ -327,9 +326,7 @@ mod tests {
         tokio::fs::create_dir_all(change_path.parent().unwrap())
             .await
             .unwrap();
-        tokio::fs::write(&change_path, b"{}")
-            .await
-            .unwrap();
+        tokio::fs::write(&change_path, b"{}").await.unwrap();
 
         // Second sync should mirror the change to the original library directory.
         let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")

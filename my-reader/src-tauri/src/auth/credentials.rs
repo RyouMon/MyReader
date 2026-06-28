@@ -99,34 +99,19 @@ impl CredentialStore {
     pub fn save(&self, service: Service, account: &str, secret: &str) -> Result<(), AppError> {
         self.backend
             .set_password(service.keyring_service(), account, secret)
-            .map_err(|err| {
-                AppError::Credential(format!(
-                    "保存{}失败: {err}",
-                    service.label()
-                ))
-            })
+            .map_err(|err| AppError::Credential(format!("保存{}失败: {err}", service.label())))
     }
 
     pub fn read(&self, service: Service, account: &str) -> Result<Option<String>, AppError> {
         self.backend
             .get_password(service.keyring_service(), account)
-            .map_err(|err| {
-                AppError::Credential(format!(
-                    "读取{}失败: {err}",
-                    service.label()
-                ))
-            })
+            .map_err(|err| AppError::Credential(format!("读取{}失败: {err}", service.label())))
     }
 
     pub fn delete(&self, service: Service, account: &str) -> Result<(), AppError> {
         self.backend
             .delete_credential(service.keyring_service(), account)
-            .map_err(|err| {
-                AppError::Credential(format!(
-                    "删除{}失败: {err}",
-                    service.label()
-                ))
-            })
+            .map_err(|err| AppError::Credential(format!("删除{}失败: {err}", service.label())))
     }
 }
 
@@ -177,8 +162,8 @@ pub mod test_support {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, MutexGuard};
 
-    use crate::error::AppError;
     use super::CredentialBackend;
+    use crate::error::AppError;
 
     /// Global test backend. Non-test builds always see `None`; unit tests can install
     /// a memory backend via `use_test_backend`.
@@ -222,7 +207,10 @@ pub mod test_support {
             self.store
                 .lock()
                 .map_err(|e| AppError::Credential(format!("内存存储锁定失败: {e}")))?
-                .insert((service.to_string(), account.to_string()), secret.to_string());
+                .insert(
+                    (service.to_string(), account.to_string()),
+                    secret.to_string(),
+                );
             Ok(())
         }
 
@@ -257,19 +245,11 @@ pub mod test_support {
             Err(AppError::Credential("save exploded".to_string()))
         }
 
-        fn get_password(
-            &self,
-            _service: &str,
-            _account: &str,
-        ) -> Result<Option<String>, AppError> {
+        fn get_password(&self, _service: &str, _account: &str) -> Result<Option<String>, AppError> {
             Err(AppError::Credential("read exploded".to_string()))
         }
 
-        fn delete_credential(
-            &self,
-            _service: &str,
-            _account: &str,
-        ) -> Result<(), AppError> {
+        fn delete_credential(&self, _service: &str, _account: &str) -> Result<(), AppError> {
             Err(AppError::Credential("delete exploded".to_string()))
         }
     }
@@ -280,12 +260,15 @@ pub use test_support::{use_test_backend, MemoryBackend};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::test_support::FailingBackend;
+    use super::*;
 
     #[test]
     fn webdav_password_account_should_include_data_source_id_when_data_source_id_is_given() {
-        assert_eq!(webdav_password_account("abc-123"), "webdav-password-abc-123");
+        assert_eq!(
+            webdav_password_account("abc-123"),
+            "webdav-password-abc-123"
+        );
     }
 
     #[test]
@@ -316,7 +299,9 @@ mod tests {
         let store = CredentialStore::memory();
         let account = "shared-account";
 
-        store.save(Service::Webdav, account, "webdav-secret").unwrap();
+        store
+            .save(Service::Webdav, account, "webdav-secret")
+            .unwrap();
         store
             .save(Service::Onedrive, account, "onedrive-secret")
             .unwrap();
@@ -359,7 +344,10 @@ mod tests {
         assert_eq!(read_webdav_password(&account).unwrap(), None);
 
         save_webdav_password(&account, "secret").unwrap();
-        assert_eq!(read_webdav_password(&account).unwrap(), Some("secret".to_string()));
+        assert_eq!(
+            read_webdav_password(&account).unwrap(),
+            Some("secret".to_string())
+        );
 
         delete_webdav_password(&account).unwrap();
         assert_eq!(read_webdav_password(&account).unwrap(), None);

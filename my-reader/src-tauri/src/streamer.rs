@@ -85,10 +85,9 @@ impl EpubStreamer {
 
         let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
-        let (_, server) = warp::serve(route)
-            .bind_with_graceful_shutdown(addr, async move {
-                let _ = shutdown_rx.await;
-            });
+        let (_, server) = warp::serve(route).bind_with_graceful_shutdown(addr, async move {
+            let _ = shutdown_rx.await;
+        });
 
         tokio::spawn(server);
 

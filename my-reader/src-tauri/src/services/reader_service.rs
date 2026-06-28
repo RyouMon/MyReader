@@ -1,9 +1,9 @@
+use crate::cache;
 use crate::commands::PreparedBookSource;
 use crate::error::AppError;
 use crate::models::AppConfig;
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
-use crate::cache;
 
 pub struct ReaderService;
 

@@ -58,7 +58,10 @@ impl SqliteProgressRepository {
             let mut active: reading_progress::ActiveModel = model.into();
             active.locator_json = Set(locator_json.to_string());
             active.updated_at = Set(updated_at);
-            active.update(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .update(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         } else {
             let id = uuid::Uuid::new_v4().as_simple().to_string();
             let active = reading_progress::ActiveModel {
@@ -68,7 +71,10 @@ impl SqliteProgressRepository {
                 locator_json: Set(locator_json.to_string()),
                 updated_at: Set(updated_at),
             };
-            active.insert(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .insert(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         }
         Ok(())
     }

@@ -130,11 +130,5 @@ async fn get_series_books_should_return_empty_when_series_has_no_matches() {
         }),
     );
 
-    assert_eq!(
-        books
-            .as_array()
-            .expect("books should be an array")
-            .len(),
-        0
-    );
+    assert_eq!(books.as_array().expect("books should be an array").len(), 0);
 }

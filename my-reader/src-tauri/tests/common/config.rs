@@ -4,8 +4,8 @@
 //! `config::save_config` after mutating state. These helpers go through the same code
 //! path so tests stay aligned with production behavior.
 
-use my_reader_lib::{config_path, load_config, save_config};
 use my_reader_lib::models::AppConfig;
+use my_reader_lib::{config_path, load_config, save_config};
 
 use super::app::TestApp;
 

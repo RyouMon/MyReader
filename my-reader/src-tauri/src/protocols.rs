@@ -1,21 +1,23 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use tracing::{debug, error};
 use tauri::http::Response;
 use tauri::Manager;
+use tracing::{debug, error};
 
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::utils::paths::{library_book_file_path, library_root_path};
 use crate::models::{AppConfig, DataSourceConfig, LibraryConfig};
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::storage::from_data_source;
+use crate::utils::paths::{library_book_file_path, library_root_path};
 
 fn build_response(status: u16, headers: Vec<(&str, &str)>, body: Vec<u8>) -> Response<Vec<u8>> {
     let mut builder = Response::builder().status(status);
     for (k, v) in headers {
         builder = builder.header(k, v);
     }
-    builder.body(body).unwrap_or_else(|_| Response::new(Vec::new()))
+    builder
+        .body(body)
+        .unwrap_or_else(|_| Response::new(Vec::new()))
 }
 
 fn not_found_cover() -> Response<Vec<u8>> {
@@ -43,7 +45,10 @@ fn parse_cover_uri(uri: &tauri::http::Uri) -> Option<(String, String)> {
 /// Resolve the remote cover path inside the data source.
 fn remote_cover_path(lib: &LibraryConfig, book_path: &str) -> String {
     if let Some(source_path) = lib.source_path.as_deref() {
-        let trimmed = source_path.trim().trim_start_matches('/').trim_end_matches('/');
+        let trimmed = source_path
+            .trim()
+            .trim_start_matches('/')
+            .trim_end_matches('/');
         if trimmed.is_empty() {
             format!("{}/cover.jpg", book_path)
         } else {
@@ -179,7 +184,12 @@ pub fn bookcover_handler<R: tauri::Runtime>(
         let Some(data_source_id) = lib.data_source_id.clone() else {
             return responder.respond(not_found_cover());
         };
-        let Some(source) = config.data_sources.iter().find(|s| s.id == data_source_id).cloned() else {
+        let Some(source) = config
+            .data_sources
+            .iter()
+            .find(|s| s.id == data_source_id)
+            .cloned()
+        else {
             return responder.respond(not_found_cover());
         };
 

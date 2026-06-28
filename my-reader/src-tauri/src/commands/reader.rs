@@ -1,5 +1,5 @@
-use tracing::{error, info};
 use tauri::{AppHandle, State};
+use tracing::{error, info};
 
 use crate::commands::common;
 use crate::commands::AppState;
@@ -12,10 +12,7 @@ use crate::streamer::StreamerState;
 
 #[tauri::command]
 #[specta::specta]
-pub fn write_epub_readium_manifest(
-    dir_path: String,
-    manifest: JsonAny,
-) -> Result<(), AppError> {
+pub fn write_epub_readium_manifest(dir_path: String, manifest: JsonAny) -> Result<(), AppError> {
     ReaderService::write_epub_readium_manifest(&dir_path, &manifest.0)
 }
 
@@ -40,8 +37,8 @@ pub async fn prepare_book_source<R: tauri::Runtime>(
         .to_string();
     let is_remote = lib.is_remote();
 
-    let result = ReaderService::prepare_book_source(&lib_id, &lib_path, is_remote, book_id, &format)
-        .await;
+    let result =
+        ReaderService::prepare_book_source(&lib_id, &lib_path, is_remote, book_id, &format).await;
 
     match &result {
         Ok(src) => info!(

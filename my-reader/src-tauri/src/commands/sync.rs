@@ -1,5 +1,5 @@
-use tracing::{error, info};
 use tauri::{AppHandle, State};
+use tracing::{error, info};
 
 use crate::commands::common;
 use crate::commands::AppState;
@@ -18,8 +18,7 @@ pub async fn sync_db_for_library<R: tauri::Runtime>(
     let app_data_dir = common::app_data_dir(&app)?;
     let mut config = common::config_snapshot(&state);
 
-    let report =
-        SyncService::sync_db_for_library(&app_data_dir, &mut config, &library_id).await?;
+    let report = SyncService::sync_db_for_library(&app_data_dir, &mut config, &library_id).await?;
 
     common::with_config_mut(&state, |cfg| *cfg = config.clone());
     if let Err(e) = common::persist_config(&app, &config) {

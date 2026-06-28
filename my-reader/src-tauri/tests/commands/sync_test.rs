@@ -54,11 +54,8 @@ async fn sync_db_for_library_should_return_report_when_local_library_has_no_remo
         ..Default::default()
     });
 
-    let report: DbSyncReportView = invoke_ok(
-        &app,
-        "sync_db_for_library",
-        json!({ "libraryId": "lib-a" }),
-    );
+    let report: DbSyncReportView =
+        invoke_ok(&app, "sync_db_for_library", json!({ "libraryId": "lib-a" }));
 
     assert_eq!(report.pushed, 0);
     assert_eq!(report.pulled, 0);

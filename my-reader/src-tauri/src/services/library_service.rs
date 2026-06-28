@@ -107,7 +107,9 @@ impl LibraryService {
     ) -> Result<LibraryInfo, AppError> {
         let info = Self::add_library(app_data_dir, path, name, config).await?;
         if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
-            tracing::error!("Failed to extend asset protocol scope after adding library. error: {e}");
+            tracing::error!(
+                "Failed to extend asset protocol scope after adding library. error: {e}"
+            );
         }
         Ok(info)
     }
@@ -190,9 +192,13 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let info = Self::add_webdav_library(app_data_dir, data_source_id, remote_path, name, config).await?;
+        let info =
+            Self::add_webdav_library(app_data_dir, data_source_id, remote_path, name, config)
+                .await?;
         if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
-            tracing::error!("Failed to extend asset protocol scope after adding WebDAV library. error: {e}");
+            tracing::error!(
+                "Failed to extend asset protocol scope after adding WebDAV library. error: {e}"
+            );
         }
         Ok(info)
     }
@@ -275,9 +281,13 @@ impl LibraryService {
         name: Option<&str>,
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
-        let info = Self::add_onedrive_library(app_data_dir, data_source_id, remote_path, name, config).await?;
+        let info =
+            Self::add_onedrive_library(app_data_dir, data_source_id, remote_path, name, config)
+                .await?;
         if let Err(e) = asset_scope::sync_for_reader_libraries(app, &config.libraries) {
-            tracing::error!("Failed to extend asset protocol scope after adding OneDrive library. error: {e}");
+            tracing::error!(
+                "Failed to extend asset protocol scope after adding OneDrive library. error: {e}"
+            );
         }
         Ok(info)
     }
@@ -294,12 +304,14 @@ impl LibraryService {
             .find(|l| l.id == id)
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
 
-        let data_source_id = lib.data_source_id.as_deref().ok_or_else(|| {
-            AppError::Config("WEBDAV_LIBRARY_MISSING_DATASOURCE".into())
-        })?;
-        let remote_path = lib.source_path.as_deref().ok_or_else(|| {
-            AppError::Config("WEBDAV_LIBRARY_MISSING_SOURCE_PATH".into())
-        })?;
+        let data_source_id = lib
+            .data_source_id
+            .as_deref()
+            .ok_or_else(|| AppError::Config("WEBDAV_LIBRARY_MISSING_DATASOURCE".into()))?;
+        let remote_path = lib
+            .source_path
+            .as_deref()
+            .ok_or_else(|| AppError::Config("WEBDAV_LIBRARY_MISSING_SOURCE_PATH".into()))?;
 
         let source = config
             .data_sources
@@ -352,12 +364,14 @@ impl LibraryService {
             .find(|l| l.id == id)
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
 
-        let data_source_id = lib.data_source_id.as_deref().ok_or_else(|| {
-            AppError::Config("ONEDRIVE_LIBRARY_MISSING_DATASOURCE".into())
-        })?;
-        let remote_path = lib.source_path.as_deref().ok_or_else(|| {
-            AppError::Config("ONEDRIVE_LIBRARY_MISSING_SOURCE_PATH".into())
-        })?;
+        let data_source_id = lib
+            .data_source_id
+            .as_deref()
+            .ok_or_else(|| AppError::Config("ONEDRIVE_LIBRARY_MISSING_DATASOURCE".into()))?;
+        let remote_path = lib
+            .source_path
+            .as_deref()
+            .ok_or_else(|| AppError::Config("ONEDRIVE_LIBRARY_MISSING_SOURCE_PATH".into()))?;
 
         let source = config
             .data_sources
@@ -406,9 +420,7 @@ impl LibraryService {
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", id)))?;
 
         if lib.source_type.as_deref() == Some("webdav") {
-            return Err(AppError::Config(
-                "WEBDAV_LIBRARY_USE_ASYNC_REFRESH".into(),
-            ));
+            return Err(AppError::Config("WEBDAV_LIBRARY_USE_ASYNC_REFRESH".into()));
         }
 
         let lib_path = lib.path.clone();
@@ -526,7 +538,10 @@ mod tests {
 
     async fn create_minimal_calibre_library(root: &std::path::Path) {
         let db_path = root.join("metadata.db");
-        let url = format!("sqlite://{}?mode=rwc", db_path.to_str().expect("valid utf8"));
+        let url = format!(
+            "sqlite://{}?mode=rwc",
+            db_path.to_str().expect("valid utf8")
+        );
         let db = sea_orm::Database::connect(&url)
             .await
             .expect("connect to setup db");

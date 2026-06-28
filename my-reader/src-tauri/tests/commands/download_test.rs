@@ -100,7 +100,10 @@ async fn cancel_book_download_should_return_true_when_no_download_is_in_flight()
         json!({ "libraryId": "lib-a", "bookId": 1, "format": "EPUB" }),
     );
 
-    assert!(cancelled, "pre-start cancel must register a pending cancellation");
+    assert!(
+        cancelled,
+        "pre-start cancel must register a pending cancellation"
+    );
 }
 
 #[tokio::test]

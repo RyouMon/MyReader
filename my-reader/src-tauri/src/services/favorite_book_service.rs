@@ -249,9 +249,10 @@ mod tests {
         FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, None, 7)
             .await
             .expect("add should succeed");
-        let ids = FavoriteBookService::list_favorite_book_ids_for_library(temp.path(), &config, None)
-            .await
-            .expect("list should succeed");
+        let ids =
+            FavoriteBookService::list_favorite_book_ids_for_library(temp.path(), &config, None)
+                .await
+                .expect("list should succeed");
         FavoriteBookService::remove_favorite_book_for_library(temp.path(), &config, None, 7)
             .await
             .expect("remove should succeed");
@@ -264,9 +265,10 @@ mod tests {
         let temp = tempdir().unwrap();
         let config = AppConfig::default();
 
-        let err = FavoriteBookService::list_favorite_book_ids_for_library(temp.path(), &config, None)
-            .await
-            .expect_err("should fail without active library");
+        let err =
+            FavoriteBookService::list_favorite_book_ids_for_library(temp.path(), &config, None)
+                .await
+                .expect_err("should fail without active library");
         assert!(format!("{err}").contains("NO_ACTIVE_LIBRARY"));
 
         let err = FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, None, 7)
@@ -274,14 +276,16 @@ mod tests {
             .expect_err("should fail without active library");
         assert!(format!("{err}").contains("NO_ACTIVE_LIBRARY"));
 
-        let err = FavoriteBookService::remove_favorite_book_for_library(temp.path(), &config, None, 7)
-            .await
-            .expect_err("should fail without active library");
+        let err =
+            FavoriteBookService::remove_favorite_book_for_library(temp.path(), &config, None, 7)
+                .await
+                .expect_err("should fail without active library");
         assert!(format!("{err}").contains("NO_ACTIVE_LIBRARY"));
     }
 
     #[tokio::test]
-    async fn favorite_book_operations_for_library_should_return_not_found_when_library_id_unknown() {
+    async fn favorite_book_operations_for_library_should_return_not_found_when_library_id_unknown()
+    {
         let temp = tempdir().unwrap();
         let lib = library_config("lib-fav-5");
         let config = AppConfig {

@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use sea_orm::{
-    ColumnTrait, Database, DatabaseConnection, EntityTrait, ExprTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect,
+    ColumnTrait, Database, DatabaseConnection, EntityTrait, ExprTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
 };
 use tracing::{debug, info};
 
 use crate::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
-    books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers,
-    languages, publishers, ratings, series, tags,
+    books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
+    publishers, ratings, series, tags,
 };
 use crate::error::AppError;
 use crate::models::BookEntry;
@@ -133,10 +133,8 @@ async fn assemble_book_entries(
             .await
             .map_err(|e| AppError::Database(e.to_string()))?
     };
-    let author_map: HashMap<i64, String> = author_models
-        .into_iter()
-        .map(|a| (a.id, a.name))
-        .collect();
+    let author_map: HashMap<i64, String> =
+        author_models.into_iter().map(|a| (a.id, a.name)).collect();
 
     let mut book_authors_map: HashMap<i64, Vec<String>> = HashMap::new();
     for link in &author_links {
@@ -194,10 +192,8 @@ async fn assemble_book_entries(
             .await
             .map_err(|e| AppError::Database(e.to_string()))?
     };
-    let series_map: HashMap<i64, String> = series_models
-        .into_iter()
-        .map(|s| (s.id, s.name))
-        .collect();
+    let series_map: HashMap<i64, String> =
+        series_models.into_iter().map(|s| (s.id, s.name)).collect();
 
     let mut book_series_map: HashMap<i64, String> = HashMap::new();
     for link in &series_links {
@@ -228,10 +224,8 @@ async fn assemble_book_entries(
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-    let mut book_comment_map: HashMap<i64, String> = comment_rows
-        .into_iter()
-        .map(|c| (c.book, c.text))
-        .collect();
+    let mut book_comment_map: HashMap<i64, String> =
+        comment_rows.into_iter().map(|c| (c.book, c.text)).collect();
 
     // Publishers: books_publishers_link JOIN publishers
     let pub_links = books_publishers_link::Entity::find()
@@ -430,7 +424,8 @@ impl BookRepository for CalibreBookRepository {
             // 5. Combine: books where sort/title/author_sort contains keyword OR book is in author/tag match sets
             let all_books = books::Entity::find()
                 .filter(
-                    books::Column::Sort.contains(keyword)
+                    books::Column::Sort
+                        .contains(keyword)
                         .or(books::Column::Title.contains(keyword))
                         .or(books::Column::AuthorSort.contains(keyword)),
                 )
@@ -492,10 +487,7 @@ impl BookRepository for CalibreBookRepository {
             _ => ("sort COLLATE NOCASE", sea_orm::Order::Asc),
         };
         let book_models = books::Entity::find()
-            .order_by(
-                sea_orm::sea_query::Expr::cust(order_expr),
-                order_dir,
-            )
+            .order_by(sea_orm::sea_query::Expr::cust(order_expr), order_dir)
             .offset(offset as u64)
             .limit(limit as u64)
             .all(&self.db)
@@ -555,7 +547,10 @@ impl BookRepository for CalibreBookRepository {
             query = query.filter(books_series_link::Column::Book.ne(eid));
         }
 
-        let links = query.all(&self.db).await.map_err(|e| AppError::Database(e.to_string()))?;
+        let links = query
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
         let book_ids: Vec<i64> = links.iter().map(|l| l.book).collect();
 
         if book_ids.is_empty() {

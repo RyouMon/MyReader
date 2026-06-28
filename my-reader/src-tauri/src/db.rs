@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use sea_orm::{Database, DatabaseConnection};
 use tracing::info;
 
-use crate::error::AppError;
 use crate::constants::path::{MYREADER_LIBRARY_DB_FILE_NAME, MYREADER_LIBRARY_DIR_NAME};
+use crate::error::AppError;
 
 /// Open a per-library SQLite database, sync schema from Entity definitions,
 /// and return the DatabaseConnection for ORM query use.

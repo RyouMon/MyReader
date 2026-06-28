@@ -45,14 +45,27 @@ pub fn build_operator(kind: &StorageBackend) -> Result<opendal::Operator, AppErr
             credential_account,
             inline_password,
             root_path,
-        } => webdav::build_operator(endpoint, username, credential_account, inline_password, root_path),
+        } => webdav::build_operator(
+            endpoint,
+            username,
+            credential_account,
+            inline_password,
+            root_path,
+        ),
         StorageBackend::Onedrive {
             inline_access_token,
             root_path,
             ..
         } => {
-            let token = inline_access_token.as_deref().filter(|t| !t.trim().is_empty())
-                .ok_or_else(|| AppError::Auth("OneDrive access token not available; call onedrive_start_auth first".into()))?;
+            let token = inline_access_token
+                .as_deref()
+                .filter(|t| !t.trim().is_empty())
+                .ok_or_else(|| {
+                    AppError::Auth(
+                        "OneDrive access token not available; call onedrive_start_auth first"
+                            .into(),
+                    )
+                })?;
             onedrive::build_operator(token, root_path.as_deref())
         }
     }
@@ -63,14 +76,26 @@ pub fn build_operator(kind: &StorageBackend) -> Result<opendal::Operator, AppErr
 pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Operator, AppError> {
     let mut backend = build_backend(source)?;
     match &mut backend {
-        StorageBackend::Webdav { inline_password, credential_account, .. } => {
+        StorageBackend::Webdav {
+            inline_password,
+            credential_account,
+            ..
+        } => {
             if let Some(account) = credential_account {
                 *inline_password = credentials::read_webdav_password(account)?;
             }
         }
-        StorageBackend::Onedrive { inline_access_token, data_source_id, client_id, tenant_id, .. } => {
+        StorageBackend::Onedrive {
+            inline_access_token,
+            data_source_id,
+            client_id,
+            tenant_id,
+            ..
+        } => {
             let manager = OnedriveTokenManager::new();
-            let token = manager.get_access_token(data_source_id, Some(client_id), Some(tenant_id)).await?;
+            let token = manager
+                .get_access_token(data_source_id, Some(client_id), Some(tenant_id))
+                .await?;
             *inline_access_token = Some(token);
         }
         _ => {}

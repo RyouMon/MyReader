@@ -87,9 +87,8 @@ pub fn invoke_raw(app: &TestApp, cmd: &str, args: Value) -> Result<Value, Comman
         Err(serialized) => {
             // `get_ipc_response` returns the serialized error as a `Value` already.
             let value: Value = serialized;
-            let err: CommandError = serde_json::from_value(value.clone()).unwrap_or_else(|e| {
-                panic!("could not deserialize CommandError from {value}: {e}")
-            });
+            let err: CommandError = serde_json::from_value(value.clone())
+                .unwrap_or_else(|e| panic!("could not deserialize CommandError from {value}: {e}"));
             Err(err)
         }
     }

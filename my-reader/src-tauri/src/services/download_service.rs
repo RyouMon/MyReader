@@ -59,7 +59,10 @@ fn emit_download_progress<R: Runtime>(
 }
 
 fn normalize_remote_path(source_path: Option<&str>, relative: &str) -> String {
-    let relative = relative.replace('\\', "/").trim_start_matches('/').to_string();
+    let relative = relative
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .to_string();
     match source_path {
         Some(sp) => {
             let sp = sp.trim().trim_start_matches('/').trim_end_matches('/');
@@ -142,7 +145,8 @@ impl DownloadService {
             .await;
 
             if let Err(e) = &result {
-                if !matches!(e, AppError::Config(msg) if msg.starts_with("BOOK_DOWNLOAD_CANCELLED")) {
+                if !matches!(e, AppError::Config(msg) if msg.starts_with("BOOK_DOWNLOAD_CANCELLED"))
+                {
                     DownloadService::emit_download_error(
                         &app_clone,
                         &library_id_clone,
@@ -161,11 +165,7 @@ impl DownloadService {
     }
 
     /// Check whether a download is currently active.
-    pub fn is_active(&self,
-        library_id: &str,
-        book_id: i64,
-        format: &str,
-    ) -> bool {
+    pub fn is_active(&self, library_id: &str, book_id: i64, format: &str) -> bool {
         let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
         active.contains_key(&Self::make_key(library_id, book_id, format))
     }
@@ -183,7 +183,10 @@ impl DownloadService {
         format: &str,
     ) -> Option<watch::Receiver<bool>> {
         let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-        let mut pending = self.pending_cancellations.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pending = self
+            .pending_cancellations
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let key = Self::make_key(library_id, book_id, format);
 
         if active.contains_key(&key) {
@@ -212,7 +215,10 @@ impl DownloadService {
             }
         }
 
-        let mut pending = self.pending_cancellations.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pending = self
+            .pending_cancellations
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let already_pending = pending.contains(&key);
         if already_pending {
             true
@@ -358,8 +364,7 @@ impl DownloadService {
         }
 
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        SqliteFileStateRepository::upsert(&db, &relative_path, "remote_only", None, None)
-            .await?;
+        SqliteFileStateRepository::upsert(&db, &relative_path, "remote_only", None, None).await?;
         Ok(())
     }
 
@@ -502,14 +507,8 @@ impl DownloadService {
         };
 
         if is_cancelled(&cancel_rx) {
-            Self::handle_cancel(
-                local_path,
-                sidecar_root,
-                book_relative_path,
-                0,
-                total_bytes,
-            )
-            .await?;
+            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
+                .await?;
             emit_download_progress(
                 app,
                 library_id,
@@ -534,20 +533,13 @@ impl DownloadService {
             None,
         );
 
-        let reader = op
-            .reader(&remote_path)
-            .await
-            .map_err(|e| AppError::Config(format!("REMOTE_BOOK_FILE_OPEN_FAILED: {e} ({remote_path})")))?;
+        let reader = op.reader(&remote_path).await.map_err(|e| {
+            AppError::Config(format!("REMOTE_BOOK_FILE_OPEN_FAILED: {e} ({remote_path})"))
+        })?;
 
         if is_cancelled(&cancel_rx) {
-            Self::handle_cancel(
-                local_path,
-                sidecar_root,
-                book_relative_path,
-                0,
-                total_bytes,
-            )
-            .await?;
+            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
+                .await?;
             emit_download_progress(
                 app,
                 library_id,
@@ -567,14 +559,8 @@ impl DownloadService {
             .map_err(|e| AppError::Config(format!("REMOTE_BOOK_FILE_READER_FAILED: {e}")))?;
 
         if is_cancelled(&cancel_rx) {
-            Self::handle_cancel(
-                local_path,
-                sidecar_root,
-                book_relative_path,
-                0,
-                total_bytes,
-            )
-            .await?;
+            Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
+                .await?;
             emit_download_progress(
                 app,
                 library_id,
@@ -708,14 +694,8 @@ impl DownloadService {
             }
         }
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        SqliteFileStateRepository::upsert(
-            &db,
-            book_relative_path,
-            "remote_only",
-            None,
-            None,
-        )
-        .await?;
+        SqliteFileStateRepository::upsert(&db, book_relative_path, "remote_only", None, None)
+            .await?;
         Ok(())
     }
 }
@@ -729,7 +709,9 @@ mod tests {
     use super::*;
     use crate::models::{DataSourceConfig, DataSourceDetail};
     use crate::repositories::file_state_repo::SqliteFileStateRepository;
-    use crate::utils::paths::{compute_book_relative_path, library_container_dir, library_sidecar_path};
+    use crate::utils::paths::{
+        compute_book_relative_path, library_container_dir, library_sidecar_path,
+    };
     use tempfile::tempdir;
 
     #[test]
@@ -814,7 +796,9 @@ mod tests {
     fn start_should_return_pre_cancelled_receiver_after_early_cancel() {
         let service = DownloadService::new();
         assert!(service.cancel("lib", 1, "EPUB"));
-        let rx = service.start("lib", 1, "EPUB").expect("start should succeed");
+        let rx = service
+            .start("lib", 1, "EPUB")
+            .expect("start should succeed");
         assert!(*rx.borrow());
     }
 
@@ -888,7 +872,11 @@ mod tests {
         op.write("test.txt", b"hello".to_vec())
             .await
             .expect("write should succeed");
-        let content: Vec<u8> = op.read("test.txt").await.expect("read should succeed").to_vec();
+        let content: Vec<u8> = op
+            .read("test.txt")
+            .await
+            .expect("read should succeed")
+            .to_vec();
         assert_eq!(content, b"hello");
     }
 
@@ -961,20 +949,16 @@ mod tests {
         let file_name = "It";
         let format = "EPUB";
 
-        db.execute_unprepared(
-            &format!(
-                "INSERT INTO books (id, path) VALUES ({book_id}, '{book_path}');"
-            ),
-        )
+        db.execute_unprepared(&format!(
+            "INSERT INTO books (id, path) VALUES ({book_id}, '{book_path}');"
+        ))
         .await
         .expect("insert book");
 
-        db.execute_unprepared(
-            &format!(
-                "INSERT INTO data (id, book, format, uncompressed_size, name) \
+        db.execute_unprepared(&format!(
+            "INSERT INTO data (id, book, format, uncompressed_size, name) \
                  VALUES (1, {book_id}, '{format}', 12, '{file_name}');"
-            ),
-        )
+        ))
         .await
         .expect("insert data");
 
@@ -1058,8 +1042,7 @@ mod tests {
     async fn check_file_state_should_return_remote_only_when_file_missing() {
         let lib_root = tempdir().unwrap();
         let app_data = tempdir().unwrap();
-        let (book_id, format, file_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
+        let (book_id, format, file_path) = create_minimal_calibre_library(lib_root.path()).await;
         tokio::fs::remove_file(&file_path).await.unwrap();
 
         let config = AppConfig {
@@ -1084,8 +1067,7 @@ mod tests {
     async fn check_file_state_should_return_local_size_from_file_state_row() {
         let lib_root = tempdir().unwrap();
         let app_data = tempdir().unwrap();
-        let (book_id, format, file_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
+        let (book_id, format, file_path) = create_minimal_calibre_library(lib_root.path()).await;
         let lib = local_test_library("lib-state-size", lib_root.path());
 
         let relative_path =
@@ -1094,7 +1076,12 @@ mod tests {
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
             .await
             .expect("open sidecar db");
-        SqliteFileStateRepository::upsert(&db, &relative_path, "present", Some(12345), Some(1111111111),
+        SqliteFileStateRepository::upsert(
+            &db,
+            &relative_path,
+            "present",
+            Some(12345),
+            Some(1111111111),
         )
         .await
         .expect("upsert state");
@@ -1121,8 +1108,7 @@ mod tests {
     async fn delete_local_file_should_remove_file_and_set_remote_only() {
         let lib_root = tempdir().unwrap();
         let app_data = tempdir().unwrap();
-        let (book_id, format, file_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
+        let (book_id, format, file_path) = create_minimal_calibre_library(lib_root.path()).await;
         let lib = local_test_library("lib-delete", lib_root.path());
 
         let relative_path =
@@ -1131,7 +1117,12 @@ mod tests {
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
             .await
             .expect("open sidecar db");
-        SqliteFileStateRepository::upsert(&db, &relative_path, "present", Some(12), Some(1111111111),
+        SqliteFileStateRepository::upsert(
+            &db,
+            &relative_path,
+            "present",
+            Some(12),
+            Some(1111111111),
         )
         .await
         .expect("upsert state");
@@ -1306,8 +1297,7 @@ mod tests {
         tokio::fs::create_dir_all(&container_root).await.unwrap();
 
         // Create a matching metadata.db in the container.
-        let (book_id, format, local_file) =
-            create_minimal_calibre_library(&container_root).await;
+        let (book_id, format, local_file) = create_minimal_calibre_library(&container_root).await;
 
         // Remove the file created by the helper so the download is required.
         tokio::fs::remove_file(&local_file).await.unwrap();
@@ -1347,13 +1337,10 @@ mod tests {
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
             .await
             .expect("open sidecar db");
-        let row = SqliteFileStateRepository::get_by_path(
-            &db,
-            "It/It.epub",
-        )
-        .await
-        .expect("query should succeed")
-        .expect("row should exist");
+        let row = SqliteFileStateRepository::get_by_path(&db, "It/It.epub")
+            .await
+            .expect("query should succeed")
+            .expect("row should exist");
         assert_eq!(row.local_state, "present");
         assert_eq!(row.local_size, Some(19));
     }

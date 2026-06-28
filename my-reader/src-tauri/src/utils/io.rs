@@ -7,8 +7,14 @@ use crate::models::DataSourceConfig;
 use crate::storage::from_data_source;
 
 /// Download a single remote file via OpenDAL operator.
-async fn download_file(op: &opendal::Operator, remote_path: &str, dest: &Path) -> Result<(), AppError> {
-    let bytes: Vec<u8> = op.read(remote_path).await
+async fn download_file(
+    op: &opendal::Operator,
+    remote_path: &str,
+    dest: &Path,
+) -> Result<(), AppError> {
+    let bytes: Vec<u8> = op
+        .read(remote_path)
+        .await
         .map_err(|e| AppError::Config(format!("REMOTE_READ_FAILED: {e} ({remote_path})")))?
         .to_vec();
 
@@ -41,7 +47,10 @@ pub async fn download_metadata_db(
         format!("{trimmed_remote}/metadata.db")
     };
 
-    info!("Downloading metadata.db via OpenDAL. source_kind: {:?}, remote_path: \"{metadata_rel}\"", source.detail);
+    info!(
+        "Downloading metadata.db via OpenDAL. source_kind: {:?}, remote_path: \"{metadata_rel}\"",
+        source.detail
+    );
 
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent)?;

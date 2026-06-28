@@ -11,15 +11,16 @@ use oauth2::reqwest::async_http_client;
 use oauth2::revocation::StandardRevocableToken;
 use oauth2::{
     AuthUrl, AuthorizationCode, Client, ClientId, CsrfToken, ExtraTokenFields, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, StandardTokenResponse, TokenResponse, TokenUrl,
+    PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, StandardTokenResponse, TokenResponse,
+    TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use tracing::{info, warn};
 
-use crate::error::AppError;
 use crate::clients::graph::{GraphClient, ReqwestGraphClient};
+use crate::error::AppError;
 
 const DEFAULT_CLIENT_ID: &str = "9750fea8-e428-4d4d-8956-7738561e14ac";
 const DEFAULT_TENANT_ID: &str = "consumers";
@@ -77,7 +78,9 @@ impl OnedriveTokenManager {
         client_id: Option<&str>,
         tenant_id: Option<&str>,
     ) -> Result<OnedriveAuthResult, AppError> {
-        let tid = tenant_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_TENANT_ID);
+        let tid = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_TENANT_ID);
         let auth_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/authorize");
         let token_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/token");
 
@@ -106,8 +109,12 @@ impl OnedriveTokenManager {
         graph: &dyn GraphClient,
         open_browser: impl FnOnce(&str, &str) -> Result<(), AppError>,
     ) -> Result<OnedriveAuthResult, AppError> {
-        let cid = client_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_CLIENT_ID);
-        let _tid = tenant_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_TENANT_ID);
+        let cid = client_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_CLIENT_ID);
+        let _tid = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_TENANT_ID);
 
         let listener = TcpListener::bind("127.0.0.1:0")
             .map_err(|e| AppError::Auth(format!("Failed to bind loopback listener: {e}")))?;
@@ -208,7 +215,8 @@ impl OnedriveTokenManager {
         }
 
         // Need to refresh
-        self.refresh_access_token(data_source_id, client_id, tenant_id).await
+        self.refresh_access_token(data_source_id, client_id, tenant_id)
+            .await
     }
 
     /// Refresh the access token using the stored refresh token.
@@ -218,7 +226,9 @@ impl OnedriveTokenManager {
         client_id: Option<&str>,
         tenant_id: Option<&str>,
     ) -> Result<String, AppError> {
-        let tid = tenant_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_TENANT_ID);
+        let tid = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_TENANT_ID);
         let auth_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/authorize");
         let token_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/token");
 
@@ -240,19 +250,19 @@ impl OnedriveTokenManager {
         auth_url: &str,
         token_url: &str,
     ) -> Result<String, AppError> {
-        let cid = client_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_CLIENT_ID);
-        let _tenant_id = tenant_id.filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_TENANT_ID);
+        let cid = client_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_CLIENT_ID);
+        let _tenant_id = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_TENANT_ID);
 
         let stored = crate::auth::credentials::read_onedrive_refresh_token(data_source_id)?;
-        let refresh_token = stored.ok_or_else(|| AppError::Auth("No refresh token found".to_string()))?;
+        let refresh_token =
+            stored.ok_or_else(|| AppError::Auth("No refresh token found".to_string()))?;
 
-        let token_response = request_token_refresh(
-            auth_url,
-            token_url,
-            &cid,
-            &refresh_token,
-        )
-        .await?;
+        let token_response =
+            request_token_refresh(auth_url, token_url, &cid, &refresh_token).await?;
 
         let access_token = token_response.access_token().secret().to_string();
 
@@ -262,17 +272,22 @@ impl OnedriveTokenManager {
         }
 
         // Cache the access token (assume 1 hour TTL if not parseable)
-        let expires_in = token_response.expires_in()
+        let expires_in = token_response
+            .expires_in()
             .map(|d| d.as_secs() as usize)
             .unwrap_or(3600);
-        let expires_at = std::time::Instant::now() + std::time::Duration::from_secs(expires_in as u64);
+        let expires_at =
+            std::time::Instant::now() + std::time::Duration::from_secs(expires_in as u64);
 
         {
             let mut cache = self.cache.write().await;
-            cache.insert(data_source_id.to_string(), CachedToken {
-                access_token: access_token.clone(),
-                expires_at,
-            });
+            cache.insert(
+                data_source_id.to_string(),
+                CachedToken {
+                    access_token: access_token.clone(),
+                    expires_at,
+                },
+            );
         }
 
         Ok(access_token)
@@ -391,7 +406,10 @@ async fn fetch_user_info(
                         display_name = claims.name.unwrap_or_default();
                     }
                     if email.is_empty() {
-                        email = claims.email.or(claims.preferred_username).unwrap_or_default();
+                        email = claims
+                            .email
+                            .or(claims.preferred_username)
+                            .unwrap_or_default();
                     }
                 }
                 Err(e) => warn!("OneDrive id_token parse failed: {e}"),
@@ -443,15 +461,19 @@ fn parse_id_token_claims(id_token: &str) -> Result<IdTokenClaims, AppError> {
 
 /// Listen on the loopback for the OAuth2 redirect callback, extract the authorization code.
 fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError> {
-    let (mut stream, _) = listener.accept()
+    let (mut stream, _) = listener
+        .accept()
         .map_err(|e| AppError::Auth(format!("Failed to accept callback connection: {e}")))?;
 
     let mut reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
-    reader.read_line(&mut request_line)
+    reader
+        .read_line(&mut request_line)
         .map_err(|e| AppError::Auth(format!("Failed to read callback: {e}")))?;
 
-    let url = request_line.split_whitespace().nth(1)
+    let url = request_line
+        .split_whitespace()
+        .nth(1)
         .ok_or_else(|| AppError::Auth("Invalid callback request".to_string()))?;
 
     let parsed = url::Url::parse(&format!("http://localhost{url}"))
@@ -459,15 +481,19 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError
 
     let params: HashMap<_, _> = parsed.query_pairs().collect();
 
-    let code = params.get("code")
+    let code = params
+        .get("code")
         .ok_or_else(|| {
-            let err = params.get("error").map(|s| s.to_string())
+            let err = params
+                .get("error")
+                .map(|s| s.to_string())
                 .unwrap_or_else(|| "missing code".to_string());
             AppError::Auth(format!("OAuth callback error: {err}"))
         })?
         .to_string();
 
-    let state = params.get("state")
+    let state = params
+        .get("state")
         .map(|s| s.to_string())
         .unwrap_or_default();
 
@@ -475,7 +501,8 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), AppError
     let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n\
         <html><body><h2>Authorization successful!</h2>\
         <p>You can close this tab and return to MyReader.</p></body></html>";
-    stream.write_all(response.as_bytes())
+    stream
+        .write_all(response.as_bytes())
         .map_err(|e| AppError::Auth(format!("Failed to send callback response: {e}")))?;
     stream.flush().ok();
 
@@ -506,8 +533,8 @@ impl OnedriveTokenManager {
 
 #[cfg(test)]
 mod tests {
-    use async_trait::async_trait;
     use super::*;
+    use async_trait::async_trait;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
     use std::io::Read;
@@ -516,7 +543,8 @@ mod tests {
     use warp::Filter;
 
     use crate::auth::credentials::{
-        onedrive_refresh_token_account, save_onedrive_refresh_token, use_test_backend, MemoryBackend,
+        onedrive_refresh_token_account, save_onedrive_refresh_token, use_test_backend,
+        MemoryBackend,
     };
 
     fn encode_id_token_payload(claims: serde_json::Value) -> String {
@@ -535,7 +563,10 @@ mod tests {
         let claims = parse_id_token_claims(&token).unwrap();
         assert_eq!(claims.name, Some("Wen Liang".to_string()));
         assert_eq!(claims.email, Some("wenslife@outlook.com".to_string()));
-        assert_eq!(claims.preferred_username, Some("wenslife@outlook.com".to_string()));
+        assert_eq!(
+            claims.preferred_username,
+            Some("wenslife@outlook.com".to_string())
+        );
     }
 
     #[test]
@@ -547,7 +578,10 @@ mod tests {
         let claims = parse_id_token_claims(&token).unwrap();
         assert_eq!(claims.name, None);
         assert_eq!(claims.email, None);
-        assert_eq!(claims.preferred_username, Some("wenslife@outlook.com".to_string()));
+        assert_eq!(
+            claims.preferred_username,
+            Some("wenslife@outlook.com".to_string())
+        );
     }
 
     #[test]
@@ -561,9 +595,8 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
 
-        let request = format!(
-            "GET /?code=abc123&state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n"
-        );
+        let request =
+            format!("GET /?code=abc123&state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n");
 
         thread::spawn(move || {
             let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -638,7 +671,9 @@ mod tests {
             "email": "idtoken@example.com",
         }));
 
-        let info = fetch_user_info(&graph, "token", Some(&id_token)).await.unwrap();
+        let info = fetch_user_info(&graph, "token", Some(&id_token))
+            .await
+            .unwrap();
         assert_eq!(info.display_name, "Graph Name");
         assert_eq!(info.email, Some("graph@example.com".to_string()));
     }
@@ -654,7 +689,9 @@ mod tests {
             "email": "fallback@example.com",
         }));
 
-        let info = fetch_user_info(&graph, "token", Some(&id_token)).await.unwrap();
+        let info = fetch_user_info(&graph, "token", Some(&id_token))
+            .await
+            .unwrap();
         assert_eq!(info.display_name, "Graph Name");
         assert_eq!(info.email, Some("fallback@example.com".to_string()));
     }
@@ -669,7 +706,9 @@ mod tests {
             "email": "fallback@example.com",
         }));
 
-        let info = fetch_user_info(&graph, "token", Some(&id_token)).await.unwrap();
+        let info = fetch_user_info(&graph, "token", Some(&id_token))
+            .await
+            .unwrap();
         assert_eq!(info.display_name, "Fallback Name");
         assert_eq!(info.email, Some("fallback@example.com".to_string()));
     }
@@ -686,7 +725,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn fetch_user_info_should_use_preferred_username_as_email_when_id_token_has_only_preferred_username() {
+    async fn fetch_user_info_should_use_preferred_username_as_email_when_id_token_has_only_preferred_username(
+    ) {
         let graph = MockGraphClient {
             result: Ok(serde_json::json!({})),
         };
@@ -694,7 +734,9 @@ mod tests {
             "preferred_username": "preferred@example.com",
         }));
 
-        let info = fetch_user_info(&graph, "token", Some(&id_token)).await.unwrap();
+        let info = fetch_user_info(&graph, "token", Some(&id_token))
+            .await
+            .unwrap();
         assert_eq!(info.display_name, "Unknown");
         assert_eq!(info.email, Some("preferred@example.com".to_string()));
     }
@@ -703,13 +745,14 @@ mod tests {
     async fn get_access_token_should_return_cached_token_when_not_expired() {
         let manager = OnedriveTokenManager::new();
         manager
-            .insert_test_token("ds-1", "cached-token", std::time::Instant::now() + std::time::Duration::from_secs(3600))
+            .insert_test_token(
+                "ds-1",
+                "cached-token",
+                std::time::Instant::now() + std::time::Duration::from_secs(3600),
+            )
             .await;
 
-        let token = manager
-            .get_access_token("ds-1", None, None)
-            .await
-            .unwrap();
+        let token = manager.get_access_token("ds-1", None, None).await.unwrap();
         assert_eq!(token, "cached-token");
     }
 
@@ -717,7 +760,11 @@ mod tests {
     async fn get_access_token_should_refresh_when_cached_token_is_expired() {
         let manager = OnedriveTokenManager::new();
         manager
-            .insert_test_token("ds-1", "expired-token", std::time::Instant::now() - std::time::Duration::from_secs(1))
+            .insert_test_token(
+                "ds-1",
+                "expired-token",
+                std::time::Instant::now() - std::time::Duration::from_secs(1),
+            )
             .await;
 
         let err = manager
@@ -728,7 +775,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_access_token_should_use_default_client_id_and_fail_without_token_when_client_id_is_empty() {
+    async fn refresh_access_token_should_use_default_client_id_and_fail_without_token_when_client_id_is_empty(
+    ) {
         let manager = OnedriveTokenManager::new();
         let err = manager
             .refresh_access_token("ds-no-token", Some(""), None)
@@ -771,7 +819,10 @@ mod tests {
         thread::spawn(move || {
             let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
             stream
-                .write_all(format!("GET /?state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n").as_bytes())
+                .write_all(
+                    format!("GET /?state=xyz HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n")
+                        .as_bytes(),
+                )
                 .unwrap();
             stream.flush().unwrap();
         });
@@ -813,23 +864,24 @@ mod tests {
         })
         .to_string();
 
-        let route = warp::path("token")
-            .and(warp::method())
-            .map(move |_method: warp::http::Method| {
-                if success {
-                    warp::http::Response::builder()
-                        .status(200)
-                        .header("content-type", "application/json")
-                        .body(success_body.clone())
-                        .unwrap()
-                } else {
-                    warp::http::Response::builder()
-                        .status(400)
-                        .header("content-type", "application/json")
-                        .body(error_body.clone())
-                        .unwrap()
-                }
-            });
+        let route =
+            warp::path("token")
+                .and(warp::method())
+                .map(move |_method: warp::http::Method| {
+                    if success {
+                        warp::http::Response::builder()
+                            .status(200)
+                            .header("content-type", "application/json")
+                            .body(success_body.clone())
+                            .unwrap()
+                    } else {
+                        warp::http::Response::builder()
+                            .status(400)
+                            .header("content-type", "application/json")
+                            .body(error_body.clone())
+                            .unwrap()
+                    }
+                });
 
         let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
         tokio::spawn(server);
@@ -851,7 +903,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(response.access_token().secret(), "access");
-        assert_eq!(response.refresh_token().map(|t| t.secret().as_str()), Some("refresh"));
+        assert_eq!(
+            response.refresh_token().map(|t| t.secret().as_str()),
+            Some("refresh")
+        );
     }
 
     #[tokio::test]
@@ -890,7 +945,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(response.access_token().secret(), "access");
-        assert_eq!(response.refresh_token().map(|t| t.secret().as_str()), Some("refresh"));
+        assert_eq!(
+            response.refresh_token().map(|t| t.secret().as_str()),
+            Some("refresh")
+        );
     }
 
     #[tokio::test]
@@ -914,15 +972,16 @@ mod tests {
 
     /// Start a local token endpoint with a custom status code and response body.
     fn start_token_server_with_body(status: u16, body: String) -> std::net::SocketAddr {
-        let route = warp::path("token")
-            .and(warp::method())
-            .map(move |_method: warp::http::Method| {
-                warp::http::Response::builder()
-                    .status(status)
-                    .header("content-type", "application/json")
-                    .body(body.clone())
-                    .unwrap()
-            });
+        let route =
+            warp::path("token")
+                .and(warp::method())
+                .map(move |_method: warp::http::Method| {
+                    warp::http::Response::builder()
+                        .status(status)
+                        .header("content-type", "application/json")
+                        .body(body.clone())
+                        .unwrap()
+                });
 
         let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
         tokio::spawn(server);
@@ -968,7 +1027,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refresh_access_token_internal_should_exchange_and_cache_access_token_when_refresh_token_is_stored() {
+    async fn refresh_access_token_internal_should_exchange_and_cache_access_token_when_refresh_token_is_stored(
+    ) {
         let _guard = use_test_backend(MemoryBackend::default());
         let manager = OnedriveTokenManager::new();
         let data_source_id = "ds-refresh-ok";
@@ -1002,7 +1062,9 @@ mod tests {
             result: Ok(serde_json::json!({})),
         };
 
-        let info = fetch_user_info(&graph, "token", Some("totally.invalid.token")).await.unwrap();
+        let info = fetch_user_info(&graph, "token", Some("totally.invalid.token"))
+            .await
+            .unwrap();
         assert_eq!(info.display_name, "Unknown");
         assert_eq!(info.email, None);
     }
@@ -1020,9 +1082,7 @@ mod tests {
 
         let query = callback_query.to_string();
         thread::spawn(move || {
-            let request = format!(
-                "GET /?{query} HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n"
-            );
+            let request = format!("GET /?{query} HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n");
             let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
             stream.write_all(request.as_bytes()).unwrap();
             stream.flush().unwrap();
@@ -1032,7 +1092,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn start_auth_flow_internal_should_complete_flow_when_callback_and_token_server_succeed() {
+    async fn start_auth_flow_internal_should_complete_flow_when_callback_and_token_server_succeed()
+    {
         let manager = OnedriveTokenManager::new();
         let graph = MockGraphClient {
             result: Ok(serde_json::json!({
@@ -1050,7 +1111,9 @@ mod tests {
                 &format!("http://{addr}/auth"),
                 &format!("http://{addr}/token"),
                 &graph,
-                |_, redirect_uri| open_browser_and_send_callback(redirect_uri, "code=flow-code&state=xyz"),
+                |_, redirect_uri| {
+                    open_browser_and_send_callback(redirect_uri, "code=flow-code&state=xyz")
+                },
             )
             .await
             .unwrap();
@@ -1109,7 +1172,9 @@ mod tests {
                 &format!("http://{addr}/auth"),
                 &format!("http://{addr}/token"),
                 &graph,
-                |_, redirect_uri| open_browser_and_send_callback(redirect_uri, "code=no-refresh&state=xyz"),
+                |_, redirect_uri| {
+                    open_browser_and_send_callback(redirect_uri, "code=no-refresh&state=xyz")
+                },
             )
             .await
             .unwrap_err();

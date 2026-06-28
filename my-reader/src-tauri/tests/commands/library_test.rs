@@ -309,11 +309,7 @@ async fn add_onedrive_library_should_return_not_found_when_data_source_is_unknow
 async fn refresh_webdav_library_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::new();
 
-    let err = invoke_err(
-        &app,
-        "refresh_webdav_library",
-        json!({ "id": "lib-ghost" }),
-    );
+    let err = invoke_err(&app, "refresh_webdav_library", json!({ "id": "lib-ghost" }));
 
     assert!(err.is_kind("NotFound"), "kind was {}", err.kind);
     assert!(

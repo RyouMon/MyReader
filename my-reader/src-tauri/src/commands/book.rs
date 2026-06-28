@@ -1,5 +1,5 @@
-use tracing::{error, info};
 use tauri::{AppHandle, State};
+use tracing::{error, info};
 
 use crate::commands::common;
 use crate::commands::AppState;
@@ -17,8 +17,7 @@ fn resolve_lib_path<R: tauri::Runtime>(
 ) -> Result<String, AppError> {
     let app_data_dir = common::app_data_dir(app)?;
     let config = common::config_snapshot(state);
-    let (_, lib_path) =
-        LibraryService::resolve_library_path(library_id, &app_data_dir, &config)?;
+    let (_, lib_path) = LibraryService::resolve_library_path(library_id, &app_data_dir, &config)?;
     Ok(lib_path)
 }
 
@@ -58,9 +57,14 @@ pub async fn get_books_page<R: tauri::Runtime>(
         "Start to get books page. library id: {library_id:?}, offset: {offset}, limit: {limit}, sort by: {sort_by:?}, search: {search:?}"
     );
     let lib_path = resolve_lib_path(&app, &state, library_id.as_deref())?;
-    let result =
-        BookService::get_books_page(&lib_path, offset, limit, sort_by.as_deref(), search.as_deref())
-            .await;
+    let result = BookService::get_books_page(
+        &lib_path,
+        offset,
+        limit,
+        sort_by.as_deref(),
+        search.as_deref(),
+    )
+    .await;
 
     match &result {
         Ok(page) => info!(

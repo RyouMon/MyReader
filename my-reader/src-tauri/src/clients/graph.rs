@@ -98,7 +98,10 @@ impl GraphClient for ReqwestGraphClient {
             .map_err(|e| AppError::Auth(format!("ONEDRIVE_PARSE_FAILED: {e}")))?;
 
         let entries = parse_onedrive_folder_entries(&body);
-        info!("OneDrive folder listing. path: \"{path}\", count: {}", entries.len());
+        info!(
+            "OneDrive folder listing. path: \"{path}\", count: {}",
+            entries.len()
+        );
 
         Ok(entries)
     }
@@ -167,14 +170,8 @@ mod tests {
 
     #[test]
     fn build_onedrive_children_url_should_return_root_children_url_when_path_is_empty() {
-        assert_eq!(
-            build_onedrive_children_url(""),
-            ONEDRIVE_ROOT_CHILDREN_URL
-        );
-        assert_eq!(
-            build_onedrive_children_url("/"),
-            ONEDRIVE_ROOT_CHILDREN_URL
-        );
+        assert_eq!(build_onedrive_children_url(""), ONEDRIVE_ROOT_CHILDREN_URL);
+        assert_eq!(build_onedrive_children_url("/"), ONEDRIVE_ROOT_CHILDREN_URL);
         assert_eq!(
             build_onedrive_children_url("   "),
             ONEDRIVE_ROOT_CHILDREN_URL

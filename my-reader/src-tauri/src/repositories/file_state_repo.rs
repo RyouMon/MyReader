@@ -1,6 +1,4 @@
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 use crate::entities::app::file_state;
 use crate::error::AppError;
@@ -36,10 +34,9 @@ impl SqliteFileStateRepository {
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let updated_at =
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0.0, |d| {
-                d.as_secs_f64()
-            });
+        let updated_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0.0, |d| d.as_secs_f64());
 
         if let Some(model) = existing {
             let mut active: file_state::ActiveModel = model.into();
@@ -47,7 +44,10 @@ impl SqliteFileStateRepository {
             active.local_size = Set(local_size);
             active.local_mtime = Set(local_mtime);
             active.updated_at = Set(updated_at);
-            active.update(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .update(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         } else {
             let id = uuid::Uuid::new_v4().as_simple().to_string();
             let active = file_state::ActiveModel {
@@ -59,7 +59,10 @@ impl SqliteFileStateRepository {
                 local_mtime: Set(local_mtime),
                 updated_at: Set(updated_at),
             };
-            active.insert(db).await.map_err(|e| AppError::Database(e.to_string()))?;
+            active
+                .insert(db)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
         }
         Ok(())
     }
