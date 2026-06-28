@@ -1,31 +1,3 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { isTauri } from "@tauri-apps/api/core"
-import {
-  AlertCircle,
-  ArrowLeft,
-  BookOpen,
-  Check,
-  ChevronDown,
-  Download,
-  EllipsisVertical,
-  FolderOpen,
-  Loader2,
-  Plus,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react"
-import { useQueryClient } from "@tanstack/react-query"
-import { useBookFileState, bookFileStateKeys } from "@/hooks/queries/useBookFileState"
-import {
-  useFavoriteBookMutations,
-  useFavoriteBookSet,
-} from "@/hooks/queries/useFavoriteBooksQuery"
-import { useDownloadProgress } from "@/hooks/useDownloadProgress"
-import type { CalibreBook } from "@my-reader/tools/types/book"
-import type { BookDetail } from "@/lib/tauri-api"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -38,14 +10,43 @@ import {
 } from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Progress } from "@/components/ui/progress"
+import {
+  bookFileStateKeys,
+  useBookFileState,
+} from "@/hooks/queries/useBookFileState"
+import {
+  useFavoriteBookMutations,
+  useFavoriteBookSet,
+} from "@/hooks/queries/useFavoriteBooksQuery"
+import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useDownloadProgress } from "@/hooks/useDownloadProgress"
 import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { isReadableInAppFormat, pickReadableFormat } from "@/lib/readFormats"
+import type { BookDetail } from "@/lib/tauri-api"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
-import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
+import type { CalibreBook } from "@my-reader/tools/types/book"
+import { useQueryClient } from "@tanstack/react-query"
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import { isTauri } from "@tauri-apps/api/core"
+import {
+  AlertCircle,
+  ArrowLeft,
+  BookOpen,
+  Check,
+  ChevronDown,
+  Download,
+  EllipsisVertical,
+  Loader2,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,
@@ -151,8 +152,11 @@ function BookDetailPage() {
   const { data: libraries = [] } = useLibrariesQuery()
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const { favoriteSet } = useFavoriteBookSet(activeLibraryId)
-  const { addFavoriteBook, removeFavoriteBook, isPending: favoritePending } =
-    useFavoriteBookMutations(activeLibraryId)
+  const {
+    addFavoriteBook,
+    removeFavoriteBook,
+    isPending: favoritePending,
+  } = useFavoriteBookMutations(activeLibraryId)
   const formatLabels = useFormatLabels()
   const identifierLabels = useIdentifierLabels()
   const languageMap = useLanguageMap()
@@ -161,7 +165,6 @@ function BookDetailPage() {
   const [seriesBooks, setSeriesBooks] = useState<CalibreBook[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [onShelf, setOnShelf] = useState(true)
   const [synopsisExpanded, setSynopsisExpanded] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
   const [formatDropdownOpen, setFormatDropdownOpen] = useState(false)
@@ -248,13 +251,7 @@ function BookDetailPage() {
     } else {
       void addFavoriteBook(id)
     }
-  }, [
-    activeLibraryId,
-    addFavoriteBook,
-    bookId,
-    isFavorite,
-    removeFavoriteBook,
-  ])
+  }, [activeLibraryId, addFavoriteBook, bookId, isFavorite, removeFavoriteBook])
 
   const navigateToRead = useCallback(
     async (id: number, fmt?: string) => {
@@ -334,7 +331,9 @@ function BookDetailPage() {
     : null
   const year = extractYear(book.pubdate)
   const displayAuthors = book.authors.join(", ")
-  const langDisplay = book.languages.map((code) => languageMap[code] ?? code).join(", ")
+  const langDisplay = book.languages
+    .map((code) => languageMap[code] ?? code)
+    .join(", ")
   const ratingStars = book.rating ? Math.round(book.rating / 2) : 0
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null
   const formatSizeMap = new Map(
@@ -342,13 +341,16 @@ function BookDetailPage() {
   )
   const readableFormats = book.formats.filter(isReadableInAppFormat)
   const canReadInApp = readableFormats.length > 0
-  const isRemoteLibrary = activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
+  const isRemoteLibrary =
+    activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
 
   const seriesLabel =
     book.series && book.seriesIndex
       ? t("bookDetail.series", {
           series: book.series,
-          index: Number.isInteger(book.seriesIndex) ? book.seriesIndex : book.seriesIndex.toFixed(1),
+          index: Number.isInteger(book.seriesIndex)
+            ? book.seriesIndex
+            : book.seriesIndex.toFixed(1),
         })
       : book.series
 
@@ -382,7 +384,9 @@ function BookDetailPage() {
               "size-8",
               isFavorite && "text-primary hover:text-primary",
             )}
-            title={isFavorite ? t("bookDetail.unfavorite") : t("bookDetail.favorite")}
+            title={
+              isFavorite ? t("bookDetail.unfavorite") : t("bookDetail.favorite")
+            }
             disabled={favoritePending}
             onClick={handleToggleFavorite}
           >
@@ -395,11 +399,8 @@ function BookDetailPage() {
             variant="ghost"
             size="icon"
             className="size-8"
-            title={t("bookDetail.openFileLocation")}
+            title={t("bookDetail.more")}
           >
-            <FolderOpen className="size-[18px]" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8" title={t("bookDetail.more")}>
             <EllipsisVertical className="size-[18px]" />
           </Button>
         </div>
@@ -632,23 +633,6 @@ function BookDetailPage() {
                     )}
                   </div>
                 </div>
-
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "gap-[7px] px-5",
-                    onShelf &&
-                      "border-primary bg-primary/8 font-medium text-primary hover:bg-primary/12",
-                  )}
-                  onClick={() => setOnShelf(!onShelf)}
-                >
-                  {onShelf ? (
-                    <Check className="size-4" />
-                  ) : (
-                    <Plus className="size-4" />
-                  )}
-                  {onShelf ? t("bookDetail.onShelf") : t("bookDetail.addToShelf")}
-                </Button>
               </div>
             </div>
           </div>
@@ -681,7 +665,9 @@ function BookDetailPage() {
                 className="mt-2 h-auto gap-1 px-0 text-[13px] font-medium"
                 onClick={() => setSynopsisExpanded(!synopsisExpanded)}
               >
-                {synopsisExpanded ? t("bookDetail.collapse") : t("bookDetail.expand")}
+                {synopsisExpanded
+                  ? t("bookDetail.collapse")
+                  : t("bookDetail.expand")}
                 <ChevronDown
                   className={cn(
                     "size-3.5 transition-transform duration-300",
@@ -699,7 +685,9 @@ function BookDetailPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-muted text-start text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      <th className="rounded-ts-md px-3.5 py-2">{t("bookDetail.format")}</th>
+                      <th className="rounded-ts-md px-3.5 py-2">
+                        {t("bookDetail.format")}
+                      </th>
                       <th className="px-3.5 py-2">{t("bookDetail.size")}</th>
                       <th className="rounded-te-md px-3.5 py-2 text-end">
                         {t("bookDetail.action")}
@@ -786,8 +774,14 @@ function BookDetailPage() {
           {/* File Details */}
           <DetailSection title={t("bookDetail.libraryInfo")}>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
-              <InfoCard label={t("bookDetail.addedDate")} value={formatDate(book.timestamp)} />
-              <InfoCard label={t("bookDetail.pubDate")} value={formatDate(book.pubdate)} />
+              <InfoCard
+                label={t("bookDetail.addedDate")}
+                value={formatDate(book.timestamp)}
+              />
+              <InfoCard
+                label={t("bookDetail.pubDate")}
+                value={formatDate(book.pubdate)}
+              />
               <InfoCard
                 label={t("bookDetail.lastModified")}
                 value={formatDate(book.lastModified)}
@@ -804,13 +798,19 @@ function BookDetailPage() {
                 />
               )}
               <InfoCard label={t("bookDetail.path")} value={book.path} mono />
-              <InfoCard label={t("bookDetail.sortTitle")} value={book.authorSort} />
+              <InfoCard
+                label={t("bookDetail.sortTitle")}
+                value={book.authorSort}
+              />
             </div>
           </DetailSection>
 
           {/* Related Books (same series) */}
           {seriesBooks.length > 0 && book.series && (
-            <DetailSection title={t("bookDetail.seriesSection", { series: book.series })} className="mb-4">
+            <DetailSection
+              title={t("bookDetail.seriesSection", { series: book.series })}
+              className="mb-4"
+            >
               <div className="flex gap-[18px] overflow-x-auto pb-2">
                 {seriesBooks.map((rb) => (
                   <RelatedBookCard
@@ -834,7 +834,9 @@ function BookDetailPage() {
       {/* Status Bar */}
       <footer className="flex shrink-0 items-center justify-between border-t border-border bg-background px-7 py-2 text-[12.5px] text-muted-foreground">
         <span>
-          {book.title} · {t("bookDetail.formatCount", { count: book.formats.length })} · {book.path}
+          {book.title} ·{" "}
+          {t("bookDetail.formatCount", { count: book.formats.length })} ·{" "}
+          {book.path}
         </span>
         <div className="flex items-center gap-1.5">
           <span
@@ -845,7 +847,9 @@ function BookDetailPage() {
                 : "bg-library-indicator-off",
             )}
           />
-          {activeLibrary ? t("bookDetail.synced") : t("bookDetail.notConnected")}
+          {activeLibrary
+            ? t("bookDetail.synced")
+            : t("bookDetail.notConnected")}
         </div>
       </footer>
     </>
