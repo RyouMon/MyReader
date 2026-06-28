@@ -1,8 +1,8 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
 export default function LibraryBookLayout() {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <Stack
@@ -13,5 +13,5 @@ export default function LibraryBookLayout() {
     >
       <Stack.Screen name="[id]" />
     </Stack>
-  );
+  )
 }

@@ -1,47 +1,50 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react"
 
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { MenuView, type MenuAction } from "@react-native-menu/menu"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
-import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
-import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import { androidRippleColor, pressedBackgroundColor } from "@/src/design/press-feedback";
-import { useTheme, useThemePalette } from "@/src/design/tokens";
-import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
-import type { BookItem } from "@/src/domain/types";
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background"
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import {
+  androidRippleColor,
+  pressedBackgroundColor,
+} from "@/src/design/press-feedback"
+import { useTheme, useThemePalette } from "@/src/design/tokens"
+import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
+import type { BookItem } from "@/src/domain/types"
 import {
   BookCover,
   type BookDownloadStatus,
-} from "@/src/features/library/components/books/book-cover";
-import { buildBookMenuActions } from "@/src/features/library/utils/book-menu";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
-import { Pressable, Text, View } from "@/tw";
+} from "@/src/features/library/components/books/book-cover"
+import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
+import type { HomeCardStyle } from "@/src/store/app-store.types"
+import { Pressable, Text, View } from "@/tw"
 
-const COVER_HEIGHT = 100;
-const COVER_ASPECT_RATIO = 2 / 3;
-const COVER_WIDTH = Math.round(COVER_HEIGHT * COVER_ASPECT_RATIO);
-const COVER_BORDER_RADIUS = 8;
+const COVER_HEIGHT = 100
+const COVER_ASPECT_RATIO = 2 / 3
+const COVER_WIDTH = Math.round(COVER_HEIGHT * COVER_ASPECT_RATIO)
+const COVER_BORDER_RADIUS = 8
 
 export type ReadingListCardProps = {
-  book: BookItem & { readingFormat?: string };
-  width: number;
-  progress: number;
-  downloadStatus?: BookDownloadStatus;
-  libraryId?: string;
-  menuIsRemote?: boolean;
-  menuFormats?: string[];
-  menuSelectedFormat?: string;
-  isFavorite?: boolean;
-  onPress?: (bookId: string) => void;
-  onMenuAction?: (bookId: string, actionId: string) => void;
-  onMenuOpen?: (bookId: string) => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  homeCardStyle?: HomeCardStyle;
-};
+  book: BookItem & { readingFormat?: string }
+  width: number
+  progress: number
+  downloadStatus?: BookDownloadStatus
+  libraryId?: string
+  menuIsRemote?: boolean
+  menuFormats?: string[]
+  menuSelectedFormat?: string
+  isFavorite?: boolean
+  onPress?: (bookId: string) => void
+  onMenuAction?: (bookId: string, actionId: string) => void
+  onMenuOpen?: (bookId: string) => void
+  onMenuClose?: () => void
+  isAnyMenuOpen?: boolean
+  homeCardStyle?: HomeCardStyle
+}
 
 function ReadingListCardImpl({
   book,
@@ -60,42 +63,49 @@ function ReadingListCardImpl({
   isAnyMenuOpen,
   homeCardStyle,
 }: ReadingListCardProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const { colorScheme } = useTheme();
-  const resolvedScheme = colorScheme === "dark" ? "dark" : "light";
-  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme);
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const { colorScheme } = useTheme()
+  const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
+  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
 
-  const showCloudIcon = downloadStatus === "notDownloaded";
-  const showProgressIndicator = downloadStatus === "downloading";
+  const showCloudIcon = downloadStatus === "notDownloaded"
+  const showProgressIndicator = downloadStatus === "downloading"
 
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (menuIsRemote === undefined) return undefined;
+    if (menuIsRemote === undefined) return undefined
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote,
       isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
-    });
-  }, [downloadStatus, menuIsRemote, menuFormats, menuSelectedFormat, isFavorite]);
+    })
+  }, [
+    downloadStatus,
+    menuIsRemote,
+    menuFormats,
+    menuSelectedFormat,
+    isFavorite,
+  ])
 
-  const hasMenu = computedMenuActions && computedMenuActions.length > 0 && onMenuAction;
+  const hasMenu =
+    computedMenuActions && computedMenuActions.length > 0 && onMenuAction
 
   const handlePress = useCallback(() => {
-    if (isAnyMenuOpen || !onPress) return;
-    onPress(book.id);
-  }, [book.id, isAnyMenuOpen, onPress]);
+    if (isAnyMenuOpen || !onPress) return
+    onPress(book.id)
+  }, [book.id, isAnyMenuOpen, onPress])
 
   const handleMenuOpenLocal = useCallback(() => {
-    onMenuOpen?.(book.id);
-  }, [book.id, onMenuOpen]);
+    onMenuOpen?.(book.id)
+  }, [book.id, onMenuOpen])
 
   const handleMenuPressAction = useCallback(
     ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-      onMenuAction?.(book.id, nativeEvent.event);
+      onMenuAction?.(book.id, nativeEvent.event)
     },
     [book.id, onMenuAction],
-  );
+  )
 
   const menuTrigger = (
     <View
@@ -105,7 +115,7 @@ function ReadingListCardImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
-  );
+  )
 
   const cardContent = (
     <View className="flex-row items-center gap-3 p-3">
@@ -117,10 +127,18 @@ function ReadingListCardImpl({
         showTitle={false}
       />
       <View className="min-w-0 flex-1 justify-center gap-1">
-        <Text className="text-base font-bold" style={{ color: palette.text }} numberOfLines={1}>
+        <Text
+          className="text-base font-bold"
+          style={{ color: palette.text }}
+          numberOfLines={1}
+        >
           {book.title}
         </Text>
-        <Text className="text-sm" style={{ color: palette.textMuted }} numberOfLines={1}>
+        <Text
+          className="text-sm"
+          style={{ color: palette.textMuted }}
+          numberOfLines={1}
+        >
           {book.author}
         </Text>
         <View className="flex-row items-center gap-1.5">
@@ -145,14 +163,16 @@ function ReadingListCardImpl({
       ) : (
         <View
           accessibilityRole="button"
-          accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
+          accessibilityLabel={t("bookDetail.moreActions", {
+            title: book.title,
+          })}
           className="h-8 w-8 items-center justify-center"
         >
           <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
         </View>
       )}
     </View>
-  );
+  )
 
   return (
     <View
@@ -174,10 +194,16 @@ function ReadingListCardImpl({
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
         onPress={handlePress}
-        android_ripple={{ color: androidRippleColor(resolvedScheme, palette), foreground: true }}
+        android_ripple={{
+          color: androidRippleColor(resolvedScheme, palette),
+          foreground: true,
+        }}
         style={({ pressed }) => ({
           overflow: "hidden",
-          backgroundColor: Platform.OS === "ios" && pressed ? pressedBackgroundColor(resolvedScheme, palette) : undefined,
+          backgroundColor:
+            Platform.OS === "ios" && pressed
+              ? pressedBackgroundColor(resolvedScheme, palette)
+              : undefined,
         })}
       >
         {cardContent}
@@ -199,10 +225,10 @@ function ReadingListCardImpl({
         </MenuView>
       ) : null}
     </View>
-  );
+  )
 }
 
 /**
  * Compact horizontal reading card: cover + title/author/progress + more menu.
  */
-export const ReadingListCard = memo(ReadingListCardImpl);
+export const ReadingListCard = memo(ReadingListCardImpl)

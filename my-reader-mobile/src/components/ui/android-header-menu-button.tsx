@@ -1,23 +1,23 @@
-import { MenuView, type MenuComponentRef } from "@react-native-menu/menu";
-import type { RefObject } from "react";
-import { View, type ImageSourcePropType } from "react-native";
+import { MenuView, type MenuComponentRef } from "@react-native-menu/menu"
+import type { RefObject } from "react"
+import { View, type ImageSourcePropType } from "react-native"
 
 import {
   ANDROID_HEADER_ICON_SIZE,
   AndroidHeaderSlot,
   type AndroidHeaderSlotSide,
-} from "./android-header-layout";
-import { AndroidHeaderIconButton } from "./android-header-icon-button";
+} from "./android-header-layout"
+import { AndroidHeaderIconButton } from "./android-header-icon-button"
 
 type AndroidHeaderMenuButtonProps = {
-  menuRef: RefObject<MenuComponentRef | null>;
-  actions: Parameters<typeof MenuView>[0]["actions"];
-  onPressAction: (event: string) => void;
-  icon: ImageSourcePropType;
-  accessibilityLabel: string;
-  side?: AndroidHeaderSlotSide;
-  anchoredToRight?: boolean;
-};
+  menuRef: RefObject<MenuComponentRef | null>
+  actions: Parameters<typeof MenuView>[0]["actions"]
+  onPressAction: (event: string) => void
+  icon: ImageSourcePropType
+  accessibilityLabel: string
+  side?: AndroidHeaderSlotSide
+  anchoredToRight?: boolean
+}
 
 /** Header icon button that opens a native MenuView anchored to the same slot. */
 export function AndroidHeaderMenuButton({
@@ -53,7 +53,12 @@ export function AndroidHeaderMenuButton({
             opacity: 0,
           }}
         >
-          <View style={{ width: ANDROID_HEADER_ICON_SIZE, height: ANDROID_HEADER_ICON_SIZE }} />
+          <View
+            style={{
+              width: ANDROID_HEADER_ICON_SIZE,
+              height: ANDROID_HEADER_ICON_SIZE,
+            }}
+          />
         </MenuView>
         <AndroidHeaderIconButton
           icon={icon}
@@ -62,5 +67,5 @@ export function AndroidHeaderMenuButton({
         />
       </View>
     </AndroidHeaderSlot>
-  );
+  )
 }

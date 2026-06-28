@@ -1,30 +1,34 @@
-import "@/src/global.css";
-import "@/src/i18n";
-import "@/src/polyfills/reader-engine-globals";
+import "@/src/global.css"
+import "@/src/i18n"
+import "@/src/polyfills/reader-engine-globals"
 
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from "expo-router/react-navigation";
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { useEffect, type ComponentProps } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NotifierWrapper } from "react-native-notifier";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from "expo-router/react-navigation"
+import { Stack } from "expo-router"
+import { StatusBar } from "expo-status-bar"
+import { useEffect, type ComponentProps } from "react"
+import { GestureHandlerRootView } from "react-native-gesture-handler"
+import { NotifierWrapper } from "react-native-notifier"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { ErrorBoundary } from "@/src/components/error-boundary";
-import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar";
-import { ThemeProvider, useTheme } from "@/src/design/tokens";
-import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions";
-import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications";
-import { useAppStore } from "@/src/store/app-store";
-import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime";
-import { setupGlobalErrorHandler } from "@/src/errors/global-handler";
-import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill";
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { queryClient } from "@/src/services/query/query-client";
-import * as Sentry from '@sentry/react-native';
-import { QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/src/components/error-boundary"
+import { setAlertStatusBarPreferredStyle } from "@/src/constants/alert-with-status-bar"
+import { ThemeProvider, useTheme } from "@/src/design/tokens"
+import { hydrateLibraries } from "@/src/domain/library/hooks/library-actions"
+import { initializeDownloadNotifications } from "@/src/domain/notifications/download-notifications"
+import { useAppStore } from "@/src/store/app-store"
+import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
+import { setupGlobalErrorHandler } from "@/src/errors/global-handler"
+import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill"
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import { queryClient } from "@/src/services/query/query-client"
+import * as Sentry from "@sentry/react-native"
+import { QueryClientProvider } from "@tanstack/react-query"
 
-const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
 if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
@@ -39,62 +43,66 @@ if (sentryDsn) {
     // Configure Session Replay
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1,
-    integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+    integrations: [
+      Sentry.mobileReplayIntegration(),
+      Sentry.feedbackIntegration(),
+    ],
 
     // uncomment the line below to enable Spotlight (https://spotlightjs.com)
     // spotlight: __DEV__,
-  });
+  })
 }
 
 function RootNavigator() {
-  const { colorScheme, palette } = useTheme();
-  const statusBarStyle = colorScheme === "dark" ? "light" : "dark";
-  const storeReady = useAppStore((s) => s.storeReady);
-  const hydrateDataSources = useDataSourceActions().hydrateFromBackend;
+  const { colorScheme, palette } = useTheme()
+  const statusBarStyle = colorScheme === "dark" ? "light" : "dark"
+  const storeReady = useAppStore((s) => s.storeReady)
+  const hydrateDataSources = useDataSourceActions().hydrateFromBackend
 
   /**
    * Keeps alert status bar restoration aligned with app theme mode.
    */
   useEffect(() => {
-    setAlertStatusBarPreferredStyle(statusBarStyle);
-  }, [statusBarStyle]);
+    setAlertStatusBarPreferredStyle(statusBarStyle)
+  }, [statusBarStyle])
 
   useEffect(() => {
-    initializeDownloadNotifications();
-  }, []);
+    initializeDownloadNotifications()
+  }, [])
 
   useEffect(() => {
     if (!storeReady) {
-      return;
+      return
     }
-    void hydrateDataSources().then(() => hydrateLibraries());
-  }, [storeReady, hydrateDataSources]);
+    void hydrateDataSources().then(() => hydrateLibraries())
+  }, [storeReady, hydrateDataSources])
 
-  const navigationTheme = colorScheme === "dark"
-    ? {
-        ...DarkTheme,
-        colors: {
-          ...DarkTheme.colors,
-          background: palette.background,
-          card: palette.surface,
-          text: palette.text,
-          border: palette.border,
-          primary: palette.primary,
-          notification: palette.primary,
-        },
-      }
-    : {
-        ...DefaultTheme,
-        colors: {
-          ...DefaultTheme.colors,
-          background: palette.background,
-          card: palette.surface,
-          text: palette.text,
-          border: palette.border,
-          primary: palette.primary,
-          notification: palette.primary,
-        },
-      };
+  const navigationTheme =
+    colorScheme === "dark"
+      ? {
+          ...DarkTheme,
+          colors: {
+            ...DarkTheme.colors,
+            background: palette.background,
+            card: palette.surface,
+            text: palette.text,
+            border: palette.border,
+            primary: palette.primary,
+            notification: palette.primary,
+          },
+        }
+      : {
+          ...DefaultTheme,
+          colors: {
+            ...DefaultTheme.colors,
+            background: palette.background,
+            card: palette.surface,
+            text: palette.text,
+            border: palette.border,
+            primary: palette.primary,
+            notification: palette.primary,
+          },
+        }
 
   return (
     <>
@@ -103,7 +111,10 @@ function RootNavigator() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="book" options={{ presentation: "modal" }} />
-          <Stack.Screen name="library-book" options={{ presentation: "modal" }} />
+          <Stack.Screen
+            name="library-book"
+            options={{ presentation: "modal" }}
+          />
           <Stack.Screen
             name="reader"
             options={{
@@ -119,20 +130,24 @@ function RootNavigator() {
       <SyncRuntime />
       <LibrarySyncPill />
     </>
-  );
+  )
 }
 
-type NotifierChildren = ComponentProps<typeof NotifierWrapper>["children"];
+type NotifierChildren = ComponentProps<typeof NotifierWrapper>["children"]
 
 function NotifierWithSafeArea({ children }: { children: NotifierChildren }) {
-  const { top } = useSafeAreaInsets();
-  return <NotifierWrapper containerStyle={{ marginTop: top }}>{children}</NotifierWrapper>;
+  const { top } = useSafeAreaInsets()
+  return (
+    <NotifierWrapper containerStyle={{ marginTop: top }}>
+      {children}
+    </NotifierWrapper>
+  )
 }
 
 export default Sentry.wrap(function RootLayout() {
   // RN 运行时在首次渲染前已就绪，此处调用是最早的安全时机。
   // setupGlobalErrorHandler 内部有幂等保护，重渲染不会重复注册。
-  setupGlobalErrorHandler();
+  setupGlobalErrorHandler()
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -146,5 +161,5 @@ export default Sentry.wrap(function RootLayout() {
         </ThemeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
-  );
-});
+  )
+})

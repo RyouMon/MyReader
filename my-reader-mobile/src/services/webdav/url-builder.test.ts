@@ -1,4 +1,4 @@
-import { WebDavUrlBuilder } from "./url-builder";
+import { WebDavUrlBuilder } from "./url-builder"
 
 describe("WebDavUrlBuilder", () => {
   const source = {
@@ -10,19 +10,19 @@ describe("WebDavUrlBuilder", () => {
     password: "pass",
     rootPath: "",
     createdAt: 0,
-  };
+  }
 
   test("builds cover URL under data-source root and library root", () => {
-    const builder = new WebDavUrlBuilder(source, "/Books/Calibre");
+    const builder = new WebDavUrlBuilder(source, "/Books/Calibre")
     expect(builder.urlFor("Author/Title (1)/cover.jpg")).toBe(
       "https://dav.example.com/remote.php/dav/files/user/Books/Calibre/Author/Title%20(1)/cover.jpg",
-    );
-  });
+    )
+  })
 
   test("builds metadata.db URL at library root", () => {
-    const builder = new WebDavUrlBuilder(source, "Books/Calibre");
+    const builder = new WebDavUrlBuilder(source, "Books/Calibre")
     expect(builder.urlFor("metadata.db")).toBe(
       "https://dav.example.com/remote.php/dav/files/user/Books/Calibre/metadata.db",
-    );
-  });
-});
+    )
+  })
+})

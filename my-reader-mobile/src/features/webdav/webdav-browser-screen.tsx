@@ -1,4 +1,4 @@
-import { RemoteDirectoryBrowserScreen } from "@/src/features/settings/components/remote-directory-browser-screen";
+import { RemoteDirectoryBrowserScreen } from "@/src/features/settings/components/remote-directory-browser-screen"
 
 export default function WebDavBrowserScreen() {
   return (
@@ -7,5 +7,5 @@ export default function WebDavBrowserScreen() {
       browserRoute="/settings/webdav/browser"
       translationNamespace="webdav.browser"
     />
-  );
+  )
 }

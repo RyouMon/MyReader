@@ -1,38 +1,47 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { Platform } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { Stack, router, useLocalSearchParams } from "expo-router"
+import { SymbolView } from "expo-symbols"
+import { Platform } from "react-native"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { useThemePalette } from "@/src/design/tokens";
-import type { DataSourceOnedrive } from "@/src/domain/types";
-import { DataSourceInUseError } from "@/src/errors";
-import { Text, View } from "@/tw";
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { useThemePalette } from "@/src/design/tokens"
+import type { DataSourceOnedrive } from "@/src/domain/types"
+import { DataSourceInUseError } from "@/src/errors"
+import { Text, View } from "@/tw"
 
-import { Screen, SectionCard, ListRow } from "@/src/components";
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
-import { useAppStore } from "@/src/store/app-store";
+import { Screen, SectionCard, ListRow } from "@/src/components"
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import {
+  useScreenHeader,
+  type ScreenHeaderAction,
+} from "@/src/navigation/hooks/use-screen-header"
+import { useAppStore } from "@/src/store/app-store"
 
 function formatDate(timestamp?: number) {
-  if (!timestamp) return "—";
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (!timestamp) return "—"
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return "—"
   return new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
+  }).format(date)
 }
 
-function OneDriveDetailHero({ source, accent }: { source: DataSourceOnedrive; accent: string }) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+function OneDriveDetailHero({
+  source,
+  accent,
+}: {
+  source: DataSourceOnedrive
+  accent: string
+}) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
   return (
     <View className="items-center gap-5 pb-1 pt-2">
@@ -50,7 +59,14 @@ function OneDriveDetailHero({ source, accent }: { source: DataSourceOnedrive; ac
       >
         <SymbolView
           accessibilityLabel={t("onedrive.sourcesTitle")}
-          fallback={<MaterialIcons accessibilityLabel={t("onedrive.sourcesTitle")} name="cloud" size={80} color={accent} />}
+          fallback={
+            <MaterialIcons
+              accessibilityLabel={t("onedrive.sourcesTitle")}
+              name="cloud"
+              size={80}
+              color={accent}
+            />
+          }
           name={{ ios: "cloud.fill", android: "cloud" }}
           resizeMode="scaleAspectFit"
           size={80}
@@ -62,71 +78,92 @@ function OneDriveDetailHero({ source, accent }: { source: DataSourceOnedrive; ac
       <View className="items-center gap-2">
         <Text
           className="text-center text-3xl"
-          style={{ color: palette.text, fontFamily: undefined, fontWeight: "700", letterSpacing: -0.4 }}
+          style={{
+            color: palette.text,
+            fontFamily: undefined,
+            fontWeight: "700",
+            letterSpacing: -0.4,
+          }}
         >
           {source.name}
         </Text>
-        <Text className="px-4 text-center text-sm font-medium" style={{ color: palette.textMuted }} numberOfLines={2}>
+        <Text
+          className="px-4 text-center text-sm font-medium"
+          style={{ color: palette.textMuted }}
+          numberOfLines={2}
+        >
           {source.email ?? source.displayName ?? ""}
         </Text>
       </View>
     </View>
-  );
+  )
 }
 
 export default function OneDriveDataSourceDetailScreen() {
-  const { t } = useTranslation();
-  const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
-  const palette = useThemePalette();
-  const dataSources = useAppStore((state) => state.dataSources);
-  const { deleteDataSource } = useDataSourceActions();
+  const { t } = useTranslation()
+  const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>()
+  const palette = useThemePalette()
+  const dataSources = useAppStore((state) => state.dataSources)
+  const { deleteDataSource } = useDataSourceActions()
 
   const sourceIndex = useMemo(
-    () => dataSources.findIndex((item) => item.id === dataSourceId && item.type === "onedrive"),
+    () =>
+      dataSources.findIndex(
+        (item) => item.id === dataSourceId && item.type === "onedrive",
+      ),
     [dataSources, dataSourceId],
-  );
-  const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined;
-  const onedriveSource: DataSourceOnedrive | null = raw?.type === "onedrive" ? raw : null;
-  const accent = palette.primary;
+  )
+  const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined
+  const onedriveSource: DataSourceOnedrive | null =
+    raw?.type === "onedrive" ? raw : null
+  const accent = palette.primary
 
   function handleBack() {
     if (router.canGoBack()) {
-      router.back();
-      return;
+      router.back()
+      return
     }
-    router.replace("/settings/onedrive");
+    router.replace("/settings/onedrive")
   }
 
   function confirmDelete() {
-    if (!onedriveSource) return;
+    if (!onedriveSource) return
 
-    showAlertWithStatusBarRestore(t("onedrive.delete.title"), t("onedrive.delete.confirm", { name: onedriveSource.name }), [
-      { text: t("onedrive.delete.cancel"), style: "cancel" },
-      {
-        text: t("onedrive.delete.confirmButton"),
-        style: "destructive",
-        onPress: () => {
-          void (async () => {
-            try {
-              await deleteDataSource(onedriveSource.id);
-              handleBack();
-            } catch (caught) {
-              if (caught instanceof DataSourceInUseError) {
-                showAlertWithStatusBarRestore(
-                  t("dataSource.deleteInUse.title"),
-                  t("dataSource.deleteInUse.message", { names: caught.libraryNames.join("、") }),
-                );
-              } else {
-                showAlertWithStatusBarRestore(
-                  t("onedrive.deleteFailed.title"),
-                  caught instanceof Error ? caught.message : t("onedrive.deleteFailed.message"),
-                );
+    showAlertWithStatusBarRestore(
+      t("onedrive.delete.title"),
+      t("onedrive.delete.confirm", { name: onedriveSource.name }),
+      [
+        { text: t("onedrive.delete.cancel"), style: "cancel" },
+        {
+          text: t("onedrive.delete.confirmButton"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteDataSource(onedriveSource.id)
+                handleBack()
+              } catch (caught) {
+                if (caught instanceof DataSourceInUseError) {
+                  showAlertWithStatusBarRestore(
+                    t("dataSource.deleteInUse.title"),
+                    t("dataSource.deleteInUse.message", {
+                      names: caught.libraryNames.join("、"),
+                    }),
+                  )
+                } else {
+                  showAlertWithStatusBarRestore(
+                    t("onedrive.deleteFailed.title"),
+                    caught instanceof Error
+                      ? caught.message
+                      : t("onedrive.deleteFailed.message"),
+                  )
+                }
               }
-            }
-          })();
+            })()
+          },
         },
-      },
-    ]);
+      ],
+    )
   }
 
   const deleteAction: ScreenHeaderAction | undefined = onedriveSource
@@ -135,21 +172,29 @@ export default function OneDriveDataSourceDetailScreen() {
         onPress: confirmDelete,
         icon:
           Platform.OS === "ios" ? (
-            <SymbolView name="trash" size={16} tintColor={palette.destructive} />
+            <SymbolView
+              name="trash"
+              size={16}
+              tintColor={palette.destructive}
+            />
           ) : (
-            <MaterialIcons name="delete-outline" size={22} color={palette.destructive} />
+            <MaterialIcons
+              name="delete-outline"
+              size={22}
+              color={palette.destructive}
+            />
           ),
         iosSfSymbol: "trash",
         color: palette.destructive,
         iconOnly: true,
         variant: "prominent" as const,
       }
-    : undefined;
+    : undefined
 
   const { options, toolbar } = useScreenHeader({
     backTitle: t("back"),
     right: deleteAction ? [deleteAction] : [],
-  });
+  })
 
   if (!onedriveSource) {
     return (
@@ -160,12 +205,15 @@ export default function OneDriveDataSourceDetailScreen() {
           <Text className="text-2xl font-bold" style={{ color: palette.text }}>
             {t("onedrive.notFound.title")}
           </Text>
-          <Text className="mt-3 text-center text-sm" style={{ color: palette.textMuted }}>
+          <Text
+            className="mt-3 text-center text-sm"
+            style={{ color: palette.textMuted }}
+          >
             {t("onedrive.notFound.detail")}
           </Text>
         </View>
       </Screen>
-    );
+    )
   }
 
   return (
@@ -177,14 +225,36 @@ export default function OneDriveDataSourceDetailScreen() {
           <OneDriveDetailHero source={onedriveSource} accent={accent} />
           <SectionCard>
             <ListRow title={t("onedrive.type")} detail="OneDrive" />
-            <ListRow title={t("onedrive.displayName")} detail={onedriveSource.displayName ?? ""} />
-            <ListRow title={t("onedrive.email")} detail={onedriveSource.email ?? ""} />
-            <ListRow title={t("onedrive.basePath")} detail={onedriveSource.rootPath?.trim() ? onedriveSource.rootPath : "/"} />
-            <ListRow title={t("onedrive.authStatus")} detail={onedriveSource.hasRefreshToken ? t("onedrive.authenticated") : t("onedrive.notAuthenticated")} />
-            <ListRow title={t("onedrive.addedAt")} detail={formatDate(onedriveSource.createdAt)} isLast />
+            <ListRow
+              title={t("onedrive.displayName")}
+              detail={onedriveSource.displayName ?? ""}
+            />
+            <ListRow
+              title={t("onedrive.email")}
+              detail={onedriveSource.email ?? ""}
+            />
+            <ListRow
+              title={t("onedrive.basePath")}
+              detail={
+                onedriveSource.rootPath?.trim() ? onedriveSource.rootPath : "/"
+              }
+            />
+            <ListRow
+              title={t("onedrive.authStatus")}
+              detail={
+                onedriveSource.hasRefreshToken
+                  ? t("onedrive.authenticated")
+                  : t("onedrive.notAuthenticated")
+              }
+            />
+            <ListRow
+              title={t("onedrive.addedAt")}
+              detail={formatDate(onedriveSource.createdAt)}
+              isLast
+            />
           </SectionCard>
         </View>
       </View>
     </Screen>
-  );
+  )
 }

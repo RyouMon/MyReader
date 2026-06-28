@@ -30,10 +30,7 @@
         "android.permission.ACCESS_NETWORK_STATE"
       ]
     },
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "plugins": [
       [
         "expo-build-properties",
@@ -82,9 +79,7 @@
       [
         "react-native-app-auth",
         {
-          "redirectUrls": [
-            "ryoumon.myreadermobile.auth://onedrive/"
-          ]
+          "redirectUrls": ["ryoumon.myreadermobile.auth://onedrive/"]
         }
       ],
       "@sentry/react-native",

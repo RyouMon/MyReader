@@ -1,34 +1,37 @@
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
+import { MenuView, type MenuAction } from "@react-native-menu/menu"
 
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import { androidRippleColor, pressedBackgroundColor } from "@/src/design/press-feedback";
-import { useTheme, useThemePalette } from "@/src/design/tokens";
-import { Image, Pressable, Text, View } from "@/tw";
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import {
+  androidRippleColor,
+  pressedBackgroundColor,
+} from "@/src/design/press-feedback"
+import { useTheme, useThemePalette } from "@/src/design/tokens"
+import { Image, Pressable, Text, View } from "@/tw"
 
-import { HeroCard, ProgressBar } from "@/src/components";
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
-import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background";
-import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette";
-import type { BookItem } from "@/src/domain/types";
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
+import { HeroCard, ProgressBar } from "@/src/components"
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background"
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
+import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
+import type { BookItem } from "@/src/domain/types"
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import type { HomeCardStyle } from "@/src/store/app-store.types"
 
 type ContinueReadingCardProps = {
-  book: BookItem & { readingProgress: number; readingFormat: string };
-  downloadStatus?: BookDownloadStatus;
-  libraryId?: string;
-  menuActions?: MenuAction[];
-  homeCardStyle?: HomeCardStyle;
-  isAnyMenuOpen?: boolean;
-  onPress?: () => void;
-  onMenuAction?: (actionId: string) => void;
-  onMenuOpen?: () => void;
-  onMenuClose?: () => void;
-};
+  book: BookItem & { readingProgress: number; readingFormat: string }
+  downloadStatus?: BookDownloadStatus
+  libraryId?: string
+  menuActions?: MenuAction[]
+  homeCardStyle?: HomeCardStyle
+  isAnyMenuOpen?: boolean
+  onPress?: () => void
+  onMenuAction?: (actionId: string) => void
+  onMenuOpen?: () => void
+  onMenuClose?: () => void
+}
 
 export function ContinueReadingCard({
   book,
@@ -42,20 +45,24 @@ export function ContinueReadingCard({
   onMenuOpen,
   onMenuClose,
 }: ContinueReadingCardProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const { colorScheme } = useTheme();
-  const resolvedScheme = colorScheme === "dark" ? "dark" : "light";
-  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme);
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const { colorScheme } = useTheme()
+  const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
+  const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
 
   const handlePress = () => {
-    if (isAnyMenuOpen || !onPress) return;
-    onPress();
-  };
+    if (isAnyMenuOpen || !onPress) return
+    onPress()
+  }
 
-  const handleMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-    onMenuAction?.(nativeEvent.event);
-  };
+  const handleMenuAction = ({
+    nativeEvent,
+  }: {
+    nativeEvent: { event: string }
+  }) => {
+    onMenuAction?.(nativeEvent.event)
+  }
 
   const menuTrigger = (
     <View
@@ -65,7 +72,7 @@ export function ContinueReadingCard({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
-  );
+  )
 
   return (
     <HeroCard>
@@ -93,10 +100,16 @@ export function ContinueReadingCard({
           accessibilityRole="button"
           accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
           onPress={handlePress}
-          android_ripple={{ color: androidRippleColor(resolvedScheme, palette), foreground: true }}
+          android_ripple={{
+            color: androidRippleColor(resolvedScheme, palette),
+            foreground: true,
+          }}
           style={({ pressed }) => ({
             overflow: "hidden",
-            backgroundColor: Platform.OS === "ios" && pressed ? pressedBackgroundColor(resolvedScheme, palette) : undefined,
+            backgroundColor:
+              Platform.OS === "ios" && pressed
+                ? pressedBackgroundColor(resolvedScheme, palette)
+                : undefined,
           })}
         >
           <View className="flex-row items-start gap-3 p-3">
@@ -120,7 +133,10 @@ export function ContinueReadingCard({
                 </Text>
               </View>
             )}
-            <View className="min-w-0 flex-1 justify-center gap-2" style={{ height: 168 }}>
+            <View
+              className="min-w-0 flex-1 justify-center gap-2"
+              style={{ height: 168 }}
+            >
               <Text
                 className="text-xl font-bold"
                 style={{ color: palette.text }}
@@ -137,7 +153,10 @@ export function ContinueReadingCard({
               <View className="flex-row items-center gap-1.5">
                 <Text
                   className="text-sm font-semibold"
-                  style={{ color: palette.textMuted, fontVariant: ["tabular-nums"] }}
+                  style={{
+                    color: palette.textMuted,
+                    fontVariant: ["tabular-nums"],
+                  }}
                 >
                   {Math.round(book.readingProgress)}%
                 </Text>
@@ -148,14 +167,14 @@ export function ContinueReadingCard({
                   format={book.readingFormat}
                 />
               </View>
-              <ProgressBar
-                progress={book.readingProgress / 100}
-              />
+              <ProgressBar progress={book.readingProgress / 100} />
             </View>
-            {menuActions && menuActions.length > 0 ? <View className="w-8" /> : null}
+            {menuActions && menuActions.length > 0 ? (
+              <View className="w-8" />
+            ) : null}
           </View>
         </Pressable>
       </View>
     </HeroCard>
-  );
+  )
 }

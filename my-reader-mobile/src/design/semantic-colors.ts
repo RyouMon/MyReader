@@ -1,6 +1,6 @@
-import { Platform, PlatformColor, type ColorValue } from "react-native";
+import { Platform, PlatformColor, type ColorValue } from "react-native"
 
-const WEB_DESTRUCTIVE = "#D53030";
+const WEB_DESTRUCTIVE = "#D53030"
 
 /**
  * Platform-defined red for delete / irreversible actions.
@@ -8,18 +8,18 @@ const WEB_DESTRUCTIVE = "#D53030";
  */
 export function getSemanticDestructiveColor(): ColorValue {
   if (Platform.OS === "ios") {
-    return PlatformColor("systemRed");
+    return PlatformColor("systemRed")
   }
 
   if (Platform.OS === "android") {
-    const api = typeof Platform.Version === "number" ? Platform.Version : 0;
+    const api = typeof Platform.Version === "number" ? Platform.Version : 0
     if (api >= 26) {
-      return PlatformColor("?android:attr/colorError");
+      return PlatformColor("?android:attr/colorError")
     }
-    return PlatformColor("@android:color/holo_red_dark");
+    return PlatformColor("@android:color/holo_red_dark")
   }
 
-  return WEB_DESTRUCTIVE;
+  return WEB_DESTRUCTIVE
 }
 
 /**
@@ -27,11 +27,11 @@ export function getSemanticDestructiveColor(): ColorValue {
  */
 export function getSemanticOnDestructiveColor(): ColorValue {
   if (Platform.OS === "android") {
-    const api = typeof Platform.Version === "number" ? Platform.Version : 0;
+    const api = typeof Platform.Version === "number" ? Platform.Version : 0
     if (api >= 26) {
-      return PlatformColor("?android:attr/colorOnError");
+      return PlatformColor("?android:attr/colorOnError")
     }
   }
 
-  return "#FFFFFF";
+  return "#FFFFFF"
 }

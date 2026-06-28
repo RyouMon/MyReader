@@ -12,7 +12,9 @@
     "db:generate": "pnpm --filter @my-reader/db generate && bash scripts/generate-seaorm-entities.sh",
     "db:generate:calibre": "bash scripts/generate-seaorm-calibre-entities.sh",
     "prepare": "husky || true",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
   },
   "devDependencies": {
     "husky": "^9.1.7"

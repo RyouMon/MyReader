@@ -1,8 +1,8 @@
-import React from "react";
-import { useTranslation } from "react-i18next";
+import React from "react"
+import { useTranslation } from "react-i18next"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { Pressable, Text, View } from "@/tw";
+import { useThemePalette } from "@/src/design/tokens"
+import { Pressable, Text, View } from "@/tw"
 
 function ErrorFallback({
   title,
@@ -10,13 +10,13 @@ function ErrorFallback({
   errorMessage,
   onRetry,
 }: {
-  title?: string;
-  message?: string;
-  errorMessage: string;
-  onRetry: () => void;
+  title?: string
+  message?: string
+  errorMessage: string
+  onRetry: () => void
 }) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
   return (
     <View
@@ -45,38 +45,43 @@ function ErrorFallback({
         </Text>
       </Pressable>
     </View>
-  );
+  )
 }
 
 interface ErrorBoundaryProps {
-  title?: string;
-  message?: string;
-  onRetry?: () => void;
-  children: React.ReactNode;
+  title?: string
+  message?: string
+  onRetry?: () => void
+  children: React.ReactNode
 }
 
 interface State {
-  error: Error | null;
+  error: Error | null
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
-  state: State = { error: null };
+  state: State = { error: null }
 
   static getDerivedStateFromError(error: Error): State {
-    return { error };
+    return { error }
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("[ErrorBoundary] 组件渲染崩溃:", error.message, "\n", info.componentStack);
+    console.error(
+      "[ErrorBoundary] 组件渲染崩溃:",
+      error.message,
+      "\n",
+      info.componentStack,
+    )
   }
 
   handleRetry = () => {
-    this.props.onRetry?.();
-    this.setState({ error: null });
-  };
+    this.props.onRetry?.()
+    this.setState({ error: null })
+  }
 
   render() {
-    const { error } = this.state;
+    const { error } = this.state
     if (error) {
       return (
         <ErrorFallback
@@ -85,8 +90,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
           errorMessage={error.message}
           onRetry={this.handleRetry}
         />
-      );
+      )
     }
-    return this.props.children;
+    return this.props.children
   }
 }

@@ -1,9 +1,9 @@
-import i18n from "@/src/i18n";
+import i18n from "@/src/i18n"
 
 export class AppError extends Error {
   constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
+    super(message)
+    this.name = this.constructor.name
   }
 }
 
@@ -16,7 +16,7 @@ export class SyncConnectivityError extends AppError {
     message: string,
     public readonly report: import("../domain/sync/types").LibrarySyncReport,
   ) {
-    super(message);
+    super(message)
   }
 }
 
@@ -26,7 +26,7 @@ export class NetworkError extends AppError {
     message: string,
     public readonly statusCode?: number,
   ) {
-    super(message);
+    super(message)
   }
 }
 
@@ -42,17 +42,16 @@ export class DataSourceInUseError extends AppError {
     message: string,
     public readonly libraryNames: string[],
   ) {
-    super(message);
+    super(message)
   }
 }
 
-type DownloadErrorInfo = { title: string; message: string };
+type DownloadErrorInfo = { title: string; message: string }
 
 const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {
   title: i18n.t("errors.sourceUnreachable"),
-  message:
-    i18n.t("errors.sourceUnreachableDetail"),
-};
+  message: i18n.t("errors.sourceUnreachableDetail"),
+}
 
 /**
  * Converts an unknown download error into a user-friendly title + message pair
@@ -64,11 +63,14 @@ const CONNECTIVITY_ERROR_INFO: DownloadErrorInfo = {
  */
 export function describeDownloadError(err: unknown): DownloadErrorInfo {
   if (err instanceof NetworkError && err.statusCode === undefined) {
-    return CONNECTIVITY_ERROR_INFO;
+    return CONNECTIVITY_ERROR_INFO
   }
-  const message = err instanceof Error ? err.message : String(err);
-  if (message.includes(i18n.t("errors.timeout")) || /network request failed/i.test(message)) {
-    return CONNECTIVITY_ERROR_INFO;
+  const message = err instanceof Error ? err.message : String(err)
+  if (
+    message.includes(i18n.t("errors.timeout")) ||
+    /network request failed/i.test(message)
+  ) {
+    return CONNECTIVITY_ERROR_INFO
   }
-  return { title: i18n.t("errors.downloadFailed"), message };
+  return { title: i18n.t("errors.downloadFailed"), message }
 }

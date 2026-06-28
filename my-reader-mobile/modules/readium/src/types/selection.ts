@@ -1,17 +1,17 @@
-import type { Locator } from './locator';
+import type { Locator } from "./locator"
 
 export interface SelectionAction {
-  id: string;
-  label: string;
+  id: string
+  label: string
 }
 
 export interface SelectionEvent {
-  locator?: Locator;
-  selectedText?: string;
+  locator?: Locator
+  selectedText?: string
 }
 
 export interface SelectionActionEvent {
-  locator: Locator;
-  selectedText: string;
-  actionId: string;
+  locator: Locator
+  selectedText: string
+  actionId: string
 }

@@ -1,4 +1,4 @@
-import { sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 export const syncMeta = sqliteTable(
   "sync_meta",
@@ -8,4 +8,4 @@ export const syncMeta = sqliteTable(
     value: text("value").notNull(),
   },
   (t) => [uniqueIndex("idx_sync_meta_key").on(t.key)],
-);
+)

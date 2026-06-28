@@ -1,5 +1,5 @@
-import { ReadiumModule } from './ReadiumModule';
-import type { PublicationOpenerConfig } from './types';
+import { ReadiumModule } from "./ReadiumModule"
+import type { PublicationOpenerConfig } from "./types"
 
 /**
  * Configure the shared PublicationOpener (REP-005).
@@ -8,5 +8,5 @@ import type { PublicationOpenerConfig } from './types';
  * transforms, custom format parsers, and (Phase 3) content protection.
  */
 export function configure(config: PublicationOpenerConfig): void {
-  ReadiumModule.configure(config);
+  ReadiumModule.configure(config)
 }

@@ -11,11 +11,11 @@
  * API + a sample parser to prove the link end-to-end.
  */
 export interface FormatRegistration {
-  id: string;
+  id: string
   /** File extensions (without dot), e.g. ['mobi', 'azw3']. */
-  extensions: string[];
+  extensions: string[]
   /** Media type, e.g. 'application/x-mobipocket-ebook'. */
-  mediaType?: string;
+  mediaType?: string
   /** Native parser module id implementing `PublicationParser`. */
-  parserModule: string;
+  parserModule: string
 }

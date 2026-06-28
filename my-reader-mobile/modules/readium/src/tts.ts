@@ -11,4 +11,4 @@
  * Utterances come from `publication.getContent(id)`; reading highlight reuses
  * the Decoration API (REP-008).
  */
-export type { TTSEngine, Utterance } from './types';
+export type { TTSEngine, Utterance } from "./types"

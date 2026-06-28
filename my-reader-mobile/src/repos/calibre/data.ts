@@ -1,18 +1,18 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm"
 
-import { books, data } from "@my-reader/db/schema/calibre";
+import { books, data } from "@my-reader/db/schema/calibre"
 
-import { withCalibreDb } from "../../services/db/calibre-db";
+import { withCalibreDb } from "../../services/db/calibre-db"
 
 export type BookFormatRow = {
-  format: string;
-  name: string | null;
-};
+  format: string
+  name: string | null
+}
 
 export type BookFileLocationRow = {
-  path: string;
-  name: string | null;
-};
+  path: string
+  name: string | null
+}
 
 export async function getBookFormatRows(
   metadataUri: string,
@@ -23,10 +23,10 @@ export async function getBookFormatRows(
       .select({ path: books.path })
       .from(books)
       .where(eq(books.id, calibreBookId))
-      .get();
+      .get()
 
     if (!bookPathRow?.path) {
-      return { bookPath: null, formats: [] };
+      return { bookPath: null, formats: [] }
     }
 
     const formatRows = await db
@@ -36,10 +36,10 @@ export async function getBookFormatRows(
       })
       .from(data)
       .where(eq(data.book, calibreBookId))
-      .all();
+      .all()
 
-    return { bookPath: bookPathRow.path, formats: formatRows };
-  });
+    return { bookPath: bookPathRow.path, formats: formatRows }
+  })
 }
 
 export async function listAllFormatRows(
@@ -53,7 +53,7 @@ export async function listAllFormatRows(
       })
       .from(data)
       .all(),
-  );
+  )
 }
 
 export async function lookupBookFileRow(
@@ -70,14 +70,17 @@ export async function lookupBookFileRow(
       .from(books)
       .innerJoin(data, eq(data.book, books.id))
       .where(
-        and(eq(books.id, calibreBookId), sql`UPPER(${data.format}) = ${format.toUpperCase()}`),
+        and(
+          eq(books.id, calibreBookId),
+          sql`UPPER(${data.format}) = ${format.toUpperCase()}`,
+        ),
       )
-      .get();
+      .get()
 
     if (!row?.path) {
-      return null;
+      return null
     }
 
-    return { path: row.path, name: row.name };
-  });
+    return { path: row.path, name: row.name }
+  })
 }

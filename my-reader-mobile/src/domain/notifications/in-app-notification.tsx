@@ -1,29 +1,33 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native"
 
-type InAppNotificationKind = "success" | "error" | "warning" | "info";
+type InAppNotificationKind = "success" | "error" | "warning" | "info"
 
 // Fixed light-palette colors — intentionally not theme-aware so backgrounds
 // remain legible (high contrast) in both light and dark mode.
 const BACKGROUND: Record<InAppNotificationKind, string> = {
   success: "#3A7D5A",
-  error:   "#B53A2F",
+  error: "#B53A2F",
   warning: "#C4922D",
-  info:    "#D97757",
-};
-
-interface InAppNotificationProps {
-  title?: string;
-  description?: string;
-  kind?: InAppNotificationKind;
+  info: "#D97757",
 }
 
-export function InAppNotification({ title, description, kind = "info" }: InAppNotificationProps) {
+interface InAppNotificationProps {
+  title?: string
+  description?: string
+  kind?: InAppNotificationKind
+}
+
+export function InAppNotification({
+  title,
+  description,
+  kind = "info",
+}: InAppNotificationProps) {
   return (
     <View style={[styles.card, { backgroundColor: BACKGROUND[kind] }]}>
       {!!title && <Text style={styles.title}>{title}</Text>}
       {!!description && <Text style={styles.description}>{description}</Text>}
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -49,4 +53,4 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: "rgba(255, 255, 255, 0.85)",
   },
-});
+})

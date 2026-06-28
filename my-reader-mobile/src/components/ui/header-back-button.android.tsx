@@ -1,16 +1,16 @@
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next"
 
-import ArrowBackIcon from "@expo/material-symbols/arrow_back.xml";
+import ArrowBackIcon from "@expo/material-symbols/arrow_back.xml"
 
-import { AndroidHeaderIconButton } from "./android-header-icon-button";
+import { AndroidHeaderIconButton } from "./android-header-icon-button"
 
 type HeaderBackButtonProps = {
-  onPress: () => void;
-};
+  onPress: () => void
+}
 
 /** Android stack header back control with Material icon button and native ripple. */
 export function HeaderBackButton({ onPress }: HeaderBackButtonProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <AndroidHeaderIconButton
@@ -19,5 +19,5 @@ export function HeaderBackButton({ onPress }: HeaderBackButtonProps) {
       testID="header-back-button"
       onPress={onPress}
     />
-  );
+  )
 }

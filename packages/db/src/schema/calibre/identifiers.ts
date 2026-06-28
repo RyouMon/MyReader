@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core"
 
 export const identifiers = sqliteTable(
   "identifiers",
@@ -12,4 +12,4 @@ export const identifiers = sqliteTable(
     index("identifiers_book").on(table.book),
     index("identifiers_book_type").on(table.book, table.type),
   ],
-);
+)

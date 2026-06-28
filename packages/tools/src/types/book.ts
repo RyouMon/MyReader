@@ -57,4 +57,3 @@ export interface BookIdentifier {
   idType: string
   value: string
 }
-

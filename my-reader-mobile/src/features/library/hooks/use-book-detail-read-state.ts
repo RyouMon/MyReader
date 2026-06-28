@@ -1,14 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react"
 
-import { isReadableInAppFormat, pickReadableFormat } from "@my-reader/tools/utils";
-import { useTranslation } from "react-i18next";
-import { Alert } from "react-native";
+import {
+  isReadableInAppFormat,
+  pickReadableFormat,
+} from "@my-reader/tools/utils"
+import { useTranslation } from "react-i18next"
+import { Alert } from "react-native"
 
-import type { Library } from "@/src/domain/types";
-import { isRemoteSourceType } from "@/src/domain/types";
-import type { BookDetail } from "@my-reader/tools/types/book";
+import type { Library } from "@/src/domain/types"
+import { isRemoteSourceType } from "@/src/domain/types"
+import type { BookDetail } from "@my-reader/tools/types/book"
 
-import type { FormatInfo } from "./use-book-detail-formats";
+import type { FormatInfo } from "./use-book-detail-formats"
 
 export function useBookDetailReadState(
   activeLibrary: Library,
@@ -20,37 +23,43 @@ export function useBookDetailReadState(
   onOpenReader: (bookId: string, format: string | null) => void,
   handleDownloadFormat: (format: string) => void,
 ) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   const readableFormats = useMemo(
     () => (detail ? detail.formats.filter(isReadableInAppFormat) : []),
     [detail],
-  );
+  )
 
-  const readableSelectedFormat = selectedFormat ?? (detail ? pickReadableFormat(detail.formats) : null);
-  const selectedFormatUpper = readableSelectedFormat?.toUpperCase() ?? null;
+  const readableSelectedFormat =
+    selectedFormat ?? (detail ? pickReadableFormat(detail.formats) : null)
+  const selectedFormatUpper = readableSelectedFormat?.toUpperCase() ?? null
   const isSelectedFormatPresent = selectedFormatUpper
     ? formatInfoMap[selectedFormatUpper]?.localState === "present"
-    : false;
+    : false
 
   const progress = useMemo(() => {
-    if (!readableSelectedFormat) return 0;
-    return progressByFormat?.[readableSelectedFormat.toUpperCase()] ?? 0;
-  }, [progressByFormat, readableSelectedFormat]);
+    if (!readableSelectedFormat) return 0
+    return progressByFormat?.[readableSelectedFormat.toUpperCase()] ?? 0
+  }, [progressByFormat, readableSelectedFormat])
 
-  const canReadInApp = readableFormats.length > 0;
+  const canReadInApp = readableFormats.length > 0
 
   const handleReadAction = useCallback(() => {
-    if (!canReadInApp || !readableSelectedFormat) return;
-    if (isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent) {
-      handleDownloadFormat(readableSelectedFormat);
+    if (!canReadInApp || !readableSelectedFormat) return
+    if (
+      isRemoteSourceType(activeLibrary.sourceType) &&
+      !isSelectedFormatPresent
+    ) {
+      handleDownloadFormat(readableSelectedFormat)
       Alert.alert(
         t("bookDetail.downloadStarted"),
-        t("bookDetail.downloadStartedDetail", { format: readableSelectedFormat }),
-      );
-      return;
+        t("bookDetail.downloadStartedDetail", {
+          format: readableSelectedFormat,
+        }),
+      )
+      return
     }
-    onOpenReader(bookId, readableSelectedFormat);
+    onOpenReader(bookId, readableSelectedFormat)
   }, [
     canReadInApp,
     readableSelectedFormat,
@@ -60,16 +69,21 @@ export function useBookDetailReadState(
     t,
     bookId,
     onOpenReader,
-  ]);
+  ])
 
   const readButtonTitle = useMemo(() => {
     if (!canReadInApp || !readableSelectedFormat) {
-      return t("bookDetail.noReadableFormat");
+      return t("bookDetail.noReadableFormat")
     }
-    if (isRemoteSourceType(activeLibrary.sourceType) && !isSelectedFormatPresent) {
-      return t("bookDetail.downloadAndRead");
+    if (
+      isRemoteSourceType(activeLibrary.sourceType) &&
+      !isSelectedFormatPresent
+    ) {
+      return t("bookDetail.downloadAndRead")
     }
-    return progress > 0 ? t("bookDetail.continueReading") : t("bookDetail.startReading");
+    return progress > 0
+      ? t("bookDetail.continueReading")
+      : t("bookDetail.startReading")
   }, [
     canReadInApp,
     readableSelectedFormat,
@@ -77,7 +91,7 @@ export function useBookDetailReadState(
     isSelectedFormatPresent,
     progress,
     t,
-  ]);
+  ])
 
   return {
     readableFormats,
@@ -85,5 +99,5 @@ export function useBookDetailReadState(
     canReadInApp,
     handleReadAction,
     readButtonTitle,
-  };
+  }
 }

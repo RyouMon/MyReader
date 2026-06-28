@@ -1,21 +1,23 @@
-import type { RemoteBackend } from "../../services/remote/backend";
+import type { RemoteBackend } from "../../services/remote/backend"
 
 export type ConnectivityCheckResult = {
-  reachable: boolean;
-  latencyMs: number;
-  error?: string;
-};
+  reachable: boolean
+  latencyMs: number
+  error?: string
+}
 
-export async function checkConnectivity(backend: RemoteBackend): Promise<ConnectivityCheckResult> {
-  const start = Date.now();
+export async function checkConnectivity(
+  backend: RemoteBackend,
+): Promise<ConnectivityCheckResult> {
+  const start = Date.now()
   try {
-    await backend.statRemoteFile(".");
-    return { reachable: true, latencyMs: Date.now() - start };
+    await backend.statRemoteFile(".")
+    return { reachable: true, latencyMs: Date.now() - start }
   } catch (err) {
     return {
       reachable: false,
       latencyMs: Date.now() - start,
       error: err instanceof Error ? err.message : String(err),
-    };
+    }
   }
 }

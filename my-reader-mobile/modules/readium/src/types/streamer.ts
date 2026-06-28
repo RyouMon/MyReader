@@ -1,4 +1,4 @@
-import type { FormatRegistration } from './format';
+import type { FormatRegistration } from "./format"
 
 /**
  * Streamer / PublicationOpener configuration (REP-005).
@@ -15,13 +15,13 @@ import type { FormatRegistration } from './format';
  *
  * (REP-002 Fetcher: resource transforms are the same mechanism.)
  */
-export type PublicationTransformId = string;
+export type PublicationTransformId = string
 
 export interface PublicationOpenerConfig {
   /** Enabled native onCreatePublication transforms. */
-  transforms?: PublicationTransformId[];
+  transforms?: PublicationTransformId[]
   /** Custom format registrations to activate (see format/). */
-  formats?: FormatRegistration[];
+  formats?: FormatRegistration[]
   /** Content protection scheme id (REP-006), e.g. 'lcp'. Reserved — Phase 3. */
-  contentProtection?: string;
+  contentProtection?: string
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect } from "react"
 import Reanimated, {
   cancelAnimation,
   Easing,
@@ -7,21 +7,21 @@ import Reanimated, {
   useSharedValue,
   withRepeat,
   withTiming,
-} from "react-native-reanimated";
-import Svg, { Circle } from "react-native-svg";
+} from "react-native-reanimated"
+import Svg, { Circle } from "react-native-svg"
 
-import { useThemePalette } from "@/src/design/tokens";
+import { useThemePalette } from "@/src/design/tokens"
 
-const AnimatedCircle = Reanimated.createAnimatedComponent(Circle);
+const AnimatedCircle = Reanimated.createAnimatedComponent(Circle)
 
 type CircularProgressProps = {
-  progress: number;
-  indeterminate?: boolean;
-  size?: number;
-  strokeWidth?: number;
-  color?: string;
-  trackColor?: string;
-};
+  progress: number
+  indeterminate?: boolean
+  size?: number
+  strokeWidth?: number
+  color?: string
+  trackColor?: string
+}
 
 /**
  * Animated circular progress ring.
@@ -36,41 +36,47 @@ export function CircularProgress({
   color,
   trackColor,
 }: CircularProgressProps) {
-  const palette = useThemePalette();
-  const resolvedColor = color ?? palette.primary;
-  const resolvedTrackColor = trackColor ?? "rgba(0,0,0,0.12)";
+  const palette = useThemePalette()
+  const resolvedColor = color ?? palette.primary
+  const resolvedTrackColor = trackColor ?? "rgba(0,0,0,0.12)"
 
-  const half = size / 2;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const arcLength = indeterminate ? 0.1 * circumference : Math.min(1, Math.max(0, progress)) * circumference;
-  const targetOffset = circumference - arcLength;
+  const half = size / 2
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const arcLength = indeterminate
+    ? 0.1 * circumference
+    : Math.min(1, Math.max(0, progress)) * circumference
+  const targetOffset = circumference - arcLength
 
-  const animatedOffset = useSharedValue(circumference);
-  const rotation = useSharedValue(0);
+  const animatedOffset = useSharedValue(circumference)
+  const rotation = useSharedValue(0)
 
   // Animate offset when progress or indeterminate changes
   useEffect(() => {
-    animatedOffset.value = withTiming(targetOffset, { duration: 300 });
-  }, [animatedOffset, targetOffset]);
+    animatedOffset.value = withTiming(targetOffset, { duration: 300 })
+  }, [animatedOffset, targetOffset])
 
   // Handle rotation animation
   useEffect(() => {
     if (indeterminate) {
-      rotation.value = withRepeat(withTiming(360, { duration: 800, easing: Easing.linear }), -1, false);
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 800, easing: Easing.linear }),
+        -1,
+        false,
+      )
     } else {
-      cancelAnimation(rotation);
-      rotation.value = withTiming(0, { duration: 150 });
+      cancelAnimation(rotation)
+      rotation.value = withTiming(0, { duration: 150 })
     }
-  }, [indeterminate, rotation]);
+  }, [indeterminate, rotation])
 
   const circleProps = useAnimatedProps(() => ({
     strokeDashoffset: animatedOffset.value,
-  }));
+  }))
 
   const rotationStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  }))
 
   return (
     <Reanimated.View style={[{ width: size, height: size }, rotationStyle]}>
@@ -97,5 +103,5 @@ export function CircularProgress({
         />
       </Svg>
     </Reanimated.View>
-  );
+  )
 }

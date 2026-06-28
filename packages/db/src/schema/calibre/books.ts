@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, real } from "drizzle-orm/sqlite-core"
 
 export const books = sqliteTable("books", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -15,4 +15,4 @@ export const books = sqliteTable("books", {
   uuid: text("uuid"),
   hasCover: integer("has_cover").default(0),
   lastModified: text("last_modified").default("2000-01-01 00:00:00+00:00"),
-});
+})

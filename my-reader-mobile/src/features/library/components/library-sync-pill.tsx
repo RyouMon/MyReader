@@ -1,21 +1,27 @@
-import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Animated, Platform, StyleSheet, Text } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEffect, useRef } from "react"
+import { useTranslation } from "react-i18next"
+import {
+  ActivityIndicator,
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+} from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { useIsLibrarySyncing } from "@/src/domain/sync/hooks/use-sync-library";
+import { useThemePalette } from "@/src/design/tokens"
+import { useIsLibrarySyncing } from "@/src/domain/sync/hooks/use-sync-library"
 
-const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56;
+const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56
 
 export function LibrarySyncPill() {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const insets = useSafeAreaInsets();
-  const isSyncing = useIsLibrarySyncing();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const insets = useSafeAreaInsets()
+  const isSyncing = useIsLibrarySyncing()
 
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(14)).current;
+  const opacity = useRef(new Animated.Value(0)).current
+  const translateY = useRef(new Animated.Value(14)).current
 
   useEffect(() => {
     Animated.parallel([
@@ -29,8 +35,8 @@ export function LibrarySyncPill() {
         duration: isSyncing ? 220 : 160,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [isSyncing, opacity, translateY]);
+    ]).start()
+  }, [isSyncing, opacity, translateY])
 
   return (
     <Animated.View
@@ -47,9 +53,11 @@ export function LibrarySyncPill() {
       ]}
     >
       <ActivityIndicator size="small" color={palette.primary} />
-      <Text style={[styles.label, { color: palette.text }]}>{t("notifications.librarySyncing")}</Text>
+      <Text style={[styles.label, { color: palette.text }]}>
+        {t("notifications.librarySyncing")}
+      </Text>
     </Animated.View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -73,4 +81,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 7,
   },
-});
+})

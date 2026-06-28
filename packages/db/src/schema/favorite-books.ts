@@ -1,4 +1,10 @@
-import { sqliteTable, integer, text, real, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  integer,
+  text,
+  real,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 
 export const favoriteBooks = sqliteTable(
   "favorite_books",
@@ -8,4 +14,4 @@ export const favoriteBooks = sqliteTable(
     addedAt: real("added_at").notNull().default(0),
   },
   (t) => [uniqueIndex("idx_favorite_books_book_id").on(t.bookId)],
-);
+)

@@ -1,24 +1,29 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
 
 import {
-    DEFAULT_LIBRARY_VIEW_MODE,
-    excludeLocalLibrarySource,
-    defaultSettings,
-    STORE_NAME,
-} from "./app-store.constants";
-import type { AppState, LibraryViewMode, PersistedAppState, ReaderSettings } from "./app-store.types";
-import { createDataSourceSlice } from "./data-source-slice";
-import { createExpoJsonStorage } from "../services/storage/json-storage";
-import { createLibrarySlice } from "./library-slice";
-import { createSettingsSlice, createProgramSlice } from "./settings-slice";
-import { createStatusSlice } from "./status-slice";
+  DEFAULT_LIBRARY_VIEW_MODE,
+  excludeLocalLibrarySource,
+  defaultSettings,
+  STORE_NAME,
+} from "./app-store.constants"
+import type {
+  AppState,
+  LibraryViewMode,
+  PersistedAppState,
+  ReaderSettings,
+} from "./app-store.types"
+import { createDataSourceSlice } from "./data-source-slice"
+import { createExpoJsonStorage } from "../services/storage/json-storage"
+import { createLibrarySlice } from "./library-slice"
+import { createSettingsSlice, createProgramSlice } from "./settings-slice"
+import { createStatusSlice } from "./status-slice"
 
-const jsonStorage = createExpoJsonStorage();
+const jsonStorage = createExpoJsonStorage()
 
 /** Returns whether a persisted value matches the current library view modes. */
 function isLibraryViewMode(value: unknown): value is LibraryViewMode {
-  return value === "grid" || value === "list";
+  return value === "grid" || value === "list"
 }
 
 export const useAppStore = create<AppState>()(
@@ -41,26 +46,36 @@ export const useAppStore = create<AppState>()(
         libraryViewMode: state.libraryViewMode,
       }),
       merge: (persistedState, currentState) => {
-        const typedPersisted = (persistedState as Partial<PersistedAppState>) ?? {};
+        const typedPersisted =
+          (persistedState as Partial<PersistedAppState>) ?? {}
         const persistedSettings = typedPersisted.settings as
           | (Partial<ReaderSettings> & { syncEnabled?: boolean })
-          | undefined;
-        const legacyAutoSync = persistedSettings?.syncEnabled;
+          | undefined
+        const legacyAutoSync = persistedSettings?.syncEnabled
 
         return {
           ...currentState,
           settings: {
             ...defaultSettings,
             ...persistedSettings,
-            syncOnStartup: persistedSettings?.syncOnStartup ?? legacyAutoSync ?? true,
-            enableAutoSync: persistedSettings?.enableAutoSync ?? legacyAutoSync ?? true,
-            reflowable: { ...defaultSettings.reflowable, ...persistedSettings?.reflowable },
+            syncOnStartup:
+              persistedSettings?.syncOnStartup ?? legacyAutoSync ?? true,
+            enableAutoSync:
+              persistedSettings?.enableAutoSync ?? legacyAutoSync ?? true,
+            reflowable: {
+              ...defaultSettings.reflowable,
+              ...persistedSettings?.reflowable,
+            },
             fixed: { ...defaultSettings.fixed, ...persistedSettings?.fixed },
           },
           dataSources: excludeLocalLibrarySource(
-            Array.isArray(typedPersisted.dataSources) ? typedPersisted.dataSources : []
+            Array.isArray(typedPersisted.dataSources)
+              ? typedPersisted.dataSources
+              : [],
           ),
-          libraries: Array.isArray(typedPersisted.libraries) ? typedPersisted.libraries : [],
+          libraries: Array.isArray(typedPersisted.libraries)
+            ? typedPersisted.libraries
+            : [],
           activeLibraryId:
             typeof typedPersisted.activeLibraryId === "string"
               ? typedPersisted.activeLibraryId
@@ -68,19 +83,19 @@ export const useAppStore = create<AppState>()(
           libraryViewMode: isLibraryViewMode(typedPersisted.libraryViewMode)
             ? typedPersisted.libraryViewMode
             : DEFAULT_LIBRARY_VIEW_MODE,
-        } as AppState;
+        } as AppState
       },
       onRehydrateStorage: () => (state) => {
         if (!state) {
-          return;
+          return
         }
 
-        state.setStoreReady(true);
+        state.setStoreReady(true)
       },
-    }
-  )
-);
+    },
+  ),
+)
 
 export function useAppStoreReady() {
-  return useAppStore((state) => state.storeReady);
+  return useAppStore((state) => state.storeReady)
 }

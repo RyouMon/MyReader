@@ -1,33 +1,33 @@
-import { memo } from "react";
+import { memo } from "react"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import { CloudIcon } from "@/src/components/ui/cloud-icon";
-import { CircularProgress } from "@/src/components/ui/circular-progress";
-import { useDownloadTaskForBookFormat } from "@/src/domain/download/download-store";
+import { useThemePalette } from "@/src/design/tokens"
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import { CloudIcon } from "@/src/components/ui/cloud-icon"
+import { CircularProgress } from "@/src/components/ui/circular-progress"
+import { useDownloadTaskForBookFormat } from "@/src/domain/download/download-store"
 
-type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
+type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
 
 type BookDownloadStatusIndicatorProps = {
-  status?: BookDownloadStatus;
-  libraryId?: string;
-  bookId?: string;
-  format?: string;
-  fallbackProgress?: number;
-  size?: number;
-  strokeWidth?: number;
-  color?: string;
-};
+  status?: BookDownloadStatus
+  libraryId?: string
+  bookId?: string
+  format?: string
+  fallbackProgress?: number
+  size?: number
+  strokeWidth?: number
+  color?: string
+}
 
 type DownloadingProgressProps = {
-  libraryId: string;
-  bookId: string;
-  format: string;
-  size: number;
-  strokeWidth: number;
-  color: string;
-  fallbackProgress?: number;
-};
+  libraryId: string
+  bookId: string
+  format: string
+  size: number
+  strokeWidth: number
+  color: string
+  fallbackProgress?: number
+}
 
 function DownloadingProgressImpl({
   libraryId,
@@ -38,12 +38,20 @@ function DownloadingProgressImpl({
   color,
   fallbackProgress,
 }: DownloadingProgressProps) {
-  const task = useDownloadTaskForBookFormat(libraryId, bookId, format);
-  const progress = task?.progress ?? fallbackProgress ?? 0;
-  return <CircularProgress progress={progress} indeterminate={progress === 0} size={size} strokeWidth={strokeWidth} color={color} />;
+  const task = useDownloadTaskForBookFormat(libraryId, bookId, format)
+  const progress = task?.progress ?? fallbackProgress ?? 0
+  return (
+    <CircularProgress
+      progress={progress}
+      indeterminate={progress === 0}
+      size={size}
+      strokeWidth={strokeWidth}
+      color={color}
+    />
+  )
 }
 
-const DownloadingProgress = memo(DownloadingProgressImpl);
+const DownloadingProgress = memo(DownloadingProgressImpl)
 
 export function BookDownloadStatusIndicator({
   status,
@@ -55,14 +63,14 @@ export function BookDownloadStatusIndicator({
   strokeWidth = 1.5,
   color: overrideColor,
 }: BookDownloadStatusIndicatorProps) {
-  const palette = useThemePalette();
-  const cloudColor = overrideColor ?? palette.textMuted;
-  const progressColor = overrideColor ?? palette.primary;
+  const palette = useThemePalette()
+  const cloudColor = overrideColor ?? palette.textMuted
+  const progressColor = overrideColor ?? palette.primary
 
-  if (!status) return null;
+  if (!status) return null
 
   if (status === "notDownloaded") {
-    return <CloudIcon size={size} color={cloudColor} />;
+    return <CloudIcon size={size} color={cloudColor} />
   }
 
   if (status === "downloading") {
@@ -77,7 +85,7 @@ export function BookDownloadStatusIndicator({
           color={progressColor}
           fallbackProgress={fallbackProgress}
         />
-      );
+      )
     }
     return (
       <CircularProgress
@@ -87,8 +95,8 @@ export function BookDownloadStatusIndicator({
         strokeWidth={strokeWidth}
         color={progressColor}
       />
-    );
+    )
   }
 
-  return null;
+  return null
 }

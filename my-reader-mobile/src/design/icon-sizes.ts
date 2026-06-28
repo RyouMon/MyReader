@@ -14,11 +14,11 @@ export const ICON_SIZE = {
   "3xl": 28,
   "4xl": 30,
   "5xl": 32,
-} as const;
+} as const
 
 export const TOUCH = {
   min: 44,
   btn: 48,
   row: 60,
   tab: 56,
-} as const;
+} as const

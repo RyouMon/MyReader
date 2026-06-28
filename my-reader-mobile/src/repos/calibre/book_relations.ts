@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm"
 
 import {
   authors,
@@ -17,29 +17,33 @@ import {
   ratings,
   series,
   tags,
-} from "@my-reader/db/schema/calibre";
+} from "@my-reader/db/schema/calibre"
 
-import { withCalibreDb } from "../../services/db/calibre-db";
+import { withCalibreDb } from "../../services/db/calibre-db"
 
 export type BookDetailRows = {
-  book: typeof books.$inferSelect | undefined;
-  authorRows: { name: string | null }[];
-  tagRows: { name: string | null }[];
-  seriesRow: { name: string | null } | undefined;
-  formatRows: { format: string | null; uncompressedSize: number | null }[];
-  commentRow: { text: string | null } | undefined;
-  publisherRow: { name: string | null } | undefined;
-  languageRows: { langCode: string | null }[];
-  ratingRow: { rating: number | null } | undefined;
-  identifierRows: { type: string | null; val: string | null }[];
-};
+  book: typeof books.$inferSelect | undefined
+  authorRows: { name: string | null }[]
+  tagRows: { name: string | null }[]
+  seriesRow: { name: string | null } | undefined
+  formatRows: { format: string | null; uncompressedSize: number | null }[]
+  commentRow: { text: string | null } | undefined
+  publisherRow: { name: string | null } | undefined
+  languageRows: { langCode: string | null }[]
+  ratingRow: { rating: number | null } | undefined
+  identifierRows: { type: string | null; val: string | null }[]
+}
 
 export async function fetchBookDetailRows(
   metadataUri: string,
   calibreBookId: number,
 ): Promise<BookDetailRows> {
   return withCalibreDb(metadataUri, async (db) => {
-    const book = await db.select().from(books).where(eq(books.id, calibreBookId)).get();
+    const book = await db
+      .select()
+      .from(books)
+      .where(eq(books.id, calibreBookId))
+      .get()
 
     if (!book) {
       return {
@@ -53,7 +57,7 @@ export async function fetchBookDetailRows(
         languageRows: [],
         ratingRow: undefined,
         identifierRows: [],
-      };
+      }
     }
 
     const [
@@ -126,7 +130,7 @@ export async function fetchBookDetailRows(
         .where(eq(identifiers.book, calibreBookId))
         .orderBy(identifiers.type)
         .all(),
-    ]);
+    ])
 
     return {
       book,
@@ -139,6 +143,6 @@ export async function fetchBookDetailRows(
       languageRows,
       ratingRow,
       identifierRows,
-    };
-  });
+    }
+  })
 }

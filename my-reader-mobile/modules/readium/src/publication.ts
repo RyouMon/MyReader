@@ -1,9 +1,5 @@
-import { ReadiumModule } from './ReadiumModule';
-import type {
-  Locator,
-  PublicationSnapshot,
-  ContentResult,
-} from './types';
+import { ReadiumModule } from "./ReadiumModule"
+import type { Locator, PublicationSnapshot, ContentResult } from "./types"
 
 /**
  * Publication handle operations (REP-003/004).
@@ -15,9 +11,9 @@ import type {
 
 /** Full snapshot of a publication (metadata, TOC, reading order, positions). */
 export function getSnapshot(
-  publicationId: string
+  publicationId: string,
 ): Promise<PublicationSnapshot> {
-  return ReadiumModule.getPublicationSnapshot(publicationId);
+  return ReadiumModule.getPublicationSnapshot(publicationId)
 }
 
 /**
@@ -28,7 +24,7 @@ export function getSnapshot(
  */
 export function getContent(
   publicationId: string,
-  fromLocator?: Locator
+  fromLocator?: Locator,
 ): Promise<ContentResult> {
-  return ReadiumModule.getContent(publicationId, fromLocator);
+  return ReadiumModule.getContent(publicationId, fromLocator)
 }

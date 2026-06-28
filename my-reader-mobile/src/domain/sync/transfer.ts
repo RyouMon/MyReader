@@ -1,42 +1,47 @@
-import i18n from "@/src/i18n";
-import { libraryContainerRootUri } from "@/src/services/fs/library-paths";
-import { AppInvariantError } from "../../errors";
-import { deleteFileState, upsertFileState } from "../../repos/file-state";
-import type { NativeDownloadOptions } from "../../services/download/native";
-import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local";
-import { deleteFileAtUri } from "../../services/fs/file-io";
-import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
-import type { Library } from "../types";
-import { isRemoteSourceType } from "../types";
-import type { SyncTargetContext } from "./context";
-import { isRemoteBackend } from "./resolve";
+import i18n from "@/src/i18n"
+import { libraryContainerRootUri } from "@/src/services/fs/library-paths"
+import { AppInvariantError } from "../../errors"
+import { deleteFileState, upsertFileState } from "../../repos/file-state"
+import type { NativeDownloadOptions } from "../../services/download/native"
+import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local"
+import { deleteFileAtUri } from "../../services/fs/file-io"
+import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
+import type { Library } from "../types"
+import { isRemoteSourceType } from "../types"
+import type { SyncTargetContext } from "./context"
+import { isRemoteBackend } from "./resolve"
 
 export type DownloadOutcome = {
-  blake3: string | null;
-  size: number;
-  mtimeMs: number;
-};
+  blake3: string | null
+  size: number
+  mtimeMs: number
+}
 
-type BackgroundDownloadOptions = NativeDownloadOptions;
+type BackgroundDownloadOptions = NativeDownloadOptions
 
-function toDownloadOutcome(stat: { size: number; mtimeMs: number }): DownloadOutcome {
-  return { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs };
+function toDownloadOutcome(stat: {
+  size: number
+  mtimeMs: number
+}): DownloadOutcome {
+  return { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs }
 }
 
 function localFileUri(ctx: SyncTargetContext, relativePath: string): string {
-  assertSafeRelativePath(relativePath);
-  return fileUriFor(ctx.libraryRootUri, relativePath);
+  assertSafeRelativePath(relativePath)
+  return fileUriFor(ctx.libraryRootUri, relativePath)
 }
 
 function requireRemoteBackend(ctx: SyncTargetContext) {
   if (!isRemoteBackend(ctx.backend)) {
-    throw new AppInvariantError(i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }));
+    throw new AppInvariantError(
+      i18n.t("sync.nativeDownloadNotSupported", { kind: ctx.backend.kind }),
+    )
   }
-  return ctx.backend;
+  return ctx.backend
 }
 
 async function removeLocalFile(fileUri: string): Promise<void> {
-  await deleteFileAtUri(fileUri);
+  await deleteFileAtUri(fileUri)
 }
 
 export async function downloadFileDirect(
@@ -47,15 +52,15 @@ export async function downloadFileDirect(
     requireRemoteBackend(ctx),
     relativePath,
     localFileUri(ctx, relativePath),
-  );
-  const outcome = toDownloadOutcome(stat);
+  )
+  const outcome = toDownloadOutcome(stat)
   await upsertFileState(ctx.library, relativePath, {
     localState: "present",
     localBlake3: outcome.blake3,
     localSize: outcome.size,
     localMtime: outcome.mtimeMs,
-  });
-  return outcome;
+  })
+  return outcome
 }
 
 export async function downloadFileDirectWithProgress(
@@ -70,52 +75,52 @@ export async function downloadFileDirectWithProgress(
     localFileUri(ctx, relativePath),
     onProgress,
     options,
-  );
-  const outcome = toDownloadOutcome(stat);
+  )
+  const outcome = toDownloadOutcome(stat)
   await upsertFileState(ctx.library, relativePath, {
     localState: "present",
     localBlake3: outcome.blake3,
     localSize: outcome.size,
     localMtime: outcome.mtimeMs,
-  });
-  return outcome;
+  })
+  return outcome
 }
 
 export async function evictLocalFile(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<void> {
-  await removeLocalFile(localFileUri(ctx, relativePath));
+  await removeLocalFile(localFileUri(ctx, relativePath))
   await upsertFileState(ctx.library, relativePath, {
     localState: "remote_only",
     localBlake3: null,
     localSize: null,
     localMtime: null,
-  });
+  })
 }
 
 export async function evictLocalFileOfflineSafe(
   library: Library,
   relativePath: string,
 ): Promise<void> {
-  if (!isRemoteSourceType(library.sourceType)) return;
-  assertSafeRelativePath(relativePath);
-  const fileUri = fileUriFor(libraryContainerRootUri(library.id), relativePath);
-  await removeLocalFile(fileUri);
+  if (!isRemoteSourceType(library.sourceType)) return
+  assertSafeRelativePath(relativePath)
+  const fileUri = fileUriFor(libraryContainerRootUri(library.id), relativePath)
+  await removeLocalFile(fileUri)
   await upsertFileState(library, relativePath, {
     localState: "remote_only",
     localBlake3: null,
     localSize: null,
     localMtime: null,
-  });
+  })
 }
 
 export async function deleteFileEverywhere(
   ctx: SyncTargetContext,
   relativePath: string,
 ): Promise<void> {
-  assertSafeRelativePath(relativePath);
-  await removeLocalFile(localFileUri(ctx, relativePath));
-  await ctx.backend.deleteRemote(relativePath);
-  await deleteFileState(ctx.library, relativePath);
+  assertSafeRelativePath(relativePath)
+  await removeLocalFile(localFileUri(ctx, relativePath))
+  await ctx.backend.deleteRemote(relativePath)
+  await deleteFileState(ctx.library, relativePath)
 }

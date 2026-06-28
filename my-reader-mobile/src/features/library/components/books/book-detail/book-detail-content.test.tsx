@@ -1,20 +1,20 @@
-import { render, screen } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react-native"
 
-import type { BookDetail } from "@my-reader/tools/types/book";
+import type { BookDetail } from "@my-reader/tools/types/book"
 
-import type { Library } from "@/src/domain/types";
+import type { Library } from "@/src/domain/types"
 
-import { BookDetailContent } from "./book-detail-content";
-import type { DetailColors } from "./types";
+import { BookDetailContent } from "./book-detail-content"
+import type { DetailColors } from "./types"
 
 jest.mock("react-i18next", () => {
   const t = (key: string, params?: Record<string, string>) =>
-    params ? `${key}:${JSON.stringify(params)}` : key;
+    params ? `${key}:${JSON.stringify(params)}` : key
   return {
     initReactI18next: { type: "3rdParty", init: jest.fn() },
     useTranslation: () => ({ t }),
-  };
-});
+  }
+})
 
 jest.mock("@/src/utils/book-detail", () => ({
   formatDate: (value: string | null | undefined) => value ?? "—",
@@ -22,15 +22,15 @@ jest.mock("@/src/utils/book-detail", () => ({
   IDENTIFIER_LABELS: {},
   resolveCoverForDetail: jest.fn(() => Promise.resolve(undefined)),
   stripHtml: (value: string) => value,
-}));
+}))
 
 jest.mock("@/src/domain/library/hooks/use-book-reading-progress", () => ({
   useBookReadingProgress: jest.fn(() => ({ data: undefined })),
-}));
+}))
 
 jest.mock("../../../hooks/use-book-cover-uri", () => ({
   useBookCoverUri: jest.fn(() => ({ coverUri: undefined })),
-}));
+}))
 
 jest.mock("../../../hooks/use-book-detail-formats", () => ({
   useBookDetailFormats: jest.fn(() => ({
@@ -39,7 +39,7 @@ jest.mock("../../../hooks/use-book-detail-formats", () => ({
     handleDeleteFormat: jest.fn(),
     handleShareFormat: jest.fn(),
   })),
-}));
+}))
 
 jest.mock("../../../hooks/use-book-detail-read-state", () => ({
   useBookDetailReadState: jest.fn(() => ({
@@ -49,27 +49,27 @@ jest.mock("../../../hooks/use-book-detail-read-state", () => ({
     handleReadAction: jest.fn(),
     readButtonTitle: "bookDetail.startReading",
   })),
-}));
+}))
 
 jest.mock("@/src/components/ui", () => ({
   EmptyState: jest.fn(() => null),
-}));
+}))
 
 jest.mock("./hero-section", () => ({
   HeroSection: jest.fn(() => null),
-}));
+}))
 
 jest.mock("./format-section", () => ({
   FormatSection: jest.fn(() => null),
-}));
+}))
 
 jest.mock("./info-row-section", () => ({
   InfoRowSection: jest.fn(() => null),
-}));
+}))
 
 jest.mock("./synopsis-section", () => ({
   SynopsisSection: jest.fn(() => null),
-}));
+}))
 
 const mockColors = {
   background: "#000",
@@ -83,14 +83,14 @@ const mockColors = {
     surface: "#111",
     textMuted: "#999",
   },
-} as unknown as DetailColors;
+} as unknown as DetailColors
 
 const localLibrary: Library = {
   id: "lib-1",
   name: "Local Library",
   path: "/local",
   sourceType: "local",
-} as Library;
+} as Library
 
 const detail = {
   id: 1,
@@ -110,9 +110,11 @@ const detail = {
   comment: "A synopsis.",
   formats: ["EPUB"],
   formatSizes: [{ format: "EPUB", sizeBytes: 1024 }],
-} as unknown as BookDetail;
+} as unknown as BookDetail
 
-function renderContent(overrides: Partial<React.ComponentProps<typeof BookDetailContent>> = {}) {
+function renderContent(
+  overrides: Partial<React.ComponentProps<typeof BookDetailContent>> = {},
+) {
   return render(
     <BookDetailContent
       activeLibrary={localLibrary}
@@ -128,41 +130,43 @@ function renderContent(overrides: Partial<React.ComponentProps<typeof BookDetail
       selectedFormat={null}
       {...overrides}
     />,
-  );
+  )
 }
 
 describe("BookDetailContent", () => {
   it("should show loading state when loadingDetail is true", () => {
-    renderContent({ loadingDetail: true });
+    renderContent({ loadingDetail: true })
 
-    expect(screen.getByText("bookDetail.loadingDetail")).toBeTruthy();
-  });
+    expect(screen.getByText("bookDetail.loadingDetail")).toBeTruthy()
+  })
 
   it("should show empty state when detail is missing", () => {
-    const { EmptyState } = jest.requireMock("@/src/components/ui");
+    const { EmptyState } = jest.requireMock("@/src/components/ui")
 
-    renderContent({ detail: null });
+    renderContent({ detail: null })
 
     expect(EmptyState.mock.calls[0][0]).toMatchObject({
       title: "bookDetail.notFound.title",
-    });
-  });
+    })
+  })
 
   it("should show error state when detailError is present", () => {
-    const { EmptyState } = jest.requireMock("@/src/components/ui");
+    const { EmptyState } = jest.requireMock("@/src/components/ui")
 
-    renderContent({ detail: null, detailError: "Load failed" });
+    renderContent({ detail: null, detailError: "Load failed" })
 
-    expect(EmptyState.mock.calls[EmptyState.mock.calls.length - 1][0]).toMatchObject({
+    expect(
+      EmptyState.mock.calls[EmptyState.mock.calls.length - 1][0],
+    ).toMatchObject({
       detail: "Load failed",
-    });
-  });
+    })
+  })
 
   it("should render format section when book has formats", () => {
-    const { FormatSection } = jest.requireMock("./format-section");
+    const { FormatSection } = jest.requireMock("./format-section")
 
-    renderContent();
+    renderContent()
 
-    expect(FormatSection).toHaveBeenCalled();
-  });
-});
+    expect(FormatSection).toHaveBeenCalled()
+  })
+})

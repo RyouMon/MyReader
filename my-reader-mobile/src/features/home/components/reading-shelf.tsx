@@ -1,31 +1,33 @@
-import { FlatList, useWindowDimensions } from "react-native";
+import { FlatList, useWindowDimensions } from "react-native"
 
-import type { BookItem } from "@/src/domain/types";
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
-import { ReadingListCard } from "./reading-list-card";
+import type { BookItem } from "@/src/domain/types"
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import type { HomeCardStyle } from "@/src/store/app-store.types"
+import { ReadingListCard } from "./reading-list-card"
 
 function getCardWidth(screenWidth: number): number {
-  if (screenWidth <= 480) return Math.round(screenWidth * 0.62);
-  if (screenWidth <= 768) return Math.round(screenWidth * 0.45);
-  return Math.round(screenWidth * 0.32);
+  if (screenWidth <= 480) return Math.round(screenWidth * 0.62)
+  if (screenWidth <= 768) return Math.round(screenWidth * 0.45)
+  return Math.round(screenWidth * 0.32)
 }
 
 export type ReadingShelfProps = {
-  data: (BookItem & { readingProgress: number; readingFormat: string })[];
-  onSelectBook?: (book: BookItem & { readingProgress: number; readingFormat: string }) => void;
-  downloadStatusById?: Record<string, BookDownloadStatus>;
-  libraryId?: string;
-  bookFormatsById?: Record<string, string[]>;
-  selectedFormatById?: Record<string, string>;
-  menuIsRemote?: boolean;
-  onMenuAction?: (bookId: string, actionId: string) => void;
-  onMenuOpen?: (bookId: string) => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  homeCardStyle?: HomeCardStyle;
-  favoriteBookIds?: Set<string>;
-};
+  data: (BookItem & { readingProgress: number; readingFormat: string })[]
+  onSelectBook?: (
+    book: BookItem & { readingProgress: number; readingFormat: string },
+  ) => void
+  downloadStatusById?: Record<string, BookDownloadStatus>
+  libraryId?: string
+  bookFormatsById?: Record<string, string[]>
+  selectedFormatById?: Record<string, string>
+  menuIsRemote?: boolean
+  onMenuAction?: (bookId: string, actionId: string) => void
+  onMenuOpen?: (bookId: string) => void
+  onMenuClose?: () => void
+  isAnyMenuOpen?: boolean
+  homeCardStyle?: HomeCardStyle
+  favoriteBookIds?: Set<string>
+}
 
 export function ReadingShelf({
   data,
@@ -42,8 +44,8 @@ export function ReadingShelf({
   homeCardStyle,
   favoriteBookIds,
 }: ReadingShelfProps) {
-  const { width } = useWindowDimensions();
-  const cardWidth = getCardWidth(width);
+  const { width } = useWindowDimensions()
+  const cardWidth = getCardWidth(width)
 
   return (
     <FlatList
@@ -51,7 +53,11 @@ export function ReadingShelf({
       data={data}
       keyExtractor={(item) => item.id}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 12, paddingHorizontal: 4, paddingVertical: 8 }}
+      contentContainerStyle={{
+        gap: 12,
+        paddingHorizontal: 4,
+        paddingVertical: 8,
+      }}
       renderItem={({ item }) => (
         <ReadingListCard
           book={item}
@@ -72,5 +78,5 @@ export function ReadingShelf({
         />
       )}
     />
-  );
+  )
 }

@@ -1,18 +1,18 @@
-import { useEffect } from "react";
-import { View } from "react-native";
+import { useEffect } from "react"
+import { View } from "react-native"
 import Reanimated, {
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
   useAnimatedStyle,
-} from "react-native-reanimated";
+} from "react-native-reanimated"
 
-import { useThemePalette } from "@/src/design/tokens";
-import type { LibraryViewMode } from "@/src/store/app-store.types";
+import { useThemePalette } from "@/src/design/tokens"
+import type { LibraryViewMode } from "@/src/store/app-store.types"
 
 function usePulse() {
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(1)
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
@@ -21,20 +21,20 @@ function usePulse() {
       ),
       -1,
       false,
-    );
-  }, [opacity]);
-  return useAnimatedStyle(() => ({ opacity: opacity.value }));
+    )
+  }, [opacity])
+  return useAnimatedStyle(() => ({ opacity: opacity.value }))
 }
 
 function CardSkeleton({
   width,
   palette,
 }: {
-  width: number;
-  palette: ReturnType<typeof useThemePalette>;
+  width: number
+  palette: ReturnType<typeof useThemePalette>
 }) {
   // Matches BookCard: cover aspect 1.43, mt-2 title, mt-1 author
-  const coverHeight = Math.round(width * 1.43);
+  const coverHeight = Math.round(width * 1.43)
   return (
     <View style={{ width }}>
       <View
@@ -64,15 +64,15 @@ function CardSkeleton({
         }}
       />
     </View>
-  );
+  )
 }
 
 function RowSkeleton({
   palette,
   horizontalPadding,
 }: {
-  palette: ReturnType<typeof useThemePalette>;
-  horizontalPadding: number;
+  palette: ReturnType<typeof useThemePalette>
+  horizontalPadding: number
 }) {
   // Matches BookRow: minHeight 60, py-2.5, gap-3.5, cover 38×54, border-b
   return (
@@ -116,7 +116,7 @@ function RowSkeleton({
         />
       </View>
     </View>
-  );
+  )
 }
 
 /**
@@ -138,28 +138,32 @@ export function LibrarySkeletonContent({
   listPaddingX,
   count = 16,
 }: {
-  viewMode: LibraryViewMode;
-  cardWidth: number;
-  gridColumns: number;
-  gridGap: number;
-  listPaddingX: number;
-  count?: number;
+  viewMode: LibraryViewMode
+  cardWidth: number
+  gridColumns: number
+  gridGap: number
+  listPaddingX: number
+  count?: number
 }) {
-  const palette = useThemePalette();
-  const animatedStyle = usePulse();
-  const halfGap = gridGap / 2;
+  const palette = useThemePalette()
+  const animatedStyle = usePulse()
+  const halfGap = gridGap / 2
 
   if (viewMode === "list") {
     return (
       <Reanimated.View style={animatedStyle}>
         {Array.from({ length: count }, (_, i) => (
-          <RowSkeleton key={i} palette={palette} horizontalPadding={listPaddingX} />
+          <RowSkeleton
+            key={i}
+            palette={palette}
+            horizontalPadding={listPaddingX}
+          />
         ))}
       </Reanimated.View>
-    );
+    )
   }
 
-  const rowCount = Math.ceil(count / gridColumns);
+  const rowCount = Math.ceil(count / gridColumns)
   return (
     // gap replaces ItemSeparatorComponent (height: GRID_GAP) between rows
     <Reanimated.View style={[animatedStyle, { gap: gridGap }]}>
@@ -174,5 +178,5 @@ export function LibrarySkeletonContent({
         </View>
       ))}
     </Reanimated.View>
-  );
+  )
 }

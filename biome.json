@@ -1,0 +1,78 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "files": {
+    "includes": [
+      "my-reader/**/*.ts",
+      "my-reader/**/*.tsx",
+      "my-reader/**/*.js",
+      "my-reader/**/*.mjs",
+      "my-reader/**/*.cjs",
+      "my-reader/**/*.json",
+      "my-reader/**/*.css",
+      "my-reader-mobile/**/*.ts",
+      "my-reader-mobile/**/*.tsx",
+      "my-reader-mobile/**/*.js",
+      "my-reader-mobile/**/*.mjs",
+      "my-reader-mobile/**/*.cjs",
+      "my-reader-mobile/**/*.json",
+      "my-reader-mobile/**/*.css",
+      "packages/**/*.ts",
+      "packages/**/*.tsx",
+      "packages/**/*.js",
+      "packages/**/*.mjs",
+      "packages/**/*.cjs",
+      "packages/**/*.json",
+      "packages/**/*.css",
+      "scripts/**/*.mjs",
+      "!**/dist/**/*",
+      "!**/node_modules/**/*",
+      "!**/.expo/**/*",
+      "!**/src/routeTree.gen.ts",
+      "!**/src/client/**/*",
+      "!**/my-reader/src/components/ui/**/*",
+      "!**/my-reader/src/lib/tauri-specta.ts",
+      "!**/my-reader/src-tauri/target/**/*",
+      "!**/my-reader/public/*.min.mjs",
+      "!**/drizzle/meta/*.json",
+      "!**/drizzle/migrations.js",
+      "!**/package-lock.json",
+      "!**/pnpm-lock.yaml",
+      "!**/coverage/**/*",
+      "!**/.features-gen/**/*",
+      "!**/e2e-frontend/reports/**/*",
+      "!**/playwright-report/**/*",
+      "!**/.vscode/**/*"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "error",
+        "useSelfClosingElements": "error",
+        "noUselessElse": "error"
+      }
+    }
+  },
+  "formatter": {
+    "indentStyle": "space"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "asNeeded"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
+}

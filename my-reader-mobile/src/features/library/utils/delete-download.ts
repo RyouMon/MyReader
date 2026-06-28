@@ -1,17 +1,17 @@
-import { dismissTasksForPath } from "@/src/domain/download/download-store";
-import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions";
-import i18n from "@/src/i18n";
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
+import { dismissTasksForPath } from "@/src/domain/download/download-store"
+import { evictLocalFileForLibrary } from "@/src/domain/sync/file-actions"
+import i18n from "@/src/i18n"
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 
 export type ConfirmDeleteLocalDownloadOptions = {
   /** Called immediately when the user confirms deletion, before async work. */
-  onConfirm?: () => void;
+  onConfirm?: () => void
   /**
    * Called if eviction/dismiss fails. When provided, the caller is responsible
    * for showing error UI (the default alert is suppressed).
    */
-  onError?: (error: unknown) => void;
-};
+  onError?: (error: unknown) => void
+}
 
 /**
  * Evicts downloaded file(s) from local cache and clears any finished download
@@ -21,10 +21,10 @@ export async function deleteLocalDownload(
   libraryId: string,
   relativePath: string | string[],
 ): Promise<void> {
-  const paths = Array.isArray(relativePath) ? relativePath : [relativePath];
+  const paths = Array.isArray(relativePath) ? relativePath : [relativePath]
   for (const path of paths) {
-    await evictLocalFileForLibrary(libraryId, path);
-    dismissTasksForPath(libraryId, path);
+    await evictLocalFileForLibrary(libraryId, path)
+    dismissTasksForPath(libraryId, path)
   }
 }
 
@@ -49,19 +49,19 @@ export function confirmDeleteLocalDownload(
         text: i18n.t("common.delete"),
         style: "destructive",
         onPress: () => {
-          options?.onConfirm?.();
+          options?.onConfirm?.()
           void deleteLocalDownload(libraryId, relativePath).catch((err) => {
             if (options?.onError) {
-              options.onError(err);
-              return;
+              options.onError(err)
+              return
             }
             showAlertWithStatusBarRestore(
               i18n.t("sync.deleteFailed"),
               err instanceof Error ? err.message : String(err),
-            );
-          });
+            )
+          })
         },
       },
     ],
-  );
+  )
 }

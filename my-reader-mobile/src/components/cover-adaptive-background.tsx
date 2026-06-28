@@ -1,16 +1,16 @@
-import { useRef } from "react";
+import { useRef } from "react"
 
-import chroma from "chroma-js";
-import { Image as ExpoImage } from "expo-image";
+import chroma from "chroma-js"
+import { Image as ExpoImage } from "expo-image"
 
-import type { BookItem } from "@/src/domain/types";
-import type { CoverRawColors } from "@/src/domain/library/hooks/use-cover-palette";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
-import { useThemePalette } from "@/src/design/tokens";
-import { BlurView, BlurTargetView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
-import { View } from "@/tw";
-import { StyleSheet, type View as RNView } from "react-native";
+import type { BookItem } from "@/src/domain/types"
+import type { CoverRawColors } from "@/src/domain/library/hooks/use-cover-palette"
+import type { HomeCardStyle } from "@/src/store/app-store.types"
+import { useThemePalette } from "@/src/design/tokens"
+import { BlurView, BlurTargetView } from "expo-blur"
+import { LinearGradient } from "expo-linear-gradient"
+import { View } from "@/tw"
+import { StyleSheet, type View as RNView } from "react-native"
 
 /**
  * Tunable parameters for the cover-adaptive card background.
@@ -87,38 +87,41 @@ const COVER_BACKGROUND = {
       },
     },
   },
-} as const;
+} as const
 
 /**
  * Applies the per-scheme saturation/brightness adjustments to a single
  * extracted cover color.
  */
-function adjustAmbientColor(color: string, colorScheme: "light" | "dark"): string {
+function adjustAmbientColor(
+  color: string,
+  colorScheme: "light" | "dark",
+): string {
   if (colorScheme === "dark") {
-    const { saturate, darken } = COVER_BACKGROUND.ambient.dark;
-    return chroma(color).saturate(saturate).darken(darken).css();
+    const { saturate, darken } = COVER_BACKGROUND.ambient.dark
+    return chroma(color).saturate(saturate).darken(darken).css()
   }
 
-  const { saturate, brighten } = COVER_BACKGROUND.ambient.light;
-  return chroma(color).saturate(saturate).brighten(brighten).css();
+  const { saturate, brighten } = COVER_BACKGROUND.ambient.light
+  return chroma(color).saturate(saturate).brighten(brighten).css()
 }
 
 type CoverAdaptiveBackgroundProps = {
-  coverUri: BookItem["coverUri"];
-  rawColors?: CoverRawColors;
-  colorScheme?: "light" | "dark";
-  borderRadius?: number;
-  variant?: HomeCardStyle;
-};
+  coverUri: BookItem["coverUri"]
+  rawColors?: CoverRawColors
+  colorScheme?: "light" | "dark"
+  borderRadius?: number
+  variant?: HomeCardStyle
+}
 
 function buildAmbientGradientColors(
   raw: CoverRawColors | undefined,
   colorScheme: "light" | "dark",
 ): readonly [string, string, string, string] {
-  const fallback = COVER_BACKGROUND.ambient.fallbackColors;
-  if (!raw) return fallback;
+  const fallback = COVER_BACKGROUND.ambient.fallbackColors
+  if (!raw) return fallback
 
-  const colors = [raw.dominant, raw.vibrant, raw.muted, raw.darkVibrant];
+  const colors = [raw.dominant, raw.vibrant, raw.muted, raw.darkVibrant]
 
   const resolved = colors.map((color, index) => {
     const source =
@@ -128,12 +131,12 @@ function buildAmbientGradientColors(
         .reverse()
         .find((c) => c != null) ??
       fallback[index] ??
-      "#808080";
+      "#808080"
 
-    return adjustAmbientColor(source, colorScheme);
-  });
+    return adjustAmbientColor(source, colorScheme)
+  })
 
-  return resolved as unknown as readonly [string, string, string, string];
+  return resolved as unknown as readonly [string, string, string, string]
 }
 
 function overlayColorsForScheme(
@@ -143,11 +146,11 @@ function overlayColorsForScheme(
 ): readonly [string, string] {
   if (variant === "coverBlur") {
     if (colorScheme === "dark") {
-      const { startAlpha, endAlpha } = COVER_BACKGROUND.coverBlur.overlay.dark;
-      return [`rgba(0, 0, 0, ${startAlpha})`, `rgba(0, 0, 0, ${endAlpha})`];
+      const { startAlpha, endAlpha } = COVER_BACKGROUND.coverBlur.overlay.dark
+      return [`rgba(0, 0, 0, ${startAlpha})`, `rgba(0, 0, 0, ${endAlpha})`]
     }
 
-    const { startAlpha, endAlpha } = COVER_BACKGROUND.coverBlur.overlay.light;
+    const { startAlpha, endAlpha } = COVER_BACKGROUND.coverBlur.overlay.light
     return [
       `${surface}${Math.round(startAlpha * 255)
         .toString(16)
@@ -155,15 +158,15 @@ function overlayColorsForScheme(
       `${surface}${Math.round(endAlpha * 255)
         .toString(16)
         .padStart(2, "0")}`,
-    ];
+    ]
   }
 
   if (colorScheme === "dark") {
-    const { startAlpha, endAlpha } = COVER_BACKGROUND.overlay.dark;
-    return [`rgba(0, 0, 0, ${startAlpha})`, `rgba(0, 0, 0, ${endAlpha})`];
+    const { startAlpha, endAlpha } = COVER_BACKGROUND.overlay.dark
+    return [`rgba(0, 0, 0, ${startAlpha})`, `rgba(0, 0, 0, ${endAlpha})`]
   }
 
-  const { startAlpha, endAlpha } = COVER_BACKGROUND.overlay.light;
+  const { startAlpha, endAlpha } = COVER_BACKGROUND.overlay.light
   return [
     `${surface}${Math.round(startAlpha * 255)
       .toString(16)
@@ -171,7 +174,7 @@ function overlayColorsForScheme(
     `${surface}${Math.round(endAlpha * 255)
       .toString(16)
       .padStart(2, "0")}`,
-  ];
+  ]
 }
 
 /**
@@ -189,15 +192,19 @@ export function CoverAdaptiveBackground({
   borderRadius = 0,
   variant = "adaptive",
 }: CoverAdaptiveBackgroundProps) {
-  const palette = useThemePalette();
-  const blurTargetRef = useRef<RNView>(null);
+  const palette = useThemePalette()
+  const blurTargetRef = useRef<RNView>(null)
 
-  if (!coverUri) return null;
+  if (!coverUri) return null
 
-  const ambientColors = buildAmbientGradientColors(rawColors, colorScheme);
-  const overlayColors = overlayColorsForScheme(colorScheme, palette.surface, variant);
-  const { direction } = COVER_BACKGROUND.ambient;
-  const { blur, coverBlur } = COVER_BACKGROUND;
+  const ambientColors = buildAmbientGradientColors(rawColors, colorScheme)
+  const overlayColors = overlayColorsForScheme(
+    colorScheme,
+    palette.surface,
+    variant,
+  )
+  const { direction } = COVER_BACKGROUND.ambient
+  const { blur, coverBlur } = COVER_BACKGROUND
 
   return (
     <View
@@ -257,5 +264,5 @@ export function CoverAdaptiveBackground({
         style={StyleSheet.absoluteFill}
       />
     </View>
-  );
+  )
 }

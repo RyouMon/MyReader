@@ -1,44 +1,51 @@
-import { useEffect, useMemo, type ReactNode } from "react";
-import { setBackgroundColorAsync } from "expo-system-ui";
-import { useColorScheme, type ColorSchemeName, type ColorValue } from "react-native";
+import { useEffect, useMemo, type ReactNode } from "react"
+import { setBackgroundColorAsync } from "expo-system-ui"
+import {
+  useColorScheme,
+  type ColorSchemeName,
+  type ColorValue,
+} from "react-native"
 
-import { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
-import { useAppStore } from "../store/app-store";
+import {
+  getSemanticDestructiveColor,
+  getSemanticOnDestructiveColor,
+} from "./semantic-colors"
+import { useAppStore } from "../store/app-store"
 
-export type ThemeMode = "system" | "light" | "dark";
+export type ThemeMode = "system" | "light" | "dark"
 
 export type ThemePalette = {
-  background: string;
-  backgroundSecondary: string;
-  surface: string;
-  text: string;
-  textMuted: string;
-  textOnPrimary: string;
-  textOnDark: string;
-  primary: string;
-  secondary: string;
-  primaryForeground: string;
-  border: string;
-  borderStrong: string;
-  success: string;
-  successSoft: string;
-  warning: string;
-  warningSoft: string;
-  error: string;
-  danger: string;
-  dangerSoft: string;
-  destructive: ColorValue;
-  onDestructive: ColorValue;
-  overlay: string;
-  overlayStrong: string;
-};
+  background: string
+  backgroundSecondary: string
+  surface: string
+  text: string
+  textMuted: string
+  textOnPrimary: string
+  textOnDark: string
+  primary: string
+  secondary: string
+  primaryForeground: string
+  border: string
+  borderStrong: string
+  success: string
+  successSoft: string
+  warning: string
+  warningSoft: string
+  error: string
+  danger: string
+  dangerSoft: string
+  destructive: ColorValue
+  onDestructive: ColorValue
+  overlay: string
+  overlayStrong: string
+}
 
 type ThemeContextValue = {
-  colorScheme: ColorSchemeName;
-  mode: ThemeMode;
-  palette: ThemePalette;
-  setMode: (mode: ThemeMode) => void;
-};
+  colorScheme: ColorSchemeName
+  mode: ThemeMode
+  palette: ThemePalette
+  setMode: (mode: ThemeMode) => void
+}
 
 const APP_BORDER = {
   light: {
@@ -48,9 +55,8 @@ const APP_BORDER = {
   dark: {
     default: "rgba(245, 239, 230, 0.12)",
     strong: "rgba(245, 239, 230, 0.22)",
-
   },
-} as const;
+} as const
 
 const lightPaletteBase = {
   background: "#f5efe6",
@@ -74,13 +80,13 @@ const lightPaletteBase = {
   dangerSoft: "rgba(180, 74, 58, 0.14)",
   overlay: "rgba(28,23,20,0.22)",
   overlayStrong: "rgba(28,23,20,0.50)",
-} as const;
+} as const
 
 const lightPalette: ThemePalette = {
   ...lightPaletteBase,
   destructive: getSemanticDestructiveColor(),
   onDestructive: getSemanticOnDestructiveColor(),
-};
+}
 
 const darkPaletteBase = {
   background: "#1f1b17",
@@ -104,19 +110,19 @@ const darkPaletteBase = {
   dangerSoft: "rgba(212, 106, 90, 0.18)",
   overlay: "rgba(0,0,0,0.38)",
   overlayStrong: "rgba(0,0,0,0.65)",
-} as const;
+} as const
 
 const darkPalette: ThemePalette = {
   ...darkPaletteBase,
   destructive: getSemanticDestructiveColor(),
   onDestructive: getSemanticOnDestructiveColor(),
-};
+}
 
 /**
  * Returns the platform palette for the active color scheme.
  */
 export function getThemePalette(colorScheme: ColorSchemeName) {
-  return colorScheme === "dark" ? darkPalette : lightPalette;
+  return colorScheme === "dark" ? darkPalette : lightPalette
 }
 
 /**
@@ -124,38 +130,38 @@ export function getThemePalette(colorScheme: ColorSchemeName) {
  */
 function resolveThemeMode(mode: ThemeMode, systemColorScheme: ColorSchemeName) {
   if (mode === "system") {
-    return systemColorScheme ?? "light";
+    return systemColorScheme ?? "light"
   }
 
-  return mode;
+  return mode
 }
 
 /**
  * Initializes app theme side effects for React Native surfaces.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const systemColorScheme = useColorScheme();
-  const mode = useAppStore((s) => s.settings.themeMode);
+  const systemColorScheme = useColorScheme()
+  const mode = useAppStore((s) => s.settings.themeMode)
 
-  const colorScheme = resolveThemeMode(mode, systemColorScheme);
-  const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);
+  const colorScheme = resolveThemeMode(mode, systemColorScheme)
+  const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme])
 
   useEffect(() => {
-    void setBackgroundColorAsync(palette.background);
-  }, [palette.background]);
+    void setBackgroundColorAsync(palette.background)
+  }, [palette.background])
 
-  return children;
+  return children
 }
 
 /**
  * Returns the current theme mode, resolved color scheme, and palette.
  */
 export function useTheme() {
-  const systemColorScheme = useColorScheme();
-  const mode = useAppStore((s) => s.settings.themeMode);
-  const setThemeMode = useAppStore((s) => s.setThemeMode);
-  const colorScheme = resolveThemeMode(mode, systemColorScheme);
-  const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme]);
+  const systemColorScheme = useColorScheme()
+  const mode = useAppStore((s) => s.settings.themeMode)
+  const setThemeMode = useAppStore((s) => s.setThemeMode)
+  const colorScheme = resolveThemeMode(mode, systemColorScheme)
+  const palette = useMemo(() => getThemePalette(colorScheme), [colorScheme])
 
   return useMemo<ThemeContextValue>(
     () => ({
@@ -164,15 +170,18 @@ export function useTheme() {
       palette,
       setMode: setThemeMode,
     }),
-    [colorScheme, mode, palette, setThemeMode]
-  );
+    [colorScheme, mode, palette, setThemeMode],
+  )
 }
 
 /**
  * Returns only the active semantic color palette.
  */
 export function useThemePalette() {
-  return useTheme().palette;
+  return useTheme().palette
 }
 
-export { getSemanticDestructiveColor, getSemanticOnDestructiveColor } from "./semantic-colors";
+export {
+  getSemanticDestructiveColor,
+  getSemanticOnDestructiveColor,
+} from "./semantic-colors"

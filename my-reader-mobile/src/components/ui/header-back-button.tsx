@@ -1,1 +1,1 @@
-export { HeaderBackButton } from "./header-back-button.android";
+export { HeaderBackButton } from "./header-back-button.android"

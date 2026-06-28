@@ -1,14 +1,14 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useTranslation } from "react-i18next";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { NativeTabs } from "expo-router/unstable-native-tabs"
+import { useTranslation } from "react-i18next"
 
-import { useThemePalette } from "@/src/design/tokens";
+import { useThemePalette } from "@/src/design/tokens"
 
-const Trigger = NativeTabs.Trigger;
+const Trigger = NativeTabs.Trigger
 
 export default function TabsLayout() {
-  const palette = useThemePalette();
-  const { t } = useTranslation();
+  const palette = useThemePalette()
+  const { t } = useTranslation()
 
   return (
     <NativeTabs tintColor={palette.primary} backgroundColor={palette.surface}>
@@ -31,16 +31,10 @@ export default function TabsLayout() {
           sf={{ default: "books.vertical", selected: "books.vertical.fill" }}
           src={{
             default: (
-              <Trigger.VectorIcon
-                family={MaterialIcons}
-                name="library-books"
-              />
+              <Trigger.VectorIcon family={MaterialIcons} name="library-books" />
             ),
             selected: (
-              <Trigger.VectorIcon
-                family={MaterialIcons}
-                name="library-books"
-              />
+              <Trigger.VectorIcon family={MaterialIcons} name="library-books" />
             ),
           }}
         />
@@ -50,12 +44,16 @@ export default function TabsLayout() {
         <Trigger.Icon
           sf={{ default: "gearshape", selected: "gearshape.fill" }}
           src={{
-            default: <Trigger.VectorIcon family={MaterialIcons} name="settings" />,
-            selected: <Trigger.VectorIcon family={MaterialIcons} name="settings" />,
+            default: (
+              <Trigger.VectorIcon family={MaterialIcons} name="settings" />
+            ),
+            selected: (
+              <Trigger.VectorIcon family={MaterialIcons} name="settings" />
+            ),
           }}
         />
         <Trigger.Label>{t("tabs.settings")}</Trigger.Label>
       </Trigger>
     </NativeTabs>
-  );
+  )
 }

@@ -1,11 +1,11 @@
-import type { BookDetail } from "@my-reader/tools/types/book";
+import type { BookDetail } from "@my-reader/tools/types/book"
 
-import i18n from "@/src/i18n";
+import i18n from "@/src/i18n"
 
-import { buildCoverUri } from "../domain/library/calibre";
-import { createRemoteOps } from "../domain/library/remote-library";
-import type { BookItem, DataSource, Library } from "../domain/types";
-import { isRemoteSourceType } from "../domain/types";
+import { buildCoverUri } from "../domain/library/calibre"
+import { createRemoteOps } from "../domain/library/remote-library"
+import type { BookItem, DataSource, Library } from "../domain/types"
+import { isRemoteSourceType } from "../domain/types"
 
 export const IDENTIFIER_LABELS: Record<string, string> = {
   isbn: "ISBN",
@@ -14,7 +14,7 @@ export const IDENTIFIER_LABELS: Record<string, string> = {
   amazon: "Amazon",
   google: "Google",
   barnesnoble: "B&N",
-};
+}
 
 export function formatLanguage(code: string): string {
   const map: Record<string, string> = {
@@ -27,40 +27,40 @@ export function formatLanguage(code: string): string {
     deu: "Deutsch",
     spa: "Español",
     rus: "Русский",
-  };
-  return map[code] ?? code;
+  }
+  return map[code] ?? code
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 export function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "—"
   try {
-    const d = new Date(dateStr);
-    if (d.getFullYear() <= 100) return "—";
+    const d = new Date(dateStr)
+    if (d.getFullYear() <= 100) return "—"
     return d.toLocaleDateString(i18n.language === "zh" ? "zh-CN" : undefined, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    });
+    })
   } catch {
-    return dateStr;
+    return dateStr
   }
 }
 
 export function extractYear(dateStr: string | null): string | null {
-  if (!dateStr) return null;
+  if (!dateStr) return null
   try {
-    const d = new Date(dateStr);
-    const year = d.getFullYear();
-    if (year <= 100) return null;
-    return String(year);
+    const d = new Date(dateStr)
+    const year = d.getFullYear()
+    if (year <= 100) return null
+    return String(year)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -73,20 +73,20 @@ export function stripHtml(html: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .trim();
+    .trim()
 }
 
 export async function resolveCoverForDetail(
   library: Library | null,
   detail: BookDetail,
   dataSources: DataSource[],
-  fallback?: BookItem["coverUri"]
+  fallback?: BookItem["coverUri"],
 ): Promise<BookItem["coverUri"] | undefined> {
-  if (fallback) return fallback;
-  if (!library || !detail.path) return undefined;
+  if (fallback) return fallback
+  if (!library || !detail.path) return undefined
   if (isRemoteSourceType(library.sourceType)) {
-    const ops = await createRemoteOps(library, dataSources);
-    if (ops) return ops.buildCoverUri(library, detail.path, detail.hasCover);
+    const ops = await createRemoteOps(library, dataSources)
+    if (ops) return ops.buildCoverUri(library, detail.path, detail.hasCover)
   }
-  return buildCoverUri(library, detail.path, detail.hasCover);
+  return buildCoverUri(library, detail.path, detail.hasCover)
 }

@@ -1,22 +1,18 @@
-import { useForm, useStore } from "@tanstack/react-form";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Alert, TextInput as RNTextInput } from "react-native";
-import { z } from "zod";
+import { useForm, useStore } from "@tanstack/react-form"
+import { Stack, router, useLocalSearchParams } from "expo-router"
+import { useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { Alert, TextInput as RNTextInput } from "react-native"
+import { z } from "zod"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { TextInput, View } from "@/tw";
-import type { DataSourceWebdav } from "@my-reader/tools/types/data-source";
+import { useThemePalette } from "@/src/design/tokens"
+import { TextInput, View } from "@/tw"
+import type { DataSourceWebdav } from "@my-reader/tools/types/data-source"
 
-import {
-    FormFieldSwitch,
-    FormLabeledFieldRow,
-    Screen,
-} from "@/src/components";
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
-import { createSaveAction } from "@/src/navigation/toolbar-action-helpers";
+import { FormFieldSwitch, FormLabeledFieldRow, Screen } from "@/src/components"
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 
 const addWebDavMobileSchema = z
   .object({
@@ -36,55 +32,60 @@ const addWebDavMobileSchema = z
     useSsl: z.boolean(),
   })
   .transform((data) => {
-    const base = data.serverUrl;
-    const portTrim = data.port;
-    let endpoint = base;
+    const base = data.serverUrl
+    const portTrim = data.port
+    let endpoint = base
 
     if (!/^https?:\/\//i.test(endpoint)) {
-      endpoint = `${data.useSsl ? "https" : "http"}://${endpoint}`;
+      endpoint = `${data.useSsl ? "https" : "http"}://${endpoint}`
     }
 
     if (portTrim !== "") {
-      const matched = endpoint.match(/^(https?:\/\/)([^/?#]*)(.*)$/i);
+      const matched = endpoint.match(/^(https?:\/\/)([^/?#]*)(.*)$/i)
       if (matched) {
-        const [, protocol, authority, suffix] = matched;
-        endpoint = `${protocol}${authority!.replace(/:\d+$/, "")}:${portTrim}${suffix}`;
+        const [, protocol, authority, suffix] = matched
+        endpoint = `${protocol}${authority!.replace(/:\d+$/, "")}:${portTrim}${suffix}`
       } else {
-        endpoint = `${endpoint.replace(/:\d+$/, "")}:${portTrim}`;
+        endpoint = `${endpoint.replace(/:\d+$/, "")}:${portTrim}`
       }
     }
 
-    return { ...data, endpoint };
-  });
+    return { ...data, endpoint }
+  })
 
-type WebDavFormInput = z.input<typeof addWebDavMobileSchema>;
+type WebDavFormInput = z.input<typeof addWebDavMobileSchema>
 
 function deriveWebDavDataSourceName(endpoint: string): string {
   try {
-    let normalized = endpoint.trim();
+    let normalized = endpoint.trim()
     if (!normalized) {
-      return "WebDAV Source";
+      return "WebDAV Source"
     }
     if (!/^https?:\/\//i.test(normalized)) {
-      normalized = `https://${normalized}`;
+      normalized = `https://${normalized}`
     }
-    const { hostname } = new URL(normalized);
-    return hostname || "WebDAV Source";
+    const { hostname } = new URL(normalized)
+    return hostname || "WebDAV Source"
   } catch {
-    return "WebDAV Source";
+    return "WebDAV Source"
   }
 }
 
-function buildDraft(values: WebDavFormInput): { ds: DataSourceWebdav; password: string } {
-  const parsed = addWebDavMobileSchema.safeParse(values);
+function buildDraft(values: WebDavFormInput): {
+  ds: DataSourceWebdav
+  password: string
+} {
+  const parsed = addWebDavMobileSchema.safeParse(values)
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "webdav.add.validationFailed");
+    throw new Error(
+      parsed.error.issues[0]?.message ?? "webdav.add.validationFailed",
+    )
   }
   if (parsed.data === undefined) {
-    throw new Error("webdav.add.validationFailed");
+    throw new Error("webdav.add.validationFailed")
   }
-  const d = parsed.data;
-  const rootPath = d.basePath.trim() ? d.basePath.trim() : null;
+  const d = parsed.data
+  const rootPath = d.basePath.trim() ? d.basePath.trim() : null
   return {
     ds: {
       id: "",
@@ -97,21 +98,23 @@ function buildDraft(values: WebDavFormInput): { ds: DataSourceWebdav; password: 
       rootPath,
     },
     password: d.password,
-  };
+  }
 }
 
 export default function AddWebDavDataSourceScreen() {
-  const { t } = useTranslation();
-  const { from } = useLocalSearchParams<{ from?: string }>();
-  const palette = useThemePalette();
-  const { createDataSource, testDataSourceConnection } = useDataSourceActions();
-  const [saving, setSaving] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+  const { t } = useTranslation()
+  const { from } = useLocalSearchParams<{ from?: string }>()
+  const palette = useThemePalette()
+  const { createDataSource, testDataSourceConnection } = useDataSourceActions()
+  const [saving, setSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<string, string>>
+  >({})
 
-  const portRef = useRef<RNTextInput>(null);
-  const basePathRef = useRef<RNTextInput>(null);
-  const usernameRef = useRef<RNTextInput>(null);
-  const passwordRef = useRef<RNTextInput>(null);
+  const portRef = useRef<RNTextInput>(null)
+  const basePathRef = useRef<RNTextInput>(null)
+  const usernameRef = useRef<RNTextInput>(null)
+  const passwordRef = useRef<RNTextInput>(null)
 
   const form = useForm({
     defaultValues: {
@@ -125,74 +128,86 @@ export default function AddWebDavDataSourceScreen() {
     validators: {
       onSubmit: addWebDavMobileSchema,
     },
-  });
+  })
 
-  const useSsl = useStore(form.store, (s) => s.values.useSsl);
+  const useSsl = useStore(form.store, (s) => s.values.useSsl)
 
   async function persistDataSource(ds: DataSourceWebdav, password: string) {
-    await createDataSource(ds, { type: "webdav", password });
+    await createDataSource(ds, { type: "webdav", password })
     if (router.canGoBack()) {
-      router.back();
+      router.back()
     } else {
-      router.replace("/settings/webdav");
+      router.replace("/settings/webdav")
     }
   }
 
   async function handleSave() {
-    if (saving) return;
+    if (saving) return
 
-    const parseResult = addWebDavMobileSchema.safeParse(form.store.state.values);
+    const parseResult = addWebDavMobileSchema.safeParse(form.store.state.values)
     if (!parseResult.success) {
-      const errors: Record<string, string> = {};
+      const errors: Record<string, string> = {}
       for (const issue of parseResult.error.issues) {
-        const key = String(issue.path[0]);
-        if (!errors[key]) errors[key] = t(issue.message);
+        const key = String(issue.path[0])
+        if (!errors[key]) errors[key] = t(issue.message)
       }
-      setFieldErrors(errors);
-      return;
+      setFieldErrors(errors)
+      return
     }
-    setFieldErrors({});
+    setFieldErrors({})
 
-    setSaving(true);
+    setSaving(true)
     try {
-      const { ds, password } = buildDraft(form.store.state.values);
+      const { ds, password } = buildDraft(form.store.state.values)
 
-      const testResult = await testDataSourceConnection(ds, { type: "webdav", password });
+      const testResult = await testDataSourceConnection(ds, {
+        type: "webdav",
+        password,
+      })
       if (!testResult.ok) {
-        Alert.alert(
-          t("webdav.add.connectionTestFailed"),
-          testResult.message,
-          [
-            { text: t("webdav.add.reEnter"), style: "cancel" },
-            {
-              text: t("webdav.add.addAnyway"),
-              onPress: () => {
-                setSaving(true);
-                void persistDataSource(ds, password).finally(() => setSaving(false));
-              },
+        Alert.alert(t("webdav.add.connectionTestFailed"), testResult.message, [
+          { text: t("webdav.add.reEnter"), style: "cancel" },
+          {
+            text: t("webdav.add.addAnyway"),
+            onPress: () => {
+              setSaving(true)
+              void persistDataSource(ds, password).finally(() =>
+                setSaving(false),
+              )
             },
-          ],
-        );
-        return;
+          },
+        ])
+        return
       }
 
-      await persistDataSource(ds, password);
+      await persistDataSource(ds, password)
     } catch (caught) {
-      Alert.alert(t("webdav.add.addFailed"), caught instanceof Error ? caught.message : t("webdav.add.addFailedMessage"));
+      Alert.alert(
+        t("webdav.add.addFailed"),
+        caught instanceof Error
+          ? caught.message
+          : t("webdav.add.addFailedMessage"),
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
-  const inputClassName = "border-0 bg-transparent py-1 text-base";
+  const inputClassName = "border-0 bg-transparent py-1 text-base"
 
-  const isAddLibraryFlow = from === "add-library";
+  const isAddLibraryFlow = from === "add-library"
 
   const { options, toolbar } = useScreenHeader({
     title: t("webdav.addSource"),
     backTitle: t("back"),
     ...(isAddLibraryFlow
-      ? { close: { target: "/settings/add-library", dismissTo: true, variant: "layout" } }
+      ? {
+          close: {
+            target: "/settings/add-library",
+            dismissTo: true,
+            variant: "layout",
+          },
+        }
       : {}),
     right: [
       createSaveAction({
@@ -202,11 +217,11 @@ export default function AddWebDavDataSourceScreen() {
         color: palette.primary,
       }),
     ],
-  });
+  })
 
   function fieldError(name: string): string | undefined {
-    const raw = fieldErrors[name];
-    return raw ? t(raw) : undefined;
+    const raw = fieldErrors[name]
+    return raw ? t(raw) : undefined
   }
 
   return (
@@ -216,10 +231,21 @@ export default function AddWebDavDataSourceScreen() {
 
       <View className="flex-1" style={{ backgroundColor: palette.background }}>
         <Screen contentContainerClassName="pb-10">
-          <View className="gap-3 rounded-3xl px-4 py-4" style={{ backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }}>
+          <View
+            className="gap-3 rounded-3xl px-4 py-4"
+            style={{
+              backgroundColor: palette.surface,
+              borderColor: palette.border,
+              borderWidth: 1,
+            }}
+          >
             <form.Field name="serverUrl">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.serverAddressLabel")} required error={fieldError("serverUrl")}>
+                <FormLabeledFieldRow
+                  label={t("webdav.add.serverAddressLabel")}
+                  required
+                  error={fieldError("serverUrl")}
+                >
                   <TextInput
                     value={field.state.value}
                     onChangeText={(t) => field.handleChange(t)}
@@ -240,7 +266,10 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="port">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.portLabel")} error={fieldError("port")}>
+                <FormLabeledFieldRow
+                  label={t("webdav.add.portLabel")}
+                  error={fieldError("port")}
+                >
                   <RNTextInput
                     ref={portRef}
                     value={field.state.value}
@@ -261,7 +290,10 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="basePath">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.basePathLabel")} error={fieldError("basePath")}>
+                <FormLabeledFieldRow
+                  label={t("webdav.add.basePathLabel")}
+                  error={fieldError("basePath")}
+                >
                   <RNTextInput
                     ref={basePathRef}
                     value={field.state.value}
@@ -283,7 +315,10 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="username">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.usernameLabel")} error={fieldError("username")}>
+                <FormLabeledFieldRow
+                  label={t("webdav.add.usernameLabel")}
+                  error={fieldError("username")}
+                >
                   <RNTextInput
                     ref={usernameRef}
                     value={field.state.value}
@@ -305,7 +340,10 @@ export default function AddWebDavDataSourceScreen() {
 
             <form.Field name="password">
               {(field) => (
-                <FormLabeledFieldRow label={t("webdav.add.passwordLabel")} error={fieldError("password")}>
+                <FormLabeledFieldRow
+                  label={t("webdav.add.passwordLabel")}
+                  error={fieldError("password")}
+                >
                   <RNTextInput
                     ref={passwordRef}
                     value={field.state.value}
@@ -327,7 +365,10 @@ export default function AddWebDavDataSourceScreen() {
             <form.Field name="useSsl">
               {(field) => (
                 <FormLabeledFieldRow label={t("webdav.add.useSSL")}>
-                  <FormFieldSwitch value={field.state.value} onValueChange={(next) => field.handleChange(next)} />
+                  <FormFieldSwitch
+                    value={field.state.value}
+                    onValueChange={(next) => field.handleChange(next)}
+                  />
                 </FormLabeledFieldRow>
               )}
             </form.Field>
@@ -335,5 +376,5 @@ export default function AddWebDavDataSourceScreen() {
         </Screen>
       </View>
     </>
-  );
+  )
 }

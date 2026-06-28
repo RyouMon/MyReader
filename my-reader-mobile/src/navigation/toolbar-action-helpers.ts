@@ -1,11 +1,11 @@
-import type { ScreenHeaderAction } from "./hooks/use-screen-header";
+import type { ScreenHeaderAction } from "./hooks/use-screen-header"
 
 export type CreateAddActionParams = {
-  label: string;
-  onPress: () => void;
-  color?: string;
-  disabled?: boolean;
-};
+  label: string
+  onPress: () => void
+  color?: string
+  disabled?: boolean
+}
 
 /** Builds a prominent "add" toolbar action with plus icon. */
 export function createAddAction({
@@ -22,15 +22,15 @@ export function createAddAction({
     color,
     disabled,
     variant: "prominent",
-  };
+  }
 }
 
 export type CreateSaveActionParams = {
-  label: string;
-  onPress: () => void;
-  loading?: boolean;
-  color?: string;
-};
+  label: string
+  onPress: () => void
+  loading?: boolean
+  color?: string
+}
 
 /** Builds a prominent "save" toolbar action with checkmark icon. */
 export function createSaveAction({
@@ -47,5 +47,5 @@ export function createSaveAction({
     loading,
     color,
     variant: "prominent",
-  };
+  }
 }

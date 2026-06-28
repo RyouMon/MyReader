@@ -1,17 +1,20 @@
-import type { MenuAction } from "@react-native-menu/menu";
+import type { MenuAction } from "@react-native-menu/menu"
 
-import i18n from "@/src/i18n";
+import i18n from "@/src/i18n"
 
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover";
+import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
 
-import { getReadableFormats, resolveEffectiveFormat } from "@/src/domain/library/book-formats";
+import {
+  getReadableFormats,
+  resolveEffectiveFormat,
+} from "@/src/domain/library/book-formats"
 
 export type BookMenuConfig = {
-  isRemote: boolean;
-  isFavorite?: boolean;
-  formats?: string[];
-  selectedFormat?: string;
-};
+  isRemote: boolean
+  isFavorite?: boolean
+  formats?: string[]
+  selectedFormat?: string
+}
 
 /**
  * Builds the per-book menu actions from primitive inputs so cells can recompute
@@ -21,20 +24,27 @@ export function buildBookMenuActions(
   downloadStatus: BookDownloadStatus | undefined,
   menuConfig: BookMenuConfig,
 ): MenuAction[] {
-  const { isRemote, isFavorite, formats, selectedFormat } = menuConfig;
-  const readableFormats = getReadableFormats(formats);
-  const effectiveFormat = resolveEffectiveFormat(readableFormats, selectedFormat);
-  const actions: MenuAction[] = [{ id: "detail", title: i18n.t("bookMenu.detail") }];
+  const { isRemote, isFavorite, formats, selectedFormat } = menuConfig
+  const readableFormats = getReadableFormats(formats)
+  const effectiveFormat = resolveEffectiveFormat(
+    readableFormats,
+    selectedFormat,
+  )
+  const actions: MenuAction[] = [
+    { id: "detail", title: i18n.t("bookMenu.detail") },
+  ]
   actions.push({
     id: "favorite",
-    title: isFavorite ? i18n.t("bookMenu.removeFromFavorites") : i18n.t("bookMenu.addToFavorites"),
-  });
+    title: isFavorite
+      ? i18n.t("bookMenu.removeFromFavorites")
+      : i18n.t("bookMenu.addToFavorites"),
+  })
 
   if (readableFormats.length === 1) {
     actions.push({
       id: `share:${readableFormats[0]}`,
       title: i18n.t("bookMenu.share"),
-    });
+    })
   } else if (readableFormats.length > 1) {
     actions.push({
       id: "share",
@@ -43,12 +53,12 @@ export function buildBookMenuActions(
         id: `share:${fmt}`,
         title: fmt,
       })),
-    });
+    })
   } else {
     actions.push({
       id: "share",
       title: i18n.t("bookMenu.share"),
-    });
+    })
   }
 
   if (isRemote) {
@@ -57,13 +67,15 @@ export function buildBookMenuActions(
         id: "cancelDownload",
         title: i18n.t("bookMenu.cancelDownload"),
         attributes: { destructive: true },
-      });
+      })
     } else if (downloadStatus !== "downloaded") {
       if (readableFormats.length === 1) {
         actions.push({
           id: `download:${readableFormats[0]}`,
-          title: i18n.t("bookMenu.downloadFormat", { format: readableFormats[0] }),
-        });
+          title: i18n.t("bookMenu.downloadFormat", {
+            format: readableFormats[0],
+          }),
+        })
       } else if (readableFormats.length > 1) {
         actions.push({
           id: "download",
@@ -72,7 +84,7 @@ export function buildBookMenuActions(
             id: `download:${fmt}`,
             title: fmt,
           })),
-        });
+        })
       }
     }
   }
@@ -85,7 +97,7 @@ export function buildBookMenuActions(
         id: `setDefaultFormat:${fmt}`,
         title: `${effectiveFormat === fmt ? "✓ " : ""}${fmt}`,
       })),
-    });
+    })
   }
 
   if (isRemote && downloadStatus === "downloaded") {
@@ -93,8 +105,8 @@ export function buildBookMenuActions(
       id: "deleteDownload",
       title: i18n.t("bookMenu.deleteDownload"),
       attributes: { destructive: true },
-    });
+    })
   }
 
-  return actions;
+  return actions
 }

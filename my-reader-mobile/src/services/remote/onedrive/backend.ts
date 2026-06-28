@@ -1,249 +1,312 @@
-import { Directory, File } from "expo-file-system";
-import ky from "ky";
+import { Directory, File } from "expo-file-system"
+import ky from "ky"
 
-import i18n from "@/src/i18n";
-import { GRAPH_API_BASE } from "../../../constants/onedrive";
-import { NetworkError } from "../../../errors";
-import { refreshAccessToken } from "../../auth/onedrive";
-import { canonicalRelativePathSegments, parentDirectoryUriForFileUri } from "../../fs/path";
-import { getCachedAuth, invalidateCachedAuth, setCachedAuth } from "../auth-cache";
+import i18n from "@/src/i18n"
+import { GRAPH_API_BASE } from "../../../constants/onedrive"
+import { NetworkError } from "../../../errors"
+import { refreshAccessToken } from "../../auth/onedrive"
+import {
+  canonicalRelativePathSegments,
+  parentDirectoryUriForFileUri,
+} from "../../fs/path"
+import {
+  getCachedAuth,
+  invalidateCachedAuth,
+  setCachedAuth,
+} from "../auth-cache"
 
-import type { DownloadRequest, PreparedUpload, RemoteBackend, RemoteDirEntry, RemoteFileStat, UploadRequest } from "../backend";
+import type {
+  DownloadRequest,
+  PreparedUpload,
+  RemoteBackend,
+  RemoteDirEntry,
+  RemoteFileStat,
+  UploadRequest,
+} from "../backend"
 
 type DriveItem = {
-  id: string;
-  name: string;
-  size?: number;
-  cTag?: string;
-  lastModifiedDateTime?: string;
-  file?: { mimeType: string };
-  folder?: { childCount: number };
-  deleted?: object;
-  parentReference?: { path: string };
-};
+  id: string
+  name: string
+  size?: number
+  cTag?: string
+  lastModifiedDateTime?: string
+  file?: { mimeType: string }
+  folder?: { childCount: number }
+  deleted?: object
+  parentReference?: { path: string }
+}
 
 type DriveChildrenResponse = {
-  value: DriveItem[];
-  "@odata.nextLink"?: string;
-};
+  value: DriveItem[]
+  "@odata.nextLink"?: string
+}
 
 export class OneDriveRemoteBackend implements RemoteBackend {
-  readonly kind = "onedrive" as const;
-  readonly dataSourceId: string;
+  readonly kind = "onedrive" as const
+  readonly dataSourceId: string
 
-  private readonly libraryRootPath: string;
-  private readonly resolvedDownloadUrls = new Map<string, string>();
+  private readonly libraryRootPath: string
+  private readonly resolvedDownloadUrls = new Map<string, string>()
 
   constructor(dataSourceId: string, libraryRootPath: string) {
-    this.dataSourceId = dataSourceId;
-    this.libraryRootPath = libraryRootPath;
+    this.dataSourceId = dataSourceId
+    this.libraryRootPath = libraryRootPath
   }
 
   // -- Auth --
 
   async getAuthHeaders(): Promise<Record<string, string>> {
-    const cached = getCachedAuth(this.dataSourceId);
-    if (cached) return cached;
+    const cached = getCachedAuth(this.dataSourceId)
+    if (cached) return cached
 
-    const { accessToken, expiresAt } = await refreshAccessToken(this.dataSourceId);
-    const headers = { Authorization: `Bearer ${accessToken}` };
-    setCachedAuth(this.dataSourceId, headers, expiresAt);
-    return headers;
+    const { accessToken, expiresAt } = await refreshAccessToken(
+      this.dataSourceId,
+    )
+    const headers = { Authorization: `Bearer ${accessToken}` }
+    setCachedAuth(this.dataSourceId, headers, expiresAt)
+    return headers
   }
 
   getCachedAuthHeaders(): Record<string, string> | null {
-    return getCachedAuth(this.dataSourceId);
+    return getCachedAuth(this.dataSourceId)
   }
 
   invalidateAuth(): void {
-    invalidateCachedAuth(this.dataSourceId);
+    invalidateCachedAuth(this.dataSourceId)
   }
 
   // -- Stat --
 
   async statRemoteFile(remotePath: string): Promise<RemoteFileStat | null> {
-    const url = this.itemUrl(remotePath);
+    const url = this.itemUrl(remotePath)
     try {
-      const res = await this.fetchWithAuth(url, { method: "GET" });
-      if (res.status === 404) return null;
+      const res = await this.fetchWithAuth(url, { method: "GET" })
+      if (res.status === 404) return null
       if (!res.ok) {
         throw new NetworkError(
-          i18n.t("sync.onedriveGetFailed", { status: res.status, path: remotePath }),
+          i18n.t("sync.onedriveGetFailed", {
+            status: res.status,
+            path: remotePath,
+          }),
           res.status,
-        );
+        )
       }
-      const item = await res.json() as DriveItem;
+      const item = (await res.json()) as DriveItem
       return {
         etag: item.cTag ?? "",
         size: item.size ?? 0,
-        mtimeMs: item.lastModifiedDateTime ? new Date(item.lastModifiedDateTime).getTime() : 0,
-      };
+        mtimeMs: item.lastModifiedDateTime
+          ? new Date(item.lastModifiedDateTime).getTime()
+          : 0,
+      }
     } catch (e) {
-      if (e instanceof NetworkError) throw e;
-      return null;
+      if (e instanceof NetworkError) throw e
+      return null
     }
   }
 
   // -- Transfer --
 
   async readBytes(remotePath: string): Promise<Uint8Array> {
-    const res = await this.fetchWithAuth(this.contentUrl(remotePath), { method: "GET" });
+    const res = await this.fetchWithAuth(this.contentUrl(remotePath), {
+      method: "GET",
+    })
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedriveGetFailed", { status: res.status, path: remotePath }),
+        i18n.t("sync.onedriveGetFailed", {
+          status: res.status,
+          path: remotePath,
+        }),
         res.status,
-      );
+      )
     }
-    return new Uint8Array(await res.arrayBuffer());
+    return new Uint8Array(await res.arrayBuffer())
   }
 
   async writeBytes(remotePath: string, bytes: Uint8Array): Promise<void> {
-    await this.ensureParentDirectories(remotePath);
+    await this.ensureParentDirectories(remotePath)
     const res = await this.fetchWithAuth(this.contentUrl(remotePath), {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
       body: bytes as unknown as BodyInit,
-    });
+    })
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedrivePutFailed", { status: res.status, path: remotePath }),
+        i18n.t("sync.onedrivePutFailed", {
+          status: res.status,
+          path: remotePath,
+        }),
         res.status,
-      );
+      )
     }
   }
 
   async deleteRemote(remotePath: string): Promise<void> {
-    const res = await this.fetchWithAuth(this.itemUrl(remotePath), { method: "DELETE" });
+    const res = await this.fetchWithAuth(this.itemUrl(remotePath), {
+      method: "DELETE",
+    })
     if (!res.ok && res.status !== 404) {
       throw new NetworkError(
-        i18n.t("sync.onedriveDeleteFailed", { status: res.status, path: remotePath }),
+        i18n.t("sync.onedriveDeleteFailed", {
+          status: res.status,
+          path: remotePath,
+        }),
         res.status,
-      );
+      )
     }
   }
 
   async listRemote(prefix: string): Promise<string[]> {
-    const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
-    const res = await this.fetchWithAuth(this.childrenUrl(normalizedPrefix), { method: "GET" });
-    if (res.status === 404) return [];
+    const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`
+    const res = await this.fetchWithAuth(this.childrenUrl(normalizedPrefix), {
+      method: "GET",
+    })
+    if (res.status === 404) return []
     if (!res.ok) {
       throw new NetworkError(
-        i18n.t("sync.onedriveListFailed", { status: res.status, path: normalizedPrefix }),
+        i18n.t("sync.onedriveListFailed", {
+          status: res.status,
+          path: normalizedPrefix,
+        }),
         res.status,
-      );
+      )
     }
-    const data = await res.json() as { value: { name: string; folder?: object }[] };
-    return data.value.map((item) =>
-      item.folder ? `${item.name}/` : item.name,
-    );
+    const data = (await res.json()) as {
+      value: { name: string; folder?: object }[]
+    }
+    return data.value.map((item) => (item.folder ? `${item.name}/` : item.name))
   }
 
   async downloadToUri(remotePath: string, localFileUri: string): Promise<File> {
-    const headers = await this.getAuthHeaders();
-    const url = `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`;
+    const headers = await this.getAuthHeaders()
+    const url = `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`
 
-    const response = await ky(url, { headers });
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    const parentUri = parentDirectoryUriForFileUri(localFileUri);
+    const response = await ky(url, { headers })
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    const parentUri = parentDirectoryUriForFileUri(localFileUri)
     if (parentUri) {
-      const parent = new Directory(parentUri);
+      const parent = new Directory(parentUri)
       if (!parent.exists) {
-        parent.create({ idempotent: true, intermediates: true });
+        parent.create({ idempotent: true, intermediates: true })
       }
     }
-    const file = new File(localFileUri);
+    const file = new File(localFileUri)
 
     if (file.exists) {
-      file.delete();
+      file.delete()
     }
 
-    file.create({ intermediates: true, overwrite: true });
-    file.write(bytes);
-    return file;
+    file.create({ intermediates: true, overwrite: true })
+    file.write(bytes)
+    return file
   }
 
-  async getDownloadRequest(remotePath: string, localFileUri: string): Promise<DownloadRequest> {
-    const headers = await this.getAuthHeaders();
-    const ep = this.encodedPath(remotePath);
-    const apiContentUrl = `${GRAPH_API_BASE}/me/drive/root:${ep}:/content`;
+  async getDownloadRequest(
+    remotePath: string,
+    localFileUri: string,
+  ): Promise<DownloadRequest> {
+    const headers = await this.getAuthHeaders()
+    const ep = this.encodedPath(remotePath)
+    const apiContentUrl = `${GRAPH_API_BASE}/me/drive/root:${ep}:/content`
     try {
-      const res = await fetch(apiContentUrl, { method: "GET", headers, redirect: "manual" });
+      const res = await fetch(apiContentUrl, {
+        method: "GET",
+        headers,
+        redirect: "manual",
+      })
       if (res.status === 302 || res.status === 301) {
-        const directUrl = res.headers.get("Location");
+        const directUrl = res.headers.get("Location")
         if (directUrl) {
-          this.resolvedDownloadUrls.set(remotePath, directUrl);
-          return { remotePath, localFileUri, headers: {} };
+          this.resolvedDownloadUrls.set(remotePath, directUrl)
+          return { remotePath, localFileUri, headers: {} }
         }
       }
-      return { remotePath, localFileUri, headers };
+      return { remotePath, localFileUri, headers }
     } catch (e) {
-      throw e;
+      throw e
     }
   }
 
-  async getUploadRequest(localFileUri: string, remotePath: string): Promise<UploadRequest> {
-    const headers = await this.getAuthHeaders();
-    return { localFileUri, remotePath, headers: { ...headers, "Content-Type": "application/octet-stream" } };
+  async getUploadRequest(
+    localFileUri: string,
+    remotePath: string,
+  ): Promise<UploadRequest> {
+    const headers = await this.getAuthHeaders()
+    return {
+      localFileUri,
+      remotePath,
+      headers: { ...headers, "Content-Type": "application/octet-stream" },
+    }
   }
 
-  async prepareUpload(localFileUri: string, remotePath: string): Promise<PreparedUpload> {
-    await this.ensureParentDirectories(remotePath);
-    return { id: `${Date.now()}`, remotePath, headers: {} };
+  async prepareUpload(
+    localFileUri: string,
+    remotePath: string,
+  ): Promise<PreparedUpload> {
+    await this.ensureParentDirectories(remotePath)
+    return { id: `${Date.now()}`, remotePath, headers: {} }
   }
 
   // -- Path / URL --
 
   normalizePath(path: string): string {
-    return path.startsWith("/") ? path : `/${path}`;
+    return path.startsWith("/") ? path : `/${path}`
   }
 
   contentUrl(remotePath: string): string {
-    const resolved = this.resolvedDownloadUrls.get(remotePath);
-    if (resolved) return resolved;
-    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`;
+    const resolved = this.resolvedDownloadUrls.get(remotePath)
+    if (resolved) return resolved
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(remotePath)}:/content`
   }
 
   private encodedPath(remotePath: string): string {
     return this.fullPath(remotePath)
       .split("/")
       .map((s) => encodeURIComponent(s))
-      .join("/");
+      .join("/")
   }
 
   // -- Browse --
 
   async listDirectory(path: string): Promise<RemoteDirEntry[]> {
-    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    const segments = normalizedPath.split("/").map((s) => encodeURIComponent(s)).join("/");
-    const endpoint = segments === "/"
-      ? "/me/drive/root/children"
-      : `/me/drive/root:${segments}:/children`;
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`
+    const segments = normalizedPath
+      .split("/")
+      .map((s) => encodeURIComponent(s))
+      .join("/")
+    const endpoint =
+      segments === "/"
+        ? "/me/drive/root/children"
+        : `/me/drive/root:${segments}:/children`
 
-    let allItems: DriveItem[] = [];
-    let nextUrl: string | undefined = endpoint;
+    let allItems: DriveItem[] = []
+    let nextUrl: string | undefined = endpoint
 
     while (nextUrl) {
-      const data: DriveChildrenResponse = await this.graphGetJson<DriveChildrenResponse>(
-        nextUrl.replace(GRAPH_API_BASE, ""),
-      );
-      allItems = allItems.concat(data.value ?? []);
-      nextUrl = data["@odata.nextLink"];
+      const data: DriveChildrenResponse =
+        await this.graphGetJson<DriveChildrenResponse>(
+          nextUrl.replace(GRAPH_API_BASE, ""),
+        )
+      allItems = allItems.concat(data.value ?? [])
+      nextUrl = data["@odata.nextLink"]
     }
 
     return allItems
       .filter((item) => item.folder && !item.deleted)
       .map((item) => {
-        const parentPath = item.parentReference?.path ?? "";
-        const relativeParent = parentPath.replace(/^\/drive\/root:/, "");
-        const fullPath = relativeParent ? `${relativeParent}/${item.name}` : item.name;
+        const parentPath = item.parentReference?.path ?? ""
+        const relativeParent = parentPath.replace(/^\/drive\/root:/, "")
+        const fullPath = relativeParent
+          ? `${relativeParent}/${item.name}`
+          : item.name
 
         return {
           name: item.name,
           path: fullPath,
           isDirectory: true,
-        };
+        }
       })
-      .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+      .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
   }
 
   // -- Private helpers --
@@ -251,78 +314,98 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   private fullPath(relativePath: string): string {
     return this.libraryRootPath
       ? `${this.libraryRootPath}/${relativePath}`
-      : relativePath;
+      : relativePath
   }
 
   private itemUrl(relativePath: string): string {
-    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(relativePath)}`;
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(relativePath)}`
   }
 
   private childrenUrl(prefix: string): string {
-    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(prefix)}:/children`;
+    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(prefix)}:/children`
   }
 
-  private async fetchWithAuth(url: string, init: RequestInit): Promise<Response> {
-    const headers = await this.getAuthHeaders();
-    const res = await fetch(url, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> ?? {}) } });
+  private async fetchWithAuth(
+    url: string,
+    init: RequestInit,
+  ): Promise<Response> {
+    const headers = await this.getAuthHeaders()
+    const res = await fetch(url, {
+      ...init,
+      headers: {
+        ...headers,
+        ...((init.headers as Record<string, string>) ?? {}),
+      },
+    })
 
     if (res.status === 401) {
-      this.invalidateAuth();
-      const retryHeaders = await this.getAuthHeaders();
-      return fetch(url, { ...init, headers: { ...retryHeaders, ...(init.headers as Record<string, string> ?? {}) } });
+      this.invalidateAuth()
+      const retryHeaders = await this.getAuthHeaders()
+      return fetch(url, {
+        ...init,
+        headers: {
+          ...retryHeaders,
+          ...((init.headers as Record<string, string>) ?? {}),
+        },
+      })
     }
 
-    return res;
+    return res
   }
 
   private async graphGetJson<T>(graphPath: string): Promise<T> {
-    const headers = await this.getAuthHeaders();
+    const headers = await this.getAuthHeaders()
     const res = await ky(`${GRAPH_API_BASE}${graphPath}`, {
       headers,
       throwHttpErrors: false,
-    });
+    })
     if (res.status === 401) {
-      this.invalidateAuth();
-      const retryHeaders = await this.getAuthHeaders();
+      this.invalidateAuth()
+      const retryHeaders = await this.getAuthHeaders()
       const retryRes = await ky(`${GRAPH_API_BASE}${graphPath}`, {
         headers: retryHeaders,
         throwHttpErrors: false,
-      });
-      return (await retryRes.json()) as T;
+      })
+      return (await retryRes.json()) as T
     }
-    return (await res.json()) as T;
+    return (await res.json()) as T
   }
 
   private async ensureParentDirectories(relativePath: string): Promise<void> {
-    const parts = canonicalRelativePathSegments(relativePath);
-    if (parts.length <= 1) return;
+    const parts = canonicalRelativePathSegments(relativePath)
+    if (parts.length <= 1) return
 
-    let cursor = "";
+    let cursor = ""
     for (let i = 0; i < parts.length - 1; i += 1) {
-      cursor = cursor ? `${cursor}/${parts[i]}` : parts[i]!;
+      cursor = cursor ? `${cursor}/${parts[i]}` : parts[i]!
 
-      const statRes = await this.fetchWithAuth(this.itemUrl(cursor), { method: "GET" });
-      if (statRes.ok) continue;
+      const statRes = await this.fetchWithAuth(this.itemUrl(cursor), {
+        method: "GET",
+      })
+      if (statRes.ok) continue
 
-      const parentParts = cursor.split("/");
-      const folderName = parentParts.pop()!;
-      const parentPath = parentParts.join("/");
+      const parentParts = cursor.split("/")
+      const folderName = parentParts.pop()!
+      const parentPath = parentParts.join("/")
 
       const createUrl = parentPath
         ? this.childrenUrl(parentPath)
-        : `${GRAPH_API_BASE}/me/drive/root/children`;
+        : `${GRAPH_API_BASE}/me/drive/root/children`
 
       const createRes = await this.fetchWithAuth(createUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: folderName, folder: {} }),
-      });
+      })
 
       if (!createRes.ok && createRes.status !== 409) {
         throw new NetworkError(
-          i18n.t("sync.onedriveMkdirFailed", { status: createRes.status, path: cursor }),
+          i18n.t("sync.onedriveMkdirFailed", {
+            status: createRes.status,
+            path: cursor,
+          }),
           createRes.status,
-        );
+        )
       }
     }
   }

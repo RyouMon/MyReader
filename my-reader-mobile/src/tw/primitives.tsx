@@ -1,9 +1,9 @@
-import { Link as RouterLink, type LinkProps } from "expo-router";
+import { Link as RouterLink, type LinkProps } from "expo-router"
 import {
   useCssElement,
   useNativeVariable as useFunctionalVariable,
-} from "react-native-css";
-import React from "react";
+} from "react-native-css"
+import React from "react"
 import {
   View as RNView,
   Text as RNText,
@@ -13,24 +13,24 @@ import {
   TouchableOpacity as RNTouchableOpacity,
   TextInput as RNTextInput,
   StyleSheet,
-} from "react-native";
-import Animated from "react-native-reanimated";
+} from "react-native"
+import Animated from "react-native-reanimated"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const cssElement = useCssElement as unknown as (
   Component: React.ComponentType<any>,
   props: any,
-  mapping: any
-) => any;
+  mapping: any,
+) => any
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 const RouterLinkForCss = RouterLink as React.ComponentType<
   LinkProps & { className?: string }
->;
+>
 
 export const Link = Object.assign(
   (props: LinkProps & { className?: string }) => {
-    return cssElement(RouterLinkForCss, props, { className: "style" });
+    return cssElement(RouterLinkForCss, props, { className: "style" })
   },
   {
     resolveHref: RouterLink.resolveHref,
@@ -38,67 +38,74 @@ export const Link = Object.assign(
     Trigger: RouterLink.Trigger,
     Preview: RouterLink.Preview,
     MenuAction: RouterLink.MenuAction,
-  }
-) as typeof RouterLink;
+  },
+) as typeof RouterLink
 
-export const useCSSVariable = useFunctionalVariable;
+export const useCSSVariable = useFunctionalVariable
 
 export type ViewProps = React.ComponentProps<typeof RNView> & {
-  className?: string;
-};
+  className?: string
+}
 
 export const View = (props: ViewProps) => {
-  return cssElement(RNView, props, { className: "style" });
-};
-View.displayName = "CSS(View)";
+  return cssElement(RNView, props, { className: "style" })
+}
+View.displayName = "CSS(View)"
 
 export const Text = (
-  props: React.ComponentProps<typeof RNText> & { className?: string }
+  props: React.ComponentProps<typeof RNText> & { className?: string },
 ) => {
-  return cssElement(RNText, { maxFontSizeMultiplier: 1.3, ...props }, { className: "style" });
-};
-Text.displayName = "CSS(Text)";
+  return cssElement(
+    RNText,
+    { maxFontSizeMultiplier: 1.3, ...props },
+    { className: "style" },
+  )
+}
+Text.displayName = "CSS(Text)"
 
 type ScrollViewCssProps = React.ComponentProps<typeof RNScrollView> & {
-  className?: string;
-  contentContainerClassName?: string;
-};
+  className?: string
+  contentContainerClassName?: string
+}
 
-const RNScrollViewForCss = RNScrollView as React.ComponentType<ScrollViewCssProps>;
+const RNScrollViewForCss =
+  RNScrollView as React.ComponentType<ScrollViewCssProps>
 
-export const ScrollView = React.forwardRef<RNScrollView, ScrollViewCssProps>(function ScrollView(props, ref) {
-  return cssElement(
-    RNScrollViewForCss,
-    { ref, ...props },
-    {
-      className: "style",
-      contentContainerClassName: "contentContainerStyle",
-    },
-  );
-});
-ScrollView.displayName = "CSS(ScrollView)";
+export const ScrollView = React.forwardRef<RNScrollView, ScrollViewCssProps>(
+  function ScrollView(props, ref) {
+    return cssElement(
+      RNScrollViewForCss,
+      { ref, ...props },
+      {
+        className: "style",
+        contentContainerClassName: "contentContainerStyle",
+      },
+    )
+  },
+)
+ScrollView.displayName = "CSS(ScrollView)"
 
 export const Pressable = (
-  props: React.ComponentProps<typeof RNPressable> & { className?: string }
+  props: React.ComponentProps<typeof RNPressable> & { className?: string },
 ) => {
-  return cssElement(RNPressable, props, { className: "style" });
-};
-Pressable.displayName = "CSS(Pressable)";
+  return cssElement(RNPressable, props, { className: "style" })
+}
+Pressable.displayName = "CSS(Pressable)"
 
 export const TextInput = (
-  props: React.ComponentProps<typeof RNTextInput> & { className?: string }
+  props: React.ComponentProps<typeof RNTextInput> & { className?: string },
 ) => {
-  return cssElement(RNTextInput, props, { className: "style" });
-};
-TextInput.displayName = "CSS(TextInput)";
+  return cssElement(RNTextInput, props, { className: "style" })
+}
+TextInput.displayName = "CSS(TextInput)"
 
 type AnimatedScrollViewProps = React.ComponentProps<
   typeof Animated.ScrollView
 > & {
-  className?: string;
-  contentClassName?: string;
-  contentContainerClassName?: string;
-};
+  className?: string
+  contentClassName?: string
+  contentContainerClassName?: string
+}
 
 export const AnimatedScrollView = React.forwardRef<
   Animated.ScrollView,
@@ -111,41 +118,41 @@ export const AnimatedScrollView = React.forwardRef<
       className: "style",
       contentClassName: "contentContainerStyle",
       contentContainerClassName: "contentContainerStyle",
-    }
-  );
-});
+    },
+  )
+})
 
 function XXTouchableHighlight(
-  props: React.ComponentProps<typeof RNTouchableHighlight>
+  props: React.ComponentProps<typeof RNTouchableHighlight>,
 ) {
-  const flat = StyleSheet.flatten(props.style) || {};
+  const flat = StyleSheet.flatten(props.style) || {}
   const { underlayColor, ...style } = flat as typeof flat & {
-    underlayColor?: string;
-  };
+    underlayColor?: string
+  }
   return (
     <RNTouchableHighlight
       underlayColor={underlayColor}
       {...props}
       style={style}
     />
-  );
+  )
 }
 
 export const TouchableHighlight = (
   props: React.ComponentProps<typeof RNTouchableHighlight> & {
-    className?: string;
-  }
+    className?: string
+  },
 ) => {
-  return cssElement(XXTouchableHighlight, props, { className: "style" });
-};
-TouchableHighlight.displayName = "CSS(TouchableHighlight)";
+  return cssElement(XXTouchableHighlight, props, { className: "style" })
+}
+TouchableHighlight.displayName = "CSS(TouchableHighlight)"
 
 /** Maps `className` to `style` for TouchableOpacity. */
 export const TouchableOpacity = (
   props: React.ComponentProps<typeof RNTouchableOpacity> & {
-    className?: string;
-  }
+    className?: string
+  },
 ) => {
-  return cssElement(RNTouchableOpacity, props, { className: "style" });
-};
-TouchableOpacity.displayName = "CSS(TouchableOpacity)";
+  return cssElement(RNTouchableOpacity, props, { className: "style" })
+}
+TouchableOpacity.displayName = "CSS(TouchableOpacity)"

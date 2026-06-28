@@ -1,30 +1,33 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { Platform } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { Stack, router, useLocalSearchParams } from "expo-router"
+import { SymbolView } from "expo-symbols"
+import { Platform } from "react-native"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { useThemePalette } from "@/src/design/tokens";
-import type { DataSourceWebdav } from "@/src/domain/types";
-import { DataSourceInUseError } from "@/src/errors";
-import { Text, View } from "@/tw";
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { useThemePalette } from "@/src/design/tokens"
+import type { DataSourceWebdav } from "@/src/domain/types"
+import { DataSourceInUseError } from "@/src/errors"
+import { Text, View } from "@/tw"
 
-import { Screen, SectionCard, ListRow } from "@/src/components";
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { useScreenHeader, type ScreenHeaderAction } from "@/src/navigation/hooks/use-screen-header";
-import { useAppStore } from "@/src/store/app-store";
+import { Screen, SectionCard, ListRow } from "@/src/components"
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import {
+  useScreenHeader,
+  type ScreenHeaderAction,
+} from "@/src/navigation/hooks/use-screen-header"
+import { useAppStore } from "@/src/store/app-store"
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
-    return "—";
+    return "—"
   }
 
-  const date = new Date(timestamp);
+  const date = new Date(timestamp)
   if (Number.isNaN(date.getTime())) {
-    return "—";
+    return "—"
   }
 
   return new Intl.DateTimeFormat("zh-CN", {
@@ -33,12 +36,18 @@ function formatDate(timestamp?: number) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
+  }).format(date)
 }
 
-function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent: string }) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+function WebDavDetailHero({
+  source,
+  accent,
+}: {
+  source: DataSourceWebdav
+  accent: string
+}) {
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
   return (
     <View className="items-center gap-5 pb-1 pt-2">
@@ -57,7 +66,12 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
         <SymbolView
           accessibilityLabel={t("webdav.sourcesTitle")}
           fallback={
-            <MaterialIcons accessibilityLabel={t("webdav.sourcesTitle")} name="cloud" size={80} color={accent} />
+            <MaterialIcons
+              accessibilityLabel={t("webdav.sourcesTitle")}
+              name="cloud"
+              size={80}
+              color={accent}
+            />
           }
           name={{
             ios: "cloud.fill",
@@ -82,71 +96,87 @@ function WebDavDetailHero({ source, accent }: { source: DataSourceWebdav; accent
         >
           {source.name}
         </Text>
-        <Text className="px-4 text-center text-sm font-medium" style={{ color: palette.textMuted }} numberOfLines={2}>
+        <Text
+          className="px-4 text-center text-sm font-medium"
+          style={{ color: palette.textMuted }}
+          numberOfLines={2}
+        >
           {source.endpoint}
           {source.rootPath ? source.rootPath : ""}
         </Text>
       </View>
     </View>
-  );
+  )
 }
 
 export default function WebDavDataSourceDetailScreen() {
-  const { t } = useTranslation();
-  const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>();
-  const palette = useThemePalette();
-  const dataSources = useAppStore((state) => state.dataSources);
-  const { deleteDataSource } = useDataSourceActions();
+  const { t } = useTranslation()
+  const { dataSourceId } = useLocalSearchParams<{ dataSourceId?: string }>()
+  const palette = useThemePalette()
+  const dataSources = useAppStore((state) => state.dataSources)
+  const { deleteDataSource } = useDataSourceActions()
 
   const sourceIndex = useMemo(
-    () => dataSources.findIndex((item) => item.id === dataSourceId && item.type === "webdav"),
-    [dataSources, dataSourceId]
-  );
-  const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined;
-  const webdavSource: DataSourceWebdav | null = raw?.type === "webdav" ? raw : null;
-  const accent = palette.primary;
+    () =>
+      dataSources.findIndex(
+        (item) => item.id === dataSourceId && item.type === "webdav",
+      ),
+    [dataSources, dataSourceId],
+  )
+  const raw = sourceIndex >= 0 ? dataSources[sourceIndex] : undefined
+  const webdavSource: DataSourceWebdav | null =
+    raw?.type === "webdav" ? raw : null
+  const accent = palette.primary
 
   function handleBack() {
     if (router.canGoBack()) {
-      router.back();
-      return;
+      router.back()
+      return
     }
 
-    router.replace("/settings/webdav");
+    router.replace("/settings/webdav")
   }
 
   function confirmDelete() {
     if (!webdavSource) {
-      return;
+      return
     }
 
-    showAlertWithStatusBarRestore(t("webdav.delete.title"), t("webdav.delete.confirm", { name: webdavSource.name }), [
-      { text: t("webdav.delete.cancel"), style: "cancel" },
-      {
-        text: t("webdav.delete.confirmButton"),
-        style: "destructive",
-        onPress: () => {
-          void (async () => {
-            try {
-              await deleteDataSource(webdavSource.id);
-              handleBack();
-            } catch (caught) {
-              if (caught instanceof DataSourceInUseError) {
-                showAlertWithStatusBarRestore(
-                  t("dataSource.deleteInUse.title"),
-                  t("dataSource.deleteInUse.message", { names: caught.libraryNames.join("、") }),
-                );
-              } else {
-                showAlertWithStatusBarRestore(
-                  t("webdav.deleteFailed.title"),
-                  caught instanceof Error ? caught.message : t("webdav.deleteFailed.message"),
-                );
+    showAlertWithStatusBarRestore(
+      t("webdav.delete.title"),
+      t("webdav.delete.confirm", { name: webdavSource.name }),
+      [
+        { text: t("webdav.delete.cancel"), style: "cancel" },
+        {
+          text: t("webdav.delete.confirmButton"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteDataSource(webdavSource.id)
+                handleBack()
+              } catch (caught) {
+                if (caught instanceof DataSourceInUseError) {
+                  showAlertWithStatusBarRestore(
+                    t("dataSource.deleteInUse.title"),
+                    t("dataSource.deleteInUse.message", {
+                      names: caught.libraryNames.join("、"),
+                    }),
+                  )
+                } else {
+                  showAlertWithStatusBarRestore(
+                    t("webdav.deleteFailed.title"),
+                    caught instanceof Error
+                      ? caught.message
+                      : t("webdav.deleteFailed.message"),
+                  )
+                }
               }
-            }
-          })();
+            })()
+          },
         },
-      },
-    ]);
+      ],
+    )
   }
 
   const deleteAction: ScreenHeaderAction | undefined = webdavSource
@@ -155,21 +185,29 @@ export default function WebDavDataSourceDetailScreen() {
         onPress: confirmDelete,
         icon:
           Platform.OS === "ios" ? (
-            <SymbolView name="trash" size={16} tintColor={palette.destructive} />
+            <SymbolView
+              name="trash"
+              size={16}
+              tintColor={palette.destructive}
+            />
           ) : (
-            <MaterialIcons name="delete-outline" size={22} color={palette.destructive} />
+            <MaterialIcons
+              name="delete-outline"
+              size={22}
+              color={palette.destructive}
+            />
           ),
         iosSfSymbol: "trash",
         color: palette.destructive,
         iconOnly: true,
         variant: "prominent" as const,
       }
-    : undefined;
+    : undefined
 
   const { options, toolbar } = useScreenHeader({
     backTitle: t("back"),
     right: deleteAction ? [deleteAction] : [],
-  });
+  })
 
   if (!webdavSource) {
     return (
@@ -180,12 +218,15 @@ export default function WebDavDataSourceDetailScreen() {
           <Text className="text-2xl font-bold" style={{ color: palette.text }}>
             {t("webdav.notFound.title")}
           </Text>
-          <Text className="mt-3 text-center text-sm" style={{ color: palette.textMuted }}>
+          <Text
+            className="mt-3 text-center text-sm"
+            style={{ color: palette.textMuted }}
+          >
             {t("webdav.notFound.detail")}
           </Text>
         </View>
       </Screen>
-    );
+    )
   }
 
   return (
@@ -197,18 +238,44 @@ export default function WebDavDataSourceDetailScreen() {
           <WebDavDetailHero source={webdavSource} accent={accent} />
           <SectionCard>
             <ListRow title={t("webdav.type")} detail="WebDAV" />
-            <ListRow title={t("webdav.serverAddress")} detail={webdavSource.endpoint} />
-            <ListRow title={t("webdav.username")} detail={webdavSource.username} />
+            <ListRow
+              title={t("webdav.serverAddress")}
+              detail={webdavSource.endpoint}
+            />
+            <ListRow
+              title={t("webdav.username")}
+              detail={webdavSource.username}
+            />
             <ListRow
               title={t("webdav.password")}
-              detail={webdavSource.hasPassword ? t("webdav.passwordSaved") : t("webdav.passwordNotSet")}
+              detail={
+                webdavSource.hasPassword
+                  ? t("webdav.passwordSaved")
+                  : t("webdav.passwordNotSet")
+              }
             />
-            <ListRow title={t("webdav.basePath")} detail={webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"} />
-            <ListRow title={t("webdav.status")} detail={webdavSource.enabled ? t("webdav.enabled") : t("webdav.disabled")} />
-            <ListRow title={t("webdav.addedAt")} detail={formatDate(webdavSource.createdAt)} isLast />
+            <ListRow
+              title={t("webdav.basePath")}
+              detail={
+                webdavSource.rootPath?.trim() ? webdavSource.rootPath : "/"
+              }
+            />
+            <ListRow
+              title={t("webdav.status")}
+              detail={
+                webdavSource.enabled
+                  ? t("webdav.enabled")
+                  : t("webdav.disabled")
+              }
+            />
+            <ListRow
+              title={t("webdav.addedAt")}
+              detail={formatDate(webdavSource.createdAt)}
+              isLast
+            />
           </SectionCard>
         </View>
       </View>
     </Screen>
-  );
+  )
 }

@@ -1,21 +1,21 @@
-import type { Locator } from "@my-reader/readium";
+import type { Locator } from "@my-reader/readium"
 
 import {
   getReadingProgressRow,
   upsertReadingProgress,
-} from "../../repos/reading-progress";
-import type { Library } from "../types";
+} from "../../repos/reading-progress"
+import type { Library } from "../types"
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
+  return typeof v === "object" && v !== null && !Array.isArray(v)
 }
 
 export function parseStoredLocator(raw: unknown): Locator | null {
-  if (!isPlainObject(raw)) return null;
-  const { href, type } = raw;
-  if (typeof href !== "string" || href.length === 0) return null;
-  if (typeof type !== "string" || type.length === 0) return null;
-  return raw as unknown as Locator;
+  if (!isPlainObject(raw)) return null
+  const { href, type } = raw
+  if (typeof href !== "string" || href.length === 0) return null
+  if (typeof type !== "string" || type.length === 0) return null
+  return raw as unknown as Locator
 }
 
 /**
@@ -23,17 +23,19 @@ export function parseStoredLocator(raw: unknown): Locator | null {
  * Prefers `totalProgression` (book-wide), falls back to `progression` (resource-relative).
  * Returns `undefined` when no usable progression exists.
  */
-export function locatorToPercent(locator: Locator | null | undefined): number | undefined {
-  if (!locator) return undefined;
-  const totalProgression = locator.locations?.totalProgression;
+export function locatorToPercent(
+  locator: Locator | null | undefined,
+): number | undefined {
+  if (!locator) return undefined
+  const totalProgression = locator.locations?.totalProgression
   if (typeof totalProgression === "number") {
-    return Math.max(0, Math.min(1, totalProgression)) * 100;
+    return Math.max(0, Math.min(1, totalProgression)) * 100
   }
-  const progression = locator.locations?.progression;
+  const progression = locator.locations?.progression
   if (typeof progression === "number") {
-    return Math.max(0, Math.min(1, progression)) * 100;
+    return Math.max(0, Math.min(1, progression)) * 100
   }
-  return undefined;
+  return undefined
 }
 
 /**
@@ -42,19 +44,19 @@ export function locatorToPercent(locator: Locator | null | undefined): number | 
  * is invalid on mobile. We keep only the relative path suffix.
  */
 function normalizeHrefForStorage(href: string): string {
-  if (!href.startsWith("asset://localhost/")) return href;
+  if (!href.startsWith("asset://localhost/")) return href
   try {
-    const url = new URL(href);
-    const decoded = decodeURIComponent(url.pathname);
-    const match = decoded.match(/\/extracted\/[^/]+\//);
+    const url = new URL(href)
+    const decoded = decodeURIComponent(url.pathname)
+    const match = decoded.match(/\/extracted\/[^/]+\//)
     if (match) {
-      const relativePath = decoded.slice((match.index ?? 0) + match[0].length);
-      if (relativePath) return relativePath;
+      const relativePath = decoded.slice((match.index ?? 0) + match[0].length)
+      if (relativePath) return relativePath
     }
   } catch {
     // URL parsing failed — return as-is
   }
-  return href;
+  return href
 }
 
 /** Read reading progress by book id and format (case-insensitive). */
@@ -63,19 +65,23 @@ export async function getReadingProgress(
   bookId: number,
   format: string,
 ): Promise<Locator | null> {
-  const fmt = format.toUpperCase();
+  const fmt = format.toUpperCase()
 
   try {
-    const row = await getReadingProgressRow(library, bookId, fmt);
+    const row = await getReadingProgressRow(library, bookId, fmt)
     if (!row) {
-      return null;
+      return null
     }
 
-    const raw: unknown = JSON.parse(row.locatorJson);
-    return parseStoredLocator(raw);
+    const raw: unknown = JSON.parse(row.locatorJson)
+    return parseStoredLocator(raw)
   } catch (e) {
-    console.error("[reading-progress] get:error", { bookId, format: fmt, error: e });
-    return null;
+    console.error("[reading-progress] get:error", {
+      bookId,
+      format: fmt,
+      error: e,
+    })
+    return null
   }
 }
 
@@ -87,13 +93,13 @@ export async function setReadingProgress(
   locator: Locator,
   options?: { invalidate?: boolean },
 ): Promise<void> {
-  const fmt = format.toUpperCase();
-  const updatedAt = Date.now();
+  const fmt = format.toUpperCase()
+  const updatedAt = Date.now()
   const normalized: Locator = {
     ...locator,
     href: normalizeHrefForStorage(locator.href),
-  };
-  const locatorJson = JSON.stringify(normalized);
+  }
+  const locatorJson = JSON.stringify(normalized)
 
   try {
     await upsertReadingProgress(
@@ -105,8 +111,12 @@ export async function setReadingProgress(
         updatedAt,
       },
       options,
-    );
+    )
   } catch (e) {
-    console.error("[reading-progress] set:error", { bookId, format: fmt, error: e });
+    console.error("[reading-progress] set:error", {
+      bookId,
+      format: fmt,
+      error: e,
+    })
   }
 }

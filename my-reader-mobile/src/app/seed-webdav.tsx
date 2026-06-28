@@ -1,22 +1,22 @@
-import { router } from "expo-router";
-import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { router } from "expo-router"
+import { useEffect, useRef } from "react"
+import { View } from "react-native"
 
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { useAppStoreReady } from "@/src/store/app-store";
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import { useAppStoreReady } from "@/src/store/app-store"
 
-const FIXTURE_ID = "seed-webdav-fixture";
-const FIXTURE_NAME = "Test WebDAV";
+const FIXTURE_ID = "seed-webdav-fixture"
+const FIXTURE_NAME = "Test WebDAV"
 
 export default function SeedWebDavScreen() {
-  const { createDataSource } = useDataSourceActions();
-  const storeReady = useAppStoreReady();
-  const seeded = useRef(false);
+  const { createDataSource } = useDataSourceActions()
+  const storeReady = useAppStoreReady()
+  const seeded = useRef(false)
 
   useEffect(() => {
-    if (!storeReady || seeded.current) return;
-    seeded.current = true;
-    let cancelled = false;
+    if (!storeReady || seeded.current) return
+    seeded.current = true
+    let cancelled = false
 
     async function seedWebDav() {
       await createDataSource(
@@ -32,22 +32,22 @@ export default function SeedWebDavScreen() {
           createdAt: Date.now(),
         },
         { type: "webdav", password: "test" },
-      );
+      )
     }
 
     seedWebDav()
       .then(() => {
-        if (!cancelled) router.dismissTo("/home");
+        if (!cancelled) router.dismissTo("/home")
       })
       .catch((error) => {
-        console.error("[seed-webdav] failed:", error);
-        if (!cancelled) router.dismissTo("/home");
-      });
+        console.error("[seed-webdav] failed:", error)
+        if (!cancelled) router.dismissTo("/home")
+      })
 
     return () => {
-      cancelled = true;
-    };
-  }, [createDataSource, storeReady]);
+      cancelled = true
+    }
+  }, [createDataSource, storeReady])
 
-  return <View />;
+  return <View />
 }

@@ -1,10 +1,10 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import LibraryDetailScreen from "@/src/features/library/library-detail-screen";
+import LibraryDetailScreen from "@/src/features/library/library-detail-screen"
 
 export default function LibraryDetailRoute() {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <>
@@ -16,5 +16,5 @@ export default function LibraryDetailRoute() {
       />
       <LibraryDetailScreen />
     </>
-  );
+  )
 }

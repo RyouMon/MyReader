@@ -1,4 +1,4 @@
-import type { Utterance } from './publication-handle';
+import type { Utterance } from "./publication-handle"
 
 /**
  * TTS engine abstraction point — POSITION-NEUTRAL by design.
@@ -23,12 +23,12 @@ export interface TTSEngine {
   speak(
     text: string,
     opts: {
-      voice?: string;
-      rate?: number;
-      onRange?: (start: number, end: number) => void;
-    }
-  ): { cancel: () => void };
+      voice?: string
+      rate?: number
+      onRange?: (start: number, end: number) => void
+    },
+  ): { cancel: () => void }
 }
 
 /** Re-exported for TTS consumers. */
-export type { Utterance };
+export type { Utterance }

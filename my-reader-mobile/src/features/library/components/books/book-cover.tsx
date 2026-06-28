@@ -1,45 +1,58 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react"
 
-import { useThemePalette } from "@/src/design/tokens";
-import type { BookItem } from "@/src/domain/types";
-import { Image, Text, View } from "@/tw";
+import { useThemePalette } from "@/src/design/tokens"
+import type { BookItem } from "@/src/domain/types"
+import { Image, Text, View } from "@/tw"
 
-export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading";
+export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
 
 export type BookProgressSnapshot = {
-  percent?: number;
-  statusLabel?: string;
-};
+  percent?: number
+  statusLabel?: string
+}
 
 /**
  * Returns a stable fallback color for books without cover art.
  */
 export function getFallbackCoverColor(title: string) {
-  let hash = 0;
+  let hash = 0
   for (let index = 0; index < title.length; index += 1) {
-    hash = ((hash << 5) - hash + title.charCodeAt(index)) | 0;
+    hash = ((hash << 5) - hash + title.charCodeAt(index)) | 0
   }
-  const colors = ["#4A3728", "#1A3A4A", "#5C4200", "#1E3A2A", "#4A2838", "#2D2F4A"];
-  return colors[Math.abs(hash) % colors.length];
+  const colors = [
+    "#4A3728",
+    "#1A3A4A",
+    "#5C4200",
+    "#1E3A2A",
+    "#4A2838",
+    "#2D2F4A",
+  ]
+  return colors[Math.abs(hash) % colors.length]
 }
 
 type BookCoverProps = {
-  book: BookItem;
-  width: number;
-  height: number;
-  borderRadius?: number;
-  showTitle?: boolean;
-};
+  book: BookItem
+  width: number
+  height: number
+  borderRadius?: number
+  showTitle?: boolean
+}
 
-function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = true }: BookCoverProps) {
-  const palette = useThemePalette();
-  const [imageError, setImageError] = useState(false);
+function BookCoverImpl({
+  book,
+  width,
+  height,
+  borderRadius = 10,
+  showTitle = true,
+}: BookCoverProps) {
+  const palette = useThemePalette()
+  const [imageError, setImageError] = useState(false)
 
   useEffect(() => {
-    setImageError(false);
-  }, [book.coverUri]);
+    setImageError(false)
+  }, [book.coverUri])
 
-  const hasCover = !!book.coverUri && !imageError;
+  const hasCover = !!book.coverUri && !imageError
 
   return (
     <View
@@ -48,7 +61,9 @@ function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = tru
         width,
         height,
         borderRadius,
-        backgroundColor: hasCover ? palette.backgroundSecondary : getFallbackCoverColor(book.title),
+        backgroundColor: hasCover
+          ? palette.backgroundSecondary
+          : getFallbackCoverColor(book.title),
         shadowColor: palette.text,
         shadowOpacity: 0.18,
         shadowRadius: 8,
@@ -68,14 +83,19 @@ function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = tru
       ) : (
         <View className="h-full w-full justify-end px-2 py-3">
           {showTitle ? (
-            <Text className="text-center text-base font-semibold" style={{ color: palette.textOnPrimary }} numberOfLines={3} allowFontScaling={false}>
+            <Text
+              className="text-center text-base font-semibold"
+              style={{ color: palette.textOnPrimary }}
+              numberOfLines={3}
+              allowFontScaling={false}
+            >
               {book.title}
             </Text>
           ) : null}
         </View>
       )}
     </View>
-  );
+  )
 }
 
 /**
@@ -87,4 +107,4 @@ function BookCoverImpl({ book, width, height, borderRadius = 10, showTitle = tru
  * `recyclingKey` ensures the image refreshes when the cell is reused for a
  * different book.
  */
-export const BookCover = memo(BookCoverImpl);
+export const BookCover = memo(BookCoverImpl)

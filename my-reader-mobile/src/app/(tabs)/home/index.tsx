@@ -1,10 +1,10 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import HomeScreen from "@/src/features/home/home-screen";
+import HomeScreen from "@/src/features/home/home-screen"
 
 export default function HomeRoute() {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
     <>
       <Stack.Screen
@@ -16,5 +16,5 @@ export default function HomeRoute() {
       />
       <HomeScreen />
     </>
-  );
+  )
 }

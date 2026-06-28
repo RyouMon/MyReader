@@ -1,11 +1,11 @@
-import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette";
-import { Text, View } from "@/tw";
+import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
+import { Text, View } from "@/tw"
 
 export type ReaderChapterLabelProps = {
-  insetsTop: number;
-  title?: string | null;
-  palette: ReaderChromePalette;
-};
+  insetsTop: number
+  title?: string | null
+  palette: ReaderChromePalette
+}
 
 export function ReaderChapterLabel({
   insetsTop,
@@ -26,5 +26,5 @@ export function ReaderChapterLabel({
         {title ?? ""}
       </Text>
     </View>
-  );
+  )
 }

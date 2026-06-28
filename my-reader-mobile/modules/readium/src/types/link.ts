@@ -7,13 +7,13 @@
  * the JS-rebuilt tree.
  */
 export interface Link {
-  href: string;
-  title?: string;
-  rels?: string[];
-  languages?: string[];
-  depth?: number;
-  hasChildren?: boolean;
-  parentHref?: string;
-  position?: number;
-  children?: Link[];
+  href: string
+  title?: string
+  rels?: string[]
+  languages?: string[]
+  depth?: number
+  hasChildren?: boolean
+  parentHref?: string
+  position?: number
+  children?: Link[]
 }

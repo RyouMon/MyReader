@@ -1,7 +1,7 @@
 {
 	"editor.defaultFormatter": "biomejs.biome",
 	"editor.formatOnSave": true,
-    "biome.configurationPath": "my-reader/biome.json",
+    "biome.configurationPath": "biome.json",
     "editor.codeActionsOnSave": {
         "source.organizeImports.biome": "explicit",
         "source.fixAll.biome": "explicit",

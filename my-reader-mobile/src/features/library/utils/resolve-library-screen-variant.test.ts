@@ -1,4 +1,4 @@
-import { resolveLibraryScreenVariant } from "./resolve-library-screen-variant";
+import { resolveLibraryScreenVariant } from "./resolve-library-screen-variant"
 
 describe("resolveLibraryScreenVariant", () => {
   it("should return loading when store is not ready and library id is pending", () => {
@@ -9,8 +9,8 @@ describe("resolveLibraryScreenVariant", () => {
         hasSelectedLibrary: false,
         librariesCount: 2,
       }),
-    ).toBe("loading");
-  });
+    ).toBe("loading")
+  })
 
   it("should return empty when there are no libraries", () => {
     expect(
@@ -20,8 +20,8 @@ describe("resolveLibraryScreenVariant", () => {
         hasSelectedLibrary: false,
         librariesCount: 0,
       }),
-    ).toBe("empty");
-  });
+    ).toBe("empty")
+  })
 
   it("should return unselected when libraries exist but none is selected", () => {
     expect(
@@ -31,8 +31,8 @@ describe("resolveLibraryScreenVariant", () => {
         hasSelectedLibrary: false,
         librariesCount: 2,
       }),
-    ).toBe("unselected");
-  });
+    ).toBe("unselected")
+  })
 
   it("should return loaded when a library is selected", () => {
     expect(
@@ -42,6 +42,6 @@ describe("resolveLibraryScreenVariant", () => {
         hasSelectedLibrary: true,
         librariesCount: 2,
       }),
-    ).toBe("loaded");
-  });
-});
+    ).toBe("loaded")
+  })
+})

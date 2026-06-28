@@ -1,10 +1,10 @@
-import { type ReactNode } from "react";
+import { type ReactNode } from "react"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { View } from "@/tw";
+import { useThemePalette } from "@/src/design/tokens"
+import { View } from "@/tw"
 
 export function SectionCard({ children }: { children: ReactNode }) {
-  const palette = useThemePalette();
+  const palette = useThemePalette()
 
   return (
     <View
@@ -17,5 +17,5 @@ export function SectionCard({ children }: { children: ReactNode }) {
     >
       {children}
     </View>
-  );
+  )
 }

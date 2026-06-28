@@ -1,36 +1,39 @@
-import { type MenuComponentRef } from "@react-native-menu/menu";
-import type { NativeStackNavigationOptions } from "expo-router";
-import { useCallback, useMemo, type RefObject } from "react";
-import { useTranslation } from "react-i18next";
+import { type MenuComponentRef } from "@react-native-menu/menu"
+import type { NativeStackNavigationOptions } from "expo-router"
+import { useCallback, useMemo, type RefObject } from "react"
+import { useTranslation } from "react-i18next"
 
-import MoreVertIcon from "@expo/material-symbols/more_vert.xml";
-import TuneIcon from "@expo/material-symbols/tune.xml";
+import MoreVertIcon from "@expo/material-symbols/more_vert.xml"
+import TuneIcon from "@expo/material-symbols/tune.xml"
 
-import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button";
-import type { Library } from "@/src/domain/types";
-import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
-import type { LibraryViewMode } from "@/src/store/app-store.types";
+import { AndroidHeaderMenuButton } from "@/src/components/ui/android-header-menu-button"
+import type { Library } from "@/src/domain/types"
+import type {
+  LibraryFilterOption,
+  SortOption,
+} from "@/src/features/library/hooks/use-book-filter"
+import type { LibraryViewMode } from "@/src/store/app-store.types"
 
 import {
   libraryFilterOptions,
   librarySortOptions,
   libraryViewOptions,
-} from "../utils/library-header-config";
+} from "../utils/library-header-config"
 
 type UseLibraryAndroidHeaderMenuOptionsParams = {
-  leftMenuRef: RefObject<MenuComponentRef | null>;
-  rightMenuRef: RefObject<MenuComponentRef | null>;
-  libraries: Library[];
-  effectiveLibraryId?: string;
-  filter: LibraryFilterOption;
-  sortBy: SortOption;
-  viewMode: LibraryViewMode;
-  onSyncCurrentLibrary: () => void;
-  onSelectLibrary: (libraryId: string) => void;
-  onSetFilter: (value: LibraryFilterOption) => void;
-  onSetSortBy: (value: SortOption) => void;
-  onSetViewMode: (value: LibraryViewMode) => void;
-};
+  leftMenuRef: RefObject<MenuComponentRef | null>
+  rightMenuRef: RefObject<MenuComponentRef | null>
+  libraries: Library[]
+  effectiveLibraryId?: string
+  filter: LibraryFilterOption
+  sortBy: SortOption
+  viewMode: LibraryViewMode
+  onSyncCurrentLibrary: () => void
+  onSelectLibrary: (libraryId: string) => void
+  onSetFilter: (value: LibraryFilterOption) => void
+  onSetSortBy: (value: SortOption) => void
+  onSetViewMode: (value: LibraryViewMode) => void
+}
 
 /** Builds Android native-stack header slots for library filter/switch menus. */
 export function useLibraryAndroidHeaderMenuOptions({
@@ -50,7 +53,7 @@ export function useLibraryAndroidHeaderMenuOptions({
   NativeStackNavigationOptions,
   "headerBackVisible" | "headerLeft" | "headerRight"
 > {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   const leftActions = useMemo(
     () => [
@@ -65,7 +68,7 @@ export function useLibraryAndroidHeaderMenuOptions({
       },
     ],
     [effectiveLibraryId, libraries, t],
-  );
+  )
 
   const rightActions = useMemo(
     () => [
@@ -95,40 +98,40 @@ export function useLibraryAndroidHeaderMenuOptions({
       },
     ],
     [filter, sortBy, viewMode, t],
-  );
+  )
 
   const handleLeftMenuAction = useCallback(
     (event: string) => {
       if (event === "refreshLibrary") {
-        onSyncCurrentLibrary();
-        return;
+        onSyncCurrentLibrary()
+        return
       }
 
       if (event.startsWith("switchLibrary:")) {
-        onSelectLibrary(event.slice("switchLibrary:".length));
+        onSelectLibrary(event.slice("switchLibrary:".length))
       }
     },
     [onSelectLibrary, onSyncCurrentLibrary],
-  );
+  )
 
   const handleRightMenuAction = useCallback(
     (event: string) => {
       if (event.startsWith("filter:")) {
-        onSetFilter(event.slice("filter:".length) as LibraryFilterOption);
-        return;
+        onSetFilter(event.slice("filter:".length) as LibraryFilterOption)
+        return
       }
 
       if (event.startsWith("sort:")) {
-        onSetSortBy(event.slice("sort:".length) as SortOption);
-        return;
+        onSetSortBy(event.slice("sort:".length) as SortOption)
+        return
       }
 
       if (event.startsWith("view:")) {
-        onSetViewMode(event.slice("view:".length) as LibraryViewMode);
+        onSetViewMode(event.slice("view:".length) as LibraryViewMode)
       }
     },
     [onSetFilter, onSetSortBy, onSetViewMode],
-  );
+  )
 
   return useMemo(
     () => ({
@@ -164,5 +167,5 @@ export function useLibraryAndroidHeaderMenuOptions({
       handleLeftMenuAction,
       handleRightMenuAction,
     ],
-  );
+  )
 }

@@ -1,10 +1,10 @@
-export { books } from "./books";
-export { authors, booksAuthorsLink } from "./authors";
-export { tags, booksTagsLink } from "./tags";
-export { series, booksSeriesLink } from "./series";
-export { publishers, booksPublishersLink } from "./publishers";
-export { languages, booksLanguagesLink } from "./languages";
-export { ratings, booksRatingsLink } from "./ratings";
-export { data } from "./data";
-export { comments } from "./comments";
-export { identifiers } from "./identifiers";
+export { books } from "./books"
+export { authors, booksAuthorsLink } from "./authors"
+export { tags, booksTagsLink } from "./tags"
+export { series, booksSeriesLink } from "./series"
+export { publishers, booksPublishersLink } from "./publishers"
+export { languages, booksLanguagesLink } from "./languages"
+export { ratings, booksRatingsLink } from "./ratings"
+export { data } from "./data"
+export { comments } from "./comments"
+export { identifiers } from "./identifiers"

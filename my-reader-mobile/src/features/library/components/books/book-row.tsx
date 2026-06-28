@@ -1,61 +1,67 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react"
 
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { MenuView, type MenuAction } from "@react-native-menu/menu"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import type { BookItem } from "@/src/domain/types";
-import { Pressable, Text, TouchableHighlight, View } from "@/tw";
-import { buildBookMenuActions } from "../../utils/book-menu";
+import { useThemePalette } from "@/src/design/tokens"
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import type { BookItem } from "@/src/domain/types"
+import { Pressable, Text, TouchableHighlight, View } from "@/tw"
+import { buildBookMenuActions } from "../../utils/book-menu"
 
-import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
-import { ProgressLabel } from "./progress-label";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
+import {
+  BookCover,
+  type BookDownloadStatus,
+  type BookProgressSnapshot,
+} from "./book-cover"
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { ProgressLabel } from "./progress-label"
 
 /** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
-const BOOK_ROW_COVER_HEIGHT = 84;
-const BOOK_ROW_COVER_BORDER_RADIUS = 4;
-const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3;
-const BOOK_ROW_COVER_WIDTH = Math.round(BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO);
+const BOOK_ROW_COVER_HEIGHT = 84
+const BOOK_ROW_COVER_BORDER_RADIUS = 4
+const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3
+const BOOK_ROW_COVER_WIDTH = Math.round(
+  BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO,
+)
 
 export type BookRowProps = {
-  book: BookItem;
+  book: BookItem
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
    */
-  onPress?: (bookId: string) => void;
-  onMore?: (bookId: string) => void;
-  menuActions?: MenuAction[];
-  onMenuAction?: (bookId: string, actionId: string) => void;
-  onMenuOpen?: (bookId: string) => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  progress?: BookProgressSnapshot;
-  downloadStatus?: BookDownloadStatus;
-  downloadProgress?: number;
-  horizontalPadding?: number;
+  onPress?: (bookId: string) => void
+  onMore?: (bookId: string) => void
+  menuActions?: MenuAction[]
+  onMenuAction?: (bookId: string, actionId: string) => void
+  onMenuOpen?: (bookId: string) => void
+  onMenuClose?: () => void
+  isAnyMenuOpen?: boolean
+  progress?: BookProgressSnapshot
+  downloadStatus?: BookDownloadStatus
+  downloadProgress?: number
+  horizontalPadding?: number
   /**
    * Primitive menu inputs let the row build its own actions while keeping
    * `React.memo` shallow comparison cheap. Passing a single `menuConfig` object
    * would defeat memoization because the parent reallocates the object whenever
    * any of these fields change.
    */
-  menuIsRemote?: boolean;
-  menuFormats?: string[];
-  menuSelectedFormat?: string;
-  isFavorite?: boolean;
+  menuIsRemote?: boolean
+  menuFormats?: string[]
+  menuSelectedFormat?: string
+  isFavorite?: boolean
   /**
    * When set together, the row subscribes directly to the download store for
    * this book+format so progress updates do not re-render the parent list.
    * Falls back to `downloadProgress` when not set.
    */
-  subscriptionLibraryId?: string;
-  subscriptionFormat?: string;
-};
+  subscriptionLibraryId?: string
+  subscriptionFormat?: string
+}
 
 function BookRowImpl({
   book,
@@ -77,48 +83,58 @@ function BookRowImpl({
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookRowProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
-  const showCloudIcon = downloadStatus === "notDownloaded";
-  const showProgressIndicator = downloadStatus === "downloading";
+  const showCloudIcon = downloadStatus === "notDownloaded"
+  const showProgressIndicator = downloadStatus === "downloading"
 
-  const hasMenuInputs = menuIsRemote !== undefined;
+  const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (!hasMenuInputs) return menuActions;
+    if (!hasMenuInputs) return menuActions
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
       isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
-    });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat, isFavorite]);
+    })
+  }, [
+    downloadStatus,
+    hasMenuInputs,
+    menuActions,
+    menuFormats,
+    menuIsRemote,
+    menuSelectedFormat,
+    isFavorite,
+  ])
 
-  const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
+  const hasMenu =
+    (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) ||
+    onMore
 
   const handlePress = useCallback(() => {
-    if (isAnyMenuOpen || !onPress) return;
-    onPress(book.id);
-  }, [book.id, isAnyMenuOpen, onPress]);
+    if (isAnyMenuOpen || !onPress) return
+    onPress(book.id)
+  }, [book.id, isAnyMenuOpen, onPress])
 
   const handleMorePress = useCallback(
     (event: { stopPropagation?: () => void }) => {
-      event.stopPropagation?.();
-      onMore?.(book.id);
+      event.stopPropagation?.()
+      onMore?.(book.id)
     },
     [book.id, onMore],
-  );
+  )
 
   const handleMenuOpenLocal = useCallback(() => {
-    onMenuOpen?.(book.id);
-  }, [book.id, onMenuOpen]);
+    onMenuOpen?.(book.id)
+  }, [book.id, onMenuOpen])
 
   const handleMenuPressAction = useCallback(
     ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-      onMenuAction?.(book.id, nativeEvent.event);
+      onMenuAction?.(book.id, nativeEvent.event)
     },
     [book.id, onMenuAction],
-  );
+  )
 
   const moreButton = (
     <Pressable
@@ -130,7 +146,7 @@ function BookRowImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </Pressable>
-  );
+  )
 
   const menuTrigger = (
     <View
@@ -141,7 +157,7 @@ function BookRowImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
-  );
+  )
 
   return (
     <TouchableHighlight
@@ -150,7 +166,13 @@ function BookRowImpl({
       onPress={handlePress}
       underlayColor={palette.surface}
     >
-      <View className="flex-row items-stretch gap-3.5 border-b py-2.5" style={{ borderColor: palette.border, paddingHorizontal: horizontalPadding }}>
+      <View
+        className="flex-row items-stretch gap-3.5 border-b py-2.5"
+        style={{
+          borderColor: palette.border,
+          paddingHorizontal: horizontalPadding,
+        }}
+      >
         <BookCover
           book={book}
           width={BOOK_ROW_COVER_WIDTH}
@@ -160,10 +182,18 @@ function BookRowImpl({
         />
         <View className="min-w-0 flex-1 justify-between">
           <View className="gap-0.5">
-            <Text className="text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
+            <Text
+              className="text-base font-semibold"
+              style={{ color: palette.text }}
+              numberOfLines={1}
+            >
               {book.title}
             </Text>
-            <Text className="text-base" style={{ color: palette.textMuted }} numberOfLines={1}>
+            <Text
+              className="text-base"
+              style={{ color: palette.textMuted }}
+              numberOfLines={1}
+            >
               {book.author}
             </Text>
           </View>
@@ -184,7 +214,16 @@ function BookRowImpl({
                   computedMenuActions && onMenuAction ? (
                     <View onStartShouldSetResponder={() => true}>
                       <MenuView
-                        key={computedMenuActions.some((a) => (a.id === "share" || a.id?.startsWith("share:")) && !a.attributes?.disabled) ? "share-enabled" : "share-disabled"}
+                        key={
+                          computedMenuActions.some(
+                            (a) =>
+                              (a.id === "share" ||
+                                a.id?.startsWith("share:")) &&
+                              !a.attributes?.disabled,
+                          )
+                            ? "share-enabled"
+                            : "share-disabled"
+                        }
                         actions={computedMenuActions}
                         isAnchoredToRight={Platform.OS === "android"}
                         onOpenMenu={handleMenuOpenLocal}
@@ -204,10 +243,10 @@ function BookRowImpl({
         </View>
       </View>
     </TouchableHighlight>
-  );
+  )
 }
 
 /**
  * Renders the mobile list row for a book.
  */
-export const BookRow = memo(BookRowImpl);
+export const BookRow = memo(BookRowImpl)

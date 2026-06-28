@@ -1,31 +1,35 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react-native";
-import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { renderHook, waitFor } from "@testing-library/react-native"
+import type { ReactNode } from "react"
 
-import { useDownloadStatusTasks } from "@/src/domain/download/download-store";
-import { getAllBookFormats } from "@/src/domain/library/calibre";
-import { useFileStates } from "@/src/domain/sync/hooks/use-file-states";
-import type { BookItem, Library } from "@/src/domain/types";
+import { useDownloadStatusTasks } from "@/src/domain/download/download-store"
+import { getAllBookFormats } from "@/src/domain/library/calibre"
+import { useFileStates } from "@/src/domain/sync/hooks/use-file-states"
+import type { BookItem, Library } from "@/src/domain/types"
 
-import { useLibraryBookMeta } from "./use-library-book-meta";
+import { useLibraryBookMeta } from "./use-library-book-meta"
 
 jest.mock("@/src/domain/download/download-store", () => ({
   useDownloadStatusTasks: jest.fn(),
-}));
+}))
 
 jest.mock("@/src/domain/library/calibre", () => ({
   getAllBookFormats: jest.fn(),
-}));
+}))
 
 jest.mock("@/src/domain/sync/hooks/use-file-states", () => ({
   useFileStates: jest.fn(),
-}));
+}))
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: 0, gcTime: 0 } },
-  });
-  return <QueryClientProvider client={client}>{children as never}</QueryClientProvider>;
+  })
+  return (
+    <QueryClientProvider client={client}>
+      {children as never}
+    </QueryClientProvider>
+  )
 }
 
 const localLibrary: Library = {
@@ -33,7 +37,7 @@ const localLibrary: Library = {
   name: "Local Library",
   path: "/local",
   sourceType: "local",
-} as Library;
+} as Library
 
 const remoteLibrary: Library = {
   id: "lib-remote",
@@ -41,7 +45,7 @@ const remoteLibrary: Library = {
   path: "/remote",
   sourceType: "webdav",
   dataSourceId: "ds-1",
-} as Library;
+} as Library
 
 const baseBook: BookItem = {
   id: "1",
@@ -49,222 +53,254 @@ const baseBook: BookItem = {
   title: "Test Book",
   author: "Author",
   path: "Author/Test Book",
-};
+}
 
 const fileStateRows = [
   { path: "Author/Test Book/Test Book.epub", localState: "present" },
   { path: "Author/Test Book/Test Book.pdf", localState: "present" },
-];
+]
 
 describe("useLibraryBookMeta", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.mocked(useDownloadStatusTasks).mockReturnValue([]);
-    jest.mocked(useFileStates).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useFileStates>);
-    jest.mocked(getAllBookFormats).mockResolvedValue({});
-  });
+    jest.clearAllMocks()
+    jest.mocked(useDownloadStatusTasks).mockReturnValue([])
+    jest
+      .mocked(useFileStates)
+      .mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<
+        typeof useFileStates
+      >)
+    jest.mocked(getAllBookFormats).mockResolvedValue({})
+  })
 
   it("should return empty meta when no library is selected", async () => {
-    const books = [baseBook];
+    const books = [baseBook]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(null, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookFormatsById).toEqual({});
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloaded" });
-      expect(result.current.bookFormatMetaById.get("1")).toEqual({ readableFormats: [], effectiveFormat: undefined });
-    });
+      expect(result.current.bookFormatsById).toEqual({})
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
+      expect(result.current.bookFormatMetaById.get("1")).toEqual({
+        readableFormats: [],
+        effectiveFormat: undefined,
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should treat local library books as downloaded and use embedded formats", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloaded" });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["EPUB", "PDF"],
         effectiveFormat: "EPUB",
-      });
-      expect(result.current.bookFormatsById).toEqual({});
-    });
+      })
+      expect(result.current.bookFormatsById).toEqual({})
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should fall back to bookFormatsById query when embedded formats are missing", async () => {
-    jest.mocked(getAllBookFormats).mockResolvedValue({ "1": ["PDF"] });
+    jest.mocked(getAllBookFormats).mockResolvedValue({ "1": ["PDF"] })
 
-    const books = [baseBook];
+    const books = [baseBook]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["PDF"],
         effectiveFormat: "PDF",
-      });
-    });
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should use selected format when it exists in readable formats", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, { "1": "pdf" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["EPUB", "PDF"],
         effectiveFormat: "PDF",
-      });
-    });
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should ignore selected format when it is not readable", async () => {
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, { "1": "pdf" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["EPUB"],
         effectiveFormat: "EPUB",
-      });
-    });
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should fall back to empty file states when data is undefined", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: undefined,
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should compute remote download status from file state rows", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: fileStateRows,
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloaded" });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
       expect(result.current.bookFormatMetaById.get("1")).toEqual({
         readableFormats: ["EPUB", "PDF"],
         effectiveFormat: "EPUB",
-      });
-    });
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should mark remote book as not downloaded when effective format is missing", async () => {
     jest.mocked(useFileStates).mockReturnValue({
-      data: [{ path: "Author/Test Book/Test Book.epub", localState: "present" }],
+      data: [
+        { path: "Author/Test Book/Test Book.epub", localState: "present" },
+      ],
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "pdf" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should ignore file state rows that do not belong to the book", async () => {
     jest.mocked(useFileStates).mockReturnValue({
-      data: [{ path: "Author/Other Book/Other Book.epub", localState: "present" }],
+      data: [
+        { path: "Author/Other Book/Other Book.epub", localState: "present" },
+      ],
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should ignore file state rows with non-downloaded local states", async () => {
     jest.mocked(useFileStates).mockReturnValue({
-      data: [{ path: "Author/Test Book/Test Book.epub", localState: "remote_only" }],
+      data: [
+        { path: "Author/Test Book/Test Book.epub", localState: "remote_only" },
+      ],
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should mark remote book as not downloaded when dataSourceId is missing", async () => {
-    const libraryWithoutDataSource = { ...remoteLibrary, dataSourceId: undefined };
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const libraryWithoutDataSource = {
+      ...remoteLibrary,
+      dataSourceId: undefined,
+    }
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(libraryWithoutDataSource, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should reflect downloading status from active tasks", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -276,21 +312,23 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloading" });
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloading",
+      })
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should reflect downloaded status when task is done", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -302,20 +340,22 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "done",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should resolve active format by path when task has no bookId", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -327,20 +367,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should ignore tasks with irrelevant statuses", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -352,20 +392,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "failed",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined();
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined()
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should ignore path-lookup tasks with irrelevant statuses", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -385,20 +425,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "failed",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should skip tasks whose path does not match any book", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -410,20 +450,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Unknown/Path/book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined();
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined()
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should aggregate multiple tasks for the same book", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -443,20 +483,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.pdf",
         status: "queued",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should skip book-bound tasks during path lookup", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -476,20 +516,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.pdf",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBeDefined();
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBeDefined()
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should skip path-lookup tasks for other libraries", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -509,20 +549,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should aggregate multiple path-lookup tasks for the same book", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -542,45 +582,51 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.pdf",
         status: "queued",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }];
+    const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, { "1": "epub" }),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB");
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBe("EPUB")
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should mark remote book without readable formats as not downloaded", async () => {
     jest.mocked(useFileStates).mockReturnValue({
-      data: [{ path: "Author/Test Book/Test Book.mobi", localState: "present" }],
+      data: [
+        { path: "Author/Test Book/Test Book.mobi", localState: "present" },
+      ],
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
 
-    const books = [{ ...baseBook, formats: ["mobi"] }];
+    const books = [{ ...baseBook, formats: ["mobi"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "notDownloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "notDownloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should keep downloaded status when an active download exists", async () => {
     jest.mocked(useFileStates).mockReturnValue({
-      data: [{ path: "Author/Test Book/Test Book.epub", localState: "present" }],
+      data: [
+        { path: "Author/Test Book/Test Book.epub", localState: "present" },
+      ],
       isLoading: false,
-    } as unknown as ReturnType<typeof useFileStates>);
+    } as unknown as ReturnType<typeof useFileStates>)
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -590,20 +636,22 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookDownloadStatusById).toEqual({ "1": "downloaded" });
-    });
+      expect(result.current.bookDownloadStatusById).toEqual({
+        "1": "downloaded",
+      })
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should skip active tasks with unresolvable format", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -615,20 +663,20 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined();
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined()
+    })
 
-    unmount();
-  });
+    unmount()
+  })
 
   it("should skip tasks for other libraries", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
@@ -640,18 +688,18 @@ describe("useLibraryBookMeta", () => {
         relativePath: "Author/Test Book/Test Book.epub",
         status: "downloading",
       },
-    ] as unknown as ReturnType<typeof useDownloadStatusTasks>);
+    ] as unknown as ReturnType<typeof useDownloadStatusTasks>)
 
-    const books = [{ ...baseBook, formats: ["EPUB"] }];
+    const books = [{ ...baseBook, formats: ["EPUB"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(remoteLibrary, books, {}),
       { wrapper },
-    );
+    )
 
     await waitFor(() => {
-      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined();
-    });
+      expect(result.current.bookActiveFormatsById.get("1")).toBeUndefined()
+    })
 
-    unmount();
-  });
-});
+    unmount()
+  })
+})

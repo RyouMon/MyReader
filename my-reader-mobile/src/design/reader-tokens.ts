@@ -10,30 +10,40 @@
 
 /** Reading content background/foreground per theme. */
 export type ReaderThemeColors = {
-  bg: string;
-  fg: string;
-  link: string;
-  muted: string;
-};
+  bg: string
+  fg: string
+  link: string
+  muted: string
+}
 
 export const READER_THEMES = {
-  neutral:   { bg: "#FFFFFF", fg: "#2C2420", muted: "#6B5E54", link: "#D97757" },
-  paper:     { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#b5651d" },
-  sepia:     { bg: "#F1E7D0", fg: "#5F4B37", muted: "#8F7D6F", link: "#D97757" },
-  green:     { bg: "#CCE8CC", fg: "#2D4A2D", muted: "#5F7161", link: "#577A45" },
-  ocean:     { bg: "#D0E0F0", fg: "#2D3E5F", muted: "#5F7080", link: "#4A6A8A" },
-  contrast1: { bg: "#F5E6D3", fg: "#1A1A1A", muted: "#6B6B6B", link: "#D97757" },
-  night:     { bg: "#2C2420", fg: "#D4CBC3", muted: "#9E9189", link: "#C4602A" },
-  contrast2: { bg: "#000000", fg: "#CCCCCC", muted: "#888888", link: "#C4602A" },
-} as const satisfies Record<string, ReaderThemeColors>;
+  neutral: { bg: "#FFFFFF", fg: "#2C2420", muted: "#6B5E54", link: "#D97757" },
+  paper: { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#b5651d" },
+  sepia: { bg: "#F1E7D0", fg: "#5F4B37", muted: "#8F7D6F", link: "#D97757" },
+  green: { bg: "#CCE8CC", fg: "#2D4A2D", muted: "#5F7161", link: "#577A45" },
+  ocean: { bg: "#D0E0F0", fg: "#2D3E5F", muted: "#5F7080", link: "#4A6A8A" },
+  contrast1: {
+    bg: "#F5E6D3",
+    fg: "#1A1A1A",
+    muted: "#6B6B6B",
+    link: "#D97757",
+  },
+  night: { bg: "#2C2420", fg: "#D4CBC3", muted: "#9E9189", link: "#C4602A" },
+  contrast2: {
+    bg: "#000000",
+    fg: "#CCCCCC",
+    muted: "#888888",
+    link: "#C4602A",
+  },
+} as const satisfies Record<string, ReaderThemeColors>
 
-export type ReaderThemeName = keyof typeof READER_THEMES;
+export type ReaderThemeName = keyof typeof READER_THEMES
 
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
   active: "rgba(245, 239, 230, 0.22)",
   error: "rgba(255,255,255,0.08)",
-} as const;
+} as const
 
 /** Chrome UI tokens — used for controls/chrome overlay. Always dark. */
 export const READER_CHROME = {
@@ -73,7 +83,7 @@ export const READER_CHROME = {
   errorCardBg: "rgba(255,255,255,0.08)",
   /** Error card border. */
   errorCardBorder: READER_CHROME_BORDER.error,
-} as const;
+} as const
 
 /** Fixed-layout viewer background (CBZ, PDF, fixed EPUB). Always dark/neutral. */
 export const READER_FIXED = {
@@ -90,53 +100,53 @@ export const READER_FIXED = {
     night: "#2C2420",
     contrast2: "#000000",
   } as const,
-} as const;
+} as const
 
 /**
  * Returns the chrome icon color for the bookmark button.
  * Active = accent, idle = cream text.
  */
 export function chromeBookmarkIconColor(active: boolean): string {
-  return active ? READER_CHROME.accent : READER_CHROME.textIdle;
+  return active ? READER_CHROME.accent : READER_CHROME.textIdle
 }
 
 /**
  * Segment control surface style (reading mode selector, page direction selector).
  */
 export function chromeSegmentStyle(active: boolean): {
-  backgroundColor: string;
-  borderColor: string;
+  backgroundColor: string
+  borderColor: string
 } {
   return {
     backgroundColor: active
       ? READER_CHROME.surfaceActive
       : READER_CHROME.surfaceIdle,
     borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
-  };
+  }
 }
 
 /**
  * Theme card selection style (reading theme swatch).
  */
 export function chromeThemeCardStyle(active: boolean): {
-  backgroundColor: string;
-  borderColor: string;
+  backgroundColor: string
+  borderColor: string
 } {
   return {
     backgroundColor: active
       ? READER_CHROME.surfaceActive
       : READER_CHROME.surfaceIdle,
     borderColor: active ? READER_CHROME.borderActive : READER_CHROME.border,
-  };
+  }
 }
 
 /**
  * TOC row container style.
  */
 export function chromeTocRowStyle(active: boolean): {
-  backgroundColor: string;
-  borderWidth: number;
-  borderColor: string;
+  backgroundColor: string
+  borderWidth: number
+  borderColor: string
 } {
   return {
     backgroundColor: active
@@ -144,17 +154,18 @@ export function chromeTocRowStyle(active: boolean): {
       : READER_CHROME.surfaceIdle,
     borderWidth: active ? 1 : 0,
     borderColor: active ? READER_CHROME.borderActive : "transparent",
-  };
+  }
 }
 
 /**
  * TOC row label text style.
  */
-export function chromeTocLabelStyle(
-  active: boolean
-): { color: string; fontWeight: "700" | "500" } {
+export function chromeTocLabelStyle(active: boolean): {
+  color: string
+  fontWeight: "700" | "500"
+} {
   return {
     color: active ? READER_CHROME.accent : READER_CHROME.textSecondary,
     fontWeight: active ? "700" : "500",
-  };
+  }
 }

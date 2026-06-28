@@ -1,27 +1,30 @@
-import i18n from "@/src/i18n";
+import i18n from "@/src/i18n"
 
-import { AppInvariantError } from "../../errors";
-import type { DataSource, Library } from "../types";
+import { AppInvariantError } from "../../errors"
+import type { DataSource, Library } from "../types"
 
-import { upsertFileState } from "../../repos/file-state";
-import type { NativeDownloadOptions } from "../../services/download/native";
-import { readFileStat } from "../../services/fs/file-io";
-import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path";
-import { openSyncContext, type SyncTargetContext } from "../sync/actions";
-import { downloadFileDirectWithProgress, type DownloadOutcome } from "../sync/transfer";
+import { upsertFileState } from "../../repos/file-state"
+import type { NativeDownloadOptions } from "../../services/download/native"
+import { readFileStat } from "../../services/fs/file-io"
+import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"
+import { openSyncContext, type SyncTargetContext } from "../sync/actions"
+import {
+  downloadFileDirectWithProgress,
+  type DownloadOutcome,
+} from "../sync/transfer"
 
-type BackgroundDownloadOptions = NativeDownloadOptions;
+type BackgroundDownloadOptions = NativeDownloadOptions
 
-export type DownloadProgressHandler = (received: number, total: number) => void;
+export type DownloadProgressHandler = (received: number, total: number) => void
 
 export type LibraryDownloadRequest = {
-  libraryId: string;
-  relativePath: string;
-  libraries: Library[];
-  dataSources: DataSource[];
-  onProgress?: DownloadProgressHandler;
-  options?: BackgroundDownloadOptions;
-};
+  libraryId: string
+  relativePath: string
+  libraries: Library[]
+  dataSources: DataSource[]
+  onProgress?: DownloadProgressHandler
+  options?: BackgroundDownloadOptions
+}
 
 /**
  * Opens a sync context for a library by looking it up from the provided lists.
@@ -31,9 +34,12 @@ export async function openDownloadContextForLibrary(
   libraries: Library[],
   dataSources: DataSource[],
 ): Promise<SyncTargetContext> {
-  const library = libraries.find((item) => item.id === libraryId);
-  if (!library) throw new AppInvariantError(i18n.t("sync.libraryNotFound", { id: libraryId }));
-  return openSyncContext(library, dataSources);
+  const library = libraries.find((item) => item.id === libraryId)
+  if (!library)
+    throw new AppInvariantError(
+      i18n.t("sync.libraryNotFound", { id: libraryId }),
+    )
+  return openSyncContext(library, dataSources)
 }
 
 /**
@@ -47,8 +53,12 @@ export async function downloadLibraryFile({
   onProgress,
   options,
 }: LibraryDownloadRequest): Promise<DownloadOutcome> {
-  const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
-  return downloadContextFile(ctx, relativePath, onProgress, options);
+  const ctx = await openDownloadContextForLibrary(
+    libraryId,
+    libraries,
+    dataSources,
+  )
+  return downloadContextFile(ctx, relativePath, onProgress, options)
 }
 
 /**
@@ -60,7 +70,7 @@ export async function downloadContextFile(
   onProgress?: DownloadProgressHandler,
   options: BackgroundDownloadOptions = {},
 ): Promise<DownloadOutcome> {
-  return downloadFileDirectWithProgress(ctx, relativePath, onProgress, options);
+  return downloadFileDirectWithProgress(ctx, relativePath, onProgress, options)
 }
 
 /**
@@ -73,16 +83,24 @@ export async function finalizeRecoveredDownload(
   dataSources: DataSource[],
   onProgress?: DownloadProgressHandler,
 ): Promise<DownloadOutcome> {
-  const ctx = await openDownloadContextForLibrary(libraryId, libraries, dataSources);
-  assertSafeRelativePath(relativePath);
-  const stat = readFileStat(fileUriFor(ctx.libraryRootUri, relativePath));
-  const outcome: DownloadOutcome = { blake3: null, size: stat.size, mtimeMs: stat.mtimeMs };
-  onProgress?.(outcome.size, outcome.size);
+  const ctx = await openDownloadContextForLibrary(
+    libraryId,
+    libraries,
+    dataSources,
+  )
+  assertSafeRelativePath(relativePath)
+  const stat = readFileStat(fileUriFor(ctx.libraryRootUri, relativePath))
+  const outcome: DownloadOutcome = {
+    blake3: null,
+    size: stat.size,
+    mtimeMs: stat.mtimeMs,
+  }
+  onProgress?.(outcome.size, outcome.size)
   await upsertFileState(ctx.library, relativePath, {
     localState: "present",
     localBlake3: outcome.blake3,
     localSize: outcome.size,
     localMtime: outcome.mtimeMs,
-  });
-  return outcome;
+  })
+  return outcome
 }

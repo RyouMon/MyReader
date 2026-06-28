@@ -1,6 +1,6 @@
-import type { Link } from './link';
-import type { Locator } from './locator';
-import type { PublicationMetadata } from './publication';
+import type { Link } from "./link"
+import type { Locator } from "./locator"
+import type { PublicationMetadata } from "./publication"
 
 /**
  * Opaque handle to a native `Publication` object (REP-003/004).
@@ -14,7 +14,7 @@ import type { PublicationMetadata } from './publication';
  * services — all reachable through the held Publication.
  */
 export interface PublicationHandle {
-  id: string;
+  id: string
 }
 
 /**
@@ -23,20 +23,20 @@ export interface PublicationHandle {
  * the data source for `publication.content()`.
  */
 export interface Utterance {
-  text: string;
-  locator: Locator;
-  language?: string;
+  text: string
+  locator: Locator
+  language?: string
 }
 
 /** Result of `publication.content(id, fromLocator?)` — a stream of utterances. */
 export interface ContentResult {
-  utterances: Utterance[];
+  utterances: Utterance[]
 }
 
 /** Metadata accessors available on a Publication handle. */
 export interface PublicationSnapshot {
-  metadata: PublicationMetadata;
-  tableOfContents: Link[];
-  readingOrder: Link[];
-  positions: Locator[];
+  metadata: PublicationMetadata
+  tableOfContents: Link[]
+  readingOrder: Link[]
+  positions: Locator[]
 }

@@ -1,65 +1,69 @@
-import { DataSourceInUseError } from "@/src/errors";
-import type { DataSourceSecrets } from "@/src/services/storage/credentials";
+import { DataSourceInUseError } from "@/src/errors"
+import type { DataSourceSecrets } from "@/src/services/storage/credentials"
 import {
   deleteSecrets,
   deriveCredentialFlags,
   hydrateDataSourcesFromSecureCredentials,
   readWebDavPassword,
   writeSecrets,
-} from "@/src/services/storage/credentials";
-import { useAppStore } from "@/src/store/app-store";
-import { uuid } from "@/src/utils/common";
-import type { DataSource, DataSourceConnectionTestResult, DataSourceWebdav } from "@my-reader/tools/types/data-source";
-import { testConnection as probeWebDav } from "../services/remote/webdav/probe";
+} from "@/src/services/storage/credentials"
+import { useAppStore } from "@/src/store/app-store"
+import { uuid } from "@/src/utils/common"
+import type {
+  DataSource,
+  DataSourceConnectionTestResult,
+  DataSourceWebdav,
+} from "@my-reader/tools/types/data-source"
+import { testConnection as probeWebDav } from "../services/remote/webdav/probe"
 
 export function useDataSourceActions() {
-  const store = useAppStore;
+  const store = useAppStore
 
   async function hydrateFromBackend() {
     try {
-      const snapshot = store.getState().dataSources;
-      const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot);
-      const latest = store.getState().dataSources;
+      const snapshot = store.getState().dataSources
+      const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot)
+      const latest = store.getState().dataSources
       // Merge so concurrent inserts (e.g. E2E seed fixtures) are not wiped out.
       const merged = latest.map((ds) => {
-        const h = hydrated.find((d) => d.id === ds.id);
-        return h ? { ...ds, ...h } : ds;
-      });
-      store.getState().setDataSources(merged);
+        const h = hydrated.find((d) => d.id === ds.id)
+        return h ? { ...ds, ...h } : ds
+      })
+      store.getState().setDataSources(merged)
     } finally {
-      store.getState().setStoreReady(true);
+      store.getState().setStoreReady(true)
     }
   }
 
   async function refreshDataSources() {
-    const snapshot = store.getState().dataSources;
-    const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot);
-    const latest = store.getState().dataSources;
+    const snapshot = store.getState().dataSources
+    const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot)
+    const latest = store.getState().dataSources
     const merged = latest.map((ds) => {
-      const h = hydrated.find((d) => d.id === ds.id);
-      return h ? { ...ds, ...h } : ds;
-    });
-    store.getState().setDataSources(merged);
+      const h = hydrated.find((d) => d.id === ds.id)
+      return h ? { ...ds, ...h } : ds
+    })
+    store.getState().setDataSources(merged)
   }
 
   async function createDataSource(
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<DataSource> {
-    const id = ds.id || uuid();
-    const dsWithId = { ...ds, id };
+    const id = ds.id || uuid()
+    const dsWithId = { ...ds, id }
 
     if (secrets) {
-      await writeSecrets(dsWithId.id, secrets);
+      await writeSecrets(dsWithId.id, secrets)
     }
 
     const stored: DataSource = {
       ...dsWithId,
       ...deriveCredentialFlags(secrets),
-    };
+    }
 
-    store.getState().upsertDataSource(stored);
-    return stored;
+    store.getState().upsertDataSource(stored)
+    return stored
   }
 
   async function updateDataSource(
@@ -67,29 +71,29 @@ export function useDataSourceActions() {
     secrets?: DataSourceSecrets,
   ): Promise<void> {
     if (secrets) {
-      await writeSecrets(ds.id, secrets);
+      await writeSecrets(ds.id, secrets)
     }
 
     const stored: DataSource = {
       ...ds,
       ...deriveCredentialFlags(secrets),
-    };
+    }
 
-    store.getState().upsertDataSource(stored);
+    store.getState().upsertDataSource(stored)
   }
 
   async function deleteDataSource(id: string) {
-    const state = store.getState();
-    const usedByLibraries = state.libraries.filter((l) => l.dataSourceId === id);
+    const state = store.getState()
+    const usedByLibraries = state.libraries.filter((l) => l.dataSourceId === id)
     if (usedByLibraries.length > 0) {
-      const names = usedByLibraries.map((l) => l.name);
-      throw new DataSourceInUseError(names.join("、"), names);
+      const names = usedByLibraries.map((l) => l.name)
+      throw new DataSourceInUseError(names.join("、"), names)
     }
-    const ds = state.dataSources.find((d) => d.id === id);
+    const ds = state.dataSources.find((d) => d.id === id)
     if (ds) {
-      await deleteSecrets(id, ds.type);
+      await deleteSecrets(id, ds.type)
     }
-    state.removeDataSourceById(id);
+    state.removeDataSourceById(id)
   }
 
   async function testDataSourceConnection(
@@ -97,18 +101,21 @@ export function useDataSourceActions() {
     secrets?: DataSourceSecrets,
   ): Promise<DataSourceConnectionTestResult> {
     try {
-      const password = secrets?.type === "webdav" ? secrets.password : (await readWebDavPassword(source.id)) ?? "";
-      const response = await probeWebDav({ ...source, password });
+      const password =
+        secrets?.type === "webdav"
+          ? secrets.password
+          : ((await readWebDavPassword(source.id)) ?? "")
+      const response = await probeWebDav({ ...source, password })
       if (response.ok || response.status === 207) {
-        return { ok: true, message: "OK" };
+        return { ok: true, message: "OK" }
       }
       if (response.status === 401 || response.status === 403) {
-        return { ok: false, message: "Authentication failed" };
+        return { ok: false, message: "Authentication failed" }
       }
-      return { ok: false, message: `HTTP ${response.status}` };
+      return { ok: false, message: `HTTP ${response.status}` }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false, message: msg };
+      const msg = err instanceof Error ? err.message : String(err)
+      return { ok: false, message: msg }
     }
   }
 
@@ -119,5 +126,5 @@ export function useDataSourceActions() {
     updateDataSource,
     deleteDataSource,
     testDataSourceConnection,
-  };
+  }
 }

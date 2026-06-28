@@ -1,45 +1,60 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { router, type Href } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Platform, Pressable, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { router, type Href } from "expo-router"
+import { SymbolView } from "expo-symbols"
+import { type ReactNode } from "react"
+import { useTranslation } from "react-i18next"
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native"
 
-import { useThemePalette, type ThemePalette } from "@/src/design/tokens";
-import { Text, TouchableHighlight, View } from "@/tw";
+import { useThemePalette, type ThemePalette } from "@/src/design/tokens"
+import { Text, TouchableHighlight, View } from "@/tw"
 
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "ghost"
+  | "danger"
+export type ButtonSize = "sm" | "md" | "lg"
 export type HeaderCloseButtonProps = {
-  fallbackRoute?: Href;
-  dismissTo?: boolean;
-};
+  fallbackRoute?: Href
+  dismissTo?: boolean
+}
 
 type ButtonColorOverrides = {
-  backgroundColor?: string;
-  borderColor?: string;
-  indicatorColor?: string;
-  textColor?: string;
-  underlayColor?: string;
-};
+  backgroundColor?: string
+  borderColor?: string
+  indicatorColor?: string
+  textColor?: string
+  underlayColor?: string
+}
 
 export type ButtonProps = {
-  accessibilityLabel?: string;
-  children?: ReactNode;
-  className?: string;
-  colors?: ButtonColorOverrides;
-  contentClassName?: string;
-  disabled?: boolean;
-  loading?: boolean;
-  onPress?: () => void;
-  size?: ButtonSize;
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
-  title?: string;
-  variant?: ButtonVariant;
-};
+  accessibilityLabel?: string
+  children?: ReactNode
+  className?: string
+  colors?: ButtonColorOverrides
+  contentClassName?: string
+  disabled?: boolean
+  loading?: boolean
+  onPress?: () => void
+  size?: ButtonSize
+  style?: StyleProp<ViewStyle>
+  textStyle?: StyleProp<TextStyle>
+  title?: string
+  variant?: ButtonVariant
+}
 
-const SIZE_CLASS: Record<ButtonSize, { content: string; text: string; gap: number }> = {
+const SIZE_CLASS: Record<
+  ButtonSize,
+  { content: string; text: string; gap: number }
+> = {
   sm: {
     content: "min-h-9 px-3 py-1.5",
     gap: 6,
@@ -55,19 +70,22 @@ const SIZE_CLASS: Record<ButtonSize, { content: string; text: string; gap: numbe
     gap: 8,
     text: "text-lg",
   },
-};
+}
 
 /**
  * Joins NativeWind class names without introducing an external dependency.
  */
 function cx(...values: (string | false | null | undefined)[]) {
-  return values.filter(Boolean).join(" ");
+  return values.filter(Boolean).join(" ")
 }
 
 /**
  * Resolves the semantic button colors from the current mobile theme.
  */
-function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Required<ButtonColorOverrides> {
+function getButtonColors(
+  palette: ThemePalette,
+  variant: ButtonVariant,
+): Required<ButtonColorOverrides> {
   switch (variant) {
     case "primary":
       return {
@@ -76,7 +94,7 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
         indicatorColor: palette.primaryForeground,
         textColor: palette.primaryForeground,
         underlayColor: palette.secondary,
-      };
+      }
     case "secondary":
       return {
         backgroundColor: palette.surface,
@@ -84,7 +102,7 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
         indicatorColor: palette.text,
         textColor: palette.text,
         underlayColor: palette.background,
-      };
+      }
     case "outline":
       return {
         backgroundColor: "transparent",
@@ -92,7 +110,7 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
         indicatorColor: palette.text,
         textColor: palette.text,
         underlayColor: palette.backgroundSecondary,
-      };
+      }
     case "ghost":
       return {
         backgroundColor: "transparent",
@@ -100,7 +118,7 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
         indicatorColor: palette.text,
         textColor: palette.text,
         underlayColor: palette.backgroundSecondary,
-      };
+      }
     case "danger":
       return {
         backgroundColor: palette.danger,
@@ -108,7 +126,7 @@ function getButtonColors(palette: ThemePalette, variant: ButtonVariant): Require
         indicatorColor: palette.primaryForeground,
         textColor: palette.primaryForeground,
         underlayColor: palette.error,
-      };
+      }
   }
 }
 
@@ -130,13 +148,13 @@ export function Button({
   title,
   variant = "primary",
 }: ButtonProps) {
-  const palette = useThemePalette();
-  const sizeClass = SIZE_CLASS[size];
+  const palette = useThemePalette()
+  const sizeClass = SIZE_CLASS[size]
   const resolvedColors = {
     ...getButtonColors(palette, variant),
     ...colors,
-  };
-  const isDisabled = disabled || loading;
+  }
+  const isDisabled = disabled || loading
 
   return (
     <TouchableHighlight
@@ -157,16 +175,31 @@ export function Button({
         style,
       ]}
     >
-      <View className={cx("flex-row items-center justify-center rounded-full", sizeClass.content, contentClassName)} style={{ columnGap: sizeClass.gap }}>
-        {loading ? <ActivityIndicator color={resolvedColors.indicatorColor} size="small" /> : null}
+      <View
+        className={cx(
+          "flex-row items-center justify-center rounded-full",
+          sizeClass.content,
+          contentClassName,
+        )}
+        style={{ columnGap: sizeClass.gap }}
+      >
+        {loading ? (
+          <ActivityIndicator
+            color={resolvedColors.indicatorColor}
+            size="small"
+          />
+        ) : null}
         {children ?? (
-          <Text className={cx(sizeClass.text, "font-bold")} style={[{ color: resolvedColors.textColor }, textStyle]}>
+          <Text
+            className={cx(sizeClass.text, "font-bold")}
+            style={[{ color: resolvedColors.textColor }, textStyle]}
+          >
             {title}
           </Text>
         )}
       </View>
     </TouchableHighlight>
-  );
+  )
 }
 
 /**
@@ -177,11 +210,19 @@ export function PrimaryButton({
   onPress,
   disabled,
 }: {
-  disabled?: boolean;
-  title: string;
-  onPress?: () => void;
+  disabled?: boolean
+  title: string
+  onPress?: () => void
 }) {
-  return <Button className="flex-1" disabled={disabled} onPress={onPress} title={title} variant="primary" />;
+  return (
+    <Button
+      className="flex-1"
+      disabled={disabled}
+      onPress={onPress}
+      title={title}
+      variant="primary"
+    />
+  )
 }
 
 /**
@@ -192,11 +233,19 @@ export function SecondaryButton({
   onPress,
   disabled,
 }: {
-  disabled?: boolean;
-  title: string;
-  onPress?: () => void;
+  disabled?: boolean
+  title: string
+  onPress?: () => void
 }) {
-  return <Button className="flex-1" disabled={disabled} onPress={onPress} title={title} variant="secondary" />;
+  return (
+    <Button
+      className="flex-1"
+      disabled={disabled}
+      onPress={onPress}
+      title={title}
+      variant="secondary"
+    />
+  )
 }
 
 /**
@@ -209,14 +258,14 @@ export function RoundIconButton({
   size = "default",
   disabled,
 }: {
-  disabled?: boolean;
-  icon?: ReactNode;
-  label: string;
-  onPress?: () => void;
-  size?: "default" | "large";
+  disabled?: boolean
+  icon?: ReactNode
+  label: string
+  onPress?: () => void
+  size?: "default" | "large"
 }) {
-  const palette = useThemePalette();
-  const isLarge = size === "large";
+  const palette = useThemePalette()
+  const isLarge = size === "large"
 
   return (
     <TouchableHighlight
@@ -234,15 +283,24 @@ export function RoundIconButton({
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      <View className={isLarge ? "min-h-14 min-w-14 items-center justify-center px-4" : "min-h-12 min-w-12 items-center justify-center px-3"}>
+      <View
+        className={
+          isLarge
+            ? "min-h-14 min-w-14 items-center justify-center px-4"
+            : "min-h-12 min-w-12 items-center justify-center px-3"
+        }
+      >
         {icon ?? (
-          <Text className="text-sm font-semibold" style={{ color: palette.text }}>
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: palette.text }}
+          >
             {label}
           </Text>
         )}
       </View>
     </TouchableHighlight>
-  );
+  )
 }
 
 /**
@@ -253,11 +311,19 @@ export function FilterChip({
   label,
   onPress,
 }: {
-  active?: boolean;
-  label: string;
-  onPress?: () => void;
+  active?: boolean
+  label: string
+  onPress?: () => void
 }) {
-  return <Button className="self-start" onPress={onPress} size="md" title={label} variant={active ? "primary" : "secondary"} />;
+  return (
+    <Button
+      className="self-start"
+      onPress={onPress}
+      size="md"
+      title={label}
+      variant={active ? "primary" : "secondary"}
+    />
+  )
 }
 
 /**
@@ -267,8 +333,8 @@ export function HeaderCloseButton({
   fallbackRoute = "/",
   dismissTo,
 }: HeaderCloseButtonProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
   return (
     <Pressable
@@ -278,14 +344,14 @@ export function HeaderCloseButton({
       accessibilityRole="button"
       onPress={() => {
         if (dismissTo) {
-          router.dismissTo(fallbackRoute);
-          return;
+          router.dismissTo(fallbackRoute)
+          return
         }
         if (router.canGoBack()) {
-          router.dismiss();
-          return;
+          router.dismiss()
+          return
         }
-        router.replace(fallbackRoute);
+        router.replace(fallbackRoute)
       }}
     >
       {Platform.OS === "ios" ? (
@@ -294,5 +360,5 @@ export function HeaderCloseButton({
         <MaterialIcons name="close" size={24} color={palette.text} />
       )}
     </Pressable>
-  );
+  )
 }

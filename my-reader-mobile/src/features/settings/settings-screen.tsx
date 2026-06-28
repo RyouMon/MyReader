@@ -1,104 +1,121 @@
-import { getLocales } from "expo-localization";
-import type { MenuAction } from "@react-native-menu/menu";
-import { router, useNavigation } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { getLocales } from "expo-localization"
+import type { MenuAction } from "@react-native-menu/menu"
+import { router, useNavigation } from "expo-router"
+import { useEffect, useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 
-import { changeLanguage } from "@/src/i18n";
-import { useTheme, type ThemeMode } from "@/src/design/tokens";
-import type { HomeCardStyle } from "@/src/store/app-store.types";
-import { View } from "@/tw";
+import { changeLanguage } from "@/src/i18n"
+import { useTheme, type ThemeMode } from "@/src/design/tokens"
+import type { HomeCardStyle } from "@/src/store/app-store.types"
+import { View } from "@/tw"
 
-import { Screen, SectionCard, ListMenuRow, ListRow, SectionLabel } from "@/src/components";
-import { useAppStore } from "@/src/store/app-store";
+import {
+  Screen,
+  SectionCard,
+  ListMenuRow,
+  ListRow,
+  SectionLabel,
+} from "@/src/components"
+import { useAppStore } from "@/src/store/app-store"
 
 export default function SettingsScreen() {
-  const { t } = useTranslation();
-  const { mode, setMode } = useTheme();
-  const libraries = useAppStore((s) => s.libraries);
-  const activeLibraryId = useAppStore((s) => s.activeLibraryId);
-  const navigation = useNavigation();
-  const isTransitioningRef = useRef(false);
+  const { t } = useTranslation()
+  const { mode, setMode } = useTheme()
+  const libraries = useAppStore((s) => s.libraries)
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
+  const navigation = useNavigation()
+  const isTransitioningRef = useRef(false)
 
   useEffect(() => {
     // transitionStart/transitionEnd are Stack-specific events; the generic
     // useNavigation() type doesn't expose them but they exist at runtime.
     const nav = navigation as unknown as {
-      addListener: (event: "transitionStart" | "transitionEnd", cb: () => void) => () => void;
-    };
+      addListener: (
+        event: "transitionStart" | "transitionEnd",
+        cb: () => void,
+      ) => () => void
+    }
     const unsubStart = nav.addListener("transitionStart", () => {
-      isTransitioningRef.current = true;
-    });
+      isTransitioningRef.current = true
+    })
     const unsubEnd = nav.addListener("transitionEnd", () => {
-      isTransitioningRef.current = false;
-    });
+      isTransitioningRef.current = false
+    })
     return () => {
-      unsubStart();
-      unsubEnd();
-    };
-  }, [navigation]);
+      unsubStart()
+      unsubEnd()
+    }
+  }, [navigation])
 
   function navigateTo(href: Parameters<typeof router.push>[0]) {
-    if (isTransitioningRef.current) return;
-    router.push(href);
+    if (isTransitioningRef.current) return
+    router.push(href)
   }
 
-  const themeModeLabels: Record<ThemeMode, string> = useMemo(() => ({
-    system: t("settings.themeMode.system"),
-    light: t("settings.themeMode.light"),
-    dark: t("settings.themeMode.dark"),
-  }), [t]);
-  const themeMode = themeModeLabels[mode];
-  const themeMenuActions = useMemo<MenuAction[]>(
-    () => {
-      const themeModes = [t("settings.themeMode.system"), t("settings.themeMode.light"), t("settings.themeMode.dark")];
-      const themeModeMap: Record<string, ThemeMode> = {
-        [t("settings.themeMode.system")]: "system",
-        [t("settings.themeMode.light")]: "light",
-        [t("settings.themeMode.dark")]: "dark",
-      };
-      return themeModes.map((nextMode) => ({
-        id: `theme:${themeModeMap[nextMode]}`,
-        title: `${nextMode === themeMode ? "✓ " : ""}${nextMode}`,
-      }));
-    },
-    [t, themeMode]
-  );
+  const themeModeLabels: Record<ThemeMode, string> = useMemo(
+    () => ({
+      system: t("settings.themeMode.system"),
+      light: t("settings.themeMode.light"),
+      dark: t("settings.themeMode.dark"),
+    }),
+    [t],
+  )
+  const themeMode = themeModeLabels[mode]
+  const themeMenuActions = useMemo<MenuAction[]>(() => {
+    const themeModes = [
+      t("settings.themeMode.system"),
+      t("settings.themeMode.light"),
+      t("settings.themeMode.dark"),
+    ]
+    const themeModeMap: Record<string, ThemeMode> = {
+      [t("settings.themeMode.system")]: "system",
+      [t("settings.themeMode.light")]: "light",
+      [t("settings.themeMode.dark")]: "dark",
+    }
+    return themeModes.map((nextMode) => ({
+      id: `theme:${themeModeMap[nextMode]}`,
+      title: `${nextMode === themeMode ? "✓ " : ""}${nextMode}`,
+    }))
+  }, [t, themeMode])
 
-  const language = useAppStore((s) => s.settings.language);
-  const setLanguage = useAppStore((s) => s.setLanguage);
-  const effectiveLanguage = language || "system";
+  const language = useAppStore((s) => s.settings.language)
+  const setLanguage = useAppStore((s) => s.setLanguage)
+  const effectiveLanguage = language || "system"
   const languageLabels = useMemo<Record<string, string>>(
-    () => ({ zh: "中文", en: "English", system: t("settings.themeMode.system") }),
-    [t]
-  );
+    () => ({
+      zh: "中文",
+      en: "English",
+      system: t("settings.themeMode.system"),
+    }),
+    [t],
+  )
   const languageMenuActions = useMemo<MenuAction[]>(
     () =>
       ["system", "zh", "en"].map((lang) => ({
         id: `lang:${lang}`,
         title: `${effectiveLanguage === lang ? "✓ " : ""}${languageLabels[lang]}`,
       })),
-    [effectiveLanguage, languageLabels]
-  );
+    [effectiveLanguage, languageLabels],
+  )
 
-  const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle);
-  const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle);
+  const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle)
+  const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle)
   const homeCardStyleLabels = useMemo<Record<HomeCardStyle, string>>(
     () => ({
       adaptive: t("settings.homeCardStyle.adaptive"),
       coverBlur: t("settings.homeCardStyle.coverBlur"),
     }),
-    [t]
-  );
-  const homeCardStyleValue = homeCardStyleLabels[homeCardStyle];
+    [t],
+  )
+  const homeCardStyleValue = homeCardStyleLabels[homeCardStyle]
   const homeCardStyleMenuActions = useMemo<MenuAction[]>(
     () =>
       (["adaptive", "coverBlur"] as HomeCardStyle[]).map((style) => ({
         id: `homeCardStyle:${style}`,
         title: `${homeCardStyle === style ? "✓ " : ""}${homeCardStyleLabels[style]}`,
       })),
-    [homeCardStyle, homeCardStyleLabels]
-  );
+    [homeCardStyle, homeCardStyleLabels],
+  )
 
   return (
     <>
@@ -111,7 +128,11 @@ export default function SettingsScreen() {
                 key={library.id}
                 testID={`settings-library-row-${library.id}`}
                 title={library.name}
-                value={activeLibraryId === library.id ? t("settings.currentInUse") : undefined}
+                value={
+                  activeLibraryId === library.id
+                    ? t("settings.currentInUse")
+                    : undefined
+                }
                 onPress={() =>
                   navigateTo({
                     pathname: "/settings/library/[libraryId]",
@@ -153,9 +174,13 @@ export default function SettingsScreen() {
               actions={languageMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
-                const lang = nativeEvent.event.replace("lang:", "");
-                setLanguage(lang === "system" ? "" : lang);
-                changeLanguage(lang === "system" ? (getLocales()[0]?.languageCode ?? "zh") : lang);
+                const lang = nativeEvent.event.replace("lang:", "")
+                setLanguage(lang === "system" ? "" : lang)
+                changeLanguage(
+                  lang === "system"
+                    ? (getLocales()[0]?.languageCode ?? "zh")
+                    : lang,
+                )
               }}
               title={t("settings.language")}
               value={languageLabels[effectiveLanguage]}
@@ -164,8 +189,11 @@ export default function SettingsScreen() {
               actions={themeMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
-                const nextMode = nativeEvent.event.replace("theme:", "") as ThemeMode;
-                setMode(nextMode);
+                const nextMode = nativeEvent.event.replace(
+                  "theme:",
+                  "",
+                ) as ThemeMode
+                setMode(nextMode)
               }}
               title={t("settings.darkMode")}
               value={themeMode}
@@ -174,8 +202,11 @@ export default function SettingsScreen() {
               actions={homeCardStyleMenuActions}
               isAnchoredToRight
               onPressAction={({ nativeEvent }) => {
-                const nextStyle = nativeEvent.event.replace("homeCardStyle:", "") as HomeCardStyle;
-                setHomeCardStyle(nextStyle);
+                const nextStyle = nativeEvent.event.replace(
+                  "homeCardStyle:",
+                  "",
+                ) as HomeCardStyle
+                setHomeCardStyle(nextStyle)
               }}
               title={t("settings.homeCardStyle")}
               value={homeCardStyleValue}
@@ -185,5 +216,5 @@ export default function SettingsScreen() {
         </View>
       </Screen>
     </>
-  );
+  )
 }

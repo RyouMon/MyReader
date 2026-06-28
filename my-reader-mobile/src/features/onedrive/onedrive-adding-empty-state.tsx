@@ -1,10 +1,10 @@
-import { useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next"
 
-import { EmptyState } from "@/src/components";
+import { EmptyState } from "@/src/components"
 
 /** Shown while OneDrive OAuth finishes and the data source is being saved. */
 export function OneDriveAddingEmptyState() {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <EmptyState
@@ -12,5 +12,5 @@ export function OneDriveAddingEmptyState() {
       detail={t("onedrive.add.addingDetail")}
       icon={{ ios: "hourglass", android: "hourglass-empty" }}
     />
-  );
+  )
 }

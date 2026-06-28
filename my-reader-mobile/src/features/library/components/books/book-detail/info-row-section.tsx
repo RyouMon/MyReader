@@ -1,11 +1,11 @@
-import { SectionCard, ListRow, SectionLabel } from "@/src/components";
-import { View } from "@/tw";
-import type { InfoCardItem } from "./types";
+import { SectionCard, ListRow, SectionLabel } from "@/src/components"
+import { View } from "@/tw"
+import type { InfoCardItem } from "./types"
 
 type InfoRowSectionProps = {
-  items: InfoCardItem[];
-  title: string;
-};
+  items: InfoCardItem[]
+  title: string
+}
 
 export function InfoRowSection({ items, title }: InfoRowSectionProps) {
   return (
@@ -22,5 +22,5 @@ export function InfoRowSection({ items, title }: InfoRowSectionProps) {
         ))}
       </SectionCard>
     </View>
-  );
+  )
 }

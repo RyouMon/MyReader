@@ -4,22 +4,22 @@
  * so locators can be persisted and restored across platforms.
  */
 export interface LocatorLocations {
-  progression: number;
-  position?: number;
-  totalProgression?: number;
+  progression: number
+  position?: number
+  totalProgression?: number
 }
 
 export interface LocatorText {
-  before?: string;
-  highlight?: string;
-  after?: string;
+  before?: string
+  highlight?: string
+  after?: string
 }
 
 export interface Locator {
-  href: string;
-  type: string;
-  target?: number;
-  title?: string;
-  locations?: LocatorLocations;
-  text?: LocatorText;
+  href: string
+  type: string
+  target?: number
+  title?: string
+  locations?: LocatorLocations
+  text?: LocatorText
 }

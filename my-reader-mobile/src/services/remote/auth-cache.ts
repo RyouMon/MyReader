@@ -10,7 +10,9 @@ function isFresh(entry: CachedAuth): boolean {
   return Date.now() < entry.expiresAt
 }
 
-export function getCachedAuth(dataSourceId: string): Record<string, string> | null {
+export function getCachedAuth(
+  dataSourceId: string,
+): Record<string, string> | null {
   const entry = store.get(dataSourceId)
   if (!entry) return null
   if (!isFresh(entry)) {

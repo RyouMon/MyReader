@@ -1,6 +1,9 @@
-import { Stack } from "expo-router";
+import { Stack } from "expo-router"
 
-import type { HeaderToolbarAction, HeaderToolbarProps } from "./header-toolbar.android";
+import type {
+  HeaderToolbarAction,
+  HeaderToolbarProps,
+} from "./header-toolbar.android"
 
 function toolbarButtonElements(actions: HeaderToolbarAction[]) {
   return actions.map((action) => (
@@ -13,23 +16,34 @@ function toolbarButtonElements(actions: HeaderToolbarAction[]) {
       variant={action.variant ?? "plain"}
     >
       {action.loading ? <Stack.Toolbar.Icon sf="progress.indicator" /> : null}
-      {!action.loading && action.iosSfSymbol ? <Stack.Toolbar.Icon sf={action.iosSfSymbol} /> : null}
-      {!action.iconOnly ? <Stack.Toolbar.Label>{action.label}</Stack.Toolbar.Label> : null}
+      {!action.loading && action.iosSfSymbol ? (
+        <Stack.Toolbar.Icon sf={action.iosSfSymbol} />
+      ) : null}
+      {!action.iconOnly ? (
+        <Stack.Toolbar.Label>{action.label}</Stack.Toolbar.Label>
+      ) : null}
     </Stack.Toolbar.Button>
-  ));
+  ))
 }
 
 export function HeaderToolbar({ left, right }: HeaderToolbarProps) {
   return (
     <>
       {left?.length ? (
-        <Stack.Toolbar placement="left">{toolbarButtonElements(left)}</Stack.Toolbar>
+        <Stack.Toolbar placement="left">
+          {toolbarButtonElements(left)}
+        </Stack.Toolbar>
       ) : null}
       {right?.length ? (
-        <Stack.Toolbar placement="right">{toolbarButtonElements(right)}</Stack.Toolbar>
+        <Stack.Toolbar placement="right">
+          {toolbarButtonElements(right)}
+        </Stack.Toolbar>
       ) : null}
     </>
-  );
+  )
 }
 
-export type { HeaderToolbarAction, HeaderToolbarProps } from "./header-toolbar.android";
+export type {
+  HeaderToolbarAction,
+  HeaderToolbarProps,
+} from "./header-toolbar.android"

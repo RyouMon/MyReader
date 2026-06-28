@@ -1,6 +1,6 @@
 // https://docs.expo.dev/guides/using-eslint/
-const { defineConfig } = require("eslint/config");
-const expoConfig = require("eslint-config-expo/flat");
+const { defineConfig } = require("eslint/config")
+const expoConfig = require("eslint-config-expo/flat")
 
 module.exports = defineConfig([
   expoConfig,
@@ -22,9 +22,7 @@ module.exports = defineConfig([
         "error",
         {
           basePath: "src",
-          zones: [
-            { target: "services", from: ["repos", "domain"] },
-          ],
+          zones: [{ target: "services", from: ["repos", "domain"] }],
         },
       ],
     },
@@ -36,9 +34,7 @@ module.exports = defineConfig([
         "error",
         {
           basePath: "src",
-          zones: [
-            { target: "repos", from: ["domain"] },
-          ],
+          zones: [{ target: "repos", from: ["domain"] }],
         },
       ],
     },
@@ -52,7 +48,10 @@ module.exports = defineConfig([
           basePath: "src",
           zones: [
             // store/ is global state (Zustand), not UI — domain may read it
-            { target: "domain", from: ["hooks", "features", "app", "services/db"] },
+            {
+              target: "domain",
+              from: ["hooks", "features", "app", "services/db"],
+            },
           ],
         },
       ],
@@ -69,4 +68,4 @@ module.exports = defineConfig([
       "import/no-restricted-paths": "off",
     },
   },
-]);
+])

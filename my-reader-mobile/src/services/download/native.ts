@@ -6,112 +6,112 @@ import {
   getExistingUploadTasks,
   type DownloadTask as BackgroundDownloadTask,
   type UploadTask as BackgroundUploadTask,
-} from "@kesha-antonov/react-native-background-downloader";
+} from "@kesha-antonov/react-native-background-downloader"
 
-import { toNativeFilesystemPath } from "../fs/path";
-import i18n from "@/src/i18n";
+import { toNativeFilesystemPath } from "../fs/path"
+import i18n from "@/src/i18n"
 
 export type NativeDownloadOptions = {
-  taskId?: string;
-  metadata?: Record<string, unknown>;
-  onBegin?: (expectedBytes: number) => void;
-  onNativeTask?: (task: BackgroundDownloadTask) => void;
-};
+  taskId?: string
+  metadata?: Record<string, unknown>
+  onBegin?: (expectedBytes: number) => void
+  onNativeTask?: (task: BackgroundDownloadTask) => void
+}
 
 type NativeDownloadRequest = {
-  relativePath: string;
-  url: string;
-  destinationUri: string;
-  headers?: Record<string, string>;
-  onProgress?: (received: number, total: number) => void;
-  options?: NativeDownloadOptions;
-};
+  relativePath: string
+  url: string
+  destinationUri: string
+  headers?: Record<string, string>
+  onProgress?: (received: number, total: number) => void
+  options?: NativeDownloadOptions
+}
 
 export type RecoveredNativeDownload = {
-  id: string;
-  metadata: BackgroundDownloadTask["metadata"];
-  state: BackgroundDownloadTask["state"];
-  bytesDownloaded: number;
-  bytesTotal: number;
-  bind: (handlers: NativeDownloadRecoveredHandlers) => void;
-  stop: () => void;
-};
+  id: string
+  metadata: BackgroundDownloadTask["metadata"]
+  state: BackgroundDownloadTask["state"]
+  bytesDownloaded: number
+  bytesTotal: number
+  bind: (handlers: NativeDownloadRecoveredHandlers) => void
+  stop: () => void
+}
 
 type NativeDownloadRecoveredHandlers = {
-  onProgress?: (received: number, total: number) => void;
-  onDone?: (received: number, total: number) => void;
-  onError?: (error: string, errorCode: number) => void;
-};
+  onProgress?: (received: number, total: number) => void
+  onDone?: (received: number, total: number) => void
+  onError?: (error: string, errorCode: number) => void
+}
 
 type NativeDownloadResult = {
-  bytesDownloaded: number;
-  bytesTotal: number;
-};
+  bytesDownloaded: number
+  bytesTotal: number
+}
 
 type NativeUploadOptions = {
-  taskId?: string;
-  metadata?: Record<string, unknown>;
-  onBegin?: (expectedBytes: number) => void;
-  onNativeTask?: (task: BackgroundUploadTask) => void;
-};
+  taskId?: string
+  metadata?: Record<string, unknown>
+  onBegin?: (expectedBytes: number) => void
+  onNativeTask?: (task: BackgroundUploadTask) => void
+}
 
 type NativeUploadRequest = {
-  relativePath: string;
-  url: string;
-  sourceUri: string;
-  method?: "POST" | "PUT" | "PATCH";
-  headers?: Record<string, string>;
-  onProgress?: (sent: number, total: number) => void;
-  options?: NativeUploadOptions;
-};
+  relativePath: string
+  url: string
+  sourceUri: string
+  method?: "POST" | "PUT" | "PATCH"
+  headers?: Record<string, string>
+  onProgress?: (sent: number, total: number) => void
+  options?: NativeUploadOptions
+}
 
 type RecoveredNativeUpload = {
-  id: string;
-  metadata: BackgroundUploadTask["metadata"];
-  state: BackgroundUploadTask["state"];
-  bytesUploaded: number;
-  bytesTotal: number;
-  bind: (handlers: NativeUploadRecoveredHandlers) => void;
-  stop: () => void;
-};
+  id: string
+  metadata: BackgroundUploadTask["metadata"]
+  state: BackgroundUploadTask["state"]
+  bytesUploaded: number
+  bytesTotal: number
+  bind: (handlers: NativeUploadRecoveredHandlers) => void
+  stop: () => void
+}
 
 type NativeUploadRecoveredHandlers = {
-  onProgress?: (sent: number, total: number) => void;
-  onDone?: (sent: number, total: number) => void;
-  onError?: (error: string, errorCode: number) => void;
-};
+  onProgress?: (sent: number, total: number) => void
+  onDone?: (sent: number, total: number) => void
+  onError?: (error: string, errorCode: number) => void
+}
 
 type NativeUploadResult = {
-  responseCode: number;
-  responseBody: string;
-  bytesUploaded: number;
-  bytesTotal: number;
-};
+  responseCode: number
+  responseBody: string
+  bytesUploaded: number
+  bytesTotal: number
+}
 
-const NATIVE_DOWNLOAD_START_TIMEOUT_MS = 15000;
-const CANCELLED_BEFORE_START_TTL_MS = 30000;
+const NATIVE_DOWNLOAD_START_TIMEOUT_MS = 15000
+const CANCELLED_BEFORE_START_TTL_MS = 30000
 
-const activeTasks = new Map<string, BackgroundDownloadTask>();
-const activeUploadTasks = new Map<string, BackgroundUploadTask>();
+const activeTasks = new Map<string, BackgroundDownloadTask>()
+const activeUploadTasks = new Map<string, BackgroundUploadTask>()
 
 /** Abort handlers registered by in-flight startNativeDownload / startNativeUpload promises. */
-const nativeAbortHandlers = new Map<string, () => void>();
+const nativeAbortHandlers = new Map<string, () => void>()
 
 /**
  * Task IDs that were cancelled before the native task was created. Checked when
  * startNativeDownload/startNativeUpload eventually runs so a cancelled task is
  * not started in the native layer.
  */
-const cancelledBeforeStart = new Set<string>();
+const cancelledBeforeStart = new Set<string>()
 
 /**
  * Converts Expo file URIs into the filesystem paths expected by the native downloader.
  */
 export function toNativeDestinationPath(fileUri: string): string {
-  return toNativeFilesystemPath(fileUri);
+  return toNativeFilesystemPath(fileUri)
 }
 
-export const toNativeSourcePath = toNativeDestinationPath;
+export const toNativeSourcePath = toNativeDestinationPath
 
 /**
  * Starts one native background download and settles from callbacks.
@@ -124,8 +124,10 @@ export function startNativeDownload({
   onProgress,
   options = {},
 }: NativeDownloadRequest): Promise<NativeDownloadResult> {
-  const taskId = options.taskId ?? `download:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  cancelledBeforeStart.delete(taskId);
+  const taskId =
+    options.taskId ??
+    `download:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+  cancelledBeforeStart.delete(taskId)
 
   const task = createDownloadTask({
     id: taskId,
@@ -133,134 +135,139 @@ export function startNativeDownload({
     destination: toNativeDestinationPath(destinationUri),
     headers,
     metadata: options.metadata,
-  });
+  })
 
-  activeTasks.set(taskId, task);
-  options.onNativeTask?.(task);
+  activeTasks.set(taskId, task)
+  options.onNativeTask?.(task)
 
   // If cancel was requested after task creation but before the promise executor
   // registered the abort handler, stop immediately.
   if (cancelledBeforeStart.has(taskId)) {
-    cancelledBeforeStart.delete(taskId);
-    void task.stop();
-    activeTasks.delete(taskId);
-    const err = new Error(i18n.t("sync.downloadCancelled"));
-    err.name = "AbortError";
-    return Promise.reject(err);
+    cancelledBeforeStart.delete(taskId)
+    void task.stop()
+    activeTasks.delete(taskId)
+    const err = new Error(i18n.t("sync.downloadCancelled"))
+    err.name = "AbortError"
+    return Promise.reject(err)
   }
 
   return new Promise((resolve, reject) => {
-    let settled = false;
-    let startTimer: ReturnType<typeof setTimeout> | null = null;
-    let stalledTimer: ReturnType<typeof setTimeout> | null = null;
-    let hasNativeBegin = false;
-    let lastDownloaded = 0;
+    let settled = false
+    let startTimer: ReturnType<typeof setTimeout> | null = null
+    let stalledTimer: ReturnType<typeof setTimeout> | null = null
+    let hasNativeBegin = false
+    let lastDownloaded = 0
 
     function abort(): void {
-      if (settled) return;
-      settled = true;
-      finishCleanup();
-      const err = new Error(i18n.t("sync.downloadCancelled"));
-      err.name = "AbortError";
-      reject(err);
+      if (settled) return
+      settled = true
+      finishCleanup()
+      const err = new Error(i18n.t("sync.downloadCancelled"))
+      err.name = "AbortError"
+      reject(err)
     }
-    nativeAbortHandlers.set(taskId, abort);
+    nativeAbortHandlers.set(taskId, abort)
 
     function clearTimers(): void {
       if (startTimer) {
-        clearTimeout(startTimer);
-        startTimer = null;
+        clearTimeout(startTimer)
+        startTimer = null
       }
       if (stalledTimer) {
-        clearTimeout(stalledTimer);
-        stalledTimer = null;
+        clearTimeout(stalledTimer)
+        stalledTimer = null
       }
     }
 
     function finishCleanup(): void {
-      clearTimers();
-      activeTasks.delete(taskId);
-      nativeAbortHandlers.delete(taskId);
+      clearTimers()
+      activeTasks.delete(taskId)
+      nativeAbortHandlers.delete(taskId)
     }
 
     function settleDone(bytesDownloaded: number, bytesTotal: number): void {
-      if (settled) return;
-      settled = true;
-      finishCleanup();
-      onProgress?.(bytesDownloaded, bytesTotal);
-      completeNativeTask(taskId);
-      resolve({ bytesDownloaded, bytesTotal });
+      if (settled) return
+      settled = true
+      finishCleanup()
+      onProgress?.(bytesDownloaded, bytesTotal)
+      completeNativeTask(taskId)
+      resolve({ bytesDownloaded, bytesTotal })
     }
 
     function settleError(error: string, errorCode: number): void {
-      if (settled) return;
-      settled = true;
-      finishCleanup();
-      const err = new Error(error || i18n.t("sync.downloadFailed", { code: errorCode }));
+      if (settled) return
+      settled = true
+      finishCleanup()
+      const err = new Error(
+        error || i18n.t("sync.downloadFailed", { code: errorCode }),
+      )
       if (isNativeCancel(error, errorCode)) {
-        err.name = "AbortError";
+        err.name = "AbortError"
       }
       console.error("Failed to run native download task:", {
         taskId,
         relativePath,
         errorCode,
         error,
-      });
-      reject(err);
+      })
+      reject(err)
     }
 
     function resetStalledTimer(): void {
-      if (stalledTimer) clearTimeout(stalledTimer);
+      if (stalledTimer) clearTimeout(stalledTimer)
       stalledTimer = setTimeout(() => {
-        settleError(i18n.t("sync.downloadStalled"), 0);
-      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4);
+        settleError(i18n.t("sync.downloadStalled"), 0)
+      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4)
     }
 
     function markNativeBegin(expectedBytes: number): void {
-      if (hasNativeBegin) return;
-      hasNativeBegin = true;
-      options.onBegin?.(expectedBytes);
-      resetStalledTimer();
+      if (hasNativeBegin) return
+      hasNativeBegin = true
+      options.onBegin?.(expectedBytes)
+      resetStalledTimer()
     }
 
-    function updateNativeProgress(bytesDownloaded: number, bytesTotal: number): void {
+    function updateNativeProgress(
+      bytesDownloaded: number,
+      bytesTotal: number,
+    ): void {
       if (bytesDownloaded > 0 || bytesTotal > 0) {
-        markNativeBegin(bytesTotal);
+        markNativeBegin(bytesTotal)
       }
       if (bytesDownloaded > lastDownloaded) {
-        lastDownloaded = bytesDownloaded;
-        resetStalledTimer();
+        lastDownloaded = bytesDownloaded
+        resetStalledTimer()
       }
-      onProgress?.(bytesDownloaded, bytesTotal);
+      onProgress?.(bytesDownloaded, bytesTotal)
     }
 
     task
       .begin(({ expectedBytes }) => {
-        markNativeBegin(expectedBytes);
-        onProgress?.(0, expectedBytes);
+        markNativeBegin(expectedBytes)
+        onProgress?.(0, expectedBytes)
       })
       .progress(({ bytesDownloaded, bytesTotal }) => {
-        updateNativeProgress(bytesDownloaded, bytesTotal);
+        updateNativeProgress(bytesDownloaded, bytesTotal)
       })
       .done(({ bytesDownloaded, bytesTotal }) => {
-        settleDone(bytesDownloaded, bytesTotal);
+        settleDone(bytesDownloaded, bytesTotal)
       })
       .error(({ error, errorCode }) => {
-        settleError(error, errorCode);
-      });
+        settleError(error, errorCode)
+      })
 
     try {
-      task.start();
+      task.start()
       startTimer = setTimeout(() => {
-        if (settled || hasNativeBegin) return;
-        settleError(i18n.t("sync.downloadNotStarted"), 0);
-      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS);
+        if (settled || hasNativeBegin) return
+        settleError(i18n.t("sync.downloadNotStarted"), 0)
+      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS)
     } catch (err) {
-      settled = true;
-      finishCleanup();
-      reject(err);
+      settled = true
+      finishCleanup()
+      reject(err)
     }
-  });
+  })
 }
 
 export function startNativeUpload({
@@ -272,8 +279,10 @@ export function startNativeUpload({
   onProgress,
   options = {},
 }: NativeUploadRequest): Promise<NativeUploadResult> {
-  const taskId = options.taskId ?? `upload:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-  cancelledBeforeStart.delete(taskId);
+  const taskId =
+    options.taskId ??
+    `upload:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+  cancelledBeforeStart.delete(taskId)
 
   const task = createUploadTask({
     id: taskId,
@@ -282,54 +291,54 @@ export function startNativeUpload({
     method,
     headers,
     metadata: options.metadata,
-  });
+  })
 
-  activeUploadTasks.set(taskId, task);
-  options.onNativeTask?.(task);
+  activeUploadTasks.set(taskId, task)
+  options.onNativeTask?.(task)
 
   // If cancel was requested after task creation but before the promise executor
   // registered the abort handler, stop immediately.
   if (cancelledBeforeStart.has(taskId)) {
-    cancelledBeforeStart.delete(taskId);
-    void task.stop();
-    activeUploadTasks.delete(taskId);
-    const err = new Error(i18n.t("sync.uploadCancelled"));
-    err.name = "AbortError";
-    return Promise.reject(err);
+    cancelledBeforeStart.delete(taskId)
+    void task.stop()
+    activeUploadTasks.delete(taskId)
+    const err = new Error(i18n.t("sync.uploadCancelled"))
+    err.name = "AbortError"
+    return Promise.reject(err)
   }
 
   return new Promise((resolve, reject) => {
-    let settled = false;
-    let startTimer: ReturnType<typeof setTimeout> | null = null;
-    let stalledTimer: ReturnType<typeof setTimeout> | null = null;
-    let hasNativeBegin = false;
-    let lastUploaded = 0;
+    let settled = false
+    let startTimer: ReturnType<typeof setTimeout> | null = null
+    let stalledTimer: ReturnType<typeof setTimeout> | null = null
+    let hasNativeBegin = false
+    let lastUploaded = 0
 
     function abort(): void {
-      if (settled) return;
-      settled = true;
-      finishCleanup();
-      const err = new Error(i18n.t("sync.uploadCancelled"));
-      err.name = "AbortError";
-      reject(err);
+      if (settled) return
+      settled = true
+      finishCleanup()
+      const err = new Error(i18n.t("sync.uploadCancelled"))
+      err.name = "AbortError"
+      reject(err)
     }
-    nativeAbortHandlers.set(taskId, abort);
+    nativeAbortHandlers.set(taskId, abort)
 
     function clearTimers(): void {
       if (startTimer) {
-        clearTimeout(startTimer);
-        startTimer = null;
+        clearTimeout(startTimer)
+        startTimer = null
       }
       if (stalledTimer) {
-        clearTimeout(stalledTimer);
-        stalledTimer = null;
+        clearTimeout(stalledTimer)
+        stalledTimer = null
       }
     }
 
     function finishCleanup(): void {
-      clearTimers();
-      activeUploadTasks.delete(taskId);
-      nativeAbortHandlers.delete(taskId);
+      clearTimers()
+      activeUploadTasks.delete(taskId)
+      nativeAbortHandlers.delete(taskId)
     }
 
     function settleDone(
@@ -338,94 +347,107 @@ export function startNativeUpload({
       bytesUploaded: number,
       bytesTotal: number,
     ): void {
-      if (settled) return;
+      if (settled) return
       if (responseCode < 200 || responseCode >= 300) {
-        settleError(i18n.t("sync.uploadFailed", { status: responseCode, body: responseBody }), responseCode);
-        return;
+        settleError(
+          i18n.t("sync.uploadFailed", {
+            status: responseCode,
+            body: responseBody,
+          }),
+          responseCode,
+        )
+        return
       }
-      settled = true;
-      finishCleanup();
-      onProgress?.(bytesUploaded, bytesTotal);
-      completeNativeTask(taskId);
-      resolve({ responseCode, responseBody, bytesUploaded, bytesTotal });
+      settled = true
+      finishCleanup()
+      onProgress?.(bytesUploaded, bytesTotal)
+      completeNativeTask(taskId)
+      resolve({ responseCode, responseBody, bytesUploaded, bytesTotal })
     }
 
     function settleError(error: string, errorCode: number): void {
-      if (settled) return;
-      settled = true;
-      finishCleanup();
-      const err = new Error(error || i18n.t("sync.uploadFailedCode", { code: errorCode }));
+      if (settled) return
+      settled = true
+      finishCleanup()
+      const err = new Error(
+        error || i18n.t("sync.uploadFailedCode", { code: errorCode }),
+      )
       if (isNativeCancel(error, errorCode)) {
-        err.name = "AbortError";
+        err.name = "AbortError"
       }
       console.error("Failed to run native upload task:", {
         taskId,
         relativePath,
         errorCode,
         error,
-      });
-      reject(err);
+      })
+      reject(err)
     }
 
     function resetStalledTimer(): void {
-      if (stalledTimer) clearTimeout(stalledTimer);
+      if (stalledTimer) clearTimeout(stalledTimer)
       stalledTimer = setTimeout(() => {
-        settleError(i18n.t("sync.uploadStalled"), 0);
-      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4);
+        settleError(i18n.t("sync.uploadStalled"), 0)
+      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS * 4)
     }
 
     function markNativeBegin(expectedBytes: number): void {
-      if (hasNativeBegin) return;
-      hasNativeBegin = true;
-      options.onBegin?.(expectedBytes);
-      resetStalledTimer();
+      if (hasNativeBegin) return
+      hasNativeBegin = true
+      options.onBegin?.(expectedBytes)
+      resetStalledTimer()
     }
 
-    function updateNativeProgress(bytesUploaded: number, bytesTotal: number): void {
+    function updateNativeProgress(
+      bytesUploaded: number,
+      bytesTotal: number,
+    ): void {
       if (bytesUploaded > 0 || bytesTotal > 0) {
-        markNativeBegin(bytesTotal);
+        markNativeBegin(bytesTotal)
       }
       if (bytesUploaded > lastUploaded) {
-        lastUploaded = bytesUploaded;
-        resetStalledTimer();
+        lastUploaded = bytesUploaded
+        resetStalledTimer()
       }
-      onProgress?.(bytesUploaded, bytesTotal);
+      onProgress?.(bytesUploaded, bytesTotal)
     }
 
     task
       .begin(({ expectedBytes }) => {
-        markNativeBegin(expectedBytes);
-        onProgress?.(0, expectedBytes);
+        markNativeBegin(expectedBytes)
+        onProgress?.(0, expectedBytes)
       })
       .progress(({ bytesUploaded, bytesTotal }) => {
-        updateNativeProgress(bytesUploaded, bytesTotal);
+        updateNativeProgress(bytesUploaded, bytesTotal)
       })
       .done(({ responseCode, responseBody, bytesUploaded, bytesTotal }) => {
-        settleDone(responseCode, responseBody, bytesUploaded, bytesTotal);
+        settleDone(responseCode, responseBody, bytesUploaded, bytesTotal)
       })
       .error(({ error, errorCode }) => {
-        settleError(error, errorCode);
-      });
+        settleError(error, errorCode)
+      })
 
     try {
-      task.start();
+      task.start()
       startTimer = setTimeout(() => {
-        if (settled || hasNativeBegin) return;
-        settleError(i18n.t("sync.uploadNotStarted"), 0);
-      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS);
+        if (settled || hasNativeBegin) return
+        settleError(i18n.t("sync.uploadNotStarted"), 0)
+      }, NATIVE_DOWNLOAD_START_TIMEOUT_MS)
     } catch (err) {
-      settled = true;
-      finishCleanup();
-      reject(err);
+      settled = true
+      finishCleanup()
+      reject(err)
     }
-  });
+  })
 }
 
 /**
  * Reattaches all native tasks that survived process death.
  */
-export async function recoverNativeDownloads(): Promise<RecoveredNativeDownload[]> {
-  const tasks = await getExistingDownloadTasks();
+export async function recoverNativeDownloads(): Promise<
+  RecoveredNativeDownload[]
+> {
+  const tasks = await getExistingDownloadTasks()
   return tasks.map((task) => ({
     id: task.id,
     metadata: task.metadata,
@@ -435,23 +457,23 @@ export async function recoverNativeDownloads(): Promise<RecoveredNativeDownload[
     bind: (handlers) => {
       task
         .progress(({ bytesDownloaded, bytesTotal }) => {
-          handlers.onProgress?.(bytesDownloaded, bytesTotal);
+          handlers.onProgress?.(bytesDownloaded, bytesTotal)
         })
         .done(({ bytesDownloaded, bytesTotal }) => {
-          handlers.onDone?.(bytesDownloaded, bytesTotal);
+          handlers.onDone?.(bytesDownloaded, bytesTotal)
         })
         .error(({ error, errorCode }) => {
-          handlers.onError?.(error, errorCode);
-        });
+          handlers.onError?.(error, errorCode)
+        })
     },
     stop: () => {
-      void task.stop();
+      void task.stop()
     },
-  }));
+  }))
 }
 
 export async function recoverNativeUploads(): Promise<RecoveredNativeUpload[]> {
-  const tasks = await getExistingUploadTasks();
+  const tasks = await getExistingUploadTasks()
   return tasks.map((task) => ({
     id: task.id,
     metadata: task.metadata,
@@ -461,19 +483,19 @@ export async function recoverNativeUploads(): Promise<RecoveredNativeUpload[]> {
     bind: (handlers) => {
       task
         .progress(({ bytesUploaded, bytesTotal }) => {
-          handlers.onProgress?.(bytesUploaded, bytesTotal);
+          handlers.onProgress?.(bytesUploaded, bytesTotal)
         })
         .done(({ bytesUploaded, bytesTotal }) => {
-          handlers.onDone?.(bytesUploaded, bytesTotal);
+          handlers.onDone?.(bytesUploaded, bytesTotal)
         })
         .error(({ error, errorCode }) => {
-          handlers.onError?.(error, errorCode);
-        });
+          handlers.onError?.(error, errorCode)
+        })
     },
     stop: () => {
-      void task.stop();
+      void task.stop()
     },
-  }));
+  }))
 }
 
 /**
@@ -482,22 +504,28 @@ export async function recoverNativeUploads(): Promise<RecoveredNativeUpload[]> {
 export function cancelNativeDownload(taskId: string): void {
   // Stop the native task first; the abort handler removes it from activeTasks,
   // so calling stop after abort would be a no-op and leave the native download running.
-  void activeTasks.get(taskId)?.stop();
-  nativeAbortHandlers.get(taskId)?.();
+  void activeTasks.get(taskId)?.stop()
+  nativeAbortHandlers.get(taskId)?.()
   // If the native task has not been created yet (e.g. still fetching auth headers),
   // mark it so startNativeDownload rejects as soon as it is invoked.
   if (!activeTasks.has(taskId)) {
-    cancelledBeforeStart.add(taskId);
-    setTimeout(() => cancelledBeforeStart.delete(taskId), CANCELLED_BEFORE_START_TTL_MS);
+    cancelledBeforeStart.add(taskId)
+    setTimeout(
+      () => cancelledBeforeStart.delete(taskId),
+      CANCELLED_BEFORE_START_TTL_MS,
+    )
   }
 }
 
 export function cancelNativeUpload(taskId: string): void {
-  void activeUploadTasks.get(taskId)?.stop();
-  nativeAbortHandlers.get(taskId)?.();
+  void activeUploadTasks.get(taskId)?.stop()
+  nativeAbortHandlers.get(taskId)?.()
   if (!activeUploadTasks.has(taskId)) {
-    cancelledBeforeStart.add(taskId);
-    setTimeout(() => cancelledBeforeStart.delete(taskId), CANCELLED_BEFORE_START_TTL_MS);
+    cancelledBeforeStart.add(taskId)
+    setTimeout(
+      () => cancelledBeforeStart.delete(taskId),
+      CANCELLED_BEFORE_START_TTL_MS,
+    )
   }
 }
 
@@ -505,11 +533,11 @@ export function cancelNativeUpload(taskId: string): void {
  * Signals iOS/Android that background work for this native task is complete.
  */
 export function completeNativeTask(taskId: string): void {
-  completeHandler(taskId);
+  completeHandler(taskId)
 }
 
-export const completeNativeDownload = completeNativeTask;
+export const completeNativeDownload = completeNativeTask
 
 export function isNativeCancel(error: string, errorCode: number): boolean {
-  return errorCode === -999 || error.toLowerCase().includes("cancel");
+  return errorCode === -999 || error.toLowerCase().includes("cancel")
 }

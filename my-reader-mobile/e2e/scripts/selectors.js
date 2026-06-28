@@ -119,4 +119,4 @@ output.selectors = {
       night: "主题: 夜间.*|Theme: Night.*",
     },
   },
-};
+}

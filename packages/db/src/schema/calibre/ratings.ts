@@ -1,10 +1,16 @@
-import { sqliteTable, integer, text, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  integer,
+  text,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/sqlite-core"
 
 export const ratings = sqliteTable("ratings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   rating: integer("rating").notNull(),
   link: text("link").default(""),
-});
+})
 
 export const booksRatingsLink = sqliteTable(
   "books_ratings_link",
@@ -18,4 +24,4 @@ export const booksRatingsLink = sqliteTable(
     index("books_ratings_link_book").on(table.book),
     index("books_ratings_link_rating").on(table.rating),
   ],
-);
+)

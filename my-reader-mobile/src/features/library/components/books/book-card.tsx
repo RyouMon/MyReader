@@ -1,55 +1,59 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react"
 
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { MenuView, type MenuAction } from "@react-native-menu/menu"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import type { BookItem } from "@/src/domain/types";
-import { Pressable, Text, TouchableHighlight, View } from "@/tw";
-import { buildBookMenuActions } from "../../utils/book-menu";
+import { useThemePalette } from "@/src/design/tokens"
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import type { BookItem } from "@/src/domain/types"
+import { Pressable, Text, TouchableHighlight, View } from "@/tw"
+import { buildBookMenuActions } from "../../utils/book-menu"
 
-import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { BookCover, type BookDownloadStatus, type BookProgressSnapshot } from "./book-cover";
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator";
-import { ProgressLabel } from "./progress-label";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
+import {
+  BookCover,
+  type BookDownloadStatus,
+  type BookProgressSnapshot,
+} from "./book-cover"
+import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
+import { ProgressLabel } from "./progress-label"
 
 export type BookCardProps = {
-  book: BookItem;
-  width: number;
+  book: BookItem
+  width: number
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
    */
-  onPress?: (bookId: string) => void;
-  onMore?: (bookId: string) => void;
-  menuActions?: MenuAction[];
-  onMenuAction?: (bookId: string, actionId: string) => void;
-  onMenuOpen?: (bookId: string) => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-  progress?: BookProgressSnapshot;
-  downloadStatus?: BookDownloadStatus;
-  downloadProgress?: number;
+  onPress?: (bookId: string) => void
+  onMore?: (bookId: string) => void
+  menuActions?: MenuAction[]
+  onMenuAction?: (bookId: string, actionId: string) => void
+  onMenuOpen?: (bookId: string) => void
+  onMenuClose?: () => void
+  isAnyMenuOpen?: boolean
+  progress?: BookProgressSnapshot
+  downloadStatus?: BookDownloadStatus
+  downloadProgress?: number
   /**
    * Primitive menu inputs let the card build its own actions while keeping
    * `React.memo` shallow comparison cheap. Passing a single `menuConfig` object
    * would defeat memoization because the parent reallocates the object whenever
    * any of these fields change.
    */
-  menuIsRemote?: boolean;
-  menuFormats?: string[];
-  menuSelectedFormat?: string;
-  isFavorite?: boolean;
+  menuIsRemote?: boolean
+  menuFormats?: string[]
+  menuSelectedFormat?: string
+  isFavorite?: boolean
   /**
    * When set together, the card subscribes directly to the download store for
    * this book+format so progress updates do not re-render the parent list.
    * Falls back to `downloadProgress` when not set.
    */
-  subscriptionLibraryId?: string;
-  subscriptionFormat?: string;
-};
+  subscriptionLibraryId?: string
+  subscriptionFormat?: string
+}
 
 function BookCardImpl({
   book,
@@ -71,49 +75,59 @@ function BookCardImpl({
   subscriptionLibraryId,
   subscriptionFormat,
 }: BookCardProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const coverHeight = Math.round(width * 1.43);
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const coverHeight = Math.round(width * 1.43)
 
-  const showCloudIcon = downloadStatus === "notDownloaded";
-  const showProgressIndicator = downloadStatus === "downloading";
+  const showCloudIcon = downloadStatus === "notDownloaded"
+  const showProgressIndicator = downloadStatus === "downloading"
 
-  const hasMenuInputs = menuIsRemote !== undefined;
+  const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (!hasMenuInputs) return menuActions;
+    if (!hasMenuInputs) return menuActions
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
       isFavorite,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
-    });
-  }, [downloadStatus, hasMenuInputs, menuActions, menuFormats, menuIsRemote, menuSelectedFormat, isFavorite]);
+    })
+  }, [
+    downloadStatus,
+    hasMenuInputs,
+    menuActions,
+    menuFormats,
+    menuIsRemote,
+    menuSelectedFormat,
+    isFavorite,
+  ])
 
-  const hasMenu = (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) || onMore;
+  const hasMenu =
+    (computedMenuActions && computedMenuActions.length > 0 && onMenuAction) ||
+    onMore
 
   const handlePress = useCallback(() => {
-    if (isAnyMenuOpen || !onPress) return;
-    onPress(book.id);
-  }, [book.id, isAnyMenuOpen, onPress]);
+    if (isAnyMenuOpen || !onPress) return
+    onPress(book.id)
+  }, [book.id, isAnyMenuOpen, onPress])
 
   const handleMorePress = useCallback(
     (event: { stopPropagation?: () => void }) => {
-      event.stopPropagation?.();
-      onMore?.(book.id);
+      event.stopPropagation?.()
+      onMore?.(book.id)
     },
     [book.id, onMore],
-  );
+  )
 
   const handleMenuOpenLocal = useCallback(() => {
-    onMenuOpen?.(book.id);
-  }, [book.id, onMenuOpen]);
+    onMenuOpen?.(book.id)
+  }, [book.id, onMenuOpen])
 
   const handleMenuPressAction = useCallback(
     ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-      onMenuAction?.(book.id, nativeEvent.event);
+      onMenuAction?.(book.id, nativeEvent.event)
     },
     [book.id, onMenuAction],
-  );
+  )
 
   const moreButton = (
     <Pressable
@@ -125,7 +139,7 @@ function BookCardImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </Pressable>
-  );
+  )
 
   const menuTrigger = (
     <View
@@ -136,7 +150,7 @@ function BookCardImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
-  );
+  )
 
   return (
     <View
@@ -164,7 +178,11 @@ function BookCardImpl({
         </TouchableHighlight>
       </View>
       <View className="mt-2 flex-row items-center gap-1.5">
-        <Text className="flex-1 text-base font-semibold" style={{ color: palette.text }} numberOfLines={1}>
+        <Text
+          className="flex-1 text-base font-semibold"
+          style={{ color: palette.text }}
+          numberOfLines={1}
+        >
           {book.title}
         </Text>
       </View>
@@ -185,7 +203,15 @@ function BookCardImpl({
           {hasMenu ? (
             computedMenuActions && onMenuAction ? (
               <MenuView
-                key={computedMenuActions.some((a) => (a.id === "share" || a.id?.startsWith("share:")) && !a.attributes?.disabled) ? "share-enabled" : "share-disabled"}
+                key={
+                  computedMenuActions.some(
+                    (a) =>
+                      (a.id === "share" || a.id?.startsWith("share:")) &&
+                      !a.attributes?.disabled,
+                  )
+                    ? "share-enabled"
+                    : "share-disabled"
+                }
                 actions={computedMenuActions}
                 isAnchoredToRight={Platform.OS === "android"}
                 onOpenMenu={handleMenuOpenLocal}
@@ -201,10 +227,10 @@ function BookCardImpl({
         </View>
       </View>
     </View>
-  );
+  )
 }
 
 /**
  * Renders the mobile cover-first book card.
  */
-export const BookCard = memo(BookCardImpl);
+export const BookCard = memo(BookCardImpl)

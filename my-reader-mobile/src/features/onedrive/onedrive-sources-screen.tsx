@@ -1,39 +1,45 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 
-import { Stack, router } from "expo-router";
-import { View } from "react-native";
+import { Stack, router } from "expo-router"
+import { View } from "react-native"
 
-import { useThemePalette } from "@/src/design/tokens";
+import { useThemePalette } from "@/src/design/tokens"
 
 import {
-    EmptyState,
-    PrimaryButton,
-    Screen,
-    SectionCard,
-    ListRow,
-} from "@/src/components";
-import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source";
-import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state";
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
-import { createAddAction } from "@/src/navigation/toolbar-action-helpers";
-import { useAppStore } from "@/src/store/app-store";
+  EmptyState,
+  PrimaryButton,
+  Screen,
+  SectionCard,
+  ListRow,
+} from "@/src/components"
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
+import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { createAddAction } from "@/src/navigation/toolbar-action-helpers"
+import { useAppStore } from "@/src/store/app-store"
 
 export default function OneDriveSourcesScreen() {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const dataSources = useAppStore((state) => state.dataSources);
-  const { addOneDriveDataSource, busy } = useAddOneDriveDataSource();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const dataSources = useAppStore((state) => state.dataSources)
+  const { addOneDriveDataSource, busy } = useAddOneDriveDataSource()
 
   function handleAdd() {
-    void addOneDriveDataSource();
+    void addOneDriveDataSource()
   }
 
   function openSourceDetail(sourceId: string) {
-    router.push({ pathname: "/settings/onedrive/[dataSourceId]", params: { dataSourceId: sourceId } });
+    router.push({
+      pathname: "/settings/onedrive/[dataSourceId]",
+      params: { dataSourceId: sourceId },
+    })
   }
 
-  const onedriveSources = useMemo(() => dataSources.filter((source) => source.type === "onedrive"), [dataSources]);
+  const onedriveSources = useMemo(
+    () => dataSources.filter((source) => source.type === "onedrive"),
+    [dataSources],
+  )
 
   const { options, toolbar } = useScreenHeader({
     title: t("onedrive.sourcesTitle"),
@@ -48,7 +54,7 @@ export default function OneDriveSourcesScreen() {
         disabled: busy,
       }),
     ],
-  });
+  })
 
   return (
     <>
@@ -64,7 +70,12 @@ export default function OneDriveSourcesScreen() {
               <EmptyState
                 title={t("onedrive.noSources.title")}
                 detail={t("onedrive.noSources.detail")}
-                action={<PrimaryButton title={t("onedrive.addSource")} onPress={handleAdd} />}
+                action={
+                  <PrimaryButton
+                    title={t("onedrive.addSource")}
+                    onPress={handleAdd}
+                  />
+                }
                 icon={{ ios: "externaldrive.fill", android: "storage" }}
               />
             ) : (
@@ -85,5 +96,5 @@ export default function OneDriveSourcesScreen() {
         </Screen>
       </View>
     </>
-  );
+  )
 }

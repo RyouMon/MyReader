@@ -22,39 +22,43 @@ export type ChromeAction =
   | { type: "closeButtonTap" }
   | { type: "tocSelect" }
   | { type: "tocDismiss" }
-  | { type: "settingsDismiss" };
+  | { type: "settingsDismiss" }
 
-export function chromeReducer(state: ChromeState, action: ChromeAction): ChromeState {
+export function chromeReducer(
+  state: ChromeState,
+  action: ChromeAction,
+): ChromeState {
   switch (action.type) {
     case "contentTap":
-      if (state === ChromeState.TocSheet || state === ChromeState.SettingsSheet) return ChromeState.Chrome;
-      if (state === ChromeState.Reading) return ChromeState.Chrome;
-      return ChromeState.Reading;
+      if (state === ChromeState.TocSheet || state === ChromeState.SettingsSheet)
+        return ChromeState.Chrome
+      if (state === ChromeState.Reading) return ChromeState.Chrome
+      return ChromeState.Reading
 
     case "moreButtonTap":
-      if (state === ChromeState.Chrome) return ChromeState.Expanded;
-      return state;
+      if (state === ChromeState.Chrome) return ChromeState.Expanded
+      return state
 
     case "tocPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.TocSheet;
-      return state;
+      if (state === ChromeState.Expanded) return ChromeState.TocSheet
+      return state
 
     case "settingsPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.SettingsSheet;
-      return state;
+      if (state === ChromeState.Expanded) return ChromeState.SettingsSheet
+      return state
 
     case "closeButtonTap":
-      return state;
+      return state
 
     case "tocSelect":
-      return ChromeState.Reading;
+      return ChromeState.Reading
 
     case "tocDismiss":
-      if (state === ChromeState.TocSheet) return ChromeState.Chrome;
-      return state;
+      if (state === ChromeState.TocSheet) return ChromeState.Chrome
+      return state
 
     case "settingsDismiss":
-      if (state === ChromeState.SettingsSheet) return ChromeState.Chrome;
-      return state;
+      if (state === ChromeState.SettingsSheet) return ChromeState.Chrome
+      return state
   }
 }

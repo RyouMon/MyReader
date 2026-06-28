@@ -1,22 +1,22 @@
-import { useEffect, useRef } from "react";
-import { usePathname } from "expo-router";
+import { useEffect, useRef } from "react"
+import { usePathname } from "expo-router"
 
-import { InAppNotification } from "@/src/domain/notifications/in-app-notification";
+import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import {
   LIBRARY_SYNC_INTERVAL_MS,
   READING_SYNC_INTERVAL_MS,
   runSyncLibraries,
   type ScheduledSyncTarget,
   type SyncLibrariesDeps,
-} from "@/src/domain/sync";
-import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report";
-import { SyncConfigError } from "@/src/errors";
-import i18n from "@/src/i18n";
-import { getValidAccessToken } from "@/src/services/auth/onedrive";
-import { setCachedAuth } from "@/src/services/remote/auth-cache";
-import { useAppStore } from "@/src/store/app-store";
-import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common";
-import { Notifier } from "react-native-notifier";
+} from "@/src/domain/sync"
+import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
+import { SyncConfigError } from "@/src/errors"
+import i18n from "@/src/i18n"
+import { getValidAccessToken } from "@/src/services/auth/onedrive"
+import { setCachedAuth } from "@/src/services/remote/auth-cache"
+import { useAppStore } from "@/src/store/app-store"
+import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
+import { Notifier } from "react-native-notifier"
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({
@@ -26,30 +26,30 @@ function notifySyncConfigError(message: string): void {
     hideOnPress: true,
     Component: InAppNotification,
     componentProps: { kind: "error" },
-  });
+  })
 }
 
 function getSyncDeps(): SyncLibrariesDeps {
-  const state = useAppStore.getState();
+  const state = useAppStore.getState()
   return {
     libraries: state.libraries,
     dataSources: state.dataSources,
     syncOnStartup: state.settings.syncOnStartup,
     enableAutoSync: state.settings.enableAutoSync,
     activeLibraryId: state.activeLibraryId,
-  };
+  }
 }
 
 function handleSyncError(err: unknown, label: string): void {
   if (err instanceof SyncConfigError) {
-    notifySyncConfigError(err.message);
-    return;
+    notifySyncConfigError(err.message)
+    return
   }
-  console.warn(`[SyncRuntime] ${label} sync failed`, err);
+  console.warn(`[SyncRuntime] ${label} sync failed`, err)
 }
 
 function isReaderRoute(pathname: string): boolean {
-  return pathname.startsWith("/reader");
+  return pathname.startsWith("/reader")
 }
 
 function isLibraryBrowsingRoute(pathname: string): boolean {
@@ -57,68 +57,74 @@ function isLibraryBrowsingRoute(pathname: string): boolean {
     pathname.startsWith("/library") ||
     pathname.startsWith("/library-book") ||
     pathname.includes("/(tabs)/library")
-  );
+  )
 }
 
 /** Passive sync: startup + scheduled myreader ticks. */
 export function SyncRuntime(): null {
-  const storeReady = useAppStore((state) => state.storeReady);
-  const enableAutoSync = useAppStore((state) => state.settings.enableAutoSync);
-  const pathname = usePathname();
-  const hasRunStartup = useRef(false);
+  const storeReady = useAppStore((state) => state.storeReady)
+  const enableAutoSync = useAppStore((state) => state.settings.enableAutoSync)
+  const pathname = usePathname()
+  const hasRunStartup = useRef(false)
 
   useEffect(() => {
-    if (!storeReady || hasRunStartup.current) return;
-    hasRunStartup.current = true;
+    if (!storeReady || hasRunStartup.current) return
+    hasRunStartup.current = true
 
-    const state = useAppStore.getState();
+    const state = useAppStore.getState()
     for (const ds of state.dataSources) {
       if (ds.type === "onedrive") {
         void getValidAccessToken(ds.id)
           .then(({ accessToken, expiresAt }) => {
-            setCachedAuth(ds.id, { Authorization: `Bearer ${accessToken}` }, expiresAt);
+            setCachedAuth(
+              ds.id,
+              { Authorization: `Bearer ${accessToken}` },
+              expiresAt,
+            )
           })
-          .catch(() => {});
+          .catch(() => {})
       }
     }
 
     const startupHandle = scheduleIdleWork(() => {
       void runSyncLibraries("startup", getSyncDeps())
         .then((report) => {
-          applySyncRunReports(report.results, { trigger: "startup" });
+          applySyncRunReports(report.results, { trigger: "startup" })
         })
-        .catch((err) => handleSyncError(err, "startup"));
-    });
+        .catch((err) => handleSyncError(err, "startup"))
+    })
 
-    return () => cancelIdleWork(startupHandle);
-  }, [storeReady]);
+    return () => cancelIdleWork(startupHandle)
+  }, [storeReady])
 
   useEffect(() => {
-    if (!storeReady || !enableAutoSync) return;
+    if (!storeReady || !enableAutoSync) return
 
-    let scheduledTarget: ScheduledSyncTarget | null = null;
+    let scheduledTarget: ScheduledSyncTarget | null = null
     if (isReaderRoute(pathname)) {
-      scheduledTarget = "reading";
+      scheduledTarget = "reading"
     } else if (isLibraryBrowsingRoute(pathname)) {
-      scheduledTarget = "library";
+      scheduledTarget = "library"
     }
 
-    if (!scheduledTarget) return;
+    if (!scheduledTarget) return
 
     const intervalMs =
-      scheduledTarget === "reading" ? READING_SYNC_INTERVAL_MS : LIBRARY_SYNC_INTERVAL_MS;
+      scheduledTarget === "reading"
+        ? READING_SYNC_INTERVAL_MS
+        : LIBRARY_SYNC_INTERVAL_MS
 
     const tick = () => {
       void runSyncLibraries("scheduled", getSyncDeps(), scheduledTarget!)
         .then((report) => {
-          applySyncRunReports(report.results, { trigger: "scheduled" });
+          applySyncRunReports(report.results, { trigger: "scheduled" })
         })
-        .catch((err) => handleSyncError(err, scheduledTarget!));
-    };
+        .catch((err) => handleSyncError(err, scheduledTarget!))
+    }
 
-    const handle = setInterval(tick, intervalMs);
-    return () => clearInterval(handle);
-  }, [storeReady, enableAutoSync, pathname]);
+    const handle = setInterval(tick, intervalMs)
+    return () => clearInterval(handle)
+  }, [storeReady, enableAutoSync, pathname])
 
-  return null;
+  return null
 }

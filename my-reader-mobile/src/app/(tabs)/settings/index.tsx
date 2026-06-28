@@ -1,10 +1,10 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import SettingsScreen from "@/src/features/settings/settings-screen";
+import SettingsScreen from "@/src/features/settings/settings-screen"
 
 export default function SettingsRoute() {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <>
@@ -17,5 +17,5 @@ export default function SettingsRoute() {
       />
       <SettingsScreen />
     </>
-  );
+  )
 }

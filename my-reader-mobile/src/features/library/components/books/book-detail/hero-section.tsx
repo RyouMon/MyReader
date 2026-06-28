@@ -1,25 +1,25 @@
-import type { BookDetail } from "@my-reader/tools/types/book";
-import type { MenuAction } from "@react-native-menu/menu";
-import { MenuView } from "@react-native-menu/menu";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import type { BookDetail } from "@my-reader/tools/types/book"
+import type { MenuAction } from "@react-native-menu/menu"
+import { MenuView } from "@react-native-menu/menu"
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 
-import { Button, ButtonGroup } from "@/src/components/ui";
-import type { BookItem } from "@/src/domain/types";
-import { Image, Text, View } from "@/tw";
-import type { DetailColors } from "./types";
+import { Button, ButtonGroup } from "@/src/components/ui"
+import type { BookItem } from "@/src/domain/types"
+import { Image, Text, View } from "@/tw"
+import type { DetailColors } from "./types"
 
 type HeroSectionProps = {
-  book: BookDetail;
-  colors: DetailColors;
-  coverUri?: BookItem["coverUri"];
-  canReadInApp: boolean;
-  formats: string[];
-  readButtonTitle: string;
-  selectedFormat: string | null;
-  onRead: () => void;
-  onSetFormat: (format: string) => void;
-};
+  book: BookDetail
+  colors: DetailColors
+  coverUri?: BookItem["coverUri"]
+  canReadInApp: boolean
+  formats: string[]
+  readButtonTitle: string
+  selectedFormat: string | null
+  onRead: () => void
+  onSetFormat: (format: string) => void
+}
 
 export function HeroSection({
   book,
@@ -32,22 +32,29 @@ export function HeroSection({
   onRead,
   onSetFormat,
 }: HeroSectionProps) {
-  const { t } = useTranslation();
-  const authors = book.authors.filter(Boolean).join(", ") || book.authorSort;
+  const { t } = useTranslation()
+  const authors = book.authors.filter(Boolean).join(", ") || book.authorSort
 
   const formatMenuActions = useMemo<MenuAction[]>(
     () =>
       formats.map((format) => ({
         id: format,
         title: format,
-        state: format.toUpperCase() === selectedFormat?.toUpperCase() ? ("on" as const) : undefined,
+        state:
+          format.toUpperCase() === selectedFormat?.toUpperCase()
+            ? ("on" as const)
+            : undefined,
       })),
-    [formats, selectedFormat]
-  );
+    [formats, selectedFormat],
+  )
 
-  const handleFormatMenuAction = ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-    onSetFormat(nativeEvent.event);
-  };
+  const handleFormatMenuAction = ({
+    nativeEvent,
+  }: {
+    nativeEvent: { event: string }
+  }) => {
+    onSetFormat(nativeEvent.event)
+  }
 
   return (
     <View className="px-4 pt-4">
@@ -162,5 +169,5 @@ export function HeroSection({
         </View>
       </ButtonGroup>
     </View>
-  );
+  )
 }

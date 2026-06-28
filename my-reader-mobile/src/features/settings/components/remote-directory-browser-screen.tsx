@@ -1,21 +1,21 @@
-import { normalizeCurrentPath } from "@/src/domain/library/remote-library";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { normalizeCurrentPath } from "@/src/domain/library/remote-library"
+import { Stack, router, useLocalSearchParams } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import { useThemePalette } from "@/src/design/tokens";
-import { Text, View } from "@/tw";
+import { useThemePalette } from "@/src/design/tokens"
+import { Text, View } from "@/tw"
 
-import { EmptyState, Screen, SectionCard, ListRow } from "@/src/components";
-import { ErrorBoundary } from "@/src/components/error-boundary";
-import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser";
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
-import { createSaveAction } from "@/src/navigation/toolbar-action-helpers";
+import { EmptyState, Screen, SectionCard, ListRow } from "@/src/components"
+import { ErrorBoundary } from "@/src/components/error-boundary"
+import { useRemoteDirectoryBrowser } from "@/src/features/settings/hooks/use-remote-directory-browser"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 
 type RemoteDirectoryBrowserScreenProps = {
-  sourceType: "webdav" | "onedrive";
-  browserRoute: "/settings/webdav/browser" | "/settings/onedrive/browser";
-  translationNamespace: "webdav.browser" | "onedrive.browser";
-};
+  sourceType: "webdav" | "onedrive"
+  browserRoute: "/settings/webdav/browser" | "/settings/onedrive/browser"
+  translationNamespace: "webdav.browser" | "onedrive.browser"
+}
 
 /** Shared directory browser for remote data sources (WebDAV, OneDrive). */
 export function RemoteDirectoryBrowserScreen({
@@ -23,16 +23,20 @@ export function RemoteDirectoryBrowserScreen({
   browserRoute,
   translationNamespace,
 }: RemoteDirectoryBrowserScreenProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const { dataSourceId, currentPath: currentPathParam, from } = useLocalSearchParams<{
-    dataSourceId?: string;
-    currentPath?: string;
-    from?: string;
-  }>();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const {
+    dataSourceId,
+    currentPath: currentPathParam,
+    from,
+  } = useLocalSearchParams<{
+    dataSourceId?: string
+    currentPath?: string
+    from?: string
+  }>()
 
   const label = (key: string, options?: Record<string, unknown>) =>
-    t(`${translationNamespace}.${key}`, options);
+    t(`${translationNamespace}.${key}`, options)
 
   const {
     notFound,
@@ -48,10 +52,10 @@ export function RemoteDirectoryBrowserScreen({
     dataSourceId,
     currentPathParam,
     sourceType,
-  });
+  })
 
   function handleOpenDirectory(path: string) {
-    if (!candidateId) return;
+    if (!candidateId) return
     router.push({
       pathname: browserRoute,
       params: {
@@ -59,12 +63,12 @@ export function RemoteDirectoryBrowserScreen({
         currentPath: normalizeCurrentPath(path),
         ...(from ? { from } : {}),
       },
-    });
+    })
   }
 
-  const isAddLibraryFlow = from === "add-library" && currentPath === "/";
-  const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings";
-  const isRootBrowser = currentPath === "/";
+  const isAddLibraryFlow = from === "add-library" && currentPath === "/"
+  const closeTarget = isAddLibraryFlow ? "/settings/add-library" : "/settings"
+  const isRootBrowser = currentPath === "/"
 
   const { options, toolbar } = useScreenHeader({
     ...(isRootBrowser
@@ -84,7 +88,7 @@ export function RemoteDirectoryBrowserScreen({
         color: palette.primary,
       }),
     ],
-  });
+  })
 
   if (notFound) {
     return (
@@ -95,7 +99,7 @@ export function RemoteDirectoryBrowserScreen({
           icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
         />
       </Screen>
-    );
+    )
   }
 
   return (
@@ -107,10 +111,15 @@ export function RemoteDirectoryBrowserScreen({
         <ErrorBoundary
           title={label("loadFailed.title")}
           message={label("loadFailed.message")}
-          onRetry={() => { /* effect re-triggers via loading/error state */ }}
+          onRetry={() => {
+            /* effect re-triggers via loading/error state */
+          }}
         >
           <View className="gap-3">
-            <Text className="px-4 text-base text-muted" style={{ color: palette.textMuted }}>
+            <Text
+              className="px-4 text-base text-muted"
+              style={{ color: palette.textMuted }}
+            >
               {label("currentPath", { path: currentPath })}
             </Text>
 
@@ -124,13 +133,19 @@ export function RemoteDirectoryBrowserScreen({
               <EmptyState
                 title={label("readFailed.title")}
                 detail={label("noCredentials")}
-                icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+                icon={{
+                  ios: "exclamationmark.triangle.fill",
+                  android: "warning",
+                }}
               />
             ) : error ? (
               <EmptyState
                 title={label("readFailed.title")}
                 detail={error}
-                icon={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+                icon={{
+                  ios: "exclamationmark.triangle.fill",
+                  android: "warning",
+                }}
               />
             ) : entries.length === 0 ? (
               <EmptyState
@@ -155,5 +170,5 @@ export function RemoteDirectoryBrowserScreen({
         </ErrorBoundary>
       </Screen>
     </>
-  );
+  )
 }

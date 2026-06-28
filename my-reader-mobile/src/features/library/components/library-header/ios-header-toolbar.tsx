@@ -1,28 +1,31 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import type { Library } from "@/src/domain/types";
-import type { LibraryFilterOption, SortOption } from "@/src/features/library/hooks/use-book-filter";
-import type { LibraryViewMode } from "@/src/store/app-store.types";
+import type { Library } from "@/src/domain/types"
+import type {
+  LibraryFilterOption,
+  SortOption,
+} from "@/src/features/library/hooks/use-book-filter"
+import type { LibraryViewMode } from "@/src/store/app-store.types"
 
 import {
   libraryFilterOptions,
   librarySortOptions,
   libraryViewOptions,
-} from "../../utils/library-header-config";
+} from "../../utils/library-header-config"
 
 type LibraryIosHeaderToolbarProps = {
-  libraries: Library[];
-  effectiveLibraryId?: string;
-  filter: LibraryFilterOption;
-  sortBy: SortOption;
-  viewMode: LibraryViewMode;
-  onSyncCurrentLibrary: () => void;
-  onSelectLibrary: (libraryId: string) => void;
-  onSetFilter: (value: LibraryFilterOption) => void;
-  onSetSortBy: (value: SortOption) => void;
-  onSetViewMode: (value: LibraryViewMode) => void;
-};
+  libraries: Library[]
+  effectiveLibraryId?: string
+  filter: LibraryFilterOption
+  sortBy: SortOption
+  viewMode: LibraryViewMode
+  onSyncCurrentLibrary: () => void
+  onSelectLibrary: (libraryId: string) => void
+  onSetFilter: (value: LibraryFilterOption) => void
+  onSetSortBy: (value: SortOption) => void
+  onSetViewMode: (value: LibraryViewMode) => void
+}
 
 /** Renders iOS native stack toolbar menus for library actions and view config. */
 export function LibraryIosHeaderToolbar({
@@ -37,7 +40,7 @@ export function LibraryIosHeaderToolbar({
   onSetSortBy,
   onSetViewMode,
 }: LibraryIosHeaderToolbarProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <>
@@ -97,5 +100,5 @@ export function LibraryIosHeaderToolbar({
         </Stack.Toolbar.Menu>
       </Stack.Toolbar>
     </>
-  );
+  )
 }

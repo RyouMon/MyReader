@@ -1,2 +1,2 @@
-export { RANGES } from './RANGES';
-export { buildLinkTree } from './buildLinkTree';
+export { RANGES } from "./RANGES"
+export { buildLinkTree } from "./buildLinkTree"

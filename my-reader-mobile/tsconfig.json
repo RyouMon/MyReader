@@ -5,21 +5,11 @@
     "noUncheckedIndexedAccess": true,
     "types": ["jest"],
     "paths": {
-      "@/src": [
-        "./src"
-      ],
-      "@/tw": [
-        "./src/tw/index.tsx"
-      ],
-      "@/tw/*": [
-        "./src/tw/*"
-      ],
-      "@/*": [
-        "./*"
-      ],
-      "@my-reader/tools/*": [
-        "../packages/tools/src/*"
-      ]
+      "@/src": ["./src"],
+      "@/tw": ["./src/tw/index.tsx"],
+      "@/tw/*": ["./src/tw/*"],
+      "@/*": ["./*"],
+      "@my-reader/tools/*": ["../packages/tools/src/*"]
     }
   },
   "include": [
@@ -30,7 +20,5 @@
     "nativewind-env.d.ts",
     "../packages/tools/src/types/foliate-epub.d.ts"
   ],
-  "exclude": [
-    "app-example"
-  ]
+  "exclude": ["app-example"]
 }

@@ -1,11 +1,11 @@
-import { Stack } from "expo-router";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router"
+import { useTranslation } from "react-i18next"
 
-import { useStackScreenOptions } from "@/src/navigation/hooks/use-stack-screen-options";
+import { useStackScreenOptions } from "@/src/navigation/hooks/use-stack-screen-options"
 
 export default function SettingsStackLayout() {
-  const screenOptions = useStackScreenOptions();
-  const { t } = useTranslation();
+  const screenOptions = useStackScreenOptions()
+  const { t } = useTranslation()
 
   return (
     <Stack screenOptions={screenOptions}>
@@ -39,5 +39,5 @@ export default function SettingsStackLayout() {
         }}
       />
     </Stack>
-  );
+  )
 }

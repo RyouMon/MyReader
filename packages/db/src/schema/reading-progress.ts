@@ -4,7 +4,7 @@ import {
   sqliteTable,
   text,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/sqlite-core"
 
 export const readingProgress = sqliteTable(
   "reading_progress",
@@ -15,5 +15,7 @@ export const readingProgress = sqliteTable(
     locatorJson: text("locator_json").notNull(),
     updatedAt: real("updated_at").notNull(),
   },
-  (t) => [uniqueIndex("idx_reading_progress_book_format").on(t.bookId, t.format)],
-);
+  (t) => [
+    uniqueIndex("idx_reading_progress_book_format").on(t.bookId, t.format),
+  ],
+)

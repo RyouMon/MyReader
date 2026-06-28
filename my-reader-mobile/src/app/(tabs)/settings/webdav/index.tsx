@@ -1,3 +1,3 @@
-import WebDavSourcesScreen from "@/src/features/webdav/webdav-sources-screen";
+import WebDavSourcesScreen from "@/src/features/webdav/webdav-sources-screen"
 
-export default WebDavSourcesScreen;
+export default WebDavSourcesScreen

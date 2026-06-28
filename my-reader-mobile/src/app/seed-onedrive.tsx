@@ -1,22 +1,22 @@
-import { router } from "expo-router";
-import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { router } from "expo-router"
+import { useEffect, useRef } from "react"
+import { View } from "react-native"
 
-import { useDataSourceActions } from "@/src/hooks/use-data-source-actions";
-import { useAppStoreReady } from "@/src/store/app-store";
+import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import { useAppStoreReady } from "@/src/store/app-store"
 
-const FIXTURE_ID = "seed-onedrive-fixture";
-const FIXTURE_NAME = "Test OneDrive";
+const FIXTURE_ID = "seed-onedrive-fixture"
+const FIXTURE_NAME = "Test OneDrive"
 
 export default function SeedOneDriveScreen() {
-  const { createDataSource } = useDataSourceActions();
-  const storeReady = useAppStoreReady();
-  const seeded = useRef(false);
+  const { createDataSource } = useDataSourceActions()
+  const storeReady = useAppStoreReady()
+  const seeded = useRef(false)
 
   useEffect(() => {
-    if (!storeReady || seeded.current) return;
-    seeded.current = true;
-    let cancelled = false;
+    if (!storeReady || seeded.current) return
+    seeded.current = true
+    let cancelled = false
 
     async function seedOneDrive() {
       await createDataSource(
@@ -32,23 +32,27 @@ export default function SeedOneDriveScreen() {
           hasRefreshToken: true,
           createdAt: Date.now(),
         },
-        { type: "onedrive", accessToken: "test-access-token", refreshToken: "test-refresh-token" },
-      );
+        {
+          type: "onedrive",
+          accessToken: "test-access-token",
+          refreshToken: "test-refresh-token",
+        },
+      )
     }
 
     seedOneDrive()
       .then(() => {
-        if (!cancelled) router.dismissTo("/home");
+        if (!cancelled) router.dismissTo("/home")
       })
       .catch((error) => {
-        console.error("[seed-onedrive] failed:", error);
-        if (!cancelled) router.dismissTo("/home");
-      });
+        console.error("[seed-onedrive] failed:", error)
+        if (!cancelled) router.dismissTo("/home")
+      })
 
     return () => {
-      cancelled = true;
-    };
-  }, [createDataSource, storeReady]);
+      cancelled = true
+    }
+  }, [createDataSource, storeReady])
 
-  return <View />;
+  return <View />
 }

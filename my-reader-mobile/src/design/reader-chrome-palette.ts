@@ -1,17 +1,22 @@
-import { argbFromHex, Hct, hexFromArgb, TonalPalette } from "@material/material-color-utilities";
-import chroma from "chroma-js";
+import {
+  argbFromHex,
+  Hct,
+  hexFromArgb,
+  TonalPalette,
+} from "@material/material-color-utilities"
+import chroma from "chroma-js"
 
 /** Minimum chroma for tonal palette to avoid grayish results. */
-const MIN_CHROMA = 12;
+const MIN_CHROMA = 12
 
 /** Compute underlay (press feedback) color for a given surface. */
 export function underlayFromSurface(surface: string, bg: string): string {
-  return mixInk(surface, bg, 12);
+  return mixInk(surface, bg, 12)
 }
 
 /** Mix ink into bg at given percentage (0–100). Returns hex string. */
 export function mixInk(ink: string, bg: string, inkPercent: number): string {
-  return chroma.mix(bg, ink, inkPercent / 100, "rgb").hex();
+  return chroma.mix(bg, ink, inkPercent / 100, "rgb").hex()
 }
 
 /**
@@ -21,54 +26,73 @@ export function mixInk(ink: string, bg: string, inkPercent: number): string {
  * Accent is derived from the bg hue (shifted +30°) for a complementary feel.
  */
 export function readerChromePalette(ink: string, bg: string) {
-  const bgHct = Hct.fromInt(argbFromHex(bg));
-  const inkHct = Hct.fromInt(argbFromHex(ink));
-  const isLight = bgHct.tone > 50;
+  const bgHct = Hct.fromInt(argbFromHex(bg))
+  const inkHct = Hct.fromInt(argbFromHex(ink))
+  const isLight = bgHct.tone > 50
 
   // Tonal palette: bg hue + max(bg, ink) chroma, floored at MIN_CHROMA
-  const chromaValue = Math.max(bgHct.chroma, inkHct.chroma, MIN_CHROMA);
-  const palette = TonalPalette.fromHueAndChroma(bgHct.hue, chromaValue);
+  const chromaValue = Math.max(bgHct.chroma, inkHct.chroma, MIN_CHROMA)
+  const palette = TonalPalette.fromHueAndChroma(bgHct.hue, chromaValue)
 
   // Accent: bg hue shifted +30°, high chroma, tone for ≥4.5:1 contrast against bg
-  const accentHue = (bgHct.hue + 30) % 360;
-  const accentPalette = TonalPalette.fromHueAndChroma(accentHue, Math.max(chromaValue, 40));
-  const accentTone = isLight ? 40 : 80;
-  const accent = hexFromArgb(accentPalette.tone(accentTone));
+  const accentHue = (bgHct.hue + 30) % 360
+  const accentPalette = TonalPalette.fromHueAndChroma(
+    accentHue,
+    Math.max(chromaValue, 40),
+  )
+  const accentTone = isLight ? 40 : 80
+  const accent = hexFromArgb(accentPalette.tone(accentTone))
 
   // Helper: get hex for a tone
-  const toneHex = (t: number) => hexFromArgb(palette.tone(t));
+  const toneHex = (t: number) => hexFromArgb(palette.tone(t))
 
   // actionSurface: step toward brighter until ≥3:1 contrast against bg
-  let actionTone = bgHct.tone;
+  let actionTone = bgHct.tone
   for (let t = bgHct.tone + 1; t <= 100; t += 1) {
-    if (chroma.contrast(bg, toneHex(t)) >= 3) { actionTone = t; break; }
+    if (chroma.contrast(bg, toneHex(t)) >= 3) {
+      actionTone = t
+      break
+    }
   }
-  actionTone = Math.min(100, actionTone + 8);
+  actionTone = Math.min(100, actionTone + 8)
 
   // progressFill: must contrast against both actionSurface and bg
   // For light bg: progressFill darker than actionSurface (step toward dark)
   // For dark bg: progressFill brighter than actionSurface (step toward bright)
-  let progressTone = actionTone;
-  const progressStep = isLight ? -1 : 1;
-  for (let t = actionTone + progressStep; isLight ? t >= 0 : t <= 100; t += progressStep) {
-    const c = toneHex(t);
-    if (chroma.contrast(toneHex(actionTone), c) >= 3 && chroma.contrast(bg, c) >= 3) { progressTone = t; break; }
+  let progressTone = actionTone
+  const progressStep = isLight ? -1 : 1
+  for (
+    let t = actionTone + progressStep;
+    isLight ? t >= 0 : t <= 100;
+    t += progressStep
+  ) {
+    const c = toneHex(t)
+    if (
+      chroma.contrast(toneHex(actionTone), c) >= 3 &&
+      chroma.contrast(bg, c) >= 3
+    ) {
+      progressTone = t
+      break
+    }
   }
   if (progressTone === actionTone) {
-    progressTone = Math.min(100, Math.max(0, actionTone + progressStep * 12));
+    progressTone = Math.min(100, Math.max(0, actionTone + progressStep * 12))
   }
 
-  const actionSurface = toneHex(actionTone);
+  const actionSurface = toneHex(actionTone)
 
   // actionText: text on actionSurface — must have ≥4.5:1 contrast against actionSurface
-  let actionText = ink;
+  let actionText = ink
   if (chroma.contrast(actionSurface, ink) < 4.5) {
     for (let t = inkHct.tone; t >= 0; t -= 1) {
-      if (chroma.contrast(actionSurface, toneHex(t)) >= 4.5) { actionText = toneHex(t); break; }
+      if (chroma.contrast(actionSurface, toneHex(t)) >= 4.5) {
+        actionText = toneHex(t)
+        break
+      }
     }
   }
 
-  const progressFill = toneHex(progressTone);
+  const progressFill = toneHex(progressTone)
 
   return {
     /** Reading background color */
@@ -109,7 +133,7 @@ export function readerChromePalette(ink: string, bg: string) {
     progressFill,
     /** Text on progressFill — uses actionSurface for contrast */
     progressText: actionSurface,
-  } as const;
+  } as const
 }
 
-export type ReaderChromePalette = ReturnType<typeof readerChromePalette>;
+export type ReaderChromePalette = ReturnType<typeof readerChromePalette>

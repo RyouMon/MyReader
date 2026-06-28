@@ -1,149 +1,156 @@
-import { Link, router, Stack, type RelativePathString } from "expo-router";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { Link, router, Stack, type RelativePathString } from "expo-router"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source";
-import { useThemePalette } from "@/src/design/tokens";
-import type { DataSource } from "@/src/domain/types";
-import { Text, View } from "@/tw";
+import { LOCAL_LIBRARY_DATA_SOURCE_NAME } from "@/src/constants/local-library-data-source"
+import { useThemePalette } from "@/src/design/tokens"
+import type { DataSource } from "@/src/domain/types"
+import { Text, View } from "@/tw"
 
-import { Screen, SectionCard, ListRow, SectionLabel } from "@/src/components";
-import { pickCalibreLibrary } from "@/src/domain/library/calibre";
-import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions";
-import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications";
-import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source";
-import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state";
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
-import { useAppStore } from "@/src/store/app-store";
+import { Screen, SectionCard, ListRow, SectionLabel } from "@/src/components"
+import { pickCalibreLibrary } from "@/src/domain/library/calibre"
+import { addLibraryFromPicker } from "@/src/domain/library/hooks/library-actions"
+import { notifyLibraryAdded } from "@/src/domain/notifications/library-notifications"
+import { useAddOneDriveDataSource } from "@/src/features/onedrive/hooks/use-add-onedrive-data-source"
+import { OneDriveAddingEmptyState } from "@/src/features/onedrive/onedrive-adding-empty-state"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
+import { useAppStore } from "@/src/store/app-store"
 
-const SETTINGS_FLOW_ADD_LIBRARY = "add-library";
+const SETTINGS_FLOW_ADD_LIBRARY = "add-library"
 
 function sourceBrowserPath(source: DataSource) {
-  const sharedParams = { currentPath: "/", from: SETTINGS_FLOW_ADD_LIBRARY };
+  const sharedParams = { currentPath: "/", from: SETTINGS_FLOW_ADD_LIBRARY }
   if (source.type === "onedrive") {
     return {
       pathname: "/settings/onedrive/browser" as RelativePathString,
       params: { dataSourceId: source.id, ...sharedParams },
-    };
+    }
   }
   return {
     pathname: "/settings/webdav/browser" as RelativePathString,
     params: { dataSourceId: source.id, ...sharedParams },
-  };
+  }
 }
 
 function dataSourceTypeLabel(t: (key: string) => string, source: DataSource) {
   if (source.type === "onedrive") {
-    return t("libraryDetail.typeOnedrive");
+    return t("libraryDetail.typeOnedrive")
   }
-  return t("libraryDetail.typeWebdav");
+  return t("libraryDetail.typeWebdav")
 }
 
 function dataSourceHelpText(source: DataSource) {
   if (source.type === "onedrive") {
-    return source.email ?? "";
+    return source.email ?? ""
   }
-  return `${source.endpoint}${source.rootPath ?? ""}`;
+  return `${source.endpoint}${source.rootPath ?? ""}`
 }
 
 export default function AddLibraryDataSourceScreen() {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
-  const dataSources = useAppStore((s) => s.dataSources);
-  const { addOneDriveDataSource, busy: addingOneDrive } = useAddOneDriveDataSource();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
+  const dataSources = useAppStore((s) => s.dataSources)
+  const { addOneDriveDataSource, busy: addingOneDrive } =
+    useAddOneDriveDataSource()
 
-  const showLocalLibraryOption = Platform.OS !== "android";
-  const hasExistingSources = showLocalLibraryOption || dataSources.length > 0;
+  const showLocalLibraryOption = Platform.OS !== "android"
+  const hasExistingSources = showLocalLibraryOption || dataSources.length > 0
 
   async function handleAddLocalLibrary() {
-    const picked = await pickCalibreLibrary();
-    const added = await addLibraryFromPicker(picked);
+    const picked = await pickCalibreLibrary()
+    const added = await addLibraryFromPicker(picked)
     if (added != null) {
-      router.dismissTo("/settings");
-      notifyLibraryAdded(added.name);
+      router.dismissTo("/settings")
+      notifyLibraryAdded(added.name)
     }
   }
 
   async function handleAddOneDrive() {
-    await addOneDriveDataSource();
+    await addOneDriveDataSource()
   }
 
   const { options, toolbar } = useScreenHeader({
     close: { target: "/settings", dismissTo: true, variant: "layout" },
-  });
+  })
 
   return (
     <>
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-      {addingOneDrive ? (
-        <OneDriveAddingEmptyState />
-      ) : (
-      <>
-      <View className="gap-3">
-        <SectionLabel>{t("addLibrary.existingSources")}</SectionLabel>
-        <SectionCard>
-          {showLocalLibraryOption && (
-            <ListRow
-              title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
-              onPress={() => {
-                void handleAddLocalLibrary();
-              }}
-              isLast={dataSources.length === 0}
-            />
-          )}
-          {dataSources.map((source, index) => (
-            <Link
-              key={source.id}
-              href={sourceBrowserPath(source)}
-              asChild
-            >
-              <ListRow
-                testID={`add-library-source-${source.id}`}
-                title={source.name}
-                detail={dataSourceHelpText(source)}
-                value={dataSourceTypeLabel(t, source)}
-                isLast={index === dataSources.length - 1}
-              />
-            </Link>
-          ))}
-          {!hasExistingSources && (
-            <View className="py-6 px-4 gap-2">
-              <Text
-                className="text-center text-base"
-                style={{ color: palette.text, fontWeight: "600" }}
-              >
-                {t("addLibrary.noSources.title")}
-              </Text>
-              <Text
-                className="text-center text-base"
-                style={{ color: palette.textMuted }}
-              >
-                {t("addLibrary.noSources.detail")}
-              </Text>
+        {addingOneDrive ? (
+          <OneDriveAddingEmptyState />
+        ) : (
+          <>
+            <View className="gap-3">
+              <SectionLabel>{t("addLibrary.existingSources")}</SectionLabel>
+              <SectionCard>
+                {showLocalLibraryOption && (
+                  <ListRow
+                    title={LOCAL_LIBRARY_DATA_SOURCE_NAME}
+                    onPress={() => {
+                      void handleAddLocalLibrary()
+                    }}
+                    isLast={dataSources.length === 0}
+                  />
+                )}
+                {dataSources.map((source, index) => (
+                  <Link
+                    key={source.id}
+                    href={sourceBrowserPath(source)}
+                    asChild
+                  >
+                    <ListRow
+                      testID={`add-library-source-${source.id}`}
+                      title={source.name}
+                      detail={dataSourceHelpText(source)}
+                      value={dataSourceTypeLabel(t, source)}
+                      isLast={index === dataSources.length - 1}
+                    />
+                  </Link>
+                ))}
+                {!hasExistingSources && (
+                  <View className="py-6 px-4 gap-2">
+                    <Text
+                      className="text-center text-base"
+                      style={{ color: palette.text, fontWeight: "600" }}
+                    >
+                      {t("addLibrary.noSources.title")}
+                    </Text>
+                    <Text
+                      className="text-center text-base"
+                      style={{ color: palette.textMuted }}
+                    >
+                      {t("addLibrary.noSources.detail")}
+                    </Text>
+                  </View>
+                )}
+              </SectionCard>
             </View>
-          )}
-        </SectionCard>
-      </View>
 
-      <View className="gap-3">
-        <SectionLabel>{t("addLibrary.addSources")}</SectionLabel>
-        <SectionCard>
-          <Link href={{ pathname: "/settings/webdav/add", params: { from: "add-library" } }} asChild>
-            <ListRow title="WebDAV" label={t("webdav.addSource")} />
-          </Link>
-          <ListRow
-            title="OneDrive"
-            label={t("onedrive.addSource")}
-            onPress={() => void handleAddOneDrive()}
-            isLast
-          />
-        </SectionCard>
-      </View>
-      </>
-      )}
-    </Screen>
-  </>
-  );
+            <View className="gap-3">
+              <SectionLabel>{t("addLibrary.addSources")}</SectionLabel>
+              <SectionCard>
+                <Link
+                  href={{
+                    pathname: "/settings/webdav/add",
+                    params: { from: "add-library" },
+                  }}
+                  asChild
+                >
+                  <ListRow title="WebDAV" label={t("webdav.addSource")} />
+                </Link>
+                <ListRow
+                  title="OneDrive"
+                  label={t("onedrive.addSource")}
+                  onPress={() => void handleAddOneDrive()}
+                  isLast
+                />
+              </SectionCard>
+            </View>
+          </>
+        )}
+      </Screen>
+    </>
+  )
 }

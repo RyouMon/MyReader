@@ -1,19 +1,19 @@
-import type { DataSource, Library } from "../types";
-import { SyncConnectivityError } from "../../errors";
-import i18n from "@/src/i18n";
-import { describeError } from "../../utils/common";
+import type { DataSource, Library } from "../types"
+import { SyncConnectivityError } from "../../errors"
+import i18n from "@/src/i18n"
+import { describeError } from "../../utils/common"
 
-import { checkConnectivity } from "./connectivity";
-import { skippedCalibre, syncCalibre } from "./calibre-sync";
-import { openSyncContext } from "./context";
-import { skippedMyreader, syncMyReader } from "./myreader-sync";
+import { checkConnectivity } from "./connectivity"
+import { skippedCalibre, syncCalibre } from "./calibre-sync"
+import { openSyncContext } from "./context"
+import { skippedMyreader, syncMyReader } from "./myreader-sync"
 import {
   DEFAULT_SYNC_POLICY,
   resolveSyncOptions,
   scopeHasCalibre,
   scopeHasMyreader,
-} from "./policy";
-import { isRemoteBackend } from "./resolve";
+} from "./policy"
+import { isRemoteBackend } from "./resolve"
 import type {
   LibrarySyncReport,
   ScheduledSyncTarget,
@@ -22,7 +22,7 @@ import type {
   SyncRunReport,
   SyncTrigger,
   SyncTriggerPolicy,
-} from "./types";
+} from "./types"
 
 function mergeOptions(
   trigger: SyncTrigger,
@@ -30,11 +30,16 @@ function mergeOptions(
   scheduledTarget: ScheduledSyncTarget | undefined,
   overrides?: Partial<SyncLibraryOptions>,
 ): SyncLibraryOptions {
-  const resolved = resolveSyncOptions(trigger, policy, scheduledTarget, overrides);
+  const resolved = resolveSyncOptions(
+    trigger,
+    policy,
+    scheduledTarget,
+    overrides,
+  )
   if (!resolved) {
-    return { scope: "all", throwOnFailure: false };
+    return { scope: "all", throwOnFailure: false }
   }
-  return resolved;
+  return resolved
 }
 
 function buildConnectivityFailureReport(
@@ -43,7 +48,7 @@ function buildConnectivityFailureReport(
   errorMessage: string,
   startedAt: number,
 ): LibrarySyncReport {
-  const mode = options.myreaderMode ?? "full";
+  const mode = options.myreaderMode ?? "full"
   return {
     libraryId: library.id,
     libraryName: library.name,
@@ -63,7 +68,7 @@ function buildConnectivityFailureReport(
       providers: {},
       error: errorMessage,
     },
-  };
+  }
 }
 
 /** 同步单个书库 — 所有业务路径的唯一 domain 入口。 */
@@ -72,15 +77,15 @@ export async function syncLibrary(
   dataSources: DataSource[],
   options: SyncLibraryOptions = {},
 ): Promise<LibrarySyncReport> {
-  const startedAt = Date.now();
-  const scope = options.scope ?? "all";
-  const throwOnFailure = options.throwOnFailure ?? false;
+  const startedAt = Date.now()
+  const scope = options.scope ?? "all"
+  const throwOnFailure = options.throwOnFailure ?? false
 
-  let ctx;
+  let ctx
   try {
-    ctx = await openSyncContext(library, dataSources);
+    ctx = await openSyncContext(library, dataSources)
   } catch (err) {
-    const message = describeError(err);
+    const message = describeError(err)
     const report: LibrarySyncReport = {
       libraryId: library.id,
       libraryName: library.name,
@@ -94,36 +99,41 @@ export async function syncLibrary(
         error: message,
       },
       myreader: skippedMyreader(options.myreaderMode),
-    };
-    if (throwOnFailure) throw err instanceof Error ? err : new Error(message);
-    return report;
+    }
+    if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
+    return report
   }
 
   if (isRemoteBackend(ctx.backend)) {
-    const connectivity = await checkConnectivity(ctx.backend);
+    const connectivity = await checkConnectivity(ctx.backend)
     if (!connectivity.reachable) {
-      const message = connectivity.error ?? i18n.t("sync.sourceUnreachable");
-      const report = buildConnectivityFailureReport(library, options, message, startedAt);
+      const message = connectivity.error ?? i18n.t("sync.sourceUnreachable")
+      const report = buildConnectivityFailureReport(
+        library,
+        options,
+        message,
+        startedAt,
+      )
       if (throwOnFailure) {
-        throw new SyncConnectivityError(message, report);
+        throw new SyncConnectivityError(message, report)
       }
-      return report;
+      return report
     }
   }
 
   let calibre = scopeHasCalibre(options)
     ? await syncCalibre(ctx, dataSources, options)
-    : skippedCalibre(library);
+    : skippedCalibre(library)
 
   let myreader = scopeHasMyreader(options)
     ? await syncMyReader(ctx, options)
-    : skippedMyreader(options.myreaderMode ?? "full");
+    : skippedMyreader(options.myreaderMode ?? "full")
 
   if (calibre.error && throwOnFailure) {
-    throw new Error(calibre.error);
+    throw new Error(calibre.error)
   }
   if (myreader.error && throwOnFailure) {
-    throw new Error(myreader.error);
+    throw new Error(myreader.error)
   }
 
   return {
@@ -132,7 +142,7 @@ export async function syncLibrary(
     calibre,
     myreader,
     durationMs: Date.now() - startedAt,
-  };
+  }
 }
 
 /** 同步多个书库 — SyncRuntime / scheduler 用。 */
@@ -143,7 +153,7 @@ export async function syncLibraries(
   scheduledTarget?: ScheduledSyncTarget,
   overrides?: Partial<SyncLibraryOptions>,
 ): Promise<SyncRunReport> {
-  const startedAt = Date.now();
+  const startedAt = Date.now()
 
   if (trigger === "startup" && !deps.syncOnStartup) {
     return {
@@ -153,7 +163,7 @@ export async function syncLibraries(
       durationMs: 0,
       results: [],
       aborted: true,
-    };
+    }
   }
 
   if (trigger === "scheduled" && !deps.enableAutoSync) {
@@ -164,11 +174,11 @@ export async function syncLibraries(
       durationMs: 0,
       results: [],
       aborted: true,
-    };
+    }
   }
 
-  const options = mergeOptions(trigger, policy, scheduledTarget, overrides);
-  const entry = resolveSyncOptions(trigger, policy, scheduledTarget);
+  const options = mergeOptions(trigger, policy, scheduledTarget, overrides)
+  const entry = resolveSyncOptions(trigger, policy, scheduledTarget)
   if (!entry) {
     return {
       trigger,
@@ -177,29 +187,33 @@ export async function syncLibraries(
       durationMs: 0,
       results: [],
       aborted: true,
-    };
+    }
   }
 
   const libraries =
     trigger === "scheduled" && scheduledTarget === "reading"
       ? deps.libraries.filter((library) => library.id === deps.activeLibraryId)
-      : deps.libraries;
+      : deps.libraries
 
-  const results: LibrarySyncReport[] = [];
+  const results: LibrarySyncReport[] = []
   for (const library of libraries) {
-    if (trigger === "scheduled" && scheduledTarget === "reading" && !deps.activeLibraryId) {
-      continue;
+    if (
+      trigger === "scheduled" &&
+      scheduledTarget === "reading" &&
+      !deps.activeLibraryId
+    ) {
+      continue
     }
-    const report = await syncLibrary(library, deps.dataSources, options);
-    results.push(report);
+    const report = await syncLibrary(library, deps.dataSources, options)
+    results.push(report)
   }
 
-  const finishedAt = Date.now();
+  const finishedAt = Date.now()
   return {
     trigger,
     startedAt,
     finishedAt,
     durationMs: finishedAt - startedAt,
     results,
-  };
+  }
 }

@@ -1,35 +1,38 @@
-import { useMemo } from "react";
+import { useMemo } from "react"
 
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import * as Haptics from "expo-haptics";
-import { Stack, router, useLocalSearchParams } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import * as Haptics from "expo-haptics"
+import { Stack, router, useLocalSearchParams } from "expo-router"
+import { SymbolView } from "expo-symbols"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar";
-import { useThemePalette } from "@/src/design/tokens";
-import { removeLibrary, switchActiveLibrary } from "@/src/domain/library/hooks/library-actions";
-import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications";
-import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library";
-import type { DataSource, Library } from "@/src/domain/types";
-import { isRemoteSourceType } from "@/src/domain/types";
-import { useAppStore } from "@/src/store/app-store";
-import { Text, View } from "@/tw";
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { useThemePalette } from "@/src/design/tokens"
+import {
+  removeLibrary,
+  switchActiveLibrary,
+} from "@/src/domain/library/hooks/library-actions"
+import { notifyLibraryRefresh } from "@/src/domain/notifications/download-notifications"
+import { useSyncLibrary } from "@/src/domain/sync/hooks/use-sync-library"
+import type { DataSource, Library } from "@/src/domain/types"
+import { isRemoteSourceType } from "@/src/domain/types"
+import { useAppStore } from "@/src/store/app-store"
+import { Text, View } from "@/tw"
 
-import { EmptyState, SectionCard, ListRow } from "@/src/components";
-import { Button, ButtonGroup } from "@/src/components/ui";
-import { Screen } from "@/src/components/ui/screen";
-import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header";
+import { EmptyState, SectionCard, ListRow } from "@/src/components"
+import { Button, ButtonGroup } from "@/src/components/ui"
+import { Screen } from "@/src/components/ui/screen"
+import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 
 function formatDate(timestamp?: number) {
   if (!timestamp) {
-    return "—";
+    return "—"
   }
 
-  const date = new Date(timestamp);
+  const date = new Date(timestamp)
   if (Number.isNaN(date.getTime())) {
-    return "—";
+    return "—"
   }
 
   return new Intl.DateTimeFormat("zh-CN", {
@@ -38,33 +41,48 @@ function formatDate(timestamp?: number) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
+  }).format(date)
 }
 
 function getSourceTypeLabel(t: (key: string) => string, library: Library) {
-  if (library.sourceType === "onedrive") return t("libraryDetail.typeOnedrive");
-  if (isRemoteSourceType(library.sourceType)) return t("libraryDetail.typeWebdav");
-  return t("libraryDetail.typeLocal");
+  if (library.sourceType === "onedrive") return t("libraryDetail.typeOnedrive")
+  if (isRemoteSourceType(library.sourceType))
+    return t("libraryDetail.typeWebdav")
+  return t("libraryDetail.typeLocal")
 }
 
 function getLibraryTypeLabel(t: (key: string) => string) {
-  return t("libraryDetail.calibreLibrary");
+  return t("libraryDetail.calibreLibrary")
 }
 
 function getSourcePathDetail(library: Library, dataSource?: DataSource | null) {
-  if (isRemoteSourceType(library.sourceType) && dataSource && dataSource.type === "webdav") {
-    return `${dataSource.endpoint}${library.sourcePath ?? (dataSource.rootPath ?? "")}`;
+  if (
+    isRemoteSourceType(library.sourceType) &&
+    dataSource &&
+    dataSource.type === "webdav"
+  ) {
+    return `${dataSource.endpoint}${library.sourcePath ?? dataSource.rootPath ?? ""}`
   }
 
   if (library.sourceType === "onedrive" && dataSource?.type === "onedrive") {
-    return library.sourcePath ?? (dataSource.rootPath ?? "");
+    return library.sourcePath ?? dataSource.rootPath ?? ""
   }
 
-  return library.path;
+  return library.path
 }
 
-function DetailHero({ library, accent, isActive, t }: { library: Library; accent: string; isActive: boolean; t: (key: string, options?: Record<string, unknown>) => string }) {
-  const palette = useThemePalette();
+function DetailHero({
+  library,
+  accent,
+  isActive,
+  t,
+}: {
+  library: Library
+  accent: string
+  isActive: boolean
+  t: (key: string, options?: Record<string, unknown>) => string
+}) {
+  const palette = useThemePalette()
 
   return (
     <View className="items-center gap-5 pb-1 pt-2">
@@ -83,7 +101,12 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
         <SymbolView
           accessibilityLabel={t("libraryDetail.libraryLabel")}
           fallback={
-            <MaterialIcons accessibilityLabel={t("libraryDetail.libraryLabel")} name="auto-stories" size={80} color={accent} />
+            <MaterialIcons
+              accessibilityLabel={t("libraryDetail.libraryLabel")}
+              name="auto-stories"
+              size={80}
+              color={accent}
+            />
           }
           name={{
             ios: "books.vertical.fill",
@@ -114,42 +137,43 @@ function DetailHero({ library, accent, isActive, t }: { library: Library; accent
         </Text>
       </View>
     </View>
-  );
+  )
 }
 
 export default function LibraryDetailScreen() {
-  const { t } = useTranslation();
-  const { libraryId } = useLocalSearchParams<{ libraryId?: string }>();
-  const palette = useThemePalette();
-  const libraries = useAppStore((state) => state.libraries);
-  const activeLibraryId = useAppStore((state) => state.activeLibraryId);
-  const dataSources = useAppStore((state) => state.dataSources);
-  const { syncNow, isSyncing } = useSyncLibrary();
+  const { t } = useTranslation()
+  const { libraryId } = useLocalSearchParams<{ libraryId?: string }>()
+  const palette = useThemePalette()
+  const libraries = useAppStore((state) => state.libraries)
+  const activeLibraryId = useAppStore((state) => state.activeLibraryId)
+  const dataSources = useAppStore((state) => state.dataSources)
+  const { syncNow, isSyncing } = useSyncLibrary()
 
   const libraryIndex = useMemo(
     () => libraries.findIndex((item) => item.id === libraryId),
-    [libraries, libraryId]
-  );
-  const library = libraryIndex >= 0 ? libraries[libraryIndex] ?? null : null;
+    [libraries, libraryId],
+  )
+  const library = libraryIndex >= 0 ? (libraries[libraryIndex] ?? null) : null
   const linkedDataSource = useMemo(
-    () => dataSources.find((source) => source.id === library?.dataSourceId) ?? null,
-    [dataSources, library?.dataSourceId]
-  );
-  const isActive = library?.id === activeLibraryId;
-  const accent = palette.primary;
+    () =>
+      dataSources.find((source) => source.id === library?.dataSourceId) ?? null,
+    [dataSources, library?.dataSourceId],
+  )
+  const isActive = library?.id === activeLibraryId
+  const accent = palette.primary
 
   function handleBack() {
     if (router.canGoBack()) {
-      router.back();
-      return;
+      router.back()
+      return
     }
 
-    router.replace("/settings");
+    router.replace("/settings")
   }
 
   function confirmDelete() {
     if (!library) {
-      return;
+      return
     }
 
     showAlertWithStatusBarRestore(
@@ -162,13 +186,13 @@ export default function LibraryDetailScreen() {
           style: "destructive",
           onPress: () => {
             void (async () => {
-              await removeLibrary(library.id);
-              handleBack();
-            })();
+              await removeLibrary(library.id)
+              handleBack()
+            })()
           },
         },
-      ]
-    );
+      ],
+    )
   }
 
   const { options, toolbar } = useScreenHeader({
@@ -185,7 +209,7 @@ export default function LibraryDetailScreen() {
           },
         ]
       : undefined,
-  });
+  })
 
   if (!library) {
     return (
@@ -200,7 +224,7 @@ export default function LibraryDetailScreen() {
           />
         </Screen>
       </>
-    );
+    )
   }
 
   return (
@@ -208,16 +232,24 @@ export default function LibraryDetailScreen() {
       <Stack.Screen options={options} />
       {toolbar}
       <Screen>
-        <View className="flex-1" style={{ backgroundColor: palette.background }}>
+        <View
+          className="flex-1"
+          style={{ backgroundColor: palette.background }}
+        >
           <View className="flex-1 gap-8">
-            <DetailHero library={library} accent={accent} isActive={Boolean(isActive)} t={t} />
+            <DetailHero
+              library={library}
+              accent={accent}
+              isActive={Boolean(isActive)}
+              t={t}
+            />
             <ButtonGroup>
               <Button
                 className="flex-1"
                 disabled={Boolean(isActive)}
                 onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  void switchActiveLibrary(library.id);
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  void switchActiveLibrary(library.id)
                 }}
                 title={t("libraryDetail.useLibrary")}
                 variant="primary"
@@ -226,30 +258,55 @@ export default function LibraryDetailScreen() {
                 className="flex-1"
                 disabled={isSyncing}
                 onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                   void (async () => {
                     try {
-                      await syncNow(library.id);
-                      notifyLibraryRefresh("done");
+                      await syncNow(library.id)
+                      notifyLibraryRefresh("done")
                     } catch (e) {
-                      notifyLibraryRefresh("error", e instanceof Error ? e.message : undefined);
+                      notifyLibraryRefresh(
+                        "error",
+                        e instanceof Error ? e.message : undefined,
+                      )
                     }
-                  })();
+                  })()
                 }}
-                title={isSyncing ? t("libraryDetail.refreshing") : t("libraryDetail.refresh")}
+                title={
+                  isSyncing
+                    ? t("libraryDetail.refreshing")
+                    : t("libraryDetail.refresh")
+                }
                 variant="secondary"
               />
             </ButtonGroup>
             <SectionCard>
-              <ListRow title={t("libraryDetail.libraryType")} detail={getLibraryTypeLabel(t)} />
-              <ListRow title={t("libraryDetail.sourceType")} detail={getSourceTypeLabel(t, library)} />
-              <ListRow title={t("libraryDetail.libraryPath")} detail={getSourcePathDetail(library, linkedDataSource)} />
-              <ListRow title={t("libraryDetail.bookCountLabel")} detail={t("libraryDetail.bookCount", { count: library.bookCount })} />
-              <ListRow title={t("libraryDetail.addedAt")} detail={formatDate(library.addedAt)} isLast />
+              <ListRow
+                title={t("libraryDetail.libraryType")}
+                detail={getLibraryTypeLabel(t)}
+              />
+              <ListRow
+                title={t("libraryDetail.sourceType")}
+                detail={getSourceTypeLabel(t, library)}
+              />
+              <ListRow
+                title={t("libraryDetail.libraryPath")}
+                detail={getSourcePathDetail(library, linkedDataSource)}
+              />
+              <ListRow
+                title={t("libraryDetail.bookCountLabel")}
+                detail={t("libraryDetail.bookCount", {
+                  count: library.bookCount,
+                })}
+              />
+              <ListRow
+                title={t("libraryDetail.addedAt")}
+                detail={formatDate(library.addedAt)}
+                isLast
+              />
             </SectionCard>
           </View>
-      </View>
-    </Screen>
-  </>
-  );
+        </View>
+      </Screen>
+    </>
+  )
 }

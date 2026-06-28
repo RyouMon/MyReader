@@ -1,4 +1,10 @@
-import { sqliteTable, integer, text, real, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  integer,
+  text,
+  real,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 
 export const fileState = sqliteTable(
   "file_state",
@@ -14,4 +20,4 @@ export const fileState = sqliteTable(
     updatedAt: real("updated_at").notNull().default(0),
   },
   (t) => [uniqueIndex("idx_file_state_path").on(t.path)],
-);
+)

@@ -1,11 +1,15 @@
-import { mixInk, type ReaderChromePalette, underlayFromSurface } from "@/src/design/reader-chrome-palette";
-import { Text, TouchableHighlight, View } from "@/tw";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import Slider from "@react-native-community/slider";
-import { useTranslation } from "react-i18next";
-import { StyleSheet } from "react-native";
+import {
+  mixInk,
+  type ReaderChromePalette,
+  underlayFromSurface,
+} from "@/src/design/reader-chrome-palette"
+import { Text, TouchableHighlight, View } from "@/tw"
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import Slider from "@react-native-community/slider"
+import { useTranslation } from "react-i18next"
+import { StyleSheet } from "react-native"
 
-import { READER_THEME_OPTIONS } from "./readerChromeConstants";
+import { READER_THEME_OPTIONS } from "./readerChromeConstants"
 
 /* ═══════════════════════════════════════
    Shared helpers
@@ -22,7 +26,7 @@ function SectionLabel({ label, color }: { label: string; color: string }) {
     >
       {label}
     </Text>
-  );
+  )
 }
 
 /* ═══════════════════════════════════════
@@ -34,17 +38,20 @@ export function ThemeSwatches({
   onChange,
   palette,
 }: {
-  value: string;
-  onChange: (key: string) => void;
-  palette: ReaderChromePalette;
+  value: string
+  onChange: (key: string) => void
+  palette: ReaderChromePalette
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
     <>
-      <SectionLabel label={t("reader.settingsTheme")} color={palette.textMuted} />
+      <SectionLabel
+        label={t("reader.settingsTheme")}
+        color={palette.textMuted}
+      />
       <View className="flex-row flex-wrap gap-2.5">
         {READER_THEME_OPTIONS.map((option) => {
-          const active = value === option.key;
+          const active = value === option.key
           return (
             <TouchableHighlight
               key={option.key}
@@ -61,7 +68,10 @@ export function ThemeSwatches({
                 active ? `, ${t("common.selected")}` : ""
               }`}
             >
-              <View style={StyleSheet.absoluteFill} className="items-center justify-center">
+              <View
+                style={StyleSheet.absoluteFill}
+                className="items-center justify-center"
+              >
                 <Text
                   className="text-base font-semibold"
                   style={{ color: option.fg }}
@@ -78,11 +88,11 @@ export function ThemeSwatches({
                 ) : null}
               </View>
             </TouchableHighlight>
-          );
+          )
         })}
       </View>
     </>
-  );
+  )
 }
 
 /* ═══════════════════════════════════════
@@ -96,26 +106,31 @@ export function SegmentPicker<T extends string>({
   onChange,
   palette,
 }: {
-  label?: string;
-  options: readonly { key: T; label: string }[];
-  value: T;
-  onChange: (key: T) => void;
-  palette: ReaderChromePalette;
+  label?: string
+  options: readonly { key: T; label: string }[]
+  value: T
+  onChange: (key: T) => void
+  palette: ReaderChromePalette
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
     <>
       {label ? <SectionLabel label={label} color={palette.textMuted} /> : null}
       <View className="flex-row gap-2.5">
         {options.map((opt) => {
-          const active = value === opt.key;
+          const active = value === opt.key
           return (
             <TouchableHighlight
               key={opt.key}
-              underlayColor={underlayFromSurface(active ? palette.segmentActive : palette.segmentIdle, palette.bg)}
+              underlayColor={underlayFromSurface(
+                active ? palette.segmentActive : palette.segmentIdle,
+                palette.bg,
+              )}
               className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
               style={{
-                backgroundColor: active ? palette.segmentActive : palette.segmentIdle,
+                backgroundColor: active
+                  ? palette.segmentActive
+                  : palette.segmentIdle,
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
@@ -127,16 +142,18 @@ export function SegmentPicker<T extends string>({
             >
               <Text
                 className="text-base font-semibold"
-                style={{ color: active ? palette.accentText : palette.textMuted }}
+                style={{
+                  color: active ? palette.accentText : palette.textMuted,
+                }}
               >
                 {opt.label}
               </Text>
             </TouchableHighlight>
-          );
+          )
         })}
       </View>
     </>
-  );
+  )
 }
 
 /* ═══════════════════════════════════════
@@ -147,31 +164,39 @@ const FONT_OPTIONS = [
   { key: "serif", label: "Serif" },
   { key: "sans", label: "Sans" },
   { key: "system", label: "系统" },
-] as const;
+] as const
 
 export function FontPicker({
   value,
   onChange,
   palette,
 }: {
-  value: string;
-  onChange: (key: string) => void;
-  palette: ReaderChromePalette;
+  value: string
+  onChange: (key: string) => void
+  palette: ReaderChromePalette
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   return (
     <>
-      <SectionLabel label={t("reader.font") ?? "字体"} color={palette.textMuted} />
+      <SectionLabel
+        label={t("reader.font") ?? "字体"}
+        color={palette.textMuted}
+      />
       <View className="flex-row gap-2.5">
         {FONT_OPTIONS.map((opt) => {
-          const active = value === opt.key;
+          const active = value === opt.key
           return (
             <TouchableHighlight
               key={opt.key}
-              underlayColor={underlayFromSurface(active ? palette.segmentActive : palette.segmentIdle, palette.bg)}
+              underlayColor={underlayFromSurface(
+                active ? palette.segmentActive : palette.segmentIdle,
+                palette.bg,
+              )}
               className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
               style={{
-                backgroundColor: active ? palette.segmentActive : palette.segmentIdle,
+                backgroundColor: active
+                  ? palette.segmentActive
+                  : palette.segmentIdle,
                 borderColor: active ? palette.border : "transparent",
               }}
               onPress={() => onChange(opt.key)}
@@ -183,16 +208,18 @@ export function FontPicker({
             >
               <Text
                 className="text-base font-semibold"
-                style={{ color: active ? palette.accentText : palette.textMuted }}
+                style={{
+                  color: active ? palette.accentText : palette.textMuted,
+                }}
               >
                 {opt.label}
               </Text>
             </TouchableHighlight>
-          );
+          )
         })}
       </View>
     </>
-  );
+  )
 }
 
 /* ═══════════════════════════════════════
@@ -209,14 +236,14 @@ export function SliderControl({
   formatValue,
   palette,
 }: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  formatValue: (v: number) => string;
-  palette: ReaderChromePalette;
+  label: string
+  value: number
+  onChange: (v: number) => void
+  min: number
+  max: number
+  step: number
+  formatValue: (v: number) => string
+  palette: ReaderChromePalette
 }) {
   return (
     <>
@@ -241,11 +268,14 @@ export function SliderControl({
           thumbTintColor={palette.accent}
         />
         <View className="min-w-[52px] items-end">
-          <Text className="text-base font-semibold" style={{ color: palette.text }}>
+          <Text
+            className="text-base font-semibold"
+            style={{ color: palette.text }}
+          >
             {formatValue(value)}
           </Text>
         </View>
       </View>
     </>
-  );
+  )
 }

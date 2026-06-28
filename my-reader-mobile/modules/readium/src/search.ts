@@ -1,9 +1,9 @@
-import { ReadiumModule } from './ReadiumModule';
+import { ReadiumModule } from "./ReadiumModule"
 import type {
   SearchOptions,
   SearchSession,
   SearchLocatorCollection,
-} from './types';
+} from "./types"
 
 /**
  * Full-text search (REP-007) — interface reserved in Phase 1, full
@@ -13,14 +13,14 @@ import type {
 export function search(
   publicationId: string,
   query: string,
-  options?: SearchOptions
+  options?: SearchOptions,
 ): Promise<SearchSession> {
-  return ReadiumModule.search(publicationId, query, options);
+  return ReadiumModule.search(publicationId, query, options)
 }
 
 /** Fetch the next page of results; resolves null at end of publication. */
 export function next(
-  sessionId: string
+  sessionId: string,
 ): Promise<SearchLocatorCollection | null> {
-  return ReadiumModule.searchNext(sessionId);
+  return ReadiumModule.searchNext(sessionId)
 }

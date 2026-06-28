@@ -1,7 +1,7 @@
-export { BookCard } from "./book-card";
-export type { BookDownloadStatus } from "./book-cover";
-export { BookRow } from "./book-row";
-export { HorizontalBookShelf } from "./horizontal-book-shelf";
-export { LibrarySkeletonContent } from "./library-skeleton";
-export { BookDetailContent } from "./book-detail";
-export { getDetailColors } from "./book-detail";
+export { BookCard } from "./book-card"
+export type { BookDownloadStatus } from "./book-cover"
+export { BookRow } from "./book-row"
+export { HorizontalBookShelf } from "./horizontal-book-shelf"
+export { LibrarySkeletonContent } from "./library-skeleton"
+export { BookDetailContent } from "./book-detail"
+export { getDetailColors } from "./book-detail"

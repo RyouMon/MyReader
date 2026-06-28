@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core"
 
 export const data = sqliteTable(
   "data",
@@ -9,7 +9,5 @@ export const data = sqliteTable(
     uncompressedSize: integer("uncompressed_size").notNull(),
     name: text("name").notNull(),
   },
-  (table) => [
-    index("data_book").on(table.book),
-  ],
-);
+  (table) => [index("data_book").on(table.book)],
+)

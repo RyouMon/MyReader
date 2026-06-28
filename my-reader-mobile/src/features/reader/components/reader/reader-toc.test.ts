@@ -1,6 +1,6 @@
-import i18n from "@/src/i18n";
+import i18n from "@/src/i18n"
 
-import { flattenFixedToc, flattenReflowToc } from "./reader-toc";
+import { flattenFixedToc, flattenReflowToc } from "./reader-toc"
 
 describe("flattenFixedToc", () => {
   test("flattens source toc recursively", () => {
@@ -19,8 +19,8 @@ describe("flattenFixedToc", () => {
           ],
         },
       ],
-      0
-    );
+      0,
+    )
 
     expect(result).toEqual([
       {
@@ -37,11 +37,11 @@ describe("flattenFixedToc", () => {
         chapterIndex: 1,
         href: "#b",
       },
-    ]);
-  });
+    ])
+  })
 
   test("uses fallback pages when no toc and page count <= 20", () => {
-    const result = flattenFixedToc([], 2);
+    const result = flattenFixedToc([], 2)
 
     expect(result).toEqual([
       {
@@ -56,13 +56,13 @@ describe("flattenFixedToc", () => {
         pageIndex: 1,
         chapterIndex: 1,
       },
-    ]);
-  });
+    ])
+  })
 
   test("returns empty array when no toc and page count > 20", () => {
-    expect(flattenFixedToc([], 21)).toEqual([]);
-  });
-});
+    expect(flattenFixedToc([], 21)).toEqual([])
+  })
+})
 
 describe("flattenReflowToc", () => {
   test("flattens and clamps invalid chapter index", () => {
@@ -72,7 +72,7 @@ describe("flattenReflowToc", () => {
         href: "",
         index: -1,
       },
-    ]);
+    ])
 
     expect(result).toEqual([
       {
@@ -82,6 +82,6 @@ describe("flattenReflowToc", () => {
         chapterIndex: 0,
         href: undefined,
       },
-    ]);
-  });
-});
+    ])
+  })
+})

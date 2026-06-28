@@ -3,21 +3,25 @@ import {
   Host,
   Icon,
   IconButton,
-} from "@expo/ui/jetpack-compose";
-import { size } from "@expo/ui/jetpack-compose/modifiers";
-import { Pressable, type ColorValue, type ImageSourcePropType } from "react-native";
+} from "@expo/ui/jetpack-compose"
+import { size } from "@expo/ui/jetpack-compose/modifiers"
+import {
+  Pressable,
+  type ColorValue,
+  type ImageSourcePropType,
+} from "react-native"
 
-import { useTheme } from "@/src/design/tokens";
+import { useTheme } from "@/src/design/tokens"
 
 type AndroidHeaderIconButtonProps = {
-  icon: ImageSourcePropType;
-  accessibilityLabel: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  color?: ColorValue;
-  testID?: string;
-};
+  icon: ImageSourcePropType
+  accessibilityLabel: string
+  onPress: () => void
+  disabled?: boolean
+  loading?: boolean
+  color?: ColorValue
+  testID?: string
+}
 
 /** Shared Material icon button for Android stack header actions. */
 export function AndroidHeaderIconButton({
@@ -29,10 +33,10 @@ export function AndroidHeaderIconButton({
   color,
   testID,
 }: AndroidHeaderIconButtonProps) {
-  const { palette, colorScheme } = useTheme();
-  const isDark = colorScheme === "dark";
-  const enabled = !disabled && !loading;
-  const contentColor = color ?? palette.text;
+  const { palette, colorScheme } = useTheme()
+  const isDark = colorScheme === "dark"
+  const enabled = !disabled && !loading
+  const contentColor = color ?? palette.text
 
   return (
     <Pressable
@@ -64,10 +68,14 @@ export function AndroidHeaderIconButton({
               strokeWidth={2}
             />
           ) : (
-            <Icon source={icon} size={24} contentDescription={accessibilityLabel} />
+            <Icon
+              source={icon}
+              size={24}
+              contentDescription={accessibilityLabel}
+            />
           )}
         </IconButton>
       </Host>
     </Pressable>
-  );
+  )
 }

@@ -1,3 +1,3 @@
-import OneDriveBrowserScreen from "@/src/features/onedrive/onedrive-browser-screen";
+import OneDriveBrowserScreen from "@/src/features/onedrive/onedrive-browser-screen"
 
-export default OneDriveBrowserScreen;
+export default OneDriveBrowserScreen

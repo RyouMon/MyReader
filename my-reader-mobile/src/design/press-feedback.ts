@@ -1,7 +1,7 @@
-import chroma from "chroma-js";
+import chroma from "chroma-js"
 
-import { mixInk } from "@/src/design/reader-chrome-palette";
-import type { ThemePalette } from "@/src/design/tokens";
+import { mixInk } from "@/src/design/reader-chrome-palette"
+import type { ThemePalette } from "@/src/design/tokens"
 
 /**
  * Background color shown while a row/card is pressed on iOS.
@@ -12,10 +12,10 @@ export function pressedBackgroundColor(
   palette: ThemePalette,
 ): string {
   if (colorScheme === "light") {
-    return mixInk(palette.text, palette.surface, 12);
+    return mixInk(palette.text, palette.surface, 12)
   }
 
-  return chroma(palette.surface).brighten(0.5).hex();
+  return chroma(palette.surface).brighten(0.5).hex()
 }
 
 /**
@@ -27,8 +27,8 @@ export function androidRippleColor(
   palette: ThemePalette,
 ): string {
   if (colorScheme === "light") {
-    return chroma(palette.text).alpha(0.14).css();
+    return chroma(palette.text).alpha(0.14).css()
   }
 
-  return chroma(palette.text).alpha(0.2).css();
+  return chroma(palette.text).alpha(0.2).css()
 }

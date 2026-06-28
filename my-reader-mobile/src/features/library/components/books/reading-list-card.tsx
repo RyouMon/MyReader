@@ -1,36 +1,36 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react"
 
-import { MenuView, type MenuAction } from "@react-native-menu/menu";
-import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { MenuView, type MenuAction } from "@react-native-menu/menu"
+import { useTranslation } from "react-i18next"
+import { Platform } from "react-native"
 
-import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon";
-import { useThemePalette } from "@/src/design/tokens";
-import { ICON_SIZE } from "@/src/design/icon-sizes";
-import type { BookItem } from "@/src/domain/types";
-import { Pressable, Text, TouchableHighlight, View } from "@/tw";
-import { buildBookMenuActions } from "../../utils/book-menu";
-import { BookCover, type BookDownloadStatus } from "./book-cover";
+import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
+import { useThemePalette } from "@/src/design/tokens"
+import { ICON_SIZE } from "@/src/design/icon-sizes"
+import type { BookItem } from "@/src/domain/types"
+import { Pressable, Text, TouchableHighlight, View } from "@/tw"
+import { buildBookMenuActions } from "../../utils/book-menu"
+import { BookCover, type BookDownloadStatus } from "./book-cover"
 
-const COVER_HEIGHT = 100;
-const COVER_ASPECT_RATIO = 2 / 3;
-const COVER_WIDTH = Math.round(COVER_HEIGHT * COVER_ASPECT_RATIO);
-const COVER_BORDER_RADIUS = 8;
+const COVER_HEIGHT = 100
+const COVER_ASPECT_RATIO = 2 / 3
+const COVER_WIDTH = Math.round(COVER_HEIGHT * COVER_ASPECT_RATIO)
+const COVER_BORDER_RADIUS = 8
 
 export type ReadingListCardProps = {
-  book: BookItem;
-  width: number;
-  progress: number;
-  downloadStatus?: BookDownloadStatus;
-  menuIsRemote?: boolean;
-  menuFormats?: string[];
-  menuSelectedFormat?: string;
-  onPress?: (bookId: string) => void;
-  onMenuAction?: (bookId: string, actionId: string) => void;
-  onMenuOpen?: (bookId: string) => void;
-  onMenuClose?: () => void;
-  isAnyMenuOpen?: boolean;
-};
+  book: BookItem
+  width: number
+  progress: number
+  downloadStatus?: BookDownloadStatus
+  menuIsRemote?: boolean
+  menuFormats?: string[]
+  menuSelectedFormat?: string
+  onPress?: (bookId: string) => void
+  onMenuAction?: (bookId: string, actionId: string) => void
+  onMenuOpen?: (bookId: string) => void
+  onMenuClose?: () => void
+  isAnyMenuOpen?: boolean
+}
 
 function ReadingListCardImpl({
   book,
@@ -46,35 +46,36 @@ function ReadingListCardImpl({
   onMenuClose,
   isAnyMenuOpen,
 }: ReadingListCardProps) {
-  const { t } = useTranslation();
-  const palette = useThemePalette();
+  const { t } = useTranslation()
+  const palette = useThemePalette()
 
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (menuIsRemote === undefined) return undefined;
+    if (menuIsRemote === undefined) return undefined
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote,
       formats: menuFormats,
       selectedFormat: menuSelectedFormat,
-    });
-  }, [downloadStatus, menuIsRemote, menuFormats, menuSelectedFormat]);
+    })
+  }, [downloadStatus, menuIsRemote, menuFormats, menuSelectedFormat])
 
-  const hasMenu = computedMenuActions && computedMenuActions.length > 0 && onMenuAction;
+  const hasMenu =
+    computedMenuActions && computedMenuActions.length > 0 && onMenuAction
 
   const handlePress = useCallback(() => {
-    if (isAnyMenuOpen || !onPress) return;
-    onPress(book.id);
-  }, [book.id, isAnyMenuOpen, onPress]);
+    if (isAnyMenuOpen || !onPress) return
+    onPress(book.id)
+  }, [book.id, isAnyMenuOpen, onPress])
 
   const handleMenuOpenLocal = useCallback(() => {
-    onMenuOpen?.(book.id);
-  }, [book.id, onMenuOpen]);
+    onMenuOpen?.(book.id)
+  }, [book.id, onMenuOpen])
 
   const handleMenuPressAction = useCallback(
     ({ nativeEvent }: { nativeEvent: { event: string } }) => {
-      onMenuAction?.(book.id, nativeEvent.event);
+      onMenuAction?.(book.id, nativeEvent.event)
     },
     [book.id, onMenuAction],
-  );
+  )
 
   const menuTrigger = (
     <View
@@ -84,7 +85,7 @@ function ReadingListCardImpl({
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
-  );
+  )
 
   return (
     <TouchableHighlight
@@ -110,10 +111,18 @@ function ReadingListCardImpl({
           showTitle={false}
         />
         <View className="min-w-0 flex-1 justify-center gap-1">
-          <Text className="text-base font-bold" style={{ color: palette.text }} numberOfLines={1}>
+          <Text
+            className="text-base font-bold"
+            style={{ color: palette.text }}
+            numberOfLines={1}
+          >
             {book.title}
           </Text>
-          <Text className="text-sm" style={{ color: palette.textMuted }} numberOfLines={1}>
+          <Text
+            className="text-sm"
+            style={{ color: palette.textMuted }}
+            numberOfLines={1}
+          >
             {book.author}
           </Text>
           <Text
@@ -138,7 +147,9 @@ function ReadingListCardImpl({
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
+            accessibilityLabel={t("bookDetail.moreActions", {
+              title: book.title,
+            })}
             className="h-8 w-8 items-center justify-center"
           >
             <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
@@ -146,10 +157,10 @@ function ReadingListCardImpl({
         )}
       </View>
     </TouchableHighlight>
-  );
+  )
 }
 
 /**
  * Compact horizontal reading card: cover + title/author/progress + more menu.
  */
-export const ReadingListCard = memo(ReadingListCardImpl);
+export const ReadingListCard = memo(ReadingListCardImpl)
