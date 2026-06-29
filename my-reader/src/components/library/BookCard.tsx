@@ -1,11 +1,14 @@
-import { BookOpen, Ellipsis } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
 import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
+import { BookDownloadIndicator } from "./BookDownloadIndicator"
+import { BookMoreMenu } from "./BookMoreMenu"
 
 interface BookCardProps {
   book: CalibreBook
@@ -13,6 +16,8 @@ interface BookCardProps {
   onRead?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
+  fileActionsEnabled?: boolean
+  selectedFormat?: string
 }
 
 function useReadLabel(progress?: BookProgressSnapshot) {
@@ -33,14 +38,21 @@ const BookCard = memo(function BookCard({
   book,
   libraryId,
   onRead,
-  onMore,
   progress,
+  fileActionsEnabled = true,
+  selectedFormat,
 }: BookCardProps) {
   const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
   const primaryFormat = book.formats[0] ?? ""
   const readLabel = useReadLabel(progress)
   const showProgressBadge = typeof progress?.percent === "number"
+  const downloadState = useBookDownloadState(
+    libraryId,
+    book.id,
+    book.formats,
+    selectedFormat,
+  )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" && event.key !== " ") {
@@ -84,20 +96,13 @@ const BookCard = memo(function BookCard({
             >
               <BookOpen className="size-4" />
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon-sm"
-              title={t("bookCard.moreActions")}
-              aria-label={t("bookCard.moreActions")}
-              className="size-9 rounded-full border border-ink-inverse/35 bg-ink-inverse/20 text-ink-inverse backdrop-blur-sm hover:bg-ink-inverse/30"
-              onClick={(event) => {
-                event.stopPropagation()
-                onMore?.(book)
-              }}
-            >
-              <Ellipsis className="size-4" />
-            </Button>
+            <BookMoreMenu
+              book={book}
+              libraryId={libraryId}
+              fileActionsEnabled={fileActionsEnabled}
+              selectedFormat={selectedFormat}
+              triggerVariant="card"
+            />
           </div>
         </div>
         {primaryFormat ? (
@@ -119,9 +124,12 @@ const BookCard = memo(function BookCard({
         >
           {book.title}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {displayAuthor}
-        </p>
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+          <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            {displayAuthor}
+          </p>
+          <BookDownloadIndicator state={downloadState} variant="icon" />
+        </div>
         {showProgressBadge ? (
           <div className="mt-1 flex items-center gap-1.5">
             <Badge

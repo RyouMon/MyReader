@@ -75,6 +75,44 @@ async fn check_book_file_state_should_report_present_when_local_library_has_book
 }
 
 #[tokio::test]
+async fn check_book_file_state_should_report_downloading_when_remote_file_is_active() {
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-remote".into(),
+            name: "Remote".into(),
+            path: "/remote/library".into(),
+            source_type: Some("webdav".into()),
+            data_source_id: Some("ds-a".into()),
+            source_path: Some("/books".into()),
+        }],
+        active_library_id: Some("lib-remote".into()),
+        ..Default::default()
+    });
+    let root = app.app_data_dir().join("libraries").join("lib-remote");
+    tokio::fs::create_dir_all(&root)
+        .await
+        .expect("create remote library container");
+    let seeded = seed_minimal_calibre_library(&root).await;
+    tokio::fs::remove_file(&seeded.file_path)
+        .await
+        .expect("remote cache file should be absent");
+
+    let service = app.app.state::<DownloadService>();
+    let _rx = service
+        .start("lib-remote", seeded.book_id, &seeded.format)
+        .expect("download should be active");
+
+    let dto: Value = invoke_ok(
+        &app,
+        "check_book_file_state",
+        json!({ "libraryId": "lib-remote", "bookId": seeded.book_id, "format": seeded.format }),
+    );
+
+    assert_eq!(dto["localState"], json!("downloading"));
+    service.finish("lib-remote", seeded.book_id, &seeded.format);
+}
+
+#[tokio::test]
 async fn delete_local_book_file_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::new();
 
@@ -88,8 +126,87 @@ async fn delete_local_book_file_should_return_not_found_when_library_id_is_unkno
 }
 
 #[tokio::test]
+async fn delete_local_book_file_should_reject_local_library() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let seeded = seed_minimal_calibre_library(dir.path()).await;
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-local".into(),
+            name: "Local".into(),
+            path: dir.path().to_string_lossy().to_string(),
+            source_type: Some("local".into()),
+            data_source_id: None,
+            source_path: None,
+        }],
+        active_library_id: Some("lib-local".into()),
+        ..Default::default()
+    });
+
+    let err = invoke_err(
+        &app,
+        "delete_local_book_file",
+        json!({ "libraryId": "lib-local", "bookId": seeded.book_id, "format": seeded.format }),
+    );
+
+    assert!(err.is_kind("Config"), "kind was {}", err.kind);
+    assert!(
+        err.message
+            .contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"),
+        "message was {}",
+        err.message
+    );
+    assert!(
+        seeded.file_path.exists(),
+        "local Calibre source file must not be deleted"
+    );
+}
+
+#[tokio::test]
+async fn download_book_file_should_reject_local_library() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let seeded = seed_minimal_calibre_library(dir.path()).await;
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-local".into(),
+            name: "Local".into(),
+            path: dir.path().to_string_lossy().to_string(),
+            source_type: Some("local".into()),
+            data_source_id: None,
+            source_path: None,
+        }],
+        active_library_id: Some("lib-local".into()),
+        ..Default::default()
+    });
+
+    let err = invoke_err(
+        &app,
+        "download_book_file",
+        json!({ "libraryId": "lib-local", "bookId": seeded.book_id, "format": seeded.format }),
+    );
+
+    assert!(err.is_kind("Config"), "kind was {}", err.kind);
+    assert!(
+        err.message
+            .contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"),
+        "message was {}",
+        err.message
+    );
+}
+
+#[tokio::test]
 async fn cancel_book_download_should_return_true_when_no_download_is_in_flight() {
-    let app = TestApp::new();
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-a".into(),
+            name: "Remote".into(),
+            path: "/app-data/libraries/lib-a".into(),
+            source_type: Some("webdav".into()),
+            data_source_id: Some("ds-a".into()),
+            source_path: Some("/books".into()),
+        }],
+        active_library_id: Some("lib-a".into()),
+        ..Default::default()
+    });
 
     // No download was ever started. Cancel must still return `true` to record a
     // pending cancellation — otherwise the next `download_book_file` call would
@@ -113,7 +230,18 @@ async fn cancel_then_start_should_signal_receiver_before_download_runs() {
     // close the window before the spawned download task has had a chance to register
     // itself with `DownloadService::start`. The pre-start cancel must be recorded
     // and replayed into the next `start()` call.
-    let app = TestApp::new();
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-a".into(),
+            name: "Remote".into(),
+            path: "/app-data/libraries/lib-a".into(),
+            source_type: Some("webdav".into()),
+            data_source_id: Some("ds-a".into()),
+            source_path: Some("/books".into()),
+        }],
+        active_library_id: Some("lib-a".into()),
+        ..Default::default()
+    });
 
     let _: bool = invoke_ok(
         &app,
@@ -135,4 +263,34 @@ async fn cancel_then_start_should_signal_receiver_before_download_runs() {
 
     // Clean up so the global download key isn't held by a borrowed receiver.
     service.finish("lib-a", 42, "EPUB");
+}
+
+#[tokio::test]
+async fn cancel_book_download_should_reject_local_library() {
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-local".into(),
+            name: "Local".into(),
+            path: "/books".into(),
+            source_type: Some("local".into()),
+            data_source_id: None,
+            source_path: None,
+        }],
+        active_library_id: Some("lib-local".into()),
+        ..Default::default()
+    });
+
+    let err = invoke_err(
+        &app,
+        "cancel_book_download",
+        json!({ "libraryId": "lib-local", "bookId": 1, "format": "EPUB" }),
+    );
+
+    assert!(err.is_kind("Config"), "kind was {}", err.kind);
+    assert!(
+        err.message
+            .contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"),
+        "message was {}",
+        err.message
+    );
 }

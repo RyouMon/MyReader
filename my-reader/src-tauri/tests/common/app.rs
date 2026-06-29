@@ -24,6 +24,7 @@ use tauri::test::{mock_builder, mock_context, noop_assets, MockRuntime};
 use tauri::{App, Manager};
 use tokio::sync::RwLock;
 
+use my_reader_lib::commands::book_reading_format as reading_format_commands;
 use my_reader_lib::commands::AppState;
 use my_reader_lib::models::AppConfig;
 use my_reader_lib::services::download_service::DownloadService;
@@ -88,6 +89,8 @@ impl TestApp {
                 my_reader_lib::commands::book::get_books_page::<MockRuntime>,
                 my_reader_lib::commands::book::get_book_detail::<MockRuntime>,
                 my_reader_lib::commands::book::get_series_books::<MockRuntime>,
+                reading_format_commands::list_book_reading_formats::<MockRuntime>,
+                reading_format_commands::set_book_reading_format::<MockRuntime>,
                 my_reader_lib::commands::favorite::list_favorite_book_ids::<MockRuntime>,
                 my_reader_lib::commands::favorite::add_favorite_book::<MockRuntime>,
                 my_reader_lib::commands::favorite::remove_favorite_book::<MockRuntime>,
@@ -105,7 +108,7 @@ impl TestApp {
                 my_reader_lib::commands::download::check_book_file_state::<MockRuntime>,
                 my_reader_lib::commands::download::download_book_file::<MockRuntime>,
                 my_reader_lib::commands::download::delete_local_book_file::<MockRuntime>,
-                my_reader_lib::commands::download::cancel_book_download,
+                my_reader_lib::commands::download::cancel_book_download::<MockRuntime>,
             ]);
 
         let app = mock_builder()

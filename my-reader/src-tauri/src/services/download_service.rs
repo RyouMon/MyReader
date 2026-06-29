@@ -53,6 +53,9 @@ fn emit_download_progress<R: Runtime>(
         total_bytes: total_bytes.map(|v| v as i64),
         error,
     };
+    if let Err(e) = app.emit("download_progress", payload.clone()) {
+        debug!("Failed to emit global download progress event. error: {e}");
+    }
     if let Err(e) = app.emit(&event_name, payload) {
         debug!("Failed to emit download progress event. event: \"{event_name}\", error: {e}");
     }
@@ -113,6 +116,7 @@ impl DownloadService {
         format: &str,
     ) -> Result<String, AppError> {
         let fmt = format.to_uppercase();
+        Self::resolve_remote_library(config, library_id)?;
 
         let cancel_rx = match self.start(library_id, book_id, &fmt) {
             Some(rx) => rx,
@@ -124,6 +128,8 @@ impl DownloadService {
                 return Ok(String::new());
             }
         };
+
+        emit_download_progress(app, library_id, book_id, &fmt, "starting", 0, None, None);
 
         let app_clone = app.clone();
         let app_data_dir = app_data_dir.to_path_buf();
@@ -241,6 +247,67 @@ impl Default for DownloadService {
 }
 
 impl DownloadService {
+    /// Check file state and overlay any currently active in-memory download.
+    pub async fn check_file_state_with_active_download(
+        &self,
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Result<FileStateDto, AppError> {
+        let fmt = Self::normalize_format(format);
+        let mut dto =
+            Self::check_file_state(app_data_dir, config, library_id, book_id, &fmt).await?;
+        if dto.local_state != "present" && self.is_active(library_id, book_id, &fmt) {
+            dto.local_state = "downloading".into();
+        }
+        Ok(dto)
+    }
+
+    /// Cancel a remote library download and broadcast the terminal state.
+    pub fn cancel_book_download<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        config: &AppConfig,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Result<bool, AppError> {
+        let fmt = Self::normalize_format(format);
+        Self::resolve_remote_library(config, library_id)?;
+        let cancelled = self.cancel(library_id, book_id, &fmt);
+        if cancelled {
+            Self::emit_download_status(app, library_id, book_id, &fmt, "cancelled");
+        }
+        Ok(cancelled)
+    }
+
+    /// Delete a remote library's local cached file and broadcast the remote-only state.
+    pub async fn delete_local_book_file<R: Runtime>(
+        app: &AppHandle<R>,
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Result<(), AppError> {
+        let fmt = Self::normalize_format(format);
+        Self::delete_local_file(app_data_dir, config, library_id, book_id, &fmt).await?;
+        Self::emit_download_status(app, library_id, book_id, &fmt, "remote_only");
+        Ok(())
+    }
+
+    pub fn emit_download_status<R: Runtime>(
+        app: &AppHandle<R>,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+        status: &str,
+    ) {
+        emit_download_progress(app, library_id, book_id, format, status, 0, None, None);
+    }
+
     /// Emit a download error event to the frontend.
     pub fn emit_download_error<R: Runtime>(
         app: &AppHandle<R>,
@@ -272,6 +339,20 @@ impl DownloadService {
     /// Normalize a book format string to uppercase.
     fn normalize_format(format: &str) -> String {
         format.to_uppercase()
+    }
+
+    /// Resolve a library and reject file mutations against original local Calibre files.
+    fn resolve_remote_library(
+        config: &AppConfig,
+        library_id: &str,
+    ) -> Result<LibraryConfig, AppError> {
+        let lib = LibraryService::resolve_library(Some(library_id), config)?;
+        if !lib.is_remote() {
+            return Err(AppError::Config(
+                "LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED".into(),
+            ));
+        }
+        Ok(lib)
     }
 
     /// Resolve the absolute local path for a specific book format.
@@ -332,13 +413,21 @@ impl DownloadService {
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
         let row = SqliteFileStateRepository::get_by_path(&db, &relative_path).await?;
 
-        let present = Self::is_book_file_present(&file_path).await;
+        let present = Self::is_book_file_present(&file_path).await
+            && (!lib.is_remote()
+                || row
+                    .as_ref()
+                    .is_some_and(|r| r.local_state.as_str() == "present"));
         let local_state = if present { "present" } else { "remote_only" };
 
         Ok(FileStateDto {
             path: relative_path,
             local_state: local_state.to_string(),
-            local_size: row.and_then(|r| r.local_size),
+            local_size: if present {
+                row.and_then(|r| r.local_size)
+            } else {
+                None
+            },
         })
     }
 
@@ -351,7 +440,7 @@ impl DownloadService {
         format: &str,
     ) -> Result<(), AppError> {
         let format = Self::normalize_format(format);
-        let lib = LibraryService::resolve_library(Some(library_id), config)?;
+        let lib = Self::resolve_remote_library(config, library_id)?;
         let lib_root = library_root_path(&lib, app_data_dir);
         let file_path = Self::resolve_book_file_path(app_data_dir, &lib, book_id, &format).await?;
         let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
@@ -382,12 +471,8 @@ impl DownloadService {
         cancel_rx: watch::Receiver<bool>,
     ) -> Result<String, AppError> {
         let format = Self::normalize_format(format);
-        let lib = LibraryService::resolve_library(Some(library_id), config)?;
+        let lib = Self::resolve_remote_library(config, library_id)?;
         let file_path = Self::resolve_book_file_path(app_data_dir, &lib, book_id, &format).await?;
-
-        if !lib.is_remote() {
-            return Ok(file_path.to_string_lossy().to_string());
-        }
 
         let lib_root = library_root_path(&lib, app_data_dir);
         let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
@@ -434,7 +519,7 @@ impl DownloadService {
         // Errors and cancellation are emitted by the caller (download command) so
         // that setup failures before this service is reached are also reported to
         // the frontend without duplicate events.
-        Self::download_book_file_inner(
+        let result = Self::download_book_file_inner(
             app,
             op,
             source_path,
@@ -446,7 +531,20 @@ impl DownloadService {
             sidecar_root,
             cancel_rx,
         )
-        .await
+        .await;
+
+        if result.is_err() {
+            if let Err(cleanup_err) =
+                Self::reset_failed_download(local_path, sidecar_root, &relative_local).await
+            {
+                warn!(
+                    "Failed to reset failed book download. path: \"{}\", error: {cleanup_err}",
+                    local_path.display()
+                );
+            }
+        }
+
+        result
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -462,7 +560,13 @@ impl DownloadService {
         sidecar_root: &Path,
         cancel_rx: Option<watch::Receiver<bool>>,
     ) -> Result<PathBuf, AppError> {
-        if Self::is_book_file_present(local_path).await {
+        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
+        let row = SqliteFileStateRepository::get_by_path(&db, book_relative_path).await?;
+        let sidecar_present = row
+            .as_ref()
+            .is_some_and(|r| r.local_state.as_str() == "present");
+
+        if sidecar_present && Self::is_book_file_present(local_path).await {
             info!(
                 "Book file already present locally, skip download. library id: \"{}\", book id: {}, format: \"{}\"",
                 library_id, book_id, format
@@ -648,7 +752,6 @@ impl DownloadService {
             .map(|d| d.as_secs() as i64);
 
         // Update file_state to present.
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
         SqliteFileStateRepository::upsert(
             &db,
             book_relative_path,
@@ -675,6 +778,25 @@ impl DownloadService {
         );
 
         Ok(local_path.to_path_buf())
+    }
+
+    async fn reset_failed_download(
+        local_path: &Path,
+        sidecar_root: &Path,
+        book_relative_path: &str,
+    ) -> Result<(), AppError> {
+        if tokio::fs::try_exists(local_path).await.unwrap_or(false) {
+            if let Err(e) = tokio::fs::remove_file(local_path).await {
+                warn!(
+                    "Failed to remove partial downloaded file after error. path: \"{}\", error: {e}",
+                    local_path.display()
+                );
+            }
+        }
+        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
+        SqliteFileStateRepository::upsert(&db, book_relative_path, "remote_only", None, None)
+            .await?;
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -915,6 +1037,17 @@ mod tests {
         }
     }
 
+    fn remote_test_library(id: &str) -> LibraryConfig {
+        LibraryConfig {
+            id: id.into(),
+            name: "Remote".into(),
+            path: "".into(),
+            source_type: Some("webdav".into()),
+            data_source_id: Some("ds-remote".into()),
+            source_path: None,
+        }
+    }
+
     async fn create_minimal_calibre_library(root: &std::path::Path) -> (i64, String, PathBuf) {
         let db_path = root.join("metadata.db");
         let url = format!(
@@ -1105,14 +1238,77 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_local_file_should_remove_file_and_set_remote_only() {
-        let lib_root = tempdir().unwrap();
+    async fn check_file_state_should_return_remote_only_when_sidecar_marks_remote_only() {
         let app_data = tempdir().unwrap();
-        let (book_id, format, file_path) = create_minimal_calibre_library(lib_root.path()).await;
-        let lib = local_test_library("lib-delete", lib_root.path());
+        let lib = remote_test_library("lib-state-remote-only");
+        let lib_root = library_container_dir(app_data.path(), &lib.id);
+        tokio::fs::create_dir_all(&lib_root).await.unwrap();
+        let (book_id, format, file_path) = create_minimal_calibre_library(&lib_root).await;
 
         let relative_path =
-            compute_book_relative_path(&file_path, lib_root.path()).expect("relative path");
+            compute_book_relative_path(&file_path, &lib_root).expect("relative path");
+        let sidecar_root = library_sidecar_path(&lib, app_data.path());
+        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
+            .await
+            .expect("open sidecar db");
+        SqliteFileStateRepository::upsert(&db, &relative_path, "remote_only", None, None)
+            .await
+            .expect("upsert state");
+
+        let config = AppConfig {
+            libraries: vec![lib],
+            ..Default::default()
+        };
+        let dto = DownloadService::check_file_state(
+            app_data.path(),
+            &config,
+            "lib-state-remote-only",
+            book_id,
+            &format,
+        )
+        .await
+        .expect("check should succeed");
+
+        assert_eq!(dto.local_state, "remote_only");
+        assert!(dto.local_size.is_none());
+    }
+
+    #[tokio::test]
+    async fn check_file_state_should_return_remote_only_for_remote_file_without_present_row() {
+        let app_data = tempdir().unwrap();
+        let lib = remote_test_library("lib-state-no-row");
+        let lib_root = library_container_dir(app_data.path(), &lib.id);
+        tokio::fs::create_dir_all(&lib_root).await.unwrap();
+        let (book_id, format, _) = create_minimal_calibre_library(&lib_root).await;
+
+        let config = AppConfig {
+            libraries: vec![lib],
+            ..Default::default()
+        };
+        let dto = DownloadService::check_file_state(
+            app_data.path(),
+            &config,
+            "lib-state-no-row",
+            book_id,
+            &format,
+        )
+        .await
+        .expect("check should succeed");
+
+        assert_eq!(dto.local_state, "remote_only");
+        assert!(dto.local_size.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_local_file_should_remove_remote_copy_and_set_remote_only() {
+        let app_data = tempdir().unwrap();
+        let lib = remote_test_library("lib-delete");
+        let lib_root = library_container_dir(app_data.path(), &lib.id);
+        tokio::fs::create_dir_all(&lib_root).await.unwrap();
+        let (book_id, format, file_path) = create_minimal_calibre_library(&lib_root).await;
+
+        let relative_path =
+            compute_book_relative_path(&file_path, &lib_root).expect("relative path");
         let sidecar_root = library_sidecar_path(&lib, app_data.path());
         let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
             .await
@@ -1150,6 +1346,30 @@ mod tests {
         assert!(row.local_size.is_none());
     }
 
+    #[tokio::test]
+    async fn delete_local_file_should_reject_local_library() {
+        let lib_root = tempdir().unwrap();
+        let app_data = tempdir().unwrap();
+        let (book_id, format, file_path) = create_minimal_calibre_library(lib_root.path()).await;
+        let config = AppConfig {
+            libraries: vec![local_test_library("lib-delete-local", lib_root.path())],
+            ..Default::default()
+        };
+
+        let err = DownloadService::delete_local_file(
+            app_data.path(),
+            &config,
+            "lib-delete-local",
+            book_id,
+            &format,
+        )
+        .await
+        .expect_err("local library deletion should be rejected");
+
+        assert!(format!("{err}").contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"));
+        assert!(tokio::fs::try_exists(&file_path).await.unwrap());
+    }
+
     // Note: tests using mock_app() need the tauri "test" feature and, on
     // Windows, the Common Controls v6 manifest workaround in build.rs to avoid
     // STATUS_ENTRYPOINT_NOT_FOUND. See tauri-apps/tauri#13419.
@@ -1158,47 +1378,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn enqueue_book_file_download_should_honour_pre_start_cancellation() {
+    async fn enqueue_book_file_download_should_reject_local_library() {
         let app = mock_app_handle();
         let service = DownloadService::new();
         let app_data = tempdir().unwrap();
         let lib_root = tempdir().unwrap();
-        let (book_id, format, expected_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
-        let config = AppConfig {
-            libraries: vec![local_test_library("lib-cancel", lib_root.path())],
-            ..Default::default()
-        };
-
-        // Cancel before the download has started.
-        assert!(service.cancel("lib-cancel", book_id, &format));
-
-        let result = service
-            .enqueue_book_file_download(
-                &app,
-                app_data.path(),
-                &config,
-                "lib-cancel",
-                book_id,
-                &format,
-            )
-            .await;
-
-        assert_eq!(result.unwrap(), "");
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        assert!(!service.is_active("lib-cancel", book_id, &format));
-        // Local library returns the path without writing; with cancellation it should
-        // still complete cleanly and not leave the entry stuck.
-    }
-
-    #[tokio::test]
-    async fn enqueue_book_file_download_should_spawn_and_complete_for_local_library() {
-        let app = mock_app_handle();
-        let service = DownloadService::new();
-        let app_data = tempdir().unwrap();
-        let lib_root = tempdir().unwrap();
-        let (book_id, format, expected_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
+        let (book_id, format, _) = create_minimal_calibre_library(lib_root.path()).await;
         let config = AppConfig {
             libraries: vec![local_test_library("lib-local-enqueue", lib_root.path())],
             ..Default::default()
@@ -1215,11 +1400,37 @@ mod tests {
             )
             .await;
 
-        assert_eq!(result.unwrap(), "");
-        // Wait for the spawned task to finish.
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let err = result.expect_err("local library download should be rejected");
+        assert!(format!("{err}").contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"));
         assert!(!service.is_active("lib-local-enqueue", book_id, &format));
-        assert!(tokio::fs::try_exists(&expected_path).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn enqueue_book_file_download_should_reject_local_library_without_spawning() {
+        let app = mock_app_handle();
+        let service = DownloadService::new();
+        let app_data = tempdir().unwrap();
+        let lib_root = tempdir().unwrap();
+        let (book_id, format, _) = create_minimal_calibre_library(lib_root.path()).await;
+        let config = AppConfig {
+            libraries: vec![local_test_library("lib-local-enqueue", lib_root.path())],
+            ..Default::default()
+        };
+
+        let result = service
+            .enqueue_book_file_download(
+                &app,
+                app_data.path(),
+                &config,
+                "lib-local-enqueue",
+                book_id,
+                &format,
+            )
+            .await;
+
+        let err = result.expect_err("local library download should be rejected");
+        assert!(format!("{err}").contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"));
+        assert!(!service.is_active("lib-local-enqueue", book_id, &format));
     }
 
     #[tokio::test]
@@ -1240,18 +1451,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn execute_download_should_return_path_for_local_library() {
+    async fn execute_download_should_reject_local_library() {
         let lib_root = tempdir().unwrap();
         let app_data = tempdir().unwrap();
-        let (book_id, format, expected_path) =
-            create_minimal_calibre_library(lib_root.path()).await;
+        let (book_id, format, _) = create_minimal_calibre_library(lib_root.path()).await;
         let config = AppConfig {
             libraries: vec![local_test_library("lib-local-dl", lib_root.path())],
             ..Default::default()
         };
 
         let (_tx, rx) = watch::channel(false);
-        let path = DownloadService::execute_download(
+        let err = DownloadService::execute_download(
             &mock_app_handle(),
             app_data.path(),
             &config,
@@ -1261,9 +1471,9 @@ mod tests {
             rx,
         )
         .await
-        .expect("execute_download should succeed");
+        .expect_err("local library download should be rejected");
 
-        assert_eq!(PathBuf::from(path), expected_path);
+        assert!(format!("{err}").contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"));
     }
 
     #[tokio::test]

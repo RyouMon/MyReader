@@ -1,5 +1,7 @@
-import { Badge } from "@/components/ui/badge"
+﻿import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
+import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
 import {
   Empty,
   EmptyContent,
@@ -8,22 +10,32 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Field, FieldLabel } from "@/components/ui/field"
 import { Progress } from "@/components/ui/progress"
+import { Switch } from "@/components/ui/switch"
 import {
   bookFileStateKeys,
   useBookFileState,
 } from "@/hooks/queries/useBookFileState"
 import {
+  useBookReadingFormats,
+  useSetBookReadingFormat,
+} from "@/hooks/queries/useBookReadingFormatsQuery"
+import {
   useFavoriteBookMutations,
   useFavoriteBookSet,
 } from "@/hooks/queries/useFavoriteBooksQuery"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
-import { useDownloadProgress } from "@/hooks/useDownloadProgress"
+import {
+  clearDownloadProgress,
+  setDownloadCancelled,
+  setDownloadError,
+  setDownloadStarting,
+  useDownloadProgress,
+} from "@/hooks/useDownloadProgress"
 import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
-import { isReadableInAppFormat, pickReadableFormat } from "@/lib/readFormats"
+import { getReadableFormats, pickReadableFormat } from "@/lib/readFormats"
 import type { BookDetail } from "@/lib/tauri-api"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
@@ -39,7 +51,6 @@ import {
   Check,
   ChevronDown,
   Download,
-  EllipsisVertical,
   Loader2,
   Star,
   Trash2,
@@ -47,6 +58,7 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,
@@ -111,10 +123,10 @@ function useLanguageMap(): Record<string, string> {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—"
+  if (!dateStr) return "--"
   try {
     const d = new Date(dateStr)
-    if (d.getFullYear() <= 100) return "—"
+    if (d.getFullYear() <= 100) return "--"
     return d.toLocaleDateString("zh-CN", {
       year: "numeric",
       month: "2-digit",
@@ -150,6 +162,9 @@ function BookDetailPage() {
   const navigate = useNavigate()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const { data: libraries = [] } = useLibrariesQuery()
+  const { data: selectedFormatById = {} } =
+    useBookReadingFormats(activeLibraryId)
+  const setBookReadingFormat = useSetBookReadingFormat(activeLibraryId)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const { favoriteSet } = useFavoriteBookSet(activeLibraryId)
   const {
@@ -184,7 +199,7 @@ function BookDetailPage() {
       try {
         const detail = await api.getBookDetail(activeLibraryId, Number(bookId))
         setBook(detail)
-        setSelectedFormat(pickReadableFormat(detail.formats))
+        setSelectedFormat(null)
         setCoverFailed(brokenCovers.has(detail.path))
         console.info(
           `Success to load book detail. book id: ${detail.id}, title: "${detail.title}", series: "${detail.series ?? ""}"`,
@@ -339,8 +354,12 @@ function BookDetailPage() {
   const formatSizeMap = new Map(
     book.formatSizes.map((fs) => [fs.format, fs.sizeBytes]),
   )
-  const readableFormats = book.formats.filter(isReadableInAppFormat)
+  const readableFormats = getReadableFormats(book.formats)
   const canReadInApp = readableFormats.length > 0
+  const activeSelectedFormat =
+    selectedFormat ??
+    selectedFormatById[String(book.id)] ??
+    pickReadableFormat(book.formats)
   const isRemoteLibrary =
     activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
 
@@ -394,14 +413,6 @@ function BookDetailPage() {
               className="size-[18px]"
               fill={isFavorite ? "currentColor" : "none"}
             />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            title={t("bookDetail.more")}
-          >
-            <EllipsisVertical className="size-[18px]" />
           </Button>
         </div>
       </div>
@@ -556,9 +567,10 @@ function BookDetailPage() {
                     className="rounded-none border-0 bg-transparent px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
                     onClick={() => {
                       if (!canReadInApp) return
-                      const fmt =
-                        selectedFormat ?? pickReadableFormat(book.formats)
-                      void navigateToRead(book.id, fmt ?? undefined)
+                      void navigateToRead(
+                        book.id,
+                        activeSelectedFormat ?? undefined,
+                      )
                     }}
                   >
                     <BookOpen
@@ -566,9 +578,9 @@ function BookDetailPage() {
                       className="size-[18px]"
                     />
                     <span>{t("bookCard.startReading")}</span>
-                    {selectedFormat && (
+                    {activeSelectedFormat && (
                       <span className="ms-0.5 text-[13px] font-normal opacity-80">
-                        ({selectedFormat})
+                        ({activeSelectedFormat})
                       </span>
                     )}
                   </Button>
@@ -595,7 +607,7 @@ function BookDetailPage() {
                             type="button"
                             className={cn(
                               "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[13.5px] transition-colors hover:bg-accent",
-                              selectedFormat === fmt &&
+                              activeSelectedFormat === fmt &&
                                 "bg-primary/8 font-medium text-primary",
                             )}
                             onClick={(e) => {
@@ -618,12 +630,12 @@ function BookDetailPage() {
                               <div className="mt-px text-[12px] text-muted-foreground">
                                 {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
                                 {formatLabels[fmt]
-                                  ? ` · ${formatLabels[fmt]}`
+                                  ? ` 路 ${formatLabels[fmt]}`
                                   : ""}
                               </div>
                             </div>
                             <div className="w-4 shrink-0">
-                              {selectedFormat === fmt && (
+                              {activeSelectedFormat === fmt && (
                                 <Check className="size-4 text-primary" />
                               )}
                             </div>
@@ -689,63 +701,85 @@ function BookDetailPage() {
                         {t("bookDetail.format")}
                       </th>
                       <th className="px-3.5 py-2">{t("bookDetail.size")}</th>
+                      <th className="px-3.5 py-2 text-center">
+                        {t("bookDetail.defaultReadingFormat")}
+                      </th>
                       <th className="rounded-te-md px-3.5 py-2 text-end">
                         {t("bookDetail.action")}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {book.formats.map((fmt) => (
-                      <tr
-                        key={fmt}
-                        className="border-b border-border transition-colors last:border-b-0 hover:bg-accent/30"
-                      >
-                        <td className="px-3.5 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={cn(
-                                "flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold uppercase",
-                                getFormatTone(fmt),
-                              )}
-                            >
-                              {fmt}
-                            </div>
-                            <span className="text-[13.5px] font-medium">
-                              {fmt}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3.5 py-3 text-[13.5px]">
-                          {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
-                        </td>
-                        <td className="px-3.5 py-3 text-end">
-                          <div className="flex justify-end gap-1">
-                            {isReadableInAppFormat(fmt) ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 border-primary bg-primary/8 px-2.5 text-[12px] font-medium text-primary hover:bg-primary/12"
-                                onClick={() => navigateToRead(book.id, fmt)}
+                    {book.formats.map((fmt) => {
+                      const upperFormat = fmt.toUpperCase()
+                      const isReadable = readableFormats.includes(upperFormat)
+                      const isDefaultFormat =
+                        activeSelectedFormat === upperFormat
+                      return (
+                        <tr
+                          key={fmt}
+                          className="border-b border-border transition-colors last:border-b-0 hover:bg-accent/30"
+                        >
+                          <td className="px-3.5 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={cn(
+                                  "flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold uppercase",
+                                  getFormatTone(fmt),
+                                )}
                               >
-                                <BookOpen className="size-3" />
-                                {t("bookCard.startReading")}
-                              </Button>
-                            ) : (
-                              <span className="pe-2 text-[12px] text-muted-foreground">
-                                {t("bookDetail.notSupported")}
+                                {fmt}
+                              </div>
+                              <span className="text-[13.5px] font-medium">
+                                {fmt}
                               </span>
-                            )}
-                            {isRemoteLibrary && activeLibraryId && (
-                              <FormatActionCell
-                                libraryId={activeLibraryId}
-                                bookId={book.id}
-                                format={fmt}
-                              />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3 text-[13.5px]">
+                            {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
+                          </td>
+                          <td className="px-3.5 py-3 text-center">
+                            <Switch
+                              size="sm"
+                              checked={isDefaultFormat}
+                              disabled={!isReadable || isDefaultFormat}
+                              aria-label={t("bookDetail.setDefaultFormatFor", {
+                                format: upperFormat,
+                              })}
+                              onCheckedChange={(checked) => {
+                                if (!checked || !isReadable) return
+                                setSelectedFormat(upperFormat)
+                                void setBookReadingFormat(book.id, upperFormat)
+                              }}
+                            />
+                          </td>
+                          <td className="px-3.5 py-3 text-end">
+                            <div className="flex justify-end">
+                              <ButtonGroup>
+                                {isReadable ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    title={t("bookCard.startReading")}
+                                    aria-label={t("bookCard.startReading")}
+                                    onClick={() => navigateToRead(book.id, fmt)}
+                                  >
+                                    <BookOpen />
+                                  </Button>
+                                ) : null}
+                                {isRemoteLibrary && activeLibraryId ? (
+                                  <FormatActionCell
+                                    libraryId={activeLibraryId}
+                                    bookId={book.id}
+                                    format={fmt}
+                                  />
+                                ) : null}
+                              </ButtonGroup>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -791,7 +825,7 @@ function BookDetailPage() {
                   label={t("bookDetail.uuid")}
                   value={
                     book.uuid.length > 16
-                      ? `${book.uuid.slice(0, 8)}…${book.uuid.slice(-4)}`
+                      ? `${book.uuid.slice(0, 8)}鈥?{book.uuid.slice(-4)}`
                       : book.uuid
                   }
                   mono
@@ -834,8 +868,8 @@ function BookDetailPage() {
       {/* Status Bar */}
       <footer className="flex shrink-0 items-center justify-between border-t border-border bg-background px-7 py-2 text-[12.5px] text-muted-foreground">
         <span>
-          {book.title} ·{" "}
-          {t("bookDetail.formatCount", { count: book.formats.length })} ·{" "}
+          {book.title} 路{" "}
+          {t("bookDetail.formatCount", { count: book.formats.length })} 路{" "}
           {book.path}
         </span>
         <div className="flex items-center gap-1.5">
@@ -865,10 +899,25 @@ function FormatActionCell({
   bookId: number
   format: string
 }) {
+  return (
+    <FormatActionCellV2 libraryId={libraryId} bookId={bookId} format={format} />
+  )
+}
+function FormatActionCellV2({
+  libraryId,
+  bookId,
+  format,
+}: {
+  libraryId: string
+  bookId: number
+  format: string
+}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const fmt = format.toUpperCase()
   const [pending, setPending] = useState(false)
+  const [cancelRequested, setCancelRequested] = useState(false)
+  const cancelAfterStartRef = useRef(false)
   const { data: state, isLoading: stateLoading } = useBookFileState(
     libraryId,
     bookId,
@@ -888,124 +937,176 @@ function FormatActionCell({
     }
   }, [progress?.status, libraryId, bookId, fmt, queryClient])
 
-  const isDownloading =
-    pending ||
-    progress?.status === "starting" ||
-    progress?.status === "downloading"
-  const isPresent = state?.localState === "present"
+  useEffect(() => {
+    if (!progress?.status) return
+    setPending(false)
+    if (progress.status !== "starting" && progress.status !== "downloading") {
+      setCancelRequested(false)
+      cancelAfterStartRef.current = false
+    }
+  }, [progress?.status])
 
+  const isDownloading =
+    progress?.status === "starting" || progress?.status === "downloading"
+  const isPreparing = pending && !isDownloading
+  const isPresent = state?.localState === "present"
+  const totalBytes = progress?.totalBytes ?? 0
+  const bytesWritten = progress?.bytesWritten ?? 0
   const percent =
-    progress?.totalBytes && progress.totalBytes > 0
-      ? Math.min(
-          100,
-          Math.round((progress.bytesWritten / progress.totalBytes) * 100),
-        )
+    totalBytes > 0
+      ? Math.min(100, Math.round((bytesWritten / totalBytes) * 100))
       : undefined
 
+  const invalidateFileState = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
+    })
+  }, [libraryId, bookId, fmt, queryClient])
+
   const handleDownload = useCallback(() => {
-    if (isDownloading) return
+    if (isDownloading || pending) return
+    cancelAfterStartRef.current = false
+    setCancelRequested(false)
     setPending(true)
+    setDownloadStarting(libraryId, bookId, fmt, queryClient)
     api
       .downloadBookFile(libraryId, bookId, fmt)
+      .then(() => {
+        if (!cancelAfterStartRef.current) return
+        setDownloadCancelled(libraryId, bookId, fmt, queryClient)
+        return api
+          .cancelBookDownload(libraryId, bookId, fmt)
+          .then(invalidateFileState)
+      })
       .catch((err) => {
         console.error(
           `Failed to download book file from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
           err,
         )
-      })
-      .finally(() => {
+        setDownloadError(libraryId, bookId, fmt, String(err), queryClient)
         setPending(false)
+        setCancelRequested(false)
+        cancelAfterStartRef.current = false
       })
-  }, [libraryId, bookId, fmt, isDownloading])
+  }, [
+    libraryId,
+    bookId,
+    fmt,
+    isDownloading,
+    pending,
+    invalidateFileState,
+    queryClient,
+  ])
 
   const handleDelete = useCallback(() => {
     api
       .deleteLocalBookFile(libraryId, bookId, fmt)
       .then(() => {
-        void queryClient.invalidateQueries({
-          queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
-        })
+        clearDownloadProgress(libraryId, bookId, fmt, queryClient)
+        invalidateFileState()
       })
       .catch((err) => {
         console.error(
           `Failed to delete local book file from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
           err,
         )
-      })
-  }, [libraryId, bookId, fmt, queryClient])
-
-  const handleCancel = useCallback(() => {
-    api
-      .cancelBookDownload(libraryId, bookId, fmt)
-      .then(() => {
-        void queryClient.invalidateQueries({
-          queryKey: bookFileStateKeys.detail(libraryId, bookId, fmt),
+        toast.error(t("bookDetail.deleteFileFailed"), {
+          description: String(err),
         })
       })
+  }, [libraryId, bookId, fmt, invalidateFileState, queryClient, t])
+
+  const handleCancel = useCallback(() => {
+    if (pending && !isDownloading) {
+      cancelAfterStartRef.current = true
+      setCancelRequested(true)
+      return
+    }
+    setDownloadCancelled(libraryId, bookId, fmt, queryClient)
+    api
+      .cancelBookDownload(libraryId, bookId, fmt)
+      .then(invalidateFileState)
       .catch((err) => {
         console.error(
           `Failed to cancel book download from detail. library id: "${libraryId}", book id: ${bookId}, format: "${fmt}", error:`,
           err,
         )
+        toast.error(t("bookDetail.cancelDownloadFailed"), {
+          description: String(err),
+        })
+        setDownloadStarting(libraryId, bookId, fmt, queryClient)
       })
-  }, [libraryId, bookId, fmt, queryClient])
+  }, [
+    libraryId,
+    bookId,
+    fmt,
+    invalidateFileState,
+    isDownloading,
+    pending,
+    queryClient,
+    t,
+  ])
 
   if (stateLoading) {
     return (
-      <Button variant="outline" size="sm" className="size-7 p-0" disabled>
-        <Loader2 className="size-3 animate-spin" />
+      <Button variant="ghost" size="icon-sm" disabled>
+        <Loader2 className="animate-spin" />
       </Button>
     )
   }
 
-  if (isDownloading) {
+  if (isPreparing || isDownloading) {
     return (
-      <div className="flex items-center justify-end gap-2">
-        <Field className="w-full max-w-[140px]">
-          <FieldLabel className="w-full text-xs text-muted-foreground">
-            <span>{t("bookDetail.downloadingFile")}</span>
-            <span className="ml-auto tabular-nums">
-              {percent != null ? `${percent}%` : "—"}
-            </span>
-          </FieldLabel>
-          <Progress value={percent} />
-        </Field>
-        <Button
-          variant="outline"
-          size="sm"
-          className="size-7 p-0"
-          title={t("bookDetail.cancelDownload")}
-          onClick={handleCancel}
-        >
-          <X className="size-3" />
-        </Button>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="group/download relative"
+        title={t("bookDetail.cancelDownload")}
+        aria-label={t("bookDetail.cancelDownload")}
+        onClick={handleCancel}
+        disabled={cancelRequested}
+      >
+        <CircularDownloadProgress
+          percent={percent}
+          className={cn(
+            "transition-opacity group-hover/download:opacity-0",
+            cancelRequested && "opacity-40",
+          )}
+        />
+        {cancelRequested ? (
+          <Loader2 className="absolute animate-spin opacity-100" />
+        ) : (
+          <X className="absolute opacity-0 transition-opacity group-hover/download:opacity-100" />
+        )}
+      </Button>
     )
   }
 
   if (isPresent) {
     return (
       <Button
-        variant="outline"
-        size="sm"
-        className="size-7 p-0 text-destructive hover:text-destructive"
+        variant="ghost"
+        size="icon-sm"
+        className="text-destructive hover:text-destructive"
         title={t("bookDetail.deleteFile")}
+        aria-label={t("bookDetail.deleteFile")}
         onClick={handleDelete}
       >
-        <Trash2 className="size-3" />
+        <Trash2 />
       </Button>
     )
   }
 
   return (
     <Button
-      variant="outline"
-      size="sm"
-      className="size-7 p-0"
+      variant="ghost"
+      size="icon-sm"
       title={t("bookDetail.downloadFile")}
+      aria-label={t("bookDetail.downloadFile")}
       onClick={handleDownload}
+      disabled={pending}
     >
-      <Download className="size-3" />
+      {pending ? <Loader2 className="animate-spin" /> : <Download />}
     </Button>
   )
 }

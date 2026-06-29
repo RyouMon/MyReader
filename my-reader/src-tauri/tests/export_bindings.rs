@@ -31,6 +31,8 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::book::get_books_page::<tauri::Wry>,
             my_reader_lib::commands::book::get_book_detail::<tauri::Wry>,
             my_reader_lib::commands::book::get_series_books::<tauri::Wry>,
+            my_reader_lib::commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
+            my_reader_lib::commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             my_reader_lib::commands::favorite::list_favorite_book_ids::<tauri::Wry>,
             my_reader_lib::commands::favorite::add_favorite_book::<tauri::Wry>,
             my_reader_lib::commands::favorite::remove_favorite_book::<tauri::Wry>,
@@ -48,7 +50,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::download::check_book_file_state::<tauri::Wry>,
             my_reader_lib::commands::download::download_book_file::<tauri::Wry>,
             my_reader_lib::commands::download::delete_local_book_file::<tauri::Wry>,
-            my_reader_lib::commands::download::cancel_book_download,
+            my_reader_lib::commands::download::cancel_book_download::<tauri::Wry>,
         ])
         .export(
             specta_typescript::Typescript::default(),

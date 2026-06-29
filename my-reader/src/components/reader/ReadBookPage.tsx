@@ -7,13 +7,19 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
 import { useReadiumDivinaPublication } from "@/hooks/reader/useReadiumDivinaPublication"
 import { useReadiumPublication } from "@/hooks/reader/useReadiumPublication"
-import { useDownloadProgress } from "@/hooks/useDownloadProgress"
+import {
+  setDownloadCancelled,
+  setDownloadError as setGlobalDownloadError,
+  setDownloadStarting,
+  useDownloadProgress,
+} from "@/hooks/useDownloadProgress"
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { Locator } from "@readium/shared"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
@@ -44,6 +50,7 @@ export type ReadBookPageProps = {
 
 export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { t } = useTranslation()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
 
@@ -119,6 +126,12 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
       if (downloadState === "downloading") {
         try {
+          setDownloadCancelled(
+            activeLibraryId,
+            Number(bookId),
+            format,
+            queryClient,
+          )
           await api.cancelBookDownload(activeLibraryId, Number(bookId), format)
         } catch (e) {
           console.error(
@@ -134,7 +147,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     return () => {
       unlisten.then((fn) => fn()).catch(() => {})
     }
-  }, [downloadState, activeLibraryId, bookId, format])
+  }, [downloadState, activeLibraryId, bookId, format, queryClient])
 
   useEffect(() => {
     if (mainHandoff) return
@@ -207,11 +220,19 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         if (msg.includes("BOOK_FORMAT_NOT_DOWNLOADED") && fmt) {
           setDownloadState("downloading")
           setFetchError(null)
+          setDownloadStarting(activeLibraryId, Number(bookId), fmt, queryClient)
           try {
             await api.downloadBookFile(activeLibraryId, Number(bookId), fmt)
           } catch (downloadErr) {
             setDownloadState("error")
             setDownloadError(String(downloadErr))
+            setGlobalDownloadError(
+              activeLibraryId,
+              Number(bookId),
+              fmt,
+              String(downloadErr),
+              queryClient,
+            )
           }
           return
         }
@@ -226,7 +247,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         void api.closeBookStreamer(activeLibraryId, Number(bookId))
       }
     }
-  }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, t])
+  }, [bookId, activeLibraryId, formatFromSearch, mainHandoff, queryClient, t])
 
   useEffect(() => {
     if (downloadState !== "done") return
@@ -285,17 +306,26 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     if (!activeLibraryId || !format) return
     setDownloadState("downloading")
     setDownloadError(null)
+    setDownloadStarting(activeLibraryId, Number(bookId), format, queryClient)
     api
       .downloadBookFile(activeLibraryId, Number(bookId), format)
       .catch((err) => {
         setDownloadState("error")
         setDownloadError(String(err))
+        setGlobalDownloadError(
+          activeLibraryId,
+          Number(bookId),
+          format,
+          String(err),
+          queryClient,
+        )
       })
-  }, [activeLibraryId, bookId, format])
+  }, [activeLibraryId, bookId, format, queryClient])
 
   const handleCancelDownload = useCallback(async () => {
     if (!activeLibraryId || !format) return
     closingRef.current = true
+    setDownloadCancelled(activeLibraryId, Number(bookId), format, queryClient)
     try {
       await api.cancelBookDownload(activeLibraryId, Number(bookId), format)
     } catch (e) {
@@ -307,7 +337,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     if (isTauri()) {
       await getCurrentWindow().close()
     }
-  }, [activeLibraryId, bookId, format])
+  }, [activeLibraryId, bookId, format, queryClient])
 
   const readiumPub = useReadiumPublication({
     assetBaseUrl:

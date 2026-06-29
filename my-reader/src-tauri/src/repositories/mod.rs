@@ -1,3 +1,4 @@
+pub mod book_reading_format_repo;
 pub mod calibre_repo;
 pub mod favorite_book_repo;
 pub mod file_state_repo;

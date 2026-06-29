@@ -68,6 +68,8 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::book::get_books_page::<tauri::Wry>,
             commands::book::get_book_detail::<tauri::Wry>,
             commands::book::get_series_books::<tauri::Wry>,
+            commands::book_reading_format::list_book_reading_formats::<tauri::Wry>,
+            commands::book_reading_format::set_book_reading_format::<tauri::Wry>,
             commands::favorite::list_favorite_book_ids::<tauri::Wry>,
             commands::favorite::add_favorite_book::<tauri::Wry>,
             commands::favorite::remove_favorite_book::<tauri::Wry>,
@@ -85,7 +87,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::download::check_book_file_state::<tauri::Wry>,
             commands::download::download_book_file::<tauri::Wry>,
             commands::download::delete_local_book_file::<tauri::Wry>,
-            commands::download::cancel_book_download,
+            commands::download::cancel_book_download::<tauri::Wry>,
         ]);
 
     #[cfg(debug_assertions)]

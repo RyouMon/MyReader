@@ -24,6 +24,8 @@ interface BookGridProps {
   ensureRange: (start: number, end: number) => void
   header?: ReactNode
   viewMode?: LibraryViewMode
+  fileActionsEnabled?: boolean
+  selectedFormatById?: Record<string, string>
 }
 
 /**
@@ -38,6 +40,8 @@ export default function BookGrid({
   ensureRange,
   header,
   viewMode = "grid",
+  fileActionsEnabled = true,
+  selectedFormatById = {},
 }: BookGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [cols, setCols] = useState(4)
@@ -118,7 +122,15 @@ export default function BookGrid({
             }}
           >
             {isList ? (
-              renderListRow(vRow.index, books, libraryId, onRead, onMore)
+              renderListRow(
+                vRow.index,
+                books,
+                libraryId,
+                fileActionsEnabled,
+                selectedFormatById,
+                onRead,
+                onMore,
+              )
             ) : (
               <div
                 style={{
@@ -139,6 +151,8 @@ export default function BookGrid({
                       libraryId={libraryId}
                       onRead={onRead}
                       onMore={onMore}
+                      fileActionsEnabled={fileActionsEnabled}
+                      selectedFormat={selectedFormatById[String(book.id)]}
                     />
                   )
                 })}
@@ -158,6 +172,8 @@ function renderListRow(
   index: number,
   books: Map<number, CalibreBook>,
   libraryId: string | null,
+  fileActionsEnabled: boolean,
+  selectedFormatById: Record<string, string>,
   onRead?: (book: CalibreBook) => void,
   onMore?: (book: CalibreBook) => void,
 ) {
@@ -170,6 +186,8 @@ function renderListRow(
       libraryId={libraryId}
       onRead={onRead}
       onMore={onMore}
+      fileActionsEnabled={fileActionsEnabled}
+      selectedFormat={selectedFormatById[String(book.id)]}
     />
   )
 }

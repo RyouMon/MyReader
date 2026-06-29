@@ -1,5 +1,5 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
-import { memo, useCallback, useState } from "react"
+import { memo, type ReactNode, useCallback, useState } from "react"
 import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
 import { cn } from "@/lib/utils"
@@ -27,6 +27,7 @@ interface BookCoverProps {
   spineClassName?: string
   progress?: BookProgressSnapshot
   showProgress?: boolean
+  cornerIndicator?: ReactNode
   /** Show title/author on the generated fallback cover. Defaults to true. */
   showFallbackMeta?: boolean
 }
@@ -44,6 +45,7 @@ export const BookCover = memo(function BookCover({
   spineClassName,
   progress,
   showProgress = true,
+  cornerIndicator,
   showFallbackMeta = true,
 }: BookCoverProps) {
   const [imgFailed, setImgFailed] = useState(() => brokenCovers.has(book.path))
@@ -135,6 +137,10 @@ export const BookCover = memo(function BookCover({
           spineClassName,
         )}
       />
+
+      {cornerIndicator ? (
+        <div className="absolute end-1.5 top-1.5 z-20">{cornerIndicator}</div>
+      ) : null}
 
       {showProgress && typeof progressPercent === "number" ? (
         <div className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-inverse/20">

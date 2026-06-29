@@ -22,6 +22,7 @@ pub struct CacheUsageDto {
 }
 
 pub mod book;
+pub mod book_reading_format;
 pub mod cache;
 pub(crate) mod common;
 pub mod download;

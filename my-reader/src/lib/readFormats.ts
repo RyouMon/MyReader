@@ -1,4 +1,12 @@
 const FORMAT_PRIORITY = ["EPUB", "CBZ", "PDF"] as const
+const READABLE_FORMAT_SET = new Set<string>(FORMAT_PRIORITY)
+
+export function getReadableFormats(formats: string[]): string[] {
+  return formats
+    .map((format) => format.toUpperCase())
+    .filter((format) => READABLE_FORMAT_SET.has(format))
+    .sort((left, right) => left.localeCompare(right, "en"))
+}
 
 export function pickReadableFormat(formats: string[]): string | null {
   const upper = formats.map((f) => f.toUpperCase())

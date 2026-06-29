@@ -1,11 +1,14 @@
-import { BookOpen, Ellipsis } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
 import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
+import { BookDownloadIndicator } from "./BookDownloadIndicator"
+import { BookMoreMenu } from "./BookMoreMenu"
 
 interface BookRowProps {
   book: CalibreBook
@@ -13,6 +16,8 @@ interface BookRowProps {
   onRead?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
+  fileActionsEnabled?: boolean
+  selectedFormat?: string
 }
 
 function useProgressLabel(progress?: BookProgressSnapshot) {
@@ -36,8 +41,9 @@ const BookRow = memo(function BookRow({
   book,
   libraryId,
   onRead,
-  onMore,
   progress,
+  fileActionsEnabled = true,
+  selectedFormat,
 }: BookRowProps) {
   const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
@@ -47,6 +53,12 @@ const BookRow = memo(function BookRow({
   const readLabel = isUnread
     ? t("bookCard.startReading")
     : t("bookCard.continueReading")
+  const downloadState = useBookDownloadState(
+    libraryId,
+    book.id,
+    book.formats,
+    selectedFormat,
+  )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" && event.key !== " ") {
@@ -105,6 +117,11 @@ const BookRow = memo(function BookRow({
               {primaryFormat}
             </span>
           ) : null}
+          <BookDownloadIndicator
+            state={downloadState}
+            variant="icon"
+            remoteOnly
+          />
           {progress?.syncedLabel ? (
             <span className="text-[10px] text-muted-foreground">
               {progress.syncedLabel}
@@ -138,20 +155,13 @@ const BookRow = memo(function BookRow({
         >
           <BookOpen className="size-4" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          title={t("bookCard.moreActions")}
-          aria-label={t("bookCard.moreActions")}
-          className="size-7 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          onClick={(event) => {
-            event.stopPropagation()
-            onMore?.(book)
-          }}
-        >
-          <Ellipsis className="size-4" />
-        </Button>
+        <BookMoreMenu
+          book={book}
+          libraryId={libraryId}
+          fileActionsEnabled={fileActionsEnabled}
+          selectedFormat={selectedFormat}
+          triggerVariant="row"
+        />
       </div>
     </div>
   )

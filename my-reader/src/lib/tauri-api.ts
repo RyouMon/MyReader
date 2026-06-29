@@ -49,6 +49,8 @@ export const api = {
   getBooksPage: wrap(raw.getBooksPage),
   getBookDetail: wrap(raw.getBookDetail),
   getSeriesBooks: wrap(raw.getSeriesBooks),
+  listBookReadingFormats: wrap(raw.listBookReadingFormats),
+  setBookReadingFormat: wrap(raw.setBookReadingFormat),
   listFavoriteBookIds: wrap(raw.listFavoriteBookIds),
   addFavoriteBook: wrap(raw.addFavoriteBook),
   removeFavoriteBook: wrap(raw.removeFavoriteBook),

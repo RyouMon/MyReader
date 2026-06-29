@@ -17,6 +17,7 @@ import {
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
+import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -37,6 +38,10 @@ function LibraryPage() {
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const activeView = useLibraryUiStore((s) => s.activeView)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
+  const fileActionsEnabled =
+    activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
+  const { data: selectedFormatById = {} } =
+    useBookReadingFormats(activeLibraryId)
   const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -185,6 +190,8 @@ function LibraryPage() {
           ensureRange={displayedEnsureRange}
           header={gridHeader}
           viewMode={viewMode}
+          fileActionsEnabled={fileActionsEnabled}
+          selectedFormatById={selectedFormatById}
         />
       )}
 
