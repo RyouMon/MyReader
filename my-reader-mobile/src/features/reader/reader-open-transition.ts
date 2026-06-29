@@ -2,11 +2,7 @@ import type { BookItem } from "@/src/domain/types"
 import { READER_THEMES } from "@/src/design/reader-tokens"
 import { useAppStore } from "@/src/store/app-store"
 import type { FixedBackground } from "@/src/store/app-store.types"
-import {
-  getNativePresentedViewFrame,
-  isNativeReduceMotionEnabled,
-  startNativeBookTransition,
-} from "@my-reader/book-transition"
+import * as BookTransition from "@my-reader/book-transition"
 import { Image as ExpoImage } from "expo-image"
 import {
   AccessibilityInfo,
@@ -60,19 +56,34 @@ const recentTransitions = new Map<string, ReaderOpenTransition>()
 const listeners = new Set<() => void>()
 let transitionRootNode: RNView | null = null
 const coverCachePaths = new Map<string, string | null>()
-let reduceMotionEnabled = isNativeReduceMotionEnabled()
+let reduceMotionEnabled = false
+let didInitializeReduceMotion = false
 
-AccessibilityInfo.isReduceMotionEnabled()
-  .then((enabled) => {
+function readNativeReduceMotionEnabled() {
+  try {
+    return BookTransition.isNativeReduceMotionEnabled?.() ?? false
+  } catch {
+    return false
+  }
+}
+
+function initializeReduceMotionListener() {
+  if (didInitializeReduceMotion) return
+  didInitializeReduceMotion = true
+  reduceMotionEnabled = readNativeReduceMotionEnabled()
+
+  AccessibilityInfo.isReduceMotionEnabled()
+    .then((enabled) => {
+      reduceMotionEnabled = enabled
+    })
+    .catch(() => {
+      reduceMotionEnabled = readNativeReduceMotionEnabled()
+    })
+
+  AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
     reduceMotionEnabled = enabled
   })
-  .catch(() => {
-    reduceMotionEnabled = false
-  })
-
-AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
-  reduceMotionEnabled = enabled
-})
+}
 
 function emitChange() {
   listeners.forEach((listener) => listener())
@@ -254,7 +265,7 @@ export function setReaderOpenTransition(
   primeReaderCoverCache(transition.coverUri)
   const nativeStarted =
     nextTransition.mode === "book"
-      ? startNativeBookTransition({
+      ? (BookTransition.startNativeBookTransition?.({
           direction: "open",
           bookId: nextTransition.bookId,
           format: nextTransition.format,
@@ -268,7 +279,7 @@ export function setReaderOpenTransition(
           readerForegroundColor: nextTransition.readerForegroundColor,
           title: nextTransition.title,
           durationMs: READER_BOOK_TRANSITION_MS,
-        })
+        }) ?? false)
       : false
   nextTransition.nativeStarted = nativeStarted
   if (__DEV__) {
@@ -308,7 +319,7 @@ export function setReaderCloseTransition(
   }
   const nativeStarted =
     nextTransition.mode === "book"
-      ? startNativeBookTransition({
+      ? (BookTransition.startNativeBookTransition?.({
           direction: "close",
           bookId: nextTransition.bookId,
           format: nextTransition.format,
@@ -322,7 +333,7 @@ export function setReaderCloseTransition(
           readerForegroundColor: nextTransition.readerForegroundColor,
           title: nextTransition.title,
           durationMs: READER_BOOK_TRANSITION_MS,
-        })
+        }) ?? false)
       : false
   nextTransition.nativeStarted = nativeStarted
   if (__DEV__) {
@@ -341,6 +352,7 @@ export function setReaderCloseTransition(
 }
 
 function shouldUseFadeTransition() {
+  initializeReduceMotionListener()
   return reduceMotionEnabled
 }
 
@@ -355,7 +367,7 @@ export function canStartReaderOpenTransition(
 }
 
 export function getReaderTransitionPresentedViewFrame() {
-  return getNativePresentedViewFrame()
+  return BookTransition.getNativePresentedViewFrame?.() ?? null
 }
 
 export function takeReaderOpenTransition(bookId: string) {
