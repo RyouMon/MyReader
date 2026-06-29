@@ -30,6 +30,7 @@
     "@gorhom/bottom-sheet": "^5",
     "@kesha-antonov/react-native-background-downloader": "^4.5.4",
     "@material/material-color-utilities": "^0.4.0",
+    "@my-reader/book-transition": "link:modules/book-transition",
     "@my-reader/db": "workspace:*",
     "@my-reader/readium": "link:./modules/readium",
     "@my-reader/tools": "workspace:*",

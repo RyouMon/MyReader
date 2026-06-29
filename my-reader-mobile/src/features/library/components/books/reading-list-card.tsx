@@ -1,13 +1,17 @@
-import { memo, useCallback, useMemo } from "react"
+import { memo, useCallback, useMemo, useRef } from "react"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Platform, View as RNView } from "react-native"
 
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
 import type { BookItem } from "@/src/domain/types"
+import {
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
 import { BookCover, type BookDownloadStatus } from "./book-cover"
@@ -48,6 +52,7 @@ function ReadingListCardImpl({
 }: ReadingListCardProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const coverRef = useRef<RNView>(null)
 
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
     if (menuIsRemote === undefined) return undefined
@@ -63,8 +68,27 @@ function ReadingListCardImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
-    onPress(book.id)
-  }, [book.id, isAnyMenuOpen, onPress])
+    const coverNode = coverRef.current
+    if (!coverNode) {
+      onPress(book.id)
+      return
+    }
+
+    measureReaderTransitionFrame(
+      coverNode,
+      ({ frame, screenWidth, screenHeight }) => {
+        setReaderOpenTransition({
+          bookId: book.id,
+          coverUri: book.coverUri,
+          title: book.title,
+          frame,
+          screenWidth,
+          screenHeight,
+        })
+        requestAnimationFrame(() => onPress(book.id))
+      },
+    )
+  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
 
   const handleMenuOpenLocal = useCallback(() => {
     onMenuOpen?.(book.id)
@@ -103,13 +127,15 @@ function ReadingListCardImpl({
         className="flex-row items-center gap-3 p-3"
         style={{ backgroundColor: palette.backgroundSecondary }}
       >
-        <BookCover
-          book={book}
-          width={COVER_WIDTH}
-          height={COVER_HEIGHT}
-          borderRadius={COVER_BORDER_RADIUS}
-          showTitle={false}
-        />
+        <RNView ref={coverRef} collapsable={false}>
+          <BookCover
+            book={book}
+            width={COVER_WIDTH}
+            height={COVER_HEIGHT}
+            borderRadius={COVER_BORDER_RADIUS}
+            showTitle={false}
+          />
+        </RNView>
         <View className="min-w-0 flex-1 justify-center gap-1">
           <Text
             className="text-base font-bold"

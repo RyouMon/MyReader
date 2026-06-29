@@ -5,6 +5,7 @@
 .gitnexus
 node_modules
 .pnpm-store
+.gradle
 
 coverage/
 

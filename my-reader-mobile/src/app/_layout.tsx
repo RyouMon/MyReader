@@ -9,8 +9,8 @@ import {
 } from "expo-router/react-navigation"
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
-import { useEffect, type ComponentProps } from "react"
-import { Platform } from "react-native"
+import { useEffect, useRef, type ComponentProps } from "react"
+import { View as RNView } from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { NotifierWrapper } from "react-native-notifier"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -24,6 +24,8 @@ import { useAppStore } from "@/src/store/app-store"
 import { SyncRuntime } from "@/src/domain/sync/components/SyncRuntime"
 import { setupGlobalErrorHandler } from "@/src/errors/global-handler"
 import { LibrarySyncPill } from "@/src/features/library/components/library-sync-pill"
+import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-transition"
+import { ReaderOpenTransitionHost } from "@/src/features/reader/reader-open-transition-overlay"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
 import { queryClient } from "@/src/services/query/query-client"
 import * as Sentry from "@sentry/react-native"
@@ -119,12 +121,8 @@ function RootNavigator() {
           <Stack.Screen
             name="reader"
             options={{
-              presentation: "fullScreenModal",
-              animation: Platform.select({
-                ios: "slide_from_bottom",
-                android: "slide_from_bottom",
-                default: "slide_from_bottom",
-              }),
+              presentation: "card",
+              animation: "none",
               gestureEnabled: false,
               headerShown: false,
               headerTitle: "",
@@ -132,6 +130,7 @@ function RootNavigator() {
           />
         </Stack>
       </NavigationThemeProvider>
+      <ReaderOpenTransitionHost />
       <SyncRuntime />
       <LibrarySyncPill />
     </>
@@ -153,6 +152,12 @@ export default Sentry.wrap(function RootLayout() {
   // RN 运行时在首次渲染前已就绪，此处调用是最早的安全时机。
   // setupGlobalErrorHandler 内部有幂等保护，重渲染不会重复注册。
   setupGlobalErrorHandler()
+  const transitionRootRef = useRef<RNView>(null)
+
+  useEffect(() => {
+    setReaderTransitionRootNode(transitionRootRef.current)
+    return () => setReaderTransitionRootNode(null)
+  }, [])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -160,7 +165,13 @@ export default Sentry.wrap(function RootLayout() {
         <ThemeProvider>
           <ErrorBoundary>
             <NotifierWithSafeArea>
-              <RootNavigator />
+              <RNView
+                ref={transitionRootRef}
+                collapsable={false}
+                style={{ flex: 1 }}
+              >
+                <RootNavigator />
+              </RNView>
             </NotifierWithSafeArea>
           </ErrorBoundary>
         </ThemeProvider>

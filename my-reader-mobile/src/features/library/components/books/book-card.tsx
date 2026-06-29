@@ -1,12 +1,16 @@
-import { memo, useCallback, useMemo } from "react"
+import { memo, useCallback, useMemo, useRef } from "react"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Platform, View as RNView } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
 import type { BookItem } from "@/src/domain/types"
+import {
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
 
@@ -78,6 +82,7 @@ function BookCardImpl({
   const { t } = useTranslation()
   const palette = useThemePalette()
   const coverHeight = Math.round(width * 1.43)
+  const coverRef = useRef<RNView>(null)
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
@@ -107,8 +112,27 @@ function BookCardImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
-    onPress(book.id)
-  }, [book.id, isAnyMenuOpen, onPress])
+    const coverNode = coverRef.current
+    if (!coverNode) {
+      onPress(book.id)
+      return
+    }
+
+    measureReaderTransitionFrame(
+      coverNode,
+      ({ frame, screenWidth, screenHeight }) => {
+        setReaderOpenTransition({
+          bookId: book.id,
+          coverUri: book.coverUri,
+          title: book.title,
+          frame,
+          screenWidth,
+          screenHeight,
+        })
+        requestAnimationFrame(() => onPress(book.id))
+      },
+    )
+  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
 
   const handleMorePress = useCallback(
     (event: { stopPropagation?: () => void }) => {
@@ -167,14 +191,14 @@ function BookCardImpl({
           underlayColor={palette.surface}
           style={{ borderRadius: 10, overflow: "hidden" }}
         >
-          <View>
+          <RNView ref={coverRef} collapsable={false}>
             <BookCover
               book={book}
               width={width}
               height={coverHeight}
               borderRadius={10}
             />
-          </View>
+          </RNView>
         </TouchableHighlight>
       </View>
       <View className="mt-2 flex-row items-center gap-1.5">

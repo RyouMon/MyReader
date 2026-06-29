@@ -1,5 +1,6 @@
+import { useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Platform, View as RNView } from "react-native"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 
@@ -18,6 +19,10 @@ import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
 import type { BookItem } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import {
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 
 type ContinueReadingCardProps = {
@@ -50,10 +55,30 @@ export function ContinueReadingCard({
   const { colorScheme } = useTheme()
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
   const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
+  const coverRef = useRef<RNView>(null)
 
   const handlePress = () => {
     if (isAnyMenuOpen || !onPress) return
-    onPress()
+    const coverNode = coverRef.current
+    if (!coverNode) {
+      onPress()
+      return
+    }
+
+    measureReaderTransitionFrame(
+      coverNode,
+      ({ frame, screenWidth, screenHeight }) => {
+        setReaderOpenTransition({
+          bookId: book.id,
+          coverUri: book.coverUri,
+          title: book.title,
+          frame,
+          screenWidth,
+          screenHeight,
+        })
+        requestAnimationFrame(onPress)
+      },
+    )
   }
 
   const handleMenuAction = ({
@@ -71,6 +96,26 @@ export function ContinueReadingCard({
       className="h-8 w-8 items-center justify-center"
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
+    </View>
+  )
+  const coverNode = book.coverUri ? (
+    <Image
+      source={book.coverUri}
+      className="h-[168px] w-[112px] rounded-2xl"
+      cachePolicy="memory-disk"
+      recyclingKey={book.id}
+    />
+  ) : (
+    <View
+      className="h-[168px] w-[112px] items-center justify-center rounded-2xl"
+      style={{ backgroundColor: palette.background }}
+    >
+      <Text
+        className="text-sm"
+        style={{ color: palette.textMuted, fontWeight: "600" }}
+      >
+        {t("home.noCover")}
+      </Text>
     </View>
   )
 
@@ -113,26 +158,9 @@ export function ContinueReadingCard({
           })}
         >
           <View className="flex-row items-start gap-3 p-3">
-            {book.coverUri ? (
-              <Image
-                source={book.coverUri}
-                className="h-[168px] w-[112px] rounded-2xl"
-                cachePolicy="memory-disk"
-                recyclingKey={book.id}
-              />
-            ) : (
-              <View
-                className="h-[168px] w-[112px] items-center justify-center rounded-2xl"
-                style={{ backgroundColor: palette.background }}
-              >
-                <Text
-                  className="text-sm"
-                  style={{ color: palette.textMuted, fontWeight: "600" }}
-                >
-                  {t("home.noCover")}
-                </Text>
-              </View>
-            )}
+            <RNView ref={coverRef} collapsable={false}>
+              {coverNode}
+            </RNView>
             <View
               className="min-w-0 flex-1 justify-center gap-2"
               style={{ height: 168 }}

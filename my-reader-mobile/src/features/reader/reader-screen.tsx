@@ -23,7 +23,12 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { ActivityIndicator, StatusBar, StyleSheet } from "react-native"
+import {
+  ActivityIndicator,
+  Animated as RNAnimated,
+  StatusBar,
+  StyleSheet,
+} from "react-native"
 import {
   FadeIn,
   FadeOut,
@@ -48,6 +53,10 @@ import {
 import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet"
+import {
+  READER_BOOK_TRANSITION_MS,
+  setReaderCloseTransition,
+} from "@/src/features/reader/reader-open-transition"
 import { useBookLoader } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
@@ -68,6 +77,7 @@ const ReadiumReflowReader = lazy(
 
 const TOC_GOTO_RESET_DELAY_MS = 100
 const READER_CONTENT_FADE_MS = 220
+const CLOSE_ROUTE_BACK_LEAD_MS = 180
 const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 
@@ -93,6 +103,9 @@ export default function ReaderScreen() {
 
   const tocSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<BottomSheetModal>(null)
+  const closeRouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const { loadState, bookTitle } = useBookLoader(
@@ -110,17 +123,45 @@ export default function ReaderScreen() {
     setToc(items)
   }, [])
 
-  const handleRequestClose = useCallback(async () => {
+  const closeReader = useCallback(() => {
     if (router.canGoBack()) {
+      if (closeRouteTimeoutRef.current) {
+        return
+      }
+      const nextCloseTransition = id
+        ? setReaderCloseTransition(id, () => router.back())
+        : null
+      if (nextCloseTransition) {
+        if (nextCloseTransition.nativeStarted) {
+          closeRouteTimeoutRef.current = setTimeout(
+            () => {
+              closeRouteTimeoutRef.current = null
+              router.back()
+            },
+            Math.max(0, READER_BOOK_TRANSITION_MS - CLOSE_ROUTE_BACK_LEAD_MS),
+          )
+        }
+        return
+      }
       router.back()
+    }
+  }, [id])
+
+  useEffect(() => {
+    return () => {
+      if (closeRouteTimeoutRef.current) {
+        clearTimeout(closeRouteTimeoutRef.current)
+      }
     }
   }, [])
 
+  const handleRequestClose = useCallback(async () => {
+    closeReader()
+  }, [closeReader])
+
   const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back()
-    }
-  }, [])
+    closeReader()
+  }, [closeReader])
 
   const toggleChrome = useCallback(() => {
     dispatch({ type: "contentTap" })
@@ -253,7 +294,6 @@ export default function ReaderScreen() {
     ),
     [loadState, themeBgColor],
   )
-
   if (loadState.status === "loading") {
     return (
       <View
@@ -340,202 +380,208 @@ export default function ReaderScreen() {
   const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ"
 
   return (
-    <BottomSheetModalProvider>
-      <Animated.View
-        testID="reader-screen"
-        entering={FadeIn.duration(READER_CONTENT_FADE_MS)}
-        className="flex-1"
-        style={{ backgroundColor: themeBgColor }}
-      >
-        <StatusBar
-          hidden={chromeState === ChromeState.Reading}
-          barStyle={statusBarStyle}
-          translucent={false}
-        />
-
-        <ErrorBoundary
-          title={t("reader.loadFailed")}
-          message={t("reader.loadFailedMessage")}
-          onRetry={handleBack}
+    <View style={styles.readerRouteFrame}>
+      <BottomSheetModalProvider>
+        <RNAnimated.View
+          style={[styles.readerCloseFrame, { backgroundColor: themeBgColor }]}
         >
-          <View className="absolute inset-0">
-            {isReflowSurface ? (
-              loadState.epubFileUri ? (
-                <Animated.View
-                  style={[
-                    {
-                      paddingTop: insets.top - 8,
-                      paddingBottom: insets.bottom,
-                      flex: 1,
-                    },
-                    themeBgStyle,
-                  ]}
-                >
-                  <ReadiumReflowReader
-                    epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+          <Animated.View
+            testID="reader-screen"
+            entering={FadeIn.duration(READER_CONTENT_FADE_MS)}
+            className="flex-1"
+            style={{ backgroundColor: themeBgColor }}
+          >
+            <StatusBar
+              hidden={chromeState === ChromeState.Reading}
+              barStyle={statusBarStyle}
+              translucent={false}
+            />
+
+            <ErrorBoundary
+              title={t("reader.loadFailed")}
+              message={t("reader.loadFailedMessage")}
+              onRetry={handleBack}
+            >
+              <View className="absolute inset-0">
+                {isReflowSurface ? (
+                  loadState.epubFileUri ? (
+                    <Animated.View
+                      style={[
+                        {
+                          paddingTop: insets.top - 8,
+                          paddingBottom: insets.bottom,
+                          flex: 1,
+                        },
+                        themeBgStyle,
+                      ]}
+                    >
+                      <ReadiumReflowReader
+                        epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
+                        initialLocator={loadState.initialLocator ?? undefined}
+                        onStateChange={handleStateChange}
+                        onTocReady={handleTocReady}
+                        onRequestClose={handleRequestClose}
+                        onToggleChrome={toggleChrome}
+                        gotoTocIndex={gotoPageCmd}
+                        theme={reflowSettings.theme}
+                        fontFamily={reflowSettings.fontFamily}
+                        fontSize={reflowSettings.fontSize}
+                        lineHeight={reflowSettings.lineHeight}
+                        paddingX={reflowSettings.paddingX}
+                        textAlign={reflowSettings.textAlign}
+                        columnCount={reflowSettings.columnCount}
+                      />
+                    </Animated.View>
+                  ) : null
+                ) : isFixedSurface ? (
+                  <FixedReaderSurface
+                    archiveUri={loadState.bookArchiveUri}
+                    pdfLocalUri={loadState.pdfLocalUri}
+                    format={loadState.format}
+                    initialPage={loadState.initialPage}
                     initialLocator={loadState.initialLocator ?? undefined}
                     onStateChange={handleStateChange}
                     onTocReady={handleTocReady}
                     onRequestClose={handleRequestClose}
                     onToggleChrome={toggleChrome}
-                    gotoTocIndex={gotoPageCmd}
-                    theme={reflowSettings.theme}
-                    fontFamily={reflowSettings.fontFamily}
-                    fontSize={reflowSettings.fontSize}
-                    lineHeight={reflowSettings.lineHeight}
-                    paddingX={reflowSettings.paddingX}
-                    textAlign={reflowSettings.textAlign}
-                    columnCount={reflowSettings.columnCount}
+                    gotoPageCommand={gotoPageCmd}
+                    fallback={domFallback}
+                    backgroundColor={fixedBgColor}
+                    navigationMode={fixedSettings.navigationMode}
+                    readingProgression={fixedSettings.readingProgression}
+                    spread={fixedSettings.spread}
                   />
-                </Animated.View>
-              ) : null
-            ) : isFixedSurface ? (
-              <FixedReaderSurface
-                archiveUri={loadState.bookArchiveUri}
-                pdfLocalUri={loadState.pdfLocalUri}
-                format={loadState.format}
-                initialPage={loadState.initialPage}
-                initialLocator={loadState.initialLocator ?? undefined}
-                onStateChange={handleStateChange}
-                onTocReady={handleTocReady}
-                onRequestClose={handleRequestClose}
-                onToggleChrome={toggleChrome}
-                gotoPageCommand={gotoPageCmd}
-                fallback={domFallback}
-                backgroundColor={fixedBgColor}
-                navigationMode={fixedSettings.navigationMode}
-                readingProgression={fixedSettings.readingProgression}
-                spread={fixedSettings.spread}
-              />
-            ) : null}
+                ) : null}
 
-            <Animated.View
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, themeOverlayStyle]}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[StyleSheet.absoluteFill, themeOverlayStyle]}
+                />
+
+                {loadState.status === "ready" &&
+                  !readerState?.ready &&
+                  readerLoadingOverlay}
+              </View>
+            </ErrorBoundary>
+
+            {/* Touch blocker: prevent page turns while sheets are open (states 4/5) */}
+            {(chromeState === ChromeState.TocSheet ||
+              chromeState === ChromeState.SettingsSheet) && (
+              <Pressable
+                className="absolute inset-0 z-10"
+                onPress={handleContentTap}
+              />
+            )}
+
+            {/* Visible in all states: chapter title (top-center) */}
+            <ReaderChapterLabel
+              insetsTop={insets.top}
+              title={readerState?.chapterTitle}
+              palette={chromePalette}
             />
 
-            {loadState.status === "ready" &&
-              !readerState?.ready &&
-              readerLoadingOverlay}
-          </View>
-        </ErrorBoundary>
+            {/* State 2+: Close button (top-right circle) */}
+            <ReaderCloseButton
+              insetsTop={insets.top}
+              visible={chromeState >= ChromeState.Chrome}
+              palette={chromePalette}
+              onPress={handleRequestClose}
+            />
 
-        {/* Touch blocker: prevent page turns while sheets are open (states 4/5) */}
-        {(chromeState === ChromeState.TocSheet ||
-          chromeState === ChromeState.SettingsSheet) && (
-          <Pressable
-            className="absolute inset-0 z-10"
-            onPress={handleContentTap}
-          />
-        )}
+            {/* State 2/4/5: More button (bottom-right circle); hidden when expanded (3) */}
+            <ReaderMoreButton
+              visible={
+                chromeState === ChromeState.Chrome ||
+                chromeState === ChromeState.TocSheet ||
+                chromeState === ChromeState.SettingsSheet
+              }
+              palette={chromePalette}
+              onPress={() => dispatch({ type: "moreButtonTap" })}
+            />
 
-        {/* Visible in all states: chapter title (top-center) */}
-        <ReaderChapterLabel
-          insetsTop={insets.top}
-          title={readerState?.chapterTitle}
-          palette={chromePalette}
-        />
+            {/* State 3: Expanded action pills (TOC + Settings) */}
+            <ReaderActionsExpanded
+              insetsBottom={insets.bottom}
+              visible={chromeState === ChromeState.Expanded}
+              progressPercent={progressPercent}
+              palette={chromePalette}
+              onOpenToc={() => dispatch({ type: "tocPillTap" })}
+              onOpenSettings={() => dispatch({ type: "settingsPillTap" })}
+            />
 
-        {/* State 2+: Close button (top-right circle) */}
-        <ReaderCloseButton
-          insetsTop={insets.top}
-          visible={chromeState >= ChromeState.Chrome}
-          palette={chromePalette}
-          onPress={handleRequestClose}
-        />
+            {/* State 4: TOC bottom sheet */}
+            <ReaderTocSheet
+              ref={tocSheetRef}
+              toc={toc}
+              currentHref={readerState?.locator?.href ?? null}
+              palette={chromePalette}
+              onSelectPage={handleTocSelect}
+              onDismiss={handleTocDismiss}
+            />
 
-        {/* State 2/4/5: More button (bottom-right circle); hidden when expanded (3) */}
-        <ReaderMoreButton
-          visible={
-            chromeState === ChromeState.Chrome ||
-            chromeState === ChromeState.TocSheet ||
-            chromeState === ChromeState.SettingsSheet
-          }
-          palette={chromePalette}
-          onPress={() => dispatch({ type: "moreButtonTap" })}
-        />
-
-        {/* State 3: Expanded action pills (TOC + Settings) */}
-        <ReaderActionsExpanded
-          insetsBottom={insets.bottom}
-          visible={chromeState === ChromeState.Expanded}
-          progressPercent={progressPercent}
-          palette={chromePalette}
-          onOpenToc={() => dispatch({ type: "tocPillTap" })}
-          onOpenSettings={() => dispatch({ type: "settingsPillTap" })}
-        />
-
-        {/* State 4: TOC bottom sheet */}
-        <ReaderTocSheet
-          ref={tocSheetRef}
-          toc={toc}
-          currentHref={readerState?.locator?.href ?? null}
-          palette={chromePalette}
-          onSelectPage={handleTocSelect}
-          onDismiss={handleTocDismiss}
-        />
-
-        {/* State 5: Settings bottom sheet */}
-        <ReaderSettingsSheet
-          ref={settingsSheetRef}
-          palette={chromePalette}
-          onDismiss={handleSettingsDismiss}
-          layout={isReflowSurface ? "reflowable" : "fixed"}
-          reflow={
-            isReflowSurface
-              ? {
-                  theme: reflowSettings.theme,
-                  onThemeChange: (key) =>
-                    patchReflowableReaderSettings({ theme: key }),
-                  fontFamily: reflowSettings.fontFamily,
-                  onFontFamilyChange: (v) =>
-                    patchReflowableReaderSettings({ fontFamily: v }),
-                  fontSize: reflowSettings.fontSize,
-                  onFontSizeChange: (v) =>
-                    patchReflowableReaderSettings({ fontSize: v }),
-                  fontSizeMin: 14,
-                  fontSizeMax: 28,
-                  lineHeight: reflowSettings.lineHeight,
-                  onLineHeightChange: (v) =>
-                    patchReflowableReaderSettings({ lineHeight: v }),
-                  lineHeightMin: 1.4,
-                  lineHeightMax: 2.4,
-                  margin: reflowSettings.paddingX,
-                  onMarginChange: (v) =>
-                    patchReflowableReaderSettings({ paddingX: v }),
-                  marginMin: 12,
-                  marginMax: 36,
-                  textAlign: reflowSettings.textAlign,
-                  onTextAlignChange: (v) =>
-                    patchReflowableReaderSettings({ textAlign: v }),
-                  columnCount: reflowSettings.columnCount,
-                  onColumnCountChange: (v) =>
-                    patchReflowableReaderSettings({ columnCount: v }),
-                }
-              : undefined
-          }
-          fixed={
-            !isReflowSurface
-              ? {
-                  background: fixedSettings.background,
-                  onBackgroundChange: (v) =>
-                    patchFixedReaderSettings({ background: v }),
-                  navigationMode: fixedSettings.navigationMode,
-                  onNavigationModeChange: (v) =>
-                    patchFixedReaderSettings({ navigationMode: v }),
-                  showPageDirection: !isCbzFixed,
-                  readingProgression: fixedSettings.readingProgression,
-                  onReadingProgressionChange: (v) =>
-                    patchFixedReaderSettings({ readingProgression: v }),
-                  spread: fixedSettings.spread,
-                  onSpreadChange: (v) =>
-                    patchFixedReaderSettings({ spread: v }),
-                }
-              : undefined
-          }
-        />
-      </Animated.View>
-    </BottomSheetModalProvider>
+            {/* State 5: Settings bottom sheet */}
+            <ReaderSettingsSheet
+              ref={settingsSheetRef}
+              palette={chromePalette}
+              onDismiss={handleSettingsDismiss}
+              layout={isReflowSurface ? "reflowable" : "fixed"}
+              reflow={
+                isReflowSurface
+                  ? {
+                      theme: reflowSettings.theme,
+                      onThemeChange: (key) =>
+                        patchReflowableReaderSettings({ theme: key }),
+                      fontFamily: reflowSettings.fontFamily,
+                      onFontFamilyChange: (v) =>
+                        patchReflowableReaderSettings({ fontFamily: v }),
+                      fontSize: reflowSettings.fontSize,
+                      onFontSizeChange: (v) =>
+                        patchReflowableReaderSettings({ fontSize: v }),
+                      fontSizeMin: 14,
+                      fontSizeMax: 28,
+                      lineHeight: reflowSettings.lineHeight,
+                      onLineHeightChange: (v) =>
+                        patchReflowableReaderSettings({ lineHeight: v }),
+                      lineHeightMin: 1.4,
+                      lineHeightMax: 2.4,
+                      margin: reflowSettings.paddingX,
+                      onMarginChange: (v) =>
+                        patchReflowableReaderSettings({ paddingX: v }),
+                      marginMin: 12,
+                      marginMax: 36,
+                      textAlign: reflowSettings.textAlign,
+                      onTextAlignChange: (v) =>
+                        patchReflowableReaderSettings({ textAlign: v }),
+                      columnCount: reflowSettings.columnCount,
+                      onColumnCountChange: (v) =>
+                        patchReflowableReaderSettings({ columnCount: v }),
+                    }
+                  : undefined
+              }
+              fixed={
+                !isReflowSurface
+                  ? {
+                      background: fixedSettings.background,
+                      onBackgroundChange: (v) =>
+                        patchFixedReaderSettings({ background: v }),
+                      navigationMode: fixedSettings.navigationMode,
+                      onNavigationModeChange: (v) =>
+                        patchFixedReaderSettings({ navigationMode: v }),
+                      showPageDirection: !isCbzFixed,
+                      readingProgression: fixedSettings.readingProgression,
+                      onReadingProgressionChange: (v) =>
+                        patchFixedReaderSettings({ readingProgression: v }),
+                      spread: fixedSettings.spread,
+                      onSpreadChange: (v) =>
+                        patchFixedReaderSettings({ spread: v }),
+                    }
+                  : undefined
+              }
+            />
+          </Animated.View>
+        </RNAnimated.View>
+      </BottomSheetModalProvider>
+    </View>
   )
 }
 
@@ -571,4 +617,15 @@ const DomReaderFallback = memo(function DomReaderFallback({
       </Text>
     </View>
   )
+})
+
+const styles = StyleSheet.create({
+  readerRouteFrame: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  readerCloseFrame: {
+    flex: 1,
+    overflow: "visible",
+  },
 })

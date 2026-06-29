@@ -1,12 +1,16 @@
-import { memo, useCallback, useMemo } from "react"
+import { memo, useCallback, useMemo, useRef } from "react"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Platform, View as RNView } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
 import type { BookItem } from "@/src/domain/types"
+import {
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
 
@@ -85,6 +89,7 @@ function BookRowImpl({
 }: BookRowProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const coverRef = useRef<RNView>(null)
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
@@ -114,8 +119,27 @@ function BookRowImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
-    onPress(book.id)
-  }, [book.id, isAnyMenuOpen, onPress])
+    const coverNode = coverRef.current
+    if (!coverNode) {
+      onPress(book.id)
+      return
+    }
+
+    measureReaderTransitionFrame(
+      coverNode,
+      ({ frame, screenWidth, screenHeight }) => {
+        setReaderOpenTransition({
+          bookId: book.id,
+          coverUri: book.coverUri,
+          title: book.title,
+          frame,
+          screenWidth,
+          screenHeight,
+        })
+        requestAnimationFrame(() => onPress(book.id))
+      },
+    )
+  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
 
   const handleMorePress = useCallback(
     (event: { stopPropagation?: () => void }) => {
@@ -173,13 +197,15 @@ function BookRowImpl({
           paddingHorizontal: horizontalPadding,
         }}
       >
-        <BookCover
-          book={book}
-          width={BOOK_ROW_COVER_WIDTH}
-          height={BOOK_ROW_COVER_HEIGHT}
-          borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
-          showTitle={false}
-        />
+        <RNView ref={coverRef} collapsable={false}>
+          <BookCover
+            book={book}
+            width={BOOK_ROW_COVER_WIDTH}
+            height={BOOK_ROW_COVER_HEIGHT}
+            borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
+            showTitle={false}
+          />
+        </RNView>
         <View className="min-w-0 flex-1 justify-between">
           <View className="gap-0.5">
             <Text

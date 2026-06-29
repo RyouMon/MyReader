@@ -1,8 +1,8 @@
-import { memo, useCallback, useMemo } from "react"
+import { memo, useCallback, useMemo, useRef } from "react"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import { Platform, View as RNView } from "react-native"
 
 import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
 import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-background"
@@ -20,6 +20,10 @@ import {
   type BookDownloadStatus,
 } from "@/src/features/library/components/books/book-cover"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
+import {
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { Pressable, Text, View } from "@/tw"
 
@@ -68,6 +72,7 @@ function ReadingListCardImpl({
   const { colorScheme } = useTheme()
   const resolvedScheme = colorScheme === "dark" ? "dark" : "light"
   const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
+  const coverRef = useRef<RNView>(null)
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
@@ -93,8 +98,27 @@ function ReadingListCardImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
-    onPress(book.id)
-  }, [book.id, isAnyMenuOpen, onPress])
+    const coverNode = coverRef.current
+    if (!coverNode) {
+      onPress(book.id)
+      return
+    }
+
+    measureReaderTransitionFrame(
+      coverNode,
+      ({ frame, screenWidth, screenHeight }) => {
+        setReaderOpenTransition({
+          bookId: book.id,
+          coverUri: book.coverUri,
+          title: book.title,
+          frame,
+          screenWidth,
+          screenHeight,
+        })
+        requestAnimationFrame(() => onPress(book.id))
+      },
+    )
+  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
 
   const handleMenuOpenLocal = useCallback(() => {
     onMenuOpen?.(book.id)
@@ -119,13 +143,15 @@ function ReadingListCardImpl({
 
   const cardContent = (
     <View className="flex-row items-center gap-3 p-3">
-      <BookCover
-        book={book}
-        width={COVER_WIDTH}
-        height={COVER_HEIGHT}
-        borderRadius={COVER_BORDER_RADIUS}
-        showTitle={false}
-      />
+      <RNView ref={coverRef} collapsable={false}>
+        <BookCover
+          book={book}
+          width={COVER_WIDTH}
+          height={COVER_HEIGHT}
+          borderRadius={COVER_BORDER_RADIUS}
+          showTitle={false}
+        />
+      </RNView>
       <View className="min-w-0 flex-1 justify-center gap-1">
         <Text
           className="text-base font-bold"
