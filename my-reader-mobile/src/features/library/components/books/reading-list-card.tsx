@@ -76,7 +76,8 @@ function ReadingListCardImpl({
 
     measureReaderTransitionFrame(
       coverNode,
-      ({ frame, screenWidth, screenHeight }) => {
+      { borderRadius: COVER_BORDER_RADIUS },
+      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
           coverUri: book.coverUri,
@@ -84,6 +85,8 @@ function ReadingListCardImpl({
           frame,
           screenWidth,
           screenHeight,
+          rootX,
+          rootY,
         })
         requestAnimationFrame(() => onPress(book.id))
       },

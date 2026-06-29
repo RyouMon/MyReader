@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  Animated as RNAnimated,
   Platform,
+  Animated as RNAnimated,
   StyleSheet,
   useWindowDimensions,
 } from "react-native"
@@ -10,12 +10,13 @@ import { useThemePalette } from "@/src/design/tokens"
 import {
   clearActiveReaderOpenTransition,
   getActiveReaderOpenTransition,
+  READER_BOOK_TRANSITION_MS,
+  READER_FADE_TRANSITION_MS,
   subscribeReaderOpenTransition,
   type ReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import { Image, Text, View } from "@/tw"
 
-const OPEN_MS = 780
 const EXPAND_DONE = 0.68
 
 export function ReaderOpenTransitionHost() {
@@ -30,6 +31,15 @@ export function ReaderOpenTransitionHost() {
 
   const handleFinished = useCallback(
     async (finishedTransition: ReaderOpenTransition) => {
+      if (
+        finishedTransition.mode === "fade" &&
+        finishedTransition.direction === "close"
+      ) {
+        finishedTransition.onFinished?.()
+        requestAnimationFrame(clearActiveReaderOpenTransition)
+        return
+      }
+
       clearActiveReaderOpenTransition()
       finishedTransition.onFinished?.()
     },
@@ -66,7 +76,10 @@ function ReaderOpenTransitionOverlay({
   useEffect(() => {
     const animation = RNAnimated.timing(progress, {
       toValue: 1,
-      duration: OPEN_MS,
+      duration:
+        transition.mode === "fade"
+          ? READER_FADE_TRANSITION_MS
+          : READER_BOOK_TRANSITION_MS,
       useNativeDriver: true,
     })
 
@@ -76,6 +89,29 @@ function ReaderOpenTransitionOverlay({
 
     return () => animation.stop()
   }, [onFinished, progress, transition])
+
+  if (transition.mode === "fade") {
+    const fadeOpacity = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: transition.direction === "close" ? [0, 1] : [1, 0],
+      extrapolate: "clamp",
+    })
+
+    return (
+      <RNAnimated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: palette.background,
+            opacity: fadeOpacity,
+            elevation: 9999,
+            zIndex: 9999,
+          },
+        ]}
+      />
+    )
+  }
 
   const sourceWidth = clamp(transition.frame.width, 1, width)
   const sourceHeight = clamp(transition.frame.height, 1, height)

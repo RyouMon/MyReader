@@ -5,6 +5,7 @@ public class MyReaderBookTransitionModule: Module {
   private var activeOverlay: UIView?
   private var sourceSnapshots: [String: UIImage] = [:]
   private var sourceCoverSnapshots: [String: UIImage] = [:]
+  private var contentSnapshots: [String: UIImage] = [:]
 
   public func definition() -> ModuleDefinition {
     Name("MyReaderBookTransition")
@@ -18,6 +19,10 @@ public class MyReaderBookTransitionModule: Module {
         didStart = self.startTransition(options: options)
       }
       return didStart
+    }
+
+    Function("isReduceMotionEnabled") { () -> Bool in
+      UIAccessibility.isReduceMotionEnabled
     }
   }
 
@@ -33,16 +38,22 @@ public class MyReaderBookTransitionModule: Module {
 
     activeOverlay?.removeFromSuperview()
 
-    let duration = ((options["durationMs"] as? Double) ?? 780) / 1000
-    let sourceFrame = CGRect(
+    let requestedDuration = ((options["durationMs"] as? Double) ?? 360) / 1000
+    let duration = UIAccessibility.isReduceMotionEnabled ? 0 : requestedDuration
+    let rootX = frameNumber(options["rootX"])
+    let rootY = frameNumber(options["rootY"])
+    let measuredFrame = CGRect(
       x: frameNumber(frame["x"]),
       y: frameNumber(frame["y"]),
       width: max(1, frameNumber(frame["width"])),
       height: max(1, frameNumber(frame["height"]))
     )
+    let sourceFrame = measuredFrame.offsetBy(dx: rootX, dy: rootY)
+    let sourceBorderRadius = max(0, frameNumber(frame["borderRadius"]))
     let bounds = window.bounds
     let isClosing = direction == "close"
     let bookId = options["bookId"] as? String
+    let coverCachePath = options["coverCachePath"] as? String
     let screenshot = Self.snapshot(window)
     NSLog(
       "[MyReaderBookTransition] start direction=%@ bookId=%@ sourceFrame=%@ hasScreenshot=%@",
@@ -53,7 +64,11 @@ public class MyReaderBookTransitionModule: Module {
     )
     let sourceCoverImage = isClosing
       ? bookId.flatMap { sourceCoverSnapshots[$0] }
-      : screenshot.flatMap { Self.crop($0, frame: sourceFrame, in: bounds) }
+      : loadImage(uriString: coverCachePath, headers: nil)
+        ?? screenshot.flatMap { Self.crop($0, frame: sourceFrame, in: bounds) }
+    if isClosing, let bookId, let screenshot {
+      contentSnapshots[bookId] = screenshot
+    }
     if !isClosing, let bookId, let screenshot {
       sourceSnapshots[bookId] = screenshot
       if let sourceCoverImage {
@@ -90,25 +105,33 @@ public class MyReaderBookTransitionModule: Module {
     bookContainer.clipsToBounds = false
     overlay.addSubview(bookContainer)
 
+    let contentClipView = UIView(frame: bounds)
+    contentClipView.backgroundColor = .clear
+    contentClipView.clipsToBounds = true
+    contentClipView.layer.masksToBounds = true
+    contentClipView.layer.cornerCurve = .continuous
+    bookContainer.addSubview(contentClipView)
+
     let contentView = makeContentView(
       bounds: bounds,
-      screenshot: isClosing ? screenshot : nil,
+      screenshot: isClosing ? screenshot : bookId.flatMap { contentSnapshots[$0] },
       title: options["title"] as? String
     )
     contentView.frame = bounds
-    bookContainer.addSubview(contentView)
+    contentClipView.addSubview(contentView)
 
     let coverView = makeCoverView(
-      bounds: bounds,
+      size: sourceFrame.size,
+      coverCachePath: coverCachePath,
       coverImageUri: options["coverImageUri"] as? String,
       coverHeaders: options["coverHeaders"] as? [String: String],
       fallbackImage: sourceCoverImage,
-      title: options["title"] as? String
+      title: options["title"] as? String,
+      borderRadius: sourceBorderRadius
     )
-    setCoverFrame(coverView, frame: bounds)
-    bookContainer.addSubview(coverView)
 
     window.addSubview(overlay)
+    overlay.addSubview(coverView)
     let hiddenSiblings: [(UIView, CGFloat)] = isClosing
       ? window.subviews.filter { $0 !== overlay }.map { view in
         let alpha = view.alpha
@@ -118,12 +141,41 @@ public class MyReaderBookTransitionModule: Module {
       : []
 
     let sourceTransform = transform(from: bounds, to: sourceFrame)
+    let coverTargetScale = max(bounds.width / sourceFrame.width, bounds.height / sourceFrame.height)
+    let coverTargetSize = CGSize(
+      width: sourceFrame.width * coverTargetScale,
+      height: sourceFrame.height * coverTargetScale
+    )
+    let coverTargetFrame = CGRect(
+      x: 0,
+      y: (bounds.height - coverTargetSize.height) / 2,
+      width: coverTargetSize.width,
+      height: coverTargetSize.height
+    )
+    let coverTargetBorderRadius = sourceBorderRadius / coverTargetScale
+    let contentSourceScale = max(
+      0.01,
+      (sourceFrame.width / bounds.width + sourceFrame.height / bounds.height) / 2
+    )
+    let contentSourceBorderRadius = sourceBorderRadius / contentSourceScale
     bookContainer.transform = isClosing ? .identity : sourceTransform
     contentView.frame = bounds
+    contentClipView.frame = bounds
+    contentClipView.layer.cornerRadius = isClosing
+      ? coverTargetBorderRadius
+      : contentSourceBorderRadius
     if isClosing {
-      setCoverFrame(coverView, frame: bounds)
+      setCoverPlacement(coverView, frame: coverTargetFrame, scale: coverTargetScale)
+    } else {
+      setCoverPlacement(coverView, frame: sourceFrame, scale: 1)
     }
-    coverView.layer.transform = isClosing ? coverTransform(open: true) : CATransform3DIdentity
+    coverView.layer.cornerRadius = isClosing
+      ? coverTargetBorderRadius
+      : sourceBorderRadius
+    coverView.layer.masksToBounds = true
+    coverView.layer.transform = isClosing
+      ? coverTransform(open: true, scale: coverTargetScale)
+      : coverTransform(open: false, scale: 1)
     coverView.alpha = 1
 
     UIView.animate(
@@ -132,12 +184,26 @@ public class MyReaderBookTransitionModule: Module {
       options: [.curveEaseInOut, .allowUserInteraction],
       animations: {
         if isClosing {
-          contentView.frame = sourceFrame
-          self.setCoverFrame(coverView, frame: sourceFrame)
+          bookContainer.transform = sourceTransform
+          contentClipView.frame = bounds
+          contentView.frame = bounds
+          self.setCoverPlacement(coverView, frame: sourceFrame, scale: 1)
         } else {
           bookContainer.transform = .identity
+          contentClipView.frame = bounds
+          contentView.frame = bounds
+          self.setCoverPlacement(coverView, frame: coverTargetFrame, scale: coverTargetScale)
         }
-        coverView.layer.transform = isClosing ? CATransform3DIdentity : self.coverTransform(open: true)
+        contentClipView.layer.cornerRadius = isClosing
+          ? contentSourceBorderRadius
+          : coverTargetBorderRadius
+        coverView.layer.cornerRadius = isClosing
+          ? sourceBorderRadius
+          : coverTargetBorderRadius
+        coverView.layer.masksToBounds = true
+        coverView.layer.transform = isClosing
+          ? self.coverTransform(open: false, scale: 1)
+          : self.coverTransform(open: true, scale: coverTargetScale)
         coverView.alpha = isClosing ? 1 : 0
       },
       completion: { _ in
@@ -172,8 +238,7 @@ public class MyReaderBookTransitionModule: Module {
     return true
   }
 
-  private func setCoverFrame(_ view: UIView, frame: CGRect) {
-    view.bounds = CGRect(origin: .zero, size: frame.size)
+  private func setCoverPlacement(_ view: UIView, frame: CGRect, scale: CGFloat) {
     view.layer.anchorPoint = CGPoint(x: 0, y: 0.5)
     view.layer.position = CGPoint(x: frame.minX, y: frame.midY)
   }
@@ -187,38 +252,54 @@ public class MyReaderBookTransitionModule: Module {
     }
 
     let view = UIView(frame: bounds)
-    view.backgroundColor = UIColor.systemBackground
+    view.backgroundColor = UIColor(red: 0.98, green: 0.97, blue: 0.94, alpha: 1)
 
-    let insetX = max(24, bounds.width * 0.1)
-    var y = max(48, bounds.height * 0.12)
-    for index in 0..<12 {
-      let width = (index % 4 == 3) ? bounds.width * 0.5 : bounds.width - insetX * 2
-      let line = UIView(frame: CGRect(x: insetX, y: y, width: width, height: 6))
-      line.backgroundColor = UIColor.separator.withAlphaComponent(0.45)
-      line.layer.cornerRadius = 3
+    let insetX = max(28, bounds.width * 0.12)
+    var y = max(56, bounds.height * 0.1)
+    for index in 0..<22 {
+      let lineWidth: CGFloat
+      if index % 7 == 6 {
+        lineWidth = bounds.width * 0.46
+      } else if index % 5 == 4 {
+        lineWidth = bounds.width * 0.72
+      } else {
+        lineWidth = bounds.width - insetX * 2
+      }
+      let line = UIView(frame: CGRect(x: insetX, y: y, width: lineWidth, height: 4))
+      line.backgroundColor = UIColor(red: 0.45, green: 0.4, blue: 0.34, alpha: 0.22)
+      line.layer.cornerRadius = 2
       view.addSubview(line)
-      y += 18
+      y += 14
     }
 
     return view
   }
 
   private func makeCoverView(
-    bounds: CGRect,
+    size: CGSize,
+    coverCachePath: String?,
     coverImageUri: String?,
     coverHeaders: [String: String]?,
     fallbackImage: UIImage?,
-    title: String?
+    title: String?,
+    borderRadius: CGFloat
   ) -> UIView {
+    let bounds = CGRect(origin: .zero, size: size)
     let view = UIView(frame: bounds)
     view.backgroundColor = UIColor(red: 0.29, green: 0.22, blue: 0.16, alpha: 1)
     view.clipsToBounds = true
+    view.layer.masksToBounds = true
+    view.layer.cornerRadius = borderRadius
+    view.layer.cornerCurve = .continuous
 
-    if let image = fallbackImage ?? loadImage(uriString: coverImageUri, headers: coverHeaders) {
+    if let image = loadImage(uriString: coverCachePath, headers: nil)
+      ?? fallbackImage
+      ?? loadImage(uriString: coverImageUri, headers: coverHeaders) {
       let imageView = UIImageView(image: image)
       imageView.frame = bounds
       imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-      imageView.contentMode = .scaleToFill
+      imageView.contentMode = .scaleAspectFill
+      imageView.clipsToBounds = true
       view.addSubview(imageView)
     } else {
       let label = UILabel(frame: bounds.insetBy(dx: 32, dy: 32))
@@ -234,9 +315,10 @@ public class MyReaderBookTransitionModule: Module {
     return view
   }
 
-  private func coverTransform(open: Bool) -> CATransform3D {
+  private func coverTransform(open: Bool, scale: CGFloat) -> CATransform3D {
     var transform = CATransform3DIdentity
     transform.m34 = -1 / 1200
+    transform = CATransform3DScale(transform, scale, scale, 1)
     return CATransform3DRotate(transform, open ? -.pi * 0.62 : 0, 0, 1, 0)
   }
 

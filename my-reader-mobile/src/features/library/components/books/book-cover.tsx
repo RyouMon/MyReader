@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from "react"
 
 import { useThemePalette } from "@/src/design/tokens"
 import type { BookItem } from "@/src/domain/types"
+import { primeReaderCoverCache } from "@/src/features/reader/reader-open-transition"
 import { Image, Text, View } from "@/tw"
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
@@ -50,6 +51,7 @@ function BookCoverImpl({
 
   useEffect(() => {
     setImageError(false)
+    primeReaderCoverCache(book.coverUri)
   }, [book.coverUri])
 
   const hasCover = !!book.coverUri && !imageError

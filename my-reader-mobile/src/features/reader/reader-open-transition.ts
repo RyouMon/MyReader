@@ -1,13 +1,26 @@
 import type { BookItem } from "@/src/domain/types"
-import { startNativeBookTransition } from "@my-reader/book-transition"
-import { Dimensions, Platform, PixelRatio, View as RNView } from "react-native"
+import {
+  isNativeReduceMotionEnabled,
+  startNativeBookTransition,
+} from "@my-reader/book-transition"
+import { Image as ExpoImage } from "expo-image"
+import {
+  AccessibilityInfo,
+  Dimensions,
+  PixelRatio,
+  Platform,
+  View as RNView,
+} from "react-native"
 
-export const READER_BOOK_TRANSITION_MS = 780
+export const READER_BOOK_TRANSITION_MS = 360
+export const READER_FADE_TRANSITION_MS = 180
 
 export type ReaderOpenTransition = {
   direction: "open" | "close"
+  mode?: "book" | "fade"
   bookId: string
   coverUri: BookItem["coverUri"]
+  coverCachePath?: string | null
   coverImageUri: string | null
   coverHeaders?: Record<string, string> | null
   title: string
@@ -16,9 +29,12 @@ export type ReaderOpenTransition = {
     y: number
     width: number
     height: number
+    borderRadius?: number
   }
   screenWidth?: number
   screenHeight?: number
+  rootX?: number
+  rootY?: number
   createdAt: number
   nativeStarted?: boolean
   onFinished?: () => void
@@ -29,6 +45,20 @@ let activeTransition: ReaderOpenTransition | null = null
 const recentTransitions = new Map<string, ReaderOpenTransition>()
 const listeners = new Set<() => void>()
 let transitionRootNode: RNView | null = null
+const coverCachePaths = new Map<string, string | null>()
+let reduceMotionEnabled = isNativeReduceMotionEnabled()
+
+AccessibilityInfo.isReduceMotionEnabled()
+  .then((enabled) => {
+    reduceMotionEnabled = enabled
+  })
+  .catch(() => {
+    reduceMotionEnabled = false
+  })
+
+AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
+  reduceMotionEnabled = enabled
+})
 
 function emitChange() {
   listeners.forEach((listener) => listener())
@@ -46,7 +76,39 @@ function getTransitionMetrics(transition: ReaderOpenTransition) {
   return {
     screenWidth: transition.screenWidth ?? getScreenMetrics().screenWidth,
     screenHeight: transition.screenHeight ?? getScreenMetrics().screenHeight,
+    rootX: transition.rootX ?? 0,
+    rootY: transition.rootY ?? 0,
   }
+}
+
+function getCoverImageUri(coverUri: BookItem["coverUri"]) {
+  return typeof coverUri === "string" ? coverUri : (coverUri?.uri ?? null)
+}
+
+function getCoverHeaders(coverUri: BookItem["coverUri"]) {
+  return typeof coverUri === "string" ? null : (coverUri?.headers ?? null)
+}
+
+function normalizeCachePath(path: string | null) {
+  if (!path) return null
+  return path.startsWith("/") ? `file://${path}` : path
+}
+
+export function primeReaderCoverCache(coverUri: BookItem["coverUri"]) {
+  const uri = getCoverImageUri(coverUri)
+  if (!uri || coverCachePaths.has(uri)) return
+
+  coverCachePaths.set(uri, null)
+  const headers = getCoverHeaders(coverUri) ?? undefined
+  ExpoImage.prefetch(uri, { cachePolicy: "memory-disk", headers })
+    .catch(() => false)
+    .then(() => ExpoImage.getCachePathAsync(uri))
+    .then((path) => {
+      coverCachePaths.set(uri, normalizeCachePath(path))
+    })
+    .catch(() => {
+      coverCachePaths.set(uri, null)
+    })
 }
 
 export function setReaderTransitionRootNode(node: RNView | null) {
@@ -55,16 +117,36 @@ export function setReaderTransitionRootNode(node: RNView | null) {
 
 export function measureReaderTransitionFrame(
   node: RNView,
+  optionsOrCallback:
+    | { borderRadius?: number }
+    | ((result: {
+        frame: ReaderOpenTransition["frame"]
+        screenWidth?: number
+        screenHeight?: number
+        rootX?: number
+        rootY?: number
+      }) => void),
   callback: (result: {
     frame: ReaderOpenTransition["frame"]
     screenWidth?: number
     screenHeight?: number
-  }) => void,
+    rootX?: number
+    rootY?: number
+  }) => void = typeof optionsOrCallback === "function"
+    ? optionsOrCallback
+    : () => {},
 ) {
+  const options =
+    typeof optionsOrCallback === "function" ? undefined : optionsOrCallback
   const rootNode = transitionRootNode
   if (!rootNode) {
     node.measureInWindow((x, y, width, height) => {
-      callback({ frame: { x, y, width, height }, ...getScreenMetrics() })
+      callback({
+        frame: { x, y, width, height, borderRadius: options?.borderRadius },
+        ...getScreenMetrics(),
+        rootX: 0,
+        rootY: 0,
+      })
     })
     return
   }
@@ -72,9 +154,17 @@ export function measureReaderTransitionFrame(
   rootNode.measureInWindow((rootX, rootY, rootWidth, rootHeight) => {
     node.measureInWindow((x, y, width, height) => {
       callback({
-        frame: { x: x - rootX, y: y - rootY, width, height },
+        frame: {
+          x: x - rootX,
+          y: y - rootY,
+          width,
+          height,
+          borderRadius: options?.borderRadius,
+        },
         screenWidth: rootWidth,
         screenHeight: rootHeight,
+        rootX,
+        rootY,
       })
     })
   })
@@ -83,34 +173,42 @@ export function measureReaderTransitionFrame(
 export function setReaderOpenTransition(
   transition: Omit<
     ReaderOpenTransition,
-    "createdAt" | "coverImageUri" | "direction" | "onFinished"
+    | "createdAt"
+    | "coverCachePath"
+    | "coverImageUri"
+    | "direction"
+    | "onFinished"
   >,
 ) {
-  const coverImageUri =
-    typeof transition.coverUri === "string"
-      ? transition.coverUri
-      : (transition.coverUri?.uri ?? null)
-  const coverHeaders =
-    typeof transition.coverUri === "string"
-      ? null
-      : (transition.coverUri?.headers ?? null)
+  const coverImageUri = getCoverImageUri(transition.coverUri)
+  const coverHeaders = getCoverHeaders(transition.coverUri)
+  const coverCachePath = coverImageUri
+    ? (coverCachePaths.get(coverImageUri) ?? null)
+    : null
   const nextTransition: ReaderOpenTransition = {
     ...transition,
     direction: "open" as const,
+    mode: shouldUseFadeTransition() ? "fade" : "book",
+    coverCachePath,
     coverImageUri,
     coverHeaders,
     createdAt: Date.now(),
   }
-  const nativeStarted = startNativeBookTransition({
-    direction: "open",
-    bookId: nextTransition.bookId,
-    frame: nextTransition.frame,
-    ...getTransitionMetrics(nextTransition),
-    coverImageUri: nextTransition.coverImageUri,
-    coverHeaders: nextTransition.coverHeaders,
-    title: nextTransition.title,
-    durationMs: READER_BOOK_TRANSITION_MS,
-  })
+  primeReaderCoverCache(transition.coverUri)
+  const nativeStarted =
+    nextTransition.mode === "book"
+      ? startNativeBookTransition({
+          direction: "open",
+          bookId: nextTransition.bookId,
+          frame: nextTransition.frame,
+          ...getTransitionMetrics(nextTransition),
+          coverCachePath: nextTransition.coverCachePath,
+          coverImageUri: nextTransition.coverImageUri,
+          coverHeaders: nextTransition.coverHeaders,
+          title: nextTransition.title,
+          durationMs: READER_BOOK_TRANSITION_MS,
+        })
+      : false
   nextTransition.nativeStarted = nativeStarted
   if (__DEV__) {
     console.info("[ReaderBookTransition] open", {
@@ -137,19 +235,24 @@ export function setReaderCloseTransition(
   const nextTransition: ReaderOpenTransition = {
     ...recentTransition,
     direction: "close",
+    mode: shouldUseFadeTransition() ? "fade" : recentTransition.mode,
     createdAt: Date.now(),
     onFinished,
   }
-  const nativeStarted = startNativeBookTransition({
-    direction: "close",
-    bookId: nextTransition.bookId,
-    frame: nextTransition.frame,
-    ...getTransitionMetrics(nextTransition),
-    coverImageUri: nextTransition.coverImageUri,
-    coverHeaders: nextTransition.coverHeaders,
-    title: nextTransition.title,
-    durationMs: READER_BOOK_TRANSITION_MS,
-  })
+  const nativeStarted =
+    nextTransition.mode === "book"
+      ? startNativeBookTransition({
+          direction: "close",
+          bookId: nextTransition.bookId,
+          frame: nextTransition.frame,
+          ...getTransitionMetrics(nextTransition),
+          coverCachePath: nextTransition.coverCachePath,
+          coverImageUri: nextTransition.coverImageUri,
+          coverHeaders: nextTransition.coverHeaders,
+          title: nextTransition.title,
+          durationMs: READER_BOOK_TRANSITION_MS,
+        })
+      : false
   nextTransition.nativeStarted = nativeStarted
   if (__DEV__) {
     console.info("[ReaderBookTransition] close", {
@@ -163,6 +266,10 @@ export function setReaderCloseTransition(
   activeTransition = nativeStarted ? null : nextTransition
   emitChange()
   return nextTransition
+}
+
+function shouldUseFadeTransition() {
+  return reduceMotionEnabled
 }
 
 export function takeReaderOpenTransition(bookId: string) {

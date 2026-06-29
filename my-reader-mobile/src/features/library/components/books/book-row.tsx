@@ -127,7 +127,8 @@ function BookRowImpl({
 
     measureReaderTransitionFrame(
       coverNode,
-      ({ frame, screenWidth, screenHeight }) => {
+      { borderRadius: BOOK_ROW_COVER_BORDER_RADIUS },
+      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
           coverUri: book.coverUri,
@@ -135,6 +136,8 @@ function BookRowImpl({
           frame,
           screenWidth,
           screenHeight,
+          rootX,
+          rootY,
         })
         requestAnimationFrame(() => onPress(book.id))
       },

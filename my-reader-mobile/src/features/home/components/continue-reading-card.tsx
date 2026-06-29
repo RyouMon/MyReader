@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 
@@ -21,9 +21,12 @@ import type { BookItem } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
 import {
   measureReaderTransitionFrame,
+  primeReaderCoverCache,
   setReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
+
+const CONTINUE_READING_COVER_BORDER_RADIUS = 16
 
 type ContinueReadingCardProps = {
   book: BookItem & { readingProgress: number; readingFormat: string }
@@ -57,6 +60,10 @@ export function ContinueReadingCard({
   const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
   const coverRef = useRef<RNView>(null)
 
+  useEffect(() => {
+    primeReaderCoverCache(book.coverUri)
+  }, [book.coverUri])
+
   const handlePress = () => {
     if (isAnyMenuOpen || !onPress) return
     const coverNode = coverRef.current
@@ -67,7 +74,8 @@ export function ContinueReadingCard({
 
     measureReaderTransitionFrame(
       coverNode,
-      ({ frame, screenWidth, screenHeight }) => {
+      { borderRadius: CONTINUE_READING_COVER_BORDER_RADIUS },
+      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
           coverUri: book.coverUri,
@@ -75,6 +83,8 @@ export function ContinueReadingCard({
           frame,
           screenWidth,
           screenHeight,
+          rootX,
+          rootY,
         })
         requestAnimationFrame(onPress)
       },
@@ -158,7 +168,14 @@ export function ContinueReadingCard({
           })}
         >
           <View className="flex-row items-start gap-3 p-3">
-            <RNView ref={coverRef} collapsable={false}>
+            <RNView
+              ref={coverRef}
+              collapsable={false}
+              style={{
+                borderRadius: CONTINUE_READING_COVER_BORDER_RADIUS,
+                overflow: "hidden",
+              }}
+            >
               {coverNode}
             </RNView>
             <View

@@ -7,6 +7,7 @@ export type BookTransitionFrame = {
   y: number
   width: number
   height: number
+  borderRadius?: number
 }
 
 export type BookTransitionOptions = {
@@ -15,6 +16,9 @@ export type BookTransitionOptions = {
   frame: BookTransitionFrame
   screenWidth?: number
   screenHeight?: number
+  rootX?: number
+  rootY?: number
+  coverCachePath?: string | null
   coverImageUri?: string | null
   coverHeaders?: Record<string, string> | null
   title?: string | null
@@ -23,6 +27,7 @@ export type BookTransitionOptions = {
 
 type NativeBookTransitionModule = {
   startTransition(options: BookTransitionOptions): boolean
+  isReduceMotionEnabled?(): boolean
 }
 
 let nativeModule: NativeBookTransitionModule | null | undefined
@@ -41,4 +46,8 @@ function getNativeModule() {
 
 export function startNativeBookTransition(options: BookTransitionOptions) {
   return getNativeModule()?.startTransition(options) ?? false
+}
+
+export function isNativeReduceMotionEnabled() {
+  return getNativeModule()?.isReduceMotionEnabled?.() ?? false
 }
