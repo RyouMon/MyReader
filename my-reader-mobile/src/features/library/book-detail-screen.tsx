@@ -278,6 +278,7 @@ export default function BookDetailScreen() {
       ) => {
         setReaderOpenTransition({
           bookId,
+          format,
           coverUri,
           title: currentDetail.title,
           frame,

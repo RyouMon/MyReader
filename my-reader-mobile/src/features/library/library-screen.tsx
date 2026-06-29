@@ -313,6 +313,7 @@ export default function LibraryScreen({
               book={item}
               downloadStatus={status}
               width={cardWidth}
+              readerFormat={effectiveFormat}
               isAnyMenuOpen={isMenuOpen}
               onPress={handleBookPress}
               menuIsRemote={isRemote}
@@ -334,6 +335,7 @@ export default function LibraryScreen({
         <BookRow
           book={item}
           downloadStatus={status}
+          readerFormat={effectiveFormat}
           isAnyMenuOpen={isMenuOpen}
           onPress={handleBookPress}
           menuIsRemote={isRemote}

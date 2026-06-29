@@ -13,6 +13,7 @@ export type BookTransitionFrame = {
 export type BookTransitionOptions = {
   direction: BookTransitionDirection
   bookId?: string | null
+  format?: string | null
   frame: BookTransitionFrame
   sourceViewTag?: number | null
   screenWidth?: number
@@ -22,6 +23,8 @@ export type BookTransitionOptions = {
   coverCachePath?: string | null
   coverImageUri?: string | null
   coverHeaders?: Record<string, string> | null
+  readerBackgroundColor?: string | null
+  readerForegroundColor?: string | null
   title?: string | null
   durationMs?: number
 }

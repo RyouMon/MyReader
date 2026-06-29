@@ -39,6 +39,7 @@ export type BookCardProps = {
   onMenuClose?: () => void
   isAnyMenuOpen?: boolean
   progress?: BookProgressSnapshot
+  readerFormat?: string
   downloadStatus?: BookDownloadStatus
   downloadProgress?: number
   /**
@@ -71,6 +72,7 @@ function BookCardImpl({
   onMenuClose,
   isAnyMenuOpen,
   progress,
+  readerFormat,
   downloadStatus,
   downloadProgress,
   menuIsRemote,
@@ -129,6 +131,7 @@ function BookCardImpl({
       ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
+          format: readerFormat,
           coverUri: book.coverUri,
           title: book.title,
           frame,
@@ -148,6 +151,7 @@ function BookCardImpl({
     isAnyMenuOpen,
     menuIsRemote,
     onPress,
+    readerFormat,
   ])
 
   const handleMorePress = useCallback(

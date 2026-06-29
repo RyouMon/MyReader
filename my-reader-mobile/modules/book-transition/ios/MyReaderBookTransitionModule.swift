@@ -6,7 +6,6 @@ public class MyReaderBookTransitionModule: Module {
   private var sourceSnapshots: [String: UIImage] = [:]
   private var sourceCoverSnapshots: [String: UIImage] = [:]
   private var sourceFrames: [String: CGRect] = [:]
-  private var contentSnapshots: [String: UIImage] = [:]
 
   public func definition() -> ModuleDefinition {
     Name("MyReaderBookTransition")
@@ -79,6 +78,14 @@ public class MyReaderBookTransitionModule: Module {
     let sourceBorderRadius = max(0, frameNumber(frame["borderRadius"]))
     let bounds = window.bounds
     let coverCachePath = options["coverCachePath"] as? String
+    let readerBackgroundColor = color(
+      from: options["readerBackgroundColor"] as? String,
+      fallback: UIColor(red: 0.98, green: 0.97, blue: 0.94, alpha: 1)
+    )
+    let readerForegroundColor = color(
+      from: options["readerForegroundColor"] as? String,
+      fallback: UIColor(red: 0.34, green: 0.27, blue: 0.21, alpha: 1)
+    )
     let screenshot = Self.snapshot(window)
     NSLog(
       "[MyReaderBookTransition] start direction=%@ bookId=%@ sourceFrame=%@ fallbackFrame=%@ storedFrame=%@ tag=%@ hasScreenshot=%@",
@@ -94,9 +101,6 @@ public class MyReaderBookTransitionModule: Module {
       ? bookId.flatMap { sourceCoverSnapshots[$0] }
       : loadImage(uriString: coverCachePath, headers: nil)
         ?? screenshot.flatMap { Self.crop($0, frame: sourceFrame, in: bounds) }
-    if isClosing, let bookId, let screenshot {
-      contentSnapshots[bookId] = screenshot
-    }
     if !isClosing, let bookId, let screenshot {
       sourceSnapshots[bookId] = screenshot
       sourceFrames[bookId] = sourceFrame
@@ -143,8 +147,9 @@ public class MyReaderBookTransitionModule: Module {
 
     let contentView = makeContentView(
       bounds: bounds,
-      screenshot: isClosing ? screenshot : bookId.flatMap { contentSnapshots[$0] },
-      title: options["title"] as? String
+      screenshot: isClosing ? screenshot : nil,
+      backgroundColor: readerBackgroundColor,
+      foregroundColor: readerForegroundColor
     )
     contentView.frame = bounds
     contentClipView.addSubview(contentView)
@@ -273,36 +278,53 @@ public class MyReaderBookTransitionModule: Module {
     view.layer.position = CGPoint(x: frame.minX, y: frame.midY)
   }
 
-  private func makeContentView(bounds: CGRect, screenshot: UIImage?, title: String?) -> UIView {
+  private func makeContentView(
+    bounds: CGRect,
+    screenshot: UIImage?,
+    backgroundColor: UIColor,
+    foregroundColor: UIColor
+  ) -> UIView {
     if let screenshot {
       let imageView = UIImageView(image: screenshot)
       imageView.contentMode = .scaleToFill
-      imageView.backgroundColor = .black
+      imageView.backgroundColor = backgroundColor
       return imageView
     }
 
     let view = UIView(frame: bounds)
-    view.backgroundColor = UIColor(red: 0.98, green: 0.97, blue: 0.94, alpha: 1)
+    view.backgroundColor = backgroundColor
 
-    let insetX = max(28, bounds.width * 0.12)
-    var y = max(56, bounds.height * 0.1)
-    for index in 0..<22 {
-      let lineWidth: CGFloat
-      if index % 7 == 6 {
-        lineWidth = bounds.width * 0.46
-      } else if index % 5 == 4 {
-        lineWidth = bounds.width * 0.72
-      } else {
-        lineWidth = bounds.width - insetX * 2
-      }
-      let line = UIView(frame: CGRect(x: insetX, y: y, width: lineWidth, height: 4))
-      line.backgroundColor = UIColor(red: 0.45, green: 0.4, blue: 0.34, alpha: 0.22)
-      line.layer.cornerRadius = 2
-      view.addSubview(line)
-      y += 14
-    }
+    let indicator = UIActivityIndicatorView(style: .medium)
+    indicator.color = foregroundColor.withAlphaComponent(0.34)
+    indicator.center = CGPoint(x: bounds.midX, y: bounds.midY)
+    indicator.autoresizingMask = [
+      .flexibleLeftMargin,
+      .flexibleRightMargin,
+      .flexibleTopMargin,
+      .flexibleBottomMargin,
+    ]
+    indicator.startAnimating()
+    view.addSubview(indicator)
 
     return view
+  }
+
+  private func color(from value: String?, fallback: UIColor) -> UIColor {
+    guard var text = value?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+      return fallback
+    }
+    if text.hasPrefix("#") {
+      text.removeFirst()
+    }
+    guard text.count == 6, let rgb = Int(text, radix: 16) else {
+      return fallback
+    }
+    return UIColor(
+      red: CGFloat((rgb >> 16) & 0xff) / 255,
+      green: CGFloat((rgb >> 8) & 0xff) / 255,
+      blue: CGFloat(rgb & 0xff) / 255,
+      alpha: 1
+    )
   }
 
   private func makeCoverView(

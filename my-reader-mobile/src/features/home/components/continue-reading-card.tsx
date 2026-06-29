@@ -83,6 +83,7 @@ export function ContinueReadingCard({
       ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
+          format: book.readingFormat,
           coverUri: book.coverUri,
           title: book.title,
           frame,

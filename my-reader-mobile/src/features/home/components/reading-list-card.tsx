@@ -115,6 +115,7 @@ function ReadingListCardImpl({
       ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
+          format: book.readingFormat,
           coverUri: book.coverUri,
           title: book.title,
           frame,
@@ -129,6 +130,7 @@ function ReadingListCardImpl({
   }, [
     book.coverUri,
     book.id,
+    book.readingFormat,
     book.title,
     downloadStatus,
     isAnyMenuOpen,

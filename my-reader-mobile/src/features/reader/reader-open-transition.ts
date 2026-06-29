@@ -1,4 +1,7 @@
 import type { BookItem } from "@/src/domain/types"
+import { READER_THEMES } from "@/src/design/reader-tokens"
+import { useAppStore } from "@/src/store/app-store"
+import type { FixedBackground } from "@/src/store/app-store.types"
 import {
   getNativePresentedViewFrame,
   isNativeReduceMotionEnabled,
@@ -7,6 +10,7 @@ import {
 import { Image as ExpoImage } from "expo-image"
 import {
   AccessibilityInfo,
+  Appearance,
   Dimensions,
   PixelRatio,
   Platform,
@@ -25,10 +29,13 @@ export type ReaderOpenTransition = {
   direction: "open" | "close"
   mode?: "book" | "fade"
   bookId: string
+  format?: string | null
   coverUri: BookItem["coverUri"]
   coverCachePath?: string | null
   coverImageUri: string | null
   coverHeaders?: Record<string, string> | null
+  readerBackgroundColor?: string | null
+  readerForegroundColor?: string | null
   title: string
   frame: {
     x: number
@@ -99,6 +106,47 @@ function getCoverHeaders(coverUri: BookItem["coverUri"]) {
 function normalizeCachePath(path: string | null) {
   if (!path) return null
   return path.startsWith("/") ? `file://${path}` : path
+}
+
+function resolveCurrentAppColorScheme() {
+  const themeMode = useAppStore.getState().settings.themeMode
+  if (themeMode === "dark" || themeMode === "light") return themeMode
+
+  return Appearance.getColorScheme() === "dark" ? "dark" : "light"
+}
+
+function resolveFixedReaderVisual(fixedBackground: FixedBackground) {
+  const appColorScheme = resolveCurrentAppColorScheme()
+  const backgroundColor =
+    fixedBackground === "black"
+      ? "#000000"
+      : fixedBackground === "white"
+        ? "#FFFFFF"
+        : appColorScheme === "dark"
+          ? "#000000"
+          : "#FFFFFF"
+
+  return {
+    readerBackgroundColor: backgroundColor,
+    readerForegroundColor:
+      backgroundColor === "#000000" ? "#D4CBC3" : "#2C2420",
+  }
+}
+
+function resolveReaderVisual(format?: string | null) {
+  const settings = useAppStore.getState().settings
+  const normalizedFormat = format?.toUpperCase() ?? null
+  if (normalizedFormat === "EPUB") {
+    const theme = settings.reflowable.theme
+    const colors = READER_THEMES[theme] ?? READER_THEMES.neutral
+    return {
+      readerBackgroundColor: colors.bg,
+      readerForegroundColor: colors.fg,
+    }
+  }
+
+  const fixedBackground = settings.fixed.background
+  return resolveFixedReaderVisual(fixedBackground)
 }
 
 export function primeReaderCoverCache(coverUri: BookItem["coverUri"]) {
@@ -192,6 +240,7 @@ export function setReaderOpenTransition(
   const coverCachePath = coverImageUri
     ? (coverCachePaths.get(coverImageUri) ?? null)
     : null
+  const readerVisual = resolveReaderVisual(transition.format)
   const nextTransition: ReaderOpenTransition = {
     ...transition,
     direction: "open" as const,
@@ -199,6 +248,7 @@ export function setReaderOpenTransition(
     coverCachePath,
     coverImageUri,
     coverHeaders,
+    ...readerVisual,
     createdAt: Date.now(),
   }
   primeReaderCoverCache(transition.coverUri)
@@ -207,12 +257,15 @@ export function setReaderOpenTransition(
       ? startNativeBookTransition({
           direction: "open",
           bookId: nextTransition.bookId,
+          format: nextTransition.format,
           frame: nextTransition.frame,
           sourceViewTag: nextTransition.sourceViewTag,
           ...getTransitionMetrics(nextTransition),
           coverCachePath: nextTransition.coverCachePath,
           coverImageUri: nextTransition.coverImageUri,
           coverHeaders: nextTransition.coverHeaders,
+          readerBackgroundColor: nextTransition.readerBackgroundColor,
+          readerForegroundColor: nextTransition.readerForegroundColor,
           title: nextTransition.title,
           durationMs: READER_BOOK_TRANSITION_MS,
         })
@@ -237,14 +290,19 @@ export function setReaderOpenTransition(
 export function setReaderCloseTransition(
   bookId: string,
   onFinished?: () => void,
+  options?: { format?: string | null },
 ): ReaderOpenTransition | null {
   const recentTransition = recentTransitions.get(bookId)
   if (!recentTransition) return null
 
+  const format = options?.format ?? recentTransition.format
+  const readerVisual = resolveReaderVisual(format)
   const nextTransition: ReaderOpenTransition = {
     ...recentTransition,
     direction: "close",
     mode: shouldUseFadeTransition() ? "fade" : recentTransition.mode,
+    format,
+    ...readerVisual,
     createdAt: Date.now(),
     onFinished,
   }
@@ -253,12 +311,15 @@ export function setReaderCloseTransition(
       ? startNativeBookTransition({
           direction: "close",
           bookId: nextTransition.bookId,
+          format: nextTransition.format,
           frame: nextTransition.frame,
           sourceViewTag: nextTransition.sourceViewTag,
           ...getTransitionMetrics(nextTransition),
           coverCachePath: nextTransition.coverCachePath,
           coverImageUri: nextTransition.coverImageUri,
           coverHeaders: nextTransition.coverHeaders,
+          readerBackgroundColor: nextTransition.readerBackgroundColor,
+          readerForegroundColor: nextTransition.readerForegroundColor,
           title: nextTransition.title,
           durationMs: READER_BOOK_TRANSITION_MS,
         })

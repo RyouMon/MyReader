@@ -1,3 +1,8 @@
+import { Appearance } from "react-native"
+
+import { defaultSettings } from "@/src/store/app-store.constants"
+import { useAppStore } from "@/src/store/app-store"
+
 import {
   clearActiveReaderOpenTransition,
   getActiveReaderOpenTransition,
@@ -9,6 +14,7 @@ import {
 describe("reader open transition", () => {
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(1000)
+    useAppStore.setState({ settings: defaultSettings })
     clearActiveReaderOpenTransition()
     takeReaderOpenTransition("unused")
   })
@@ -69,5 +75,52 @@ describe("reader open transition", () => {
   it("does not create a close transition without an open target", () => {
     expect(setReaderCloseTransition("missing")).toBeNull()
     expect(getActiveReaderOpenTransition()).toBeNull()
+  })
+
+  it("resolves fixed auto background from the forced app theme", () => {
+    useAppStore.setState({
+      settings: {
+        ...defaultSettings,
+        themeMode: "dark",
+        fixed: { ...defaultSettings.fixed, background: "auto" },
+      },
+    })
+
+    setReaderOpenTransition({
+      bookId: "1",
+      format: "PDF",
+      coverUri: undefined,
+      title: "Book",
+      frame: { x: 10, y: 20, width: 100, height: 140 },
+    })
+
+    expect(takeReaderOpenTransition("1")).toMatchObject({
+      readerBackgroundColor: "#000000",
+      readerForegroundColor: "#D4CBC3",
+    })
+  })
+
+  it("resolves fixed auto background from the system theme", () => {
+    jest.spyOn(Appearance, "getColorScheme").mockReturnValue("dark")
+    useAppStore.setState({
+      settings: {
+        ...defaultSettings,
+        themeMode: "system",
+        fixed: { ...defaultSettings.fixed, background: "auto" },
+      },
+    })
+
+    setReaderOpenTransition({
+      bookId: "1",
+      format: "PDF",
+      coverUri: undefined,
+      title: "Book",
+      frame: { x: 10, y: 20, width: 100, height: 140 },
+    })
+
+    expect(takeReaderOpenTransition("1")).toMatchObject({
+      readerBackgroundColor: "#000000",
+      readerForegroundColor: "#D4CBC3",
+    })
   })
 })

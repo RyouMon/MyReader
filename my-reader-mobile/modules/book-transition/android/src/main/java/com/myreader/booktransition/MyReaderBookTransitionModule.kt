@@ -6,6 +6,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -21,7 +22,7 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -34,7 +35,6 @@ class MyReaderBookTransitionModule : Module() {
   private var activeOverlay: View? = null
   private val sourceSnapshots = mutableMapOf<String, Bitmap>()
   private val sourceCoverSnapshots = mutableMapOf<String, Bitmap>()
-  private val contentSnapshots = mutableMapOf<String, Bitmap>()
 
   override fun definition() = ModuleDefinition {
     Name("MyReaderBookTransition")
@@ -82,6 +82,14 @@ class MyReaderBookTransitionModule : Module() {
     val sourceHeight = max(1f, number(frame["height"]) * scaleY)
     val sourceBorderRadius = max(0f, number(frame["borderRadius"]) * ((scaleX + scaleY) / 2f))
     val bookId = options["bookId"] as? String
+    val readerBackgroundColor = parseColor(
+      options["readerBackgroundColor"] as? String,
+      Color.rgb(250, 248, 243),
+    )
+    val readerForegroundColor = parseColor(
+      options["readerForegroundColor"] as? String,
+      Color.rgb(92, 70, 54),
+    )
     val coverCachePath = options["coverCachePath"] as? String
     val screenshot = snapshot(root)
     val sourceCover = if (isClosing && bookId != null) {
@@ -89,9 +97,6 @@ class MyReaderBookTransitionModule : Module() {
     } else {
       loadBitmap(coverCachePath, null)
         ?: screenshot?.let { crop(it, sourceX, sourceY, sourceWidth, sourceHeight) }
-    }
-    if (isClosing && bookId != null && screenshot != null) {
-      contentSnapshots[bookId] = screenshot
     }
     if (!isClosing && bookId != null && screenshot != null) {
       sourceSnapshots[bookId] = screenshot
@@ -131,19 +136,18 @@ class MyReaderBookTransitionModule : Module() {
     }
     overlay.addView(bookContainer, FrameLayout.LayoutParams(rootWidth, rootHeight))
 
-    val contentSnapshot = if (isClosing) {
-      screenshot
-    } else {
-      bookId?.let { contentSnapshots[it] }
-    }
-    val contentView = if (contentSnapshot != null) {
+    val contentView = if (isClosing && screenshot != null) {
       ImageView(activity).apply {
-        setImageBitmap(contentSnapshot)
+        setImageBitmap(screenshot)
         scaleType = ImageView.ScaleType.FIT_XY
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(readerBackgroundColor)
       }
     } else {
-      makePlaceholderContent(activity, rootWidth, rootHeight)
+      makePlaceholderContent(
+        activity,
+        readerBackgroundColor,
+        readerForegroundColor,
+      )
     }
     bookContainer.addView(contentView, FrameLayout.LayoutParams(rootWidth, rootHeight))
 
@@ -260,26 +264,43 @@ class MyReaderBookTransitionModule : Module() {
     }
   }
 
-  private fun makePlaceholderContent(context: Context, width: Int, height: Int): View {
-    return LinearLayout(context).apply {
-      orientation = LinearLayout.VERTICAL
-      setBackgroundColor(Color.rgb(250, 248, 243))
-      setPadding(max(28, (width * 0.12f).toInt()), max(56, (height * 0.1f).toInt()), max(28, (width * 0.12f).toInt()), 0)
-      repeat(22) { index ->
-        addView(View(context).apply {
-          setBackgroundColor(Color.argb(58, 116, 104, 88))
-        }, LinearLayout.LayoutParams(
-          when {
-            index % 7 == 6 -> (width * 0.46f).toInt()
-            index % 5 == 4 -> (width * 0.72f).toInt()
-            else -> LinearLayout.LayoutParams.MATCH_PARENT
-          },
-          4,
-        ).apply {
-          bottomMargin = 10
-        })
-      }
+  private fun makePlaceholderContent(
+    context: Context,
+    backgroundColor: Int,
+    foregroundColor: Int,
+  ): View {
+    return FrameLayout(context).apply {
+      setBackgroundColor(backgroundColor)
+      addView(ProgressBar(context).apply {
+        isIndeterminate = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+          indeterminateTintList = ColorStateList.valueOf(
+            withAlpha(foregroundColor, 0.34f),
+          )
+        }
+      }, FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.WRAP_CONTENT,
+        FrameLayout.LayoutParams.WRAP_CONTENT,
+        Gravity.CENTER,
+      ))
     }
+  }
+
+  private fun parseColor(value: String?, fallback: Int): Int {
+    return try {
+      if (value.isNullOrBlank()) fallback else Color.parseColor(value)
+    } catch (_: Exception) {
+      fallback
+    }
+  }
+
+  private fun withAlpha(color: Int, alpha: Float): Int {
+    return Color.argb(
+      (alpha.coerceIn(0f, 1f) * 255).toInt(),
+      Color.red(color),
+      Color.green(color),
+      Color.blue(color),
+    )
   }
 
   private fun makeCoverView(

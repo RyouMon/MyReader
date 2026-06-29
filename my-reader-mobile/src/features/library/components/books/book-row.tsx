@@ -46,6 +46,7 @@ export type BookRowProps = {
   onMenuClose?: () => void
   isAnyMenuOpen?: boolean
   progress?: BookProgressSnapshot
+  readerFormat?: string
   downloadStatus?: BookDownloadStatus
   downloadProgress?: number
   horizontalPadding?: number
@@ -78,6 +79,7 @@ function BookRowImpl({
   onMenuClose,
   isAnyMenuOpen,
   progress,
+  readerFormat,
   downloadStatus,
   downloadProgress,
   horizontalPadding = 16,
@@ -136,6 +138,7 @@ function BookRowImpl({
       ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
+          format: readerFormat,
           coverUri: book.coverUri,
           title: book.title,
           frame,
@@ -155,6 +158,7 @@ function BookRowImpl({
     isAnyMenuOpen,
     menuIsRemote,
     onPress,
+    readerFormat,
   ])
 
   const handleMorePress = useCallback(

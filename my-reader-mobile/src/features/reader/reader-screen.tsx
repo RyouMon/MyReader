@@ -78,9 +78,7 @@ const ReadiumReflowReader = lazy(
 const TOC_GOTO_RESET_DELAY_MS = 100
 const READER_CONTENT_FADE_MS = 220
 const CLOSE_ROUTE_BACK_LEAD_MS = 180
-const LOADING_INDICATOR_COLOR = READER_CHROME.loadingIndicator
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
-
 export default function ReaderScreen() {
   const { t } = useTranslation()
   const { id, format: formatParam } = useLocalSearchParams<{
@@ -108,12 +106,10 @@ export default function ReaderScreen() {
   )
 
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
-  const { loadState, bookTitle } = useBookLoader(
-    id,
-    formatParam,
-    activeLibraryId,
-  )
+  const { loadState } = useBookLoader(id, formatParam, activeLibraryId)
   useReaderProgressSaver(activeLibraryId, loadState, readerState)
+  const closeTransitionFormat =
+    loadState.status === "ready" ? loadState.format : formatParam
 
   const handleStateChange = useCallback(async (state: ReaderState) => {
     setReaderState(state)
@@ -129,7 +125,9 @@ export default function ReaderScreen() {
         return
       }
       const nextCloseTransition = id
-        ? setReaderCloseTransition(id, () => router.back())
+        ? setReaderCloseTransition(id, () => router.back(), {
+            format: closeTransitionFormat,
+          })
         : null
       if (nextCloseTransition) {
         if (nextCloseTransition.nativeStarted) {
@@ -145,7 +143,7 @@ export default function ReaderScreen() {
       }
       router.back()
     }
-  }, [id])
+  }, [closeTransitionFormat, id])
 
   useEffect(() => {
     return () => {
@@ -233,6 +231,11 @@ export default function ReaderScreen() {
   const themeBgColor = shouldUseReflowTheme
     ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).bg
     : fixedBgColor
+  const themeFgColor = shouldUseReflowTheme
+    ? (READER_THEMES[activeTheme] ?? READER_THEMES.neutral).fg
+    : fixedBgColor === "#000000"
+      ? "#D4CBC3"
+      : "#2C2420"
   const isDarkTheme = activeTheme === "night" || activeTheme === "contrast2"
   const statusBarStyle = isDarkTheme ? "light-content" : "dark-content"
   const themeBg = useSharedValue(themeBgColor)
@@ -265,59 +268,36 @@ export default function ReaderScreen() {
   const domFallback = useMemo(
     () => (
       <DomReaderFallback
-        format={loadState.status === "ready" ? loadState.format : null}
-        title={loadState.status === "ready" ? loadState.title : null}
         backgroundColor={themeBgColor}
+        foregroundColor={themeFgColor}
       />
     ),
-    [loadState, themeBgColor],
+    [themeBgColor, themeFgColor],
   )
 
   const readerLoadingOverlay = useMemo(
     () => (
       <Animated.View
         exiting={FadeOut.duration(READER_CONTENT_FADE_MS)}
-        className="absolute inset-0 z-20 items-center justify-center"
+        className="absolute inset-0 z-20"
         style={{ backgroundColor: themeBgColor }}
       >
-        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-        {loadState.status === "ready" ? (
-          <Text
-            className="mt-4 px-8 text-center text-sm"
-            style={{ color: READER_CHROME.textSecondary }}
-            numberOfLines={2}
-          >
-            {loadState.title}
-          </Text>
-        ) : null}
+        <ReaderLoadingSurface
+          backgroundColor={themeBgColor}
+          foregroundColor={themeFgColor}
+        />
       </Animated.View>
     ),
-    [loadState, themeBgColor],
+    [themeBgColor, themeFgColor],
   )
   if (loadState.status === "loading") {
     return (
-      <View
-        className="flex-1 items-center justify-center"
-        style={{ backgroundColor: themeBgColor }}
-      >
+      <View className="flex-1" style={{ backgroundColor: themeBgColor }}>
         <StatusBar hidden={false} barStyle={statusBarStyle} />
-        <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-        {bookTitle ? (
-          <Text
-            className="mt-4 px-8 text-center text-sm"
-            style={{ color: READER_CHROME.textSecondary }}
-            numberOfLines={2}
-          >
-            {bookTitle}
-          </Text>
-        ) : (
-          <Text
-            className="mt-4 text-sm"
-            style={{ color: READER_CHROME.textMuted }}
-          >
-            {loadState.message}
-          </Text>
-        )}
+        <ReaderLoadingSurface
+          backgroundColor={themeBgColor}
+          foregroundColor={themeFgColor}
+        />
       </View>
     )
   }
@@ -586,38 +566,45 @@ export default function ReaderScreen() {
 }
 
 const DomReaderFallback = memo(function DomReaderFallback({
-  format,
-  title,
   backgroundColor,
+  foregroundColor,
 }: {
-  format: string | null
-  title: string | null
   backgroundColor: string
+  foregroundColor: string
 }) {
-  const { t } = useTranslation()
+  return (
+    <ReaderLoadingSurface
+      backgroundColor={backgroundColor}
+      foregroundColor={foregroundColor}
+    />
+  )
+})
+
+const ReaderLoadingSurface = memo(function ReaderLoadingSurface({
+  backgroundColor,
+  foregroundColor,
+}: {
+  backgroundColor: string
+  foregroundColor: string
+}) {
+  const mutedColor = alphaColor(foregroundColor, 0.34)
 
   return (
-    <View
-      className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor }}
-    >
-      <ActivityIndicator size="large" color={LOADING_INDICATOR_COLOR} />
-      <Text
-        className="mt-4 text-sm"
-        style={{ color: READER_CHROME.textSecondary }}
-      >
-        {t("reader.mountingReader")}
-      </Text>
-      <Text
-        className="mt-2 text-center text-xs"
-        style={{ color: READER_CHROME.textMuted }}
-      >
-        {format ? `format=${format}` : "format=unknown"}
-        {title ? ` · ${title}` : ""}
-      </Text>
+    <View className="flex-1" style={{ backgroundColor }}>
+      <View className="absolute inset-0 items-center justify-center px-10">
+        <ActivityIndicator size="small" color={mutedColor} />
+      </View>
     </View>
   )
 })
+
+function alphaColor(hex: string, alpha: number) {
+  const value = hex.replace("#", "")
+  if (value.length !== 6) return `rgba(244,238,230,${alpha})`
+  const rgb = Number.parseInt(value, 16)
+  if (!Number.isFinite(rgb)) return `rgba(244,238,230,${alpha})`
+  return `rgba(${(rgb >> 16) & 255},${(rgb >> 8) & 255},${rgb & 255},${alpha})`
+}
 
 const styles = StyleSheet.create({
   readerRouteFrame: {

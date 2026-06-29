@@ -26,6 +26,7 @@ export type ReadingListCardProps = {
   book: BookItem
   width: number
   progress: number
+  readerFormat?: string
   downloadStatus?: BookDownloadStatus
   menuIsRemote?: boolean
   menuFormats?: string[]
@@ -41,6 +42,7 @@ function ReadingListCardImpl({
   book,
   width,
   progress,
+  readerFormat,
   downloadStatus,
   menuIsRemote,
   menuFormats,
@@ -85,6 +87,7 @@ function ReadingListCardImpl({
       ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
         setReaderOpenTransition({
           bookId: book.id,
+          format: readerFormat,
           coverUri: book.coverUri,
           title: book.title,
           frame,
@@ -104,6 +107,7 @@ function ReadingListCardImpl({
     isAnyMenuOpen,
     menuIsRemote,
     onPress,
+    readerFormat,
   ])
 
   const handleMenuOpenLocal = useCallback(() => {
