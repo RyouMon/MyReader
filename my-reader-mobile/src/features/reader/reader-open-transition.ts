@@ -1,5 +1,6 @@
 import type { BookItem } from "@/src/domain/types"
 import {
+  getNativePresentedViewFrame,
   isNativeReduceMotionEnabled,
   startNativeBookTransition,
 } from "@my-reader/book-transition"
@@ -14,6 +15,11 @@ import {
 
 export const READER_BOOK_TRANSITION_MS = 360
 export const READER_FADE_TRANSITION_MS = 180
+
+export type ReaderTransitionDownloadStatus =
+  | "downloaded"
+  | "notDownloaded"
+  | "downloading"
 
 export type ReaderOpenTransition = {
   direction: "open" | "close"
@@ -31,6 +37,7 @@ export type ReaderOpenTransition = {
     height: number
     borderRadius?: number
   }
+  sourceViewTag?: number | null
   screenWidth?: number
   screenHeight?: number
   rootX?: number
@@ -201,6 +208,7 @@ export function setReaderOpenTransition(
           direction: "open",
           bookId: nextTransition.bookId,
           frame: nextTransition.frame,
+          sourceViewTag: nextTransition.sourceViewTag,
           ...getTransitionMetrics(nextTransition),
           coverCachePath: nextTransition.coverCachePath,
           coverImageUri: nextTransition.coverImageUri,
@@ -216,6 +224,7 @@ export function setReaderOpenTransition(
       platform: Platform.OS,
       pixelRatio: PixelRatio.get(),
       frame: nextTransition.frame,
+      sourceViewTag: nextTransition.sourceViewTag,
       ...getTransitionMetrics(nextTransition),
     })
   }
@@ -245,6 +254,7 @@ export function setReaderCloseTransition(
           direction: "close",
           bookId: nextTransition.bookId,
           frame: nextTransition.frame,
+          sourceViewTag: nextTransition.sourceViewTag,
           ...getTransitionMetrics(nextTransition),
           coverCachePath: nextTransition.coverCachePath,
           coverImageUri: nextTransition.coverImageUri,
@@ -260,6 +270,7 @@ export function setReaderCloseTransition(
       platform: Platform.OS,
       pixelRatio: PixelRatio.get(),
       frame: nextTransition.frame,
+      sourceViewTag: nextTransition.sourceViewTag,
       ...getTransitionMetrics(nextTransition),
     })
   }
@@ -270,6 +281,20 @@ export function setReaderCloseTransition(
 
 function shouldUseFadeTransition() {
   return reduceMotionEnabled
+}
+
+export function canStartReaderOpenTransition(
+  downloadStatus?: ReaderTransitionDownloadStatus,
+  isRemote = false,
+) {
+  if (downloadStatus === "notDownloaded" || downloadStatus === "downloading") {
+    return false
+  }
+  return !isRemote || downloadStatus === "downloaded"
+}
+
+export function getReaderTransitionPresentedViewFrame() {
+  return getNativePresentedViewFrame()
 }
 
 export function takeReaderOpenTransition(bookId: string) {

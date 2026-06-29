@@ -5,7 +5,12 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { pickReadableFormat } from "@my-reader/tools/utils"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { Platform } from "react-native"
+import {
+  Dimensions,
+  findNodeHandle,
+  Platform,
+  View as RNView,
+} from "react-native"
 
 import { useTheme } from "@/src/design/tokens"
 import { View } from "@/tw"
@@ -15,6 +20,12 @@ import { ErrorBoundary } from "@/src/components/error-boundary"
 import { readBookDetailFromMetadata } from "@/src/domain/library/calibre"
 import { useBookReadingFormat } from "@/src/domain/library/hooks/use-book-reading-format"
 import { useFavoriteBooks } from "@/src/domain/library/hooks/use-favorite-books"
+import type { BookItem } from "@/src/domain/types"
+import {
+  getReaderTransitionPresentedViewFrame,
+  measureReaderTransitionFrame,
+  setReaderOpenTransition,
+} from "@/src/features/reader/reader-open-transition"
 import {
   BookDetailContent,
   getDetailColors,
@@ -25,6 +36,8 @@ import {
   type ScreenHeaderAction,
 } from "@/src/navigation/hooks/use-screen-header"
 import { useAppStore } from "@/src/store/app-store"
+
+const DETAIL_COVER_BORDER_RADIUS = 8
 
 type DetailCacheEntry = {
   detail: import("@my-reader/tools/types/book").BookDetail | null
@@ -50,6 +63,7 @@ export default function BookDetailScreen() {
   >({})
   const detailCacheRef = useRef(detailCache)
   const loadingIdsRef = useRef(new Set<string>())
+  const detailCoverRef = useRef<RNView>(null)
   const { selectedFormatById, setBookReadingFormat } =
     useBookReadingFormat(activeLibrary)
   const { isFavorite, toggleFavorite } = useFavoriteBooks(activeLibrary, books)
@@ -229,13 +243,96 @@ export default function BookDetailScreen() {
     [setBookReadingFormat],
   )
 
-  const openReader = useCallback((bookId: string, format: string | null) => {
-    if (!format) return
-    router.push({
-      pathname: "/reader/[id]",
-      params: { id: bookId, format },
-    })
-  }, [])
+  const openReader = useCallback(
+    (
+      bookId: string,
+      format: string | null,
+      coverUri?: BookItem["coverUri"],
+    ) => {
+      if (!format) return
+      const navigate = () => {
+        router.push({
+          pathname: "/reader/[id]",
+          params: { id: bookId, format },
+        })
+      }
+      const coverNode = detailCoverRef.current
+      if (!coverNode || !currentDetail) {
+        navigate()
+        return
+      }
+
+      const startTransition = (
+        frame: {
+          x: number
+          y: number
+          width: number
+          height: number
+          borderRadius?: number
+        },
+        screenWidth?: number,
+        screenHeight?: number,
+        rootX?: number,
+        rootY?: number,
+        sourceViewTag?: number | null,
+      ) => {
+        setReaderOpenTransition({
+          bookId,
+          coverUri,
+          title: currentDetail.title,
+          frame,
+          screenWidth,
+          screenHeight,
+          rootX,
+          rootY,
+          sourceViewTag,
+        })
+        requestAnimationFrame(navigate)
+      }
+
+      if (Platform.OS === "ios") {
+        coverNode.measureInWindow((x, y, width, height) => {
+          const sourceViewTag = findNodeHandle(coverNode)
+          const presentedFrame = __DEV__
+            ? getReaderTransitionPresentedViewFrame()
+            : null
+          const frame = {
+            x,
+            y,
+            width,
+            height,
+            borderRadius: DETAIL_COVER_BORDER_RADIUS,
+          }
+          if (__DEV__) {
+            console.info("[ReaderBookTransition] detail measure", {
+              window: { x, y, width, height },
+              presentedFrame,
+              sourceViewTag,
+              frame,
+            })
+          }
+          startTransition(
+            frame,
+            Dimensions.get("window").width,
+            Dimensions.get("window").height,
+            0,
+            0,
+            sourceViewTag,
+          )
+        })
+        return
+      }
+
+      measureReaderTransitionFrame(
+        coverNode,
+        { borderRadius: DETAIL_COVER_BORDER_RADIUS },
+        ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
+          startTransition(frame, screenWidth, screenHeight, rootX, rootY)
+        },
+      )
+    },
+    [currentDetail],
+  )
 
   const selectedFormat = currentId
     ? (selectedFormatById[currentId] ??
@@ -309,6 +406,7 @@ export default function BookDetailScreen() {
           colors={detailColors}
           detail={currentEntry?.detail ?? null}
           detailError={currentEntry?.error ?? null}
+          detailCoverRef={detailCoverRef}
           listBook={getListBook(currentId)}
           loadingDetail={currentEntry?.loading ?? true}
           onOpenReader={openReader}

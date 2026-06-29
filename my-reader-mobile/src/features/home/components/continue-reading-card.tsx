@@ -20,6 +20,7 @@ import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
 import type { BookItem } from "@/src/domain/types"
 import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
 import {
+  canStartReaderOpenTransition,
   measureReaderTransitionFrame,
   primeReaderCoverCache,
   setReaderOpenTransition,
@@ -66,6 +67,10 @@ export function ContinueReadingCard({
 
   const handlePress = () => {
     if (isAnyMenuOpen || !onPress) return
+    if (!canStartReaderOpenTransition(downloadStatus)) {
+      onPress()
+      return
+    }
     const coverNode = coverRef.current
     if (!coverNode) {
       onPress()

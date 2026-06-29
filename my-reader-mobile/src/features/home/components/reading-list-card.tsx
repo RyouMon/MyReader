@@ -21,6 +21,7 @@ import {
 } from "@/src/features/library/components/books/book-cover"
 import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
 import {
+  canStartReaderOpenTransition,
   measureReaderTransitionFrame,
   setReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
@@ -98,6 +99,10 @@ function ReadingListCardImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
+    if (!canStartReaderOpenTransition(downloadStatus, menuIsRemote)) {
+      onPress(book.id)
+      return
+    }
     const coverNode = coverRef.current
     if (!coverNode) {
       onPress(book.id)
@@ -121,7 +126,15 @@ function ReadingListCardImpl({
         requestAnimationFrame(() => onPress(book.id))
       },
     )
-  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
+  }, [
+    book.coverUri,
+    book.id,
+    book.title,
+    downloadStatus,
+    isAnyMenuOpen,
+    menuIsRemote,
+    onPress,
+  ])
 
   const handleMenuOpenLocal = useCallback(() => {
     onMenuOpen?.(book.id)

@@ -5,6 +5,7 @@ public class MyReaderBookTransitionModule: Module {
   private var activeOverlay: UIView?
   private var sourceSnapshots: [String: UIImage] = [:]
   private var sourceCoverSnapshots: [String: UIImage] = [:]
+  private var sourceFrames: [String: CGRect] = [:]
   private var contentSnapshots: [String: UIImage] = [:]
 
   public func definition() -> ModuleDefinition {
@@ -23,6 +24,24 @@ public class MyReaderBookTransitionModule: Module {
 
     Function("isReduceMotionEnabled") { () -> Bool in
       UIAccessibility.isReduceMotionEnabled
+    }
+
+    Function("getPresentedViewOriginX") { () -> Double in
+      Double(self.presentedViewFrameOnMain().minX)
+    }
+
+    Function("getPresentedViewOriginY") { () -> Double in
+      let frame = self.presentedViewFrameOnMain()
+      NSLog("[MyReaderBookTransition] presentedViewFrame=%@", self.rectString(frame))
+      return Double(frame.minY)
+    }
+
+    Function("getPresentedViewWidth") { () -> Double in
+      Double(self.presentedViewFrameOnMain().width)
+    }
+
+    Function("getPresentedViewHeight") { () -> Double in
+      Double(self.presentedViewFrameOnMain().height)
     }
   }
 
@@ -48,18 +67,27 @@ public class MyReaderBookTransitionModule: Module {
       width: max(1, frameNumber(frame["width"])),
       height: max(1, frameNumber(frame["height"]))
     )
-    let sourceFrame = measuredFrame.offsetBy(dx: rootX, dy: rootY)
-    let sourceBorderRadius = max(0, frameNumber(frame["borderRadius"]))
-    let bounds = window.bounds
     let isClosing = direction == "close"
     let bookId = options["bookId"] as? String
+    let fallbackSourceFrame = measuredFrame.offsetBy(dx: rootX, dy: rootY)
+    let sourceViewTag = intNumber(options["sourceViewTag"])
+    let storedSourceFrame = isClosing ? bookId.flatMap { sourceFrames[$0] } : nil
+    let nativeSourceFrame = sourceViewTag.flatMap {
+      sourceFrameForViewTag($0, in: window)
+    }
+    let sourceFrame = storedSourceFrame ?? nativeSourceFrame ?? fallbackSourceFrame
+    let sourceBorderRadius = max(0, frameNumber(frame["borderRadius"]))
+    let bounds = window.bounds
     let coverCachePath = options["coverCachePath"] as? String
     let screenshot = Self.snapshot(window)
     NSLog(
-      "[MyReaderBookTransition] start direction=%@ bookId=%@ sourceFrame=%@ hasScreenshot=%@",
+      "[MyReaderBookTransition] start direction=%@ bookId=%@ sourceFrame=%@ fallbackFrame=%@ storedFrame=%@ tag=%@ hasScreenshot=%@",
       direction,
       bookId ?? "nil",
       rectString(sourceFrame),
+      rectString(fallbackSourceFrame),
+      storedSourceFrame.map { rectString($0) } ?? "nil",
+      sourceViewTag.map { String($0) } ?? "nil",
       screenshot == nil ? "false" : "true"
     )
     let sourceCoverImage = isClosing
@@ -71,6 +99,7 @@ public class MyReaderBookTransitionModule: Module {
     }
     if !isClosing, let bookId, let screenshot {
       sourceSnapshots[bookId] = screenshot
+      sourceFrames[bookId] = sourceFrame
       if let sourceCoverImage {
         sourceCoverSnapshots[bookId] = sourceCoverImage
       }
@@ -218,6 +247,7 @@ public class MyReaderBookTransitionModule: Module {
           if isClosing, let bookId {
             self.sourceSnapshots.removeValue(forKey: bookId)
             self.sourceCoverSnapshots.removeValue(forKey: bookId)
+            self.sourceFrames.removeValue(forKey: bookId)
           }
           if !hiddenSiblings.isEmpty {
             hiddenSiblings.forEach { view, alpha in
@@ -361,6 +391,17 @@ public class MyReaderBookTransitionModule: Module {
     return UIImage(data: data)
   }
 
+  private func sourceFrameForViewTag(_ tag: Int, in window: UIWindow) -> CGRect? {
+    guard tag > 0,
+      let view = appContext?.findView(withTag: tag, ofType: UIView.self),
+      view.window != nil
+    else {
+      return nil
+    }
+
+    return view.convert(view.bounds, to: window)
+  }
+
   private func frameNumber(_ value: Any?) -> CGFloat {
     if let value = value as? CGFloat { return value }
     if let value = value as? Double { return CGFloat(value) }
@@ -368,8 +409,36 @@ public class MyReaderBookTransitionModule: Module {
     return 0
   }
 
+  private func intNumber(_ value: Any?) -> Int? {
+    if let value = value as? Int { return value }
+    if let value = value as? Double { return Int(value) }
+    if let value = value as? CGFloat { return Int(value) }
+    return nil
+  }
+
   private func rectString(_ rect: CGRect) -> String {
     NSCoder.string(for: rect)
+  }
+
+  private func presentedViewFrame() -> CGRect {
+    guard let window = Self.keyWindow() else {
+      return .zero
+    }
+    let view = Self.topPresentedView(in: window) ?? window
+    let origin = view.convert(CGPoint.zero, to: window)
+    return CGRect(origin: origin, size: view.bounds.size)
+  }
+
+  private func presentedViewFrameOnMain() -> CGRect {
+    if Thread.isMainThread {
+      return presentedViewFrame()
+    }
+
+    var frame = CGRect.zero
+    DispatchQueue.main.sync {
+      frame = self.presentedViewFrame()
+    }
+    return frame
   }
 
   private static func snapshot(_ view: UIView) -> UIImage? {
@@ -414,4 +483,32 @@ public class MyReaderBookTransitionModule: Module {
       .flatMap { $0.windows }
       .first { $0.isKeyWindow }
   }
+
+  private static func topPresentedView(in window: UIWindow) -> UIView? {
+    topPresentedViewController(from: window.rootViewController)?.view
+  }
+
+  private static func topPresentedViewController(
+    from root: UIViewController?
+  ) -> UIViewController? {
+    guard var top = root else {
+      return nil
+    }
+
+    while let presented = top.presentedViewController {
+      top = presented
+    }
+
+    if let navigationController = top as? UINavigationController {
+      return navigationController.visibleViewController ?? navigationController
+    }
+
+    if let tabController = top as? UITabBarController,
+      let selected = tabController.selectedViewController {
+      return topPresentedViewController(from: selected) ?? tabController
+    }
+
+    return top
+  }
+
 }

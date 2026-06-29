@@ -14,6 +14,7 @@ export type BookTransitionOptions = {
   direction: BookTransitionDirection
   bookId?: string | null
   frame: BookTransitionFrame
+  sourceViewTag?: number | null
   screenWidth?: number
   screenHeight?: number
   rootX?: number
@@ -25,9 +26,20 @@ export type BookTransitionOptions = {
   durationMs?: number
 }
 
+export type BookTransitionPresentedViewFrame = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 type NativeBookTransitionModule = {
   startTransition(options: BookTransitionOptions): boolean
   isReduceMotionEnabled?(): boolean
+  getPresentedViewOriginX?(): number
+  getPresentedViewOriginY?(): number
+  getPresentedViewWidth?(): number
+  getPresentedViewHeight?(): number
 }
 
 let nativeModule: NativeBookTransitionModule | null | undefined
@@ -50,4 +62,18 @@ export function startNativeBookTransition(options: BookTransitionOptions) {
 
 export function isNativeReduceMotionEnabled() {
   return getNativeModule()?.isReduceMotionEnabled?.() ?? false
+}
+
+export function getNativePresentedViewFrame() {
+  const module = getNativeModule()
+  const x = module?.getPresentedViewOriginX?.()
+  const y = module?.getPresentedViewOriginY?.()
+  if (x === undefined || y === undefined) return null
+
+  return {
+    x,
+    y,
+    width: module?.getPresentedViewWidth?.() ?? 0,
+    height: module?.getPresentedViewHeight?.() ?? 0,
+  } satisfies BookTransitionPresentedViewFrame
 }

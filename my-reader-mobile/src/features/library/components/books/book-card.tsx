@@ -8,6 +8,7 @@ import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
 import type { BookItem } from "@/src/domain/types"
 import {
+  canStartReaderOpenTransition,
   measureReaderTransitionFrame,
   setReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
@@ -112,6 +113,10 @@ function BookCardImpl({
 
   const handlePress = useCallback(() => {
     if (isAnyMenuOpen || !onPress) return
+    if (!canStartReaderOpenTransition(downloadStatus, menuIsRemote)) {
+      onPress(book.id)
+      return
+    }
     const coverNode = coverRef.current
     if (!coverNode) {
       onPress(book.id)
@@ -135,7 +140,15 @@ function BookCardImpl({
         requestAnimationFrame(() => onPress(book.id))
       },
     )
-  }, [book.coverUri, book.id, book.title, isAnyMenuOpen, onPress])
+  }, [
+    book.coverUri,
+    book.id,
+    book.title,
+    downloadStatus,
+    isAnyMenuOpen,
+    menuIsRemote,
+    onPress,
+  ])
 
   const handleMorePress = useCallback(
     (event: { stopPropagation?: () => void }) => {

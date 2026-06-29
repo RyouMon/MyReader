@@ -10,7 +10,7 @@ import {
 import { Stack } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, useRef, type ComponentProps } from "react"
-import { View as RNView } from "react-native"
+import { Platform, View as RNView } from "react-native"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { NotifierWrapper } from "react-native-notifier"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -121,7 +121,7 @@ function RootNavigator() {
           <Stack.Screen
             name="reader"
             options={{
-              presentation: "card",
+              presentation: Platform.OS === "ios" ? "fullScreenModal" : "card",
               animation: "none",
               gestureEnabled: false,
               headerShown: false,

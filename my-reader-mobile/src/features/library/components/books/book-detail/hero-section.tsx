@@ -1,8 +1,9 @@
 import type { BookDetail } from "@my-reader/tools/types/book"
 import type { MenuAction } from "@react-native-menu/menu"
 import { MenuView } from "@react-native-menu/menu"
-import { useMemo } from "react"
+import { useMemo, type Ref } from "react"
 import { useTranslation } from "react-i18next"
+import { View as RNView } from "react-native"
 
 import { Button, ButtonGroup } from "@/src/components/ui"
 import type { BookItem } from "@/src/domain/types"
@@ -17,6 +18,7 @@ type HeroSectionProps = {
   formats: string[]
   readButtonTitle: string
   selectedFormat: string | null
+  coverRef?: Ref<RNView>
   onRead: () => void
   onSetFormat: (format: string) => void
 }
@@ -29,6 +31,7 @@ export function HeroSection({
   formats,
   readButtonTitle,
   selectedFormat,
+  coverRef,
   onRead,
   onSetFormat,
 }: HeroSectionProps) {
@@ -59,7 +62,11 @@ export function HeroSection({
   return (
     <View className="px-4 pt-4">
       <View className="flex-row gap-4">
-        <View className="relative h-[188px] w-[128px]">
+        <RNView
+          ref={coverRef}
+          collapsable={false}
+          style={{ height: 188, position: "relative", width: 128 }}
+        >
           <View className="h-full w-full overflow-hidden rounded-lg">
             {coverUri ? (
               <Image
@@ -87,7 +94,7 @@ export function HeroSection({
               </View>
             )}
           </View>
-        </View>
+        </RNView>
 
         <View className="flex-1 gap-3 py-1">
           <Text

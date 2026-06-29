@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, type Ref } from "react"
 
 import { useTranslation } from "react-i18next"
+import type { View as RNView } from "react-native"
 
 import { EmptyState } from "@/src/components/ui"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
@@ -29,9 +30,14 @@ type BookDetailContentProps = {
   colors: DetailColors
   detail: BookDetail | null
   detailError: string | null
+  detailCoverRef?: Ref<RNView>
   listBook: BookItem | null
   loadingDetail: boolean
-  onOpenReader: (bookId: string, format: string | null) => void
+  onOpenReader: (
+    bookId: string,
+    format: string | null,
+    coverUri?: BookItem["coverUri"],
+  ) => void
   onSelectFormat: (bookId: string, format: string | null) => void
   selectedFormat: string | null
   dataSources: DataSource[]
@@ -43,6 +49,7 @@ export function BookDetailContent({
   colors,
   detail,
   detailError,
+  detailCoverRef,
   listBook,
   loadingDetail,
   onOpenReader,
@@ -69,6 +76,13 @@ export function BookDetailContent({
 
   const progressByFormat = progressByBookId?.[bookId]
 
+  const handleOpenReader = useCallback(
+    (targetBookId: string, format: string | null) => {
+      onOpenReader(targetBookId, format, coverUri)
+    },
+    [coverUri, onOpenReader],
+  )
+
   const {
     readableFormats,
     readableSelectedFormat,
@@ -82,7 +96,7 @@ export function BookDetailContent({
     selectedFormat,
     progressByFormat,
     formatInfoMap,
-    onOpenReader,
+    handleOpenReader,
     handleDownloadFormat,
   )
 
@@ -183,6 +197,7 @@ export function BookDetailContent({
             book={book}
             canReadInApp={canReadInApp}
             colors={colors}
+            coverRef={detailCoverRef}
             coverUri={coverUri}
             formats={readableFormats}
             onRead={handleReadAction}
