@@ -6,7 +6,7 @@ pub mod commands;
 mod config;
 mod constants;
 mod db;
-mod entities;
+pub mod entities;
 mod error;
 pub mod models;
 mod protocols;

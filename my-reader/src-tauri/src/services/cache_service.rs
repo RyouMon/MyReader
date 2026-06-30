@@ -48,21 +48,3 @@ impl CacheService {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::models::AppConfig;
-
-    use super::CacheService;
-
-    #[test]
-    fn get_cache_usage_should_derive_max_bytes_from_config() {
-        let mut config = AppConfig::default();
-        config.reader_ui.cache.max_cache_size_mb = 100;
-
-        let usage = CacheService::get_cache_usage(&config).expect("should compute usage");
-
-        assert_eq!(usage.total_bytes, 0);
-        assert_eq!(usage.max_bytes, 100 * 1024 * 1024);
-    }
-}

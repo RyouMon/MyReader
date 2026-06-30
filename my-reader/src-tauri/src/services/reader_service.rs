@@ -132,12 +132,7 @@ impl ReaderService {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use tokio::sync::RwLock;
-
     use crate::repositories::file_state_repo::SqliteFileStateRepository;
-    use crate::streamer::{EpubStreamer, StreamerState};
 
     use super::ReaderService;
 
@@ -180,24 +175,5 @@ mod tests {
         )
         .await
         .expect("state check should succeed"));
-    }
-
-    #[tokio::test]
-    async fn close_streamer_should_remove_active_streamer() {
-        let temp = tempfile::tempdir().unwrap();
-        let (streamer, _url) = EpubStreamer::serve_dir(temp.path().to_path_buf())
-            .await
-            .expect("streamer should start");
-
-        let state: StreamerState = StreamerState::new(RwLock::new(HashMap::new()));
-        {
-            let mut guard = state.write().await;
-            guard.insert("lib-1-42".to_string(), streamer);
-        }
-
-        ReaderService::close_streamer(&state, "lib-1", 42).await;
-
-        let guard = state.read().await;
-        assert!(guard.is_empty(), "streamer should be removed from state");
     }
 }

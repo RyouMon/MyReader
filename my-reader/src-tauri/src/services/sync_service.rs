@@ -221,10 +221,9 @@ impl SyncService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{AppConfig, LibraryConfig};
     use opendal::Operator;
     use std::path::Path;
-
-    use crate::models::{AppConfig, LibraryConfig};
 
     fn create_temp_operator(root: &Path) -> Operator {
         use opendal::services::Fs;
@@ -247,11 +246,66 @@ mod tests {
         LibraryConfig {
             id: id.to_string(),
             name: "WebDAV".to_string(),
-            path: "".to_string(),
+            path: String::new(),
             source_type: Some("webdav".to_string()),
             data_source_id: Some("ds-webdav".to_string()),
             source_path: Some("/books".to_string()),
         }
+    }
+
+    #[test]
+    fn resolve_library_paths_should_distinguish_local_remote_and_missing_libraries() {
+        let app_data = tempfile::tempdir().unwrap();
+        let original = tempfile::tempdir().unwrap();
+        let config = AppConfig {
+            libraries: vec![
+                local_library("lib-local", original.path().to_str().unwrap()),
+                remote_library("lib-remote"),
+            ],
+            ..Default::default()
+        };
+
+        let (path, kind, id) =
+            SyncService::resolve_library_path(app_data.path(), &config, "lib-local")
+                .expect("local library should resolve");
+        assert_eq!(path, original.path());
+        assert_eq!(kind, LibraryPathKind::Local);
+        assert_eq!(id, "lib-local");
+
+        let (path, kind, id) =
+            SyncService::resolve_library_path(app_data.path(), &config, "lib-remote")
+                .expect("remote library should resolve");
+        assert_eq!(path, app_data.path().join("libraries").join("lib-remote"));
+        assert_eq!(kind, LibraryPathKind::Remote);
+        assert_eq!(id, "lib-remote");
+
+        let (sidecar, id) =
+            SyncService::resolve_library_sidecar_path(app_data.path(), &config, "lib-local")
+                .expect("sidecar should resolve");
+        assert_eq!(sidecar, app_data.path().join("libraries").join("lib-local"));
+        assert_eq!(id, "lib-local");
+
+        let err = SyncService::resolve_library_path(app_data.path(), &config, "ghost")
+            .expect_err("unknown library should fail");
+        assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));
+        let err = SyncService::resolve_library_sidecar_path(app_data.path(), &config, "ghost")
+            .expect_err("unknown library should fail");
+        assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));
+    }
+
+    #[test]
+    fn ensure_device_id_should_reuse_existing_non_empty_id_and_replace_empty_id() {
+        let mut config = AppConfig {
+            device_id: Some("device-1".into()),
+            ..Default::default()
+        };
+        assert_eq!(SyncService::ensure_device_id(&mut config), "device-1");
+        assert_eq!(config.device_id.as_deref(), Some("device-1"));
+
+        config.device_id = Some(String::new());
+        let generated = SyncService::ensure_device_id(&mut config);
+        assert!(!generated.is_empty());
+        assert_eq!(config.device_id.as_deref(), Some(generated.as_str()));
     }
 
     #[tokio::test]
@@ -284,61 +338,5 @@ mod tests {
             .unwrap();
         assert!(files.contains(&"1.jsonl".to_string()));
         assert!(files.contains(&"2.jsonl".to_string()));
-    }
-
-    #[tokio::test]
-    async fn sync_db_for_library_should_sync_remote_library_inside_container() {
-        let app_data = tempfile::tempdir().unwrap();
-        let mut config = AppConfig::default();
-        config.libraries.push(remote_library("lib-remote"));
-
-        let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-remote")
-            .await
-            .unwrap();
-
-        assert_eq!(report.pushed, 0);
-        assert_eq!(report.pulled, 0);
-        assert!(config.device_id.is_some());
-    }
-
-    #[tokio::test]
-    async fn sync_db_for_library_should_mirror_container_changes_to_original_for_local_library() {
-        let app_data = tempfile::tempdir().unwrap();
-        let original = tempfile::tempdir().unwrap();
-        let mut config = AppConfig::default();
-        config.libraries.push(local_library(
-            "lib-local",
-            original.path().to_str().unwrap(),
-        ));
-
-        // First sync initializes the sidecar DB and device id.
-        SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
-            .await
-            .unwrap();
-        let device_id = config.device_id.clone().expect("device id generated");
-
-        // Write a change file in the container sidecar.
-        let change_path = app_data
-            .path()
-            .join("libraries/lib-local/.myreader/changes")
-            .join(&device_id)
-            .join("1.jsonl");
-        tokio::fs::create_dir_all(change_path.parent().unwrap())
-            .await
-            .unwrap();
-        tokio::fs::write(&change_path, b"{}").await.unwrap();
-
-        // Second sync should mirror the change to the original library directory.
-        let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
-            .await
-            .unwrap();
-        assert_eq!(report.pushed, 0);
-
-        let original_change = original
-            .path()
-            .join(".myreader/changes")
-            .join(&device_id)
-            .join("1.jsonl");
-        assert!(tokio::fs::try_exists(&original_change).await.unwrap());
     }
 }

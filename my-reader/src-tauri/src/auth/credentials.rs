@@ -116,7 +116,7 @@ impl CredentialStore {
 }
 
 fn store() -> CredentialStore {
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     if let Some(backend) = test_support::get_backend() {
         return CredentialStore { backend };
     }
@@ -157,7 +157,7 @@ pub fn delete_onedrive_refresh_token(data_source_id: &str) -> Result<(), AppErro
     store().delete(Service::Onedrive, &account)
 }
 
-#[cfg(test)]
+#[cfg(any(test, debug_assertions))]
 pub mod test_support {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, MutexGuard};
@@ -233,8 +233,10 @@ pub mod test_support {
     }
 
     /// A credential backend that always fails, used to verify `CredentialStore` error wrapping.
+    #[cfg(test)]
     pub struct FailingBackend;
 
+    #[cfg(test)]
     impl CredentialBackend for FailingBackend {
         fn set_password(
             &self,
@@ -255,7 +257,7 @@ pub mod test_support {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, debug_assertions))]
 pub use test_support::{use_test_backend, MemoryBackend};
 
 #[cfg(test)]
