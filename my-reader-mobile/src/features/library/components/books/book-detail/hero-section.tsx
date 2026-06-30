@@ -7,7 +7,8 @@ import { View as RNView } from "react-native"
 
 import { Button, ButtonGroup } from "@/src/components/ui"
 import type { BookItem } from "@/src/domain/types"
-import { Image, Text, View } from "@/tw"
+import { Text, View } from "@/tw"
+import { BookCover } from "../book-cover"
 import type { DetailColors } from "./types"
 
 type HeroSectionProps = {
@@ -37,6 +38,15 @@ export function HeroSection({
 }: HeroSectionProps) {
   const { t } = useTranslation()
   const authors = book.authors.filter(Boolean).join(", ") || book.authorSort
+  const coverBook = useMemo<BookItem>(
+    () => ({
+      id: String(book.id),
+      title: book.title,
+      author: authors,
+      coverUri,
+    }),
+    [authors, book.id, book.title, coverUri],
+  )
 
   const formatMenuActions = useMemo<MenuAction[]>(
     () =>
@@ -67,33 +77,12 @@ export function HeroSection({
           collapsable={false}
           style={{ height: 188, position: "relative", width: 128 }}
         >
-          <View className="h-full w-full overflow-hidden rounded-lg">
-            {coverUri ? (
-              <Image
-                source={coverUri}
-                className="h-full w-full object-cover"
-                cachePolicy="memory-disk"
-                recyclingKey={String(book.id)}
-              />
-            ) : (
-              <View
-                className="h-full w-full justify-end px-3 py-4"
-                style={{ backgroundColor: colors.palette.surface }}
-              >
-                <Text
-                  className="text-center text-base"
-                  numberOfLines={4}
-                  style={{
-                    color: colors.text,
-                    fontWeight: "700",
-                    opacity: 0.6,
-                  }}
-                >
-                  {book.title}
-                </Text>
-              </View>
-            )}
-          </View>
+          <BookCover
+            book={coverBook}
+            width={128}
+            height={188}
+            borderRadius={8}
+          />
         </RNView>
 
         <View className="flex-1 gap-3 py-1">

@@ -7,7 +7,6 @@ jest.mock("@my-reader/book-transition", () => ({
 jest.mock("expo-image", () => ({
   Image: {
     getCachePathAsync: jest.fn(() => Promise.resolve("/tmp/cover-cache.jpg")),
-    prefetch: jest.fn(() => Promise.resolve(true)),
   },
 }))
 
@@ -25,19 +24,13 @@ import {
   getActiveReaderOpenTransition,
   getReaderTransitionPresentedViewFrame,
   measureReaderTransitionFrame,
-  primeReaderCoverCache,
   setReaderCloseTransition,
   setReaderOpenTransition,
   setReaderTransitionRootNode,
+  startReaderOpenTransition,
   subscribeReaderOpenTransition,
   takeReaderOpenTransition,
 } from "./reader-open-transition"
-
-async function flushPromises() {
-  for (let i = 0; i < 8; i += 1) {
-    await Promise.resolve()
-  }
-}
 
 function measuredNode(
   x: number,
@@ -67,7 +60,6 @@ describe("reader open transition", () => {
     jest
       .mocked(ExpoImage.getCachePathAsync)
       .mockResolvedValue("/tmp/cover-cache.jpg")
-    jest.mocked(ExpoImage.prefetch).mockResolvedValue(true)
     useAppStore.setState({ settings: defaultSettings })
     setReaderTransitionRootNode(null)
     clearActiveReaderOpenTransition()
@@ -238,27 +230,21 @@ describe("reader open transition", () => {
     })
   })
 
-  it("should use prefetched cover cache when headers are available", async () => {
+  it("should use existing cover cache path when starting transition", async () => {
     const coverUri = {
       uri: "https://dav.example/cover.jpg",
       headers: { Authorization: "Bearer token" },
     }
-    primeReaderCoverCache(coverUri)
-    await flushPromises()
 
-    setReaderOpenTransition({
+    await startReaderOpenTransition({
       bookId: "cover",
       coverUri,
       title: "Book",
       frame: { x: 10, y: 20, width: 100, height: 140 },
     })
 
-    expect(ExpoImage.prefetch).toHaveBeenCalledWith(
+    expect(ExpoImage.getCachePathAsync).toHaveBeenCalledWith(
       "https://dav.example/cover.jpg",
-      {
-        cachePolicy: "memory-disk",
-        headers: { Authorization: "Bearer token" },
-      },
     )
     expect(takeReaderOpenTransition("cover")).toMatchObject({
       coverCachePath: "file:///tmp/cover-cache.jpg",

@@ -153,7 +153,19 @@
     "languageDetail": "Change display language",
     "homeCardStyle": "Home Card Style",
     "homeCardStyle.adaptive": "Adaptive",
-    "homeCardStyle.coverBlur": "Blurred Cover"
+    "homeCardStyle.coverBlur": "Blurred Cover",
+    "developer": {
+      "title": "Developer",
+      "clearImageCache": {
+        "title": "Clear Image Cache",
+        "detail": "Clear Expo Image memory and disk cache",
+        "doneTitle": "Image cache cleared",
+        "doneDetail": "Covers will be read or downloaded again when reopened.",
+        "errorTitle": "Failed to clear image cache",
+        "errorDetail": "Please try again later.",
+        "unavailable": "Image cache cleanup is unavailable in this environment."
+      }
+    }
   },
   "reader": {
     "cannotOpen": "Cannot open book",

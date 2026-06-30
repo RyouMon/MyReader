@@ -37,6 +37,7 @@ jest.mock("@/src/design/press-feedback", () => ({
 jest.mock("@/src/design/tokens", () => ({
   useTheme: jest.fn(() => ({ colorScheme: "light" })),
   useThemePalette: jest.fn(() => ({
+    backgroundSecondary: "#fff",
     text: "#000",
     textMuted: "#666",
     background: "#fff",
@@ -61,6 +62,10 @@ const baseBook = {
 } as unknown as BookItem & { readingProgress: number; readingFormat: string }
 
 describe("ContinueReadingCard", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it("should render menu trigger without responder wrapper", () => {
     render(
       <ContinueReadingCard

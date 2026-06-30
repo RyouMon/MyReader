@@ -10,7 +10,7 @@ import type { BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
-  setReaderOpenTransition,
+  startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
@@ -135,8 +135,8 @@ function BookRowImpl({
     measureReaderTransitionFrame(
       coverNode,
       { borderRadius: BOOK_ROW_COVER_BORDER_RADIUS },
-      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
-        setReaderOpenTransition({
+      async ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
+        await startReaderOpenTransition({
           bookId: book.id,
           format: readerFormat,
           coverUri: book.coverUri,
@@ -223,7 +223,6 @@ function BookRowImpl({
             width={BOOK_ROW_COVER_WIDTH}
             height={BOOK_ROW_COVER_HEIGHT}
             borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
-            showTitle={false}
           />
         </RNView>
         <View className="min-w-0 flex-1 justify-between">

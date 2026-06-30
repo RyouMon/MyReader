@@ -23,7 +23,7 @@ import { buildBookMenuActions } from "@/src/features/library/utils/book-menu"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
-  setReaderOpenTransition,
+  startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { Pressable, Text, View } from "@/tw"
@@ -112,8 +112,8 @@ function ReadingListCardImpl({
     measureReaderTransitionFrame(
       coverNode,
       { borderRadius: COVER_BORDER_RADIUS },
-      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
-        setReaderOpenTransition({
+      async ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
+        await startReaderOpenTransition({
           bookId: book.id,
           format: book.readingFormat,
           coverUri: book.coverUri,
@@ -167,7 +167,6 @@ function ReadingListCardImpl({
           width={COVER_WIDTH}
           height={COVER_HEIGHT}
           borderRadius={COVER_BORDER_RADIUS}
-          showTitle={false}
         />
       </RNView>
       <View className="min-w-0 flex-1 justify-center gap-1">

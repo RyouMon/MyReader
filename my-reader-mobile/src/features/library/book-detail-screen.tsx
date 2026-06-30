@@ -24,7 +24,7 @@ import type { BookItem } from "@/src/domain/types"
 import {
   getReaderTransitionPresentedViewFrame,
   measureReaderTransitionFrame,
-  setReaderOpenTransition,
+  startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import {
   BookDetailContent,
@@ -262,7 +262,7 @@ export default function BookDetailScreen() {
         return
       }
 
-      const startTransition = (
+      const startTransition = async (
         frame: {
           x: number
           y: number
@@ -276,7 +276,7 @@ export default function BookDetailScreen() {
         rootY?: number,
         sourceViewTag?: number | null,
       ) => {
-        setReaderOpenTransition({
+        await startReaderOpenTransition({
           bookId,
           format,
           coverUri,
@@ -312,7 +312,7 @@ export default function BookDetailScreen() {
               frame,
             })
           }
-          startTransition(
+          void startTransition(
             frame,
             Dimensions.get("window").width,
             Dimensions.get("window").height,
@@ -328,7 +328,7 @@ export default function BookDetailScreen() {
         coverNode,
         { borderRadius: DETAIL_COVER_BORDER_RADIUS },
         ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
-          startTransition(frame, screenWidth, screenHeight, rootX, rootY)
+          void startTransition(frame, screenWidth, screenHeight, rootX, rootY)
         },
       )
     },

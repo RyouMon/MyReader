@@ -153,7 +153,19 @@
     "languageDetail": "切换界面显示语言",
     "homeCardStyle": "主页卡片风格",
     "homeCardStyle.adaptive": "自适应",
-    "homeCardStyle.coverBlur": "模糊封面"
+    "homeCardStyle.coverBlur": "模糊封面",
+    "developer": {
+      "title": "开发者",
+      "clearImageCache": {
+        "title": "清除图片缓存",
+        "detail": "清除 Expo Image 的内存和磁盘缓存",
+        "doneTitle": "图片缓存已清除",
+        "doneDetail": "重新打开封面时会重新读取或下载图片。",
+        "errorTitle": "清除图片缓存失败",
+        "errorDetail": "请稍后重试。",
+        "unavailable": "当前环境无法完成缓存清理。"
+      }
+    }
   },
   "reader": {
     "cannotOpen": "无法打开书籍",

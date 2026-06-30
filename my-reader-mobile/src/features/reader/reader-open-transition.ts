@@ -55,9 +55,22 @@ let activeTransition: ReaderOpenTransition | null = null
 const recentTransitions = new Map<string, ReaderOpenTransition>()
 const listeners = new Set<() => void>()
 let transitionRootNode: RNView | null = null
-const coverCachePaths = new Map<string, string | null>()
 let reduceMotionEnabled = false
 let didInitializeReduceMotion = false
+
+type CoverUriObject = Exclude<BookItem["coverUri"], string | undefined> & {
+  cacheKey?: string
+}
+
+type ReaderOpenTransitionInput = Omit<
+  ReaderOpenTransition,
+  "createdAt" | "coverImageUri" | "direction" | "nativeStarted" | "onFinished"
+>
+
+type ReaderOpenTransitionStartInput = Omit<
+  ReaderOpenTransitionInput,
+  "coverCachePath"
+>
 
 function readNativeReduceMotionEnabled() {
   try {
@@ -114,6 +127,12 @@ function getCoverHeaders(coverUri: BookItem["coverUri"]) {
   return typeof coverUri === "string" ? null : (coverUri?.headers ?? null)
 }
 
+function getCoverCacheKey(coverUri: BookItem["coverUri"]) {
+  if (typeof coverUri === "string") return coverUri
+  const source = coverUri as CoverUriObject | undefined
+  return source?.cacheKey ?? source?.uri ?? null
+}
+
 function normalizeCachePath(path: string | null) {
   if (!path) return null
   return path.startsWith("/") ? `file://${path}` : path
@@ -160,21 +179,26 @@ function resolveReaderVisual(format?: string | null) {
   return resolveFixedReaderVisual(fixedBackground)
 }
 
-export function primeReaderCoverCache(coverUri: BookItem["coverUri"]) {
+export async function resolveReaderCoverCachePath(
+  coverUri: BookItem["coverUri"],
+) {
   const uri = getCoverImageUri(coverUri)
-  if (!uri || coverCachePaths.has(uri)) return
+  if (!uri || uri.startsWith("file://")) return null
 
-  coverCachePaths.set(uri, null)
-  const headers = getCoverHeaders(coverUri) ?? undefined
-  ExpoImage.prefetch(uri, { cachePolicy: "memory-disk", headers })
-    .catch(() => false)
-    .then(() => ExpoImage.getCachePathAsync(uri))
-    .then((path) => {
-      coverCachePaths.set(uri, normalizeCachePath(path))
-    })
-    .catch(() => {
-      coverCachePaths.set(uri, null)
-    })
+  try {
+    return normalizeCachePath(
+      await ExpoImage.getCachePathAsync(getCoverCacheKey(coverUri) ?? uri),
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function startReaderOpenTransition(
+  transition: ReaderOpenTransitionStartInput,
+) {
+  const coverCachePath = await resolveReaderCoverCachePath(transition.coverUri)
+  setReaderOpenTransition({ ...transition, coverCachePath })
 }
 
 export function setReaderTransitionRootNode(node: RNView | null) {
@@ -236,21 +260,10 @@ export function measureReaderTransitionFrame(
   })
 }
 
-export function setReaderOpenTransition(
-  transition: Omit<
-    ReaderOpenTransition,
-    | "createdAt"
-    | "coverCachePath"
-    | "coverImageUri"
-    | "direction"
-    | "onFinished"
-  >,
-) {
+export function setReaderOpenTransition(transition: ReaderOpenTransitionInput) {
   const coverImageUri = getCoverImageUri(transition.coverUri)
   const coverHeaders = getCoverHeaders(transition.coverUri)
-  const coverCachePath = coverImageUri
-    ? (coverCachePaths.get(coverImageUri) ?? null)
-    : null
+  const coverCachePath = transition.coverCachePath ?? null
   const readerVisual = resolveReaderVisual(transition.format)
   const nextTransition: ReaderOpenTransition = {
     ...transition,
@@ -262,7 +275,6 @@ export function setReaderOpenTransition(
     ...readerVisual,
     createdAt: Date.now(),
   }
-  primeReaderCoverCache(transition.coverUri)
   const nativeStarted =
     nextTransition.mode === "book"
       ? (BookTransition.startNativeBookTransition?.({

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 
@@ -10,7 +10,7 @@ import {
   pressedBackgroundColor,
 } from "@/src/design/press-feedback"
 import { useTheme, useThemePalette } from "@/src/design/tokens"
-import { Image, Pressable, Text, View } from "@/tw"
+import { Pressable, Text, View } from "@/tw"
 
 import { HeroCard, ProgressBar } from "@/src/components"
 import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
@@ -18,12 +18,14 @@ import { CoverAdaptiveBackground } from "@/src/components/cover-adaptive-backgro
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import { useCoverPalette } from "@/src/domain/library/hooks/use-cover-palette"
 import type { BookItem } from "@/src/domain/types"
-import type { BookDownloadStatus } from "@/src/features/library/components/books/book-cover"
+import {
+  BookCover,
+  type BookDownloadStatus,
+} from "@/src/features/library/components/books/book-cover"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
-  primeReaderCoverCache,
-  setReaderOpenTransition,
+  startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 
@@ -61,10 +63,6 @@ export function ContinueReadingCard({
   const { raw: coverRawColors } = useCoverPalette(book.coverUri, resolvedScheme)
   const coverRef = useRef<RNView>(null)
 
-  useEffect(() => {
-    primeReaderCoverCache(book.coverUri)
-  }, [book.coverUri])
-
   const handlePress = () => {
     if (isAnyMenuOpen || !onPress) return
     if (!canStartReaderOpenTransition(downloadStatus)) {
@@ -80,8 +78,8 @@ export function ContinueReadingCard({
     measureReaderTransitionFrame(
       coverNode,
       { borderRadius: CONTINUE_READING_COVER_BORDER_RADIUS },
-      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
-        setReaderOpenTransition({
+      async ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
+        await startReaderOpenTransition({
           bookId: book.id,
           format: book.readingFormat,
           coverUri: book.coverUri,
@@ -114,25 +112,13 @@ export function ContinueReadingCard({
       <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
     </View>
   )
-  const coverNode = book.coverUri ? (
-    <Image
-      source={book.coverUri}
-      className="h-[168px] w-[112px] rounded-2xl"
-      cachePolicy="memory-disk"
-      recyclingKey={book.id}
+  const coverNode = (
+    <BookCover
+      book={book}
+      width={112}
+      height={168}
+      borderRadius={CONTINUE_READING_COVER_BORDER_RADIUS}
     />
-  ) : (
-    <View
-      className="h-[168px] w-[112px] items-center justify-center rounded-2xl"
-      style={{ backgroundColor: palette.background }}
-    >
-      <Text
-        className="text-sm"
-        style={{ color: palette.textMuted, fontWeight: "600" }}
-      >
-        {t("home.noCover")}
-      </Text>
-    </View>
   )
 
   return (

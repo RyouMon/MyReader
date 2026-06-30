@@ -1,9 +1,11 @@
+import { Image as ExpoImage } from "expo-image"
 import { getLocales } from "expo-localization"
 import type { MenuAction } from "@react-native-menu/menu"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 
+import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import { changeLanguage } from "@/src/i18n"
 import { useTheme, type ThemeMode } from "@/src/design/tokens"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
@@ -50,6 +52,31 @@ export default function SettingsScreen() {
   function navigateTo(href: Parameters<typeof router.push>[0]) {
     if (isTransitioningRef.current) return
     router.push(href)
+  }
+
+  async function handleClearImageCache() {
+    try {
+      const [memoryCleared, diskCleared] = await Promise.all([
+        ExpoImage.clearMemoryCache(),
+        ExpoImage.clearDiskCache(),
+      ])
+
+      if (!memoryCleared || !diskCleared) {
+        throw new Error(t("settings.developer.clearImageCache.unavailable"))
+      }
+
+      showAlertWithStatusBarRestore(
+        t("settings.developer.clearImageCache.doneTitle"),
+        t("settings.developer.clearImageCache.doneDetail"),
+      )
+    } catch (error) {
+      showAlertWithStatusBarRestore(
+        t("settings.developer.clearImageCache.errorTitle"),
+        error instanceof Error
+          ? error.message
+          : t("settings.developer.clearImageCache.errorDetail"),
+      )
+    }
   }
 
   const themeModeLabels: Record<ThemeMode, string> = useMemo(
@@ -214,6 +241,20 @@ export default function SettingsScreen() {
             />
           </SectionCard>
         </View>
+        {__DEV__ ? (
+          <View className="gap-3">
+            <SectionLabel>{t("settings.developer.title")}</SectionLabel>
+            <SectionCard>
+              <ListRow
+                testID="settings-clear-image-cache-row"
+                title={t("settings.developer.clearImageCache.title")}
+                detail={t("settings.developer.clearImageCache.detail")}
+                onPress={handleClearImageCache}
+                isLast
+              />
+            </SectionCard>
+          </View>
+        ) : null}
       </Screen>
     </>
   )

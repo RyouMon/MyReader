@@ -8,10 +8,6 @@ jest.mock("@react-native-menu/menu", () => ({
   MenuView: jest.fn(({ children }) => children),
 }))
 
-jest.mock("@/src/features/library/components/books/book-cover", () => ({
-  BookCover: jest.fn(() => null),
-}))
-
 jest.mock("@/src/components/book-download-status-indicator", () => ({
   BookDownloadStatusIndicator: jest.fn(() => null),
 }))
@@ -36,6 +32,7 @@ jest.mock("@/src/design/press-feedback", () => ({
 jest.mock("@/src/design/tokens", () => ({
   useTheme: jest.fn(() => ({ colorScheme: "light" })),
   useThemePalette: jest.fn(() => ({
+    backgroundSecondary: "#f7f3ec",
     text: "#000",
     textMuted: "#666",
     surface: "#fff",
@@ -60,6 +57,10 @@ const baseBook = {
 } as unknown as BookItem & { readingFormat?: string }
 
 describe("ReadingListCard", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it("should render menu trigger without responder wrapper", () => {
     render(
       <ReadingListCard

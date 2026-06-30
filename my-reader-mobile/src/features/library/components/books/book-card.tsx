@@ -10,7 +10,7 @@ import type { BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
-  setReaderOpenTransition,
+  startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
@@ -128,8 +128,8 @@ function BookCardImpl({
     measureReaderTransitionFrame(
       coverNode,
       { borderRadius: 10 },
-      ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
-        setReaderOpenTransition({
+      async ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
+        await startReaderOpenTransition({
           bookId: book.id,
           format: readerFormat,
           coverUri: book.coverUri,
