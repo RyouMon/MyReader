@@ -1,5 +1,5 @@
-import { useVirtualizer } from "@tanstack/react-virtual"
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
@@ -44,18 +44,22 @@ export default function BookGrid({
   selectedFormatById = {},
 }: BookGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [cols, setCols] = useState(4)
-  const [gridRowHeight, setGridRowHeight] = useState(DEFAULT_GRID_ROW_HEIGHT)
+  const frameRef = useRef<number | null>(null)
+  const [layout, setLayout] = useState({
+    cols: 4,
+    gridRowHeight: DEFAULT_GRID_ROW_HEIGHT,
+  })
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
-    const measure = () => {
+    const updateLayout = () => {
+      frameRef.current = null
       const style = window.getComputedStyle(el)
       const paddingX =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-      const contentWidth = el.clientWidth - paddingX
+      const contentWidth = Math.max(0, el.clientWidth - paddingX)
       const newCols = Math.max(
         1,
         Math.floor((contentWidth + GAP) / (MIN_COL_WIDTH + GAP)),
@@ -64,17 +68,35 @@ export default function BookGrid({
       const coverHeight = colWidth * 1.5
       const cardHeight = coverHeight + TEXT_BLOCK_HEIGHT
       const rowHeight = cardHeight + ROW_GAP
-      setCols(newCols)
-      setGridRowHeight(rowHeight)
+      setLayout((current) => {
+        if (
+          current.cols === newCols &&
+          Math.abs(current.gridRowHeight - rowHeight) < 0.5
+        ) {
+          return current
+        }
+        return { cols: newCols, gridRowHeight: rowHeight }
+      })
     }
 
-    measure()
-    const ro = new ResizeObserver(measure)
+    const scheduleLayoutUpdate = () => {
+      if (frameRef.current !== null) return
+      frameRef.current = window.requestAnimationFrame(updateLayout)
+    }
+
+    updateLayout()
+    const ro = new ResizeObserver(scheduleLayoutUpdate)
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      ro.disconnect()
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+      }
+    }
   }, [])
 
   const isList = viewMode === "list"
+  const { cols, gridRowHeight } = layout
   const rowCount = isList ? total : Math.ceil(total / cols)
 
   const virtualizer = useVirtualizer({
@@ -83,6 +105,11 @@ export default function BookGrid({
     estimateSize: () => (isList ? LIST_ROW_HEIGHT : gridRowHeight),
     overscan: 3,
   })
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Layout values intentionally retrigger measurement; the virtualizer instance is stable while estimated row size changes.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, cols, gridRowHeight, isList])
 
   const virtualItems = virtualizer.getVirtualItems()
   const rangeStart = virtualItems[0]?.index ?? 0
@@ -112,13 +139,13 @@ export default function BookGrid({
           <div
             key={`${vRow.key}-${cols}`}
             data-index={vRow.index}
-            ref={virtualizer.measureElement}
             style={{
               position: "absolute",
-              top: vRow.start,
+              top: 0,
               insetInlineStart: 0,
               width: "100%",
               height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
+              transform: `translateY(${vRow.start}px)`,
             }}
           >
             {isList ? (
