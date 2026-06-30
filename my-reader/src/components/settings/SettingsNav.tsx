@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   BookOpen,
   Database,
   FolderOpen,
@@ -8,12 +9,14 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { SettingsSection } from "@/types/settings"
 
 interface SettingsNavProps {
   activeSection: SettingsSection
   onSectionChange: (section: SettingsSection) => void
+  onBack?: () => void
 }
 
 interface NavItem {
@@ -33,14 +36,30 @@ const NAV_ITEMS: NavItem[] = [
 export default function SettingsNav({
   activeSection,
   onSectionChange,
+  onBack,
 }: SettingsNavProps) {
   const { t } = useTranslation()
   return (
     <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav">
-      <div className="shrink-0 border-b border-border px-4 py-[18px] pb-3">
-        <h2 className="text-[15px] font-semibold text-foreground">
-          {t("settings.title")}
-        </h2>
+      <div className="shrink-0 border-b border-border px-3 py-2">
+        <div className="flex h-9 items-center gap-2">
+          {onBack && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onBack}
+              title={t("common.back")}
+              aria-label={t("common.back")}
+              className="-ms-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          )}
+          <h2 className="text-[15px] font-semibold text-foreground">
+            {t("settings.title")}
+          </h2>
+        </div>
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">

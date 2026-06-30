@@ -160,9 +160,7 @@ When("用户打开阅读器", async ({ page }) => {
 Then("阅读器应显示图书内容", async ({ page }) => {
   await expect(
     page.getByText(/加载失败|正在下载|正在加载|Downloading/i),
-  ).not.toBeVisible({
-    timeout: 10000,
-  })
+  ).not.toBeVisible()
 })
 
 Then("阅读器应显示下载中反馈", async ({ page }) => {

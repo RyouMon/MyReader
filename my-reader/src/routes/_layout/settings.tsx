@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import SettingsNav from "@/components/settings/SettingsNav"
 import AboutSection from "@/components/settings/sections/AboutSection"
@@ -13,17 +13,19 @@ export const Route = createFileRoute("/_layout/settings")({
 })
 
 function SettingsPage() {
+  const navigate = useNavigate()
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("libraries")
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden bg-background">
       <SettingsNav
         activeSection={activeSection}
         onSectionChange={setActiveSection}
+        onBack={() => navigate({ to: "/" })}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {activeSection === "libraries" && <LibrariesSection />}
         {activeSection === "dataSources" && <DataSourcesSection />}
         {activeSection === "appearance" && <AppearanceSection />}

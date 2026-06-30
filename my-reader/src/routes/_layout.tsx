@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router"
 
 import AppSidebar from "@/components/library/AppSidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -8,6 +8,16 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
+  const location = useLocation()
+
+  if (location.pathname === "/settings") {
+    return (
+      <div className="h-svh min-h-0 overflow-hidden bg-background">
+        <Outlet />
+      </div>
+    )
+  }
+
   return (
     <SidebarProvider className="h-svh min-h-0 overflow-hidden">
       <AppSidebar />

@@ -6,6 +6,13 @@ const testDir = defineBddConfig({
   steps: ["./step-definitions/**/*.ts", "./fixtures/test.ts"],
 })
 
+const projects = [
+  { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+  ...(process.platform === "darwin"
+    ? [{ name: "webkit", use: { ...devices["Desktop Safari"] } }]
+    : []),
+]
+
 export default defineConfig({
   testDir,
   fullyParallel: true,
@@ -21,15 +28,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
     baseURL: "http://localhost:1420",
   },
-  projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-  ],
+  projects,
   webServer: {
     command: "pnpm run dev",
     url: "http://localhost:1420",
     reuseExistingServer: !process.env.CI,
     cwd: "..",
-    timeout: 120000,
   },
 })

@@ -8,8 +8,6 @@ import {
   Monitor,
   Moon,
   Palette,
-  PanelLeftClose,
-  PanelLeftOpen,
   PlusCircle,
   Settings,
   Star,
@@ -19,6 +17,7 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
+import AppSidebarToggle from "@/components/library/AppSidebarToggle"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
   DropdownMenu,
@@ -43,7 +42,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useFavoriteBookIds } from "@/hooks/queries/useFavoriteBooksQuery"
@@ -65,8 +63,6 @@ const THEME_OPTIONS: Array<{
 export default function AppSidebar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { state, toggleSidebar } = useSidebar()
-  const isCollapsed = state === "collapsed"
   const { data: libraries = [] } = useLibrariesQuery()
   const { activeLibraryId, activeView, setActiveView, switchLibrary } =
     useLibraryUiStore()
@@ -102,10 +98,9 @@ export default function AppSidebar() {
                     <Library className="size-4" />
                   </div>
                   <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">
-                      {libraryLabel}
-                    </span>
+                    <span className="truncate font-semibold">MyReader</span>
                     <span className="truncate text-xs text-muted-foreground">
+                      {libraryLabel} ·{" "}
                       {activeLibrary
                         ? t("sidebar.connected")
                         : t("sidebar.disconnected")}
@@ -301,22 +296,7 @@ export default function AppSidebar() {
           </SidebarMenuItem>
 
           <SidebarMenuItem className="flex justify-end">
-            <button
-              type="button"
-              data-testid="sidebar-toggle-button"
-              onClick={toggleSidebar}
-              title={isCollapsed ? t("sidebar.expand") : t("sidebar.collapse")}
-              aria-label={
-                isCollapsed ? t("sidebar.expand") : t("sidebar.collapse")
-              }
-              className="inline-flex size-8 items-center justify-center rounded-md text-sidebar-foreground ring-sidebar-ring outline-hidden transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2"
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen className="size-4" />
-              ) : (
-                <PanelLeftClose className="size-4" />
-              )}
-            </button>
+            <AppSidebarToggle className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

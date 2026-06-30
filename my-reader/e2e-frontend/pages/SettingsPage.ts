@@ -38,11 +38,9 @@ export class SettingsPage {
     await option.waitFor({ state: "visible" })
     await option.click()
     // Wait for the selection to be reflected in the trigger
-    await expect(this.getDataSourceSelectTrigger()).toContainText(name, {
-      timeout: 5000,
-    })
+    await expect(this.getDataSourceSelectTrigger()).toContainText(name)
     // Wait for the browse button to become enabled
-    await expect(this.getBrowseButton()).toBeEnabled({ timeout: 5000 })
+    await expect(this.getBrowseButton()).toBeEnabled()
   }
 
   getBrowseButton() {

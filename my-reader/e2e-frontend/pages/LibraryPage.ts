@@ -9,9 +9,7 @@ export class LibraryPage {
 
   async waitForBooksLoaded() {
     // Wait until book cards are rendered (not skeletons)
-    await this.page.waitForSelector('[role="button"][tabindex="0"]', {
-      timeout: 10000,
-    })
+    await this.page.waitForSelector('[role="button"][tabindex="0"]')
   }
 
   async setViewport(width: number, height = 900) {

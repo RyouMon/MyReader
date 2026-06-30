@@ -25,16 +25,17 @@ Feature: 侧边栏行为
       When 用户点击侧边栏展开按钮
       Then 侧边栏应该处于展开状态
 
-  Rule: 移动端侧边栏以叠加层展开
+  Rule: 窄窗口下最小化侧边栏保持可见
 
     Background:
       Given 用户访问书库首页
 
     @positive
-    Scenario: 窗口缩窄至移动端宽度后侧边栏自动折叠
+    Scenario: 已最小化的侧边栏在窗口缩窄后保持可见
       Given 窗口宽度足够显示侧边栏
+      And 侧边栏已折叠
       When 窗口宽度调整为移动端宽度
-      Then 侧边栏应该处于折叠状态
+      Then 最小化侧边栏应该保持可见
 
     @positive
     Scenario: 在移动端宽度下点击展开按钮侧边栏以叠加层展开

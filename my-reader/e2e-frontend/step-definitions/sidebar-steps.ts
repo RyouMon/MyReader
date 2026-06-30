@@ -52,6 +52,11 @@ Then("侧边栏应该处于折叠状态", async ({ page }) => {
   await mainPage.assertSidebarCollapsed()
 })
 
+Then("最小化侧边栏应该保持可见", async ({ page }) => {
+  const mainPage = new MainPage(page)
+  await mainPage.assertSidebarCollapsed()
+})
+
 Then("侧边栏应该以叠加层形式展开", async ({ page }) => {
   const mainPage = new MainPage(page)
   await mainPage.assertMobileSheetOpen()

@@ -41,18 +41,14 @@ export class MainPage {
     return this.page.locator('[data-slot="sidebar"][data-mobile="true"]')
   }
 
-  // Desktop trigger (also used as mobile icon-strip trigger)
+  // Trigger inside the persistent sidebar rail.
   getSidebarTriggerButton() {
-    return this.page.locator(
-      '[data-slot="sidebar"]:not([data-mobile]) [data-testid="sidebar-toggle-button"]',
-    )
+    return this.getDesktopSidebar().getByTestId("sidebar-toggle-button")
   }
 
-  // Mobile Sheet trigger (inside the overlay)
+  // Sheet trigger inside the overlay.
   getMobileSheetTriggerButton() {
-    return this.page.locator(
-      '[data-slot="sidebar"][data-mobile="true"] [data-testid="sidebar-toggle-button"]',
-    )
+    return this.getMobileSheet().getByTestId("sidebar-toggle-button")
   }
 
   getSheetOverlay() {
@@ -61,12 +57,12 @@ export class MainPage {
 
   getCollapseIcon() {
     // Only the collapse icon inside the mobile Sheet (desktop uses getSidebarTriggerButton context)
-    return this.getMobileSheet().getByTestId("sidebar-collapse-icon")
+    return this.getMobileSheetTriggerButton()
   }
 
   getExpandIcon() {
     // Only the expand icon inside the mobile icon strip
-    return this.getDesktopSidebar().getByTestId("sidebar-expand-icon")
+    return this.getSidebarTriggerButton()
   }
 
   // --- Library switcher locators ---
@@ -110,6 +106,18 @@ export class MainPage {
   }
 
   async assertSidebarCollapsed() {
+    const isMobile = (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
+    if (isMobile) {
+      await expect(this.getMobileSheet()).not.toBeVisible()
+      await expect(this.getDesktopSidebar()).toBeVisible()
+      await expect(this.getDesktopSidebar()).toHaveAttribute(
+        "data-state",
+        "collapsed",
+      )
+      await expect(this.getSidebarTriggerButton()).toBeVisible()
+      return
+    }
+
     await expect(this.getDesktopSidebar()).toBeVisible()
     await expect(this.getDesktopSidebar()).toHaveAttribute(
       "data-state",
@@ -125,6 +133,7 @@ export class MainPage {
 
   async assertMobileSheetClosed() {
     await expect(this.getMobileSheet()).not.toBeVisible()
+    await expect(this.getDesktopSidebar()).toBeVisible()
     await expect(this.getSidebarTriggerButton()).toBeVisible()
   }
 
@@ -162,7 +171,7 @@ export class MainPage {
   // --- Sidebar actions ---
   async clickSidebarCollapseButton() {
     const isMobile = (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
-    if (isMobile) {
+    if (isMobile && (await this.getMobileSheet().isVisible())) {
       await this.getMobileSheetTriggerButton().click()
     } else {
       await this.getSidebarTriggerButton().click()
