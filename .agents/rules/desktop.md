@@ -118,4 +118,22 @@ npm run preview      # Preview production build
 
 ## Testing
 
-> Full **desktop testing strategy** (five-layer architecture, tech choices, BDD/Gherkin conventions, coding standards, run commands): see `.agents/rules/tauri-testing-rules.md`.
+> Full **desktop testing strategy** (five-layer architecture, tech choices, BDD/Gherkin conventions, coding standards, run commands): see `.agents/rules/tauri-testing-strategy.md`.
+
+### Required Post-Change Verification
+
+When modifying desktop frontend files under `my-reader/src/`, run the full desktop frontend unit test suite before final response:
+
+```bash
+pnpm --filter my-reader run test:unit
+```
+
+When modifying desktop Rust/Tauri files under `my-reader/src-tauri/`, run the full desktop Rust unit test suite before final response:
+
+```bash
+cd my-reader/src-tauri && cargo test
+```
+
+On Windows, `cargo test` may fail to run lib tests correctly in the native shell. If that happens, rerun the same command from WSL before treating the suite as failed.
+
+If both frontend and Rust/Tauri code are touched, run both suites. All tests must pass. Targeted test runs are allowed during development, but they are not a substitute for the final full relevant unit test run.

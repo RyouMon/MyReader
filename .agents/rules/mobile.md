@@ -143,3 +143,13 @@ npm run build:dev:ios       # EAS local iOS build (development profile)
 ## Testing
 
 > **Mobile testing strategy** (four-layer architecture, Maestro E2E, toolchain, run commands): see `.agents/rules/expo-testing-strategy.md`.
+
+### Required Post-Change Verification
+
+When modifying any file under `my-reader-mobile/`, run the full mobile unit test suite before final response:
+
+```bash
+pnpm --filter my-reader-mobile exec jest --runInBand
+```
+
+All tests must pass. Targeted Jest runs are allowed during development, but they are not a substitute for the final full unit test run.

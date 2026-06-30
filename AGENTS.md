@@ -11,6 +11,7 @@ Apply these when writing, reviewing, or refactoring code:
 3. **Goal-Driven Execution** — Define verifiable success criteria before implementing. Transform tasks into testable goals (e.g., "Write a test that reproduces the bug, then make it pass").
 4. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
 5. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/` vs `features/` vs `repos/` vs `services/`). No upward imports, no bypassing layers.
+6. **Verification Gate** — After code changes, run the full unit test suite for every touched package before reporting completion. Targeted tests may be used during development, but they do not replace the final full package unit test run. All tests must pass. If a suite cannot be run, state the exact command and blocker.
 
 ---
 
