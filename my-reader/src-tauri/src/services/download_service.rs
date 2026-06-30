@@ -116,6 +116,14 @@ impl DownloadService {
         format: &str,
     ) -> Result<String, AppError> {
         let fmt = format.to_uppercase();
+        if self.is_active(library_id, book_id, &fmt) {
+            info!(
+                "Download already in progress, return existing path. library id: \"{}\", book id: {}, format: \"{}\"",
+                library_id, book_id, fmt
+            );
+            return Ok(String::new());
+        }
+
         Self::resolve_remote_library(config, library_id)?;
 
         let cancel_rx = match self.start(library_id, book_id, &fmt) {
