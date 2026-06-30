@@ -1,7 +1,7 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source"
 import type { DataSource } from "@/src/domain/types"
 import type { FontFamilyKey } from "@/src/store/app-store.types"
-import { buildPreferences } from "@/src/features/reader/components/reader/reflow/ReadiumReflowReader"
+import { buildPreferences } from "@/src/features/reader/components/reader/reflow/reader-reflow-preferences"
 
 import {
   defaultSettings,

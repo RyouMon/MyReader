@@ -9,15 +9,12 @@ import {
 import { StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
-  Link,
   Locator,
-  Preferences,
   PublicationReadyEvent,
   ReadiumFile,
   ReadiumViewRef,
 } from "@my-reader/readium"
 
-import { READER_THEMES } from "@/src/design/reader-tokens"
 import type {
   ReaderState,
   ReaderTocItem,
@@ -28,6 +25,14 @@ import type {
   ColumnCount,
   FontFamilyKey,
 } from "@/src/store/app-store.types"
+import {
+  findLocatorForLinkHref,
+  linksToTocItems,
+  positionIndexForLocator,
+  resolveNativeLocator,
+  hrefRoughlyMatches,
+} from "./reader-reflow-navigation"
+import { buildPreferences } from "./reader-reflow-preferences"
 
 const PROGRESS_PERCENT_MULTIPLIER = 100
 
@@ -53,174 +58,6 @@ export type ReadiumReflowReaderProps = {
   paddingX?: number
   textAlign?: TextAlignment
   columnCount?: ColumnCount
-}
-
-function stripFragment(href: string): string {
-  const i = href.indexOf("#")
-  return i >= 0 ? href.slice(0, i) : href
-}
-
-function hrefRoughlyMatches(a: string, b: string): boolean {
-  if (!a || !b) return false
-  const na = stripFragment(a)
-  const nb = stripFragment(b)
-  return na === nb || na.endsWith(nb) || nb.endsWith(na)
-}
-
-/**
- * 为目录链接在 positions 中找首个匹配 locator（用于 TOC `goTo`）。
- */
-function findLocatorForLinkHref(
-  positions: Locator[],
-  linkHref: string | undefined,
-): Locator | undefined {
-  if (!linkHref || positions.length === 0) return undefined
-  return positions.find((p) => hrefRoughlyMatches(p.href, linkHref))
-}
-
-function positionIndexForLocator(
-  positions: Locator[],
-  locator: Locator,
-): number {
-  if (positions.length === 0) return 0
-  const byHref = positions.findIndex((p) =>
-    hrefRoughlyMatches(p.href, locator.href),
-  )
-  if (byHref >= 0) return byHref
-  const prog =
-    locator.locations?.totalProgression ?? locator.locations?.progression
-  if (prog != null && Number.isFinite(prog)) {
-    return Math.max(
-      0,
-      Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))),
-    )
-  }
-  return 0
-}
-
-/**
- * Find a platform-native locator from positions list that matches a stored locator.
- * Uses href first (with rough matching for EPUB), then position, then progression.
- */
-function resolveNativeLocator(
-  positions: Locator[],
-  stored: Locator,
-): Locator | undefined {
-  if (positions.length === 0) return undefined
-  // 1. Match by href (rough matching handles fragment differences)
-  const byHref = positions.find((p) => hrefRoughlyMatches(p.href, stored.href))
-  if (byHref) return byHref
-  // 2. Match by position
-  const position = stored.locations?.position
-  if (
-    typeof position === "number" &&
-    position >= 1 &&
-    position <= positions.length
-  ) {
-    return positions[position - 1]
-  }
-  // 3. Match by progression
-  const prog =
-    stored.locations?.totalProgression ?? stored.locations?.progression
-  if (prog != null && Number.isFinite(prog)) {
-    const idx = Math.max(
-      0,
-      Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))),
-    )
-    return positions[idx]
-  }
-  return undefined
-}
-
-/**
- * Readium `Preferences.theme` 使用 light / dark / sepia（见库类型定义）。
- */
-function toReadiumThemeToken(theme: ReaderTheme): "light" | "dark" | "sepia" {
-  switch (theme) {
-    case "night":
-    case "contrast2":
-      return "dark"
-    case "paper":
-    case "sepia":
-    case "green":
-    case "ocean":
-    case "contrast1":
-      return "sepia"
-    default:
-      return "light"
-  }
-}
-
-export function buildPreferences(
-  theme: ReaderTheme,
-  fontFamily: FontFamilyKey,
-  fontSize: number,
-  lineHeight: number,
-  paddingX: number,
-  textAlign: TextAlignment,
-  columnCount: ColumnCount,
-): Preferences {
-  const t = READER_THEMES[theme] ?? READER_THEMES.neutral
-  const prefs: Preferences = {
-    theme: toReadiumThemeToken(theme),
-    fontSize: fontSize / 16,
-    lineHeight,
-    pageMargins: 0.5 + (paddingX / 100) * 1.5,
-    scroll: false,
-    textColor: t.fg,
-    backgroundColor: t.bg,
-    publisherStyles: false,
-  }
-  if (fontFamily === "serif") {
-    prefs.fontFamily = "serif"
-  } else if (fontFamily === "sans") {
-    prefs.fontFamily = "sans-serif"
-  }
-  // "system" → omit fontFamily, use Readium default
-  if (textAlign !== "auto") {
-    prefs.textAlign = textAlign === "justify" ? "justify" : "start"
-  }
-  if (columnCount !== "auto") {
-    prefs.columnCount = columnCount
-  }
-  return prefs
-}
-
-function buildTocItemId(
-  prefix: string,
-  path: readonly number[],
-  rawHref: string | undefined,
-) {
-  const pathPart = path.join(".")
-  return `${prefix}-${pathPart}-${rawHref ?? "no-href"}`
-}
-
-function linksToTocItems(links: Link[], positions: Locator[]): ReaderTocItem[] {
-  const items: ReaderTocItem[] = []
-  let flatIndex = 0
-
-  function walk(list: Link[], parentPath: number[] = []) {
-    for (const [idx, link] of list.entries()) {
-      const path = [...parentPath, idx]
-      const href = link.href
-      const locator = findLocatorForLinkHref(positions, href)
-      items.push({
-        id: buildTocItemId("readium", path, href),
-        label: link.title ?? `Chapter ${flatIndex + 1}`,
-        pageIndex: flatIndex,
-        chapterIndex: flatIndex,
-        href,
-        locator,
-      })
-      flatIndex++
-      if (link.children?.length) {
-        walk(link.children, path)
-      }
-    }
-  }
-
-  walk(links)
-  return items
 }
 
 const ReadiumReflowReader = forwardRef<
