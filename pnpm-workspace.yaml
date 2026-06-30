@@ -3,6 +3,9 @@ packages:
   - "packages/tools"
   - "my-reader"
   - "my-reader-mobile"
+patchedDependencies:
+  "@react-native-menu/menu@2.0.0": "patches/@react-native-menu__menu@2.0.0.patch"
+  "react-native-css@3.0.7": "patches/react-native-css@3.0.7.patch"
 allowBuilds:
   '@sentry/cli': true
   edgedriver: true

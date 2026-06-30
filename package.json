@@ -2,6 +2,7 @@
   "name": "my-reader-monorepo",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev:desktop": "pnpm --filter my-reader tauri dev",
     "dev:mobile": "pnpm --filter my-reader-mobile start",

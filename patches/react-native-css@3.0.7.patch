@@ -1,7 +1,7 @@
-diff --git a/node_modules/react-native-css/dist/module/metro/injection-code.js b/node_modules/react-native-css/dist/module/metro/injection-code.js
+diff --git a/dist/module/metro/injection-code.js b/dist/module/metro/injection-code.js
 index 669780d..4514abc 100644
---- a/node_modules/react-native-css/dist/module/metro/injection-code.js
-+++ b/node_modules/react-native-css/dist/module/metro/injection-code.js
+--- a/dist/module/metro/injection-code.js
++++ b/dist/module/metro/injection-code.js
 @@ -10,12 +10,15 @@
   *
   * To fix this, we force our code to always import the CSS files, so now the CSS files are in every bundle.

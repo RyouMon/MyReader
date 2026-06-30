@@ -1,7 +1,7 @@
-diff --git a/node_modules/@react-native-menu/menu/lib/commonjs/UIMenuView.android.js b/node_modules/@react-native-menu/menu/lib/commonjs/UIMenuView.android.js
+diff --git a/lib/commonjs/UIMenuView.android.js b/lib/commonjs/UIMenuView.android.js
 index aed934a..ecd1d6a 100644
---- a/node_modules/@react-native-menu/menu/lib/commonjs/UIMenuView.android.js
-+++ b/node_modules/@react-native-menu/menu/lib/commonjs/UIMenuView.android.js
+--- a/lib/commonjs/UIMenuView.android.js
++++ b/lib/commonjs/UIMenuView.android.js
 @@ -15,7 +15,7 @@ const MenuComponent = /*#__PURE__*/(0, _react.forwardRef)((props, ref) => {
        if (nativeRef.current) {
          const node = (0, _reactNative.findNodeHandle)(nativeRef.current);
@@ -11,10 +11,10 @@ index aed934a..ecd1d6a 100644
        }
      }
    }), []);
-diff --git a/node_modules/@react-native-menu/menu/lib/module/UIMenuView.android.js b/node_modules/@react-native-menu/menu/lib/module/UIMenuView.android.js
+diff --git a/lib/module/UIMenuView.android.js b/lib/module/UIMenuView.android.js
 index e698dd3..51b6569 100644
---- a/node_modules/@react-native-menu/menu/lib/module/UIMenuView.android.js
-+++ b/node_modules/@react-native-menu/menu/lib/module/UIMenuView.android.js
+--- a/lib/module/UIMenuView.android.js
++++ b/lib/module/UIMenuView.android.js
 @@ -11,7 +11,7 @@ const MenuComponent = /*#__PURE__*/forwardRef((props, ref) => {
        if (nativeRef.current) {
          const node = findNodeHandle(nativeRef.current);
@@ -24,10 +24,10 @@ index e698dd3..51b6569 100644
        }
      }
    }), []);
-diff --git a/node_modules/@react-native-menu/menu/src/UIMenuView.android.tsx b/node_modules/@react-native-menu/menu/src/UIMenuView.android.tsx
+diff --git a/src/UIMenuView.android.tsx b/src/UIMenuView.android.tsx
 index 967e375..c5dcca8 100644
---- a/node_modules/@react-native-menu/menu/src/UIMenuView.android.tsx
-+++ b/node_modules/@react-native-menu/menu/src/UIMenuView.android.tsx
+--- a/src/UIMenuView.android.tsx
++++ b/src/UIMenuView.android.tsx
 @@ -24,7 +24,7 @@ const MenuComponent = forwardRef<MenuComponentRef, NativeMenuComponentProps>(
  						const command =
  							UIManager.getViewManagerConfig("MenuView").Commands.show;
