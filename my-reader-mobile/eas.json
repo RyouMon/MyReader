@@ -24,7 +24,8 @@
       "pnpm": "11.7.0",
       "distribution": "internal",
       "env": {
-        "ENTRY_FILE": "node_modules/expo-router/entry.js"
+        "ENTRY_FILE": "node_modules/expo-router/entry.js",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {

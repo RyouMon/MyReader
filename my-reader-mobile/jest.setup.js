@@ -2,6 +2,10 @@ jest.mock("react-native-reanimated", () =>
   require("react-native-reanimated/mock"),
 )
 
+jest.mock("expo-crypto", () => ({
+  randomUUID: () => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+}))
+
 const originalConsoleWarn = console.warn.bind(console)
 console.warn = (...args) => {
   if (
