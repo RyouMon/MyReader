@@ -166,11 +166,8 @@ function isFileUri(value: string): boolean {
  * Normalize a native absolute path or bare path into a `file:` URI for use
  * with Expo `File` / `Directory` / legacy file-system.
  */
-function toFileUri(pathOrUri: string): string {
-  const normalized = pathOrUri.replace(/\\/g, "/").trim()
-  const nativePath = isFileUri(normalized)
-    ? toNativeFilesystemPath(normalized)
-    : decodePathToPlainText(normalized)
+function toFileUri(path: string): string {
+  const nativePath = decodePathToPlainText(path.replace(/\\/g, "/").trim())
   const encodedPath = nativePath
     .split("/")
     .map((segment) => (segment ? encodeURIComponent(segment) : segment))
@@ -195,9 +192,7 @@ export function toNativeFilesystemPath(pathOrUri: string): string {
     return decodePathToPlainText(new URL(normalized).pathname)
   } catch {
     const stripped = normalized.replace(/^file:\/\//, "").replace(/^file:/, "")
-    return decodePathToPlainText(
-      stripped.startsWith("/") ? stripped : `/${stripped}`,
-    )
+    return decodePathToPlainText(stripped.replace(/^\/?/, "/"))
   }
 }
 
