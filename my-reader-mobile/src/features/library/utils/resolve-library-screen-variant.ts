@@ -21,7 +21,7 @@ export function resolveLibraryScreenVariant(
   if (
     typeof effectiveLibraryId === "string" &&
     !hasSelectedLibrary &&
-    !storeReady &&
+    storeReady &&
     librariesCount > 0
   ) {
     return "invalid"

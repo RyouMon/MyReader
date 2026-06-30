@@ -21,11 +21,13 @@ jest.mock("./resolve", () => ({
 }))
 
 import type { DataSource, Library } from "../types"
+import { SyncConnectivityError } from "@/src/errors"
 
 import { skippedCalibre, syncCalibre } from "./calibre-sync"
 import { checkConnectivity } from "./connectivity"
 import { openSyncContext, type SyncTargetContext } from "./context"
 import { skippedMyreader, syncMyReader } from "./myreader-sync"
+import { DEFAULT_SYNC_POLICY } from "./policy"
 import { isRemoteBackend } from "./resolve"
 import { syncLibraries, syncLibrary } from "./sync-library"
 
@@ -113,7 +115,7 @@ describe("syncLibrary", () => {
     })
   })
 
-  test("runs both phases when scope is all", async () => {
+  test("should run both phases when scope is all", async () => {
     const report = await syncLibrary(library, dataSources, { scope: "all" })
 
     expect(mockSyncCalibre).toHaveBeenCalledTimes(1)
@@ -124,7 +126,7 @@ describe("syncLibrary", () => {
     expect(report.myreader.skipped).toBe(false)
   })
 
-  test("skips myreader when scope is calibre", async () => {
+  test("should skip myreader when scope is calibre", async () => {
     await syncLibrary(library, dataSources, { scope: "calibre" })
 
     expect(mockSyncCalibre).toHaveBeenCalledTimes(1)
@@ -132,7 +134,7 @@ describe("syncLibrary", () => {
     expect(mockSkippedMyreader).toHaveBeenCalledWith("full")
   })
 
-  test("skips calibre when scope is myreader", async () => {
+  test("should skip calibre when scope is myreader", async () => {
     await syncLibrary(library, dataSources, {
       scope: "myreader",
       myreaderMode: "push_only",
@@ -146,7 +148,7 @@ describe("syncLibrary", () => {
     )
   })
 
-  test("passes forceCalibre to syncCalibre", async () => {
+  test("should pass forceCalibre when syncing calibre", async () => {
     await syncLibrary(library, dataSources, {
       scope: "calibre",
       forceCalibre: true,
@@ -159,14 +161,14 @@ describe("syncLibrary", () => {
     )
   })
 
-  test("does not check connectivity for local backend", async () => {
+  test("should skip connectivity check when backend is local", async () => {
     await syncLibrary(library, dataSources)
 
     expect(mockIsRemoteBackend).toHaveBeenCalledWith(localCtx.backend)
     expect(mockCheckConnectivity).not.toHaveBeenCalled()
   })
 
-  test("returns connectivity failure for unreachable remote backend", async () => {
+  test("should return connectivity failure when remote backend is unreachable", async () => {
     mockOpenSyncContext.mockResolvedValue(remoteCtx)
     mockIsRemoteBackend.mockReturnValue(true)
     mockCheckConnectivity.mockResolvedValue({
@@ -185,6 +187,70 @@ describe("syncLibrary", () => {
     expect(report.error).toBe("offline")
     expect(report.calibre.skipReason).toBe("connectivity")
     expect(report.myreader.skipped).toBe(true)
+  })
+
+  test("should return skipped report when sync context cannot open", async () => {
+    mockOpenSyncContext.mockRejectedValue(new Error("missing metadata"))
+
+    const report = await syncLibrary(library, dataSources, {
+      myreaderMode: "push_only",
+    })
+
+    expect(report).toMatchObject({
+      libraryId: "lib-1",
+      error: "missing metadata",
+      calibre: {
+        skipped: true,
+        skipReason: "error",
+        error: "missing metadata",
+      },
+    })
+    expect(mockSkippedMyreader).toHaveBeenCalledWith("push_only")
+    expect(mockSyncCalibre).not.toHaveBeenCalled()
+    expect(mockSyncMyReader).not.toHaveBeenCalled()
+  })
+
+  test("should throw context open failures when requested", async () => {
+    mockOpenSyncContext.mockRejectedValue("metadata unavailable")
+
+    await expect(
+      syncLibrary(library, dataSources, { throwOnFailure: true }),
+    ).rejects.toThrow("metadata unavailable")
+  })
+
+  test("should throw typed connectivity failure when requested", async () => {
+    mockOpenSyncContext.mockResolvedValue(remoteCtx)
+    mockIsRemoteBackend.mockReturnValue(true)
+    mockCheckConnectivity.mockResolvedValue({
+      reachable: false,
+      latencyMs: 0,
+    })
+
+    await expect(
+      syncLibrary(library, dataSources, { throwOnFailure: true }),
+    ).rejects.toBeInstanceOf(SyncConnectivityError)
+  })
+
+  test("should throw calibre phase errors when requested", async () => {
+    mockSyncCalibre.mockResolvedValue({
+      ...calibreResult(false),
+      error: "calibre failed",
+    })
+
+    await expect(
+      syncLibrary(library, dataSources, { throwOnFailure: true }),
+    ).rejects.toThrow("calibre failed")
+  })
+
+  test("should throw myreader phase errors when requested", async () => {
+    mockSyncMyReader.mockResolvedValue({
+      ...myreaderResult(),
+      error: "myreader failed",
+    })
+
+    await expect(
+      syncLibrary(library, dataSources, { throwOnFailure: true }),
+    ).rejects.toThrow("myreader failed")
   })
 })
 
@@ -209,7 +275,7 @@ describe("syncLibraries", () => {
     })
   })
 
-  test("aborts startup sync when syncOnStartup is disabled", async () => {
+  test("should abort startup sync when syncOnStartup is disabled", async () => {
     const report = await syncLibraries(
       {
         libraries: [library],
@@ -226,7 +292,45 @@ describe("syncLibraries", () => {
     expect(mockOpenSyncContext).not.toHaveBeenCalled()
   })
 
-  test("scheduled reading sync targets only the active library with push_only", async () => {
+  test("should abort scheduled sync when auto sync is disabled", async () => {
+    const report = await syncLibraries(
+      {
+        libraries: [library],
+        dataSources,
+        activeLibraryId: library.id,
+        syncOnStartup: true,
+        enableAutoSync: false,
+      },
+      "scheduled",
+    )
+
+    expect(report.aborted).toBe(true)
+    expect(report.results).toHaveLength(0)
+    expect(mockOpenSyncContext).not.toHaveBeenCalled()
+  })
+
+  test("should abort sync when trigger policy is disabled", async () => {
+    const report = await syncLibraries(
+      {
+        libraries: [library],
+        dataSources,
+        activeLibraryId: library.id,
+        syncOnStartup: true,
+        enableAutoSync: true,
+      },
+      "manual",
+      {
+        ...DEFAULT_SYNC_POLICY,
+        manual: { ...DEFAULT_SYNC_POLICY.manual, enabled: false },
+      },
+    )
+
+    expect(report.aborted).toBe(true)
+    expect(report.results).toHaveLength(0)
+    expect(mockOpenSyncContext).not.toHaveBeenCalled()
+  })
+
+  test("should target only active library when scheduled reading sync runs", async () => {
     const otherLibrary: Library = { ...library, id: "lib-2", name: "Other" }
 
     await syncLibraries(

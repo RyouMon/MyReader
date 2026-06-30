@@ -2,6 +2,17 @@ jest.mock("react-native-reanimated", () =>
   require("react-native-reanimated/mock"),
 )
 
+const originalConsoleWarn = console.warn.bind(console)
+console.warn = (...args) => {
+  if (
+    typeof args[0] === "string" &&
+    args[0].includes("ExpoModulesCoreJSLogger")
+  ) {
+    return
+  }
+  originalConsoleWarn(...args)
+}
+
 jest.mock("@my-reader/readium", () => {
   const mockReact = require("react")
   const { View } = require("react-native")

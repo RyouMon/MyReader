@@ -12,6 +12,17 @@ describe("resolveLibraryScreenVariant", () => {
     ).toBe("loading")
   })
 
+  it("should return invalid when selected library id is missing after store ready", () => {
+    expect(
+      resolveLibraryScreenVariant({
+        storeReady: true,
+        effectiveLibraryId: "missing-lib",
+        hasSelectedLibrary: false,
+        librariesCount: 2,
+      }),
+    ).toBe("invalid")
+  })
+
   it("should return empty when there are no libraries", () => {
     expect(
       resolveLibraryScreenVariant({

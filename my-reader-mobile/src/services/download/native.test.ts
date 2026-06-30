@@ -211,6 +211,57 @@ describe("native download adapter", () => {
     expect(mockCompleteHandler).not.toHaveBeenCalled()
   })
 
+  it("should reject when native download never begins", async () => {
+    const promise = startNativeDownload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      destinationUri: "file:///tmp/book.epub",
+      options: { taskId: "download-timeout" },
+    })
+
+    jest.advanceTimersByTime(15000)
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to run native download task:",
+      expect.objectContaining({
+        taskId: "download-timeout",
+        errorCode: 0,
+      }),
+    )
+  })
+
+  it("should reject when native download stalls after progress", async () => {
+    const onProgress = jest.fn()
+    const promise = startNativeDownload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      destinationUri: "file:///tmp/book.epub",
+      onProgress,
+      options: { taskId: "download-stalled" },
+    })
+
+    mockDownloadProgress?.({ bytesDownloaded: 1, bytesTotal: 10 })
+    jest.advanceTimersByTime(60000)
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(onProgress).toHaveBeenCalledWith(1, 10)
+  })
+
+  it("should reject generic native download errors when native error callback fires", async () => {
+    const promise = startNativeDownload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      destinationUri: "file:///tmp/book.epub",
+      options: { taskId: "download-error" },
+    })
+
+    mockDownloadError?.({ error: "", errorCode: 500 })
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(mockCompleteHandler).not.toHaveBeenCalled()
+  })
+
   it("should stop active task and reject promise when cancelling download", async () => {
     const promise = startNativeDownload({
       relativePath: "Book/book.epub",
@@ -399,6 +450,57 @@ describe("native upload adapter", () => {
     mockUploadError?.({ error: "cancelled", errorCode: -999 })
 
     await expect(promise).rejects.toMatchObject({ name: "AbortError" })
+  })
+
+  it("should reject when native upload never begins", async () => {
+    const promise = startNativeUpload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      sourceUri: "file:///tmp/book.epub",
+      options: { taskId: "upload-timeout" },
+    })
+
+    jest.advanceTimersByTime(15000)
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to run native upload task:",
+      expect.objectContaining({
+        taskId: "upload-timeout",
+        errorCode: 0,
+      }),
+    )
+  })
+
+  it("should reject when native upload stalls after progress", async () => {
+    const onProgress = jest.fn()
+    const promise = startNativeUpload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      sourceUri: "file:///tmp/book.epub",
+      onProgress,
+      options: { taskId: "upload-stalled" },
+    })
+
+    mockUploadProgress?.({ bytesUploaded: 1, bytesTotal: 10 })
+    jest.advanceTimersByTime(60000)
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(onProgress).toHaveBeenCalledWith(1, 10)
+  })
+
+  it("should reject generic native upload errors when native error callback fires", async () => {
+    const promise = startNativeUpload({
+      relativePath: "Book/book.epub",
+      url: "https://dav.example/books/Book/book.epub",
+      sourceUri: "file:///tmp/book.epub",
+      options: { taskId: "upload-error" },
+    })
+
+    mockUploadError?.({ error: "", errorCode: 500 })
+
+    await expect(promise).rejects.toBeInstanceOf(Error)
+    expect(mockCompleteHandler).not.toHaveBeenCalled()
   })
 
   it("should stop active task and reject promise when cancelling upload", async () => {

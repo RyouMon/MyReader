@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react-native"
 import type { BookDetail } from "@my-reader/tools/types/book"
 import type { MenuAction } from "@react-native-menu/menu"
 import { MenuView } from "@react-native-menu/menu"
+import { Platform } from "react-native"
 
 import type { LocalState } from "@/src/domain/types"
 
@@ -11,6 +12,12 @@ import type { DetailColors } from "./types"
 
 jest.mock("@react-native-menu/menu", () => ({
   MenuView: jest.fn(() => null),
+}))
+
+jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
+
+jest.mock("expo-symbols", () => ({
+  SymbolView: jest.fn(() => null),
 }))
 
 jest.mock("@/src/components", () => ({
@@ -62,61 +69,107 @@ const baseBook = {
   ],
 } as unknown as BookDetail
 
+const originalPlatformOs = Platform.OS
+
 function getMenuActions(): MenuAction[] {
   return (MenuView as unknown as jest.Mock).mock.calls[0]?.[0]?.actions ?? []
 }
 
+function getMenuProps(index = 0) {
+  return (MenuView as unknown as jest.Mock).mock.calls[index]?.[0]
+}
+
 function renderFormatSection(
   overrides: {
+    defaultFormat?: string | null
     fileLocalState?: LocalState | null
+    formatInfoMap?: React.ComponentProps<typeof FormatSection>["formatInfoMap"]
+    formatSizeMap?: Map<string, number>
     isNetworkSource?: boolean
     isReadable?: boolean
+    onDeleteFormat?: jest.Mock
+    onDownloadFormat?: jest.Mock
+    onSetDefaultFormat?: jest.Mock
+    onShareFormat?: jest.Mock
+    progressByFormat?: Record<string, number>
+    readableFormats?: string[]
   } = {},
 ) {
   const {
+    defaultFormat = "EPUB",
     fileLocalState = "present",
+    formatInfoMap,
+    formatSizeMap = new Map([
+      ["EPUB", 1024],
+      ["PDF", 2048],
+    ]),
     isNetworkSource = false,
     isReadable = true,
+    onDeleteFormat = jest.fn(),
+    onDownloadFormat = jest.fn(),
+    onSetDefaultFormat = jest.fn(),
+    onShareFormat = jest.fn(),
+    progressByFormat,
+    readableFormats = isReadable ? ["EPUB", "PDF"] : [],
   } = overrides
 
-  return render(
+  const result = render(
     <FormatSection
       book={baseBook}
       colors={mockColors}
-      defaultFormat="EPUB"
-      formatInfoMap={{
-        EPUB: {
-          relativePath: "Author/Test Book/Test Book.epub",
-          localState: fileLocalState,
-        },
-        PDF: {
-          relativePath: "Author/Test Book/Test Book.pdf",
-          localState: fileLocalState,
-        },
-      }}
-      formatSizeMap={
-        new Map([
-          ["EPUB", 1024],
-          ["PDF", 2048],
-        ])
+      defaultFormat={defaultFormat}
+      formatInfoMap={
+        formatInfoMap ?? {
+          EPUB: {
+            relativePath: "Author/Test Book/Test Book.epub",
+            localState: fileLocalState,
+          },
+          PDF: {
+            relativePath: "Author/Test Book/Test Book.pdf",
+            localState: fileLocalState,
+          },
+        }
       }
+      formatSizeMap={formatSizeMap}
       isNetworkSource={isNetworkSource}
       libraryId="lib-1"
-      onDeleteFormat={jest.fn()}
-      onDownloadFormat={jest.fn()}
-      onSetDefaultFormat={jest.fn()}
-      onShareFormat={jest.fn()}
-      readableFormats={isReadable ? ["EPUB", "PDF"] : []}
+      onDeleteFormat={onDeleteFormat}
+      onDownloadFormat={onDownloadFormat}
+      onSetDefaultFormat={onSetDefaultFormat}
+      onShareFormat={onShareFormat}
+      progressByFormat={progressByFormat}
+      readableFormats={readableFormats}
     />,
   )
+
+  return {
+    ...result,
+    onDeleteFormat,
+    onDownloadFormat,
+    onSetDefaultFormat,
+    onShareFormat,
+  }
 }
 
 describe("FormatSection", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    const downloadStore = jest.requireMock(
+      "@/src/domain/download/download-store",
+    )
+    downloadStore.useDownloadTaskForPath.mockReturnValue(undefined)
+    downloadStore.useDownloadTaskForBookFormat.mockReturnValue(undefined)
   })
 
-  it("should render format rows for each format", () => {
+  afterEach(() => {
+    jest.restoreAllMocks()
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatformOs,
+    })
+  })
+
+  it("should render format rows when book has formats", () => {
     renderFormatSection()
 
     expect(screen.getByText("EPUB")).toBeTruthy()
@@ -130,7 +183,7 @@ describe("FormatSection", () => {
     expect(actions.map((a) => a.id)).toEqual(["setDefault", "share", "delete"])
   })
 
-  it("should not show delete action when format is not present", () => {
+  it("should hide delete action when format is not present", () => {
     renderFormatSection({ fileLocalState: "remote_only" })
 
     const actions = getMenuActions()
@@ -138,7 +191,7 @@ describe("FormatSection", () => {
     expect(actions.find((a) => a.id === "delete")).toBeUndefined()
   })
 
-  it("should not show delete action for local library when format is present", () => {
+  it("should hide delete action when library is local", () => {
     renderFormatSection({ fileLocalState: "present", isNetworkSource: false })
 
     const actions = getMenuActions()
@@ -146,7 +199,7 @@ describe("FormatSection", () => {
     expect(actions.find((a) => a.id === "delete")).toBeUndefined()
   })
 
-  it("should show download action when format is remote and not present", () => {
+  it("should show download action when remote format is not present", () => {
     renderFormatSection({
       fileLocalState: "remote_only",
       isNetworkSource: true,
@@ -160,7 +213,7 @@ describe("FormatSection", () => {
     ])
   })
 
-  it("should mark default format in menu", () => {
+  it("should mark default format when format matches default", () => {
     renderFormatSection({ fileLocalState: "present" })
 
     const actions = getMenuActions()
@@ -168,7 +221,7 @@ describe("FormatSection", () => {
     expect(setDefault?.state).toBe("on")
   })
 
-  it("should not show setDefault action when format is not readable", () => {
+  it("should hide setDefault action when format is not readable", () => {
     renderFormatSection({
       fileLocalState: "present",
       isNetworkSource: true,
@@ -177,5 +230,86 @@ describe("FormatSection", () => {
 
     const actions = getMenuActions()
     expect(actions.map((a) => a.id)).toEqual(["share", "delete"])
+  })
+
+  it("should route menu actions when action is pressed", () => {
+    const handlers = renderFormatSection({
+      fileLocalState: "present",
+      isNetworkSource: true,
+    })
+
+    const menu = getMenuProps()
+    menu.onPressAction({ nativeEvent: { event: "setDefault" } })
+    menu.onPressAction({ nativeEvent: { event: "download" } })
+    menu.onPressAction({ nativeEvent: { event: "share" } })
+    menu.onPressAction({ nativeEvent: { event: "delete" } })
+
+    expect(handlers.onSetDefaultFormat).toHaveBeenCalledWith("EPUB")
+    expect(handlers.onDownloadFormat).toHaveBeenCalledWith("EPUB")
+    expect(handlers.onShareFormat).toHaveBeenCalledWith("EPUB")
+    expect(handlers.onDeleteFormat).toHaveBeenCalledWith("EPUB")
+  })
+
+  it("should show cancel action when native download is active", () => {
+    const downloadStore = jest.requireMock(
+      "@/src/domain/download/download-store",
+    )
+    downloadStore.useDownloadTaskForPath.mockReturnValue({
+      id: "task-1",
+      progress: 0.4,
+      status: "downloading",
+    })
+
+    renderFormatSection({
+      fileLocalState: "remote_only",
+      isNetworkSource: true,
+      progressByFormat: { EPUB: 35 },
+    })
+
+    const actions = getMenuActions()
+    expect(actions.map((a) => a.id)).toEqual(["setDefault", "cancel", "share"])
+
+    getMenuProps().onPressAction({ nativeEvent: { event: "cancel" } })
+    expect(downloadStore.cancel).toHaveBeenCalledWith("task-1")
+    expect(
+      screen.getByText("1024 B · 35% · bookDetail.formatSection.default"),
+    ).toBeTruthy()
+  })
+
+  it("should fall back when format metadata is missing", () => {
+    renderFormatSection({
+      defaultFormat: null,
+      formatInfoMap: {},
+      formatSizeMap: new Map(),
+      isNetworkSource: true,
+      readableFormats: ["PDF"],
+    })
+
+    expect(screen.getAllByText("0 B · bookRow.unread")).toHaveLength(2)
+    expect(getMenuProps(0).actions.map((a: MenuAction) => a.id)).toEqual([
+      "share",
+    ])
+    expect(getMenuProps(1).actions.map((a: MenuAction) => a.id)).toEqual([
+      "setDefault",
+      "share",
+    ])
+  })
+
+  it("should use Android menu anchoring when platform is Android", () => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    })
+
+    renderFormatSection({
+      fileLocalState: "remote_only",
+      isNetworkSource: true,
+    })
+
+    expect(getMenuProps()).toMatchObject({
+      hitSlop: undefined,
+      isAnchoredToRight: true,
+    })
+    expect(getMenuProps().style).toMatchObject({ width: "100%" })
   })
 })
