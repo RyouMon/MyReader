@@ -2,8 +2,9 @@ appId: ${APP_ID}
 name: read_book
 tags:
   - reader
+  - wip
 ---
-# 统一 setup：启动应用、注入 fixture、打开第一本书进入阅读器
+# WIP: requires an external fixture setup flow before it can run again.
 - runFlow: ../../common/launch_and_prepare.yaml
 - runFlow: ../../common/open_reader.yaml
 - runScript: ../../scripts/selectors.js

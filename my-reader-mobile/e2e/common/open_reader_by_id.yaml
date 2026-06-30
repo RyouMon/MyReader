@@ -1,5 +1,5 @@
 appId: ${APP_ID}
-name: Open a specific book in the reader (book-only, no launch/seed)
+name: Open a specific book in the reader (book-only)
 tags:
   - skip
 # BOOK_ID MUST be passed by the caller via `runFlow: { env: { BOOK_ID: "2" } }`.
@@ -7,9 +7,8 @@ tags:
 # overrides the caller's passed env in Maestro, so a default would silently
 # pin every flow to that book.
 #
-# This subflow assumes the app is already running (usually after
-# launch_and_prepare.yaml + seed_library.yaml) and just deep-links into the
-# reader for the requested book.
+# This subflow assumes the app is already running with prepared library data and
+# just deep-links into the reader for the requested book.
 ---
 - runFlow:
     when:

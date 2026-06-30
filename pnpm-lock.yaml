@@ -365,9 +365,6 @@ importers:
       expo-web-browser:
         specifier: ~56.0.5
         version: 56.0.5(expo@56.0.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))
-      fflate:
-        specifier: ^0.8.2
-        version: 0.8.3
       i18next:
         specifier: ^26.2.0
         version: 26.2.0(typescript@6.0.3)

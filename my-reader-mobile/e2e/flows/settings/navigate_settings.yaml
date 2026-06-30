@@ -2,12 +2,10 @@ appId: ${APP_ID}
 tags:
   - settings
   - navigation
+  - wip
 ---
-# 统一启动并注入所有 fixture，后续场景通过 UI 导航与返回串联执行
+# WIP: requires an external fixture setup flow before it can run again.
 - runFlow: ../../common/launch_and_prepare.yaml
-- runFlow: ../../common/seed_library.yaml
-- runFlow: ../../common/seed_webdav.yaml
-- runFlow: ../../common/seed_onedrive.yaml
 - runFlow: ../../common/open_settings.yaml
 - runScript: ../../scripts/selectors.js
 - extendedWaitUntil:

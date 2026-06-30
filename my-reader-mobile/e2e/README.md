@@ -2,6 +2,8 @@
 
 验证 EPUB / CBZ / PDF 三种格式的阅读设置是否即时生效。Flow 按 `maestro-bdd-spec.md` 的 flow/subflow 结构组织；场景描述写在 flow 注释里。规约参考 `features/*.feature`（审核用 spec，非可执行）。
 
+当前依赖预置书库或预置远程数据源的 flow 已统一标记为 `wip`，等待新的外部 fixture 准备方案落地后再恢复默认执行。
+
 ## 前置条件
 
 1. **Metro + dev build**：`pnpm run start` 启动 Metro；目标模拟器上装好 development build（`pnpm exec expo run:ios --device <UDID>`）。dev build 未安装时 deep link 无法打开阅读器。
@@ -16,7 +18,7 @@
 
 > 旧的 `MAESTRO_CLI_AI_KEY` / `MAESTRO_CLI_AI_MODEL` 已不再生效。
 
-占位文件：`.env.example`。未配置 AI 时，跳过 `change_epub_settings_on_pad.yaml`（已标记 `@wip`），其他 flow 均不再依赖 AI。
+占位文件：`.env.example`。未配置 AI 时，跳过 `change_epub_settings_on_pad.yaml`（已标记 `@wip`）。
 
 ## Tag 方案
 
@@ -46,13 +48,10 @@ export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
 export APP_ID=ryoumon.myreadermobile
 # 配好 AI 后再加：export MAESTRO_CLOUD_API_KEY=...
 
-# 手机：所有手机 flow（不再依赖 AI）
-maestro test --config=e2e/config.yaml e2e/flows/reader -e APP_ID=$APP_ID --exclude-tags ipad
+# 当前默认稳定 flow
+maestro test --config=e2e/config.yaml e2e/flows/smoke -e APP_ID=$APP_ID
 
-# iPad：全部 iPad flow（需 iPad 模拟器；排除 phone）
-maestro --device <iPad-UDID> test --config=e2e/config.yaml e2e/flows/reader -e APP_ID=$APP_ID --exclude-tags phone
-
-# 单条 flow 调试
+# 单条 WIP flow 调试
 maestro test --config=e2e/config.yaml e2e/flows/reader/change_cbz_settings.yaml -e APP_ID=$APP_ID
 ```
 
@@ -61,21 +60,20 @@ maestro test --config=e2e/config.yaml e2e/flows/reader/change_cbz_settings.yaml 
 ## Flow 清单
 
 ### CBZ（book id 2，Bobby Make-Believe，4 页）
-- `change_cbz_settings.yaml` — 用户改 CBZ 手机阅读设置：背景色切换后断言控件选中状态与页码可见、阅读方向 RTL、无上下翻页、自动/始终单栏布局（@phone）
+- `change_cbz_settings.yaml` — 用户改 CBZ 手机阅读设置：背景色切换后断言控件选中状态与页码可见、阅读方向 RTL、无上下翻页、自动/始终单栏布局（@phone @wip）
 - `change_cbz_settings_on_pad.yaml` — iPad 横屏下自动布局并排两页阅读（@ipad @wip）
 
 ### PDF（book id 5，傲慢与偏见）
-- `change_pdf_settings.yaml` — 用户改 PDF 手机阅读设置：背景色切换后断言控件选中状态与页码可见、阅读方向 RTL、上下翻页（纵向滚动）、自动/始终单栏布局（@phone）
+- `change_pdf_settings.yaml` — 用户改 PDF 手机阅读设置：背景色切换后断言控件选中状态与页码可见、阅读方向 RTL、上下翻页（纵向滚动）、自动/始终单栏布局（@phone @wip）
 - `change_pdf_settings_on_pad.yaml` — iPad 横屏下自动布局并排两页阅读（@ipad @wip）
 
 ### EPUB（book id 1，卡拉马佐夫兄弟，898 页）
-- `change_epub_settings.yaml` — 用户改 EPUB 手机阅读设置：夜间主题 / 字体族(Sans) / 两端对齐 / 字号/行距/页边距滑块值变化 / 手机竖屏单栏，全部通过控件状态或数值标签断言（@phone）
+- `change_epub_settings.yaml` — 用户改 EPUB 手机阅读设置：夜间主题 / 字体族(Sans) / 两端对齐 / 字号/行距/页边距滑块值变化 / 手机竖屏单栏，全部通过控件状态或数值标签断言（@phone @wip）
 - `change_epub_settings_on_pad.yaml` — iPad 栏数=auto 横屏双栏/竖屏单栏；强制单栏横屏→单栏（@visual @ipad @wip，dev-client 在 iPad 上锁定 portrait 导致横屏渲染异常，且栏数无结构代理，故保留 AI 断言，待 release build 验证）
 
 ### 复用 subflow（`common/`，`@skip`）
 - `launch_and_prepare.yaml` — `clearState` 启动应用并关闭 dev launcher，回到首页
-- `seed_library.yaml` — 通过 deep link 注入 fixture 书库并等待首页稳定
-- `open_reader_by_id.yaml` — 仅 deep link 打开指定 book（`BOOK_ID` env），调用方需先完成启动 + seed
+- `open_reader_by_id.yaml` — 仅 deep link 打开指定 book（`BOOK_ID` env），调用方需先准备好书库数据
 - `open_reader_settings.yaml` — 任意 chrome 状态下打开阅读设置面板（隐藏则点中心显出）
 - `close_reader_sheet.yaml` — 关闭设置面板，保留 chrome 可见（供页码指示器断言）
 

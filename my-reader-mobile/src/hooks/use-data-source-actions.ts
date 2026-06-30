@@ -24,7 +24,7 @@ export function useDataSourceActions() {
       const snapshot = store.getState().dataSources
       const hydrated = await hydrateDataSourcesFromSecureCredentials(snapshot)
       const latest = store.getState().dataSources
-      // Merge so concurrent inserts (e.g. E2E seed fixtures) are not wiped out.
+      // Merge so concurrent inserts during hydration are not wiped out.
       const merged = latest.map((ds) => {
         const h = hydrated.find((d) => d.id === ds.id)
         return h ? { ...ds, ...h } : ds

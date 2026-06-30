@@ -5,6 +5,7 @@ tags:
   - settings
   - cbz
   - phone
+  - wip
 ---
 # CBZ book 2 = Bobby Make-Believe (4 pages).
 # Open the app and book once, then walk through the settings sequentially.
@@ -13,7 +14,6 @@ tags:
 
 - setOrientation: PORTRAIT
 - runFlow: ../../common/launch_and_prepare.yaml
-- runFlow: ../../common/seed_library.yaml
 - waitForAnimationToEnd:
     timeout: 3000
 - runFlow:

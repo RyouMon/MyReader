@@ -17,7 +17,6 @@ tags:
 
 - setOrientation: PORTRAIT
 - runFlow: ../../common/launch_and_prepare.yaml
-- runFlow: ../../common/seed_library.yaml
 - waitForAnimationToEnd:
     timeout: 3000
 - runFlow:

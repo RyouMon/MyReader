@@ -92,47 +92,12 @@ function buildRemoteOps(
   }
 }
 
-/** Dev-only mock browse ops for E2E fixture data sources. */
-function createFixtureBrowseOps(dataSource: DataSource): RemoteLibraryOps {
-  return {
-    testConnection: async () => new Response(null, { status: 200 }),
-    listDirectory: async (path: string) => {
-      const normalized = normalizeCurrentPath(path)
-      if (normalized === "/" || normalized === "") {
-        return [{ name: "sub", path: "/sub", isDirectory: true }]
-      }
-      return []
-    },
-    createLibraryFromPath: async () => ({
-      id: "fixture-lib",
-      name: "Fixture Library",
-      path: "/",
-      bookCount: 0,
-      dataSourceId: dataSource.id,
-      sourceType: dataSource.type,
-    }),
-    readBooks: async () => ({ books: [], metadataUri: "" }),
-    buildCoverUri: () => undefined,
-    forceRefreshMetadata: async () => {
-      throw new Error("forceRefreshMetadata unavailable in browse mode")
-    },
-  }
-}
-
 /** Resolves browse-only remote ops for directory picker screens. */
 export async function createBrowseRemoteOps(
   dataSource: DataSource,
 ): Promise<RemoteLibraryOps | null> {
   if (dataSource.type !== "webdav" && dataSource.type !== "onedrive")
     return null
-
-  if (
-    __DEV__ &&
-    (dataSource.id === "seed-webdav-fixture" ||
-      dataSource.id === "seed-onedrive-fixture")
-  ) {
-    return createFixtureBrowseOps(dataSource)
-  }
 
   const backend = await createRemoteBackend(
     dataSource,

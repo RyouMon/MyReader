@@ -20,9 +20,6 @@ config.cacheStores = [
 // Support .sql file imports for Drizzle migrations
 config.resolver.sourceExts.push("sql")
 
-// Support .zip file imports as assets (e.g. e2e fixtures)
-config.resolver.assetExts.push("zip")
-
 module.exports = withNativewind(config, {
   inlineVariables: false,
   globalClassNamePolyfill: false,
