@@ -9,6 +9,8 @@ describe("WebDavUrlBuilder", () => {
     username: "user",
     password: "pass",
     rootPath: "",
+    enabled: true,
+    hasPassword: true,
     createdAt: 0,
   }
 

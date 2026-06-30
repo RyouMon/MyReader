@@ -61,9 +61,12 @@ export async function signIn(): Promise<{
   } catch {
     if (result.idToken != null) {
       try {
-        const claims = JSON.parse(atob(result.idToken.split(".")[1]))
-        displayName = claims.name ?? ""
-        email = claims.email ?? claims.preferred_username ?? ""
+        const idTokenPayload = result.idToken.split(".")[1]
+        if (idTokenPayload != null) {
+          const claims = JSON.parse(atob(idTokenPayload))
+          displayName = claims.name ?? ""
+          email = claims.email ?? claims.preferred_username ?? ""
+        }
       } catch {
         // idToken parse failed
       }

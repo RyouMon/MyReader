@@ -1,6 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
-import type { ReactNode } from "react"
+import type { ComponentProps } from "react"
 
 import type { BookItem, Library } from "@/src/domain/types"
 import {
@@ -44,7 +44,11 @@ const books: BookItem[] = [
   { id: "3", title: "Book 3", author: "C", path: "/3" } as BookItem,
 ]
 
-function wrapper({ children }: { children: ReactNode }) {
+function wrapper({
+  children,
+}: {
+  children: ComponentProps<typeof QueryClientProvider>["children"]
+}) {
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
