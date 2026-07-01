@@ -9,8 +9,9 @@ import {
   type ViewStyle,
 } from "react-native"
 
+import { LIBRARY_COVER_PROFILING_MODE } from "@/src/constants/developer-tools"
 import { useThemePalette } from "@/src/design/tokens"
-import type { BookItem } from "@/src/domain/types"
+import type { BookCoverUri, BookItem } from "@/src/domain/types"
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
 
@@ -72,6 +73,8 @@ const fallbackCoverThemes: FallbackCoverTheme[] = [
   },
 ]
 
+const COVER_IMAGE_TRANSITION_MS = 140
+
 function getTitleHash(title: string) {
   let hash = 0
   for (let index = 0; index < title.length; index += 1) {
@@ -94,7 +97,7 @@ export function getFallbackCoverColor(title: string) {
   return getFallbackCoverTheme(title).base
 }
 
-function getCoverStateKey(coverUri: BookItem["coverUri"]) {
+function getCoverStateKey(coverUri: BookCoverUri | undefined) {
   if (!coverUri) {
     return undefined
   }
@@ -107,6 +110,8 @@ type BookCoverProps = {
   width: number
   height: number
   borderRadius?: number
+  displayCoverUri?: BookCoverUri
+  deferCoverUntilDisplayUri?: boolean
 }
 
 type BookCoverBaseProps = BookCoverProps & {
@@ -189,12 +194,16 @@ function BookCoverBaseImpl({
   height,
   backgroundColor,
   borderRadius = 10,
+  displayCoverUri,
+  deferCoverUntilDisplayUri = false,
   shadowColor,
 }: BookCoverBaseProps) {
   // Cover rendering is the hottest part of the grid. Keep the Base variant on
   // RN primitives + StyleSheet and receive colors from the parent so cells avoid
   // NativeWind class resolution and theme context subscriptions.
-  const coverKey = getCoverStateKey(book.coverUri)
+  const effectiveCoverUri =
+    displayCoverUri ?? (deferCoverUntilDisplayUri ? undefined : book.coverUri)
+  const coverKey = getCoverStateKey(effectiveCoverUri)
   const [failedCoverKey, setFailedCoverKey] = useState<string>()
   const coverFrameStyle: ViewStyle = {
     width,
@@ -209,23 +218,34 @@ function BookCoverBaseImpl({
   }
 
   const shouldRenderImage =
-    !!book.coverUri && !!coverKey && failedCoverKey !== coverKey
+    LIBRARY_COVER_PROFILING_MODE !== "fallback-only" &&
+    !!effectiveCoverUri &&
+    !!coverKey &&
+    failedCoverKey !== coverKey
+  // Profiling modes are env-only developer tools. They isolate native image
+  // resize work from fallback text drawing without adding per-cell display
+  // state to the scroll path.
+  const shouldRenderFallback =
+    LIBRARY_COVER_PROFILING_MODE !== "image-only" || !shouldRenderImage
 
   return (
     <View style={[styles.coverFrame, coverFrameStyle]}>
-      <DefaultBookCover
-        author={book.author}
-        title={book.title}
-        width={width}
-        height={height}
-      />
+      {shouldRenderFallback ? (
+        <DefaultBookCover
+          author={book.author}
+          title={book.title}
+          width={width}
+          height={height}
+        />
+      ) : null}
       {shouldRenderImage ? (
         <ExpoImage
-          source={book.coverUri}
+          source={effectiveCoverUri}
           style={[styles.coverImage, imageStyle]}
           recyclingKey={`${book.id}:${coverKey}`}
           testID={`book-cover-image-${book.id}`}
           cachePolicy="memory-disk"
+          transition={COVER_IMAGE_TRANSITION_MS}
           onError={() => setFailedCoverKey(coverKey)}
         />
       ) : null}

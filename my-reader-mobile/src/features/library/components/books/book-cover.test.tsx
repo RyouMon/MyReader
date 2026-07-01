@@ -42,6 +42,50 @@ describe("BookCover", () => {
     expect(image.props.onDisplay).toBeUndefined()
   })
 
+  it("uses a display cover URI instead of the original cover URI", () => {
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
+        displayCoverUri="file:///cache/thumb.jpg"
+        width={100}
+        height={150}
+      />,
+    )
+
+    expect(screen.getByTestId("book-cover-image-book-1").props.source).toEqual([
+      { uri: "file:///cache/thumb.jpg" },
+    ])
+  })
+
+  it("cross-dissolves from fallback art to the loaded image", () => {
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
+        displayCoverUri="file:///cache/thumb.jpg"
+        width={100}
+        height={150}
+      />,
+    )
+
+    expect(
+      screen.getByTestId("book-cover-image-book-1").props.transition,
+    ).toEqual({ duration: 140 })
+  })
+
+  it("can defer image rendering until the display cover URI is ready", () => {
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
+        deferCoverUntilDisplayUri
+        width={100}
+        height={150}
+      />,
+    )
+
+    expect(screen.queryByTestId("book-cover-image-book-1")).toBeNull()
+    expect(screen.getByText("Fallback Book")).toBeTruthy()
+  })
+
   it("falls back to default cover art when image loading fails", () => {
     render(
       <BookCover

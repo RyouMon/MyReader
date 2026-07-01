@@ -12,12 +12,16 @@ export type BookItem = {
   author: string
   authors?: string[]
   formats?: string[]
-  coverUri?: string | { uri: string; headers?: Record<string, string> }
+  coverUri?: BookCoverUri
   progress?: number
   path?: string
   hasCover?: boolean
   timestamp?: string | null
 }
+
+export type BookCoverUri =
+  | string
+  | { uri: string; headers?: Record<string, string> }
 
 export type DataSourceType = "local" | "webdav" | "onedrive"
 

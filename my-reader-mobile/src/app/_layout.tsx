@@ -33,6 +33,15 @@ import { QueryClientProvider } from "@tanstack/react-query"
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN
 if (sentryDsn) {
+  const sentryReplayEnabled =
+    process.env.EXPO_PUBLIC_SENTRY_REPLAY_ENABLED === "true"
+  // Session Replay captures native view snapshots, so keep it opt-in during
+  // list-performance profiling and normal development builds.
+  const sentryIntegrations = [
+    ...(sentryReplayEnabled ? [Sentry.mobileReplayIntegration()] : []),
+    Sentry.feedbackIntegration(),
+  ]
+
   Sentry.init({
     dsn: sentryDsn,
 
@@ -44,12 +53,9 @@ if (sentryDsn) {
     enableLogs: true,
 
     // Configure Session Replay
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1,
-    integrations: [
-      Sentry.mobileReplayIntegration(),
-      Sentry.feedbackIntegration(),
-    ],
+    replaysSessionSampleRate: sentryReplayEnabled ? 0.1 : 0,
+    replaysOnErrorSampleRate: sentryReplayEnabled ? 1 : 0,
+    integrations: sentryIntegrations,
 
     // uncomment the line below to enable Spotlight (https://spotlightjs.com)
     // spotlight: __DEV__,

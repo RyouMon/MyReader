@@ -10,10 +10,14 @@ import {
 } from "react"
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list"
-import { Stack, router } from "expo-router"
+import {
+  FlashList,
+  type ListRenderItemInfo,
+  type ViewToken,
+} from "@shopify/flash-list"
+import { Stack, router, useIsFocused } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { View, useWindowDimensions } from "react-native"
+import { View, useWindowDimensions, type ViewabilityConfig } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
@@ -41,6 +45,11 @@ import {
   LibrarySkeletonContent,
   type BookCardChrome,
 } from "@/src/features/library/components/books"
+import { getBookCardCoverHeight } from "@/src/features/library/components/books/book-card"
+import {
+  BOOK_ROW_COVER_HEIGHT,
+  BOOK_ROW_COVER_WIDTH,
+} from "@/src/features/library/components/books/book-row"
 import {
   useBookFilter,
   type LibraryFilterOption,
@@ -50,7 +59,12 @@ import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-read
 import { useLibraryHeaderChrome } from "@/src/features/library/hooks/use-library-header-chrome"
 import { useLibraryListPerformanceProfiler } from "@/src/features/library/hooks/use-library-list-performance-profiler"
 import { useSearchQuery } from "@/src/features/library/hooks/use-search-query"
+import { useCoverThumbnails } from "@/src/features/library/hooks/use-cover-thumbnails"
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
+import {
+  resolveCoverThumbnailBookIds,
+  resolveInitialCoverThumbnailBookIds,
+} from "@/src/features/library/utils/cover-thumbnail-window"
 import { buildLibraryBookCellMetaById } from "@/src/features/library/utils/library-book-cell-meta"
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant"
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta"
@@ -72,13 +86,23 @@ const GRID_MIN_COLUMNS = 2
 const GRID_MAX_COLUMNS = 6
 const GRID_PADDING_X = 16
 const GRID_CARD_GAP = 12
-// FlashList defaults to 250. The iPad grid renders many columns, so a smaller
-// buffer keeps offscreen Cell work under the frame budget during fast scrolls.
-const GRID_DRAW_DISTANCE = 40
-const LIST_DRAW_DISTANCE = 180
+const GRID_DRAW_DISTANCE_ROWS = 2
+const GRID_CARD_META_HEIGHT = 64
+const LIST_DRAW_DISTANCE_ROWS = 4
+const LIST_ROW_ESTIMATED_HEIGHT = 108
 const LIST_PADDING_X = GRID_PADDING_X
+const COVER_THUMBNAIL_INITIAL_GRID_ROWS = 4
+const COVER_THUMBNAIL_INITIAL_LIST_ITEMS = 10
+const COVER_THUMBNAIL_DISPLAY_LOOKAROUND_GRID_ROWS = 2
+const COVER_THUMBNAIL_DISPLAY_LOOKAROUND_LIST_ITEMS = 6
+const COVER_THUMBNAIL_INITIAL_IDLE_DELAY_MS = 80
+const COVER_THUMBNAIL_SCROLL_QUIET_DELAY_MS = 500
 const DISABLED_MAINTAIN_VISIBLE_CONTENT_POSITION = { disabled: true }
 const GRID_CELL_CONTAINER_STYLE = { paddingHorizontal: GRID_CARD_GAP / 2 }
+const COVER_THUMBNAIL_VIEWABILITY_CONFIG: ViewabilityConfig = {
+  itemVisiblePercentThreshold: 1,
+  minimumViewTime: 80,
+}
 
 type LibraryScreenProps = {
   libraryId?: string
@@ -100,6 +124,55 @@ function getResponsiveGridColumns(
   )
 }
 
+function getInitialCoverThumbnailItemCount(
+  isGridView: boolean,
+  gridColumns: number,
+): number {
+  return isGridView
+    ? gridColumns * COVER_THUMBNAIL_INITIAL_GRID_ROWS
+    : COVER_THUMBNAIL_INITIAL_LIST_ITEMS
+}
+
+function getCoverThumbnailDisplayLookaroundItemCount(
+  isGridView: boolean,
+  gridColumns: number,
+): number {
+  return isGridView
+    ? gridColumns * COVER_THUMBNAIL_DISPLAY_LOOKAROUND_GRID_ROWS
+    : COVER_THUMBNAIL_DISPLAY_LOOKAROUND_LIST_ITEMS
+}
+
+function getInitialCoverThumbnailDisplayItemCount(
+  isGridView: boolean,
+  gridColumns: number,
+): number {
+  return (
+    getInitialCoverThumbnailItemCount(isGridView, gridColumns) +
+    getCoverThumbnailDisplayLookaroundItemCount(isGridView, gridColumns)
+  )
+}
+
+function getLibraryListDrawDistance(isGridView: boolean, cardWidth: number) {
+  if (!isGridView) {
+    return LIST_ROW_ESTIMATED_HEIGHT * LIST_DRAW_DISTANCE_ROWS
+  }
+
+  // `drawDistance` is FlashList's offscreen render buffer. Keep it large enough
+  // to pre-mount the next couple of grid rows so fast scrolling does not reveal
+  // blank space, but do not expand thumbnail generation beyond visible cells.
+  const gridRowHeight =
+    getBookCardCoverHeight(cardWidth) + GRID_CARD_META_HEIGHT + GRID_CARD_GAP
+  return Math.round(gridRowHeight * GRID_DRAW_DISTANCE_ROWS)
+}
+
+function sameStringSet(left: Set<string>, right: Set<string>): boolean {
+  if (left.size !== right.size) return false
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
 type LibraryItemSeparator = NonNullable<
   ComponentProps<typeof FlashList<BookItem>>["ItemSeparatorComponent"]
 >
@@ -116,6 +189,7 @@ export default function LibraryScreen({
 }: LibraryScreenProps) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const isLibraryFocused = useIsFocused()
   const { width } = useWindowDimensions()
   const gridColumns = getResponsiveGridColumns(
     width,
@@ -146,9 +220,13 @@ export default function LibraryScreen({
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption)
   const [filter, setFilter] = useState<LibraryFilterOption>("all")
   const isGridView = viewMode === "grid"
+  const listDrawDistance = getLibraryListDrawDistance(isGridView, cardWidth)
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null)
   const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const thumbnailWorkPausedRef = useRef(true)
+  const [thumbnailWorkPaused, setThumbnailWorkPaused] = useState(true)
 
   const isLoadingNewContent = loadingBooks && books.length === 0
 
@@ -165,6 +243,20 @@ export default function LibraryScreen({
       setOpenMenuBookId(null)
       menuCloseTimerRef.current = null
     }, 120)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (scrollIdleTimerRef.current) {
+        clearTimeout(scrollIdleTimerRef.current)
+      }
+    },
+    [],
+  )
+
+  const setThumbnailWorkPausedState = useCallback((paused: boolean) => {
+    thumbnailWorkPausedRef.current = paused
+    setThumbnailWorkPaused(paused)
   }, [])
 
   /** Switches active library only when user selects a different one. */
@@ -217,6 +309,43 @@ export default function LibraryScreen({
   )
   const isRemote = isRemoteSourceType(selectedLibrary?.sourceType)
   const selectedLibraryId = selectedLibrary?.id
+  const [coverThumbnailDisplayBookIds, setCoverThumbnailDisplayBookIds] =
+    useState<Set<string>>(() => new Set())
+  const [coverThumbnailGenerationBookIds, setCoverThumbnailGenerationBookIds] =
+    useState<Set<string>>(() => new Set())
+  const coverThumbnailLayout = useMemo(
+    () =>
+      isGridView
+        ? { width: cardWidth, height: getBookCardCoverHeight(cardWidth) }
+        : { width: BOOK_ROW_COVER_WIDTH, height: BOOK_ROW_COVER_HEIGHT },
+    [cardWidth, isGridView],
+  )
+  const visibleBookById = useMemo(() => {
+    const next = new Map<string, BookItem>()
+    for (const book of visibleBooks) {
+      next.set(book.id, book)
+    }
+    return next
+  }, [visibleBooks])
+  const coverThumbnailDisplayBooks = useMemo(() => {
+    const next: BookItem[] = []
+    for (const bookId of coverThumbnailDisplayBookIds) {
+      const book = visibleBookById.get(bookId)
+      if (book) {
+        next.push(book)
+      }
+    }
+    return next
+  }, [coverThumbnailDisplayBookIds, visibleBookById])
+  const displayCoverUriByBookId = useCoverThumbnails({
+    enabled: isLibraryFocused,
+    generationBookIds: coverThumbnailGenerationBookIds,
+    paused: thumbnailWorkPaused,
+    library: selectedLibrary,
+    books: coverThumbnailDisplayBooks,
+    width: coverThumbnailLayout.width,
+    height: coverThumbnailLayout.height,
+  })
   // FlashList may render dozens of cells in one commit on iPad. Build the
   // expensive per-book labels/actions/progress once per data change, not inside
   // `renderItem`, so the scroll commit mostly passes stable references through.
@@ -376,6 +505,130 @@ export default function LibraryScreen({
 
   const isMenuOpen = openMenuBookId !== null
 
+  const scheduleThumbnailWorkResume = useCallback(
+    (delayMs: number) => {
+      if (scrollIdleTimerRef.current) {
+        clearTimeout(scrollIdleTimerRef.current)
+      }
+      scrollIdleTimerRef.current = setTimeout(() => {
+        setThumbnailWorkPausedState(false)
+        scrollIdleTimerRef.current = null
+      }, delayMs)
+    },
+    [setThumbnailWorkPausedState],
+  )
+  const scheduleInitialThumbnailWorkResume = useCallback(() => {
+    scheduleThumbnailWorkResume(COVER_THUMBNAIL_INITIAL_IDLE_DELAY_MS)
+  }, [scheduleThumbnailWorkResume])
+  const scheduleScrollQuietThumbnailWorkResume = useCallback(() => {
+    scheduleThumbnailWorkResume(COVER_THUMBNAIL_SCROLL_QUIET_DELAY_MS)
+  }, [scheduleThumbnailWorkResume])
+
+  const handleScrollActive = useCallback(() => {
+    if (scrollIdleTimerRef.current) {
+      clearTimeout(scrollIdleTimerRef.current)
+      scrollIdleTimerRef.current = null
+    }
+    setThumbnailWorkPausedState(true)
+  }, [setThumbnailWorkPausedState])
+
+  const handleScrollMoving = useCallback(() => {
+    // Some simulator and momentum paths can miss an end callback. A throttled
+    // scroll timer makes thumbnail work resume after the list is genuinely
+    // quiet, while repeated scroll events keep pushing that resume out.
+    if (!thumbnailWorkPausedRef.current) {
+      setThumbnailWorkPausedState(true)
+    }
+    // scrollEventThrottle is 250ms. Keep the quiet delay longer than that so
+    // thumbnail resizing cannot resume between two active scroll events.
+    scheduleScrollQuietThumbnailWorkResume()
+  }, [scheduleScrollQuietThumbnailWorkResume, setThumbnailWorkPausedState])
+
+  useEffect(() => {
+    setCoverThumbnailDisplayBookIds(new Set())
+    setCoverThumbnailGenerationBookIds(new Set())
+    setThumbnailWorkPausedState(true)
+    scheduleInitialThumbnailWorkResume()
+  }, [
+    coverThumbnailLayout.height,
+    coverThumbnailLayout.width,
+    debouncedQuery,
+    filter,
+    scheduleInitialThumbnailWorkResume,
+    selectedLibraryId,
+    setThumbnailWorkPausedState,
+    sortBy,
+    viewMode,
+  ])
+
+  const handleViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken<BookItem>[] }) => {
+      // Keep display lookahead larger than generation lookahead: cached file
+      // reads are cheap enough to happen during scroll, while thumbnail
+      // generation may download, decode, and resize source covers.
+      const nextDisplayIds = resolveCoverThumbnailBookIds({
+        visibleBooks,
+        viewableItems,
+        lookaroundItemCount: getCoverThumbnailDisplayLookaroundItemCount(
+          isGridView,
+          gridColumns,
+        ),
+      })
+      const nextGenerationIds = resolveCoverThumbnailBookIds({
+        visibleBooks,
+        viewableItems,
+        lookaroundItemCount: 0,
+      })
+      setCoverThumbnailDisplayBookIds((current) =>
+        sameStringSet(current, nextDisplayIds) ? current : nextDisplayIds,
+      )
+      setCoverThumbnailGenerationBookIds((current) =>
+        sameStringSet(current, nextGenerationIds) ? current : nextGenerationIds,
+      )
+    },
+    [gridColumns, isGridView, visibleBooks],
+  )
+
+  const seedInitialCoverThumbnails = useCallback(() => {
+    // FlashList can delay the first viewability callback. Seed a wider display
+    // window so existing thumbnails appear immediately, but keep generation at
+    // the old bounded first-screen size.
+    const nextDisplayIds = resolveInitialCoverThumbnailBookIds({
+      visibleBooks,
+      itemCount: getInitialCoverThumbnailDisplayItemCount(
+        isGridView,
+        gridColumns,
+      ),
+    })
+    const nextGenerationIds = resolveInitialCoverThumbnailBookIds({
+      visibleBooks,
+      itemCount: getInitialCoverThumbnailItemCount(isGridView, gridColumns),
+    })
+    setCoverThumbnailDisplayBookIds((current) =>
+      sameStringSet(current, nextDisplayIds) ? current : nextDisplayIds,
+    )
+    setCoverThumbnailGenerationBookIds((current) =>
+      sameStringSet(current, nextGenerationIds) ? current : nextGenerationIds,
+    )
+  }, [gridColumns, isGridView, visibleBooks])
+
+  const handleFlashListLoad = useCallback<
+    NonNullable<ComponentProps<typeof FlashList<BookItem>>["onLoad"]>
+  >(
+    (info) => {
+      onLoad?.(info)
+      setThumbnailWorkPausedState(true)
+      seedInitialCoverThumbnails()
+      scheduleInitialThumbnailWorkResume()
+    },
+    [
+      onLoad,
+      scheduleInitialThumbnailWorkResume,
+      seedInitialCoverThumbnails,
+      setThumbnailWorkPausedState,
+    ],
+  )
+
   const renderItem = useCallback(
     ({ item, target }: ListRenderItemInfo<BookItem>) => {
       recordRenderTarget?.(target)
@@ -387,11 +640,15 @@ export default function LibraryScreen({
       const subscriptionLibraryId = cellMeta?.subscriptionLibraryId
       const subscriptionFormat = cellMeta?.subscriptionFormat
       const menuActions = cellMeta?.menuActions
+      const displayCoverUri = displayCoverUriByBookId.get(item.id)
+      const deferCoverUntilDisplayUri = !!item.coverUri
 
       if (isGridView) {
         const bookCard = (
           <BookCard
             book={item}
+            displayCoverUri={displayCoverUri}
+            deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
             downloadStatus={downloadStatus}
             width={cardWidth}
             readerFormat={readerFormat}
@@ -431,6 +688,8 @@ export default function LibraryScreen({
       return (
         <BookRow
           book={item}
+          displayCoverUri={displayCoverUri}
+          deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
           downloadStatus={downloadStatus}
           readerFormat={readerFormat}
           isAnyMenuOpen={isMenuOpen}
@@ -452,6 +711,7 @@ export default function LibraryScreen({
       bookCardChrome,
       cardSegmentProfilerOnRender,
       cardWidth,
+      displayCoverUriByBookId,
       handleBookMenuAction,
       handleBookPress,
       handleMenuClose,
@@ -473,9 +733,16 @@ export default function LibraryScreen({
       bookCardChrome,
       bookCellMetaById,
       cardWidth,
+      displayCoverUriByBookId,
       isMenuOpen,
     }),
-    [bookCardChrome, bookCellMetaById, cardWidth, isMenuOpen],
+    [
+      bookCardChrome,
+      bookCellMetaById,
+      cardWidth,
+      displayCoverUriByBookId,
+      isMenuOpen,
+    ],
   )
 
   const header = (
@@ -620,7 +887,7 @@ export default function LibraryScreen({
         paddingBottom: 40,
       }}
       ItemSeparatorComponent={isGridView ? SeparatorGrid : SeparatorList}
-      drawDistance={isGridView ? GRID_DRAW_DISTANCE : LIST_DRAW_DISTANCE}
+      drawDistance={listDrawDistance}
       maintainVisibleContentPosition={
         DISABLED_MAINTAIN_VISIBLE_CONTENT_POSITION
       }
@@ -651,8 +918,19 @@ export default function LibraryScreen({
         )
       }
       onCommitLayoutEffect={onCommitLayoutEffect}
-      onLoad={onLoad}
+      onMomentumScrollBegin={handleScrollActive}
+      onMomentumScrollEnd={scheduleScrollQuietThumbnailWorkResume}
+      onScroll={handleScrollMoving}
+      onScrollBeginDrag={handleScrollActive}
+      onScrollEndDrag={scheduleScrollQuietThumbnailWorkResume}
+      onTouchCancel={scheduleScrollQuietThumbnailWorkResume}
+      onTouchEnd={scheduleScrollQuietThumbnailWorkResume}
+      onTouchStart={handleScrollActive}
+      scrollEventThrottle={250}
+      onViewableItemsChanged={handleViewableItemsChanged}
+      onLoad={handleFlashListLoad}
       renderItem={renderItem}
+      viewabilityConfig={COVER_THUMBNAIL_VIEWABILITY_CONFIG}
     />
   )
 

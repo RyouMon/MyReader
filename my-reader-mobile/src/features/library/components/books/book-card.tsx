@@ -22,7 +22,7 @@ import {
 } from "react-native"
 
 import { ICON_SIZE } from "@/src/design/icon-sizes"
-import type { BookItem } from "@/src/domain/types"
+import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
@@ -56,6 +56,8 @@ export type BookCardChrome = {
 export type BookCardProps = {
   book: BookItem
   width: number
+  displayCoverUri?: BookCoverUri
+  deferCoverUntilDisplayUri?: boolean
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -94,12 +96,18 @@ export type BookCardProps = {
   openBookLabel?: string
 }
 
+export function getBookCardCoverHeight(width: number) {
+  return Math.round(width * 1.43)
+}
+
 // The iPad grid can mount/update dozens of cards per scroll commit. This hot
 // path uses RN primitives + StyleSheet instead of `@/tw` so NativeWind parsing,
 // theme context reads, and i18n hooks stay outside recycled cells.
 function BookCardImpl({
   book,
   width,
+  displayCoverUri,
+  deferCoverUntilDisplayUri,
   onPress,
   onMore,
   menuActions,
@@ -122,7 +130,7 @@ function BookCardImpl({
   moreActionsLabel,
   openBookLabel,
 }: BookCardProps) {
-  const coverHeight = Math.round(width * 1.43)
+  const coverHeight = getBookCardCoverHeight(width)
   const coverRef = useRef<View>(null)
   const cardRootStyle: ViewStyle = { width }
   const titleTextStyle: TextStyle = { color: chrome.textColor }
@@ -264,6 +272,8 @@ function BookCardImpl({
             width={width}
             height={coverHeight}
             borderRadius={10}
+            displayCoverUri={displayCoverUri}
+            deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
             backgroundColor={chrome.coverBackgroundColor}
             shadowColor={chrome.coverShadowColor}
           />

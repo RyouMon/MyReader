@@ -6,7 +6,7 @@ import { Platform, View as RNView } from "react-native"
 
 import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
-import type { BookItem } from "@/src/domain/types"
+import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
@@ -25,15 +25,17 @@ import { BookDownloadStatusIndicator } from "@/src/components/book-download-stat
 import { ProgressLabel } from "./progress-label"
 
 /** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
-const BOOK_ROW_COVER_HEIGHT = 84
+export const BOOK_ROW_COVER_HEIGHT = 84
 const BOOK_ROW_COVER_BORDER_RADIUS = 4
 const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3
-const BOOK_ROW_COVER_WIDTH = Math.round(
+export const BOOK_ROW_COVER_WIDTH = Math.round(
   BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO,
 )
 
 export type BookRowProps = {
   book: BookItem
+  displayCoverUri?: BookCoverUri
+  deferCoverUntilDisplayUri?: boolean
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -71,6 +73,8 @@ export type BookRowProps = {
 
 function BookRowImpl({
   book,
+  displayCoverUri,
+  deferCoverUntilDisplayUri,
   onPress,
   onMore,
   menuActions,
@@ -226,6 +230,8 @@ function BookRowImpl({
             width={BOOK_ROW_COVER_WIDTH}
             height={BOOK_ROW_COVER_HEIGHT}
             borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
+            displayCoverUri={displayCoverUri}
+            deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
           />
         </RNView>
         <View className="min-w-0 flex-1 justify-between">
