@@ -1,7 +1,7 @@
-﻿import { Badge } from "@/components/ui/badge"
+﻿import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
 import {
   Empty,
   EmptyContent,
@@ -48,7 +48,6 @@ import {
   AlertCircle,
   ArrowLeft,
   BookOpen,
-  Check,
   ChevronDown,
   Download,
   Loader2,
@@ -79,20 +78,6 @@ const FORMAT_TONES: Record<string, string> = {
   CBZ: "bg-primary/70 text-primary-foreground",
   DJVU: "bg-foreground text-background",
   FB2: "bg-primary/75 text-primary-foreground",
-}
-
-function useFormatLabels(): Record<string, string> {
-  const { t } = useTranslation()
-  return {
-    EPUB: t("bookDetail.formats.EPUB"),
-    PDF: t("bookDetail.formats.PDF"),
-    MOBI: t("bookDetail.formats.MOBI"),
-    AZW3: t("bookDetail.formats.AZW3"),
-    TXT: t("bookDetail.formats.TXT"),
-    CBZ: t("bookDetail.formats.CBZ"),
-    DJVU: t("bookDetail.formats.DJVU"),
-    FB2: t("bookDetail.formats.FB2"),
-  }
 }
 
 function useIdentifierLabels(): Record<string, string> {
@@ -172,7 +157,6 @@ function BookDetailPage() {
     removeFavoriteBook,
     isPending: favoritePending,
   } = useFavoriteBookMutations(activeLibraryId)
-  const formatLabels = useFormatLabels()
   const identifierLabels = useIdentifierLabels()
   const languageMap = useLanguageMap()
 
@@ -182,12 +166,10 @@ function BookDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [synopsisExpanded, setSynopsisExpanded] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
-  const [formatDropdownOpen, setFormatDropdownOpen] = useState(false)
   const [toolbarScrolled, setToolbarScrolled] = useState(false)
   const [coverFailed, setCoverFailed] = useState(false)
 
   const bodyRef = useRef<HTMLDivElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function load() {
@@ -234,19 +216,6 @@ function BookDetailPage() {
     if (bodyRef.current) {
       setToolbarScrolled(bodyRef.current.scrollTop > 8)
     }
-  }, [])
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setFormatDropdownOpen(false)
-      }
-    }
-    document.addEventListener("click", handleClickOutside)
-    return () => document.removeEventListener("click", handleClickOutside)
   }, [])
 
   const handleCoverError = useCallback(() => {
@@ -560,91 +529,21 @@ function BookDetailPage() {
 
               {/* Actions */}
               <div className="detail-anim-8 mt-[22px] flex flex-wrap items-stretch gap-2.5">
-                {/* Split read button */}
-                <div className="flex overflow-hidden rounded-md border border-primary/20 bg-primary text-primary-foreground shadow-sm">
-                  <Button
-                    disabled={!canReadInApp}
-                    className="rounded-none border-0 bg-transparent px-[22px] py-2.5 text-[15px] font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
-                    onClick={() => {
-                      if (!canReadInApp) return
-                      void navigateToRead(
-                        book.id,
-                        activeSelectedFormat ?? undefined,
-                      )
-                    }}
-                  >
-                    <BookOpen
-                      data-icon="inline-start"
-                      className="size-[18px]"
-                    />
-                    <span>{t("bookCard.startReading")}</span>
-                    {activeSelectedFormat && (
-                      <span className="ms-0.5 text-[13px] font-normal opacity-80">
-                        ({activeSelectedFormat})
-                      </span>
-                    )}
-                  </Button>
-                  <div ref={dropdownRef} className="relative">
-                    <Button
-                      variant="ghost"
-                      disabled={!canReadInApp}
-                      className="h-full rounded-none border-0 border-s border-white/20 bg-transparent px-3 text-primary-foreground hover:bg-primary/90"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setFormatDropdownOpen(!formatDropdownOpen)
-                      }}
-                    >
-                      <ChevronDown className="size-[14px]" />
-                    </Button>
-                    {formatDropdownOpen && (
-                      <div className="animate-in fade-in-0 slide-in-from-top-1 absolute top-[calc(100%+6px)] end-0 z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-popover shadow-lg duration-150">
-                        <div className="border-b border-border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {t("bookDetail.selectFormat")}
-                        </div>
-                        {readableFormats.map((fmt) => (
-                          <button
-                            key={fmt}
-                            type="button"
-                            className={cn(
-                              "flex w-full items-center gap-2.5 px-3.5 py-2.5 text-[13.5px] transition-colors hover:bg-accent",
-                              activeSelectedFormat === fmt &&
-                                "bg-primary/8 font-medium text-primary",
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedFormat(fmt)
-                              setFormatDropdownOpen(false)
-                              navigateToRead(book.id, fmt)
-                            }}
-                          >
-                            <div
-                              className={cn(
-                                "flex size-8 shrink-0 items-center justify-center rounded-md text-[11px] font-bold uppercase",
-                                getFormatTone(fmt),
-                              )}
-                            >
-                              {fmt}
-                            </div>
-                            <div className="min-w-0 flex-1 text-start">
-                              <div className="font-semibold">{fmt}</div>
-                              <div className="mt-px text-[12px] text-muted-foreground">
-                                {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
-                                {formatLabels[fmt]
-                                  ? ` 路 ${formatLabels[fmt]}`
-                                  : ""}
-                              </div>
-                            </div>
-                            <div className="w-4 shrink-0">
-                              {activeSelectedFormat === fmt && (
-                                <Check className="size-4 text-primary" />
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <Button
+                  size="lg"
+                  disabled={!canReadInApp}
+                  className="text-white font-bold hover:text-white active:scale-[0.98] active:text-white"
+                  onClick={() => {
+                    if (!canReadInApp) return
+                    void navigateToRead(
+                      book.id,
+                      activeSelectedFormat ?? undefined,
+                    )
+                  }}
+                >
+                  <BookOpen className="font-bold" />
+                  {t("bookCard.startReading")}
+                </Button>
               </div>
             </div>
           </div>

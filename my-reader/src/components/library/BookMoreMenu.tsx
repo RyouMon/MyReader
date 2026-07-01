@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Download,
   Ellipsis,
   EllipsisVertical,
@@ -29,12 +30,13 @@ import {
   type BookDownloadSnapshot,
   useBookDownloadState,
 } from "@/hooks/queries/useBookDownloadState"
-import { getReadableFormats } from "@/lib/readFormats"
+import { useSetBookReadingFormat } from "@/hooks/queries/useBookReadingFormatsQuery"
+import { getReadableFormats, resolveReadFormat } from "@/lib/readFormats"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 
 type FileAction = "download" | "cancel" | "delete"
-const BOOK_MORE_MENU_WIDTH_CLASS = "w-44"
+const BOOK_MORE_MENU_WIDTH_CLASS = "w-52"
 
 interface BookMoreMenuProps {
   book: {
@@ -57,11 +59,11 @@ export function BookMoreMenu({
 }: BookMoreMenuProps) {
   const { t } = useTranslation()
   const readableFormats = getReadableFormats(book.formats)
-  const selected = selectedFormat?.toUpperCase()
-  const sortedFormats = selected
+  const activeFormat = resolveReadFormat(book.formats, selectedFormat)
+  const sortedFormats = activeFormat
     ? [
-        ...readableFormats.filter((format) => format === selected),
-        ...readableFormats.filter((format) => format !== selected),
+        ...readableFormats.filter((format) => format === activeFormat),
+        ...readableFormats.filter((format) => format !== activeFormat),
       ]
     : readableFormats
   const TriggerIcon = triggerVariant === "detail" ? EllipsisVertical : Ellipsis
@@ -88,6 +90,14 @@ export function BookMoreMenu({
         className={BOOK_MORE_MENU_WIDTH_CLASS}
         onClick={(event) => event.stopPropagation()}
       >
+        {sortedFormats.length > 1 ? (
+          <DefaultFormatSubMenu
+            activeFormat={activeFormat}
+            bookId={book.id}
+            formats={sortedFormats}
+            libraryId={libraryId}
+          />
+        ) : null}
         {!fileActionsEnabled ? (
           <DropdownMenuItem disabled>
             <Download />
@@ -134,6 +144,63 @@ export function BookMoreMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function DefaultFormatSubMenu({
+  activeFormat,
+  bookId,
+  formats,
+  libraryId,
+}: {
+  activeFormat: string | null
+  bookId: number
+  formats: string[]
+  libraryId: string | null
+}) {
+  const { t } = useTranslation()
+  const setBookReadingFormat = useSetBookReadingFormat(libraryId)
+  const [pendingFormat, setPendingFormat] = useState<string | null>(null)
+  const disabled = !libraryId
+
+  async function setDefaultFormat(format: string) {
+    if (disabled || format === activeFormat) return
+    setPendingFormat(format)
+    try {
+      await setBookReadingFormat(bookId, format)
+    } catch (err) {
+      console.error(
+        `Failed to set default reading format from library menu. library id: "${libraryId ?? ""}", book id: ${bookId}, format: "${format}", error:`,
+        err,
+      )
+    } finally {
+      setPendingFormat(null)
+    }
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="w-full" disabled={disabled}>
+        <BookOpen />
+        {t("bookMore.setDefaultFormat")}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className={BOOK_MORE_MENU_WIDTH_CLASS}>
+        {formats.map((format) => {
+          const isActive = format === activeFormat
+          return (
+            <DropdownMenuItem
+              key={format}
+              disabled={isActive || pendingFormat != null}
+              onSelect={() => {
+                void setDefaultFormat(format)
+              }}
+            >
+              <span className="font-medium uppercase">{format}</span>
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
 
@@ -184,7 +251,13 @@ function FormatActionSubMenu({
       ))}
       {shouldHide ? null : (
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="w-full">
+          <DropdownMenuSubTrigger
+            className={cn(
+              "w-full",
+              action === "delete" &&
+                "text-destructive focus:bg-destructive/10 focus:text-destructive data-[state=open]:bg-destructive/10 data-[state=open]:text-destructive dark:focus:bg-destructive/20 dark:data-[state=open]:bg-destructive/20",
+            )}
+          >
             <Icon />
             {t(`bookMore.${action}`)}
           </DropdownMenuSubTrigger>
@@ -319,7 +392,9 @@ function BookFormatActionMenuItem({
         void runAction()
       }}
     >
-      <Icon className={pending ? "animate-spin" : undefined} />
+      {requestedAction == null ? (
+        <Icon className={pending ? "animate-spin" : undefined} />
+      ) : null}
       {requestedAction == null && action ? t(`bookMore.${action}`) : fmt}
     </DropdownMenuItem>
   )

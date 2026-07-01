@@ -106,6 +106,7 @@ export const en = {
       noReadableFormat: "No readable format",
       localLibrary: "Local library file",
       defaultFormat: "Default format: {{format}}",
+      setDefaultFormat: "Default reading format",
     },
     bookDetail: {
       loading: "Loading book detail…",

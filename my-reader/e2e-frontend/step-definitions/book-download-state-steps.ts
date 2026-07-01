@@ -24,6 +24,13 @@ function homeFileAction(page: Page, label: string): Locator {
   return page.getByRole("menuitem", { name: label, exact: true })
 }
 
+async function openHomeBookMoreMenu(page: Page) {
+  await page.goto("/")
+  await page.getByRole("button", { name: /下载状态测试书/ }).hover()
+  await page.getByRole("button", { name: /更多操作|More actions/i }).click()
+  await expect(page.getByRole("menu")).toBeVisible()
+}
+
 Given("用户已选择远程书库", async ({ page }) => {
   await setupDownloadStateMocks(page)
   await setMockLibrarySourceType(page, "webdav")
@@ -32,6 +39,14 @@ Given("用户已选择远程书库", async ({ page }) => {
 Given("书库中已存在包含多种格式的远程书籍", async ({ page }) => {
   await setMockFormats(page, ["EPUB", "PDF", "CBZ"])
 })
+
+Given(
+  "书库中已存在只包含 {word} 格式的远程书籍",
+  async ({ page }, format: string) => {
+    await setMockFormats(page, [format])
+    await setMockSelectedFormat(page, format)
+  },
+)
 
 Given("该书籍的 {word} 已下载", async ({ page }, format: string) => {
   await setMockFormatStatus(page, format, "已下载")
@@ -102,10 +117,22 @@ Then("该书籍文件状态显示为未下载", async ({ page }) => {
 })
 
 When("用户在书库首页打开该书籍的更多菜单", async ({ page }) => {
-  await page.goto("/")
-  await page.getByRole("button", { name: /下载状态测试书/ }).hover()
-  await page.getByRole("button", { name: /更多操作|More actions/i }).click()
-  await expect(page.getByRole("menu")).toBeVisible()
+  await openHomeBookMoreMenu(page)
+})
+
+When(
+  "用户在书库首页将该书籍默认阅读格式设为 {word}",
+  async ({ page }, format: string) => {
+    await openHomeBookMoreMenu(page)
+    await page.getByRole("menuitem", { name: "默认阅读格式" }).click()
+    await page.getByRole("menuitem", { name: format }).click()
+  },
+)
+
+Then("默认阅读格式操作不显示", async ({ page }) => {
+  await expect(
+    page.getByRole("menuitem", { name: "默认阅读格式" }),
+  ).not.toBeVisible()
 })
 
 Then("首页菜单应只显示以下文件操作:", async ({ page }, table: DataTable) => {

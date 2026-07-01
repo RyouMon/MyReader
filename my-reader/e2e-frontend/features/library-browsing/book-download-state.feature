@@ -23,6 +23,19 @@ Feature: 书籍文件下载状态
         | 网格视图 |
         | 列表视图 |
 
+    @home @menu @format
+    Scenario: 用户可以从首页菜单修改默认阅读格式
+      Given 该书籍的 EPUB 已下载
+      And 该书籍的 PDF 未下载
+      When 用户在书库首页将该书籍默认阅读格式设为 PDF
+      Then 该书籍文件状态显示为未下载
+
+    @home @menu @format
+    Scenario: 单格式图书不提供默认阅读格式菜单
+      Given 书库中已存在只包含 EPUB 格式的远程书籍
+      When 用户在书库首页打开该书籍的更多菜单
+      Then 默认阅读格式操作不显示
+
   Rule: 文件操作入口遵循相同的状态转换
 
     @menu @format

@@ -105,6 +105,7 @@ export const zhCN = {
       noReadableFormat: "无可读格式",
       localLibrary: "本地书库文件",
       defaultFormat: "默认格式：{{format}}",
+      setDefaultFormat: "默认阅读格式",
     },
     bookDetail: {
       loading: "加载书籍详情…",
