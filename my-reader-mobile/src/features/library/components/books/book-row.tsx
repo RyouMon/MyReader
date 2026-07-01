@@ -99,7 +99,10 @@ function BookRowImpl({
 
   const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (!hasMenuInputs) return menuActions
+    // Prefer parent-precomputed actions so list/grid rows avoid rebuilding
+    // native menu arrays when FlashList recycles visible cells.
+    if (menuActions) return menuActions
+    if (!hasMenuInputs) return undefined
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
       isFavorite,

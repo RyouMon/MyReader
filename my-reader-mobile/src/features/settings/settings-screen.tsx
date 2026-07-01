@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
 import { changeLanguage } from "@/src/i18n"
 import { useTheme, type ThemeMode } from "@/src/design/tokens"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
@@ -127,6 +128,12 @@ export default function SettingsScreen() {
 
   const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle)
   const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle)
+  const libraryPerformanceProfilerEnabled = useAppStore(
+    (s) => s.settings.libraryPerformanceProfilerEnabled,
+  )
+  const setLibraryPerformanceProfilerEnabled = useAppStore(
+    (s) => s.setLibraryPerformanceProfilerEnabled,
+  )
   const homeCardStyleLabels = useMemo<Record<HomeCardStyle, string>>(
     () => ({
       adaptive: t("settings.homeCardStyle.adaptive"),
@@ -241,7 +248,7 @@ export default function SettingsScreen() {
             />
           </SectionCard>
         </View>
-        {__DEV__ ? (
+        {DEVELOPER_TOOLS_ENABLED ? (
           <View className="gap-3">
             <SectionLabel>{t("settings.developer.title")}</SectionLabel>
             <SectionCard>
@@ -250,6 +257,23 @@ export default function SettingsScreen() {
                 title={t("settings.developer.clearImageCache.title")}
                 detail={t("settings.developer.clearImageCache.detail")}
                 onPress={handleClearImageCache}
+              />
+              <ListRow
+                testID="settings-library-performance-profiler-row"
+                title={t("settings.developer.libraryPerformanceProfiler.title")}
+                detail={t(
+                  "settings.developer.libraryPerformanceProfiler.detail",
+                )}
+                value={
+                  libraryPerformanceProfilerEnabled
+                    ? t("settings.developer.enabled")
+                    : t("settings.developer.disabled")
+                }
+                onPress={() =>
+                  setLibraryPerformanceProfilerEnabled(
+                    !libraryPerformanceProfilerEnabled,
+                  )
+                }
                 isLast
               />
             </SectionCard>

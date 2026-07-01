@@ -20,6 +20,7 @@ export type SettingsSlice = {
   setSyncOnStartup: (enabled: boolean) => void
   setEnableAutoSync: (enabled: boolean) => void
   setHomeCardStyle: (style: HomeCardStyle) => void
+  setLibraryPerformanceProfilerEnabled: (enabled: boolean) => void
   patchReflowableReaderSettings: (
     patch: Partial<ReflowableReaderSettings>,
   ) => void
@@ -46,6 +47,14 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
   setHomeCardStyle(style) {
     set((state) => ({ settings: { ...state.settings, homeCardStyle: style } }))
+  },
+  setLibraryPerformanceProfilerEnabled(enabled) {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        libraryPerformanceProfilerEnabled: enabled,
+      },
+    }))
   },
   patchReflowableReaderSettings(patch) {
     set((state) => ({

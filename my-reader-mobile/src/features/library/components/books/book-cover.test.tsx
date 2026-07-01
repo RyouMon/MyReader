@@ -26,7 +26,7 @@ describe("BookCover", () => {
     expect(screen.getByText("Author")).toBeTruthy()
   })
 
-  it("keeps default cover art visible until image display succeeds", () => {
+  it("keeps default cover art behind the image without display state updates", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
@@ -39,17 +39,7 @@ describe("BookCover", () => {
 
     expect(screen.getByText("Fallback Book")).toBeTruthy()
     expect(screen.getByText("Author")).toBeTruthy()
-    expect(image.props.style.opacity).toBe(0)
-
-    act(() => {
-      image.props.onDisplay()
-    })
-
-    expect(
-      screen.getByTestId("book-cover-image-book-1").props.style.opacity,
-    ).toBe(1)
-    expect(screen.queryByText("Fallback Book")).toBeNull()
-    expect(screen.queryByText("Author")).toBeNull()
+    expect(image.props.onDisplay).toBeUndefined()
   })
 
   it("falls back to default cover art when image loading fails", () => {
@@ -62,7 +52,9 @@ describe("BookCover", () => {
     )
 
     act(() => {
-      screen.getByTestId("book-cover-image-book-1").props.onError()
+      screen
+        .getByTestId("book-cover-image-book-1")
+        .props.onError({ nativeEvent: { error: "failed" } })
     })
 
     expect(screen.getByText("Fallback Book")).toBeTruthy()

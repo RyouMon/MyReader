@@ -156,6 +156,8 @@
     "homeCardStyle.coverBlur": "模糊封面",
     "developer": {
       "title": "开发者",
+      "enabled": "已开启",
+      "disabled": "已关闭",
       "clearImageCache": {
         "title": "清除图片缓存",
         "detail": "清除 Expo Image 的内存和磁盘缓存",
@@ -164,6 +166,10 @@
         "errorTitle": "清除图片缓存失败",
         "errorDetail": "请稍后重试。",
         "unavailable": "当前环境无法完成缓存清理。"
+      },
+      "libraryPerformanceProfiler": {
+        "title": "列表性能分析",
+        "detail": "在书库页输出可用的 React Profiler 与 FlashList timing 日志"
       }
     }
   },

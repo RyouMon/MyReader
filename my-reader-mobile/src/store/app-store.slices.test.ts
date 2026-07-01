@@ -160,6 +160,7 @@ describe("settings slice", () => {
     harness.slice.setSyncOnStartup(false)
     harness.slice.setEnableAutoSync(false)
     harness.slice.setHomeCardStyle("coverBlur")
+    harness.slice.setLibraryPerformanceProfilerEnabled(true)
 
     expect(harness.state.settings).toEqual({
       ...defaultSettings,
@@ -168,6 +169,7 @@ describe("settings slice", () => {
       syncOnStartup: false,
       enableAutoSync: false,
       homeCardStyle: "coverBlur",
+      libraryPerformanceProfilerEnabled: true,
     })
   })
 

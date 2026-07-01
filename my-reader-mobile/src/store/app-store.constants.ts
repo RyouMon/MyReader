@@ -11,6 +11,7 @@ export const defaultSettings: ReaderSettings = {
   syncOnStartup: true,
   enableAutoSync: true,
   homeCardStyle: "adaptive",
+  libraryPerformanceProfilerEnabled: false,
   reflowable: {
     theme: "paper",
     fontFamily: "serif",

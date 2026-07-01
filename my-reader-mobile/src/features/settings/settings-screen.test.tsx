@@ -19,6 +19,7 @@ import SettingsScreen from "./settings-screen"
 const mockSetMode = jest.fn()
 const mockSetLanguage = jest.fn()
 const mockSetHomeCardStyle = jest.fn()
+const mockSetLibraryPerformanceProfilerEnabled = jest.fn()
 
 jest.mock("expo-image", () => ({
   Image: {
@@ -115,9 +116,12 @@ jest.mock("@/src/store/app-store", () => ({
       settings: {
         homeCardStyle: "adaptive",
         language: "",
+        libraryPerformanceProfilerEnabled: false,
       },
       setHomeCardStyle: mockSetHomeCardStyle,
       setLanguage: mockSetLanguage,
+      setLibraryPerformanceProfilerEnabled:
+        mockSetLibraryPerformanceProfilerEnabled,
     }),
   ),
 }))
@@ -149,5 +153,15 @@ describe("SettingsScreen developer tools", () => {
         "settings.developer.clearImageCache.doneDetail",
       )
     })
+  })
+
+  it("toggles the library performance profiler from the developer section", () => {
+    render(<SettingsScreen />)
+
+    fireEvent.press(
+      screen.getByTestId("settings-library-performance-profiler-row"),
+    )
+
+    expect(mockSetLibraryPerformanceProfilerEnabled).toHaveBeenCalledWith(true)
   })
 })

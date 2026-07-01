@@ -156,6 +156,8 @@
     "homeCardStyle.coverBlur": "Blurred Cover",
     "developer": {
       "title": "Developer",
+      "enabled": "On",
+      "disabled": "Off",
       "clearImageCache": {
         "title": "Clear Image Cache",
         "detail": "Clear Expo Image memory and disk cache",
@@ -164,6 +166,10 @@
         "errorTitle": "Failed to clear image cache",
         "errorDetail": "Please try again later.",
         "unavailable": "Image cache cleanup is unavailable in this environment."
+      },
+      "libraryPerformanceProfiler": {
+        "title": "Library Performance Profiler",
+        "detail": "Log React Profiler and FlashList timing metrics on the Library screen"
       }
     }
   },
