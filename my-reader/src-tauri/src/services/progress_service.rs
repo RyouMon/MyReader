@@ -40,6 +40,14 @@ impl ProgressService {
         SqliteProgressRepository::set_progress(&db, book_id, format, &json, now).await
     }
 
+    pub async fn list_reading_progress(
+        sidecar_root: &str,
+        lib_id: &str,
+    ) -> Result<Vec<ReadingProgressDto>, AppError> {
+        let db = SqliteProgressRepository::open(sidecar_root).await?;
+        SqliteProgressRepository::list_all_progress(&db, lib_id).await
+    }
+
     pub async fn get_reading_progress_for_library(
         app_data_dir: &Path,
         config: &AppConfig,
@@ -53,6 +61,19 @@ impl ProgressService {
             .to_string();
         let lib_id = lib.id.clone();
         Self::get_reading_progress(&sidecar_root, &lib_id, book_id, format).await
+    }
+
+    pub async fn list_reading_progress_for_library(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: Option<&str>,
+    ) -> Result<Vec<ReadingProgressDto>, AppError> {
+        let lib = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&lib, app_data_dir)
+            .to_string_lossy()
+            .to_string();
+        let lib_id = lib.id.clone();
+        Self::list_reading_progress(&sidecar_root, &lib_id).await
     }
 
     pub async fn set_reading_progress_for_library(

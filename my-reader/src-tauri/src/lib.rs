@@ -74,6 +74,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::favorite::add_favorite_book::<tauri::Wry>,
             commands::favorite::remove_favorite_book::<tauri::Wry>,
             commands::progress::get_reading_progress::<tauri::Wry>,
+            commands::progress::list_reading_progress::<tauri::Wry>,
             commands::progress::set_reading_progress::<tauri::Wry>,
             commands::reader::get_reader_ui_preferences,
             commands::reader::set_reader_ui_preferences::<tauri::Wry>,

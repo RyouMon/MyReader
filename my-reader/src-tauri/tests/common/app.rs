@@ -95,6 +95,7 @@ impl TestApp {
                 my_reader_lib::commands::favorite::add_favorite_book::<MockRuntime>,
                 my_reader_lib::commands::favorite::remove_favorite_book::<MockRuntime>,
                 my_reader_lib::commands::progress::get_reading_progress::<MockRuntime>,
+                my_reader_lib::commands::progress::list_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::progress::set_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::reader::get_reader_ui_preferences,
                 my_reader_lib::commands::reader::set_reader_ui_preferences::<MockRuntime>,

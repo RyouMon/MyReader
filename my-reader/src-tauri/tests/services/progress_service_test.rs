@@ -47,6 +47,39 @@ async fn get_reading_progress_should_return_none_when_row_is_missing() {
 }
 
 #[tokio::test]
+async fn list_reading_progress_should_return_all_rows_for_library() {
+    let temp = tempfile::tempdir().unwrap();
+    let sidecar_root = temp.path().to_string_lossy().to_string();
+    let first = json!({"href": "chapter.xhtml", "locations": {"progression": 0.25}});
+    let second = json!({"href": "page-2", "locations": {"position": 2}});
+
+    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &first)
+        .await
+        .expect("first set should succeed");
+    ProgressService::set_reading_progress(&sidecar_root, 8, "PDF", &second)
+        .await
+        .expect("second set should succeed");
+
+    let rows = ProgressService::list_reading_progress(&sidecar_root, "lib-list")
+        .await
+        .expect("list should succeed");
+
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().any(|row| {
+        row.library_id == "lib-list"
+            && row.book_id == 7
+            && row.format == "EPUB"
+            && row.locator == first
+    }));
+    assert!(rows.iter().any(|row| {
+        row.library_id == "lib-list"
+            && row.book_id == 8
+            && row.format == "PDF"
+            && row.locator == second
+    }));
+}
+
+#[tokio::test]
 async fn progress_for_library_should_return_saved_progress() {
     let temp_dir = tempfile::tempdir().unwrap();
     let app_data_dir = temp_dir.path();

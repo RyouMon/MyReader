@@ -1,6 +1,11 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { type ReactNode, useEffect, useRef, useState } from "react"
+import { pickReadableFormat } from "@/lib/readFormats"
+import {
+  getBookProgressSnapshot,
+  type ReadingProgressByBook,
+} from "@/lib/readingProgress"
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
 
@@ -26,6 +31,7 @@ interface BookGridProps {
   viewMode?: LibraryViewMode
   fileActionsEnabled?: boolean
   selectedFormatById?: Record<string, string>
+  progressByBookId?: ReadingProgressByBook
 }
 
 /**
@@ -42,6 +48,7 @@ export default function BookGrid({
   viewMode = "grid",
   fileActionsEnabled = true,
   selectedFormatById = {},
+  progressByBookId,
 }: BookGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<number | null>(null)
@@ -155,6 +162,7 @@ export default function BookGrid({
                 libraryId,
                 fileActionsEnabled,
                 selectedFormatById,
+                progressByBookId,
                 onRead,
                 onMore,
               )
@@ -171,6 +179,12 @@ export default function BookGrid({
                   if (idx >= total) return <div key={c} />
                   const book = books.get(idx)
                   if (!book) return <BookCardSkeleton key={`s-${idx}`} />
+                  const selectedFormat = selectedFormatById[String(book.id)]
+                  const progress = getBookProgressSnapshot(
+                    progressByBookId,
+                    book.id,
+                    selectedFormat ?? pickReadableFormat(book.formats),
+                  )
                   return (
                     <BookCard
                       key={book.id}
@@ -179,7 +193,8 @@ export default function BookGrid({
                       onRead={onRead}
                       onMore={onMore}
                       fileActionsEnabled={fileActionsEnabled}
-                      selectedFormat={selectedFormatById[String(book.id)]}
+                      selectedFormat={selectedFormat}
+                      progress={progress}
                     />
                   )
                 })}
@@ -201,11 +216,18 @@ function renderListRow(
   libraryId: string | null,
   fileActionsEnabled: boolean,
   selectedFormatById: Record<string, string>,
+  progressByBookId: ReadingProgressByBook | undefined,
   onRead?: (book: CalibreBook) => void,
   onMore?: (book: CalibreBook) => void,
 ) {
   const book = books.get(index)
   if (!book) return <BookRowSkeleton />
+  const selectedFormat = selectedFormatById[String(book.id)]
+  const progress = getBookProgressSnapshot(
+    progressByBookId,
+    book.id,
+    selectedFormat ?? pickReadableFormat(book.formats),
+  )
   return (
     <BookRow
       key={book.id}
@@ -214,7 +236,8 @@ function renderListRow(
       onRead={onRead}
       onMore={onMore}
       fileActionsEnabled={fileActionsEnabled}
-      selectedFormat={selectedFormatById[String(book.id)]}
+      selectedFormat={selectedFormat}
+      progress={progress}
     />
   )
 }

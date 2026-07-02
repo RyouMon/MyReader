@@ -55,6 +55,7 @@ export const api = {
   addFavoriteBook: wrap(raw.addFavoriteBook),
   removeFavoriteBook: wrap(raw.removeFavoriteBook),
   getReadingProgress: wrap(raw.getReadingProgress),
+  listReadingProgress: wrap(raw.listReadingProgress),
   setReadingProgress: wrap(raw.setReadingProgress),
   getReaderUiPreferences: wrap(raw.getReaderUiPreferences),
   setReaderUiPreferences: wrap(raw.setReaderUiPreferences),

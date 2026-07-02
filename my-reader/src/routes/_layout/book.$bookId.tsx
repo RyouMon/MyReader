@@ -1,4 +1,22 @@
-﻿import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
+﻿import type { CalibreBook } from "@my-reader/tools/types/book"
+import { useQueryClient } from "@tanstack/react-query"
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import { isTauri } from "@tauri-apps/api/core"
+import {
+  AlertCircle,
+  ArrowLeft,
+  BookOpen,
+  ChevronDown,
+  Download,
+  Loader2,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { CircularDownloadProgress } from "@/components/library/CircularDownloadProgress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
@@ -25,6 +43,7 @@ import {
   useFavoriteBookSet,
 } from "@/hooks/queries/useFavoriteBooksQuery"
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
+import { useBookReadingProgress } from "@/hooks/queries/useReadingProgressQuery"
 import {
   clearDownloadProgress,
   setDownloadCancelled,
@@ -36,28 +55,15 @@ import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { getReadableFormats, pickReadableFormat } from "@/lib/readFormats"
+import {
+  getBookProgressSnapshot,
+  getProgressDisplay,
+  getReadActionLabel,
+} from "@/lib/readingProgress"
 import type { BookDetail } from "@/lib/tauri-api"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
-import type { CalibreBook } from "@my-reader/tools/types/book"
-import { useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { isTauri } from "@tauri-apps/api/core"
-import {
-  AlertCircle,
-  ArrowLeft,
-  BookOpen,
-  ChevronDown,
-  Download,
-  Loader2,
-  Star,
-  Trash2,
-  X,
-} from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
 
 export const Route = createFileRoute("/_layout/book/$bookId")({
   component: BookDetailPage,
@@ -149,6 +155,8 @@ function BookDetailPage() {
   const { data: libraries = [] } = useLibrariesQuery()
   const { data: selectedFormatById = {} } =
     useBookReadingFormats(activeLibraryId)
+  const { data: progressByBookId = {} } =
+    useBookReadingProgress(activeLibraryId)
   const setBookReadingFormat = useSetBookReadingFormat(activeLibraryId)
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const { favoriteSet } = useFavoriteBookSet(activeLibraryId)
@@ -273,6 +281,21 @@ function BookDetailPage() {
     [navigate, book?.title],
   )
 
+  const readableFormats = book ? getReadableFormats(book.formats) : []
+  const canReadInApp = readableFormats.length > 0
+  const activeSelectedFormat = book
+    ? (selectedFormat ??
+      selectedFormatById[String(book.id)] ??
+      pickReadableFormat(book.formats))
+    : null
+  const currentProgress = book
+    ? getBookProgressSnapshot(progressByBookId, book.id, activeSelectedFormat)
+    : undefined
+  const currentProgressDisplay = getProgressDisplay(currentProgress, t)
+  const readButtonLabel = canReadInApp
+    ? getReadActionLabel(currentProgress, t)
+    : t("bookMore.noReadableFormat")
+
   if (loading) {
     return (
       <Empty className="min-h-0 flex-1">
@@ -323,12 +346,6 @@ function BookDetailPage() {
   const formatSizeMap = new Map(
     book.formatSizes.map((fs) => [fs.format, fs.sizeBytes]),
   )
-  const readableFormats = getReadableFormats(book.formats)
-  const canReadInApp = readableFormats.length > 0
-  const activeSelectedFormat =
-    selectedFormat ??
-    selectedFormatById[String(book.id)] ??
-    pickReadableFormat(book.formats)
   const isRemoteLibrary =
     activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
 
@@ -518,12 +535,14 @@ function BookDetailPage() {
                 </div>
               )}
 
-              {/* Reading progress placeholder */}
+              {/* Reading progress */}
               <div className="detail-anim-7 mt-[18px] flex items-center gap-2.5">
-                <BookOpen className="size-[15px] text-primary opacity-80" />
-                <Progress value={0} className="h-[5px] max-w-[200px]" />
+                <Progress
+                  value={currentProgress?.percent ?? 0}
+                  className="h-[5px] max-w-[200px]"
+                />
                 <span className="text-[13px] tabular-nums text-muted-foreground">
-                  {t("library.notAdded")}
+                  {currentProgressDisplay.text}
                 </span>
               </div>
 
@@ -542,7 +561,7 @@ function BookDetailPage() {
                   }}
                 >
                   <BookOpen className="font-bold" />
-                  {t("bookCard.startReading")}
+                  {readButtonLabel}
                 </Button>
               </div>
             </div>
@@ -600,6 +619,9 @@ function BookDetailPage() {
                         {t("bookDetail.format")}
                       </th>
                       <th className="px-3.5 py-2">{t("bookDetail.size")}</th>
+                      <th className="px-3.5 py-2">
+                        {t("library.sort.progress")}
+                      </th>
                       <th className="px-3.5 py-2 text-center">
                         {t("bookDetail.defaultReadingFormat")}
                       </th>
@@ -614,6 +636,16 @@ function BookDetailPage() {
                       const isReadable = readableFormats.includes(upperFormat)
                       const isDefaultFormat =
                         activeSelectedFormat === upperFormat
+                      const rowProgress = getBookProgressSnapshot(
+                        progressByBookId,
+                        book.id,
+                        upperFormat,
+                      )
+                      const rowProgressDisplay = getProgressDisplay(
+                        rowProgress,
+                        t,
+                      )
+                      const rowReadLabel = getReadActionLabel(rowProgress, t)
                       return (
                         <tr
                           key={fmt}
@@ -637,6 +669,19 @@ function BookDetailPage() {
                           <td className="px-3.5 py-3 text-[13.5px]">
                             {formatFileSize(formatSizeMap.get(fmt) ?? 0)}
                           </td>
+                          <td className="px-3.5 py-3">
+                            <div className="max-w-[140px]">
+                              <span className="text-[12px] tabular-nums text-muted-foreground">
+                                {rowProgressDisplay.text}
+                              </span>
+                              {rowProgress?.percent !== undefined ? (
+                                <Progress
+                                  value={rowProgress.percent}
+                                  className="mt-1 h-1"
+                                />
+                              ) : null}
+                            </div>
+                          </td>
                           <td className="px-3.5 py-3 text-center">
                             <Switch
                               size="sm"
@@ -659,8 +704,8 @@ function BookDetailPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon-sm"
-                                    title={t("bookCard.startReading")}
-                                    aria-label={t("bookCard.startReading")}
+                                    title={rowReadLabel}
+                                    aria-label={rowReadLabel}
                                     onClick={() => navigateToRead(book.id, fmt)}
                                   >
                                     <BookOpen />

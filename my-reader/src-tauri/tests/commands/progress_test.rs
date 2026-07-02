@@ -116,3 +116,50 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
     assert_eq!(progress.locator, locator);
     assert!(progress.updated_at > 0.0);
 }
+
+#[tokio::test]
+async fn list_reading_progress_should_return_saved_rows() {
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![library_fixture("lib-a")],
+        active_library_id: Some("lib-a".into()),
+        ..Default::default()
+    });
+
+    let first = json!({ "href": "/chapter1.xhtml", "type": "application/xhtml+xml" });
+    let second = json!({ "href": "/page-2", "type": "application/pdf" });
+
+    let _: () = invoke_ok(
+        &app,
+        "set_reading_progress",
+        json!({
+            "libraryId": "lib-a",
+            "bookId": 7,
+            "format": "EPUB",
+            "locator": first,
+        }),
+    );
+    let _: () = invoke_ok(
+        &app,
+        "set_reading_progress",
+        json!({
+            "libraryId": "lib-a",
+            "bookId": 8,
+            "format": "PDF",
+            "locator": second,
+        }),
+    );
+
+    let rows: Vec<ProgressView> = invoke_ok(
+        &app,
+        "list_reading_progress",
+        json!({ "libraryId": "lib-a" }),
+    );
+
+    assert_eq!(rows.len(), 2);
+    assert!(rows
+        .iter()
+        .any(|row| row.book_id == 7 && row.locator == first));
+    assert!(rows
+        .iter()
+        .any(|row| row.book_id == 8 && row.locator == second));
+}

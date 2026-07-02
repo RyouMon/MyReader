@@ -39,6 +39,7 @@ export const commands = {
 	locator: any,
 	updatedAt: number | null,
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
+	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
 	getReaderUiPreferences: () => typedError<ReaderUiPreferences_Serialize, ErrorKind>(__TAURI_INVOKE("get_reader_ui_preferences")),
 	setReaderUiPreferences: (preferences: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { preferences })),

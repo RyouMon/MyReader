@@ -1,6 +1,7 @@
+import type { CalibreBook } from "@my-reader/tools/types/book"
+import { useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { AlertCircle, BookOpen, Library } from "lucide-react"
-import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import BookGrid, { LibrarySkeletonGrid } from "@/components/library/BookGrid"
@@ -14,17 +15,21 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
+import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
+import {
+  useLibrariesQuery,
+  useLibraryMutations,
+} from "@/hooks/queries/useLibrariesQuery"
+import {
+  readingProgressKeys,
+  useBookReadingProgress,
+} from "@/hooks/queries/useReadingProgressQuery"
 import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
-import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
-import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
-import {
-  useLibraryMutations,
-  useLibrariesQuery,
-} from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export const Route = createFileRoute("/_layout/")({
@@ -42,6 +47,9 @@ function LibraryPage() {
     activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
   const { data: selectedFormatById = {} } =
     useBookReadingFormats(activeLibraryId)
+  const { data: progressByBookId = {} } =
+    useBookReadingProgress(activeLibraryId)
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -99,6 +107,11 @@ function LibraryPage() {
     }
     try {
       await api.syncDbForLibrary(activeLibraryId)
+      await queryClient.invalidateQueries({
+        queryKey: readingProgressKeys.list(activeLibraryId),
+      })
+      refresh()
+      void favoriteBooksQuery.refetch()
     } catch (e) {
       console.error("Failed to sync db:", e)
     }
@@ -192,6 +205,7 @@ function LibraryPage() {
           viewMode={viewMode}
           fileActionsEnabled={fileActionsEnabled}
           selectedFormatById={selectedFormatById}
+          progressByBookId={progressByBookId}
         />
       )}
 

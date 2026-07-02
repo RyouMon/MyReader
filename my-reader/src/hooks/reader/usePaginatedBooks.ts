@@ -1,5 +1,7 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { ReadingProgressChangedEvent } from "@/hooks/queries/useReadingProgressQuery"
 import { api } from "@/lib/tauri-api"
 
 const PAGE_SIZE = 100
@@ -17,6 +19,7 @@ export function usePaginatedBooks(
 
   const loadedPagesRef = useRef(new Set<number>())
   const epochRef = useRef(0)
+  const progressRefreshTimerRef = useRef<number | null>(null)
 
   const refresh = useCallback(() => {
     setRefreshKey((k) => k + 1)
@@ -65,6 +68,37 @@ export function usePaginatedBooks(
         if (epochRef.current === epoch) setInitialLoading(false)
       })
   }, [libraryId, sortBy, search, refreshKey])
+
+  useEffect(() => {
+    if (!libraryId || sortBy !== "lastRead") return
+
+    let active = true
+    let unlisten: UnlistenFn | undefined
+
+    listen<ReadingProgressChangedEvent>("reading_progress", (event) => {
+      if (event.payload.libraryId !== libraryId) return
+      if (progressRefreshTimerRef.current !== null) return
+      progressRefreshTimerRef.current = window.setTimeout(() => {
+        progressRefreshTimerRef.current = null
+        refresh()
+      }, 1000)
+    }).then((nextUnlisten) => {
+      if (active) {
+        unlisten = nextUnlisten
+      } else {
+        nextUnlisten()
+      }
+    })
+
+    return () => {
+      active = false
+      unlisten?.()
+      if (progressRefreshTimerRef.current !== null) {
+        window.clearTimeout(progressRefreshTimerRef.current)
+        progressRefreshTimerRef.current = null
+      }
+    }
+  }, [libraryId, sortBy, refresh])
 
   const ensureRange = useCallback(
     (startIdx: number, endIdx: number) => {

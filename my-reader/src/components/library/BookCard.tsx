@@ -1,14 +1,16 @@
-import { BookOpen } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import { BookOpen } from "lucide-react"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
+import { getReadActionLabel } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 import { BookDownloadIndicator } from "./BookDownloadIndicator"
 import { BookMoreMenu } from "./BookMoreMenu"
+import { BookProgressLabel } from "./BookProgressLabel"
 
 interface BookCardProps {
   book: CalibreBook
@@ -18,17 +20,6 @@ interface BookCardProps {
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
-}
-
-function useReadLabel(progress?: BookProgressSnapshot) {
-  const { t } = useTranslation()
-  if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return t("bookCard.startReading")
-  }
-  if (progress.percent >= 100) {
-    return t("bookCard.readAgain")
-  }
-  return t("bookCard.continueReading")
 }
 
 /**
@@ -43,10 +34,8 @@ const BookCard = memo(function BookCard({
   selectedFormat,
 }: BookCardProps) {
   const { t } = useTranslation()
-  const displayAuthor = book.authors.join(", ")
   const primaryFormat = book.formats[0] ?? ""
-  const readLabel = useReadLabel(progress)
-  const showProgressBadge = typeof progress?.percent === "number"
+  const readLabel = getReadActionLabel(progress, t)
   const downloadState = useBookDownloadState(
     libraryId,
     book.id,
@@ -125,19 +114,16 @@ const BookCard = memo(function BookCard({
           {book.title}
         </p>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-          <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-            {displayAuthor}
-          </p>
+          <div className="min-w-0 flex-1">
+            <BookProgressLabel progress={progress} />
+          </div>
           <BookDownloadIndicator state={downloadState} variant="icon" />
         </div>
-        {showProgressBadge ? (
+        {progress?.syncedLabel ? (
           <div className="mt-1 flex items-center gap-1.5">
-            <Badge
-              variant="secondary"
-              className="rounded-sm border-0 bg-accent px-1.5 py-0 text-[9px] font-semibold text-accent-foreground"
-            >
-              {Math.round(progress.percent ?? 0)}%
-            </Badge>
+            <span className="text-[10px] text-muted-foreground">
+              {progress.syncedLabel}
+            </span>
           </div>
         ) : null}
       </div>

@@ -1,14 +1,14 @@
-import { BookOpen } from "lucide-react"
 import type { CalibreBook } from "@my-reader/tools/types/book"
+import { BookOpen } from "lucide-react"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
-import { cn } from "@/lib/utils"
+import { getReadActionLabel } from "@/lib/readingProgress"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 import { BookDownloadIndicator } from "./BookDownloadIndicator"
 import { BookMoreMenu } from "./BookMoreMenu"
+import { BookProgressLabel } from "./BookProgressLabel"
 
 interface BookRowProps {
   book: CalibreBook
@@ -18,20 +18,6 @@ interface BookRowProps {
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
-}
-
-function useProgressLabel(progress?: BookProgressSnapshot) {
-  const { t } = useTranslation()
-  if (progress?.statusLabel) {
-    return progress.statusLabel
-  }
-  if (typeof progress?.percent !== "number" || progress.percent <= 0) {
-    return t("bookRow.unread")
-  }
-  if (progress.percent >= 100) {
-    return t("bookRow.finished")
-  }
-  return t("bookRow.reading")
 }
 
 /**
@@ -49,10 +35,7 @@ const BookRow = memo(function BookRow({
   const displayAuthor = book.authors.join(", ")
   const primaryFormat = book.formats[0] ?? ""
   const hasProgress = typeof progress?.percent === "number"
-  const isUnread = !hasProgress || (progress.percent ?? 0) <= 0
-  const readLabel = isUnread
-    ? t("bookCard.startReading")
-    : t("bookCard.continueReading")
+  const readLabel = getReadActionLabel(progress, t)
   const downloadState = useBookDownloadState(
     libraryId,
     book.id,
@@ -96,22 +79,7 @@ const BookRow = memo(function BookRow({
           {displayAuthor}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-          <Badge
-            variant="secondary"
-            className={cn(
-              "rounded-sm border-0 px-1.5 py-0 text-[9px] font-semibold",
-              isUnread
-                ? "bg-muted text-muted-foreground"
-                : "bg-accent text-accent-foreground",
-            )}
-          >
-            {useProgressLabel(progress)}
-          </Badge>
-          {hasProgress ? (
-            <span className="text-[10px] text-muted-foreground">
-              {Math.round(progress.percent ?? 0)}%
-            </span>
-          ) : null}
+          <BookProgressLabel progress={progress} />
           {primaryFormat ? (
             <span className="text-[10px] uppercase text-muted-foreground">
               {primaryFormat}

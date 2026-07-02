@@ -42,6 +42,30 @@ impl SqliteProgressRepository {
         }
     }
 
+    pub async fn list_all_progress(
+        db: &DatabaseConnection,
+        library_id: &str,
+    ) -> Result<Vec<ReadingProgressDto>, AppError> {
+        let rows = reading_progress::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        rows.into_iter()
+            .map(|m| {
+                let locator: serde_json::Value = serde_json::from_str(&m.locator_json)
+                    .map_err(|e| AppError::Serialize(e.to_string()))?;
+                Ok(ReadingProgressDto {
+                    library_id: library_id.to_string(),
+                    book_id: m.book_id,
+                    format: m.format,
+                    locator,
+                    updated_at: m.updated_at,
+                })
+            })
+            .collect()
+    }
+
     pub async fn set_progress(
         db: &DatabaseConnection,
         book_id: i64,

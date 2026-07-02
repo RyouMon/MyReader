@@ -2,13 +2,10 @@ import type { CalibreBook } from "@my-reader/tools/types/book"
 import { memo, type ReactNode, useCallback, useState } from "react"
 import { buildCoverUrl } from "@/lib/cover"
 import { generateCoverGradient } from "@/lib/cover-gradient"
+import type { BookProgressSnapshot } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 
-export interface BookProgressSnapshot {
-  percent?: number
-  statusLabel?: string
-  syncedLabel?: string
-}
+export type { BookProgressSnapshot }
 
 const brokenCovers = new Set<string>()
 
