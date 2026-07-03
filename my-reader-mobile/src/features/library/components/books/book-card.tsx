@@ -43,10 +43,11 @@ import {
 
 export type BookCardChrome = {
   coverBackgroundColor: string
+  coverLoadingSkeletonPulseEnabled: boolean
   coverShadowColor: string
+  coverSkeletonColor: string
   progressColors: ProgressLabelColors
   progressLabels: ProgressLabelLabels
-  surfaceColor: string
   textColor: string
   textMutedColor: string
 }
@@ -272,11 +273,12 @@ function BookCardImpl({
         borderRadius={10}
         displayCoverUri={displayCoverUri}
         deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+        loadingSkeletonPulseEnabled={chrome.coverLoadingSkeletonPulseEnabled}
         shadowEnabled={false}
         thumbnailScopeKey={thumbnailScopeKey}
         backgroundColor={chrome.coverBackgroundColor}
         shadowColor={chrome.coverShadowColor}
-        skeletonColor={chrome.surfaceColor}
+        skeletonColor={chrome.coverSkeletonColor}
       />
     </Pressable>
   )

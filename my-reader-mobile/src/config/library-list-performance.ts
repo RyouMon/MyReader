@@ -82,11 +82,40 @@ export const COVER_THUMBNAIL_GENERATED_FLUSH_DELAY_MS = 80
 /** requestIdleCallback timeout for the thumbnail queue so cache generation eventually progresses when idle time is scarce. */
 export const COVER_THUMBNAIL_IDLE_TIMEOUT_MS = 350
 
+/** Maximum concurrent thumbnail generation jobs; higher values warm covers faster but compete for native image/IO work. */
+export const COVER_THUMBNAIL_GENERATION_CONCURRENCY = 4
+
+/** Lowest developer-configurable thumbnail generation concurrency. */
+export const COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN = 1
+
+/** Highest developer-configurable thumbnail generation concurrency. */
+export const COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX = 8
+
+/** Normalizes developer-configurable thumbnail concurrency before it reaches native image/IO work. */
+export function clampCoverThumbnailGenerationConcurrency(concurrency: number) {
+  if (!Number.isFinite(concurrency)) {
+    return COVER_THUMBNAIL_GENERATION_CONCURRENCY
+  }
+  return Math.min(
+    COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
+    Math.max(
+      COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
+      Math.round(concurrency),
+    ),
+  )
+}
+
 /** JPEG quality for generated thumbnails; balances file size, decode cost, and visible cover quality. */
 export const COVER_THUMBNAIL_JPEG_COMPRESS = 0.82
 
 /** Fade duration for the first time a cover image replaces fallback art. */
 export const COVER_IMAGE_TRANSITION_MS = 140
+
+/** Enables the cover-loading Skeleton opacity pulse so profiler runs can measure its cost. */
+export const COVER_LOADING_SKELETON_PULSE_ENABLED = true
+
+/** Duration for each half of the cover-loading Skeleton pulse. */
+export const COVER_LOADING_SKELETON_PULSE_DURATION_MS = 750
 
 /** Number of displayed cover identities remembered so recycled cells can skip fallback flashes when revisiting covers. */
 export const COVER_IMAGE_DISPLAYED_CACHE_LIMIT = 3000

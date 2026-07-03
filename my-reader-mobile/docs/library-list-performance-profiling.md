@@ -89,12 +89,14 @@
 | B2 iOS ActionSheet 实验，已回退 | 临时移除常驻 `MenuView`，改点击时 ActionSheet | `↑` p95 降到 11.77ms，slow16 0.5% | `↓` p95 升到 76.71ms | `↓` commits 107，Cell 160 | `↑` Main sample share 继续下降 | `↓` 性能数字有改善，但破坏菜单体验，作废，不作为有效方案 |
 | B3 Skeleton loading | 回到有效交互；loading/loaded/fallback 三态；loading 只渲染静态 Skeleton | `↑` 相比 B1 p95 降到 14.63ms，slow16 2.6% | `↓` p95 94.61ms | `↓` commits 58，Cell 250 | `∅` 本轮 attach 失败，未得到有效 trace | `↑` 局部有效：loading 阶段不再渲染完整 fallback 文本/书脊，但整体瓶颈未解决 |
 | B4 host Instruments 补采 | 清缓存后 host all-processes Time Profiler；同一代码补齐平台侧证据 | `↓` active p95 25.07ms，slow16 5.1%；样本更长更重 | `↑` p95 92.05ms，略低于 B3 | `↓` commits 79，Cell 345 | `↑` sample share：Main 27%，JS 69%，Image 约 3%；decode/resize 非主热点 | `≈` Main share 明显降低；当前瓶颈转到 JS/Hermes + React/Yoga/layout |
+| B5 Skeleton 动画 + 并发 4 冷测 | Skeleton 视觉配置迁到 `design/`；开发者配置：封面动画开启、缩略图生成并发 4；清缩略图文件、manifest、Expo Image 缓存后冷启动滚动 | `↑` active p95 11.59ms，slow16 0.3%，max 22.69ms；首批 load 722ms | `↑` p95 89.40ms，略低于 B4 | `≈` commits 142，Cell 160；Cell 少于 B4 但 commit 更多 | `↓` scroll window sample share：Main 65%，JS 32%，Image 约 2.6%；Fabric/Yoga/CoreAnimation 仍高 | `↑` React 滚动峰值明显收敛，动画开启没有造成 JS 热点回潮；但 main thread 采样回升，下一轮仍要看动画/布局提交 |
 
 当前结论：
 
 - 图片 resize/解码已经不是当前滚动主热点。S2 发现的全尺寸封面问题已经通过缩略图缓存和生成调度从滚动热路径里移走。
 - 本次 fallback/Skeleton 重构有局部收益：它降低了 loading 阶段 React commit 峰值，但不能解释全部改善，也没有解决整体滚动瓶颈。
 - B4 的 Main Thread sample share 明显低于 B0/B1/B2，支持“main thread 压力下降”的判断；但 JS thread sample share 升高，新的主要瓶颈是 JS/Hermes + React/Yoga/layout。
+- B5 在封面动画开启、缩略图生成并发 4、冷缓存的条件下，React 滚动指标比 B4 更稳；但 Instruments 里 Main Thread 占比回升，说明动画/布局/提交链路仍需要单独看，不能只看 JS 聚合日志下结论。
 - 下一轮不应再猜图片或 fallback，应该沿着 JS/React 提交路径定位：缩略图 URI 发布、FlashList `extraData`、BookCover/BookCard 订阅边界、layout 计算和批量 Cell commit。
 
 采样证据：
@@ -110,12 +112,14 @@
 - B2：`/tmp/myreader-js-profiler-after-menu-structure-2026-07-02.ndjson`、`/tmp/myreader-after-menu-structure-time-profile.xml`。该方案已回退。
 - B3：`/tmp/myreader-skeleton-loading-profiler-live.log`。本轮没有有效 Instruments trace。
 - B4：`/tmp/myreader-host-valid-cold-scroll.trace`、`/tmp/myreader-host-valid-cold-scroll-time-profile.xml`、`/tmp/myreader-host-valid-js-profiler.log`。
+- B5：`/tmp/myreader-skeleton-concurrency4-cold2-profiler.log`、`/tmp/myreader-skeleton-concurrency4-cold3-scroll.out`、`/tmp/myreader-skeleton-concurrency4-cold3.trace`、`/tmp/myreader-skeleton-concurrency4-cold3-time-profile.xml`。`/tmp/myreader-skeleton-concurrency4-cold2.trace` 的 UI 门禁失败，已排除。
 
 B4 Instruments 说明：
 
 - `xctrace --device <simulator UDID>` 路径在当前环境不稳定：`--time-limit` 到点后不正常 finalize，trace 只包含 `Trace1.run/RunIssues.storedata`，导出时报 `Document Missing Template Error`。
 - B4 改用 host all-processes：`xcrun xctrace record --template "Time Profiler" --all-processes --time-limit 35s --output /tmp/myreader-host-valid-cold-scroll.trace --no-prompt`。该路径正常 finalize 并成功导出 XML。
 - Time Profiler sample weight 用于判断采样分布，不是墙钟耗时，也不是 exclusive time。B4 内部 MyReader 样本分布为 JS thread 约 69%、Main Thread 约 27%、Image 栈约 3%。
+- B5 冷测先确认 `book_cover_thumbnail_cache` 为 0 行，并清理 `Library/Caches/myreader-cover-thumbnails`、`ImageManipulator` 和 `com.hackemist.SDImageCache`。正式滚动样本使用 profiler log 第 32-50 行的 active 窗口，Instruments 使用 3-23s scroll window；内部 MyReader 线程分布为 Main Thread 约 65%、JS thread 约 32%、Image 栈约 2.6%。
 
 ## 深度分析
 

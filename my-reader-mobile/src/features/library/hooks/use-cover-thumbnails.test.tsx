@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
+import { COVER_THUMBNAIL_GENERATION_CONCURRENCY } from "@/src/config/library-list-performance"
 import type { BookItem, Library } from "@/src/domain/types"
 import {
   deleteBookCoverThumbnailCache,
@@ -170,10 +171,15 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
 
     await waitFor(() =>
-      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1),
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
     )
-    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({ bookId: "1" }),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ bookId: "2" }),
     )
 
     await act(async () => {
@@ -189,12 +195,6 @@ describe("resolveCoverThumbnailPixelSize", () => {
       expect(sessionUri(result.current, books[0]!)).toBe("file:///cache/1.jpg"),
     )
     expect(sessionUri(result.current, books[1]!)).toBeUndefined()
-    await waitFor(() =>
-      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
-    )
-    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ bookId: "2" }),
-    )
 
     await act(async () => {
       secondThumbnail.resolve({
@@ -342,6 +342,153 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledWith(
       expect.objectContaining({ bookId: "1" }),
     )
+  })
+
+  it("respects the configured thumbnail generation concurrency", async () => {
+    const books = Array.from(
+      { length: COVER_THUMBNAIL_GENERATION_CONCURRENCY + 1 },
+      (_, index) => book(String(index + 1)),
+    )
+    const thumbnailsByBookId = new Map(
+      books.map((targetBook) => [
+        targetBook.id,
+        deferred<{
+          fileName: string
+          fileSizeBytes: number
+          uri: string
+        }>(),
+      ]),
+    )
+
+    jest.mocked(ensureCoverThumbnailFileAsync).mockImplementation((input) => {
+      return thumbnailsByBookId.get(input.bookId)!.promise
+    })
+
+    renderHook(
+      () =>
+        useCoverThumbnails({
+          enabled: true,
+          library,
+          books,
+          width: 100,
+          height: 150,
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(
+        COVER_THUMBNAIL_GENERATION_CONCURRENCY,
+      ),
+    )
+
+    await act(async () => {
+      thumbnailsByBookId.get("1")!.resolve({
+        fileName: "1-generated.jpg",
+        fileSizeBytes: 123,
+        uri: "file:///cache/1.jpg",
+      })
+      await thumbnailsByBookId.get("1")!.promise
+    })
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(
+        COVER_THUMBNAIL_GENERATION_CONCURRENCY + 1,
+      ),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        bookId: String(COVER_THUMBNAIL_GENERATION_CONCURRENCY + 1),
+      }),
+    )
+
+    await act(async () => {
+      for (const [bookId, thumbnail] of thumbnailsByBookId) {
+        thumbnail.resolve({
+          fileName: `${bookId}-generated.jpg`,
+          fileSizeBytes: 123,
+          uri: `file:///cache/${bookId}.jpg`,
+        })
+      }
+      await Promise.allSettled(
+        Array.from(
+          thumbnailsByBookId.values(),
+          (thumbnail) => thumbnail.promise,
+        ),
+      )
+    })
+  })
+
+  it("applies runtime thumbnail generation concurrency", async () => {
+    const runtimeConcurrency = 2
+    const books = [book("1"), book("2"), book("3")]
+    const thumbnailsByBookId = new Map(
+      books.map((targetBook) => [
+        targetBook.id,
+        deferred<{
+          fileName: string
+          fileSizeBytes: number
+          uri: string
+        }>(),
+      ]),
+    )
+
+    jest.mocked(ensureCoverThumbnailFileAsync).mockImplementation((input) => {
+      return thumbnailsByBookId.get(input.bookId)!.promise
+    })
+
+    renderHook(
+      () =>
+        useCoverThumbnails({
+          enabled: true,
+          generationConcurrency: runtimeConcurrency,
+          library,
+          books,
+          width: 100,
+          height: 150,
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(
+        runtimeConcurrency,
+      ),
+    )
+
+    await act(async () => {
+      thumbnailsByBookId.get("1")!.resolve({
+        fileName: "1-generated.jpg",
+        fileSizeBytes: 123,
+        uri: "file:///cache/1.jpg",
+      })
+      await thumbnailsByBookId.get("1")!.promise
+    })
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(
+        runtimeConcurrency + 1,
+      ),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bookId: "3" }),
+    )
+
+    await act(async () => {
+      for (const [bookId, thumbnail] of thumbnailsByBookId) {
+        thumbnail.resolve({
+          fileName: `${bookId}-generated.jpg`,
+          fileSizeBytes: 123,
+          uri: `file:///cache/${bookId}.jpg`,
+        })
+      }
+      await Promise.allSettled(
+        Array.from(
+          thumbnailsByBookId.values(),
+          (thumbnail) => thumbnail.promise,
+        ),
+      )
+    })
   })
 
   it("queues background thumbnails after visible-priority thumbnails", async () => {

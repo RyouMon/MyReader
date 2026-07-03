@@ -1,5 +1,11 @@
 import { act, render, screen } from "@testing-library/react-native"
+import { StyleSheet } from "react-native"
 
+import {
+  COVER_LOADING_SKELETON_DARK_OPACITY,
+  COVER_LOADING_SKELETON_LIGHT_OPACITY,
+  coverLoadingSkeletonColor,
+} from "@/src/design/cover-skeleton"
 import type { BookItem } from "@/src/domain/types"
 import {
   createCoverThumbnailSessionIdentity,
@@ -14,6 +20,7 @@ jest.mock("@/src/design/tokens", () => ({
     backgroundSecondary: "#f2efe8",
     surface: "#faf5ef",
     text: "#1f1a17",
+    textMuted: "#7a6b5d",
     textOnPrimary: "#fff8ee",
   })),
 }))
@@ -59,6 +66,63 @@ describe("BookCover", () => {
     expect(screen.queryByTestId("book-cover-loading-book-1")).toBeNull()
     expect(screen.queryByText("Fallback Book")).toBeNull()
     expect(screen.queryByText("Author")).toBeNull()
+  })
+
+  it("uses a visible loading skeleton color in light mode", () => {
+    const backgroundSecondary = "#f2efe8"
+    const textMuted = "#7a6b5d"
+
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
+        width={100}
+        height={150}
+      />,
+    )
+
+    const skeletonStyle = StyleSheet.flatten(
+      screen.getByTestId("book-cover-loading-book-1").props.style,
+    )
+
+    expect(skeletonStyle.backgroundColor).toBe(
+      coverLoadingSkeletonColor({
+        textMuted,
+        backgroundSecondary,
+      }),
+    )
+  })
+
+  it("animates the loading skeleton pulse", () => {
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
+        width={100}
+        height={150}
+      />,
+    )
+
+    const skeletonStyle = StyleSheet.flatten(
+      screen.getByTestId("book-cover-loading-book-1").props.style,
+    )
+
+    expect(skeletonStyle.opacity).toBe(COVER_LOADING_SKELETON_DARK_OPACITY)
+  })
+
+  it("shows the light loading skeleton state when pulse animation is disabled", () => {
+    render(
+      <BookCover
+        book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
+        loadingSkeletonPulseEnabled={false}
+        width={100}
+        height={150}
+      />,
+    )
+
+    const skeletonStyle = StyleSheet.flatten(
+      screen.getByTestId("book-cover-loading-book-1").props.style,
+    )
+
+    expect(skeletonStyle.opacity).toBe(COVER_LOADING_SKELETON_LIGHT_OPACITY)
   })
 
   it("renders a previously displayed cover without fallback art", () => {

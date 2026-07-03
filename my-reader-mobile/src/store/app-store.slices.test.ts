@@ -2,6 +2,10 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 
 import type { AppState } from "./app-store.types"
+import {
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
+} from "../config/library-list-performance"
 import { defaultSettings } from "./app-store.constants"
 import { createDataSourceSlice } from "./data-source-slice"
 import { createLibrarySlice } from "./library-slice"
@@ -160,6 +164,8 @@ describe("settings slice", () => {
     harness.slice.setSyncOnStartup(false)
     harness.slice.setEnableAutoSync(false)
     harness.slice.setHomeCardStyle("coverBlur")
+    harness.slice.setCoverLoadingSkeletonPulseEnabled(false)
+    harness.slice.setCoverThumbnailGenerationConcurrency(6)
     harness.slice.setLibraryPerformanceProfilerEnabled(true)
 
     expect(harness.state.settings).toEqual({
@@ -169,8 +175,26 @@ describe("settings slice", () => {
       syncOnStartup: false,
       enableAutoSync: false,
       homeCardStyle: "coverBlur",
+      coverLoadingSkeletonPulseEnabled: false,
+      coverThumbnailGenerationConcurrency: 6,
       libraryPerformanceProfilerEnabled: true,
     })
+  })
+
+  it("clamps cover thumbnail concurrency to the supported range", () => {
+    const harness = createHarness(createSettingsSlice, {
+      settings: defaultSettings,
+    })
+
+    harness.slice.setCoverThumbnailGenerationConcurrency(99)
+    expect(harness.state.settings.coverThumbnailGenerationConcurrency).toBe(
+      COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
+    )
+
+    harness.slice.setCoverThumbnailGenerationConcurrency(0)
+    expect(harness.state.settings.coverThumbnailGenerationConcurrency).toBe(
+      COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
+    )
   })
 
   it("should merge reader settings when patching nested settings", () => {

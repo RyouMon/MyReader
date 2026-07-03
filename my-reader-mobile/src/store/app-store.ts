@@ -7,6 +7,7 @@ import {
   defaultSettings,
   STORE_NAME,
 } from "./app-store.constants"
+import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
 import type {
   AppState,
   LibraryViewMode,
@@ -62,6 +63,14 @@ export const useAppStore = create<AppState>()(
               persistedSettings?.syncOnStartup ?? legacyAutoSync ?? true,
             enableAutoSync:
               persistedSettings?.enableAutoSync ?? legacyAutoSync ?? true,
+            coverLoadingSkeletonPulseEnabled:
+              persistedSettings?.coverLoadingSkeletonPulseEnabled ??
+              defaultSettings.coverLoadingSkeletonPulseEnabled,
+            coverThumbnailGenerationConcurrency:
+              clampCoverThumbnailGenerationConcurrency(
+                persistedSettings?.coverThumbnailGenerationConcurrency ??
+                  defaultSettings.coverThumbnailGenerationConcurrency,
+              ),
             reflowable: {
               ...defaultSettings.reflowable,
               ...persistedSettings?.reflowable,

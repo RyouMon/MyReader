@@ -2,8 +2,10 @@ import { useCallback, useMemo } from "react"
 import { FlatList } from "react-native"
 import { useTranslation } from "react-i18next"
 
+import { coverLoadingSkeletonColor } from "@/src/design/cover-skeleton"
 import { useThemePalette } from "@/src/design/tokens"
 import type { BookItem } from "@/src/domain/types"
+import { useAppStore } from "@/src/store/app-store"
 
 import { BookCard, type BookCardChrome } from "./book-card"
 
@@ -16,6 +18,9 @@ export function HorizontalBookShelf({
 }) {
   const { t } = useTranslation()
   const palette = useThemePalette()
+  const coverLoadingSkeletonPulseEnabled = useAppStore(
+    (s) => s.settings.coverLoadingSkeletonPulseEnabled,
+  )
   const bookById = useMemo(
     () => new Map(data.map((book) => [book.id, book])),
     [data],
@@ -24,6 +29,8 @@ export function HorizontalBookShelf({
     () => ({
       coverBackgroundColor: palette.backgroundSecondary,
       coverShadowColor: palette.text,
+      coverSkeletonColor: coverLoadingSkeletonColor(palette),
+      coverLoadingSkeletonPulseEnabled,
       progressColors: {
         primary: palette.primary,
         success: palette.success,
@@ -35,11 +42,11 @@ export function HorizontalBookShelf({
         finished: t("bookRow.finished"),
         unread: t("bookRow.unread"),
       },
-      surfaceColor: palette.surface,
       textColor: palette.text,
       textMutedColor: palette.textMuted,
     }),
     [
+      coverLoadingSkeletonPulseEnabled,
       palette.backgroundSecondary,
       palette.primary,
       palette.success,

@@ -7,6 +7,7 @@ import type {
   ReflowableReaderSettings,
 } from "./app-store.types"
 import type { ThemeMode } from "../design/tokens"
+import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
 
 import {
   DEFAULT_LIBRARY_VIEW_MODE,
@@ -20,6 +21,8 @@ export type SettingsSlice = {
   setSyncOnStartup: (enabled: boolean) => void
   setEnableAutoSync: (enabled: boolean) => void
   setHomeCardStyle: (style: HomeCardStyle) => void
+  setCoverLoadingSkeletonPulseEnabled: (enabled: boolean) => void
+  setCoverThumbnailGenerationConcurrency: (concurrency: number) => void
   setLibraryPerformanceProfilerEnabled: (enabled: boolean) => void
   patchReflowableReaderSettings: (
     patch: Partial<ReflowableReaderSettings>,
@@ -47,6 +50,24 @@ export const createSettingsSlice: AppStateSlice<SettingsSlice> = (set) => ({
   },
   setHomeCardStyle(style) {
     set((state) => ({ settings: { ...state.settings, homeCardStyle: style } }))
+  },
+  setCoverLoadingSkeletonPulseEnabled(enabled) {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        coverLoadingSkeletonPulseEnabled: enabled,
+      },
+    }))
+  },
+  setCoverThumbnailGenerationConcurrency(concurrency) {
+    const nextConcurrency =
+      clampCoverThumbnailGenerationConcurrency(concurrency)
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        coverThumbnailGenerationConcurrency: nextConcurrency,
+      },
+    }))
   },
   setLibraryPerformanceProfilerEnabled(enabled) {
     set((state) => ({

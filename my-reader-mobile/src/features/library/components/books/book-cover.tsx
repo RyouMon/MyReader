@@ -14,14 +14,22 @@ import {
   COVER_IMAGE_DISPLAYED_CACHE_LIMIT,
   COVER_IMAGE_TRANSITION_MS,
   COVER_STYLE_CACHE_LIMIT,
+  COVER_LOADING_SKELETON_PULSE_DURATION_MS,
+  COVER_LOADING_SKELETON_PULSE_ENABLED,
 } from "@/src/config/library-list-performance"
 import { Skeleton } from "@/src/components/ui/skeleton"
 import {
   LIBRARY_COVER_PROFILING_MODE,
   type LibraryCoverProfilingMode,
 } from "@/src/constants/developer-tools"
+import {
+  COVER_LOADING_SKELETON_DARK_OPACITY,
+  COVER_LOADING_SKELETON_LIGHT_OPACITY,
+  coverLoadingSkeletonColor,
+} from "@/src/design/cover-skeleton"
 import { useThemePalette } from "@/src/design/tokens"
 import type { BookCoverUri, BookItem } from "@/src/domain/types"
+import { useAppStore } from "@/src/store/app-store"
 import { useCoverThumbnailSessionUri } from "../../cover-thumbnail-session-store"
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
@@ -354,6 +362,7 @@ type BookCoverProps = {
   borderRadius?: number
   displayCoverUri?: BookCoverUri
   deferCoverUntilDisplayUri?: boolean
+  loadingSkeletonPulseEnabled?: boolean
   shadowEnabled?: boolean
   thumbnailScopeKey?: string
 }
@@ -413,6 +422,7 @@ function BookCoverBaseImpl({
   borderRadius = 10,
   displayCoverUri,
   deferCoverUntilDisplayUri = false,
+  loadingSkeletonPulseEnabled = COVER_LOADING_SKELETON_PULSE_ENABLED,
   shadowEnabled = true,
   thumbnailScopeKey,
   shadowColor,
@@ -471,6 +481,10 @@ function BookCoverBaseImpl({
       ) : null}
       {coverMode === "loading" ? (
         <Skeleton
+          animated={loadingSkeletonPulseEnabled}
+          pulseDurationMs={COVER_LOADING_SKELETON_PULSE_DURATION_MS}
+          pulseMaxOpacity={COVER_LOADING_SKELETON_DARK_OPACITY}
+          pulseMinOpacity={COVER_LOADING_SKELETON_LIGHT_OPACITY}
           style={coverStyles.loadingSkeleton}
           testID={`book-cover-loading-${book.id}`}
         />
@@ -495,14 +509,23 @@ function BookCoverBaseImpl({
 
 export const BookCoverBase = memo(BookCoverBaseImpl)
 
-function BookCoverImpl(props: BookCoverProps) {
+function BookCoverImpl({
+  loadingSkeletonPulseEnabled,
+  ...props
+}: BookCoverProps) {
   const palette = useThemePalette()
+  const configuredLoadingSkeletonPulseEnabled = useAppStore(
+    (s) => s.settings.coverLoadingSkeletonPulseEnabled,
+  )
   return (
     <BookCoverBase
       {...props}
       backgroundColor={palette.backgroundSecondary}
+      loadingSkeletonPulseEnabled={
+        loadingSkeletonPulseEnabled ?? configuredLoadingSkeletonPulseEnabled
+      }
       shadowColor={palette.text}
-      skeletonColor={palette.surface}
+      skeletonColor={coverLoadingSkeletonColor(palette)}
     />
   )
 }

@@ -1,4 +1,8 @@
-import { COVER_THUMBNAIL_IDLE_TIMEOUT_MS } from "@/src/config/library-list-performance"
+import {
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY,
+  COVER_THUMBNAIL_IDLE_TIMEOUT_MS,
+  clampCoverThumbnailGenerationConcurrency,
+} from "@/src/config/library-list-performance"
 import {
   ensureCoverThumbnailFileAsync,
   type CoverThumbnailCacheFile,
@@ -48,8 +52,9 @@ function requestKey(request: CoverThumbnailGenerationRequest): string {
 }
 
 class CoverThumbnailGenerationQueue {
-  private activeKey: string | null = null
-  private cancelScheduledIdle: (() => void) | null = null
+  private activeKeys = new Set<string>()
+  private cancelScheduledIdleCallbacks = new Set<() => void>()
+  private maxConcurrency = COVER_THUMBNAIL_GENERATION_CONCURRENCY
   private listeners = new Set<CoverThumbnailGenerationListener>()
   private paused = true
   private pending = new Map<string, CoverThumbnailGenerationRequest>()
@@ -57,7 +62,7 @@ class CoverThumbnailGenerationQueue {
   enqueue(requests: CoverThumbnailGenerationRequest[]): void {
     for (const request of requests) {
       const key = requestKey(request)
-      if (this.activeKey === key || this.pending.has(key)) {
+      if (this.activeKeys.has(key) || this.pending.has(key)) {
         continue
       }
       this.pending.set(key, request)
@@ -65,15 +70,22 @@ class CoverThumbnailGenerationQueue {
     this.schedule()
   }
 
+  setConcurrency(concurrency: number): void {
+    this.maxConcurrency = clampCoverThumbnailGenerationConcurrency(concurrency)
+    this.schedule()
+  }
+
   setPaused(paused: boolean): void {
     this.paused = paused
     if (paused) {
-      // Native ImageManipulator work cannot be aborted once it starts. Keep at
-      // most the active job alive, and drop queued offscreen jobs; the hook will
-      // enqueue the current viewability window again when scrolling is quiet.
+      // Native ImageManipulator work cannot be aborted once it starts. Keep
+      // active jobs alive, and drop queued offscreen jobs; the hook will enqueue
+      // the current viewability window again when scrolling is quiet.
       this.pending.clear()
-      this.cancelScheduledIdle?.()
-      this.cancelScheduledIdle = null
+      for (const cancelScheduledIdle of this.cancelScheduledIdleCallbacks) {
+        cancelScheduledIdle()
+      }
+      this.cancelScheduledIdleCallbacks.clear()
       return
     }
     this.schedule()
@@ -87,30 +99,42 @@ class CoverThumbnailGenerationQueue {
   }
 
   resetForTests(): void {
-    this.activeKey = null
-    this.cancelScheduledIdle?.()
-    this.cancelScheduledIdle = null
+    this.activeKeys.clear()
+    for (const cancelScheduledIdle of this.cancelScheduledIdleCallbacks) {
+      cancelScheduledIdle()
+    }
+    this.cancelScheduledIdleCallbacks.clear()
+    this.maxConcurrency = COVER_THUMBNAIL_GENERATION_CONCURRENCY
     this.listeners.clear()
     this.paused = true
     this.pending.clear()
   }
 
+  private concurrency(): number {
+    return this.maxConcurrency
+  }
+
   private schedule(): void {
-    if (this.paused || this.activeKey || this.cancelScheduledIdle) {
-      return
-    }
-    if (this.pending.size === 0) {
+    if (this.paused) {
       return
     }
 
-    this.cancelScheduledIdle = requestThumbnailIdleCallback(() => {
-      this.cancelScheduledIdle = null
-      void this.runNext()
-    })
+    while (
+      this.pending.size > 0 &&
+      this.activeKeys.size + this.cancelScheduledIdleCallbacks.size <
+        this.concurrency()
+    ) {
+      let cancelScheduledIdle: () => void
+      cancelScheduledIdle = requestThumbnailIdleCallback(() => {
+        this.cancelScheduledIdleCallbacks.delete(cancelScheduledIdle)
+        void this.runNext()
+      })
+      this.cancelScheduledIdleCallbacks.add(cancelScheduledIdle)
+    }
   }
 
   private async runNext(): Promise<void> {
-    if (this.paused || this.activeKey) {
+    if (this.paused || this.activeKeys.size >= this.concurrency()) {
       this.schedule()
       return
     }
@@ -122,7 +146,7 @@ class CoverThumbnailGenerationQueue {
 
     const [key, request] = next.value
     this.pending.delete(key)
-    this.activeKey = key
+    this.activeKeys.add(key)
 
     try {
       const file = await ensureCoverThumbnailFileAsync(request.input)
@@ -137,9 +161,7 @@ class CoverThumbnailGenerationQueue {
         })
       }
     } finally {
-      if (this.activeKey === key) {
-        this.activeKey = null
-      }
+      this.activeKeys.delete(key)
       this.schedule()
     }
   }

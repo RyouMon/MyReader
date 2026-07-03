@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import {
   COVER_THUMBNAIL_GENERATED_FLUSH_DELAY_MS,
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY,
   COVER_THUMBNAIL_MAX_EDGE_PX,
 } from "@/src/config/library-list-performance"
 import type { BookItem, Library } from "@/src/domain/types"
@@ -42,6 +43,7 @@ export type CoverThumbnailSize = {
 type UseCoverThumbnailsInput = {
   enabled: boolean
   backgroundGenerationBookIds?: ReadonlySet<string>
+  generationConcurrency?: number
   generationBookIds?: ReadonlySet<string>
   paused?: boolean
   library: Library | null
@@ -131,6 +133,7 @@ function numericBookId(bookId: string): number | null {
 export function useCoverThumbnails({
   backgroundGenerationBookIds,
   enabled,
+  generationConcurrency = COVER_THUMBNAIL_GENERATION_CONCURRENCY,
   generationBookIds,
   paused = false,
   library,
@@ -253,6 +256,10 @@ export function useCoverThumbnails({
       flushGeneratedThumbnailsTimerRef.current = null
     }
   }, [enabled, paused, scheduleGeneratedThumbnailsFlush])
+
+  useEffect(() => {
+    coverThumbnailGenerationQueue.setConcurrency(generationConcurrency)
+  }, [generationConcurrency])
 
   useEffect(() => {
     coverThumbnailGenerationQueue.setPaused(!enabled || paused)

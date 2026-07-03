@@ -1,4 +1,8 @@
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "../constants/local-library-data-source"
+import {
+  COVER_LOADING_SKELETON_PULSE_ENABLED,
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY,
+} from "../config/library-list-performance"
 import type { DataSource } from "@my-reader/tools/types/data-source"
 
 import type { ReaderSettings } from "./app-store.types"
@@ -11,6 +15,8 @@ export const defaultSettings: ReaderSettings = {
   syncOnStartup: true,
   enableAutoSync: true,
   homeCardStyle: "adaptive",
+  coverLoadingSkeletonPulseEnabled: COVER_LOADING_SKELETON_PULSE_ENABLED,
+  coverThumbnailGenerationConcurrency: COVER_THUMBNAIL_GENERATION_CONCURRENCY,
   libraryPerformanceProfilerEnabled: false,
   reflowable: {
     theme: "paper",

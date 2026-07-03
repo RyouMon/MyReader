@@ -46,6 +46,7 @@ import {
   DEVELOPER_TOOLS_ENABLED,
   LIBRARY_CARD_SEGMENT_PROFILER_ENABLED,
 } from "@/src/constants/developer-tools"
+import { coverLoadingSkeletonColor } from "@/src/design/cover-skeleton"
 import { useThemePalette } from "@/src/design/tokens"
 
 import {
@@ -213,6 +214,12 @@ export default function LibraryScreen({
   const libraryPerformanceProfilerEnabled = useAppStore(
     (s) => s.settings.libraryPerformanceProfilerEnabled,
   )
+  const coverLoadingSkeletonPulseEnabled = useAppStore(
+    (s) => s.settings.coverLoadingSkeletonPulseEnabled,
+  )
+  const coverThumbnailGenerationConcurrency = useAppStore(
+    (s) => s.settings.coverThumbnailGenerationConcurrency,
+  )
   const { query, setQuery, debouncedQuery, clearQuery } =
     useSearchQuery(effectiveLibraryId)
   const [sortBy, setSortBy] = useState<SortOption>(defaultSortOption)
@@ -338,6 +345,7 @@ export default function LibraryScreen({
   const coverThumbnailScopeKey = useCoverThumbnails({
     enabled: isLibraryFocused,
     backgroundGenerationBookIds: coverThumbnailDisplayBookIds,
+    generationConcurrency: coverThumbnailGenerationConcurrency,
     generationBookIds: coverThumbnailGenerationBookIds,
     paused: thumbnailWorkPaused,
     library: selectedLibrary,
@@ -381,6 +389,8 @@ export default function LibraryScreen({
     () => ({
       coverBackgroundColor: palette.backgroundSecondary,
       coverShadowColor: palette.text,
+      coverSkeletonColor: coverLoadingSkeletonColor(palette),
+      coverLoadingSkeletonPulseEnabled,
       progressColors: {
         primary: palette.primary,
         success: palette.success,
@@ -392,11 +402,11 @@ export default function LibraryScreen({
         finished: t("bookRow.finished"),
         unread: t("bookRow.unread"),
       },
-      surfaceColor: palette.surface,
       textColor: palette.text,
       textMutedColor: palette.textMuted,
     }),
     [
+      coverLoadingSkeletonPulseEnabled,
       palette.backgroundSecondary,
       palette.primary,
       palette.success,
@@ -701,6 +711,7 @@ export default function LibraryScreen({
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
           progress={progress}
+          loadingSkeletonPulseEnabled={coverLoadingSkeletonPulseEnabled}
         />
       )
     },
@@ -709,6 +720,7 @@ export default function LibraryScreen({
       bookCardChrome,
       cardSegmentProfilerOnRender,
       cardWidth,
+      coverLoadingSkeletonPulseEnabled,
       coverThumbnailScopeKey,
       handleBookMenuAction,
       handleBookPress,
