@@ -1,17 +1,28 @@
-import { memo, useState } from "react"
+import { memo, useCallback, useState, useSyncExternalStore } from "react"
 import { Image as ExpoImage } from "expo-image"
 import {
   StyleSheet,
   Text,
   View,
   type ImageStyle,
+  type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native"
 
-import { LIBRARY_COVER_PROFILING_MODE } from "@/src/constants/developer-tools"
+import {
+  COVER_IMAGE_DISPLAYED_CACHE_LIMIT,
+  COVER_IMAGE_TRANSITION_MS,
+  COVER_STYLE_CACHE_LIMIT,
+} from "@/src/config/library-list-performance"
+import { Skeleton } from "@/src/components/ui/skeleton"
+import {
+  LIBRARY_COVER_PROFILING_MODE,
+  type LibraryCoverProfilingMode,
+} from "@/src/constants/developer-tools"
 import { useThemePalette } from "@/src/design/tokens"
 import type { BookCoverUri, BookItem } from "@/src/domain/types"
+import { useCoverThumbnailSessionUri } from "../../cover-thumbnail-session-store"
 
 export type BookDownloadStatus = "downloaded" | "notDownloaded" | "downloading"
 
@@ -73,7 +84,46 @@ const fallbackCoverThemes: FallbackCoverTheme[] = [
   },
 ]
 
-const COVER_IMAGE_TRANSITION_MS = 140
+type FallbackCoverStyleSet = {
+  root: StyleProp<ViewStyle>
+  spine: StyleProp<ViewStyle>
+  spineShadow: StyleProp<ViewStyle>
+  content: StyleProp<ViewStyle>
+  title: StyleProp<TextStyle>
+  author: StyleProp<TextStyle>
+}
+
+type CoverFrameStyleSet = {
+  frame: StyleProp<ViewStyle>
+  image: StyleProp<ImageStyle>
+  loadingSkeleton: StyleProp<ViewStyle>
+}
+
+export type BookCoverMode = "loading" | "loaded" | "fallback"
+
+const fallbackThemeByTitle = new Map<string, FallbackCoverTheme>()
+const fallbackStyleByKey = new Map<string, FallbackCoverStyleSet>()
+const coverFrameStyleByKey = new Map<string, CoverFrameStyleSet>()
+const displayedCoverKeys = new Set<string>()
+const displayedCoverListenersByKey = new Map<string, Set<() => void>>()
+
+function cachedValue<T>(
+  cache: Map<string, T>,
+  key: string,
+  create: () => T,
+): T {
+  const cached = cache.get(key)
+  if (cached) return cached
+
+  if (cache.size >= COVER_STYLE_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value
+    if (oldestKey !== undefined) cache.delete(oldestKey)
+  }
+
+  const value = create()
+  cache.set(key, value)
+  return value
+}
 
 function getTitleHash(title: string) {
   let hash = 0
@@ -84,9 +134,12 @@ function getTitleHash(title: string) {
 }
 
 function getFallbackCoverTheme(title: string): FallbackCoverTheme {
-  return (
-    fallbackCoverThemes[getTitleHash(title) % fallbackCoverThemes.length] ??
-    fallbackCoverThemes[0]!
+  return cachedValue(
+    fallbackThemeByTitle,
+    title,
+    () =>
+      fallbackCoverThemes[getTitleHash(title) % fallbackCoverThemes.length] ??
+      fallbackCoverThemes[0]!,
   )
 }
 
@@ -97,12 +150,201 @@ export function getFallbackCoverColor(title: string) {
   return getFallbackCoverTheme(title).base
 }
 
+function getFallbackCoverStyles(
+  title: string,
+  width: number,
+  height: number,
+): FallbackCoverStyleSet {
+  // Fallback covers can be the whole first screen on a cold library. Cache the
+  // small dynamic style sets so recycled FlashList cells do not allocate new
+  // arrays/objects for every title during scroll.
+  return cachedValue(fallbackStyleByKey, `${title}:${width}:${height}`, () => {
+    const fallbackTheme = getFallbackCoverTheme(title)
+    const spineWidth = Math.max(6, Math.min(14, width * 0.13))
+    const contentInset = Math.max(12, width * 0.16)
+    const titleFontSize = Math.max(12, Math.min(18, width * 0.14))
+    const authorFontSize = Math.max(10, Math.min(13, width * 0.1))
+
+    return {
+      root: [styles.fallbackRoot, { backgroundColor: fallbackTheme.base }],
+      spine: [
+        styles.fallbackSpine,
+        {
+          width: spineWidth,
+          backgroundColor: fallbackTheme.spine,
+        },
+      ],
+      spineShadow: [
+        styles.fallbackSpineShadow,
+        {
+          left: spineWidth,
+          backgroundColor: fallbackTheme.shadow,
+        },
+      ],
+      content: [
+        styles.fallbackContent,
+        {
+          left: contentInset,
+          right: contentInset,
+          top: Math.max(16, height * 0.2),
+          bottom: Math.max(16, height * 0.2),
+        },
+      ],
+      title: [
+        styles.fallbackTitle,
+        {
+          color: fallbackTheme.foreground,
+          fontSize: titleFontSize,
+          lineHeight: Math.round(titleFontSize * 1.32),
+        },
+      ],
+      author: [
+        styles.fallbackAuthor,
+        {
+          color: fallbackTheme.secondaryForeground,
+          fontSize: authorFontSize,
+          lineHeight: Math.round(authorFontSize * 1.25),
+        },
+      ],
+    }
+  })
+}
+
+function getCoverFrameStyles({
+  backgroundColor,
+  borderRadius,
+  height,
+  skeletonColor,
+  shadowEnabled,
+  shadowColor,
+  width,
+}: {
+  backgroundColor: string
+  borderRadius: number
+  height: number
+  skeletonColor: string
+  shadowEnabled: boolean
+  shadowColor: string
+  width: number
+}): CoverFrameStyleSet {
+  return cachedValue(
+    coverFrameStyleByKey,
+    `${width}:${height}:${borderRadius}:${backgroundColor}:${skeletonColor}:${shadowColor}:${shadowEnabled}`,
+    () => ({
+      frame: [
+        styles.coverFrame,
+        shadowEnabled ? styles.coverFrameShadow : null,
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor,
+          shadowColor: shadowEnabled ? shadowColor : undefined,
+        },
+      ],
+      image: [
+        styles.coverImage,
+        {
+          width,
+          height,
+        },
+      ],
+      loadingSkeleton: [
+        styles.loadingSkeleton,
+        {
+          backgroundColor: skeletonColor,
+        },
+      ],
+    }),
+  )
+}
+
 function getCoverStateKey(coverUri: BookCoverUri | undefined) {
   if (!coverUri) {
     return undefined
   }
 
   return typeof coverUri === "string" ? coverUri : coverUri.uri
+}
+
+function subscribeDisplayedCoverKey(
+  coverKey: string | undefined,
+  listener: () => void,
+): () => void {
+  if (!coverKey) return () => {}
+
+  let listeners = displayedCoverListenersByKey.get(coverKey)
+  if (!listeners) {
+    listeners = new Set()
+    displayedCoverListenersByKey.set(coverKey, listeners)
+  }
+  listeners.add(listener)
+
+  return () => {
+    listeners?.delete(listener)
+    if (listeners?.size === 0) {
+      displayedCoverListenersByKey.delete(coverKey)
+    }
+  }
+}
+
+function getDisplayedCoverSnapshot(coverKey: string | undefined) {
+  return !!coverKey && displayedCoverKeys.has(coverKey)
+}
+
+function markCoverImageDisplayed(coverKey: string | undefined): void {
+  if (!coverKey || displayedCoverKeys.has(coverKey)) return
+
+  if (displayedCoverKeys.size >= COVER_IMAGE_DISPLAYED_CACHE_LIMIT) {
+    const oldestKey = displayedCoverKeys.values().next().value
+    if (oldestKey !== undefined) displayedCoverKeys.delete(oldestKey)
+  }
+
+  displayedCoverKeys.add(coverKey)
+  const listeners = displayedCoverListenersByKey.get(coverKey)
+  if (!listeners) return
+
+  for (const listener of listeners) {
+    listener()
+  }
+}
+
+function useCoverImageDisplayed(coverKey: string | undefined) {
+  return useSyncExternalStore(
+    (listener) => subscribeDisplayedCoverKey(coverKey, listener),
+    () => getDisplayedCoverSnapshot(coverKey),
+    () => getDisplayedCoverSnapshot(coverKey),
+  )
+}
+
+export function resetCoverImageDisplayStoreForTests(): void {
+  displayedCoverKeys.clear()
+  displayedCoverListenersByKey.clear()
+}
+
+export function resolveBookCoverMode({
+  hasExpectedCover,
+  hasRenderableImage,
+  imageDisplayed,
+  imageFailed,
+  profilingMode = LIBRARY_COVER_PROFILING_MODE,
+}: {
+  hasExpectedCover: boolean
+  hasRenderableImage: boolean
+  imageDisplayed: boolean
+  imageFailed: boolean
+  profilingMode?: LibraryCoverProfilingMode
+}): BookCoverMode {
+  if (profilingMode === "fallback-only") {
+    return "fallback"
+  }
+  if (!hasExpectedCover || imageFailed) {
+    return "fallback"
+  }
+  if (profilingMode === "image-only") {
+    return hasRenderableImage ? "loaded" : "fallback"
+  }
+  return hasRenderableImage && imageDisplayed ? "loaded" : "loading"
 }
 
 type BookCoverProps = {
@@ -112,14 +354,17 @@ type BookCoverProps = {
   borderRadius?: number
   displayCoverUri?: BookCoverUri
   deferCoverUntilDisplayUri?: boolean
+  shadowEnabled?: boolean
+  thumbnailScopeKey?: string
 }
 
 type BookCoverBaseProps = BookCoverProps & {
   backgroundColor: string
   shadowColor: string
+  skeletonColor: string
 }
 
-function DefaultBookCover({
+function DefaultBookCoverImpl({
   author,
   title,
   width,
@@ -130,45 +375,15 @@ function DefaultBookCover({
   width: number
   height: number
 }) {
-  const fallbackTheme = getFallbackCoverTheme(title)
-  const spineWidth = Math.max(6, Math.min(14, width * 0.13))
-  const contentInset = Math.max(12, width * 0.16)
-  const titleFontSize = Math.max(12, Math.min(18, width * 0.14))
-  const titleLineHeight = Math.round(titleFontSize * 1.32)
-  const authorFontSize = Math.max(10, Math.min(13, width * 0.1))
-  const rootStyle: ViewStyle = { backgroundColor: fallbackTheme.base }
-  const spineStyle: ViewStyle = {
-    width: spineWidth,
-    backgroundColor: fallbackTheme.spine,
-  }
-  const spineShadowStyle: ViewStyle = {
-    left: spineWidth,
-    backgroundColor: fallbackTheme.shadow,
-  }
-  const contentStyle: ViewStyle = {
-    left: contentInset,
-    right: contentInset,
-    top: Math.max(16, height * 0.2),
-    bottom: Math.max(16, height * 0.2),
-  }
-  const titleStyle: TextStyle = {
-    color: fallbackTheme.foreground,
-    fontSize: titleFontSize,
-    lineHeight: titleLineHeight,
-  }
-  const authorStyle: TextStyle = {
-    color: fallbackTheme.secondaryForeground,
-    fontSize: authorFontSize,
-    lineHeight: Math.round(authorFontSize * 1.25),
-  }
+  const fallbackStyles = getFallbackCoverStyles(title, width, height)
 
   return (
-    <View style={[styles.fallbackRoot, rootStyle]}>
-      <View style={[styles.fallbackSpine, spineStyle]} />
-      <View style={[styles.fallbackSpineShadow, spineShadowStyle]} />
-      <View style={[styles.fallbackContent, contentStyle]}>
+    <View style={fallbackStyles.root}>
+      <View style={fallbackStyles.spine} />
+      <View style={fallbackStyles.spineShadow} />
+      <View style={fallbackStyles.content}>
         <Text
-          style={[styles.fallbackTitle, titleStyle]}
+          style={fallbackStyles.title}
           numberOfLines={3}
           allowFontScaling={false}
         >
@@ -176,7 +391,7 @@ function DefaultBookCover({
         </Text>
         {author ? (
           <Text
-            style={[styles.fallbackAuthor, authorStyle]}
+            style={fallbackStyles.author}
             numberOfLines={1}
             allowFontScaling={false}
           >
@@ -188,6 +403,8 @@ function DefaultBookCover({
   )
 }
 
+const DefaultBookCover = memo(DefaultBookCoverImpl)
+
 function BookCoverBaseImpl({
   book,
   width,
@@ -196,41 +413,55 @@ function BookCoverBaseImpl({
   borderRadius = 10,
   displayCoverUri,
   deferCoverUntilDisplayUri = false,
+  shadowEnabled = true,
+  thumbnailScopeKey,
   shadowColor,
+  skeletonColor,
 }: BookCoverBaseProps) {
   // Cover rendering is the hottest part of the grid. Keep the Base variant on
   // RN primitives + StyleSheet and receive colors from the parent so cells avoid
   // NativeWind class resolution and theme context subscriptions.
+  const thumbnailCoverUri = useCoverThumbnailSessionUri(thumbnailScopeKey, book)
+  const hasExpectedCover = !!(
+    displayCoverUri ??
+    thumbnailCoverUri ??
+    book.coverUri
+  )
   const effectiveCoverUri =
-    displayCoverUri ?? (deferCoverUntilDisplayUri ? undefined : book.coverUri)
+    displayCoverUri ??
+    thumbnailCoverUri ??
+    (deferCoverUntilDisplayUri ? undefined : book.coverUri)
   const coverKey = getCoverStateKey(effectiveCoverUri)
   const [failedCoverKey, setFailedCoverKey] = useState<string>()
-  const coverFrameStyle: ViewStyle = {
-    width,
-    height,
-    borderRadius,
+  const coverStyles = getCoverFrameStyles({
     backgroundColor,
-    shadowColor,
-  }
-  const imageStyle: ImageStyle = {
-    width,
+    borderRadius,
     height,
-  }
+    skeletonColor,
+    shadowEnabled,
+    shadowColor,
+    width,
+  })
 
   const shouldRenderImage =
     LIBRARY_COVER_PROFILING_MODE !== "fallback-only" &&
     !!effectiveCoverUri &&
     !!coverKey &&
     failedCoverKey !== coverKey
-  // Profiling modes are env-only developer tools. They isolate native image
-  // resize work from fallback text drawing without adding per-cell display
-  // state to the scroll path.
-  const shouldRenderFallback =
-    LIBRARY_COVER_PROFILING_MODE !== "image-only" || !shouldRenderImage
+  const coverImageDisplayed = useCoverImageDisplayed(coverKey)
+  const coverMode = resolveBookCoverMode({
+    hasExpectedCover,
+    hasRenderableImage: shouldRenderImage,
+    imageDisplayed: coverImageDisplayed,
+    imageFailed: !!coverKey && failedCoverKey === coverKey,
+  })
+  const handleImageDisplay = useCallback(() => {
+    markCoverImageDisplayed(coverKey)
+  }, [coverKey])
 
   return (
-    <View style={[styles.coverFrame, coverFrameStyle]}>
-      {shouldRenderFallback ? (
+    <View style={coverStyles.frame}>
+      {coverMode === "fallback" ? (
         <DefaultBookCover
           author={book.author}
           title={book.title}
@@ -238,14 +469,23 @@ function BookCoverBaseImpl({
           height={height}
         />
       ) : null}
+      {coverMode === "loading" ? (
+        <Skeleton
+          style={coverStyles.loadingSkeleton}
+          testID={`book-cover-loading-${book.id}`}
+        />
+      ) : null}
       {shouldRenderImage ? (
         <ExpoImage
           source={effectiveCoverUri}
-          style={[styles.coverImage, imageStyle]}
+          style={coverStyles.image}
           recyclingKey={`${book.id}:${coverKey}`}
           testID={`book-cover-image-${book.id}`}
           cachePolicy="memory-disk"
-          transition={COVER_IMAGE_TRANSITION_MS}
+          transition={
+            coverImageDisplayed ? undefined : COVER_IMAGE_TRANSITION_MS
+          }
+          onDisplay={handleImageDisplay}
           onError={() => setFailedCoverKey(coverKey)}
         />
       ) : null}
@@ -262,6 +502,7 @@ function BookCoverImpl(props: BookCoverProps) {
       {...props}
       backgroundColor={palette.backgroundSecondary}
       shadowColor={palette.text}
+      skeletonColor={palette.surface}
     />
   )
 }
@@ -269,6 +510,8 @@ function BookCoverImpl(props: BookCoverProps) {
 const styles = StyleSheet.create({
   coverFrame: {
     overflow: "hidden",
+  },
+  coverFrameShadow: {
     shadowOpacity: 0.18,
     shadowRadius: 8,
     shadowOffset: { width: 1, height: 3 },
@@ -278,6 +521,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     top: 0,
+  },
+  loadingSkeleton: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 0,
   },
   fallbackRoot: {
     height: "100%",
@@ -304,16 +551,10 @@ const styles = StyleSheet.create({
   fallbackTitle: {
     textAlign: "center",
     fontWeight: "600",
-    textShadowColor: "rgba(0, 0, 0, 0.34)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
   fallbackAuthor: {
     marginTop: 8,
     textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.28)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
 })
 
@@ -321,9 +562,8 @@ const styles = StyleSheet.create({
  * Renders a compact mobile book cover with fallback title art.
  *
  * Memoized so FlashList row recycling does not re-mount the cover when only
- * sibling cells change. The fallback cover stays behind the real image so image
- * display does not trigger a per-cell JS state update during fast scrolling.
- * `recyclingKey` ensures the image refreshes when the cell is reused for a
- * different book.
+ * sibling cells change. Once an image identity has displayed, the fallback
+ * subtree is removed through a per-cover external-store notification so later
+ * visits do not pay the fallback text/layout cost again.
  */
 export const BookCover = memo(BookCoverImpl)

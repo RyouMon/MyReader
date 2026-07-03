@@ -36,6 +36,7 @@ export type BookRowProps = {
   book: BookItem
   displayCoverUri?: BookCoverUri
   deferCoverUntilDisplayUri?: boolean
+  thumbnailScopeKey?: string
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -75,6 +76,7 @@ function BookRowImpl({
   book,
   displayCoverUri,
   deferCoverUntilDisplayUri,
+  thumbnailScopeKey,
   onPress,
   onMore,
   menuActions,
@@ -232,6 +234,7 @@ function BookRowImpl({
             borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
             displayCoverUri={displayCoverUri}
             deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+            thumbnailScopeKey={thumbnailScopeKey}
           />
         </RNView>
         <View className="min-w-0 flex-1 justify-between">

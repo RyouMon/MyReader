@@ -17,9 +17,31 @@ import {
 } from "@shopify/flash-list"
 import { Stack, router, useIsFocused } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { View, useWindowDimensions, type ViewabilityConfig } from "react-native"
+import { View, useWindowDimensions } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  COVER_THUMBNAIL_DISPLAY_LOOKAROUND_GRID_ROWS,
+  COVER_THUMBNAIL_DISPLAY_LOOKAROUND_LIST_ITEMS,
+  COVER_THUMBNAIL_INITIAL_GRID_ROWS,
+  COVER_THUMBNAIL_INITIAL_IDLE_DELAY_MS,
+  COVER_THUMBNAIL_INITIAL_LIST_ITEMS,
+  COVER_THUMBNAIL_SCROLL_QUIET_DELAY_MS,
+  COVER_THUMBNAIL_VIEWABILITY_CONFIG,
+  LIBRARY_GRID_CARD_GAP,
+  LIBRARY_GRID_CARD_META_HEIGHT,
+  LIBRARY_GRID_CELL_CONTAINER_STYLE,
+  LIBRARY_GRID_DRAW_DISTANCE_ROWS,
+  LIBRARY_GRID_MAX_COLUMNS,
+  LIBRARY_GRID_MIN_CARD_WIDTH,
+  LIBRARY_GRID_MIN_COLUMNS,
+  LIBRARY_GRID_PADDING_X,
+  LIBRARY_LIST_DRAW_DISTANCE_ROWS,
+  LIBRARY_LIST_MAINTAIN_VISIBLE_CONTENT_POSITION,
+  LIBRARY_LIST_PADDING_X,
+  LIBRARY_LIST_ROW_ESTIMATED_HEIGHT,
+  LIBRARY_LIST_SCROLL_EVENT_THROTTLE_MS,
+} from "@/src/config/library-list-performance"
 import {
   DEVELOPER_TOOLS_ENABLED,
   LIBRARY_CARD_SEGMENT_PROFILER_ENABLED,
@@ -73,37 +95,6 @@ import { useBookActions } from "./hooks/use-book-actions"
 
 const defaultSortOption: SortOption = "recentlyAdded"
 
-/** Grid layout constants. Adjust these to tune the grid's horizontal margins and gutters.
- *
- * - GRID_PADDING_X: horizontal space between the screen edge and the outermost cards.
- * - GRID_CARD_GAP: space between adjacent cards (both rows and columns).
- *   Each card wrapper gets GRID_CARD_GAP / 2 of horizontal padding so that two
- *   neighboring wrappers together form the full gap; FlashList's content padding
- *   is reduced by the same half-gap to keep the outer edge flush with GRID_PADDING_X.
- */
-const GRID_MIN_CARD_WIDTH = 150
-const GRID_MIN_COLUMNS = 2
-const GRID_MAX_COLUMNS = 6
-const GRID_PADDING_X = 16
-const GRID_CARD_GAP = 12
-const GRID_DRAW_DISTANCE_ROWS = 2
-const GRID_CARD_META_HEIGHT = 64
-const LIST_DRAW_DISTANCE_ROWS = 4
-const LIST_ROW_ESTIMATED_HEIGHT = 108
-const LIST_PADDING_X = GRID_PADDING_X
-const COVER_THUMBNAIL_INITIAL_GRID_ROWS = 4
-const COVER_THUMBNAIL_INITIAL_LIST_ITEMS = 10
-const COVER_THUMBNAIL_DISPLAY_LOOKAROUND_GRID_ROWS = 2
-const COVER_THUMBNAIL_DISPLAY_LOOKAROUND_LIST_ITEMS = 6
-const COVER_THUMBNAIL_INITIAL_IDLE_DELAY_MS = 80
-const COVER_THUMBNAIL_SCROLL_QUIET_DELAY_MS = 500
-const DISABLED_MAINTAIN_VISIBLE_CONTENT_POSITION = { disabled: true }
-const GRID_CELL_CONTAINER_STYLE = { paddingHorizontal: GRID_CARD_GAP / 2 }
-const COVER_THUMBNAIL_VIEWABILITY_CONFIG: ViewabilityConfig = {
-  itemVisiblePercentThreshold: 1,
-  minimumViewTime: 80,
-}
-
 type LibraryScreenProps = {
   libraryId?: string
 }
@@ -116,11 +107,14 @@ function getResponsiveGridColumns(
 ): number {
   const availableWidth = Math.max(0, containerWidth - horizontalPadding * 2)
   const estimatedColumns = Math.floor(
-    (availableWidth + gap) / (GRID_MIN_CARD_WIDTH + gap),
+    (availableWidth + gap) / (LIBRARY_GRID_MIN_CARD_WIDTH + gap),
   )
   return Math.max(
-    GRID_MIN_COLUMNS,
-    Math.min(GRID_MAX_COLUMNS, estimatedColumns || GRID_MIN_COLUMNS),
+    LIBRARY_GRID_MIN_COLUMNS,
+    Math.min(
+      LIBRARY_GRID_MAX_COLUMNS,
+      estimatedColumns || LIBRARY_GRID_MIN_COLUMNS,
+    ),
   )
 }
 
@@ -154,15 +148,17 @@ function getInitialCoverThumbnailDisplayItemCount(
 
 function getLibraryListDrawDistance(isGridView: boolean, cardWidth: number) {
   if (!isGridView) {
-    return LIST_ROW_ESTIMATED_HEIGHT * LIST_DRAW_DISTANCE_ROWS
+    return LIBRARY_LIST_ROW_ESTIMATED_HEIGHT * LIBRARY_LIST_DRAW_DISTANCE_ROWS
   }
 
-  // `drawDistance` is FlashList's offscreen render buffer. Keep it large enough
-  // to pre-mount the next couple of grid rows so fast scrolling does not reveal
-  // blank space, but do not expand thumbnail generation beyond visible cells.
+  // `drawDistance` is only the FlashList render buffer. Thumbnail work has its
+  // own visible-priority/background queues so a larger render buffer does not
+  // directly start more decode/resize work during scroll.
   const gridRowHeight =
-    getBookCardCoverHeight(cardWidth) + GRID_CARD_META_HEIGHT + GRID_CARD_GAP
-  return Math.round(gridRowHeight * GRID_DRAW_DISTANCE_ROWS)
+    getBookCardCoverHeight(cardWidth) +
+    LIBRARY_GRID_CARD_META_HEIGHT +
+    LIBRARY_GRID_CARD_GAP
+  return Math.round(gridRowHeight * LIBRARY_GRID_DRAW_DISTANCE_ROWS)
 }
 
 function sameStringSet(left: Set<string>, right: Set<string>): boolean {
@@ -178,7 +174,7 @@ type LibraryItemSeparator = NonNullable<
 >
 
 const SeparatorGrid = memo(function SeparatorGrid() {
-  return <View style={{ height: GRID_CARD_GAP }} />
+  return <View style={{ height: LIBRARY_GRID_CARD_GAP }} />
 }) as LibraryItemSeparator
 const SeparatorList = memo(function SeparatorList() {
   return null
@@ -193,11 +189,13 @@ export default function LibraryScreen({
   const { width } = useWindowDimensions()
   const gridColumns = getResponsiveGridColumns(
     width,
-    GRID_CARD_GAP,
-    GRID_PADDING_X,
+    LIBRARY_GRID_CARD_GAP,
+    LIBRARY_GRID_PADDING_X,
   )
   const cardWidth =
-    (width - GRID_PADDING_X * 2 - GRID_CARD_GAP * (gridColumns - 1)) /
+    (width -
+      LIBRARY_GRID_PADDING_X * 2 -
+      LIBRARY_GRID_CARD_GAP * (gridColumns - 1)) /
     gridColumns
   const { switchLibrary } = { switchLibrary: switchActiveLibrary }
   const libraries = useAppStore((s) => s.libraries)
@@ -337,8 +335,9 @@ export default function LibraryScreen({
     }
     return next
   }, [coverThumbnailDisplayBookIds, visibleBookById])
-  const displayCoverUriByBookId = useCoverThumbnails({
+  const coverThumbnailScopeKey = useCoverThumbnails({
     enabled: isLibraryFocused,
+    backgroundGenerationBookIds: coverThumbnailDisplayBookIds,
     generationBookIds: coverThumbnailGenerationBookIds,
     paused: thumbnailWorkPaused,
     library: selectedLibrary,
@@ -539,7 +538,7 @@ export default function LibraryScreen({
     if (!thumbnailWorkPausedRef.current) {
       setThumbnailWorkPausedState(true)
     }
-    // scrollEventThrottle is 250ms. Keep the quiet delay longer than that so
+    // Keep the quiet delay longer than the configured scrollEventThrottle so
     // thumbnail resizing cannot resume between two active scroll events.
     scheduleScrollQuietThumbnailWorkResume()
   }, [scheduleScrollQuietThumbnailWorkResume, setThumbnailWorkPausedState])
@@ -563,9 +562,9 @@ export default function LibraryScreen({
 
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken<BookItem>[] }) => {
-      // Keep display lookahead larger than generation lookahead: cached file
-      // reads are cheap enough to happen during scroll, while thumbnail
-      // generation may download, decode, and resize source covers.
+      // Keep display lookahead larger than the visible-priority generation
+      // window. The thumbnail hook still receives display ids as a background
+      // warmup lane, but it only runs that lane while scroll work is paused.
       const nextDisplayIds = resolveCoverThumbnailBookIds({
         visibleBooks,
         viewableItems,
@@ -591,8 +590,8 @@ export default function LibraryScreen({
 
   const seedInitialCoverThumbnails = useCallback(() => {
     // FlashList can delay the first viewability callback. Seed a wider display
-    // window so existing thumbnails appear immediately, but keep generation at
-    // the old bounded first-screen size.
+    // window so existing thumbnails appear immediately; the hook uses that same
+    // window as low-priority idle warmup after first-screen covers are queued.
     const nextDisplayIds = resolveInitialCoverThumbnailBookIds({
       visibleBooks,
       itemCount: getInitialCoverThumbnailDisplayItemCount(
@@ -640,15 +639,14 @@ export default function LibraryScreen({
       const subscriptionLibraryId = cellMeta?.subscriptionLibraryId
       const subscriptionFormat = cellMeta?.subscriptionFormat
       const menuActions = cellMeta?.menuActions
-      const displayCoverUri = displayCoverUriByBookId.get(item.id)
       const deferCoverUntilDisplayUri = !!item.coverUri
 
       if (isGridView) {
         const bookCard = (
           <BookCard
             book={item}
-            displayCoverUri={displayCoverUri}
             deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+            thumbnailScopeKey={coverThumbnailScopeKey}
             downloadStatus={downloadStatus}
             width={cardWidth}
             readerFormat={readerFormat}
@@ -670,7 +668,7 @@ export default function LibraryScreen({
         )
 
         return (
-          <View style={GRID_CELL_CONTAINER_STYLE}>
+          <View style={LIBRARY_GRID_CELL_CONTAINER_STYLE}>
             {cardSegmentProfilerOnRender ? (
               <Profiler
                 id="BookCard.total"
@@ -688,8 +686,8 @@ export default function LibraryScreen({
       return (
         <BookRow
           book={item}
-          displayCoverUri={displayCoverUri}
           deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+          thumbnailScopeKey={coverThumbnailScopeKey}
           downloadStatus={downloadStatus}
           readerFormat={readerFormat}
           isAnyMenuOpen={isMenuOpen}
@@ -699,7 +697,7 @@ export default function LibraryScreen({
           onMenuAction={handleBookMenuAction}
           onMenuOpen={handleMenuOpen}
           onMenuClose={handleMenuClose}
-          horizontalPadding={LIST_PADDING_X}
+          horizontalPadding={LIBRARY_LIST_PADDING_X}
           subscriptionLibraryId={subscriptionLibraryId}
           subscriptionFormat={subscriptionFormat}
           progress={progress}
@@ -711,7 +709,7 @@ export default function LibraryScreen({
       bookCardChrome,
       cardSegmentProfilerOnRender,
       cardWidth,
-      displayCoverUriByBookId,
+      coverThumbnailScopeKey,
       handleBookMenuAction,
       handleBookPress,
       handleMenuClose,
@@ -733,14 +731,14 @@ export default function LibraryScreen({
       bookCardChrome,
       bookCellMetaById,
       cardWidth,
-      displayCoverUriByBookId,
+      coverThumbnailScopeKey,
       isMenuOpen,
     }),
     [
       bookCardChrome,
       bookCellMetaById,
       cardWidth,
-      displayCoverUriByBookId,
+      coverThumbnailScopeKey,
       isMenuOpen,
     ],
   )
@@ -882,14 +880,16 @@ export default function LibraryScreen({
       className="flex-1"
       style={{ backgroundColor: palette.background }}
       contentContainerStyle={{
-        paddingHorizontal: isGridView ? GRID_PADDING_X - GRID_CARD_GAP / 2 : 0,
+        paddingHorizontal: isGridView
+          ? LIBRARY_GRID_PADDING_X - LIBRARY_GRID_CARD_GAP / 2
+          : 0,
         paddingTop: 16,
         paddingBottom: 40,
       }}
       ItemSeparatorComponent={isGridView ? SeparatorGrid : SeparatorList}
       drawDistance={listDrawDistance}
       maintainVisibleContentPosition={
-        DISABLED_MAINTAIN_VISIBLE_CONTENT_POSITION
+        LIBRARY_LIST_MAINTAIN_VISIBLE_CONTENT_POSITION
       }
       ListEmptyComponent={
         isLoadingNewContent ? (
@@ -897,8 +897,8 @@ export default function LibraryScreen({
             viewMode={viewMode}
             cardWidth={cardWidth}
             gridColumns={gridColumns}
-            gridGap={GRID_CARD_GAP}
-            listPaddingX={LIST_PADDING_X}
+            gridGap={LIBRARY_GRID_CARD_GAP}
+            listPaddingX={LIBRARY_LIST_PADDING_X}
           />
         ) : booksError ? (
           <EmptyState
@@ -926,7 +926,7 @@ export default function LibraryScreen({
       onTouchCancel={scheduleScrollQuietThumbnailWorkResume}
       onTouchEnd={scheduleScrollQuietThumbnailWorkResume}
       onTouchStart={handleScrollActive}
-      scrollEventThrottle={250}
+      scrollEventThrottle={LIBRARY_LIST_SCROLL_EVENT_THROTTLE_MS}
       onViewableItemsChanged={handleViewableItemsChanged}
       onLoad={handleFlashListLoad}
       renderItem={renderItem}

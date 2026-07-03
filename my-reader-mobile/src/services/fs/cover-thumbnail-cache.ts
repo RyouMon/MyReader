@@ -1,5 +1,8 @@
 import { Directory, File, Paths } from "expo-file-system"
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator"
+import { Image as ReactNativeImage } from "react-native"
+
+import { COVER_THUMBNAIL_JPEG_COMPRESS } from "@/src/config/library-list-performance"
 
 export type CoverThumbnailSource =
   | string
@@ -16,7 +19,6 @@ export type CoverThumbnailCacheInput = {
 
 const COVER_THUMBNAIL_CACHE_ROOT = "myreader-cover-thumbnails"
 export const COVER_THUMBNAIL_CACHE_VERSION = "v1"
-const COVER_THUMBNAIL_COMPRESS = 0.82
 const inFlightThumbnails = new Map<string, Promise<CoverThumbnailCacheFile>>()
 
 export type CoverThumbnailCacheFile = {
@@ -166,11 +168,13 @@ async function prepareSourceFile(input: CoverThumbnailCacheInput): Promise<{
     tmpDir,
     `${hashCacheKey(cacheKey(input))}.source.jpg`,
   )
+  const headers = sourceHeaders(input.source)
   try {
-    await File.downloadFileAsync(uri, tmpSource, {
-      headers: sourceHeaders(input.source),
-      idempotent: true,
-    })
+    await File.downloadFileAsync(
+      uri,
+      tmpSource,
+      headers ? { headers, idempotent: true } : { idempotent: true },
+    )
   } catch (error) {
     if (tmpSource.exists) {
       tmpSource.delete()
@@ -193,9 +197,8 @@ async function renderCoverThumbnail(
   widthPx: number,
   heightPx: number,
 ) {
-  const metadataContext = ImageManipulator.manipulate(sourceFileUri)
-  const sourceRef = await metadataContext.renderAsync()
-  const sourceAspect = sourceRef.width / sourceRef.height
+  const sourceSize = await readSourceImageSize(sourceFileUri)
+  const sourceAspect = sourceSize.width / sourceSize.height
   const targetAspect = widthPx / heightPx
   const context = ImageManipulator.manipulate(sourceFileUri)
 
@@ -225,14 +228,33 @@ async function renderCoverThumbnail(
   try {
     image = await context.renderAsync()
     return await image.saveAsync({
-      compress: COVER_THUMBNAIL_COMPRESS,
+      compress: COVER_THUMBNAIL_JPEG_COMPRESS,
       format: SaveFormat.JPEG,
     })
   } finally {
     image?.release()
     context.release()
-    sourceRef.release()
-    metadataContext.release()
+  }
+}
+
+async function readSourceImageSize(sourceFileUri: string): Promise<{
+  width: number
+  height: number
+}> {
+  try {
+    // RN's image loader can read dimensions without creating an ImageManipulator
+    // render context. Cold library scrolls may build many thumbnails, so avoid
+    // paying ImageManipulator's decode/render cost twice per cover.
+    return await ReactNativeImage.getSize(sourceFileUri)
+  } catch {
+    const metadataContext = ImageManipulator.manipulate(sourceFileUri)
+    const sourceRef = await metadataContext.renderAsync()
+    try {
+      return { width: sourceRef.width, height: sourceRef.height }
+    } finally {
+      sourceRef.release()
+      metadataContext.release()
+    }
   }
 }
 

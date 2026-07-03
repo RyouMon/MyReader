@@ -7,10 +7,12 @@ import {
 } from "react"
 import type { RenderTarget } from "@shopify/flash-list"
 
-const SUMMARY_INTERVAL_MS = 2000
-const SLOW_RENDER_WARNING_MS = 8
-const SLOW_RENDER_RISK_MS = 12
-const SLOW_RENDER_FRAME_BUDGET_MS = 16
+import {
+  LIBRARY_LIST_PROFILER_SUMMARY_INTERVAL_MS,
+  LIBRARY_LIST_SLOW_RENDER_FRAME_BUDGET_MS,
+  LIBRARY_LIST_SLOW_RENDER_RISK_MS,
+  LIBRARY_LIST_SLOW_RENDER_WARNING_MS,
+} from "@/src/config/library-list-performance"
 
 type LibraryListPerformanceContext = {
   enabled: boolean
@@ -99,13 +101,13 @@ function recordRenderMetrics(
   metrics.phaseCounts[phase] = (metrics.phaseCounts[phase] ?? 0) + 1
   metrics.actualDurationMs.push(actualDuration)
   metrics.baseDurationMs.push(baseDuration)
-  if (actualDuration >= SLOW_RENDER_WARNING_MS) {
+  if (actualDuration >= LIBRARY_LIST_SLOW_RENDER_WARNING_MS) {
     metrics.slowRenderCount8Ms += 1
   }
-  if (actualDuration >= SLOW_RENDER_RISK_MS) {
+  if (actualDuration >= LIBRARY_LIST_SLOW_RENDER_RISK_MS) {
     metrics.slowRenderCount12Ms += 1
   }
-  if (actualDuration >= SLOW_RENDER_FRAME_BUDGET_MS) {
+  if (actualDuration >= LIBRARY_LIST_SLOW_RENDER_FRAME_BUDGET_MS) {
     metrics.slowRenderCount16Ms += 1
   }
   if (actualDuration > metrics.maxActualDurationMs) {
@@ -233,7 +235,7 @@ export function useLibraryListPerformanceProfiler({
 
     summaryTimerRef.current = setTimeout(() => {
       flushSummary("interval")
-    }, SUMMARY_INTERVAL_MS)
+    }, LIBRARY_LIST_PROFILER_SUMMARY_INTERVAL_MS)
   }, [flushSummary])
 
   const onRender = useCallback<ProfilerOnRenderCallback>(

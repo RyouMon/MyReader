@@ -1,6 +1,10 @@
 import type { ComponentProps } from "react"
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  notifyManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 
 import type { BookItem, Library } from "@/src/domain/types"
@@ -15,6 +19,12 @@ import {
   getCachedCoverThumbnailFile,
   getCachedCoverThumbnailFileByName,
 } from "@/src/services/fs/cover-thumbnail-cache"
+import { resetCoverThumbnailGenerationQueueForTests } from "../cover-thumbnail-generation-queue"
+import {
+  createCoverThumbnailSessionIdentity,
+  getCoverThumbnailSessionUri,
+  resetCoverThumbnailSessionStoreForTests,
+} from "../cover-thumbnail-session-store"
 
 import {
   resolveCoverThumbnailPixelSize,
@@ -57,6 +67,17 @@ function book(id: string): BookItem {
   }
 }
 
+function sessionUri(
+  scopeKey: string,
+  targetBook: BookItem,
+): string | undefined {
+  return getCoverThumbnailSessionUri(
+    scopeKey,
+    targetBook.id,
+    createCoverThumbnailSessionIdentity(scopeKey, targetBook),
+  )
+}
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -80,7 +101,21 @@ function createWrapper() {
   return Wrapper
 }
 
+beforeAll(() => {
+  notifyManager.setNotifyFunction((callback) => {
+    act(() => {
+      callback()
+    })
+  })
+})
+
+afterAll(() => {
+  notifyManager.setNotifyFunction((callback) => callback())
+})
+
 beforeEach(() => {
+  resetCoverThumbnailGenerationQueueForTests()
+  resetCoverThumbnailSessionStoreForTests()
   jest.clearAllMocks()
   libraryIndex += 1
   library = { id: `library-${libraryIndex}` } as Library
@@ -104,7 +139,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
-  it("publishes each generated thumbnail as soon as it is ready", async () => {
+  it("publishes generated thumbnails in batches while generation continues", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -135,7 +170,10 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
 
     await waitFor(() =>
-      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bookId: "1" }),
     )
 
     await act(async () => {
@@ -148,9 +186,15 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1.jpg"),
+      expect(sessionUri(result.current, books[0]!)).toBe("file:///cache/1.jpg"),
     )
-    expect(result.current.has("2")).toBe(false)
+    expect(sessionUri(result.current, books[1]!)).toBeUndefined()
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bookId: "2" }),
+    )
 
     await act(async () => {
       secondThumbnail.resolve({
@@ -162,7 +206,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
 
     await waitFor(() =>
-      expect(result.current.get("2")).toBe("file:///cache/2.jpg"),
+      expect(sessionUri(result.current, books[1]!)).toBe("file:///cache/2.jpg"),
     )
   })
 
@@ -237,7 +281,9 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1-persisted.jpg"),
+      expect(sessionUri(result.current, book("1"))).toBe(
+        "file:///cache/1-persisted.jpg",
+      ),
     )
     expect(ensureCoverThumbnailFileAsync).not.toHaveBeenCalled()
   })
@@ -263,7 +309,9 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1-existing.jpg"),
+      expect(sessionUri(result.current, book("1"))).toBe(
+        "file:///cache/1-existing.jpg",
+      ),
     )
     expect(ensureCoverThumbnailFileAsync).not.toHaveBeenCalled()
   })
@@ -294,6 +342,143 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledWith(
       expect.objectContaining({ bookId: "1" }),
     )
+  })
+
+  it("queues background thumbnails after visible-priority thumbnails", async () => {
+    jest.mocked(ensureCoverThumbnailFileAsync).mockResolvedValue({
+      fileName: "generated.jpg",
+      fileSizeBytes: 123,
+      uri: "file:///cache/generated.jpg",
+    })
+
+    renderHook(
+      () =>
+        useCoverThumbnails({
+          enabled: true,
+          backgroundGenerationBookIds: new Set(["1", "2"]),
+          generationBookIds: new Set(["1"]),
+          library,
+          books: [book("1"), book("2")],
+          width: 100,
+          height: 150,
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ bookId: "1" }),
+    )
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ bookId: "2" }),
+    )
+  })
+
+  it("defers publishing generated thumbnails while thumbnail work is paused", async () => {
+    const firstThumbnail = deferred<{
+      fileName: string
+      fileSizeBytes: number
+      uri: string
+    }>()
+
+    jest
+      .mocked(ensureCoverThumbnailFileAsync)
+      .mockReturnValue(firstThumbnail.promise)
+    const books = [book("1")]
+
+    const { rerender, result } = renderHook(
+      ({ paused }: { paused: boolean }) =>
+        useCoverThumbnails({
+          enabled: true,
+          generationBookIds: new Set(["1"]),
+          paused,
+          library,
+          books,
+          width: 100,
+          height: 150,
+        }),
+      { initialProps: { paused: false }, wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1),
+    )
+
+    act(() => {
+      rerender({ paused: true })
+    })
+
+    await act(async () => {
+      firstThumbnail.resolve({
+        fileName: "1-first.jpg",
+        fileSizeBytes: 123,
+        uri: "file:///cache/1.jpg",
+      })
+      await firstThumbnail.promise
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    })
+    expect(sessionUri(result.current, books[0]!)).toBeUndefined()
+
+    act(() => {
+      rerender({ paused: false })
+    })
+    await waitFor(() =>
+      expect(sessionUri(result.current, books[0]!)).toBe("file:///cache/1.jpg"),
+    )
+  })
+
+  it("does not enqueue duplicate generation when the hook rerenders", async () => {
+    const firstThumbnail = deferred<{
+      fileName: string
+      fileSizeBytes: number
+      uri: string
+    }>()
+
+    jest
+      .mocked(ensureCoverThumbnailFileAsync)
+      .mockReturnValue(firstThumbnail.promise)
+    const books = [book("1")]
+
+    const { rerender } = renderHook(
+      ({ width }: { width: number }) =>
+        useCoverThumbnails({
+          enabled: true,
+          generationBookIds: new Set(["1"]),
+          library,
+          books,
+          width,
+          height: 150,
+        }),
+      { initialProps: { width: 100 }, wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1),
+    )
+
+    act(() => {
+      rerender({ width: 100 })
+    })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      firstThumbnail.resolve({
+        fileName: "1-first.jpg",
+        fileSizeBytes: 123,
+        uri: "file:///cache/1.jpg",
+      })
+      await firstThumbnail.promise
+    })
   })
 
   it("removes a manifest row when the cached file is gone", async () => {
@@ -385,7 +570,9 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1.jpg"),
+      expect(sessionUri(result.current, firstVisibleBooks[0]!)).toBe(
+        "file:///cache/1.jpg",
+      ),
     )
 
     act(() => {
@@ -395,13 +582,17 @@ describe("resolveCoverThumbnailPixelSize", () => {
       expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2),
     )
 
-    expect(result.current.get("1")).toBe("file:///cache/1.jpg")
+    expect(sessionUri(result.current, firstVisibleBooks[0]!)).toBe(
+      "file:///cache/1.jpg",
+    )
 
     act(() => {
       rerender({ books: firstVisibleBooks })
     })
 
-    expect(result.current.get("1")).toBe("file:///cache/1.jpg")
+    expect(sessionUri(result.current, firstVisibleBooks[0]!)).toBe(
+      "file:///cache/1.jpg",
+    )
     expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2)
   })
 
@@ -425,14 +616,14 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1.jpg"),
+      expect(sessionUri(result.current, book("1"))).toBe("file:///cache/1.jpg"),
     )
 
     act(() => {
       rerender({ enabled: false })
     })
 
-    expect(result.current.get("1")).toBe("file:///cache/1.jpg")
+    expect(sessionUri(result.current, book("1"))).toBe("file:///cache/1.jpg")
   })
 
   it("does not reuse a ready thumbnail after the target size changes", async () => {
@@ -473,13 +664,13 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
 
     await waitFor(() =>
-      expect(result.current.get("1")).toBe("file:///cache/1.jpg"),
+      expect(sessionUri(result.current, books[0]!)).toBe("file:///cache/1.jpg"),
     )
 
     act(() => {
       rerender({ width: 120 })
     })
 
-    expect(result.current.has("1")).toBe(false)
+    expect(sessionUri(result.current, books[0]!)).toBeUndefined()
   })
 })

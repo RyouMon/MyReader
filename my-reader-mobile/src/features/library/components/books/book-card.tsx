@@ -10,11 +10,9 @@ import {
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  TouchableHighlight,
   View,
   type GestureResponderEvent,
   type TextStyle,
@@ -58,6 +56,7 @@ export type BookCardProps = {
   width: number
   displayCoverUri?: BookCoverUri
   deferCoverUntilDisplayUri?: boolean
+  thumbnailScopeKey?: string
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -108,6 +107,7 @@ function BookCardImpl({
   width,
   displayCoverUri,
   deferCoverUntilDisplayUri,
+  thumbnailScopeKey,
   onPress,
   onMore,
   menuActions,
@@ -134,8 +134,6 @@ function BookCardImpl({
   const coverRef = useRef<View>(null)
   const cardRootStyle: ViewStyle = { width }
   const titleTextStyle: TextStyle = { color: chrome.textColor }
-  const actionButtonStyle =
-    Platform.OS === "ios" ? styles.actionButtonIos : styles.actionButton
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
@@ -230,7 +228,7 @@ function BookCardImpl({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={moreActionsLabel}
-      style={actionButtonStyle}
+      style={styles.actionButton}
       onPress={handleMorePress}
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={chrome.textMutedColor} />
@@ -241,7 +239,7 @@ function BookCardImpl({
     <View
       accessibilityRole="button"
       accessibilityLabel={moreActionsLabel}
-      style={actionButtonStyle}
+      style={styles.actionButton}
     >
       <MoreActionsIcon size={ICON_SIZE.base} color={chrome.textMutedColor} />
     </View>
@@ -256,30 +254,31 @@ function BookCardImpl({
       children
     )
 
+  // Grid scrolling spends visible time in CoreAnimation/UIKit work; keep
+  // decorative shadows for non-list cover surfaces instead.
   const coverSegment = (
-    <View>
-      <TouchableHighlight
-        accessibilityRole={onPress ? "button" : undefined}
-        accessibilityLabel={openBookLabel}
-        onPress={handlePress}
-        activeOpacity={0.78}
-        underlayColor={chrome.surfaceColor}
-        style={styles.coverPressable}
-      >
-        <View ref={coverRef} collapsable={false}>
-          <BookCoverBase
-            book={book}
-            width={width}
-            height={coverHeight}
-            borderRadius={10}
-            displayCoverUri={displayCoverUri}
-            deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
-            backgroundColor={chrome.coverBackgroundColor}
-            shadowColor={chrome.coverShadowColor}
-          />
-        </View>
-      </TouchableHighlight>
-    </View>
+    <Pressable
+      ref={coverRef}
+      collapsable={false}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={openBookLabel}
+      onPress={handlePress}
+      style={styles.coverPressable}
+    >
+      <BookCoverBase
+        book={book}
+        width={width}
+        height={coverHeight}
+        borderRadius={10}
+        displayCoverUri={displayCoverUri}
+        deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+        shadowEnabled={false}
+        thumbnailScopeKey={thumbnailScopeKey}
+        backgroundColor={chrome.coverBackgroundColor}
+        shadowColor={chrome.coverShadowColor}
+        skeletonColor={chrome.surfaceColor}
+      />
+    </Pressable>
   )
 
   const titleSegment = (
@@ -330,7 +329,7 @@ function BookCardImpl({
                 : "share-disabled"
             }
             actions={computedMenuActions}
-            isAnchoredToRight={Platform.OS === "android"}
+            isAnchoredToRight
             onOpenMenu={handleMenuOpenLocal}
             onCloseMenu={onMenuClose}
             onPressAction={handleMenuPressAction}
@@ -368,20 +367,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 32,
   },
-  actionButtonIos: {
-    alignItems: "center",
-    height: 32,
-    justifyContent: "center",
-    marginLeft: -2,
-    width: 32,
-  },
   actionsRow: {
     alignItems: "center",
     flexDirection: "row",
   },
   coverPressable: {
     borderRadius: 10,
-    overflow: "hidden",
   },
   metaRow: {
     alignItems: "center",

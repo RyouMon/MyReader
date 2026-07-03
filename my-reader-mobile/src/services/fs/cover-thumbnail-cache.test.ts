@@ -91,7 +91,20 @@ jest.mock("expo-file-system", () => {
   }
 })
 
+jest.mock("react-native", () => {
+  return {
+    Image: {
+      getSize: jest.fn(),
+    },
+    Platform: {
+      OS: "ios",
+      select: jest.fn((values: Record<string, unknown>) => values.ios),
+    },
+  }
+})
+
 import { ImageManipulator } from "expo-image-manipulator"
+import { Image as ReactNativeImage } from "react-native"
 
 import {
   ensureCoverThumbnailAsync,
@@ -100,6 +113,10 @@ import {
 } from "./cover-thumbnail-cache"
 
 const { __mockFileSystem } = jest.requireMock("expo-file-system")
+const mockGetImageSize =
+  ReactNativeImage.getSize as unknown as jest.MockedFunction<
+    (uri: string) => Promise<{ height: number; width: number }>
+  >
 
 describe("cover thumbnail cache", () => {
   beforeEach(() => {
@@ -108,6 +125,10 @@ describe("cover thumbnail cache", () => {
     __mockFileSystem.downloadedFiles.length = 0
     __mockFileSystem.movedFiles.length = 0
     __mockFileSystem.existingFiles.clear()
+    mockGetImageSize.mockResolvedValue({
+      height: 900,
+      width: 600,
+    })
   })
 
   it("places thumbnail files under Expo's cache directory", () => {
@@ -149,6 +170,112 @@ describe("cover thumbnail cache", () => {
   })
 
   it("downloads remote covers with headers before thumbnail generation", async () => {
+    const saveAsync = jest.fn(async () => ({
+      uri: "file:///manipulator/result.jpg",
+      width: 300,
+      height: 429,
+    }))
+    const resultRef = {
+      release: jest.fn(),
+      saveAsync,
+    }
+    const renderAsync = jest.fn().mockResolvedValue(resultRef)
+    const resize = jest.fn().mockReturnThis()
+    const crop = jest.fn().mockReturnThis()
+    const releaseContext = jest.fn()
+    jest.mocked(ImageManipulator.manipulate).mockReturnValueOnce({
+      renderAsync,
+      resize,
+      crop,
+      release: releaseContext,
+    } as never)
+
+    const uri = await ensureCoverThumbnailAsync({
+      libraryId: "lib",
+      bookId: "book",
+      source: {
+        uri: "https://example.com/cover.jpg",
+        headers: { Authorization: "Bearer token" },
+      },
+      coverIdentity: "cover-v1",
+      widthPx: 300,
+      heightPx: 429,
+    })
+
+    expect(__mockFileSystem.downloadedFiles[0]).toMatchObject({
+      url: "https://example.com/cover.jpg",
+      options: {
+        headers: { Authorization: "Bearer token" },
+        idempotent: true,
+      },
+    })
+    expect(mockGetImageSize).toHaveBeenCalledTimes(1)
+    expect(ImageManipulator.manipulate).toHaveBeenCalledTimes(1)
+    const preparedSource = jest.mocked(ImageManipulator.manipulate).mock
+      .calls[0]?.[0]
+    expect(preparedSource).toContain(
+      "file:///expo-cache/myreader-cover-thumbnails/tmp/",
+    )
+    expect(renderAsync).toHaveBeenCalledTimes(1)
+    expect(saveAsync).toHaveBeenCalledWith({
+      compress: 0.82,
+      format: "jpeg",
+    })
+    expect(resultRef.release).toHaveBeenCalled()
+    expect(releaseContext).toHaveBeenCalled()
+    expect(resize).toHaveBeenCalledWith({ width: 300 })
+    expect(crop).toHaveBeenCalledWith({
+      height: 429,
+      originX: 0,
+      originY: 10,
+      width: 300,
+    })
+    expect(__mockFileSystem.movedFiles[0]).toMatchObject({
+      from: "file:///manipulator/result.jpg",
+      options: { overwrite: true },
+    })
+    expect(uri).toContain(
+      "file:///expo-cache/myreader-cover-thumbnails/v1/lib/300x429/book-",
+    )
+  })
+
+  it("omits headers when remote cover generation has no headers", async () => {
+    const saveAsync = jest.fn(async () => ({
+      uri: "file:///manipulator/result.jpg",
+      width: 300,
+      height: 429,
+    }))
+    const resultRef = {
+      release: jest.fn(),
+      saveAsync,
+    }
+    jest.mocked(ImageManipulator.manipulate).mockReturnValueOnce({
+      crop: jest.fn().mockReturnThis(),
+      release: jest.fn(),
+      renderAsync: jest.fn().mockResolvedValue(resultRef),
+      resize: jest.fn().mockReturnThis(),
+    } as never)
+
+    await ensureCoverThumbnailAsync({
+      libraryId: "lib",
+      bookId: "book",
+      source: "https://example.com/cover.jpg",
+      coverIdentity: "cover-v1",
+      widthPx: 300,
+      heightPx: 429,
+    })
+
+    expect(__mockFileSystem.downloadedFiles[0]).toMatchObject({
+      url: "https://example.com/cover.jpg",
+      options: { idempotent: true },
+    })
+    expect(__mockFileSystem.downloadedFiles[0]?.options).not.toHaveProperty(
+      "headers",
+    )
+  })
+
+  it("falls back to ImageManipulator metadata when image size lookup fails", async () => {
+    mockGetImageSize.mockRejectedValueOnce(new Error("size unavailable"))
     const sourceRef = {
       height: 900,
       release: jest.fn(),
@@ -181,57 +308,21 @@ describe("cover thumbnail cache", () => {
         release: releaseContext,
       } as never)
 
-    const uri = await ensureCoverThumbnailAsync({
+    await ensureCoverThumbnailAsync({
       libraryId: "lib",
       bookId: "book",
-      source: {
-        uri: "https://example.com/cover.jpg",
-        headers: { Authorization: "Bearer token" },
-      },
+      source: "file:///covers/original.jpg",
       coverIdentity: "cover-v1",
       widthPx: 300,
       heightPx: 429,
     })
 
-    expect(__mockFileSystem.downloadedFiles[0]).toMatchObject({
-      url: "https://example.com/cover.jpg",
-      options: {
-        headers: { Authorization: "Bearer token" },
-        idempotent: true,
-      },
-    })
     expect(ImageManipulator.manipulate).toHaveBeenCalledTimes(2)
-    const preparedSource = jest.mocked(ImageManipulator.manipulate).mock
-      .calls[0]?.[0]
-    expect(preparedSource).toContain(
-      "file:///expo-cache/myreader-cover-thumbnails/tmp/",
-    )
-    expect(jest.mocked(ImageManipulator.manipulate).mock.calls[1]?.[0]).toBe(
-      preparedSource,
-    )
     expect(metadataContext.renderAsync).toHaveBeenCalledTimes(1)
-    expect(renderAsync).toHaveBeenCalledTimes(1)
-    expect(saveAsync).toHaveBeenCalledWith({
-      compress: 0.82,
-      format: "jpeg",
-    })
     expect(sourceRef.release).toHaveBeenCalled()
-    expect(resultRef.release).toHaveBeenCalled()
     expect(metadataContext.release).toHaveBeenCalled()
+    expect(renderAsync).toHaveBeenCalledTimes(1)
+    expect(resultRef.release).toHaveBeenCalled()
     expect(releaseContext).toHaveBeenCalled()
-    expect(resize).toHaveBeenCalledWith({ width: 300 })
-    expect(crop).toHaveBeenCalledWith({
-      height: 429,
-      originX: 0,
-      originY: 10,
-      width: 300,
-    })
-    expect(__mockFileSystem.movedFiles[0]).toMatchObject({
-      from: "file:///manipulator/result.jpg",
-      options: { overwrite: true },
-    })
-    expect(uri).toContain(
-      "file:///expo-cache/myreader-cover-thumbnails/v1/lib/300x429/book-",
-    )
   })
 })

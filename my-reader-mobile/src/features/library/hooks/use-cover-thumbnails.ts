@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { PixelRatio } from "react-native"
 
 import { useQuery } from "@tanstack/react-query"
 
-import type { BookCoverUri, BookItem, Library } from "@/src/domain/types"
+import {
+  COVER_THUMBNAIL_GENERATED_FLUSH_DELAY_MS,
+  COVER_THUMBNAIL_MAX_EDGE_PX,
+} from "@/src/config/library-list-performance"
+import type { BookItem, Library } from "@/src/domain/types"
 import {
   deleteBookCoverThumbnailCache,
   listBookCoverThumbnailCache,
@@ -12,16 +16,23 @@ import {
 import { queryKeys } from "@/src/services/query/query-keys"
 import {
   COVER_THUMBNAIL_CACHE_VERSION,
-  ensureCoverThumbnailFileAsync,
   getCachedCoverThumbnailFile,
   getCachedCoverThumbnailFileByName,
   type CoverThumbnailCacheInput,
 } from "@/src/services/fs/cover-thumbnail-cache"
+import {
+  coverThumbnailGenerationQueue,
+  type CoverThumbnailGenerationRequest,
+  type CoverThumbnailGenerationResult,
+} from "../cover-thumbnail-generation-queue"
+import {
+  createCoverThumbnailCoverIdentity,
+  createCoverThumbnailInputIdentity,
+  getCoverThumbnailSessionEntries,
+  setCoverThumbnailSessionEntries,
+  type CoverThumbnailSessionEntry,
+} from "../cover-thumbnail-session-store"
 import type { BookCoverThumbnailCache } from "@my-reader/db/types"
-
-const MAX_THUMBNAIL_EDGE_PX = 768
-const THUMBNAIL_GENERATION_CONCURRENCY = 4
-const THUMBNAIL_IDLE_TIMEOUT_MS = 350
 
 export type CoverThumbnailSize = {
   widthPx: number
@@ -30,6 +41,7 @@ export type CoverThumbnailSize = {
 
 type UseCoverThumbnailsInput = {
   enabled: boolean
+  backgroundGenerationBookIds?: ReadonlySet<string>
   generationBookIds?: ReadonlySet<string>
   paused?: boolean
   library: Library | null
@@ -38,27 +50,11 @@ type UseCoverThumbnailsInput = {
   height: number
 }
 
-type ThumbnailEntry = {
-  identity: string
-  uri: string
-}
-
-type ThumbnailState = {
-  scopeKey: string
-  entries: Map<string, ThumbnailEntry>
-}
-
-type RequestIdleCallback = (
-  callback: () => void,
-  options?: { timeout?: number },
-) => number
-type CancelIdleCallback = (handle: number) => void
-
-const EMPTY_THUMBNAIL_ENTRIES = new Map<string, ThumbnailEntry>()
-const thumbnailSessionEntriesByScope = new Map<
-  string,
-  Map<string, ThumbnailEntry>
->()
+type PendingGeneratedThumbnail = Pick<
+  CoverThumbnailGenerationResult,
+  "bookId" | "identity" | "scopeKey"
+> &
+  Pick<CoverThumbnailSessionEntry, "uri">
 
 export function resolveCoverThumbnailPixelSize(
   width: number,
@@ -69,11 +65,11 @@ export function resolveCoverThumbnailPixelSize(
   const rawHeight = Math.max(1, Math.ceil(height * pixelRatio))
   const longest = Math.max(rawWidth, rawHeight)
 
-  if (longest <= MAX_THUMBNAIL_EDGE_PX) {
+  if (longest <= COVER_THUMBNAIL_MAX_EDGE_PX) {
     return { widthPx: rawWidth, heightPx: rawHeight }
   }
 
-  const scale = MAX_THUMBNAIL_EDGE_PX / longest
+  const scale = COVER_THUMBNAIL_MAX_EDGE_PX / longest
   return {
     widthPx: Math.max(1, Math.round(rawWidth * scale)),
     heightPx: Math.max(1, Math.round(rawHeight * scale)),
@@ -93,7 +89,7 @@ function createThumbnailInput(
     libraryId,
     bookId: book.id,
     source: book.coverUri,
-    coverIdentity: createCoverIdentity(book),
+    coverIdentity: createCoverThumbnailCoverIdentity(book),
     widthPx: size.widthPx,
     heightPx: size.heightPx,
   }
@@ -106,47 +102,14 @@ function createThumbnailScopeKey(
   return `${libraryId ?? ""}:${size.widthPx}x${size.heightPx}`
 }
 
-function sourceIdentity(source: CoverThumbnailCacheInput["source"]): string {
-  return typeof source === "string" ? source : source.uri
-}
-
-function createCoverIdentity(book: BookItem): string {
-  if (!book.coverUri) return ""
-  return [sourceIdentity(book.coverUri), book.timestamp ?? ""].join("|")
-}
-
-function createThumbnailIdentity(input: CoverThumbnailCacheInput) {
-  return [
-    input.libraryId,
+function createThumbnailIdentity(
+  scopeKey: string,
+  input: CoverThumbnailCacheInput,
+) {
+  return createCoverThumbnailInputIdentity(
+    scopeKey,
     input.bookId,
     input.coverIdentity,
-    input.widthPx,
-    input.heightPx,
-    COVER_THUMBNAIL_CACHE_VERSION,
-  ].join("|")
-}
-
-function applyGeneratedThumbnail(
-  current: ThumbnailState,
-  scopeKey: string,
-  bookId: string,
-  identity: string,
-  uri: string,
-) {
-  const entries =
-    current.scopeKey === scopeKey ? current.entries : EMPTY_THUMBNAIL_ENTRIES
-  const entry = entries.get(bookId)
-  if (entry?.identity === identity && entry.uri === uri) return current
-
-  const next = new Map(entries)
-  next.set(bookId, { identity, uri })
-  thumbnailSessionEntriesByScope.set(scopeKey, next)
-  return { scopeKey, entries: next }
-}
-
-function getSessionEntries(scopeKey: string): Map<string, ThumbnailEntry> {
-  return new Map(
-    thumbnailSessionEntriesByScope.get(scopeKey) ?? EMPTY_THUMBNAIL_ENTRIES,
   )
 }
 
@@ -165,24 +128,8 @@ function numericBookId(bookId: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null
 }
 
-function requestThumbnailIdleCallback(callback: () => void): () => void {
-  const idleApi = globalThis as typeof globalThis & {
-    cancelIdleCallback?: CancelIdleCallback
-    requestIdleCallback?: RequestIdleCallback
-  }
-
-  if (typeof idleApi.requestIdleCallback === "function") {
-    const handle = idleApi.requestIdleCallback(callback, {
-      timeout: THUMBNAIL_IDLE_TIMEOUT_MS,
-    })
-    return () => idleApi.cancelIdleCallback?.(handle)
-  }
-
-  const timeout = setTimeout(callback, 0)
-  return () => clearTimeout(timeout)
-}
-
 export function useCoverThumbnails({
+  backgroundGenerationBookIds,
   enabled,
   generationBookIds,
   paused = false,
@@ -190,7 +137,7 @@ export function useCoverThumbnails({
   books,
   width,
   height,
-}: UseCoverThumbnailsInput): ReadonlyMap<string, BookCoverUri> {
+}: UseCoverThumbnailsInput): string {
   const size = useMemo(
     () => resolveCoverThumbnailPixelSize(width, height),
     [height, width],
@@ -222,30 +169,132 @@ export function useCoverThumbnails({
     [manifestQuery.data],
   )
   const manifestReady = manifestQuery.status !== "pending"
-  const [thumbnailState, setThumbnailState] = useState<ThumbnailState>(() => ({
-    entries: getSessionEntries(scopeKey),
-    scopeKey,
-  }))
-  const activeThumbnailEntries =
-    thumbnailState.scopeKey === scopeKey
-      ? thumbnailState.entries
-      : EMPTY_THUMBNAIL_ENTRIES
-  const activeThumbnailEntriesRef = useRef(activeThumbnailEntries)
-  activeThumbnailEntriesRef.current = activeThumbnailEntries
-  const thumbnailUrisByBookId = useMemo(() => {
-    const next = new Map<string, BookCoverUri>()
-    for (const [bookId, entry] of activeThumbnailEntries) {
-      next.set(bookId, entry.uri)
+  const libraryRef = useRef(library)
+  const pausedRef = useRef(paused)
+  const pendingGeneratedThumbnailsRef = useRef(
+    new Map<string, PendingGeneratedThumbnail>(),
+  )
+  const flushGeneratedThumbnailsTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const scopeKeyRef = useRef(scopeKey)
+  libraryRef.current = library
+  pausedRef.current = !enabled || paused
+  scopeKeyRef.current = scopeKey
+
+  const flushGeneratedThumbnails = useCallback(() => {
+    if (flushGeneratedThumbnailsTimerRef.current) {
+      clearTimeout(flushGeneratedThumbnailsTimerRef.current)
+      flushGeneratedThumbnailsTimerRef.current = null
     }
-    return next
-  }, [activeThumbnailEntries])
+    if (pausedRef.current) {
+      return
+    }
+
+    const activeScopeKey = scopeKeyRef.current
+    const pending = pendingGeneratedThumbnailsRef.current
+    const ready = Array.from(pending.values()).filter(
+      (thumbnail) => thumbnail.scopeKey === activeScopeKey,
+    )
+    if (ready.length === 0) {
+      return
+    }
+
+    for (const thumbnail of ready) {
+      pending.delete(`${thumbnail.scopeKey}:${thumbnail.bookId}`)
+    }
+
+    setCoverThumbnailSessionEntries(
+      activeScopeKey,
+      ready.map((thumbnail) => ({
+        bookId: thumbnail.bookId,
+        identity: thumbnail.identity,
+        uri: thumbnail.uri,
+      })),
+    )
+  }, [])
+
+  const scheduleGeneratedThumbnailsFlush = useCallback(() => {
+    if (pausedRef.current || flushGeneratedThumbnailsTimerRef.current) {
+      return
+    }
+
+    // Thumbnail generation finishes on background/native work. Batch store
+    // notifications so cold-cache scrolling does not ask many visible covers to
+    // swap fallback/image in separate commits.
+    flushGeneratedThumbnailsTimerRef.current = setTimeout(
+      flushGeneratedThumbnails,
+      COVER_THUMBNAIL_GENERATED_FLUSH_DELAY_MS,
+    )
+  }, [flushGeneratedThumbnails])
 
   useEffect(() => {
-    setThumbnailState((current) => {
-      if (current.scopeKey === scopeKey) return current
-      return { scopeKey, entries: getSessionEntries(scopeKey) }
-    })
+    pendingGeneratedThumbnailsRef.current.clear()
+    if (flushGeneratedThumbnailsTimerRef.current) {
+      clearTimeout(flushGeneratedThumbnailsTimerRef.current)
+      flushGeneratedThumbnailsTimerRef.current = null
+    }
   }, [scopeKey])
+
+  useEffect(
+    () => () => {
+      if (flushGeneratedThumbnailsTimerRef.current) {
+        clearTimeout(flushGeneratedThumbnailsTimerRef.current)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (enabled && !paused) {
+      scheduleGeneratedThumbnailsFlush()
+    } else if (flushGeneratedThumbnailsTimerRef.current) {
+      clearTimeout(flushGeneratedThumbnailsTimerRef.current)
+      flushGeneratedThumbnailsTimerRef.current = null
+    }
+  }, [enabled, paused, scheduleGeneratedThumbnailsFlush])
+
+  useEffect(() => {
+    coverThumbnailGenerationQueue.setPaused(!enabled || paused)
+    return () => {
+      coverThumbnailGenerationQueue.setPaused(true)
+    }
+  }, [enabled, paused])
+
+  useEffect(
+    () =>
+      coverThumbnailGenerationQueue.subscribe((result) => {
+        if (result.scopeKey !== scopeKeyRef.current) {
+          return
+        }
+
+        pendingGeneratedThumbnailsRef.current.set(
+          `${result.scopeKey}:${result.bookId}`,
+          {
+            bookId: result.bookId,
+            identity: result.identity,
+            scopeKey: result.scopeKey,
+            uri: result.file.uri,
+          },
+        )
+        scheduleGeneratedThumbnailsFlush()
+
+        const activeLibrary = libraryRef.current
+        const bookId = numericBookId(result.bookId)
+        if (activeLibrary && bookId !== null) {
+          void upsertBookCoverThumbnailCache(activeLibrary, {
+            bookId,
+            coverIdentity: result.input.coverIdentity,
+            fileName: result.file.fileName,
+            fileSizeBytes: result.file.fileSizeBytes,
+            heightPx: result.input.heightPx,
+            thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
+            widthPx: result.input.widthPx,
+          })
+        }
+      }),
+    [scheduleGeneratedThumbnailsFlush],
+  )
 
   useEffect(() => {
     if (!enabled || !libraryId || !library) {
@@ -257,18 +306,10 @@ export function useCoverThumbnails({
       return
     }
 
-    let cancelled = false
-    const cancelIdleCallbacks: Array<() => void> = []
-    const visibleEntries: Array<{
-      bookId: string
-      entry?: ThumbnailEntry
-      expectedIdentity?: string
-    }> = []
-    const missing: Array<{
-      bookId: string
-      identity: string
-      input: CoverThumbnailCacheInput
-    }> = []
+    const activeThumbnailEntries = getCoverThumbnailSessionEntries(scopeKey)
+    const visibleEntries: CoverThumbnailSessionEntry[] = []
+    const priorityMissing: CoverThumbnailGenerationRequest[] = []
+    const backgroundMissing: CoverThumbnailGenerationRequest[] = []
     const staleManifestRows: Array<{
       bookId: number
       input: CoverThumbnailCacheInput
@@ -277,18 +318,12 @@ export function useCoverThumbnails({
     for (const book of books) {
       const input = createThumbnailInput(libraryId, book, size)
       if (!input) {
-        visibleEntries.push({ bookId: book.id })
         continue
       }
 
-      const identity = createThumbnailIdentity(input)
-      const sessionEntry = activeThumbnailEntriesRef.current.get(book.id)
+      const identity = createThumbnailIdentity(scopeKey, input)
+      const sessionEntry = activeThumbnailEntries.get(book.id)
       if (sessionEntry?.identity === identity) {
-        visibleEntries.push({
-          bookId: book.id,
-          entry: sessionEntry,
-          expectedIdentity: identity,
-        })
         continue
       }
 
@@ -304,8 +339,8 @@ export function useCoverThumbnails({
         if (manifestFile) {
           visibleEntries.push({
             bookId: book.id,
-            entry: { identity, uri: manifestFile.uri },
-            expectedIdentity: identity,
+            identity,
+            uri: manifestFile.uri,
           })
           continue
         }
@@ -320,8 +355,8 @@ export function useCoverThumbnails({
       if (cachedFile) {
         visibleEntries.push({
           bookId: book.id,
-          entry: { identity, uri: cachedFile.uri },
-          expectedIdentity: identity,
+          identity,
+          uri: cachedFile.uri,
         })
         const id = numericBookId(book.id)
         if (
@@ -339,18 +374,15 @@ export function useCoverThumbnails({
           })
         }
       } else {
-        visibleEntries.push({
-          bookId: book.id,
-          expectedIdentity: identity,
-        })
         // Scrolling only pauses expensive thumbnail generation. The fast path
         // above still publishes memory, manifest, and existing-file hits.
-        if (
-          manifestReady &&
-          !paused &&
-          (!generationBookIds || generationBookIds.has(book.id))
-        ) {
-          missing.push({ bookId: book.id, identity, input })
+        if (manifestReady && !paused) {
+          const request = { bookId: book.id, identity, input, scopeKey }
+          if (!generationBookIds || generationBookIds.has(book.id)) {
+            priorityMissing.push(request)
+          } else if (backgroundGenerationBookIds?.has(book.id)) {
+            backgroundMissing.push(request)
+          }
         }
       }
     }
@@ -364,120 +396,18 @@ export function useCoverThumbnails({
       })
     }
 
-    setThumbnailState((current) => {
-      const entries =
-        current.scopeKey === scopeKey
-          ? current.entries
-          : EMPTY_THUMBNAIL_ENTRIES
-      let changed = current.scopeKey !== scopeKey
-      const next = new Map(entries)
+    setCoverThumbnailSessionEntries(scopeKey, visibleEntries)
 
-      for (const { bookId, entry, expectedIdentity } of visibleEntries) {
-        const currentEntry = next.get(bookId)
-        if (!entry) {
-          if (currentEntry && currentEntry.identity !== expectedIdentity) {
-            next.delete(bookId)
-            changed = true
-          }
-          continue
-        }
-
-        if (
-          currentEntry?.identity !== entry.identity ||
-          currentEntry.uri !== entry.uri
-        ) {
-          next.set(bookId, entry)
-          changed = true
-        }
-      }
-
-      if (!changed) return current
-      thumbnailSessionEntriesByScope.set(scopeKey, next)
-      return { scopeKey, entries: next }
-    })
-
-    if (paused || missing.length === 0) {
+    if (paused) {
       return
     }
 
-    let nextIndex = 0
-    function waitForThumbnailIdle() {
-      return new Promise<void>((resolve) => {
-        let cancelIdleCallback: () => void
-        cancelIdleCallback = requestThumbnailIdleCallback(() => {
-          const index = cancelIdleCallbacks.indexOf(cancelIdleCallback)
-          if (index >= 0) {
-            cancelIdleCallbacks.splice(index, 1)
-          }
-          resolve()
-        })
-        cancelIdleCallbacks.push(cancelIdleCallback)
-      })
-    }
-
-    async function runWorker() {
-      while (!cancelled) {
-        const entry = missing[nextIndex]
-        nextIndex += 1
-
-        if (!entry) return
-
-        try {
-          await waitForThumbnailIdle()
-          if (cancelled) return
-
-          const file = await ensureCoverThumbnailFileAsync(entry.input)
-          if (cancelled) return
-
-          // Do not batch generated thumbnails: a visible cell should swap from
-          // fallback as soon as its derived file is ready. React still coalesces
-          // nearby async updates, while this avoids a whole row changing at once.
-          setThumbnailState((current) =>
-            applyGeneratedThumbnail(
-              current,
-              scopeKey,
-              entry.bookId,
-              entry.identity,
-              file.uri,
-            ),
-          )
-          const bookId = numericBookId(entry.bookId)
-          if (bookId !== null) {
-            void upsertBookCoverThumbnailCache(activeLibrary, {
-              bookId,
-              coverIdentity: entry.input.coverIdentity,
-              fileName: file.fileName,
-              fileSizeBytes: file.fileSizeBytes,
-              heightPx: entry.input.heightPx,
-              thumbnailVersion: COVER_THUMBNAIL_CACHE_VERSION,
-              widthPx: entry.input.widthPx,
-            })
-          }
-        } catch (error) {
-          if (__DEV__) {
-            console.warn("[cover-thumbnail-cache] failed to build thumbnail", {
-              bookId: entry.bookId,
-              error,
-            })
-          }
-        }
-      }
-    }
-
-    void Promise.all(
-      Array.from(
-        { length: Math.min(THUMBNAIL_GENERATION_CONCURRENCY, missing.length) },
-        () => runWorker(),
-      ),
-    )
-
-    return () => {
-      cancelled = true
-      for (const cancelIdleCallback of cancelIdleCallbacks) {
-        cancelIdleCallback()
-      }
-    }
+    coverThumbnailGenerationQueue.enqueue([
+      ...priorityMissing,
+      ...backgroundMissing,
+    ])
   }, [
+    backgroundGenerationBookIds,
     books,
     enabled,
     generationBookIds,
@@ -490,5 +420,5 @@ export function useCoverThumbnails({
     size,
   ])
 
-  return thumbnailUrisByBookId
+  return scopeKey
 }
