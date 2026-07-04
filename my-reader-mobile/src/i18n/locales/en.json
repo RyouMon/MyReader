@@ -236,6 +236,7 @@
     "navHorizontal": "Horizontal",
     "navVertical": "Vertical",
     "pageLabel": "Page {{page}}",
+    "positionLabel": "Loc.",
     "font": "Font",
     "moreActions": "More Actions",
     "closeReader": "Close Reader"

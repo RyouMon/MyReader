@@ -115,3 +115,40 @@ export function linksToTocItems(
   walk(links)
   return items
 }
+
+function tocItemPositionIndex(
+  item: ReaderTocItem,
+  positions: Locator[],
+): number | undefined {
+  const locator =
+    item.locator ??
+    (item.href ? findLocatorForLinkHref(positions, item.href) : undefined)
+  if (!locator) return undefined
+  return positionIndexForLocator(positions, locator)
+}
+
+export function chapterTitleForLocator(
+  tocItems: ReaderTocItem[],
+  positions: Locator[],
+  locator: Locator,
+): string | undefined {
+  if (tocItems.length === 0) return undefined
+
+  const currentIndex = positionIndexForLocator(positions, locator)
+  const closestBefore = tocItems
+    .map((item) => ({
+      item,
+      index: tocItemPositionIndex(item, positions),
+    }))
+    .filter(
+      (entry): entry is { item: ReaderTocItem; index: number } =>
+        entry.index != null && entry.index <= currentIndex,
+    )
+    .sort((a, b) => b.index - a.index)[0]
+
+  if (closestBefore?.item.label) return closestBefore.item.label
+
+  return tocItems.find(
+    (item) => item.href && hrefRoughlyMatches(locator.href, item.href),
+  )?.label
+}

@@ -14,7 +14,6 @@ import type {
   ReadiumFile,
   ReadiumViewRef,
 } from "@my-reader/readium"
-import { useTranslation } from "react-i18next"
 import i18n from "@/src/i18n"
 
 import type {
@@ -26,6 +25,13 @@ import type {
   ReadingProgression,
   Spread,
 } from "@/src/store/app-store.types"
+import {
+  chapterTitleForFixedLocator,
+  hasTocTitle,
+  linksToFixedTocItems,
+  positionIndexForLocator,
+  resolveNativeLocator,
+} from "./fixed-reader-navigation"
 
 const PROGRESS_PERCENT_MULTIPLIER = 100
 
@@ -44,14 +50,11 @@ export type ReadiumFixedReaderProps = {
   onToggleChrome?: () => void
   /** Page index from TOC sheet selection. */
   gotoPageCommand?: number
+  showChapterTitle?: boolean
   backgroundColor: string
   navigationMode: FixedNavigationMode
   readingProgression: ReadingProgression
   spread: Spread
-}
-
-function buildTocItemId(prefix: string, path: readonly number[]) {
-  return `${prefix}-${path.join(".")}`
 }
 
 function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
@@ -59,7 +62,7 @@ function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i]!
     items.push({
-      id: buildTocItemId("cbz", [i]),
+      id: `fixed-page-${i}`,
       label: p.title ?? i18n.t("reader.pageLabel", { page: i + 1 }),
       pageIndex: i,
       chapterIndex: i,
@@ -68,63 +71,6 @@ function positionsToTocItems(positions: Locator[]): ReaderTocItem[] {
     })
   }
   return items
-}
-
-function positionIndexForLocator(
-  positions: Locator[],
-  locator: Locator,
-): number {
-  if (positions.length === 0) return 0
-  const byHref = positions.findIndex((p) => p.href === locator.href)
-  if (byHref >= 0) return byHref
-  const position = locator.locations?.position
-  if (typeof position === "number" && position >= 1) {
-    return Math.max(0, Math.min(positions.length - 1, position - 1))
-  }
-  const prog =
-    locator.locations?.totalProgression ?? locator.locations?.progression
-  if (prog != null && Number.isFinite(prog)) {
-    return Math.max(
-      0,
-      Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))),
-    )
-  }
-  return 0
-}
-
-/**
- * Find a platform-native locator from positions list that matches a stored locator.
- * Uses position first, then href, then progression — ensuring the returned locator
- * has a href that matches the native publication format.
- */
-function resolveNativeLocator(
-  positions: Locator[],
-  stored: Locator,
-): Locator | undefined {
-  if (positions.length === 0) return undefined
-  // 1. Match by position (most reliable for cross-platform sync)
-  const position = stored.locations?.position
-  if (
-    typeof position === "number" &&
-    position >= 1 &&
-    position <= positions.length
-  ) {
-    return positions[position - 1]
-  }
-  // 2. Match by href (works for same-platform locators)
-  const byHref = positions.find((p) => p.href === stored.href)
-  if (byHref) return byHref
-  // 3. Match by progression
-  const prog =
-    stored.locations?.totalProgression ?? stored.locations?.progression
-  if (prog != null && Number.isFinite(prog)) {
-    const idx = Math.max(
-      0,
-      Math.min(positions.length - 1, Math.round(prog * (positions.length - 1))),
-    )
-    return positions[idx]
-  }
-  return undefined
 }
 
 const ReadiumFixedReader = forwardRef<
@@ -138,6 +84,7 @@ const ReadiumFixedReader = forwardRef<
     onTocReady,
     onToggleChrome,
     gotoPageCommand,
+    showChapterTitle = true,
     backgroundColor,
     navigationMode,
     readingProgression,
@@ -145,11 +92,12 @@ const ReadiumFixedReader = forwardRef<
   },
   ref,
 ) {
-  const { t } = useTranslation()
   const readiumRef = useRef<ReadiumViewRef>(null)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const positionsRef = useRef<Locator[]>([])
   const currentLocatorRef = useRef<Locator | null>(null)
+  const hasPublicationTocRef = useRef(false)
+  const chapterTitleRef = useRef("")
 
   useImperativeHandle(ref, () => ({
     goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -177,7 +125,14 @@ const ReadiumFixedReader = forwardRef<
   const handlePublicationReady = useCallback(
     (event: PublicationReadyEvent) => {
       positionsRef.current = event.positions
-      const tocItems = positionsToTocItems(event.positions)
+      hasPublicationTocRef.current = hasTocTitle(event.tableOfContents)
+      const tocItems = hasPublicationTocRef.current
+        ? linksToFixedTocItems(
+            event.tableOfContents,
+            event.positions,
+            (index) => i18n.t("reader.pageLabel", { page: index + 1 }),
+          )
+        : positionsToTocItems(event.positions)
       tocItemsRef.current = tocItems
       onTocReady(tocItems)
 
@@ -207,13 +162,24 @@ const ReadiumFixedReader = forwardRef<
         startLocator?.locations?.progression ??
         0
       const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
+      const chapterTitle =
+        showChapterTitle && hasPublicationTocRef.current && startLocator
+          ? (startLocator.title ??
+            chapterTitleForFixedLocator(
+              tocItems,
+              event.positions,
+              startLocator,
+            ) ??
+            chapterTitleRef.current)
+          : ""
+      chapterTitleRef.current = chapterTitle
 
       onStateChange({
         ready: true,
         currentPage,
         totalPages,
         progress,
-        chapterTitle: event.metadata.title,
+        chapterTitle,
         loading: false,
         error: null,
         locator: startLocator,
@@ -224,7 +190,7 @@ const ReadiumFixedReader = forwardRef<
         readiumRef.current?.goTo(startLocator)
       }
     },
-    [initialLocator, onTocReady, onStateChange],
+    [initialLocator, onTocReady, onStateChange, showChapterTitle],
   )
 
   const handleLocationChange = useCallback(
@@ -241,7 +207,16 @@ const ReadiumFixedReader = forwardRef<
 
       const currentPage = positionIndexForLocator(positions, locator)
       const chapterTitle =
-        locator.title ?? t("reader.pageLabel", { page: currentPage + 1 })
+        showChapterTitle && hasPublicationTocRef.current
+          ? (locator.title ??
+            chapterTitleForFixedLocator(
+              tocItemsRef.current,
+              positions,
+              locator,
+            ) ??
+            chapterTitleRef.current)
+          : ""
+      chapterTitleRef.current = chapterTitle
 
       onStateChange({
         ready: true,
@@ -254,7 +229,7 @@ const ReadiumFixedReader = forwardRef<
         locator,
       })
     },
-    [onStateChange],
+    [onStateChange, showChapterTitle],
   )
 
   useEffect(() => {

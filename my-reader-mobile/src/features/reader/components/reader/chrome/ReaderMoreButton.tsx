@@ -13,6 +13,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated"
+import {
+  READER_BOTTOM_ACTION_OFFSET,
+  READER_BOTTOM_ACTION_SIZE,
+} from "./readerChromeConstants"
 
 type Props = {
   visible: boolean
@@ -20,7 +24,6 @@ type Props = {
   onPress: () => void
 }
 
-const BTN_SIZE = 48
 const ICON_SIZE = 24
 
 export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
@@ -51,11 +54,11 @@ export default function ReaderMoreButton({ visible, palette, onPress }: Props) {
       style={[
         {
           position: "absolute",
-          bottom: 32,
+          bottom: READER_BOTTOM_ACTION_OFFSET,
           right: 32,
-          width: BTN_SIZE,
-          height: BTN_SIZE,
-          borderRadius: BTN_SIZE / 2,
+          width: READER_BOTTOM_ACTION_SIZE,
+          height: READER_BOTTOM_ACTION_SIZE,
+          borderRadius: READER_BOTTOM_ACTION_SIZE / 2,
           backgroundColor: palette.actionSurface,
           alignItems: "center",
           justifyContent: "center",

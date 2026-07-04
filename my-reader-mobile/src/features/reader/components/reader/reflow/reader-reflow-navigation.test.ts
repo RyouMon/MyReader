@@ -2,6 +2,7 @@ import type { Link, Locator } from "@my-reader/readium"
 
 import {
   buildTocItemId,
+  chapterTitleForLocator,
   findLocatorForLinkHref,
   hrefRoughlyMatches,
   linksToTocItems,
@@ -95,7 +96,7 @@ describe("reader reflow locator resolution", () => {
     ).toBe(0)
   })
 
-  it("should resolve native locator by href before stored position", () => {
+  it("should resolve native locator by href when stored position differs", () => {
     expect(
       resolveNativeLocator(
         positions,
@@ -174,5 +175,33 @@ describe("reader reflow toc", () => {
         locator: undefined,
       }),
     ])
+  })
+
+  it("should resolve chapter title from toc when locator has no title", () => {
+    const links: Link[] = [
+      { href: "chapter-1.xhtml", title: "Intro" } as Link,
+      { href: "chapter-2.xhtml", title: "Second Chapter" } as Link,
+    ]
+    const tocItems = linksToTocItems(links, positions)
+
+    expect(
+      chapterTitleForLocator(tocItems, positions, locator("chapter-2.xhtml")),
+    ).toBe("Second Chapter")
+  })
+
+  it("should keep the nearest previous toc title when locator href is unmatched", () => {
+    const links: Link[] = [
+      { href: "chapter-1.xhtml", title: "Intro" } as Link,
+      { href: "chapter-2.xhtml", title: "Second Chapter" } as Link,
+    ]
+    const tocItems = linksToTocItems(links, positions)
+
+    expect(
+      chapterTitleForLocator(
+        tocItems,
+        positions,
+        locator("unmatched.xhtml", { totalProgression: 0.9 }),
+      ),
+    ).toBe("Second Chapter")
   })
 })

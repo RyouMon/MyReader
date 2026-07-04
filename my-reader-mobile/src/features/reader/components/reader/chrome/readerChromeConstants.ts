@@ -7,6 +7,9 @@ export type ThemeOption = {
   label: string
 }
 
+export const READER_BOTTOM_ACTION_SIZE = 48
+export const READER_BOTTOM_ACTION_OFFSET = 32
+
 export const READER_THEME_OPTIONS: ThemeOption[] = [
   {
     key: "neutral",

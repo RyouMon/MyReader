@@ -26,11 +26,12 @@ import type {
   FontFamilyKey,
 } from "@/src/store/app-store.types"
 import {
+  chapterTitleForLocator,
   findLocatorForLinkHref,
+  hrefRoughlyMatches,
   linksToTocItems,
   positionIndexForLocator,
   resolveNativeLocator,
-  hrefRoughlyMatches,
 } from "./reader-reflow-navigation"
 import { buildPreferences } from "./reader-reflow-preferences"
 
@@ -85,6 +86,7 @@ const ReadiumReflowReader = forwardRef<
   const tocItemsRef = useRef<ReaderTocItem[]>([])
   const positionsRef = useRef<Locator[]>([])
   const currentLocatorRef = useRef<Locator | null>(null)
+  const chapterTitleRef = useRef("")
 
   useImperativeHandle(ref, () => ({
     goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -145,13 +147,19 @@ const ReadiumReflowReader = forwardRef<
         startLocator?.locations?.progression ??
         0
       const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
+      const chapterTitle =
+        (startLocator
+          ? chapterTitleForLocator(tocItems, event.positions, startLocator)
+          : undefined) ??
+        (chapterTitleRef.current || event.metadata.title)
+      chapterTitleRef.current = chapterTitle
 
       onStateChange({
         ready: true,
         currentPage,
         totalPages,
         progress,
-        chapterTitle: event.metadata.title,
+        chapterTitle,
         loading: false,
         error: null,
         locator: startLocator,
@@ -184,7 +192,12 @@ const ReadiumReflowReader = forwardRef<
       const matchedToc = tocItems.find(
         (item) => item.href && hrefRoughlyMatches(href, item.href),
       )
-      const chapterTitle = locator.title ?? matchedToc?.label ?? ""
+      const chapterTitle =
+        locator.title ??
+        chapterTitleForLocator(tocItems, positions, locator) ??
+        matchedToc?.label ??
+        chapterTitleRef.current
+      chapterTitleRef.current = chapterTitle
 
       onStateChange({
         ready: true,

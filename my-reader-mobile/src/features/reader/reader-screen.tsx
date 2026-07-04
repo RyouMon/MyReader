@@ -45,6 +45,7 @@ import {
   ReaderChapterLabel,
   ReaderCloseButton,
   ReaderMoreButton,
+  ReaderPositionLabel,
 } from "@/src/features/reader/components/reader/chrome"
 import {
   chromeReducer,
@@ -358,6 +359,16 @@ export default function ReaderScreen() {
   // CBZ renders through Readium's FXL EPUB navigator, whose paginator is
   // horizontal-only and ignores `scroll` — so 上下翻页 can't apply to CBZ.
   const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ"
+  const chromeActive = chromeState >= ChromeState.Chrome
+  const positionLabelVisible =
+    chromeActive &&
+    readerState?.totalPages != null &&
+    readerState.totalPages > 1
+  const chapterLabelTitle = readerState?.chapterTitle?.trim() || null
+  const showChapterLabel =
+    Boolean(chapterLabelTitle) &&
+    chromeActive &&
+    (isReflowSurface || isFixedSurface)
 
   return (
     <View style={styles.readerRouteFrame}>
@@ -453,10 +464,19 @@ export default function ReaderScreen() {
               />
             )}
 
-            {/* Visible in all states: chapter title (top-center) */}
-            <ReaderChapterLabel
-              insetsTop={insets.top}
-              title={readerState?.chapterTitle}
+            {showChapterLabel ? (
+              <ReaderChapterLabel
+                insetsTop={insets.top}
+                title={chapterLabelTitle}
+                palette={chromePalette}
+              />
+            ) : null}
+
+            <ReaderPositionLabel
+              visible={positionLabelVisible}
+              currentPage={readerState?.currentPage}
+              totalPages={readerState?.totalPages}
+              label={isReflowSurface ? t("reader.positionLabel") : undefined}
               palette={chromePalette}
             />
 

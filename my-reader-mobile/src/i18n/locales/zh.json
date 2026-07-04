@@ -236,6 +236,7 @@
     "navHorizontal": "左右翻页",
     "navVertical": "上下翻页",
     "pageLabel": "第 {{page}} 页",
+    "positionLabel": "位置",
     "font": "字体",
     "moreActions": "更多操作",
     "closeReader": "关闭阅读器"
