@@ -1,4 +1,5 @@
 import { EpubPreferences, TextAlignment } from "@readium/navigator"
+import { isReaderThemeKey } from "@my-reader/tools/reader-themes"
 import type { ReaderSettings, ReaderTheme } from "@/components/reader/types"
 import {
   epubPreferencesForReflowTheme,
@@ -19,21 +20,10 @@ export function readerFontSizePxToReadiumScale(px: number): number {
   )
 }
 
-const VALID_THEMES: readonly ReaderTheme[] = [
-  "neutral",
-  "sepia",
-  "night",
-  "paper",
-  "contrast1",
-  "contrast2",
-  "ocean",
-  "green",
-]
-
 export function readerThemeToReflowPreset(
   theme: ReaderTheme,
 ): ReflowThemePreset {
-  if (VALID_THEMES.includes(theme)) return theme as ReflowThemePreset
+  if (isReaderThemeKey(theme)) return theme
   return "paper"
 }
 

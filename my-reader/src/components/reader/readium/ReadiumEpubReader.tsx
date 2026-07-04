@@ -1,4 +1,5 @@
 import { EpubNavigator } from "@readium/navigator"
+import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
 import {
   Layout,
   type Links,
@@ -254,59 +255,36 @@ function EpubSettingsPanel({
                 {t("reader.theme")}
               </Label>
               <div className="grid grid-cols-2 gap-2">
-                {(
-                  [
-                    [
-                      "neutral",
-                      t("reader.themes.neutral"),
-                      "#fefefe",
-                      "#000000",
-                    ],
-                    ["paper", t("reader.themes.paper"), "#E9DDC8", "#000000"],
-                    ["sepia", t("reader.themes.sepia"), "#faf4e8", "#000000"],
-                    ["green", t("reader.themes.green"), "#C5E7CD", "#000000"],
-                    ["ocean", t("reader.themes.ocean"), "#181842", "#ffffff"],
-                    ["night", t("reader.themes.night"), "#121212", "#ffffff"],
-                    [
-                      "contrast1",
-                      t("reader.themes.contrast1"),
-                      "#000000",
-                      "#ffffff",
-                    ],
-                    [
-                      "contrast2",
-                      t("reader.themes.contrast2"),
-                      "#000000",
-                      "#FFFF00",
-                    ],
-                  ] as const
-                ).map(([value, label, bg, fg]) => (
+                {READER_THEME_PRESETS.map((theme) => (
                   <button
-                    key={value}
+                    key={theme.key}
                     type="button"
-                    onClick={() => onReflowThemeChange(value)}
+                    onClick={() => onReflowThemeChange(theme.key)}
                     className={cn(
                       "relative flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-start text-[12px] transition-all shadow-sm",
-                      reflowThemeActive === value
+                      reflowThemeActive === theme.key
                         ? "border-reader-chrome-active"
                         : "border-transparent hover:brightness-95",
                     )}
-                    style={{ backgroundColor: bg, color: fg }}
+                    style={{
+                      backgroundColor: theme.backgroundColor,
+                      color: theme.foregroundColor,
+                    }}
                   >
                     <span
                       className={cn(
                         "inline-block h-3.5 w-3.5 shrink-0 rounded-full border",
-                        reflowThemeActive === value
+                        reflowThemeActive === theme.key
                           ? "opacity-100"
                           : "opacity-0",
                       )}
                       style={{
-                        borderColor: fg,
-                        backgroundColor: fg,
-                        boxShadow: `inset 0 0 0 2px ${bg}`,
+                        borderColor: theme.foregroundColor,
+                        backgroundColor: theme.foregroundColor,
+                        boxShadow: `inset 0 0 0 2px ${theme.backgroundColor}`,
                       }}
                     />
-                    {label}
+                    {t(`reader.themes.${theme.labelKey}`)}
                   </button>
                 ))}
               </div>

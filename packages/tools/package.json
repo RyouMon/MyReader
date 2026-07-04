@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./reader-themes": "./src/reader-themes.ts",
     "./utils": "./src/utils/index.ts",
     "./types": "./src/types/index.ts",
     "./types/*": "./src/types/*.ts",

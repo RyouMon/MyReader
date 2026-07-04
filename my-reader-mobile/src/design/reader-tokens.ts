@@ -1,3 +1,8 @@
+import {
+  READER_THEME_PRESETS,
+  type ReaderThemeKey,
+} from "@my-reader/tools/reader-themes"
+
 /**
  * Reader-chrome semantic tokens for the mobile reading experience.
  * Mirrors the CSS variable system in my-reader/src/reader.css.
@@ -12,32 +17,16 @@
 export type ReaderThemeColors = {
   bg: string
   fg: string
-  link: string
-  muted: string
 }
 
-export const READER_THEMES = {
-  neutral: { bg: "#FFFFFF", fg: "#2C2420", muted: "#6B5E54", link: "#D97757" },
-  paper: { bg: "#F5EDDF", fg: "#5B4636", muted: "#8B7A6A", link: "#b5651d" },
-  sepia: { bg: "#F1E7D0", fg: "#5F4B37", muted: "#8F7D6F", link: "#D97757" },
-  green: { bg: "#CCE8CC", fg: "#2D4A2D", muted: "#5F7161", link: "#577A45" },
-  ocean: { bg: "#D0E0F0", fg: "#2D3E5F", muted: "#5F7080", link: "#4A6A8A" },
-  contrast1: {
-    bg: "#F5E6D3",
-    fg: "#1A1A1A",
-    muted: "#6B6B6B",
-    link: "#D97757",
-  },
-  night: { bg: "#2C2420", fg: "#D4CBC3", muted: "#9E9189", link: "#C4602A" },
-  contrast2: {
-    bg: "#000000",
-    fg: "#CCCCCC",
-    muted: "#888888",
-    link: "#C4602A",
-  },
-} as const satisfies Record<string, ReaderThemeColors>
+export const READER_THEMES = Object.fromEntries(
+  READER_THEME_PRESETS.map((theme) => [
+    theme.key,
+    { bg: theme.backgroundColor, fg: theme.foregroundColor },
+  ]),
+) as Record<ReaderThemeKey, ReaderThemeColors>
 
-export type ReaderThemeName = keyof typeof READER_THEMES
+export type ReaderThemeName = ReaderThemeKey
 
 const READER_CHROME_BORDER = {
   subtle: "rgba(255,255,255,0.05)",
@@ -90,16 +79,9 @@ export const READER_FIXED = {
   /** Page canvas background — near-black neutral. */
   canvasBg: "#111111",
   /** Theme-mapped backgrounds (for PDF/fixed with light content). */
-  themeBg: {
-    neutral: "#FFFFFF",
-    paper: "#F5EDDF",
-    sepia: "#F1E7D0",
-    green: "#CCE8CC",
-    ocean: "#D0E0F0",
-    contrast1: "#F5E6D3",
-    night: "#2C2420",
-    contrast2: "#000000",
-  } as const,
+  themeBg: Object.fromEntries(
+    READER_THEME_PRESETS.map((theme) => [theme.key, theme.backgroundColor]),
+  ) as Record<ReaderThemeKey, string>,
 } as const
 
 /**
