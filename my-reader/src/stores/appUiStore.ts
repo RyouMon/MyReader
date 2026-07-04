@@ -53,6 +53,7 @@ function schedulePersistReaderPreferences(get: () => AppUiState) {
       version: 5,
       appTheme: s.appThemeMode,
       libraryViewMode: s.libraryViewMode,
+      detailFullScreen: s.detailFullScreen,
       fixedLayout: s.fixedLayout,
       reflowable: s.reflowable,
       cache: s.cache,
@@ -75,11 +76,13 @@ export interface AppUiState {
   readerPreferencesHydrated: boolean
   appThemeMode: AppThemeMode
   libraryViewMode: LibraryViewMode
+  detailFullScreen: boolean
   fixedLayout: FixedLayoutSettings
   reflowable: ReflowablePreferencesSlice
   cache: CachePreferencesSlice
   setAppThemeMode: (mode: AppThemeMode) => void
   setLibraryViewMode: (mode: LibraryViewMode) => void
+  setDetailFullScreen: (fullScreen: boolean) => void
   patchFixedLayout: (
     patch:
       | Partial<FixedLayoutSettings>
@@ -98,6 +101,7 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   readerPreferencesHydrated: false,
   appThemeMode: "system",
   libraryViewMode: "grid",
+  detailFullScreen: false,
   fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS },
   reflowable: {
     settings: { ...DEFAULT_REFLOWABLE.settings },
@@ -113,6 +117,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   },
   setLibraryViewMode: (mode) => {
     set({ libraryViewMode: mode })
+    schedulePersistReaderPreferences(get)
+  },
+  setDetailFullScreen: (fullScreen) => {
+    set({ detailFullScreen: fullScreen })
     schedulePersistReaderPreferences(get)
   },
   patchFixedLayout: (patch) => {
@@ -164,6 +172,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
       libraryViewMode: isLibraryViewMode(data.libraryViewMode)
         ? data.libraryViewMode
         : "grid",
+      detailFullScreen:
+        typeof data.detailFullScreen === "boolean"
+          ? data.detailFullScreen
+          : false,
       fixedLayout: {
         ...DEFAULT_FIXED_LAYOUT_SETTINGS,
         ...data.fixedLayout,

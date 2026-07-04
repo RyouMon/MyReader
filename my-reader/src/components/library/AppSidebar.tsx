@@ -1,23 +1,3 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import {
-  BookCopy,
-  Check,
-  ChevronsUpDown,
-  Clock,
-  Library,
-  Monitor,
-  Moon,
-  Palette,
-  PlusCircle,
-  Settings,
-  Star,
-  Sun,
-  Tags,
-  User,
-} from "lucide-react"
-import { useTranslation } from "react-i18next"
-
-import AppSidebarToggle from "@/components/library/AppSidebarToggle"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
   DropdownMenu,
@@ -43,10 +23,28 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useFavoriteBookIds } from "@/hooks/queries/useFavoriteBooksQuery"
+import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { AppThemeMode } from "@/types/readerUiPreferences"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
+import {
+  BookCopy,
+  Check,
+  ChevronsUpDown,
+  Clock,
+  Library,
+  Monitor,
+  Moon,
+  Palette,
+  PlusCircle,
+  Settings,
+  Star,
+  Sun,
+  Tags,
+  User,
+} from "lucide-react"
+import { useTranslation } from "react-i18next"
 
 export type SidebarView = "all" | "recent" | "favorites"
 
@@ -72,10 +70,11 @@ export default function AppSidebar() {
   const location = useLocation()
 
   const isSettingsActive = location.pathname === "/settings"
-  const isLibraryActive = location.pathname === "/" && activeView === "all"
-  const isRecentActive = location.pathname === "/" && activeView === "recent"
-  const isFavoritesActive =
-    location.pathname === "/" && activeView === "favorites"
+  const isLibraryWorkspace =
+    location.pathname === "/" || location.pathname.startsWith("/book/")
+  const isLibraryActive = isLibraryWorkspace && activeView === "all"
+  const isRecentActive = isLibraryWorkspace && activeView === "recent"
+  const isFavoritesActive = isLibraryWorkspace && activeView === "favorites"
   const totalCount = activeLibrary?.bookCount ?? 0
   const libraryLabel = activeLibrary?.name ?? t("sidebar.noLibrary")
 
@@ -293,10 +292,6 @@ export default function AppSidebar() {
                 <span>{t("sidebar.settings")}</span>
               </Link>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem className="flex justify-end">
-            <AppSidebarToggle className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

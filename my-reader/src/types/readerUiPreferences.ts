@@ -12,6 +12,7 @@ export interface ReaderUiPreferencesPayload {
   version: number
   appTheme?: AppThemeMode
   libraryViewMode: LibraryViewMode
+  detailFullScreen?: boolean
   fixedLayout: FixedLayoutSettings
   reflowable: {
     settings: ReaderSettings

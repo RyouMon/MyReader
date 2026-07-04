@@ -16,6 +16,7 @@ interface BookCardProps {
   book: CalibreBook
   libraryId: string | null
   onRead?: (book: CalibreBook) => void
+  onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
@@ -29,6 +30,7 @@ const BookCard = memo(function BookCard({
   book,
   libraryId,
   onRead,
+  onOpenReader,
   progress,
   fileActionsEnabled = true,
   selectedFormat,
@@ -54,7 +56,9 @@ const BookCard = memo(function BookCard({
   return (
     // biome-ignore lint/a11y/useSemanticElements: The card contains nested action buttons, so the outer target cannot be a button.
     <div
-      className="group/card min-w-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group/card min-w-0 cursor-pointer rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+      )}
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
@@ -80,7 +84,7 @@ const BookCard = memo(function BookCard({
               className="size-9 rounded-full border border-primary/80 bg-primary text-primary-foreground shadow-[0_2px_10px_rgba(196,98,45,0.45)] hover:bg-primary/90"
               onClick={(event) => {
                 event.stopPropagation()
-                onRead?.(book)
+                ;(onOpenReader ?? onRead)?.(book)
               }}
             >
               <BookOpen className="size-4" />

@@ -10,6 +10,12 @@ import {
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { cn } from "@/lib/utils"
 import type { SettingsSection } from "@/types/settings"
 
@@ -39,55 +45,112 @@ export default function SettingsNav({
   onBack,
 }: SettingsNavProps) {
   const { t } = useTranslation()
+  const isCompact = useWindowSizeClass() !== "large"
+  const backLabel = t("common.back")
+  const backButton = onBack ? (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      onClick={onBack}
+      aria-label={backLabel}
+      className={cn(
+        "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        !isCompact && "-ms-1",
+      )}
+    >
+      <ArrowLeft className="size-4" />
+    </Button>
+  ) : null
+
   return (
-    <aside className="flex w-48 shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav">
-      <div className="shrink-0 border-b border-border px-3 py-2">
-        <div className="flex h-9 items-center gap-2">
-          {onBack && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={onBack}
-              title={t("common.back")}
-              aria-label={t("common.back")}
-              className="-ms-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
+    <aside
+      className={cn(
+        "flex shrink-0 flex-col overflow-hidden border-e border-border bg-settings-nav transition-[width] duration-200 ease-linear",
+        isCompact ? "w-12" : "w-64",
+      )}
+    >
+      <div
+        className={cn(
+          "shrink-0 border-b border-border py-2",
+          isCompact ? "px-2" : "px-3",
+        )}
+      >
+        <div
+          className={cn(
+            "flex h-9 items-center",
+            isCompact ? "justify-center" : "gap-2",
           )}
-          <h2 className="text-[15px] font-semibold text-foreground">
+        >
+          {backButton && isCompact ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{backButton}</TooltipTrigger>
+              <TooltipContent side="right" align="center">
+                {backLabel}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            backButton
+          )}
+          <h2
+            className={cn(
+              "text-[15px] font-semibold text-foreground",
+              isCompact && "sr-only",
+            )}
+          >
             {t("settings.title")}
           </h2>
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+      <nav
+        className={cn(
+          "flex flex-1 flex-col gap-0.5 overflow-y-auto p-2",
+          isCompact && "items-center px-1",
+        )}
+      >
         {NAV_ITEMS.map(({ key, tKey, Icon }) => {
           const isActive = activeSection === key
-          return (
+          const label = t(tKey)
+          const button = (
             <button
               type="button"
-              key={key}
               onClick={() => onSectionChange(key)}
+              aria-label={label}
               className={cn(
-                "relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[13.5px] transition-colors",
+                "flex items-center rounded-lg text-start text-[13.5px] transition-colors",
+                isCompact
+                  ? "size-9 justify-center p-0"
+                  : "w-full gap-2.5 px-2.5 py-2",
                 isActive
-                  ? "bg-accent font-medium text-accent-foreground"
+                  ? "bg-primary-soft font-medium text-primary"
                   : "text-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
-              {isActive && (
-                <span className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-s-sm" />
-              )}
               <Icon
                 className={cn(
                   "size-[15px] flex-shrink-0",
                   isActive ? "opacity-100" : "opacity-70",
                 )}
               />
-              <span>{t(tKey)}</span>
+              <span className={cn(isCompact && "sr-only")}>{label}</span>
             </button>
+          )
+          if (!isCompact) {
+            return (
+              <div key={key} className="w-full">
+                {button}
+              </div>
+            )
+          }
+
+          return (
+            <Tooltip key={key}>
+              <TooltipTrigger asChild>{button}</TooltipTrigger>
+              <TooltipContent side="right" align="center">
+                {label}
+              </TooltipContent>
+            </Tooltip>
           )
         })}
       </nav>

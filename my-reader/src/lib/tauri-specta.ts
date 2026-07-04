@@ -220,6 +220,7 @@ export type ReaderUiPreferences_Deserialize = {
 	version?: number,
 	appTheme?: string,
 	libraryViewMode?: string,
+	detailFullScreen?: boolean,
 	fixedLayout?: FixedLayoutSettingsDto,
 	cache?: CachePreferencesDto,
 } & {
@@ -232,6 +233,7 @@ export type ReaderUiPreferences_Serialize = {
 	version: number,
 	appTheme: string,
 	libraryViewMode: string,
+	detailFullScreen: boolean,
 	fixedLayout: FixedLayoutSettingsDto,
 	reflowable: ReflowableReaderPreferencesDto,
 	cache: CachePreferencesDto,

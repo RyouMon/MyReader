@@ -3,8 +3,10 @@ import { BookOpen } from "lucide-react"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
 import { getReadActionLabel } from "@/lib/readingProgress"
+import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 import { BookDownloadIndicator } from "./BookDownloadIndicator"
 import { BookMoreMenu } from "./BookMoreMenu"
@@ -14,6 +16,7 @@ interface BookRowProps {
   book: CalibreBook
   libraryId: string | null
   onRead?: (book: CalibreBook) => void
+  onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
@@ -27,6 +30,7 @@ const BookRow = memo(function BookRow({
   book,
   libraryId,
   onRead,
+  onOpenReader,
   progress,
   fileActionsEnabled = true,
   selectedFormat,
@@ -54,7 +58,9 @@ const BookRow = memo(function BookRow({
   return (
     // biome-ignore lint/a11y/useSemanticElements: The row contains nested action buttons, so the outer target cannot be a button.
     <div
-      className="group/row flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group/row flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
+      )}
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
@@ -97,18 +103,19 @@ const BookRow = memo(function BookRow({
           ) : null}
         </div>
         {hasProgress ? (
-          <div className="mt-1 h-0.5 w-12 overflow-hidden rounded-full bg-progress-track">
-            <div
-              className="h-full rounded-full bg-progress opacity-70"
-              style={{
-                width: `${Math.max(0, Math.min(100, progress.percent ?? 0))}%`,
-              }}
-            />
-          </div>
+          <Progress
+            value={Math.max(0, Math.min(100, progress.percent ?? 0))}
+            className="mt-1 h-0.5 w-12 bg-progress-track [&_[data-slot=progress-indicator]]:bg-progress [&_[data-slot=progress-indicator]]:opacity-70"
+          />
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-0.5 transition-opacity",
+          "opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100",
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -118,7 +125,7 @@ const BookRow = memo(function BookRow({
           className="size-7 text-primary hover:bg-accent hover:text-accent-foreground"
           onClick={(event) => {
             event.stopPropagation()
-            onRead?.(book)
+            ;(onOpenReader ?? onRead)?.(book)
           }}
         >
           <BookOpen className="size-4" />

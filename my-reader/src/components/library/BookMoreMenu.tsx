@@ -1,12 +1,4 @@
-import {
-  BookOpen,
-  Download,
-  Ellipsis,
-  EllipsisVertical,
-  Loader2,
-  Trash2,
-  X,
-} from "lucide-react"
+import { BookOpen, Download, Ellipsis, Loader2, Trash2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
@@ -66,7 +58,7 @@ export function BookMoreMenu({
         ...readableFormats.filter((format) => format !== activeFormat),
       ]
     : readableFormats
-  const TriggerIcon = triggerVariant === "detail" ? EllipsisVertical : Ellipsis
+  const TriggerIcon = Ellipsis
 
   return (
     <DropdownMenu>
@@ -430,7 +422,7 @@ function triggerClassName(variant: BookMoreMenuProps["triggerVariant"]) {
     )
   }
   return cn(
-    "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors",
-    "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+    "detail-icon-action inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--detail-hero-control-bg)] text-[var(--detail-hero-fg)] shadow-sm transition-colors",
+    "hover:bg-[var(--detail-hero-control-hover)] hover:text-[var(--detail-hero-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
   )
 }

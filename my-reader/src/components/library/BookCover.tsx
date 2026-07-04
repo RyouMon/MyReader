@@ -1,7 +1,8 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { memo, type ReactNode, useCallback, useState } from "react"
+import { Progress } from "@/components/ui/progress"
 import { buildCoverUrl } from "@/lib/cover"
-import { generateCoverGradient } from "@/lib/cover-gradient"
+import { getCoverGradientClass } from "@/lib/cover-gradient"
 import type { BookProgressSnapshot } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 
@@ -75,8 +76,7 @@ export const BookCover = memo(function BookCover({
     >
       {/* Base colored layer: always visible so the cover area never looks blank while an image is loading/decoding. */}
       <div
-        className="absolute inset-0"
-        style={{ background: generateCoverGradient(book.title) }}
+        className={cn("absolute inset-0", getCoverGradientClass(book.title))}
         aria-hidden="true"
       />
 
@@ -104,14 +104,7 @@ export const BookCover = memo(function BookCover({
             fallbackClassName,
           )}
         >
-          {/* Bottom scrim to match the design's ::before overlay. */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.15))",
-            }}
-          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-[var(--cover-scrim-rest)]" />
           <span
             className={cn(
               "relative z-10 line-clamp-3 text-base font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
@@ -140,12 +133,10 @@ export const BookCover = memo(function BookCover({
       ) : null}
 
       {showProgress && typeof progressPercent === "number" ? (
-        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-ink-inverse/20">
-          <div
-            className="h-full rounded-full bg-ink-inverse/75"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+        <Progress
+          value={progressPercent}
+          className="absolute inset-x-0 bottom-0 h-0.5 rounded-none bg-ink-inverse/20 [&_[data-slot=progress-indicator]]:bg-ink-inverse/75"
+        />
       ) : null}
     </div>
   )

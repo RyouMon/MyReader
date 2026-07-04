@@ -163,6 +163,8 @@ pub struct ReaderUiPreferences {
     #[serde(default = "default_library_view_mode")]
     pub library_view_mode: String,
     #[serde(default)]
+    pub detail_full_screen: bool,
+    #[serde(default)]
     pub fixed_layout: FixedLayoutSettingsDto,
     #[serde(default, alias = "reflow")]
     pub reflowable: ReflowableReaderPreferencesDto,
@@ -188,6 +190,7 @@ impl Default for ReaderUiPreferences {
             version: default_version(),
             app_theme: default_app_theme(),
             library_view_mode: default_library_view_mode(),
+            detail_full_screen: false,
             fixed_layout: FixedLayoutSettingsDto::default(),
             reflowable: ReflowableReaderPreferencesDto::default(),
             cache: CachePreferencesDto::default(),
@@ -218,5 +221,37 @@ impl Default for CachePreferencesDto {
             max_cache_size_mb: default_max_cache_size_mb(),
             auto_cleanup_on_launch: default_auto_cleanup_on_launch(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::ReaderUiPreferences;
+
+    #[test]
+    fn reader_ui_preferences_default_should_disable_detail_full_screen() {
+        let prefs = ReaderUiPreferences::default();
+
+        assert!(!prefs.detail_full_screen);
+    }
+
+    #[test]
+    fn reader_ui_preferences_should_round_trip_detail_full_screen() {
+        let prefs: ReaderUiPreferences = serde_json::from_value(json!({
+            "version": 5,
+            "appTheme": "system",
+            "libraryViewMode": "grid",
+            "detailFullScreen": true,
+            "fixedLayout": {},
+            "reflowable": {},
+            "cache": {},
+        }))
+        .expect("preferences should deserialize");
+
+        assert!(prefs.detail_full_screen);
+        let serialized = serde_json::to_value(&prefs).expect("preferences should serialize");
+        assert_eq!(serialized["detailFullScreen"], json!(true));
     }
 }

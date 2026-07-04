@@ -1,19 +1,26 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+const SIDEBAR_MOBILE_BREAKPOINT = 768
+const sidebarMobileQuery = `(max-width: ${SIDEBAR_MOBILE_BREAKPOINT - 1}px)`
+
+function subscribeSidebarMobile(callback: () => void) {
+  const mql = window.matchMedia(sidebarMobileQuery)
+  mql.addEventListener("change", callback)
+  return () => mql.removeEventListener("change", callback)
+}
+
+function getSidebarMobileSnapshot() {
+  return window.matchMedia(sidebarMobileQuery).matches
+}
+
+function getServerSidebarMobileSnapshot() {
+  return false
+}
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
-
-  return !!isMobile
+  return React.useSyncExternalStore(
+    subscribeSidebarMobile,
+    getSidebarMobileSnapshot,
+    getServerSidebarMobileSnapshot,
+  )
 }

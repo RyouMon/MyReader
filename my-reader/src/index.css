@@ -1,4 +1,5 @@
 @import "./design-tokens.css";
+@import "overlayscrollbars/styles/overlayscrollbars.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./reader.css";
@@ -154,6 +155,52 @@
   background: var(--ink-2);
 }
 
+.myreader-overlay-viewport {
+  scrollbar-width: none;
+}
+
+.myreader-overlay-viewport::-webkit-scrollbar,
+.myreader-overlay-viewport::-webkit-scrollbar-corner {
+  width: 0;
+  height: 0;
+  appearance: none;
+  display: none;
+}
+
+.os-theme-myreader {
+  box-sizing: border-box;
+  --os-size: 10px;
+  --os-padding-perpendicular: 2px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 999px;
+  --os-track-bg: transparent;
+  --os-track-bg-hover: transparent;
+  --os-track-bg-active: transparent;
+  --os-handle-border-radius: 999px;
+  --os-handle-bg: color-mix(in srgb, var(--foreground) 24%, transparent);
+  --os-handle-bg-hover: color-mix(in srgb, var(--foreground) 36%, transparent);
+  --os-handle-bg-active: color-mix(in srgb, var(--foreground) 46%, transparent);
+  --os-handle-min-size: 36px;
+  --os-handle-interactive-area-offset: 6px;
+}
+
+.toolbar-shell {
+  container-type: inline-size;
+}
+
+@container (max-width: 540px) {
+  .toolbar-sort-trigger {
+    width: 2rem;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .toolbar-sort-label,
+  .toolbar-sort-chevron {
+    display: none;
+  }
+}
+
 /* Book card entrance */
 @keyframes card-fade-in {
   to {
@@ -211,7 +258,372 @@
   }
 }
 .detail-cover-wrap {
-  animation: detail-cover-in 0.5s ease-out 0.1s both;
+  animation: detail-cover-in 0.24s ease-out 0.02s both;
+}
+
+[data-testid="book-detail-pane"] {
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-control-bg: color-mix(in srgb, var(--muted) 88%, transparent);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--muted) 76%,
+    var(--foreground) 10%
+  );
+}
+
+.detail-pane-narrow-hero {
+  --detail-hero-fg: var(--background);
+  --detail-hero-control-bg: color-mix(
+    in srgb,
+    var(--background) 14%,
+    transparent
+  );
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--background) 22%,
+    transparent
+  );
+}
+
+.dark .detail-pane-narrow-hero {
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-control-bg: color-mix(
+    in srgb,
+    var(--foreground) 12%,
+    transparent
+  );
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+}
+
+.detail-hero-shell {
+  position: relative;
+  isolation: isolate;
+  --detail-hero-scrim: var(--card);
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-body: color-mix(in srgb, var(--foreground) 86%, transparent);
+  --detail-hero-muted: var(--muted-foreground);
+  --detail-hero-subtle: color-mix(
+    in srgb,
+    var(--muted-foreground) 72%,
+    transparent
+  );
+  --detail-hero-border: var(--border);
+  --detail-hero-dot: var(--muted-foreground);
+  --detail-hero-chip-bg: color-mix(in srgb, var(--muted) 82%, transparent);
+  --detail-hero-control-bg: color-mix(in srgb, var(--muted) 88%, transparent);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--muted) 76%,
+    var(--foreground) 10%
+  );
+  --detail-hero-disabled: color-mix(
+    in srgb,
+    var(--muted-foreground) 56%,
+    transparent
+  );
+  --detail-progress-track: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+  background: transparent;
+}
+
+.detail-hero-responsive {
+  position: relative;
+  container-type: inline-size;
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--muted) 76%,
+    var(--foreground) 10%
+  );
+}
+
+.detail-hero-below-extra {
+  display: none;
+}
+
+.detail-hero-action-row .detail-icon-action {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.detail-mobile-hero {
+  display: none;
+  position: relative;
+  isolation: isolate;
+  --detail-mobile-bg: color-mix(in srgb, var(--foreground) 92%, var(--bg) 8%);
+  --detail-mobile-bridge: color-mix(
+    in srgb,
+    var(--detail-mobile-bg) 52%,
+    var(--card) 48%
+  );
+  --detail-hero-scrim: var(--detail-mobile-bg);
+  --detail-hero-fg: var(--background);
+  --detail-hero-body: color-mix(in srgb, var(--background) 88%, transparent);
+  --detail-hero-muted: color-mix(in srgb, var(--background) 68%, transparent);
+  --detail-hero-subtle: color-mix(in srgb, var(--background) 54%, transparent);
+  --detail-hero-border: color-mix(in srgb, var(--background) 24%, transparent);
+  --detail-hero-dot: color-mix(in srgb, var(--background) 48%, transparent);
+  --detail-hero-chip-bg: color-mix(in srgb, var(--background) 10%, transparent);
+  --detail-hero-control-bg: color-mix(
+    in srgb,
+    var(--background) 14%,
+    transparent
+  );
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--background) 22%,
+    transparent
+  );
+  --detail-hero-disabled: color-mix(
+    in srgb,
+    var(--background) 42%,
+    transparent
+  );
+  --detail-progress-track: color-mix(
+    in srgb,
+    var(--background) 22%,
+    transparent
+  );
+  background-color: transparent;
+  transition: background-color 340ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.detail-mobile-info-panel {
+  background: linear-gradient(
+    to bottom,
+    var(--detail-mobile-bridge),
+    color-mix(in srgb, var(--detail-mobile-bridge) 44%, transparent) 3rem,
+    transparent 8rem
+  );
+  --detail-hero-scrim: var(--card);
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-body: color-mix(in srgb, var(--foreground) 86%, transparent);
+  --detail-hero-muted: var(--muted-foreground);
+  --detail-hero-subtle: color-mix(
+    in srgb,
+    var(--muted-foreground) 72%,
+    transparent
+  );
+  --detail-hero-border: var(--border);
+  --detail-hero-dot: var(--muted-foreground);
+  --detail-hero-chip-bg: color-mix(in srgb, var(--muted) 82%, transparent);
+  --detail-hero-control-bg: color-mix(in srgb, var(--muted) 88%, transparent);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--muted) 76%,
+    var(--foreground) 10%
+  );
+  --detail-hero-disabled: color-mix(
+    in srgb,
+    var(--muted-foreground) 56%,
+    transparent
+  );
+  --detail-progress-track: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+}
+
+.detail-pane-cover-backdrop-active {
+  background-color: color-mix(in srgb, var(--foreground) 92%, var(--bg) 8%);
+}
+
+.dark .detail-pane-cover-backdrop-active {
+  background-color: var(--bg);
+}
+
+.detail-pane-cover-backdrop-active .detail-mobile-hero {
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-mobile-hero {
+    transition: none;
+  }
+}
+
+@container (max-width: 559px) {
+  .detail-hero-responsive > .detail-mobile-hero {
+    display: block;
+  }
+
+  .detail-hero-responsive > .detail-hero-shell {
+    display: none;
+  }
+}
+
+@container (max-width: 900px) {
+  .detail-hero-side-extra {
+    display: none;
+  }
+
+  .detail-hero-below-extra {
+    display: block;
+  }
+}
+
+@container (max-width: 760px) {
+  .detail-hero-main-grid {
+    grid-template-columns: minmax(120px, 32%) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .detail-hero-info-column {
+    gap: 0.75rem;
+  }
+
+  .detail-hero-title,
+  .detail-hero-series {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
+
+  .detail-hero-title {
+    -webkit-line-clamp: 2;
+    font-size: 1.25rem;
+    line-height: 1.14;
+  }
+
+  .detail-hero-series {
+    -webkit-line-clamp: 1;
+  }
+
+  .detail-hero-meta {
+    margin-top: 0.5rem;
+    gap: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .detail-hero-action-row {
+    gap: 0.25rem;
+  }
+
+  .detail-hero-action-row .detail-read-action {
+    min-width: max-content;
+    max-width: none;
+    padding-inline: 1rem;
+  }
+
+  .detail-hero-action-row .detail-icon-action {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+.detail-hero-responsive[data-narrow-hero="true"] > .detail-mobile-hero {
+  display: block;
+}
+
+.detail-hero-responsive[data-narrow-hero="true"] {
+  --detail-hero-fg: var(--background);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--background) 22%,
+    transparent
+  );
+}
+
+.detail-hero-responsive[data-narrow-hero="true"] > .detail-hero-shell {
+  display: none;
+}
+
+.detail-hero-responsive[data-wide-hero="true"] > .detail-mobile-hero {
+  display: none;
+}
+
+.detail-hero-responsive[data-wide-hero="true"] > .detail-hero-shell {
+  display: block;
+}
+
+.dark .detail-hero-responsive[data-narrow-hero="true"] {
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+}
+
+.dark .detail-mobile-hero {
+  --detail-mobile-bg: var(--bg);
+  --detail-mobile-bridge: color-mix(
+    in srgb,
+    var(--detail-mobile-bg) 54%,
+    var(--card) 46%
+  );
+  --detail-hero-fg: var(--foreground);
+  --detail-hero-body: color-mix(in srgb, var(--foreground) 86%, transparent);
+  --detail-hero-muted: color-mix(in srgb, var(--foreground) 66%, transparent);
+  --detail-hero-subtle: color-mix(in srgb, var(--foreground) 52%, transparent);
+  --detail-hero-border: color-mix(in srgb, var(--foreground) 22%, transparent);
+  --detail-hero-dot: color-mix(in srgb, var(--foreground) 45%, transparent);
+  --detail-hero-chip-bg: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --detail-hero-control-bg: color-mix(
+    in srgb,
+    var(--foreground) 12%,
+    transparent
+  );
+  --detail-hero-control-hover: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+  --detail-hero-disabled: color-mix(
+    in srgb,
+    var(--foreground) 42%,
+    transparent
+  );
+  --detail-progress-track: color-mix(
+    in srgb,
+    var(--foreground) 18%,
+    transparent
+  );
+}
+
+.detail-mobile-hero-art-scrim {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--detail-mobile-bg) 10%, transparent),
+    transparent 36%,
+    color-mix(in srgb, var(--detail-mobile-bg) 14%, transparent)
+  );
+}
+
+.detail-mobile-hero-art-fade {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--detail-mobile-bg) 12%, transparent) 20%,
+    color-mix(in srgb, var(--detail-mobile-bg) 44%, transparent) 52%,
+    color-mix(
+        in srgb,
+        var(--detail-mobile-bg) 74%,
+        var(--detail-mobile-bridge) 26%
+      )
+      78%,
+    var(--detail-mobile-bridge)
+  );
+}
+
+.detail-progress-ring-inner {
+  background: color-mix(in srgb, var(--detail-hero-scrim) 84%, var(--bg) 16%);
+}
+
+.detail-hero-synopsis-fade {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--detail-hero-scrim) 68%, transparent)
+  );
 }
 
 /* Book detail — staggered meta entrance */
@@ -226,28 +638,28 @@
   }
 }
 .detail-anim-1 {
-  animation: detail-meta-in 0.35s ease-out 0.15s both;
+  animation: detail-meta-in 0.2s ease-out 0.03s both;
 }
 .detail-anim-2 {
-  animation: detail-meta-in 0.35s ease-out 0.21s both;
+  animation: detail-meta-in 0.2s ease-out 0.05s both;
 }
 .detail-anim-3 {
-  animation: detail-meta-in 0.35s ease-out 0.27s both;
+  animation: detail-meta-in 0.2s ease-out 0.07s both;
 }
 .detail-anim-4 {
-  animation: detail-meta-in 0.3s ease-out 0.33s both;
+  animation: detail-meta-in 0.18s ease-out 0.09s both;
 }
 .detail-anim-5 {
-  animation: detail-meta-in 0.35s ease-out 0.36s both;
+  animation: detail-meta-in 0.2s ease-out 0.1s both;
 }
 .detail-anim-6 {
-  animation: detail-meta-in 0.3s ease-out 0.4s both;
+  animation: detail-meta-in 0.18s ease-out 0.12s both;
 }
 .detail-anim-7 {
-  animation: detail-meta-in 0.3s ease-out 0.44s both;
+  animation: detail-meta-in 0.18s ease-out 0.13s both;
 }
 .detail-anim-8 {
-  animation: detail-meta-in 0.3s ease-out 0.48s both;
+  animation: detail-meta-in 0.18s ease-out 0.14s both;
 }
 
 /* Book detail — tag entrance */

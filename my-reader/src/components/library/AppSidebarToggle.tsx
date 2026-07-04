@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
 interface AppSidebarToggleProps {
   className?: string
@@ -14,8 +15,10 @@ export default function AppSidebarToggle({
   testId = "sidebar-toggle-button",
 }: AppSidebarToggleProps) {
   const { t } = useTranslation()
-  const { state, isMobile, openMobile, toggleSidebar } = useSidebar()
-  const isOpen = isMobile ? openMobile : state !== "collapsed"
+  const { state, isMobile, openMobile, forceCollapsed, toggleSidebar } =
+    useSidebar()
+
+  const isOpen = forceCollapsed || isMobile ? openMobile : state !== "collapsed"
   const label = isOpen ? t("sidebar.collapse") : t("sidebar.expand")
   const Icon = isOpen ? PanelLeftClose : PanelLeftOpen
 
@@ -28,9 +31,9 @@ export default function AppSidebarToggle({
       onClick={toggleSidebar}
       title={label}
       aria-label={label}
-      className={className}
+      className={cn("text-muted-foreground", className)}
     >
-      <Icon className="size-4" />
+      <Icon />
     </Button>
   )
 }

@@ -1,5 +1,6 @@
 import {
   ArrowUpDown,
+  Check,
   ChevronDown,
   LayoutGrid,
   List,
@@ -9,14 +10,20 @@ import {
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import type { LibrarySortOption } from "@/types/libraryUi"
+import AppSidebarToggle from "./AppSidebarToggle"
 
-export type SortOption = "recent" | "title" | "author" | "progress"
-
-function useSortLabels(): Record<SortOption, string> {
+function useSortLabels(): Record<LibrarySortOption, string> {
   const { t } = useTranslation()
   return {
     recent: t("library.sort.recent"),
@@ -31,8 +38,8 @@ interface ToolbarProps {
   onSearchChange: (q: string) => void
   viewMode: "grid" | "list"
   onViewModeChange: (mode: "grid" | "list") => void
-  sortBy: SortOption
-  onSortChange: (sort: SortOption) => void
+  sortBy: LibrarySortOption
+  onSortChange: (sort: LibrarySortOption) => void
   onRefresh?: () => void
 }
 
@@ -48,14 +55,17 @@ export default function Toolbar({
   const { t } = useTranslation()
   const sortLabels = useSortLabels()
 
-  function cycleSortOption() {
-    const options: SortOption[] = ["recent", "title", "author", "progress"]
-    const next = options[(options.indexOf(sortBy) + 1) % options.length]
-    onSortChange(next)
-  }
+  const sortOptions: LibrarySortOption[] = [
+    "recent",
+    "title",
+    "author",
+    "progress",
+  ]
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
+    <header className="toolbar-shell flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
+      <AppSidebarToggle />
+
       {/* Search */}
       <div className="relative flex-1 max-w-sm">
         <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
@@ -95,16 +105,42 @@ export default function Toolbar({
         <Separator orientation="vertical" className="h-4 mx-1" />
 
         {/* Sort */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1"
-          onClick={cycleSortOption}
-        >
-          <ArrowUpDown className="size-3.5" />
-          <span className="text-xs">{sortLabels[sortBy]}</span>
-          <ChevronDown className="size-3 opacity-50" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            title={sortLabels[sortBy]}
+            aria-label={sortLabels[sortBy]}
+            className={cn(
+              buttonVariants({
+                variant: "ghost",
+                size: "sm",
+                className: "toolbar-sort-trigger h-8 gap-1 bg-card/60",
+              }),
+            )}
+          >
+            <ArrowUpDown className="size-3.5" />
+            <span className="toolbar-sort-label text-xs">
+              {sortLabels[sortBy]}
+            </span>
+            <ChevronDown className="toolbar-sort-chevron size-3 opacity-50" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-36">
+            {sortOptions.map((option) => (
+              <DropdownMenuItem
+                key={option}
+                onClick={() => onSortChange(option)}
+                className="gap-2"
+              >
+                <Check
+                  className={cn(
+                    "size-3.5",
+                    option === sortBy ? "opacity-100" : "opacity-0",
+                  )}
+                />
+                {sortLabels[option]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Filter */}
         <Button variant="ghost" size="icon-sm" title={t("library.filter")}>

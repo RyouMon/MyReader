@@ -1,6 +1,13 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
 import { pickReadableFormat } from "@/lib/readFormats"
 import {
   getBookProgressSnapshot,
@@ -9,14 +16,18 @@ import {
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
 
-const MIN_COL_WIDTH = 152
-const GAP = 24
+const COMFORTABLE_MIN_COL_WIDTH = 152
+const COMPACT_MIN_COL_WIDTH = 112
+const COMFORTABLE_GRID_GAP = 24
+const COMPACT_GRID_GAP = 12
+const MIN_GRID_COLUMNS = 2
 const SKELETON_COUNT = 20
 const LIST_ROW_HEIGHT = 62
 const TEXT_BLOCK_HEIGHT = 78 // mt-2 (8px) + h-[70px] text area
 const ROW_GAP = 24
+const ANCHOR_VISIBILITY_THRESHOLD = 48
 const DEFAULT_GRID_ROW_HEIGHT =
-  MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
+  COMFORTABLE_MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
 
 export type LibraryViewMode = "grid" | "list"
 
@@ -25,6 +36,7 @@ interface BookGridProps {
   total: number
   libraryId: string | null
   onRead?: (book: CalibreBook) => void
+  onOpenReader?: (book: CalibreBook) => void
   onMore?: (book: CalibreBook) => void
   ensureRange: (start: number, end: number) => void
   header?: ReactNode
@@ -32,6 +44,11 @@ interface BookGridProps {
   fileActionsEnabled?: boolean
   selectedFormatById?: Record<string, string>
   progressByBookId?: ReadingProgressByBook
+}
+
+interface ScrollAnchor {
+  bookIndex: number
+  offsetWithinRow: number
 }
 
 /**
@@ -42,6 +59,7 @@ export default function BookGrid({
   total,
   libraryId,
   onRead,
+  onOpenReader,
   onMore,
   ensureRange,
   header,
@@ -50,12 +68,21 @@ export default function BookGrid({
   selectedFormatById = {},
   progressByBookId,
 }: BookGridProps) {
+  const scrollHostRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollContentRef = useRef<HTMLDivElement>(null)
+  const virtualListRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<number | null>(null)
+  const restoreFrameRef = useRef<number | null>(null)
+  const scrollAnchorRef = useRef<ScrollAnchor | null>(null)
+  const layoutSignatureRef = useRef<string | null>(null)
   const [layout, setLayout] = useState({
     cols: 4,
+    gap: COMFORTABLE_GRID_GAP,
     gridRowHeight: DEFAULT_GRID_ROW_HEIGHT,
   })
+
+  useOverlayScrollbar(scrollHostRef, scrollRef)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -63,26 +90,26 @@ export default function BookGrid({
 
     const updateLayout = () => {
       frameRef.current = null
-      const style = window.getComputedStyle(el)
+      const layoutEl = scrollContentRef.current ?? el
+      const style = window.getComputedStyle(layoutEl)
       const paddingX =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-      const contentWidth = Math.max(0, el.clientWidth - paddingX)
-      const newCols = Math.max(
-        1,
-        Math.floor((contentWidth + GAP) / (MIN_COL_WIDTH + GAP)),
-      )
-      const colWidth = (contentWidth - (newCols - 1) * GAP) / newCols
+      const contentWidth = Math.max(0, layoutEl.clientWidth - paddingX)
+      const metrics = getGridLayoutMetrics(contentWidth)
+      const { cols: newCols, gap } = metrics
+      const colWidth = (contentWidth - (newCols - 1) * gap) / newCols
       const coverHeight = colWidth * 1.5
       const cardHeight = coverHeight + TEXT_BLOCK_HEIGHT
       const rowHeight = cardHeight + ROW_GAP
       setLayout((current) => {
         if (
           current.cols === newCols &&
+          current.gap === gap &&
           Math.abs(current.gridRowHeight - rowHeight) < 0.5
         ) {
           return current
         }
-        return { cols: newCols, gridRowHeight: rowHeight }
+        return { cols: newCols, gap, gridRowHeight: rowHeight }
       })
     }
 
@@ -94,6 +121,9 @@ export default function BookGrid({
     updateLayout()
     const ro = new ResizeObserver(scheduleLayoutUpdate)
     ro.observe(el)
+    if (scrollContentRef.current) {
+      ro.observe(scrollContentRef.current)
+    }
     return () => {
       ro.disconnect()
       if (frameRef.current !== null) {
@@ -103,20 +133,131 @@ export default function BookGrid({
   }, [])
 
   const isList = viewMode === "list"
-  const { cols, gridRowHeight } = layout
+  const { cols, gap, gridRowHeight } = layout
   const rowCount = isList ? total : Math.ceil(total / cols)
+  const rowHeight = isList ? LIST_ROW_HEIGHT : gridRowHeight
+  const layoutSignature = `${viewMode}:${cols}:${Math.round(rowHeight)}`
 
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => (isList ? LIST_ROW_HEIGHT : gridRowHeight),
+    estimateSize: () => rowHeight,
     overscan: 3,
   })
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Layout values intentionally retrigger measurement; the virtualizer instance is stable while estimated row size changes.
-  useEffect(() => {
+  function getVirtualListTop() {
+    const listEl = virtualListRef.current
+    const contentEl = scrollContentRef.current
+    if (!listEl || !contentEl) return 0
+    return Math.max(0, listEl.offsetTop - contentEl.offsetTop)
+  }
+
+  function readCurrentScrollAnchor(): ScrollAnchor | null {
+    const el = scrollRef.current
+    if (!el || total === 0 || rowCount === 0) return null
+
+    const listScrollTop = Math.max(0, el.scrollTop - getVirtualListTop())
+    const anchorThreshold = Math.min(ANCHOR_VISIBILITY_THRESHOLD, rowHeight / 3)
+    const virtualItems = virtualizer.getVirtualItems()
+    const firstVisibleRow =
+      virtualItems.find((item) => item.end > listScrollTop + anchorThreshold) ??
+      virtualItems[0]
+    const fallbackRow = Math.min(
+      rowCount - 1,
+      Math.max(
+        0,
+        Math.floor((listScrollTop + anchorThreshold) / Math.max(rowHeight, 1)),
+      ),
+    )
+    const rowIndex = Math.min(
+      rowCount - 1,
+      Math.max(0, firstVisibleRow?.index ?? fallbackRow),
+    )
+    const rowStart = firstVisibleRow?.start ?? rowIndex * rowHeight
+    const bookIndex = isList ? rowIndex : rowIndex * cols
+
+    return {
+      bookIndex: Math.min(total - 1, Math.max(0, bookIndex)),
+      offsetWithinRow: Math.max(0, listScrollTop - rowStart),
+    }
+  }
+
+  function rememberScrollAnchor() {
+    const anchor = readCurrentScrollAnchor()
+    if (anchor) {
+      scrollAnchorRef.current = anchor
+    }
+  }
+
+  function restoreScrollAnchor(anchor: ScrollAnchor) {
+    const el = scrollRef.current
+    if (!el || rowCount === 0) return
+
+    const rowIndex = Math.min(
+      rowCount - 1,
+      Math.max(
+        0,
+        isList ? anchor.bookIndex : Math.floor(anchor.bookIndex / cols),
+      ),
+    )
+    const offsetWithinRow = Math.min(
+      anchor.offsetWithinRow,
+      Math.max(rowHeight - 1, 0),
+    )
+    const rowOffset = rowIndex * rowHeight
+    const scrollTop = Math.max(
+      0,
+      getVirtualListTop() + rowOffset + offsetWithinRow,
+    )
+
+    virtualizer.scrollToOffset(scrollTop, { align: "start" })
+    el.scrollTop = scrollTop
+    scrollAnchorRef.current = {
+      bookIndex: anchor.bookIndex,
+      offsetWithinRow,
+    }
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Layout changes must restore the transient scroll anchor before paint.
+  useLayoutEffect(() => {
     virtualizer.measure()
-  }, [virtualizer, cols, gridRowHeight, isList])
+
+    const previousSignature = layoutSignatureRef.current
+    layoutSignatureRef.current = layoutSignature
+
+    if (restoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(restoreFrameRef.current)
+      restoreFrameRef.current = null
+    }
+
+    if (previousSignature === null) {
+      rememberScrollAnchor()
+      return
+    }
+
+    if (previousSignature === layoutSignature) return
+
+    const anchor = scrollAnchorRef.current ?? readCurrentScrollAnchor()
+    if (!anchor) return
+
+    restoreScrollAnchor(anchor)
+    restoreFrameRef.current = window.requestAnimationFrame(() => {
+      restoreScrollAnchor(anchor)
+      restoreFrameRef.current = null
+    })
+  }, [layoutSignature, rowCount, virtualizer])
+
+  useEffect(() => {
+    return () => {
+      if (restoreFrameRef.current !== null) {
+        window.cancelAnimationFrame(restoreFrameRef.current)
+      }
+    }
+  }, [])
+
+  function handleRead(book: CalibreBook) {
+    onRead?.(book)
+  }
 
   const virtualItems = virtualizer.getVirtualItems()
   const rangeStart = virtualItems[0]?.index ?? 0
@@ -132,79 +273,107 @@ export default function BookGrid({
   }, [rangeStart, rangeEnd, cols, total, ensureRange, isList])
 
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6">
-      {header}
-
+    <div
+      ref={scrollHostRef}
+      className="min-h-0 min-w-0 flex-1"
+      data-overlayscrollbars-initialize
+    >
       <div
-        style={{
-          height: virtualizer.getTotalSize(),
-          position: "relative",
-          width: "100%",
-        }}
+        ref={scrollRef}
+        data-testid="library-scroll"
+        onScroll={rememberScrollAnchor}
+        className="myreader-overlay-viewport h-full min-h-0 overflow-x-hidden overflow-y-auto"
       >
-        {virtualItems.map((vRow) => (
+        <div ref={scrollContentRef} className="min-h-full px-6">
+          {header}
+
           <div
-            key={`${vRow.key}-${cols}`}
-            data-index={vRow.index}
-            style={{
-              position: "absolute",
-              top: 0,
-              insetInlineStart: 0,
-              width: "100%",
-              height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
-              transform: `translateY(${vRow.start}px)`,
-            }}
+            ref={virtualListRef}
+            className="relative w-full"
+            style={{ height: virtualizer.getTotalSize() }}
           >
-            {isList ? (
-              renderListRow(
-                vRow.index,
-                books,
-                libraryId,
-                fileActionsEnabled,
-                selectedFormatById,
-                progressByBookId,
-                onRead,
-                onMore,
-              )
-            ) : (
+            {virtualItems.map((vRow) => (
               <div
+                key={`${vRow.key}-${cols}`}
+                data-index={vRow.index}
+                className="absolute top-0 start-0 w-full"
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                  columnGap: `${GAP}px`,
+                  height: isList ? LIST_ROW_HEIGHT : gridRowHeight,
+                  transform: `translateY(${vRow.start}px)`,
                 }}
               >
-                {Array.from({ length: cols }, (_, c) => {
-                  const idx = vRow.index * cols + c
-                  if (idx >= total) return <div key={c} />
-                  const book = books.get(idx)
-                  if (!book) return <BookCardSkeleton key={`s-${idx}`} />
-                  const selectedFormat = selectedFormatById[String(book.id)]
-                  const progress = getBookProgressSnapshot(
+                {isList ? (
+                  renderListRow(
+                    vRow.index,
+                    books,
+                    libraryId,
+                    fileActionsEnabled,
+                    selectedFormatById,
                     progressByBookId,
-                    book.id,
-                    selectedFormat ?? pickReadableFormat(book.formats),
+                    handleRead,
+                    onOpenReader,
+                    onMore,
                   )
-                  return (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      libraryId={libraryId}
-                      onRead={onRead}
-                      onMore={onMore}
-                      fileActionsEnabled={fileActionsEnabled}
-                      selectedFormat={selectedFormat}
-                      progress={progress}
-                    />
-                  )
-                })}
+                ) : (
+                  <div
+                    className="grid"
+                    style={{
+                      columnGap: gap,
+                      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                    }}
+                  >
+                    {Array.from({ length: cols }, (_, c) => {
+                      const idx = vRow.index * cols + c
+                      if (idx >= total) return <div key={c} />
+                      const book = books.get(idx)
+                      if (!book) return <BookCardSkeleton key={`s-${idx}`} />
+                      const selectedFormat = selectedFormatById[String(book.id)]
+                      const progress = getBookProgressSnapshot(
+                        progressByBookId,
+                        book.id,
+                        selectedFormat ?? pickReadableFormat(book.formats),
+                      )
+                      return (
+                        <BookCard
+                          key={book.id}
+                          book={book}
+                          libraryId={libraryId}
+                          onRead={handleRead}
+                          onOpenReader={onOpenReader}
+                          onMore={onMore}
+                          fileActionsEnabled={fileActionsEnabled}
+                          selectedFormat={selectedFormat}
+                          progress={progress}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   )
+}
+
+function getGridLayoutMetrics(contentWidth: number) {
+  const compact = contentWidth < 480
+  const gap = compact ? COMPACT_GRID_GAP : COMFORTABLE_GRID_GAP
+  const minColWidth = compact
+    ? COMPACT_MIN_COL_WIDTH
+    : COMFORTABLE_MIN_COL_WIDTH
+  const measuredCols = Math.max(
+    1,
+    Math.floor((contentWidth + gap) / (minColWidth + gap)),
+  )
+  const minCols = contentWidth > gap ? MIN_GRID_COLUMNS : 1
+
+  return {
+    cols: Math.max(minCols, measuredCols),
+    gap,
+  }
 }
 
 /**
@@ -218,6 +387,7 @@ function renderListRow(
   selectedFormatById: Record<string, string>,
   progressByBookId: ReadingProgressByBook | undefined,
   onRead?: (book: CalibreBook) => void,
+  onOpenReader?: (book: CalibreBook) => void,
   onMore?: (book: CalibreBook) => void,
 ) {
   const book = books.get(index)
@@ -234,6 +404,7 @@ function renderListRow(
       book={book}
       libraryId={libraryId}
       onRead={onRead}
+      onOpenReader={onOpenReader}
       onMore={onMore}
       fileActionsEnabled={fileActionsEnabled}
       selectedFormat={selectedFormat}
@@ -262,10 +433,7 @@ export function BookRowSkeleton() {
 export function BookCardSkeleton() {
   return (
     <div className="animate-pulse min-w-0">
-      <div
-        className="w-full overflow-hidden rounded-lg bg-muted"
-        style={{ aspectRatio: "2/3" }}
-      />
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-muted" />
       <div className="mt-2 px-0.5">
         <div className="h-3.5 w-3/4 rounded bg-muted" />
         <div className="mt-0.5 h-3 w-1/2 rounded bg-muted" />
@@ -293,13 +461,7 @@ export function LibrarySkeletonGrid({
           ))}
         </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(152px, 1fr))",
-            gap: "24px",
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(152px,1fr))] gap-6">
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (
             <BookCardSkeleton key={i} />
           ))}

@@ -18,6 +18,7 @@ async fn get_reader_ui_preferences_should_return_defaults_when_config_is_fresh()
     assert_eq!(prefs["version"], json!(5));
     assert_eq!(prefs["appTheme"], json!("system"));
     assert_eq!(prefs["libraryViewMode"], json!("grid"));
+    assert_eq!(prefs["detailFullScreen"], json!(false));
 }
 
 #[tokio::test]
@@ -27,6 +28,7 @@ async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
         "version": 5,
         "appTheme": "dark",
         "libraryViewMode": "list",
+        "detailFullScreen": true,
         "fixedLayout": {},
         "reflowable": {},
         "cache": { "maxCacheSizeMb": 256, "autoCleanupOnLaunch": false },
@@ -41,6 +43,7 @@ async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
     let prefs: Value = invoke_ok(&app, "get_reader_ui_preferences", json!({}));
     assert_eq!(prefs["appTheme"], json!("dark"));
     assert_eq!(prefs["libraryViewMode"], json!("list"));
+    assert_eq!(prefs["detailFullScreen"], json!(true));
     assert_eq!(prefs["cache"]["maxCacheSizeMb"], json!(256));
     assert_eq!(prefs["cache"]["autoCleanupOnLaunch"], json!(false));
 }
