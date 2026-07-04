@@ -156,14 +156,30 @@
     "homeCardStyle.coverBlur": "模糊封面",
     "developer": {
       "title": "开发者",
+      "enabled": "已开启",
+      "disabled": "已关闭",
       "clearImageCache": {
         "title": "清除图片缓存",
-        "detail": "清除 Expo Image 的内存和磁盘缓存",
+        "detail": "清除 Expo Image 缓存和书库封面缩略图",
         "doneTitle": "图片缓存已清除",
-        "doneDetail": "重新打开封面时会重新读取或下载图片。",
+        "doneDetail": "重新打开封面时会重新读取或生成图片。",
         "errorTitle": "清除图片缓存失败",
         "errorDetail": "请稍后重试。",
         "unavailable": "当前环境无法完成缓存清理。"
+      },
+      "libraryPerformanceProfiler": {
+        "title": "列表性能分析",
+        "detail": "在书库页输出可用的 React Profiler 与 FlashList timing 日志"
+      },
+      "coverLoadingAnimation": {
+        "title": "封面加载动画",
+        "detail": "切换封面加载中的 Skeleton 闪烁动画"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "封面生成并发",
+        "detail": "同时生成缩略图的任务数量",
+        "decrementLabel": "减少封面生成并发",
+        "incrementLabel": "增加封面生成并发"
       }
     }
   },
@@ -220,6 +236,7 @@
     "navHorizontal": "左右翻页",
     "navVertical": "上下翻页",
     "pageLabel": "第 {{page}} 页",
+    "positionLabel": "位置",
     "font": "字体",
     "moreActions": "更多操作",
     "closeReader": "关闭阅读器"

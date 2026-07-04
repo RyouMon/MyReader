@@ -88,6 +88,8 @@ type ListRowProps = {
   detail?: string
   /** Right-side label (same size as title, muted color). */
   value?: string
+  /** Right-side native control or custom content. Takes precedence over `value`. */
+  accessory?: ReactNode
   onPress?: () => void
   isLast?: boolean
   testID?: string
@@ -133,8 +135,9 @@ function ListRowBody({
   icon,
   detail,
   value,
+  accessory,
   palette,
-}: Pick<ListRowProps, "title" | "icon" | "detail" | "value"> & {
+}: Pick<ListRowProps, "title" | "icon" | "detail" | "value" | "accessory"> & {
   palette: ThemePalette
 }) {
   const hasValue = value != null && value.length > 0
@@ -160,7 +163,9 @@ function ListRowBody({
           </Text>
         ) : null}
       </View>
-      {hasValue ? (
+      {accessory ? (
+        <View style={styles.accessorySlot}>{accessory}</View>
+      ) : hasValue ? (
         <Text
           selectable
           className="shrink text-base"
@@ -280,6 +285,7 @@ export function ListMenuRow({
   icon,
   detail,
   value,
+  accessory,
   isLast,
 }: ListMenuRowProps) {
   const { t } = useTranslation()
@@ -291,6 +297,7 @@ export function ListMenuRow({
       icon={icon}
       detail={detail}
       value={value}
+      accessory={accessory}
       palette={palette}
     />
   )
@@ -346,6 +353,7 @@ export function ListRow({
   icon,
   detail,
   value,
+  accessory,
   onPress,
   isLast,
   testID,
@@ -357,6 +365,7 @@ export function ListRow({
       icon={icon}
       detail={detail}
       value={value}
+      accessory={accessory}
       palette={palette}
     />
   )
@@ -385,5 +394,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
+  },
+  accessorySlot: {
+    alignSelf: "center",
+    flexShrink: 0,
   },
 })

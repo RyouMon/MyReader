@@ -4,9 +4,10 @@ import { MenuView, type MenuAction } from "@react-native-menu/menu"
 import { useTranslation } from "react-i18next"
 import { Platform, View as RNView } from "react-native"
 
+import { coverLoadingSkeletonColor } from "@/src/design/cover-skeleton"
 import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
-import type { BookItem } from "@/src/domain/types"
+import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
@@ -17,7 +18,7 @@ import { buildBookMenuActions } from "../../utils/book-menu"
 
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import {
-  BookCover,
+  BookCoverBase,
   type BookDownloadStatus,
   type BookProgressSnapshot,
 } from "./book-cover"
@@ -25,15 +26,18 @@ import { BookDownloadStatusIndicator } from "@/src/components/book-download-stat
 import { ProgressLabel } from "./progress-label"
 
 /** Cover size constants for the list row. Adjust height and border radius here; width is derived from a standard 2:3 book cover ratio. */
-const BOOK_ROW_COVER_HEIGHT = 84
+export const BOOK_ROW_COVER_HEIGHT = 84
 const BOOK_ROW_COVER_BORDER_RADIUS = 4
 const BOOK_ROW_COVER_ASPECT_RATIO = 2 / 3
-const BOOK_ROW_COVER_WIDTH = Math.round(
+export const BOOK_ROW_COVER_WIDTH = Math.round(
   BOOK_ROW_COVER_HEIGHT * BOOK_ROW_COVER_ASPECT_RATIO,
 )
 
 export type BookRowProps = {
   book: BookItem
+  displayCoverUri?: BookCoverUri
+  deferCoverUntilDisplayUri?: boolean
+  thumbnailScopeKey?: string
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -50,6 +54,7 @@ export type BookRowProps = {
   downloadStatus?: BookDownloadStatus
   downloadProgress?: number
   horizontalPadding?: number
+  loadingSkeletonPulseEnabled?: boolean
   /**
    * Primitive menu inputs let the row build its own actions while keeping
    * `React.memo` shallow comparison cheap. Passing a single `menuConfig` object
@@ -71,6 +76,9 @@ export type BookRowProps = {
 
 function BookRowImpl({
   book,
+  displayCoverUri,
+  deferCoverUntilDisplayUri,
+  thumbnailScopeKey,
   onPress,
   onMore,
   menuActions,
@@ -83,6 +91,7 @@ function BookRowImpl({
   downloadStatus,
   downloadProgress,
   horizontalPadding = 16,
+  loadingSkeletonPulseEnabled,
   menuIsRemote,
   menuFormats,
   menuSelectedFormat,
@@ -93,13 +102,20 @@ function BookRowImpl({
   const { t } = useTranslation()
   const palette = useThemePalette()
   const coverRef = useRef<RNView>(null)
+  const coverSkeletonColor = useMemo(
+    () => coverLoadingSkeletonColor(palette),
+    [palette.backgroundSecondary, palette.textMuted],
+  )
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
 
   const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (!hasMenuInputs) return menuActions
+    // Prefer parent-precomputed actions so list/grid rows avoid rebuilding
+    // native menu arrays when FlashList recycles visible cells.
+    if (menuActions) return menuActions
+    if (!hasMenuInputs) return undefined
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
       isFavorite,
@@ -218,11 +234,18 @@ function BookRowImpl({
         }}
       >
         <RNView ref={coverRef} collapsable={false}>
-          <BookCover
+          <BookCoverBase
             book={book}
             width={BOOK_ROW_COVER_WIDTH}
             height={BOOK_ROW_COVER_HEIGHT}
             borderRadius={BOOK_ROW_COVER_BORDER_RADIUS}
+            displayCoverUri={displayCoverUri}
+            deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+            loadingSkeletonPulseEnabled={loadingSkeletonPulseEnabled}
+            thumbnailScopeKey={thumbnailScopeKey}
+            backgroundColor={palette.backgroundSecondary}
+            shadowColor={palette.text}
+            skeletonColor={coverSkeletonColor}
           />
         </RNView>
         <View className="min-w-0 flex-1 justify-between">

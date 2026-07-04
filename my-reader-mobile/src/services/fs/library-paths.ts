@@ -132,8 +132,6 @@ export function resolveCoverUri(
     joinRelativePath(bookPath, COVER_FILE_NAME),
   )
   const cachedHeaders = backend.getCachedAuthHeaders()
-  return {
-    uri: backend.contentUrl(relative),
-    headers: cachedHeaders ?? undefined,
-  }
+  const uri = backend.contentUrl(relative)
+  return cachedHeaders ? { uri, headers: cachedHeaders } : uri
 }

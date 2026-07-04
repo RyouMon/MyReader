@@ -49,6 +49,9 @@ export type ReaderSettings = {
   syncOnStartup: boolean
   enableAutoSync: boolean
   homeCardStyle: HomeCardStyle
+  coverLoadingSkeletonPulseEnabled: boolean
+  coverThumbnailGenerationConcurrency: number
+  libraryPerformanceProfilerEnabled: boolean
   reflowable: ReflowableReaderSettings
   fixed: FixedReaderSettings
 }

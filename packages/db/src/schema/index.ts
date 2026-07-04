@@ -1,3 +1,4 @@
+export { bookCoverThumbnailCache } from "./book-cover-thumbnail-cache"
 export { bookReadingFormat } from "./book-reading-format"
 export { favoriteBooks } from "./favorite-books"
 export { fileState } from "./file-state"

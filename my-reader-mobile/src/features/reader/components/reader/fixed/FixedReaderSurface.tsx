@@ -81,6 +81,7 @@ export default function FixedReaderSurface({
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
+          showChapterTitle={false}
           backgroundColor={backgroundColor}
           navigationMode={navigationMode}
           readingProgression={readingProgression}
@@ -123,6 +124,7 @@ export default function FixedReaderSurface({
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
           gotoPageCommand={gotoPageCommand}
+          showChapterTitle
           backgroundColor={backgroundColor}
           navigationMode={navigationMode}
           readingProgression={readingProgression}

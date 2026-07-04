@@ -156,14 +156,30 @@
     "homeCardStyle.coverBlur": "Blurred Cover",
     "developer": {
       "title": "Developer",
+      "enabled": "On",
+      "disabled": "Off",
       "clearImageCache": {
         "title": "Clear Image Cache",
-        "detail": "Clear Expo Image memory and disk cache",
+        "detail": "Clear Expo Image cache and library cover thumbnails",
         "doneTitle": "Image cache cleared",
-        "doneDetail": "Covers will be read or downloaded again when reopened.",
+        "doneDetail": "Covers will be read, downloaded, or generated again when reopened.",
         "errorTitle": "Failed to clear image cache",
         "errorDetail": "Please try again later.",
         "unavailable": "Image cache cleanup is unavailable in this environment."
+      },
+      "libraryPerformanceProfiler": {
+        "title": "Library Performance Profiler",
+        "detail": "Log React Profiler and FlashList timing metrics on the Library screen"
+      },
+      "coverLoadingAnimation": {
+        "title": "Cover Loading Animation",
+        "detail": "Toggle the Skeleton pulse while covers are loading"
+      },
+      "coverThumbnailConcurrency": {
+        "title": "Cover Thumbnail Concurrency",
+        "detail": "Concurrent thumbnail generation jobs",
+        "decrementLabel": "Decrease cover thumbnail concurrency",
+        "incrementLabel": "Increase cover thumbnail concurrency"
       }
     }
   },
@@ -220,6 +236,7 @@
     "navHorizontal": "Horizontal",
     "navVertical": "Vertical",
     "pageLabel": "Page {{page}}",
+    "positionLabel": "Loc.",
     "font": "Font",
     "moreActions": "More Actions",
     "closeReader": "Close Reader"

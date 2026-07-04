@@ -1,5 +1,6 @@
 import { InferSelectModel, InferInsertModel } from "drizzle-orm"
 import {
+  bookCoverThumbnailCache,
   bookReadingFormat,
   favoriteBooks,
   readingProgress,
@@ -7,6 +8,12 @@ import {
   syncMeta,
 } from "./schema"
 
+export type BookCoverThumbnailCache = InferSelectModel<
+  typeof bookCoverThumbnailCache
+>
+export type NewBookCoverThumbnailCache = InferInsertModel<
+  typeof bookCoverThumbnailCache
+>
 export type BookReadingFormat = InferSelectModel<typeof bookReadingFormat>
 export type NewBookReadingFormat = InferInsertModel<typeof bookReadingFormat>
 export type FavoriteBook = InferSelectModel<typeof favoriteBooks>

@@ -1,6 +1,51 @@
-jest.mock("react-native-reanimated", () =>
-  require("react-native-reanimated/mock"),
-)
+jest.mock("react-native-reanimated", () => {
+  const ReactNative = require("react-native")
+
+  const passthrough = (value) => value
+  const createAnimatedComponent = (Component) => Component
+  const makeLayoutAnimationBuilder = () => {
+    const builder = {
+      delay: () => builder,
+      duration: () => builder,
+      easing: () => builder,
+      springify: () => builder,
+    }
+    return builder
+  }
+
+  const reanimated = {
+    cancelAnimation: jest.fn(),
+    createAnimatedComponent,
+    Easing: {
+      bezier: () => passthrough,
+      ease: passthrough,
+      inOut: () => passthrough,
+      linear: passthrough,
+      out: () => passthrough,
+    },
+    FadeIn: makeLayoutAnimationBuilder(),
+    FadeOut: makeLayoutAnimationBuilder(),
+    runOnJS: (callback) => callback,
+    runOnUI: (callback) => callback,
+    ScrollView: ReactNative.ScrollView,
+    useAnimatedProps: (updater) => updater(),
+    useAnimatedStyle: (updater) => updater(),
+    useSharedValue: (value) => ({ value }),
+    makeMutable: jest.fn((value) => ({ value })),
+    View: ReactNative.View,
+    withDelay: (_delay, animation) => animation,
+    withRepeat: jest.fn((animation) => animation),
+    withSequence: (...animations) => animations[animations.length - 1],
+    withSpring: passthrough,
+    withTiming: passthrough,
+  }
+
+  return {
+    __esModule: true,
+    ...reanimated,
+    default: reanimated,
+  }
+})
 
 jest.mock("expo-crypto", () => ({
   randomUUID: () => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",

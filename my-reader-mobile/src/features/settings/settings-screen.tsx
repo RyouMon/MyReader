@@ -4,10 +4,18 @@ import type { MenuAction } from "@react-native-menu/menu"
 import { router, useNavigation } from "expo-router"
 import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
+import { Switch } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
+import {
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX,
+  COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN,
+} from "@/src/config/library-list-performance"
+import { DEVELOPER_TOOLS_ENABLED } from "@/src/constants/developer-tools"
 import { changeLanguage } from "@/src/i18n"
-import { useTheme, type ThemeMode } from "@/src/design/tokens"
+import { clearBookCoverThumbnailCache } from "@/src/repos/book-cover-thumbnail-cache"
+import { clearCoverThumbnailCache } from "@/src/services/fs/cover-thumbnail-cache"
+import { useTheme, useThemePalette, type ThemeMode } from "@/src/design/tokens"
 import type { HomeCardStyle } from "@/src/store/app-store.types"
 import { View } from "@/tw"
 
@@ -19,10 +27,12 @@ import {
   SectionLabel,
 } from "@/src/components"
 import { useAppStore } from "@/src/store/app-store"
+import { DeveloperConcurrencyControl } from "./components/developer-concurrency-control"
 
 export default function SettingsScreen() {
   const { t } = useTranslation()
   const { mode, setMode } = useTheme()
+  const palette = useThemePalette()
   const libraries = useAppStore((s) => s.libraries)
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const navigation = useNavigation()
@@ -60,6 +70,10 @@ export default function SettingsScreen() {
         ExpoImage.clearMemoryCache(),
         ExpoImage.clearDiskCache(),
       ])
+      clearCoverThumbnailCache()
+      await Promise.all(
+        libraries.map((library) => clearBookCoverThumbnailCache(library)),
+      )
 
       if (!memoryCleared || !diskCleared) {
         throw new Error(t("settings.developer.clearImageCache.unavailable"))
@@ -127,6 +141,24 @@ export default function SettingsScreen() {
 
   const homeCardStyle = useAppStore((s) => s.settings.homeCardStyle)
   const setHomeCardStyle = useAppStore((s) => s.setHomeCardStyle)
+  const libraryPerformanceProfilerEnabled = useAppStore(
+    (s) => s.settings.libraryPerformanceProfilerEnabled,
+  )
+  const setLibraryPerformanceProfilerEnabled = useAppStore(
+    (s) => s.setLibraryPerformanceProfilerEnabled,
+  )
+  const coverLoadingSkeletonPulseEnabled = useAppStore(
+    (s) => s.settings.coverLoadingSkeletonPulseEnabled,
+  )
+  const setCoverLoadingSkeletonPulseEnabled = useAppStore(
+    (s) => s.setCoverLoadingSkeletonPulseEnabled,
+  )
+  const coverThumbnailGenerationConcurrency = useAppStore(
+    (s) => s.settings.coverThumbnailGenerationConcurrency,
+  )
+  const setCoverThumbnailGenerationConcurrency = useAppStore(
+    (s) => s.setCoverThumbnailGenerationConcurrency,
+  )
   const homeCardStyleLabels = useMemo<Record<HomeCardStyle, string>>(
     () => ({
       adaptive: t("settings.homeCardStyle.adaptive"),
@@ -241,7 +273,7 @@ export default function SettingsScreen() {
             />
           </SectionCard>
         </View>
-        {__DEV__ ? (
+        {DEVELOPER_TOOLS_ENABLED ? (
           <View className="gap-3">
             <SectionLabel>{t("settings.developer.title")}</SectionLabel>
             <SectionCard>
@@ -250,6 +282,72 @@ export default function SettingsScreen() {
                 title={t("settings.developer.clearImageCache.title")}
                 detail={t("settings.developer.clearImageCache.detail")}
                 onPress={handleClearImageCache}
+              />
+              <ListRow
+                testID="settings-library-performance-profiler-row"
+                title={t("settings.developer.libraryPerformanceProfiler.title")}
+                detail={t(
+                  "settings.developer.libraryPerformanceProfiler.detail",
+                )}
+                accessory={
+                  <Switch
+                    accessibilityLabel={t(
+                      "settings.developer.libraryPerformanceProfiler.title",
+                    )}
+                    testID="settings-library-performance-profiler-switch"
+                    value={libraryPerformanceProfilerEnabled}
+                    onValueChange={setLibraryPerformanceProfilerEnabled}
+                    trackColor={{
+                      false: palette.border,
+                      true: palette.primary,
+                    }}
+                    thumbColor={palette.surface}
+                    ios_backgroundColor={palette.backgroundSecondary}
+                  />
+                }
+              />
+              <ListRow
+                testID="settings-cover-loading-animation-row"
+                title={t("settings.developer.coverLoadingAnimation.title")}
+                detail={t("settings.developer.coverLoadingAnimation.detail")}
+                accessory={
+                  <Switch
+                    accessibilityLabel={t(
+                      "settings.developer.coverLoadingAnimation.title",
+                    )}
+                    testID="settings-cover-loading-animation-switch"
+                    value={coverLoadingSkeletonPulseEnabled}
+                    onValueChange={setCoverLoadingSkeletonPulseEnabled}
+                    trackColor={{
+                      false: palette.border,
+                      true: palette.primary,
+                    }}
+                    thumbColor={palette.surface}
+                    ios_backgroundColor={palette.backgroundSecondary}
+                  />
+                }
+              />
+              <ListRow
+                testID="settings-cover-thumbnail-concurrency-row"
+                title={t("settings.developer.coverThumbnailConcurrency.title")}
+                detail={t(
+                  "settings.developer.coverThumbnailConcurrency.detail",
+                )}
+                accessory={
+                  <DeveloperConcurrencyControl
+                    testID="settings-cover-thumbnail-concurrency-stepper"
+                    value={coverThumbnailGenerationConcurrency}
+                    min={COVER_THUMBNAIL_GENERATION_CONCURRENCY_MIN}
+                    max={COVER_THUMBNAIL_GENERATION_CONCURRENCY_MAX}
+                    decrementLabel={t(
+                      "settings.developer.coverThumbnailConcurrency.decrementLabel",
+                    )}
+                    incrementLabel={t(
+                      "settings.developer.coverThumbnailConcurrency.incrementLabel",
+                    )}
+                    onValueChange={setCoverThumbnailGenerationConcurrency}
+                  />
+                }
                 isLast
               />
             </SectionCard>

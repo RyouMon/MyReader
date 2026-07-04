@@ -244,9 +244,8 @@ describe("resolveCoverUri", () => {
       "contentUrl" | "getCachedAuthHeaders"
     > as RemoteBackend
 
-    expect(resolveCoverUri(library, "Author/Book", true, backend)).toEqual({
-      uri: "https://example.com/lib/Author/Book/cover.jpg",
-      headers: undefined,
-    })
+    expect(resolveCoverUri(library, "Author/Book", true, backend)).toBe(
+      "https://example.com/lib/Author/Book/cover.jpg",
+    )
   })
 })

@@ -19,6 +19,14 @@ type BookDownloadStatusIndicatorProps = {
   color?: string
 }
 
+type BookDownloadStatusIndicatorBaseProps = Omit<
+  BookDownloadStatusIndicatorProps,
+  "color"
+> & {
+  cloudColor: string
+  progressColor: string
+}
+
 type DownloadingProgressProps = {
   libraryId: string
   bookId: string
@@ -53,7 +61,7 @@ function DownloadingProgressImpl({
 
 const DownloadingProgress = memo(DownloadingProgressImpl)
 
-export function BookDownloadStatusIndicator({
+export function BookDownloadStatusIndicatorBase({
   status,
   libraryId,
   bookId,
@@ -61,12 +69,11 @@ export function BookDownloadStatusIndicator({
   fallbackProgress,
   size = ICON_SIZE.base,
   strokeWidth = 1.5,
-  color: overrideColor,
-}: BookDownloadStatusIndicatorProps) {
-  const palette = useThemePalette()
-  const cloudColor = overrideColor ?? palette.textMuted
-  const progressColor = overrideColor ?? palette.primary
-
+  cloudColor,
+  progressColor,
+}: BookDownloadStatusIndicatorBaseProps) {
+  // BookCard passes colors directly into this Base variant to keep theme
+  // context reads out of recycled FlashList cells.
   if (!status) return null
 
   if (status === "notDownloaded") {
@@ -99,4 +106,33 @@ export function BookDownloadStatusIndicator({
   }
 
   return null
+}
+
+export function BookDownloadStatusIndicator({
+  status,
+  libraryId,
+  bookId,
+  format,
+  fallbackProgress,
+  size = ICON_SIZE.base,
+  strokeWidth = 1.5,
+  color: overrideColor,
+}: BookDownloadStatusIndicatorProps) {
+  const palette = useThemePalette()
+  const cloudColor = overrideColor ?? palette.textMuted
+  const progressColor = overrideColor ?? palette.primary
+
+  return (
+    <BookDownloadStatusIndicatorBase
+      status={status}
+      libraryId={libraryId}
+      bookId={bookId}
+      format={format}
+      fallbackProgress={fallbackProgress}
+      size={size}
+      strokeWidth={strokeWidth}
+      cloudColor={cloudColor}
+      progressColor={progressColor}
+    />
+  )
 }

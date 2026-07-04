@@ -25,6 +25,7 @@
       "distribution": "internal",
       "env": {
         "ENTRY_FILE": "node_modules/expo-router/entry.js",
+        "EXPO_PUBLIC_ENABLE_PERF_TOOLS": "true",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },

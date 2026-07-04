@@ -1,32 +1,64 @@
-import { memo, useCallback, useMemo, useRef } from "react"
+import {
+  Profiler,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  type ProfilerOnRenderCallback,
+  type ReactNode,
+} from "react"
 
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
-import { useTranslation } from "react-i18next"
-import { Platform, View as RNView } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native"
 
-import { useThemePalette } from "@/src/design/tokens"
 import { ICON_SIZE } from "@/src/design/icon-sizes"
-import type { BookItem } from "@/src/domain/types"
+import { LIBRARY_GRID_COVER_ASPECT_RATIO } from "@/src/config/library-list-performance"
+import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
   measureReaderTransitionFrame,
   startReaderOpenTransition,
 } from "@/src/features/reader/reader-open-transition"
-import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { buildBookMenuActions } from "../../utils/book-menu"
 
 import { MoreActionsIcon } from "@/src/components/ui/more-actions-icon"
 import {
-  BookCover,
+  BookCoverBase,
   type BookDownloadStatus,
   type BookProgressSnapshot,
 } from "./book-cover"
-import { BookDownloadStatusIndicator } from "@/src/components/book-download-status-indicator"
-import { ProgressLabel } from "./progress-label"
+import { BookDownloadStatusIndicatorBase } from "@/src/components/book-download-status-indicator"
+import {
+  ProgressLabelBase,
+  type ProgressLabelColors,
+  type ProgressLabelLabels,
+} from "./progress-label"
+
+export type BookCardChrome = {
+  coverBackgroundColor: string
+  coverLoadingSkeletonPulseEnabled: boolean
+  coverShadowColor: string
+  coverSkeletonColor: string
+  progressColors: ProgressLabelColors
+  progressLabels: ProgressLabelLabels
+  textColor: string
+  textMutedColor: string
+}
 
 export type BookCardProps = {
   book: BookItem
   width: number
+  displayCoverUri?: BookCoverUri
+  deferCoverUntilDisplayUri?: boolean
+  thumbnailScopeKey?: string
   /**
    * Handlers receive `bookId` so the parent can keep a single stable callback
    * across all cells, which lets React.memo short-circuit cell renders.
@@ -59,11 +91,25 @@ export type BookCardProps = {
    */
   subscriptionLibraryId?: string
   subscriptionFormat?: string
+  profilerOnRender?: ProfilerOnRenderCallback
+  chrome: BookCardChrome
+  moreActionsLabel: string
+  openBookLabel?: string
 }
 
+export function getBookCardCoverHeight(width: number) {
+  return Math.round(width * LIBRARY_GRID_COVER_ASPECT_RATIO)
+}
+
+// The iPad grid can mount/update dozens of cards per scroll commit. This hot
+// path uses RN primitives + StyleSheet instead of `@/tw` so NativeWind parsing,
+// theme context reads, and i18n hooks stay outside recycled cells.
 function BookCardImpl({
   book,
   width,
+  displayCoverUri,
+  deferCoverUntilDisplayUri,
+  thumbnailScopeKey,
   onPress,
   onMore,
   menuActions,
@@ -81,18 +127,25 @@ function BookCardImpl({
   isFavorite,
   subscriptionLibraryId,
   subscriptionFormat,
+  profilerOnRender,
+  chrome,
+  moreActionsLabel,
+  openBookLabel,
 }: BookCardProps) {
-  const { t } = useTranslation()
-  const palette = useThemePalette()
-  const coverHeight = Math.round(width * 1.43)
-  const coverRef = useRef<RNView>(null)
+  const coverHeight = getBookCardCoverHeight(width)
+  const coverRef = useRef<View>(null)
+  const cardRootStyle: ViewStyle = { width }
+  const titleTextStyle: TextStyle = { color: chrome.textColor }
 
   const showCloudIcon = downloadStatus === "notDownloaded"
   const showProgressIndicator = downloadStatus === "downloading"
 
   const hasMenuInputs = menuIsRemote !== undefined
   const computedMenuActions = useMemo<MenuAction[] | undefined>(() => {
-    if (!hasMenuInputs) return menuActions
+    // Grid cells receive precomputed menu actions from the parent; keep this
+    // fallback only for non-grid callers so scrolling does not rebuild arrays.
+    if (menuActions) return menuActions
+    if (!hasMenuInputs) return undefined
     return buildBookMenuActions(downloadStatus, {
       isRemote: menuIsRemote ?? false,
       isFavorite,
@@ -155,8 +208,8 @@ function BookCardImpl({
   ])
 
   const handleMorePress = useCallback(
-    (event: { stopPropagation?: () => void }) => {
-      event.stopPropagation?.()
+    (event: GestureResponderEvent) => {
+      event.stopPropagation()
       onMore?.(book.id)
     },
     [book.id, onMore],
@@ -176,99 +229,130 @@ function BookCardImpl({
   const moreButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
-      className="h-8 w-8 items-center justify-center"
-      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+      accessibilityLabel={moreActionsLabel}
+      style={styles.actionButton}
       onPress={handleMorePress}
     >
-      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={chrome.textMutedColor} />
     </Pressable>
   )
 
   const menuTrigger = (
     <View
       accessibilityRole="button"
-      accessibilityLabel={t("bookDetail.moreActions", { title: book.title })}
-      className="h-8 w-8 items-center justify-center"
-      style={Platform.OS === "ios" ? { marginLeft: -2 } : undefined}
+      accessibilityLabel={moreActionsLabel}
+      style={styles.actionButton}
     >
-      <MoreActionsIcon size={ICON_SIZE.base} color={palette.textMuted} />
+      <MoreActionsIcon size={ICON_SIZE.base} color={chrome.textMutedColor} />
+    </View>
+  )
+
+  const profileSegment = (id: string, children: ReactNode) =>
+    profilerOnRender ? (
+      <Profiler id={id} onRender={profilerOnRender}>
+        {children}
+      </Profiler>
+    ) : (
+      children
+    )
+
+  // Grid scrolling spends visible time in CoreAnimation/UIKit work; keep
+  // decorative shadows for non-list cover surfaces instead.
+  const coverSegment = (
+    <Pressable
+      ref={coverRef}
+      collapsable={false}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={openBookLabel}
+      onPress={handlePress}
+      style={styles.coverPressable}
+    >
+      <BookCoverBase
+        book={book}
+        width={width}
+        height={coverHeight}
+        borderRadius={10}
+        displayCoverUri={displayCoverUri}
+        deferCoverUntilDisplayUri={deferCoverUntilDisplayUri}
+        loadingSkeletonPulseEnabled={chrome.coverLoadingSkeletonPulseEnabled}
+        shadowEnabled={false}
+        thumbnailScopeKey={thumbnailScopeKey}
+        backgroundColor={chrome.coverBackgroundColor}
+        shadowColor={chrome.coverShadowColor}
+        skeletonColor={chrome.coverSkeletonColor}
+      />
+    </Pressable>
+  )
+
+  const titleSegment = (
+    <View style={styles.titleRow}>
+      <Text
+        style={[styles.titleText, titleTextStyle]}
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+      >
+        {book.title}
+      </Text>
+    </View>
+  )
+
+  const progressSegment = (
+    <View style={styles.progressSlot}>
+      <ProgressLabelBase
+        progress={progress}
+        colors={chrome.progressColors}
+        labels={chrome.progressLabels}
+      />
+    </View>
+  )
+
+  const actionsSegment = (
+    <View style={styles.actionsRow}>
+      {showCloudIcon || showProgressIndicator ? (
+        <BookDownloadStatusIndicatorBase
+          status={downloadStatus}
+          libraryId={subscriptionLibraryId}
+          bookId={book.id}
+          format={subscriptionFormat}
+          fallbackProgress={downloadProgress}
+          cloudColor={chrome.textMutedColor}
+          progressColor={chrome.progressColors.primary}
+        />
+      ) : null}
+      {hasMenu ? (
+        computedMenuActions && onMenuAction ? (
+          <MenuView
+            key={
+              computedMenuActions.some(
+                (a) =>
+                  (a.id === "share" || a.id?.startsWith("share:")) &&
+                  !a.attributes?.disabled,
+              )
+                ? "share-enabled"
+                : "share-disabled"
+            }
+            actions={computedMenuActions}
+            isAnchoredToRight
+            onOpenMenu={handleMenuOpenLocal}
+            onCloseMenu={onMenuClose}
+            onPressAction={handleMenuPressAction}
+          >
+            {menuTrigger}
+          </MenuView>
+        ) : (
+          moreButton
+        )
+      ) : null}
     </View>
   )
 
   return (
-    <View
-      style={{
-        width,
-      }}
-    >
-      <View className="relative">
-        <TouchableHighlight
-          accessibilityRole={onPress ? "button" : undefined}
-          accessibilityLabel={t("bookDetail.openBook", { title: book.title })}
-          onPress={handlePress}
-          activeOpacity={0.78}
-          underlayColor={palette.surface}
-          style={{ borderRadius: 10, overflow: "hidden" }}
-        >
-          <RNView ref={coverRef} collapsable={false}>
-            <BookCover
-              book={book}
-              width={width}
-              height={coverHeight}
-              borderRadius={10}
-            />
-          </RNView>
-        </TouchableHighlight>
-      </View>
-      <View className="mt-2 flex-row items-center gap-1.5">
-        <Text
-          className="flex-1 text-base font-semibold"
-          style={{ color: palette.text }}
-          numberOfLines={1}
-        >
-          {book.title}
-        </Text>
-      </View>
-      <View className="flex-row items-center">
-        <View className="flex-1">
-          <ProgressLabel progress={progress} />
-        </View>
-        <View className="flex-row items-center">
-          {showCloudIcon || showProgressIndicator ? (
-            <BookDownloadStatusIndicator
-              status={downloadStatus}
-              libraryId={subscriptionLibraryId}
-              bookId={book.id}
-              format={subscriptionFormat}
-              fallbackProgress={downloadProgress}
-            />
-          ) : null}
-          {hasMenu ? (
-            computedMenuActions && onMenuAction ? (
-              <MenuView
-                key={
-                  computedMenuActions.some(
-                    (a) =>
-                      (a.id === "share" || a.id?.startsWith("share:")) &&
-                      !a.attributes?.disabled,
-                  )
-                    ? "share-enabled"
-                    : "share-disabled"
-                }
-                actions={computedMenuActions}
-                isAnchoredToRight={Platform.OS === "android"}
-                onOpenMenu={handleMenuOpenLocal}
-                onCloseMenu={onMenuClose}
-                onPressAction={handleMenuPressAction}
-              >
-                {menuTrigger}
-              </MenuView>
-            ) : (
-              moreButton
-            )
-          ) : null}
-        </View>
+    <View style={cardRootStyle}>
+      {profileSegment("BookCard.cover", coverSegment)}
+      {profileSegment("BookCard.title", titleSegment)}
+      <View style={styles.metaRow}>
+        {profileSegment("BookCard.progress", progressSegment)}
+        {profileSegment("BookCard.actions", actionsSegment)}
       </View>
     </View>
   )
@@ -278,3 +362,37 @@ function BookCardImpl({
  * Renders the mobile cover-first book card.
  */
 export const BookCard = memo(BookCardImpl)
+
+const styles = StyleSheet.create({
+  actionButton: {
+    alignItems: "center",
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  actionsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  coverPressable: {
+    borderRadius: 10,
+  },
+  metaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  progressSlot: {
+    flex: 1,
+  },
+  titleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8,
+  },
+  titleText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+})

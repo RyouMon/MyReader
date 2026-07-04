@@ -1,6 +1,9 @@
 export { ReaderChapterLabel } from "./ReaderChapterLabel"
 export type { ReaderChapterLabelProps } from "./ReaderChapterLabel"
 
+export { ReaderPositionLabel } from "./ReaderPositionLabel"
+export type { ReaderPositionLabelProps } from "./ReaderPositionLabel"
+
 export { default as ReaderCloseButton } from "./ReaderCloseButton"
 
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
@@ -20,5 +23,9 @@ export {
   SegmentPicker,
 } from "./SettingControls"
 
-export { READER_THEME_OPTIONS } from "./readerChromeConstants"
+export {
+  READER_BOTTOM_ACTION_OFFSET,
+  READER_BOTTOM_ACTION_SIZE,
+  READER_THEME_OPTIONS,
+} from "./readerChromeConstants"
 export type { ThemeOption } from "./readerChromeConstants"
