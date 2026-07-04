@@ -4,12 +4,15 @@ import {
   underlayFromSurface,
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight, View } from "@/tw"
-import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import Slider from "@react-native-community/slider"
 import { useTranslation } from "react-i18next"
 import { StyleSheet } from "react-native"
 
-import { READER_THEME_OPTIONS } from "./readerChromeConstants"
+import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import {
+  READER_THEME_CHECK_ICON_SIZE,
+  READER_THEME_OPTIONS,
+} from "./readerChromeConstants"
 
 /* ═══════════════════════════════════════
    Shared helpers
@@ -83,7 +86,11 @@ export function ThemeSwatches({
                     className="absolute right-1.5 top-1.5 h-[18px] w-[18px] items-center justify-center rounded-full"
                     style={{ backgroundColor: palette.accent }}
                   >
-                    <MaterialIcons name="check" size={12} color="#fff" />
+                    <ReaderChromeIcon
+                      name="check"
+                      size={READER_THEME_CHECK_ICON_SIZE}
+                      color={palette.bg}
+                    />
                   </View>
                 ) : null}
               </View>
