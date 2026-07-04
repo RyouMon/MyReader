@@ -160,6 +160,9 @@ describe("BookCover", () => {
     expect(screen.getByTestId("book-cover-image-book-1").props.source).toEqual([
       { uri: "file:///cache/thumb.jpg" },
     ])
+    expect(screen.getByTestId("book-cover-image-book-1").props.contentFit).toBe(
+      "cover",
+    )
   })
 
   it("cross-dissolves from loading art to the loaded image", () => {

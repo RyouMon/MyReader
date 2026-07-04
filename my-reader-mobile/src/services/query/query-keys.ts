@@ -12,6 +12,17 @@ export const queryKeys = {
       heightPx,
       thumbnailVersion,
     ] as const,
+  bookCoverThumbnailCacheProfiles: (
+    libraryId?: string,
+    sizeSignature?: string,
+    thumbnailVersion?: string,
+  ) =>
+    [
+      "book-cover-thumbnail-cache-profiles",
+      libraryId,
+      sizeSignature,
+      thumbnailVersion,
+    ] as const,
   favoriteBooks: (libraryId?: string) => ["favorite-books", libraryId] as const,
   bookReadingFormat: (libraryId?: string) =>
     ["book-reading-format", libraryId] as const,

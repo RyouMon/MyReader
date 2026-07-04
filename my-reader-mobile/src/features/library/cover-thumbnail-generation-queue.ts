@@ -5,6 +5,7 @@ import {
 } from "@/src/config/library-list-performance"
 import {
   ensureCoverThumbnailFileAsync,
+  ensureCoverThumbnailFilesAsync,
   type CoverThumbnailCacheFile,
   type CoverThumbnailCacheInput,
 } from "@/src/services/fs/cover-thumbnail-cache"
@@ -18,6 +19,11 @@ type CancelIdleCallback = (handle: number) => void
 export type CoverThumbnailGenerationRequest = {
   scopeKey: string
   bookId: string
+  companionThumbnails?: Array<{
+    scopeKey: string
+    identity: string
+    input: CoverThumbnailCacheInput
+  }>
   identity: string
   input: CoverThumbnailCacheInput
 }
@@ -149,9 +155,39 @@ class CoverThumbnailGenerationQueue {
     this.activeKeys.add(key)
 
     try {
-      const file = await ensureCoverThumbnailFileAsync(request.input)
-      for (const listener of this.listeners) {
-        listener({ ...request, file })
+      const companionThumbnails = request.companionThumbnails ?? []
+      if (companionThumbnails.length === 0) {
+        const file = await ensureCoverThumbnailFileAsync(request.input)
+        for (const listener of this.listeners) {
+          listener({ ...request, file })
+        }
+      } else {
+        const thumbnails = [
+          {
+            identity: request.identity,
+            input: request.input,
+            scopeKey: request.scopeKey,
+          },
+          ...companionThumbnails,
+        ]
+        await ensureCoverThumbnailFilesAsync(
+          thumbnails.map((thumbnail) => thumbnail.input),
+          (file, index) => {
+            const thumbnail = thumbnails[index]
+            if (!thumbnail) return
+
+            for (const listener of this.listeners) {
+              listener({
+                ...request,
+                companionThumbnails: undefined,
+                file,
+                identity: thumbnail.identity,
+                input: thumbnail.input,
+                scopeKey: thumbnail.scopeKey,
+              })
+            }
+          },
+        )
       }
     } catch (error) {
       if (__DEV__) {

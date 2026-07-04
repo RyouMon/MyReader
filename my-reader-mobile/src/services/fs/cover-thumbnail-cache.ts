@@ -18,7 +18,7 @@ export type CoverThumbnailCacheInput = {
 }
 
 const COVER_THUMBNAIL_CACHE_ROOT = "myreader-cover-thumbnails"
-export const COVER_THUMBNAIL_CACHE_VERSION = "v1"
+export const COVER_THUMBNAIL_CACHE_VERSION = "v3"
 const inFlightThumbnails = new Map<string, Promise<CoverThumbnailCacheFile>>()
 
 export type CoverThumbnailCacheFile = {
@@ -198,30 +198,23 @@ async function renderCoverThumbnail(
   heightPx: number,
 ) {
   const sourceSize = await readSourceImageSize(sourceFileUri)
-  const sourceAspect = sourceSize.width / sourceSize.height
-  const targetAspect = widthPx / heightPx
+  const maxEdgePx = Math.max(widthPx, heightPx)
   const context = ImageManipulator.manipulate(sourceFileUri)
 
-  if (!Number.isFinite(sourceAspect) || sourceAspect <= 0) {
-    context.resize({ width: widthPx, height: heightPx })
-  } else if (sourceAspect > targetAspect) {
-    const resizedWidth = Math.ceil(heightPx * sourceAspect)
-    context.resize({ height: heightPx })
-    context.crop({
-      originX: Math.max(0, Math.floor((resizedWidth - widthPx) / 2)),
-      originY: 0,
-      width: widthPx,
-      height: heightPx,
-    })
+  // Cache one canonical thumbnail per cover version. Preserve the source cover
+  // aspect here and let Expo Image crop it into grid/list frames at render time;
+  // otherwise each layout size change would need its own generated file.
+  if (
+    !Number.isFinite(sourceSize.width) ||
+    !Number.isFinite(sourceSize.height) ||
+    sourceSize.width <= 0 ||
+    sourceSize.height <= 0
+  ) {
+    context.resize({ width: maxEdgePx, height: maxEdgePx })
+  } else if (sourceSize.width >= sourceSize.height) {
+    context.resize({ width: maxEdgePx })
   } else {
-    const resizedHeight = Math.ceil(widthPx / sourceAspect)
-    context.resize({ width: widthPx })
-    context.crop({
-      originX: 0,
-      originY: Math.max(0, Math.floor((resizedHeight - heightPx) / 2)),
-      width: widthPx,
-      height: heightPx,
-    })
+    context.resize({ height: maxEdgePx })
   }
 
   let image: Awaited<ReturnType<typeof context.renderAsync>> | undefined
@@ -289,6 +282,79 @@ async function createCoverThumbnail(
   } finally {
     prepared.cleanup?.()
   }
+}
+
+export async function ensureCoverThumbnailFilesAsync(
+  inputs: CoverThumbnailCacheInput[],
+  onFile?: (
+    file: CoverThumbnailCacheFile,
+    index: number,
+    input: CoverThumbnailCacheInput,
+  ) => void,
+): Promise<CoverThumbnailCacheFile[]> {
+  if (inputs.length === 0) return []
+
+  const source = sourceUri(inputs[0]!.source)
+  for (const input of inputs) {
+    if (sourceUri(input.source) !== source) {
+      throw new Error("Batch thumbnail generation requires one source image")
+    }
+  }
+
+  const files: Array<CoverThumbnailCacheFile | undefined> = []
+  const missingInputs: Array<{
+    index: number
+    input: CoverThumbnailCacheInput
+  }> = []
+
+  inputs.forEach((input, index) => {
+    const fileName = getCoverThumbnailCacheFileName(input)
+    const finalFile = getCoverThumbnailCacheFile(input)
+    if (finalFile.exists && finalFile.size > 0) {
+      const cacheFile = {
+        fileName,
+        fileSizeBytes: finalFile.size,
+        uri: finalFile.uri,
+      }
+      files[index] = cacheFile
+      onFile?.(cacheFile, index, input)
+      return
+    }
+
+    missingInputs.push({ index, input })
+  })
+
+  if (missingInputs.length === 0) {
+    return files.filter((file): file is CoverThumbnailCacheFile => !!file)
+  }
+
+  for (const { input } of missingInputs) {
+    ensureDirectory(thumbnailDirectory(input))
+  }
+
+  const prepared = await prepareSourceFile(missingInputs[0]!.input)
+  try {
+    for (const { index, input } of missingInputs) {
+      const fileName = getCoverThumbnailCacheFileName(input)
+      const finalFile = getCoverThumbnailCacheFile(input)
+      const { widthPx, heightPx } = normalizedSize(input)
+      const result = await renderCoverThumbnail(prepared.uri, widthPx, heightPx)
+      const renderedFile = new File(result.uri)
+      await renderedFile.move(finalFile, { overwrite: true })
+      const savedFile = new File(finalFile.uri)
+      const cacheFile = {
+        fileName,
+        fileSizeBytes: savedFile.size,
+        uri: savedFile.uri,
+      }
+      files[index] = cacheFile
+      onFile?.(cacheFile, index, input)
+    }
+  } finally {
+    prepared.cleanup?.()
+  }
+
+  return files.filter((file): file is CoverThumbnailCacheFile => !!file)
 }
 
 export function ensureCoverThumbnailFileAsync(

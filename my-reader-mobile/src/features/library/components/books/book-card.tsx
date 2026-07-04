@@ -20,6 +20,7 @@ import {
 } from "react-native"
 
 import { ICON_SIZE } from "@/src/design/icon-sizes"
+import { LIBRARY_GRID_COVER_ASPECT_RATIO } from "@/src/config/library-list-performance"
 import type { BookCoverUri, BookItem } from "@/src/domain/types"
 import {
   canStartReaderOpenTransition,
@@ -97,7 +98,7 @@ export type BookCardProps = {
 }
 
 export function getBookCardCoverHeight(width: number) {
-  return Math.round(width * 1.43)
+  return Math.round(width * LIBRARY_GRID_COVER_ASPECT_RATIO)
 }
 
 // The iPad grid can mount/update dozens of cards per scroll commit. This hot

@@ -108,6 +108,7 @@ import { Image as ReactNativeImage } from "react-native"
 
 import {
   ensureCoverThumbnailAsync,
+  ensureCoverThumbnailFilesAsync,
   getCachedCoverThumbnailUri,
   getCoverThumbnailCacheFile,
 } from "./cover-thumbnail-cache"
@@ -142,7 +143,7 @@ describe("cover thumbnail cache", () => {
     })
 
     expect(file.uri).toMatch(
-      /^file:\/\/\/expo-cache\/myreader-cover-thumbnails\/v1\/library_one\/300x429\/book_42-.+\.jpg$/,
+      /^file:\/\/\/expo-cache\/myreader-cover-thumbnails\/v3\/library_one\/300x429\/book_42-.+\.jpg$/,
     )
   })
 
@@ -223,19 +224,100 @@ describe("cover thumbnail cache", () => {
     })
     expect(resultRef.release).toHaveBeenCalled()
     expect(releaseContext).toHaveBeenCalled()
-    expect(resize).toHaveBeenCalledWith({ width: 300 })
-    expect(crop).toHaveBeenCalledWith({
-      height: 429,
-      originX: 0,
-      originY: 10,
-      width: 300,
-    })
+    expect(resize).toHaveBeenCalledWith({ height: 429 })
+    expect(crop).not.toHaveBeenCalled()
     expect(__mockFileSystem.movedFiles[0]).toMatchObject({
       from: "file:///manipulator/result.jpg",
       options: { overwrite: true },
     })
     expect(uri).toContain(
-      "file:///expo-cache/myreader-cover-thumbnails/v1/lib/300x429/book-",
+      "file:///expo-cache/myreader-cover-thumbnails/v3/lib/300x429/book-",
+    )
+  })
+
+  it("prepares one source image while generating multiple thumbnail sizes", async () => {
+    const firstSaveAsync = jest.fn(async () => ({
+      uri: "file:///manipulator/first.jpg",
+      width: 300,
+      height: 429,
+    }))
+    const secondSaveAsync = jest.fn(async () => ({
+      uri: "file:///manipulator/second.jpg",
+      width: 420,
+      height: 600,
+    }))
+    const firstResultRef = {
+      release: jest.fn(),
+      saveAsync: firstSaveAsync,
+    }
+    const secondResultRef = {
+      release: jest.fn(),
+      saveAsync: secondSaveAsync,
+    }
+    const firstRenderAsync = jest.fn().mockResolvedValue(firstResultRef)
+    const secondRenderAsync = jest.fn().mockResolvedValue(secondResultRef)
+    const firstResize = jest.fn().mockReturnThis()
+    const secondResize = jest.fn().mockReturnThis()
+    jest
+      .mocked(ImageManipulator.manipulate)
+      .mockReturnValueOnce({
+        crop: jest.fn().mockReturnThis(),
+        release: jest.fn(),
+        renderAsync: firstRenderAsync,
+        resize: firstResize,
+      } as never)
+      .mockReturnValueOnce({
+        crop: jest.fn().mockReturnThis(),
+        release: jest.fn(),
+        renderAsync: secondRenderAsync,
+        resize: secondResize,
+      } as never)
+
+    const onFile = jest.fn()
+    const files = await ensureCoverThumbnailFilesAsync(
+      [
+        {
+          libraryId: "lib",
+          bookId: "book",
+          source: {
+            uri: "https://example.com/cover.jpg",
+            headers: { Authorization: "Bearer token" },
+          },
+          coverIdentity: "cover-v1",
+          widthPx: 300,
+          heightPx: 429,
+        },
+        {
+          libraryId: "lib",
+          bookId: "book",
+          source: {
+            uri: "https://example.com/cover.jpg",
+            headers: { Authorization: "Bearer token" },
+          },
+          coverIdentity: "cover-v1",
+          widthPx: 420,
+          heightPx: 600,
+        },
+      ],
+      onFile,
+    )
+
+    expect(__mockFileSystem.downloadedFiles).toHaveLength(1)
+    expect(ImageManipulator.manipulate).toHaveBeenCalledTimes(2)
+    expect(firstResize).toHaveBeenCalledWith({ height: 429 })
+    expect(secondResize).toHaveBeenCalledWith({ height: 600 })
+    expect(files).toHaveLength(2)
+    expect(onFile).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ uri: expect.stringContaining("/300x429/") }),
+      0,
+      expect.objectContaining({ widthPx: 300, heightPx: 429 }),
+    )
+    expect(onFile).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ uri: expect.stringContaining("/420x600/") }),
+      1,
+      expect.objectContaining({ widthPx: 420, heightPx: 600 }),
     )
   })
 

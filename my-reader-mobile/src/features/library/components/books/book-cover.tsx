@@ -485,6 +485,7 @@ function BookCoverBaseImpl({
           pulseDurationMs={COVER_LOADING_SKELETON_PULSE_DURATION_MS}
           pulseMaxOpacity={COVER_LOADING_SKELETON_DARK_OPACITY}
           pulseMinOpacity={COVER_LOADING_SKELETON_LIGHT_OPACITY}
+          pulseSyncKey="book-cover-loading"
           style={coverStyles.loadingSkeleton}
           testID={`book-cover-loading-${book.id}`}
         />
@@ -492,6 +493,7 @@ function BookCoverBaseImpl({
       {shouldRenderImage ? (
         <ExpoImage
           source={effectiveCoverUri}
+          contentFit="cover"
           style={coverStyles.image}
           recyclingKey={`${book.id}:${coverKey}`}
           testID={`book-cover-image-${book.id}`}

@@ -15,6 +15,9 @@ export const LIBRARY_GRID_PADDING_X = 16
 /** Visual gap between adjacent grid cards and grid rows. */
 export const LIBRARY_GRID_CARD_GAP = 12
 
+/** Grid cover height / width ratio; thumbnail profiles and BookCard layout must stay in lockstep. */
+export const LIBRARY_GRID_COVER_ASPECT_RATIO = 1.43
+
 /** FlashList render-ahead distance for grid mode, expressed in book rows. */
 export const LIBRARY_GRID_DRAW_DISTANCE_ROWS = 2
 
@@ -72,9 +75,6 @@ export const COVER_THUMBNAIL_VIEWABILITY_CONFIG: ViewabilityConfig = {
   itemVisiblePercentThreshold: COVER_THUMBNAIL_VIEWABILITY_PERCENT_THRESHOLD,
   minimumViewTime: COVER_THUMBNAIL_VIEWABILITY_MINIMUM_TIME_MS,
 }
-
-/** Maximum persisted thumbnail edge in physical pixels; caps decode memory while keeping iPad covers sharp. */
-export const COVER_THUMBNAIL_MAX_EDGE_PX = 768
 
 /** Delay used to batch generated thumbnail URI publication into fewer React commits. */
 export const COVER_THUMBNAIL_GENERATED_FLUSH_DELAY_MS = 80

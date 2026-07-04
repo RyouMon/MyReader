@@ -16,6 +16,7 @@ import {
 } from "@/src/repos/book-cover-thumbnail-cache"
 import {
   COVER_THUMBNAIL_CACHE_VERSION,
+  ensureCoverThumbnailFilesAsync,
   ensureCoverThumbnailFileAsync,
   getCachedCoverThumbnailFile,
   getCachedCoverThumbnailFileByName,
@@ -39,7 +40,8 @@ jest.mock("@/src/repos/book-cover-thumbnail-cache", () => ({
 }))
 
 jest.mock("@/src/services/fs/cover-thumbnail-cache", () => ({
-  COVER_THUMBNAIL_CACHE_VERSION: "v1",
+  COVER_THUMBNAIL_CACHE_VERSION: "v3",
+  ensureCoverThumbnailFilesAsync: jest.fn(),
   ensureCoverThumbnailFileAsync: jest.fn(),
   getCachedCoverThumbnailFile: jest.fn(),
   getCachedCoverThumbnailFileByName: jest.fn(),
@@ -126,17 +128,14 @@ beforeEach(() => {
 })
 
 describe("resolveCoverThumbnailPixelSize", () => {
-  it("uses the display size scaled by device pixel ratio", () => {
+  it("resolves physical pixels from the display size", () => {
     expect(resolveCoverThumbnailPixelSize(150, 214.5, 2)).toEqual({
       widthPx: 300,
       heightPx: 429,
     })
-  })
-
-  it("caps very large thumbnails while preserving aspect ratio", () => {
     expect(resolveCoverThumbnailPixelSize(400, 600, 3)).toEqual({
-      widthPx: 512,
-      heightPx: 768,
+      heightPx: 1800,
+      widthPx: 1200,
     })
   })
 
@@ -525,6 +524,66 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
+  it("generates the nearest grid thumbnail first and then the companion profile", async () => {
+    jest
+      .mocked(ensureCoverThumbnailFilesAsync)
+      .mockImplementation(async (inputs, onFile) => {
+        const files = inputs.map((input) => ({
+          fileName: `${input.widthPx}x${input.heightPx}.jpg`,
+          fileSizeBytes: input.widthPx + input.heightPx,
+          uri: `file:///cache/${input.widthPx}x${input.heightPx}.jpg`,
+        }))
+        files.forEach((file, index) => onFile?.(file, index, inputs[index]!))
+        return files
+      })
+
+    const books = [book("1")]
+    const { result } = renderHook(
+      () =>
+        useCoverThumbnails({
+          enabled: true,
+          backgroundGenerationBookIds: new Set(["1"]),
+          generationBookIds: new Set(["1"]),
+          library,
+          books,
+          thumbnailSizes: [
+            { widthPx: 100, heightPx: 150 },
+            { widthPx: 220, heightPx: 330 },
+          ],
+          width: 50,
+          height: 75,
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() =>
+      expect(ensureCoverThumbnailFilesAsync).toHaveBeenCalledTimes(1),
+    )
+    expect(ensureCoverThumbnailFilesAsync).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ widthPx: 100, heightPx: 150 }),
+        expect.objectContaining({ widthPx: 220, heightPx: 330 }),
+      ],
+      expect.any(Function),
+    )
+    await waitFor(() =>
+      expect(sessionUri(result.current, books[0]!)).toBe(
+        "file:///cache/100x150.jpg",
+      ),
+    )
+    await waitFor(() =>
+      expect(upsertBookCoverThumbnailCache).toHaveBeenCalledTimes(2),
+    )
+    expect(upsertBookCoverThumbnailCache).toHaveBeenNthCalledWith(
+      2,
+      library,
+      expect.objectContaining({
+        heightPx: 330,
+        widthPx: 220,
+      }),
+    )
+  })
+
   it("defers publishing generated thumbnails while thumbnail work is paused", async () => {
     const firstThumbnail = deferred<{
       fileName: string
@@ -773,7 +832,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(sessionUri(result.current, book("1"))).toBe("file:///cache/1.jpg")
   })
 
-  it("does not reuse a ready thumbnail after the target size changes", async () => {
+  it("reuses a ready thumbnail after the rendered size changes", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -791,6 +850,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
           enabled: true,
           library,
           books,
+          thumbnailSizes: [{ widthPx: 100, heightPx: 150 }],
           width,
           height: 150,
         }),
@@ -818,6 +878,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
       rerender({ width: 120 })
     })
 
-    expect(sessionUri(result.current, books[0]!)).toBeUndefined()
+    expect(sessionUri(result.current, books[0]!)).toBe("file:///cache/1.jpg")
+    expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(1)
   })
 })

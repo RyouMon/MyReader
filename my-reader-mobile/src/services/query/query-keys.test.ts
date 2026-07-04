@@ -26,6 +26,18 @@ describe("queryKeys", () => {
       429,
       "v1",
     ])
+    expect(
+      queryKeys.bookCoverThumbnailCacheProfiles(
+        "lib-1",
+        "300x429|432x618",
+        "v1",
+      ),
+    ).toEqual([
+      "book-cover-thumbnail-cache-profiles",
+      "lib-1",
+      "300x429|432x618",
+      "v1",
+    ])
   })
 
   it("should include book count when building book format key", () => {
@@ -46,6 +58,12 @@ describe("queryKeys", () => {
     expect(queryKeys.bookCoverThumbnailCache()).toEqual([
       "book-cover-thumbnail-cache",
       undefined,
+      undefined,
+      undefined,
+      undefined,
+    ])
+    expect(queryKeys.bookCoverThumbnailCacheProfiles()).toEqual([
+      "book-cover-thumbnail-cache-profiles",
       undefined,
       undefined,
       undefined,

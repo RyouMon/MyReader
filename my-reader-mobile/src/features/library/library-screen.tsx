@@ -17,7 +17,7 @@ import {
 } from "@shopify/flash-list"
 import { Stack, router, useIsFocused } from "expo-router"
 import { useTranslation } from "react-i18next"
-import { View, useWindowDimensions } from "react-native"
+import { Dimensions, PixelRatio, View, useWindowDimensions } from "react-native"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
 import {
@@ -32,9 +32,6 @@ import {
   LIBRARY_GRID_CARD_META_HEIGHT,
   LIBRARY_GRID_CELL_CONTAINER_STYLE,
   LIBRARY_GRID_DRAW_DISTANCE_ROWS,
-  LIBRARY_GRID_MAX_COLUMNS,
-  LIBRARY_GRID_MIN_CARD_WIDTH,
-  LIBRARY_GRID_MIN_COLUMNS,
   LIBRARY_GRID_PADDING_X,
   LIBRARY_LIST_DRAW_DISTANCE_ROWS,
   LIBRARY_LIST_MAINTAIN_VISIBLE_CONTENT_POSITION,
@@ -88,6 +85,11 @@ import {
   resolveCoverThumbnailBookIds,
   resolveInitialCoverThumbnailBookIds,
 } from "@/src/features/library/utils/cover-thumbnail-window"
+import {
+  resolveFullscreenGridCoverThumbnailSizes,
+  resolveLibraryGridCardWidth,
+  resolveLibraryGridColumns,
+} from "@/src/features/library/utils/cover-thumbnail-profiles"
 import { buildLibraryBookCellMetaById } from "@/src/features/library/utils/library-book-cell-meta"
 import { resolveLibraryScreenVariant } from "@/src/features/library/utils/resolve-library-screen-variant"
 import { useLibraryBookMeta } from "@/src/hooks/use-library-book-meta"
@@ -98,25 +100,6 @@ const defaultSortOption: SortOption = "recentlyAdded"
 
 type LibraryScreenProps = {
   libraryId?: string
-}
-
-/** Computes responsive grid columns so larger screens can show more books per row. */
-function getResponsiveGridColumns(
-  containerWidth: number,
-  gap: number,
-  horizontalPadding: number,
-): number {
-  const availableWidth = Math.max(0, containerWidth - horizontalPadding * 2)
-  const estimatedColumns = Math.floor(
-    (availableWidth + gap) / (LIBRARY_GRID_MIN_CARD_WIDTH + gap),
-  )
-  return Math.max(
-    LIBRARY_GRID_MIN_COLUMNS,
-    Math.min(
-      LIBRARY_GRID_MAX_COLUMNS,
-      estimatedColumns || LIBRARY_GRID_MIN_COLUMNS,
-    ),
-  )
 }
 
 function getInitialCoverThumbnailItemCount(
@@ -187,17 +170,20 @@ export default function LibraryScreen({
   const { t } = useTranslation()
   const palette = useThemePalette()
   const isLibraryFocused = useIsFocused()
-  const { width } = useWindowDimensions()
-  const gridColumns = getResponsiveGridColumns(
-    width,
-    LIBRARY_GRID_CARD_GAP,
-    LIBRARY_GRID_PADDING_X,
+  const { height, width } = useWindowDimensions()
+  const screenBounds = Dimensions.get("screen")
+  const pixelRatio = PixelRatio.get()
+  const gridColumns = resolveLibraryGridColumns(width)
+  const cardWidth = resolveLibraryGridCardWidth(width, gridColumns)
+  const coverThumbnailGridSizes = useMemo(
+    () =>
+      resolveFullscreenGridCoverThumbnailSizes({
+        pixelRatio,
+        screenHeight: Math.max(screenBounds.height, height),
+        screenWidth: Math.max(screenBounds.width, width),
+      }),
+    [height, pixelRatio, screenBounds.height, screenBounds.width, width],
   )
-  const cardWidth =
-    (width -
-      LIBRARY_GRID_PADDING_X * 2 -
-      LIBRARY_GRID_CARD_GAP * (gridColumns - 1)) /
-    gridColumns
   const { switchLibrary } = { switchLibrary: switchActiveLibrary }
   const libraries = useAppStore((s) => s.libraries)
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
@@ -350,6 +336,7 @@ export default function LibraryScreen({
     paused: thumbnailWorkPaused,
     library: selectedLibrary,
     books: coverThumbnailDisplayBooks,
+    thumbnailSizes: coverThumbnailGridSizes,
     width: coverThumbnailLayout.width,
     height: coverThumbnailLayout.height,
   })
