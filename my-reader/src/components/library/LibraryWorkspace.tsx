@@ -260,6 +260,7 @@ export default function LibraryWorkspace({
                   fileActionsEnabled={fileActionsEnabled}
                   selectedFormatById={selectedFormatById}
                   progressByBookId={progressByBookId}
+                  activeBookId={activeBookId}
                 />
               </div>
             )}

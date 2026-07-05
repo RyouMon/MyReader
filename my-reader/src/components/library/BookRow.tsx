@@ -21,6 +21,7 @@ interface BookRowProps {
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
+  active?: boolean
 }
 
 /**
@@ -34,6 +35,7 @@ const BookRow = memo(function BookRow({
   progress,
   fileActionsEnabled = true,
   selectedFormat,
+  active = false,
 }: BookRowProps) {
   const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
@@ -59,14 +61,19 @@ const BookRow = memo(function BookRow({
     // biome-ignore lint/a11y/useSemanticElements: The row contains nested action buttons, so the outer target cannot be a button.
     <div
       className={cn(
-        "group/row flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        "group/row relative flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-1.5 outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        active && "bg-primary-soft text-primary",
       )}
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-current={active ? "page" : undefined}
       aria-label={t("bookCard.openBook", { title: book.title })}
     >
+      {active ? (
+        <span className="absolute start-0 top-2 bottom-2 w-0.5 rounded-full bg-primary" />
+      ) : null}
       <BookCover
         book={book}
         libraryId={libraryId}
@@ -78,7 +85,12 @@ const BookRow = memo(function BookRow({
       />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium leading-5 text-foreground">
+        <p
+          className={cn(
+            "truncate text-[13px] font-medium leading-5 text-foreground",
+            active && "text-primary",
+          )}
+        >
           {book.title}
         </p>
         <p className="truncate text-[11px] leading-4 text-muted-foreground">

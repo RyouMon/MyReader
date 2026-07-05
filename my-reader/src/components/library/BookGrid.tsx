@@ -44,6 +44,7 @@ interface BookGridProps {
   fileActionsEnabled?: boolean
   selectedFormatById?: Record<string, string>
   progressByBookId?: ReadingProgressByBook
+  activeBookId?: string | null
 }
 
 interface ScrollAnchor {
@@ -67,6 +68,7 @@ export default function BookGrid({
   fileActionsEnabled = true,
   selectedFormatById = {},
   progressByBookId,
+  activeBookId,
 }: BookGridProps) {
   const scrollHostRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -310,6 +312,7 @@ export default function BookGrid({
                     fileActionsEnabled,
                     selectedFormatById,
                     progressByBookId,
+                    activeBookId,
                     handleRead,
                     onOpenReader,
                     onMore,
@@ -344,6 +347,7 @@ export default function BookGrid({
                           fileActionsEnabled={fileActionsEnabled}
                           selectedFormat={selectedFormat}
                           progress={progress}
+                          active={isActiveBook(book.id, activeBookId)}
                         />
                       )
                     })}
@@ -386,6 +390,7 @@ function renderListRow(
   fileActionsEnabled: boolean,
   selectedFormatById: Record<string, string>,
   progressByBookId: ReadingProgressByBook | undefined,
+  activeBookId: string | null | undefined,
   onRead?: (book: CalibreBook) => void,
   onOpenReader?: (book: CalibreBook) => void,
   onMore?: (book: CalibreBook) => void,
@@ -409,8 +414,16 @@ function renderListRow(
       fileActionsEnabled={fileActionsEnabled}
       selectedFormat={selectedFormat}
       progress={progress}
+      active={isActiveBook(book.id, activeBookId)}
     />
   )
+}
+
+function isActiveBook(
+  bookId: number,
+  activeBookId: string | number | null | undefined,
+) {
+  return activeBookId != null && String(bookId) === String(activeBookId)
 }
 
 export function BookRowSkeleton() {

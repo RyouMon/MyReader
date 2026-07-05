@@ -21,6 +21,7 @@ interface BookCardProps {
   progress?: BookProgressSnapshot
   fileActionsEnabled?: boolean
   selectedFormat?: string
+  active?: boolean
 }
 
 /**
@@ -34,6 +35,7 @@ const BookCard = memo(function BookCard({
   progress,
   fileActionsEnabled = true,
   selectedFormat,
+  active = false,
 }: BookCardProps) {
   const { t } = useTranslation()
   const primaryFormat = book.formats[0] ?? ""
@@ -57,12 +59,14 @@ const BookCard = memo(function BookCard({
     // biome-ignore lint/a11y/useSemanticElements: The card contains nested action buttons, so the outer target cannot be a button.
     <div
       className={cn(
-        "group/card min-w-0 cursor-pointer rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        "group/card relative -m-1.5 min-w-0 cursor-pointer rounded-xl p-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        active && "bg-primary-soft",
       )}
       onClick={() => onRead?.(book)}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
+      aria-current={active ? "page" : undefined}
       aria-label={t("bookCard.openBook", { title: book.title })}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg transition duration-200 ease-out group-hover/card:-translate-y-1 group-hover/card:shadow-[var(--shadow-md)] group-active/card:scale-[0.98]">
@@ -108,11 +112,12 @@ const BookCard = memo(function BookCard({
         ) : null}
       </div>
 
-      <div className="mt-2 h-[70px] overflow-hidden px-0.5">
+      <div className="mt-2 overflow-hidden px-0.5 pb-0.5">
         <p
           className={cn(
             "truncate text-sm font-medium leading-[1.35] text-foreground transition-colors duration-200",
             "group-hover/card:text-primary",
+            active && "text-primary",
           )}
         >
           {book.title}
