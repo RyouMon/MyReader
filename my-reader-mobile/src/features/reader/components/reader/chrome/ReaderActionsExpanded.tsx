@@ -1,7 +1,6 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { useEffect } from "react"
+import { type ReactNode, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import { Dimensions, View as RNView, StyleSheet } from "react-native"
+import { View as RNView, StyleSheet, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -14,8 +13,26 @@ import {
   underlayFromSurface,
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight } from "@/tw"
-
-const ACTION_PILL_WIDTH = Dimensions.get("window").width * 0.55
+import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import {
+  READER_EXPANDED_ACTION_BOTTOM_OFFSET,
+  READER_EXPANDED_ACTION_ICON_SIZE,
+  READER_EXPANDED_ACTION_PADDING_HORIZONTAL,
+  READER_EXPANDED_ACTION_PADDING_VERTICAL,
+  READER_EXPANDED_ACTION_RADIUS,
+  READER_EXPANDED_ACTION_RIGHT,
+  READER_EXPANDED_ACTION_SAFE_BOTTOM_MIN,
+  READER_EXPANDED_ACTION_SHEET_ELEVATION,
+  READER_EXPANDED_ACTION_SHEET_SHADOW_COLOR,
+  READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_X,
+  READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_Y,
+  READER_EXPANDED_ACTION_SHEET_SHADOW_OPACITY,
+  READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS,
+  READER_EXPANDED_ACTION_STACK_GAP,
+  READER_EXPANDED_ACTION_TEXT_GAP,
+  readerExpandedActionWidth,
+} from "./readerChromeConstants"
+import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
 
 type Props = {
   insetsBottom: number
@@ -24,6 +41,47 @@ type Props = {
   palette: ReaderChromePalette
   onOpenToc: () => void
   onOpenSettings: () => void
+}
+
+type ExpandedActionButtonProps = {
+  accessibilityLabel: string
+  actionPillWidth: number
+  children: ReactNode
+  palette: ReaderChromePalette
+  onPress: () => void
+}
+
+function ExpandedActionButton({
+  accessibilityLabel,
+  actionPillWidth,
+  children,
+  palette,
+  onPress,
+}: ExpandedActionButtonProps) {
+  const { pressFeedbackStyle, handlePressIn, handlePressOut } =
+    useReaderChromePressFeedback()
+
+  return (
+    <Animated.View style={pressFeedbackStyle}>
+      <TouchableHighlight
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
+        style={[
+          styles.pillButton,
+          {
+            backgroundColor: palette.actionSurface,
+            width: actionPillWidth,
+          },
+        ]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        {children}
+      </TouchableHighlight>
+    </Animated.View>
+  )
 }
 
 export default function ReaderActionsExpanded({
@@ -35,6 +93,7 @@ export default function ReaderActionsExpanded({
   onOpenSettings,
 }: Props) {
   const { t } = useTranslation()
+  const { width: windowWidth } = useWindowDimensions()
   const translateY = useSharedValue(8)
   const scale = useSharedValue(0.95)
   const opacity = useSharedValue(0)
@@ -61,149 +120,119 @@ export default function ReaderActionsExpanded({
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
     opacity: opacity.value,
   }))
+  const actionPillWidth = readerExpandedActionWidth(windowWidth)
+  const progressClipWidth = (actionPillWidth * progressPercent) / 100
 
   return (
     <Animated.View
       style={[
         {
           position: "absolute",
-          right: 16,
-          bottom: Math.max(insetsBottom, 12) + 36,
+          right: READER_EXPANDED_ACTION_RIGHT,
+          bottom:
+            Math.max(insetsBottom, READER_EXPANDED_ACTION_SAFE_BOTTOM_MIN) +
+            READER_EXPANDED_ACTION_BOTTOM_OFFSET,
         },
         animatedStyle,
       ]}
       pointerEvents={visible ? "auto" : "none"}
     >
-      <RNView style={styles.pillContainer}>
-        <RNView style={styles.pillShadow}>
-          <TouchableHighlight
-            accessibilityRole="button"
-            accessibilityLabel={t("reader.toc")}
-            underlayColor={underlayFromSurface(
-              palette.actionSurface,
-              palette.bg,
-            )}
-            className="rounded-2xl"
-            style={[
-              styles.pillButton,
-              {
-                backgroundColor: palette.actionSurface,
-                width: ACTION_PILL_WIDTH,
-              },
-            ]}
-            onPress={onOpenToc}
-          >
-            <RNView style={styles.pillInner} accessibilityElementsHidden={true}>
-              <RNView style={styles.pillFill} pointerEvents="none">
-                <RNView
-                  style={[
-                    styles.pillFillBar,
-                    {
-                      backgroundColor: palette.progressFill,
-                      width: `${progressPercent}%`,
-                    },
-                  ]}
-                />
-              </RNView>
-              {/* actionText layer — full width background text */}
-              <RNView style={styles.pillContent}>
-                <RNView style={styles.tocLabelGroup}>
-                  <Text
-                    className="text-base font-semibold"
-                    style={{ color: palette.actionText }}
-                  >
-                    {t("reader.toc")}
-                  </Text>
-                  <Text
-                    className="text-base font-semibold"
-                    style={{ color: palette.actionText }}
-                  >
-                    {progressPercent}%
-                  </Text>
-                </RNView>
-                <MaterialIcons
-                  name="list"
-                  size={18}
-                  color={palette.actionText}
-                />
-              </RNView>
-              {/* progressText layer — clipped to progress width, using pixel value to match pillFill baseline */}
+      <RNView style={[styles.pillContainer, styles.sheetShadow]}>
+        <ExpandedActionButton
+          accessibilityLabel={t("reader.toc")}
+          actionPillWidth={actionPillWidth}
+          palette={palette}
+          onPress={onOpenToc}
+        >
+          <RNView style={styles.pillInner} accessibilityElementsHidden={true}>
+            <RNView style={styles.pillFill} pointerEvents="none">
               <RNView
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  width: (ACTION_PILL_WIDTH * progressPercent) / 100,
-                  overflow: "hidden",
-                }}
-                pointerEvents="none"
-              >
-                <RNView
-                  style={{
-                    width: ACTION_PILL_WIDTH,
-                    paddingHorizontal: 18,
-                    paddingVertical: 14,
-                  }}
+                style={[
+                  styles.pillFillBar,
+                  {
+                    backgroundColor: palette.progressFill,
+                    width: `${progressPercent}%`,
+                  },
+                ]}
+              />
+            </RNView>
+            {/* actionText layer — full width background text */}
+            <RNView style={styles.pillContent}>
+              <RNView style={styles.tocLabelGroup}>
+                <Text
+                  className="text-lg font-semibold"
+                  style={{ color: palette.actionText }}
                 >
-                  <RNView style={styles.pillContent}>
-                    <RNView style={styles.tocLabelGroup}>
-                      <Text
-                        className="text-base font-semibold"
-                        style={{ color: palette.progressText }}
-                      >
-                        {t("reader.toc")}
-                      </Text>
-                      <Text
-                        className="text-base font-semibold"
-                        style={{ color: palette.progressText }}
-                      >
-                        {progressPercent}%
-                      </Text>
-                    </RNView>
-                    <MaterialIcons
-                      name="list"
-                      size={18}
-                      color={palette.progressText}
-                    />
+                  {t("reader.toc")}
+                </Text>
+                <Text
+                  className="text-lg font-semibold"
+                  style={{ color: palette.actionText }}
+                >
+                  {progressPercent}%
+                </Text>
+              </RNView>
+              <ReaderChromeIcon
+                name="toc"
+                size={READER_EXPANDED_ACTION_ICON_SIZE}
+                color={palette.actionText}
+              />
+            </RNView>
+            {/* progressText layer — clipped to progress width, using pixel value to match pillFill baseline */}
+            <RNView
+              style={[styles.progressTextClip, { width: progressClipWidth }]}
+              pointerEvents="none"
+            >
+              <RNView style={[styles.pillInner, { width: actionPillWidth }]}>
+                <RNView style={styles.pillContent}>
+                  <RNView style={styles.tocLabelGroup}>
+                    <Text
+                      className="text-lg font-semibold"
+                      style={{ color: palette.progressText }}
+                    >
+                      {t("reader.toc")}
+                    </Text>
+                    <Text
+                      className="text-lg font-semibold"
+                      style={{ color: palette.progressText }}
+                    >
+                      {progressPercent}%
+                    </Text>
                   </RNView>
+                  <ReaderChromeIcon
+                    name="toc"
+                    size={READER_EXPANDED_ACTION_ICON_SIZE}
+                    color={palette.progressText}
+                  />
                 </RNView>
               </RNView>
             </RNView>
-          </TouchableHighlight>
-        </RNView>
+          </RNView>
+        </ExpandedActionButton>
 
-        <RNView style={styles.pillShadow}>
-          <TouchableHighlight
-            accessibilityRole="button"
-            accessibilityLabel={t("reader.settings")}
-            underlayColor={underlayFromSurface(
-              palette.actionSurface,
-              palette.bg,
-            )}
-            className="rounded-2xl px-[18px] py-[14px]"
-            style={[
-              {
-                backgroundColor: palette.actionSurface,
-                width: ACTION_PILL_WIDTH,
-              },
-            ]}
-            onPress={onOpenSettings}
+        <ExpandedActionButton
+          accessibilityLabel={t("reader.settings")}
+          actionPillWidth={actionPillWidth}
+          palette={palette}
+          onPress={onOpenSettings}
+        >
+          <RNView
+            style={[styles.pillInner, styles.pillContent]}
+            accessibilityElementsHidden={true}
           >
-            <RNView
-              style={styles.pillContent}
-              accessibilityElementsHidden={true}
+            <Text
+              className="text-lg font-semibold"
+              style={{ color: palette.actionText }}
             >
-              <Text
-                className="text-base font-semibold"
-                style={{ color: palette.actionText }}
-              >
-                {t("reader.settings")}
-              </Text>
-              <MaterialIcons name="tune" size={18} color={palette.actionText} />
-            </RNView>
-          </TouchableHighlight>
-        </RNView>
+              {t("reader.settings")}
+            </Text>
+            <ReaderChromeIcon
+              name="settings"
+              size={READER_EXPANDED_ACTION_ICON_SIZE}
+              color={palette.actionText}
+            />
+          </RNView>
+        </ExpandedActionButton>
       </RNView>
     </Animated.View>
   )
@@ -212,23 +241,26 @@ export default function ReaderActionsExpanded({
 const styles = StyleSheet.create({
   pillContainer: {
     flexDirection: "column",
-    gap: 6,
+    gap: READER_EXPANDED_ACTION_STACK_GAP,
   },
-  pillShadow: {
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+  sheetShadow: {
+    shadowColor: READER_EXPANDED_ACTION_SHEET_SHADOW_COLOR,
+    shadowOpacity: READER_EXPANDED_ACTION_SHEET_SHADOW_OPACITY,
+    shadowRadius: READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS,
+    shadowOffset: {
+      width: READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_X,
+      height: READER_EXPANDED_ACTION_SHEET_SHADOW_OFFSET_Y,
+    },
+    elevation: READER_EXPANDED_ACTION_SHEET_ELEVATION,
   },
   pillButton: {
     position: "relative",
     overflow: "hidden",
+    borderRadius: READER_EXPANDED_ACTION_RADIUS,
   },
   pillInner: {
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: READER_EXPANDED_ACTION_PADDING_HORIZONTAL,
+    paddingVertical: READER_EXPANDED_ACTION_PADDING_VERTICAL,
   },
   pillFill: {
     position: "absolute",
@@ -236,11 +268,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
-    overflow: "hidden",
   },
   pillFillBar: {
     height: "100%",
+  },
+  progressTextClip: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    overflow: "hidden",
   },
   pillContent: {
     flexDirection: "row",
@@ -250,7 +287,7 @@ const styles = StyleSheet.create({
   tocLabelGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: READER_EXPANDED_ACTION_TEXT_GAP,
     flex: 1,
   },
 })

@@ -1,7 +1,7 @@
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { forwardRef, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { Dimensions, View as RNView, StyleSheet } from "react-native"
+import { View as RNView, StyleSheet } from "react-native"
 
 import {
   underlayFromSurface,
@@ -9,6 +9,17 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import type { ReaderTocItem } from "@/src/features/reader/components/reader/types"
 import { Text, TouchableHighlight } from "@/tw"
+import {
+  READER_SHEET_ELEVATION,
+  READER_SHEET_RADIUS,
+  READER_SHEET_SHADOW_COLOR,
+  READER_SHEET_SHADOW_OFFSET_X,
+  READER_SHEET_SHADOW_OFFSET_Y,
+  READER_SHEET_SHADOW_OPACITY,
+  READER_SHEET_SHADOW_RADIUS,
+  READER_TOC_SHEET_INITIAL_INDEX,
+  READER_TOC_SHEET_SNAP_POINTS,
+} from "./readerChromeConstants"
 
 function stripFragment(href: string): string {
   const i = href.indexOf("#")
@@ -51,9 +62,11 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
     return (
       <BottomSheetModal
         ref={ref}
-        snapPoints={["50%"]}
-        maxDynamicContentSize={Dimensions.get("window").height * 0.5}
+        index={READER_TOC_SHEET_INITIAL_INDEX}
+        snapPoints={READER_TOC_SHEET_SNAP_POINTS}
+        enableDynamicSizing={false}
         enablePanDownToClose
+        style={styles.sheetShadow}
         backgroundStyle={[
           styles.background,
           { backgroundColor: palette.sheetSurface },
@@ -116,8 +129,20 @@ export default ReaderTocSheet
 
 const styles = StyleSheet.create({
   background: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: READER_SHEET_RADIUS,
+    borderTopRightRadius: READER_SHEET_RADIUS,
+  },
+  sheetShadow: {
+    borderTopLeftRadius: READER_SHEET_RADIUS,
+    borderTopRightRadius: READER_SHEET_RADIUS,
+    shadowColor: READER_SHEET_SHADOW_COLOR,
+    shadowOpacity: READER_SHEET_SHADOW_OPACITY,
+    shadowRadius: READER_SHEET_SHADOW_RADIUS,
+    shadowOffset: {
+      width: READER_SHEET_SHADOW_OFFSET_X,
+      height: READER_SHEET_SHADOW_OFFSET_Y,
+    },
+    elevation: READER_SHEET_ELEVATION,
   },
   handleContainer: {
     alignItems: "center",

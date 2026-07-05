@@ -1,4 +1,5 @@
 import type { SpreadPreference } from "@/lib/readium/epubReaderPrefs"
+import type { ReaderThemeKey } from "@my-reader/tools/reader-themes"
 
 export type ReadingLayout = "paginate" | "scroll"
 export type DisplayMode = "single" | "spread"
@@ -8,15 +9,7 @@ export type TextAlign = "auto" | "justify" | "start"
 export type ColCount = "auto" | "1" | "2"
 
 /** 与 Thorium 对齐的 8 个阅读主题。 */
-export type ReaderTheme =
-  | "neutral"
-  | "sepia"
-  | "night"
-  | "paper"
-  | "contrast1"
-  | "contrast2"
-  | "ocean"
-  | "green"
+export type ReaderTheme = ReaderThemeKey
 
 export interface ReaderSettings {
   theme: ReaderTheme

@@ -6,13 +6,15 @@ import {
 describe("reader reflow preferences", () => {
   it("should map theme groups when building Readium theme token", () => {
     expect(toReadiumThemeToken("night")).toBe("dark")
+    expect(toReadiumThemeToken("contrast1")).toBe("dark")
     expect(toReadiumThemeToken("contrast2")).toBe("dark")
+    expect(toReadiumThemeToken("ocean")).toBe("dark")
     expect(toReadiumThemeToken("paper")).toBe("sepia")
     expect(toReadiumThemeToken("green")).toBe("sepia")
     expect(toReadiumThemeToken("neutral")).toBe("light")
   })
 
-  it("should include serif font and auto layout defaults when requested", () => {
+  it("should include serif font and auto layout when requested", () => {
     expect(
       buildPreferences("paper", "serif", 18, 1.85, 20, "auto", "auto"),
     ).toMatchObject({
@@ -65,8 +67,8 @@ describe("reader reflow preferences", () => {
       ),
     ).toMatchObject({
       theme: "light",
-      textColor: "#2C2420",
-      backgroundColor: "#FFFFFF",
+      textColor: "#000000",
+      backgroundColor: "#fefefe",
     })
   })
 

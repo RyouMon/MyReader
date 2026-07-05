@@ -16,13 +16,13 @@ export function toReadiumThemeToken(
 ): "light" | "dark" | "sepia" {
   switch (theme) {
     case "night":
+    case "contrast1":
     case "contrast2":
+    case "ocean":
       return "dark"
     case "paper":
     case "sepia":
     case "green":
-    case "ocean":
-    case "contrast1":
       return "sepia"
     default:
       return "light"

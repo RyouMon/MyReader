@@ -21,6 +21,15 @@ import {
   SliderControl,
   ThemeSwatches,
 } from "./SettingControls"
+import {
+  READER_SHEET_ELEVATION,
+  READER_SHEET_RADIUS,
+  READER_SHEET_SHADOW_COLOR,
+  READER_SHEET_SHADOW_OFFSET_X,
+  READER_SHEET_SHADOW_OFFSET_Y,
+  READER_SHEET_SHADOW_OPACITY,
+  READER_SHEET_SHADOW_RADIUS,
+} from "./readerChromeConstants"
 
 const ALIGNMENT_OPTIONS = [
   { key: "auto", labelKey: "reader.alignmentAuto" },
@@ -259,6 +268,7 @@ const ReaderSettingsSheet = forwardRef<
       snapPoints={["60%"]}
       maxDynamicContentSize={Dimensions.get("window").height * 0.6}
       enablePanDownToClose
+      style={styles.sheetShadow}
       backgroundStyle={[
         styles.background,
         { backgroundColor: palette.sheetSurface },
@@ -293,8 +303,20 @@ export default ReaderSettingsSheet
 
 const styles = StyleSheet.create({
   background: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: READER_SHEET_RADIUS,
+    borderTopRightRadius: READER_SHEET_RADIUS,
+  },
+  sheetShadow: {
+    borderTopLeftRadius: READER_SHEET_RADIUS,
+    borderTopRightRadius: READER_SHEET_RADIUS,
+    shadowColor: READER_SHEET_SHADOW_COLOR,
+    shadowOpacity: READER_SHEET_SHADOW_OPACITY,
+    shadowRadius: READER_SHEET_SHADOW_RADIUS,
+    shadowOffset: {
+      width: READER_SHEET_SHADOW_OFFSET_X,
+      height: READER_SHEET_SHADOW_OFFSET_Y,
+    },
+    elevation: READER_SHEET_ELEVATION,
   },
   handleContainer: {
     alignItems: "center",
