@@ -82,6 +82,7 @@ const BookRow = memo(function BookRow({
         titleClassName="sr-only"
         spineClassName="w-1"
         showFallbackMeta={false}
+        probeCoverWhenUnknown
       />
 
       <div className="min-w-0 flex-1">

@@ -41,12 +41,12 @@ export class MainPage {
     return this.page.locator('[data-slot="sidebar"][data-mobile="true"]')
   }
 
-  // Trigger inside the persistent sidebar rail.
+  // Trigger lives in the active headerbar, not inside the sidebar content.
   getSidebarTriggerButton() {
-    return this.getDesktopSidebar().getByTestId("sidebar-toggle-button")
+    return this.page.getByTestId("sidebar-toggle-button").first()
   }
 
-  // Sheet trigger inside the overlay.
+  // Kept as a scoped fallback for overlay implementations that expose a local trigger.
   getMobileSheetTriggerButton() {
     return this.getMobileSheet().getByTestId("sidebar-toggle-button")
   }
@@ -56,12 +56,10 @@ export class MainPage {
   }
 
   getCollapseIcon() {
-    // Only the collapse icon inside the mobile Sheet (desktop uses getSidebarTriggerButton context)
-    return this.getMobileSheetTriggerButton()
+    return this.getSidebarTriggerButton()
   }
 
   getExpandIcon() {
-    // Only the expand icon inside the mobile icon strip
     return this.getSidebarTriggerButton()
   }
 
@@ -128,7 +126,6 @@ export class MainPage {
 
   async assertMobileSheetOpen() {
     await expect(this.getMobileSheet()).toBeVisible()
-    await expect(this.getMobileSheetTriggerButton()).toBeVisible()
   }
 
   async assertMobileSheetClosed() {
@@ -169,17 +166,27 @@ export class MainPage {
   }
 
   // --- Sidebar actions ---
-  async clickSidebarCollapseButton() {
+  async clickSidebarToggleButton() {
     const isMobile = (this.page.viewportSize()?.width ?? 0) < MOBILE_BREAKPOINT
-    if (isMobile && (await this.getMobileSheet().isVisible())) {
+    const sheetTrigger = this.getMobileSheetTriggerButton()
+    if (
+      isMobile &&
+      (await this.getMobileSheet().isVisible()) &&
+      (await sheetTrigger.count()) > 0 &&
+      (await sheetTrigger.isVisible())
+    ) {
       await this.getMobileSheetTriggerButton().click()
     } else {
       await this.getSidebarTriggerButton().click()
     }
   }
 
+  async clickSidebarCollapseButton() {
+    await this.clickSidebarToggleButton()
+  }
+
   async clickSidebarExpandButton() {
-    await this.getSidebarTriggerButton().click()
+    await this.clickSidebarToggleButton()
   }
 
   async clickOverlayOutside() {

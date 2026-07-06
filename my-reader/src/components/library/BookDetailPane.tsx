@@ -15,7 +15,14 @@ import {
   Trash2,
   X,
 } from "lucide-react"
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import AppSidebarToggle from "@/components/library/AppSidebarToggle"
@@ -55,6 +62,13 @@ import {
   useDownloadProgress,
 } from "@/hooks/useDownloadProgress"
 import { buildCoverUrl } from "@/lib/cover"
+import {
+  getCoverFailureKey,
+  getCoverFailuresRevision,
+  isBrokenCover,
+  markBrokenCover,
+  subscribeCoverFailures,
+} from "@/lib/coverFailureCache"
 import { getCoverGradientClass } from "@/lib/cover-gradient"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { getReadableFormats, pickReadableFormat } from "@/lib/readFormats"
@@ -156,9 +170,6 @@ function getFormatTone(format: string): string {
   return FORMAT_TONES[format] ?? "bg-muted text-foreground border border-border"
 }
 
-/** Module-level set consistent with BookCard */
-const brokenCovers = new Set<string>()
-
 const DETAIL_CARD_CLASS =
   "relative isolate flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-card shadow-none transition-colors duration-[340ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none"
 const MOBILE_HERO_BREAKPOINT = 559
@@ -199,9 +210,13 @@ export default function BookDetailPane({
   const [error, setError] = useState<string | null>(null)
   const [synopsisExpanded, setSynopsisExpanded] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
-  const [coverFailed, setCoverFailed] = useState(false)
   const [isNarrowHero, setIsNarrowHero] = useState(false)
   const [showNarrowCoverBackdrop, setShowNarrowCoverBackdrop] = useState(false)
+  const coverFailuresRevision = useSyncExternalStore(
+    subscribeCoverFailures,
+    getCoverFailuresRevision,
+    getCoverFailuresRevision,
+  )
 
   const bodyHostRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -247,7 +262,6 @@ export default function BookDetailPane({
         setBook(detail)
         setSeriesBooks([])
         setSelectedFormat(null)
-        setCoverFailed(brokenCovers.has(detail.path))
         console.info(
           `Success to load book detail. book id: ${detail.id}, title: "${detail.title}", series: "${detail.series ?? ""}"`,
         )
@@ -327,12 +341,24 @@ export default function BookDetailPane({
     return () => window.cancelAnimationFrame(frame)
   }, [isNarrowHero, updateNarrowCoverBackdrop])
 
+  const coverFailureKey =
+    book && activeLibraryId
+      ? getCoverFailureKey({
+          libraryId: activeLibraryId,
+          bookPath: book.path,
+          kind: "expected",
+        })
+      : null
+  const coverFailed =
+    coverFailuresRevision >= 0 && coverFailureKey
+      ? isBrokenCover(coverFailureKey)
+      : false
+
   const handleCoverError = useCallback(() => {
-    if (book) {
-      brokenCovers.add(book.path)
-      setCoverFailed(true)
+    if (coverFailureKey) {
+      markBrokenCover(coverFailureKey)
     }
-  }, [book])
+  }, [coverFailureKey])
 
   const isFavorite = favoriteSet.has(Number(bookId))
   const handleToggleFavorite = useCallback(() => {
@@ -1669,7 +1695,17 @@ function RelatedBookCard({
   libraryId: string | null
   onClick: () => void
 }) {
-  const [imgFailed, setImgFailed] = useState(() => brokenCovers.has(book.path))
+  const coverFailuresRevision = useSyncExternalStore(
+    subscribeCoverFailures,
+    getCoverFailuresRevision,
+    getCoverFailuresRevision,
+  )
+  const coverFailureKey = getCoverFailureKey({
+    libraryId,
+    bookPath: book.path,
+    kind: "expected",
+  })
+  const imgFailed = coverFailuresRevision >= 0 && isBrokenCover(coverFailureKey)
   const showCover = book.hasCover && libraryId && !imgFailed
   const coverSrc = showCover ? buildCoverUrl(libraryId, book.path) : null
 
@@ -1692,8 +1728,7 @@ function RelatedBookCard({
             className="absolute inset-0 size-full object-cover"
             loading="lazy"
             onError={() => {
-              brokenCovers.add(book.path)
-              setImgFailed(true)
+              markBrokenCover(coverFailureKey)
             }}
           />
         ) : (

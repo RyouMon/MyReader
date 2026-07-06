@@ -29,6 +29,7 @@ import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useOpenReader } from "@/hooks/reader/useOpenReader"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
+import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -127,6 +128,7 @@ export default function LibraryWorkspace({
     }
     try {
       await api.syncDbForLibrary(activeLibraryId)
+      resetBrokenCovers()
       await queryClient.invalidateQueries({
         queryKey: readingProgressKeys.list(activeLibraryId),
       })

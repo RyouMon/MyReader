@@ -1,19 +1,29 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
-import { memo, type ReactNode, useCallback, useState } from "react"
+import {
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 import { buildCoverUrl } from "@/lib/cover"
+import {
+  getCoverFailureKey,
+  getCoverFailuresRevision,
+  isBrokenCover,
+  markBrokenCover,
+  resetBrokenCovers,
+  subscribeCoverFailures,
+} from "@/lib/coverFailureCache"
 import { getCoverGradientClass } from "@/lib/cover-gradient"
 import type { BookProgressSnapshot } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 
 export type { BookProgressSnapshot }
-
-const brokenCovers = new Set<string>()
-
-/** Clear the broken-covers cache so covers re-render. */
-export function resetBrokenCovers() {
-  brokenCovers.clear()
-}
+export { resetBrokenCovers }
 
 interface BookCoverProps {
   book: CalibreBook
@@ -26,8 +36,13 @@ interface BookCoverProps {
   progress?: BookProgressSnapshot
   showProgress?: boolean
   cornerIndicator?: ReactNode
+  showSpine?: boolean
   /** Show title/author on the generated fallback cover. Defaults to true. */
   showFallbackMeta?: boolean
+  /** Keep generated fallback text hidden while a real cover is still loading. */
+  deferFallbackMetaUntilError?: boolean
+  /** Try loading a cover even when Calibre metadata has not confirmed one yet. */
+  probeCoverWhenUnknown?: boolean
 }
 
 /**
@@ -44,14 +59,35 @@ export const BookCover = memo(function BookCover({
   progress,
   showProgress = true,
   cornerIndicator,
+  showSpine = true,
   showFallbackMeta = true,
+  deferFallbackMetaUntilError = false,
+  probeCoverWhenUnknown = false,
 }: BookCoverProps) {
-  const [imgFailed, setImgFailed] = useState(() => brokenCovers.has(book.path))
+  const coverFailureKey = getCoverFailureKey({
+    libraryId,
+    bookPath: book.path,
+    kind: book.hasCover ? "expected" : "probe",
+  })
+  useSyncExternalStore(
+    subscribeCoverFailures,
+    getCoverFailuresRevision,
+    getCoverFailuresRevision,
+  )
+  const imgFailed = isBrokenCover(coverFailureKey)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const hasExpectedCover = book.hasCover && !!libraryId
+  const shouldProbeCover = probeCoverWhenUnknown && !!libraryId && !!book.path
+  const shouldLoadCover = (hasExpectedCover || shouldProbeCover) && !imgFailed
   const coverSrc =
-    book.hasCover && libraryId && !imgFailed
-      ? buildCoverUrl(libraryId, book.path)
-      : null
+    shouldLoadCover && libraryId ? buildCoverUrl(libraryId, book.path) : null
+  const showLoadingSkeleton = !!coverSrc && !imgLoaded && !imgFailed
+  const showFallbackCover =
+    (!hasExpectedCover && !shouldProbeCover) || imgFailed
+  const showFallbackMetaContent =
+    showFallbackCover &&
+    showFallbackMeta &&
+    (!deferFallbackMetaUntilError || imgFailed || !hasExpectedCover)
   const progressPercent =
     typeof progress?.percent === "number"
       ? Math.max(0, Math.min(100, progress.percent))
@@ -62,10 +98,13 @@ export const BookCover = memo(function BookCover({
   }, [])
 
   const handleImgError = useCallback(() => {
-    brokenCovers.add(book.path)
+    markBrokenCover(coverFailureKey)
     setImgLoaded(false)
-    setImgFailed(true)
-  }, [book.path])
+  }, [coverFailureKey])
+
+  useEffect(() => {
+    setImgLoaded(false)
+  }, [coverFailureKey])
 
   return (
     <div
@@ -74,18 +113,20 @@ export const BookCover = memo(function BookCover({
         className,
       )}
     >
-      {/* Base colored layer: always visible so the cover area never looks blank while an image is loading/decoding. */}
-      <div
-        className={cn("absolute inset-0", getCoverGradientClass(book.title))}
-        aria-hidden="true"
-      />
+      {showFallbackCover ? (
+        <div
+          className={cn("absolute inset-0", getCoverGradientClass(book.title))}
+          aria-hidden="true"
+        />
+      ) : null}
 
       {coverSrc ? (
         <img
           src={coverSrc}
           alt={book.title}
           className={cn(
-            "absolute inset-0 size-full object-cover",
+            "absolute inset-0 size-full object-cover opacity-100 transition-opacity duration-150",
+            showLoadingSkeleton && "opacity-0",
             imageClassName,
           )}
           loading="lazy"
@@ -94,13 +135,17 @@ export const BookCover = memo(function BookCover({
         />
       ) : null}
 
-      {showFallbackMeta ? (
+      {showLoadingSkeleton ? (
+        <Skeleton
+          className="absolute inset-0 z-10 size-full rounded-none"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {showFallbackMetaContent ? (
         <div
           className={cn(
             "absolute inset-0 flex size-full flex-col items-center justify-center px-3 py-4 text-center transition-opacity duration-300",
-            coverSrc && imgLoaded
-              ? "pointer-events-none opacity-0"
-              : "opacity-100",
             fallbackClassName,
           )}
         >
@@ -121,12 +166,14 @@ export const BookCover = memo(function BookCover({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "absolute inset-y-0 start-0 w-1.5 bg-black/20",
-          spineClassName,
-        )}
-      />
+      {showSpine ? (
+        <div
+          className={cn(
+            "absolute inset-y-0 start-0 w-1.5 bg-black/20",
+            spineClassName,
+          )}
+        />
+      ) : null}
 
       {cornerIndicator ? (
         <div className="absolute end-1.5 top-1.5 z-20">{cornerIndicator}</div>

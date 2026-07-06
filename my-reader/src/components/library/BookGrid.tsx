@@ -8,6 +8,7 @@ import {
   useState,
 } from "react"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
+import { Skeleton } from "@/components/ui/skeleton"
 import { pickReadableFormat } from "@/lib/readFormats"
 import {
   getBookProgressSnapshot,
@@ -16,18 +17,22 @@ import {
 import BookCard from "./BookCard"
 import BookRow from "./BookRow"
 
-const COMFORTABLE_MIN_COL_WIDTH = 152
-const COMPACT_MIN_COL_WIDTH = 112
-const COMFORTABLE_GRID_GAP = 24
-const COMPACT_GRID_GAP = 12
+const GRID_CARD_WIDTH = 164
+const MIN_GRID_CARD_WIDTH = 136
+const MAX_GRID_CARD_WIDTH = 172
+const GRID_GAP = 20
+const MIN_GRID_GAP = 16
+const MAX_GRID_GAP = 28
+const NEXT_COLUMN_CARD_WIDTH = 152
 const MIN_GRID_COLUMNS = 2
 const SKELETON_COUNT = 20
 const LIST_ROW_HEIGHT = 62
-const TEXT_BLOCK_HEIGHT = 78 // mt-2 (8px) + h-[70px] text area
-const ROW_GAP = 24
+const TEXT_BLOCK_HEIGHT = 55
+const ROW_GAP = 12
 const ANCHOR_VISIBILITY_THRESHOLD = 48
-const DEFAULT_GRID_ROW_HEIGHT =
-  COMFORTABLE_MIN_COL_WIDTH * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP
+const DEFAULT_GRID_LAYOUT = getGridLayoutMetrics(
+  GRID_CARD_WIDTH * 4 + GRID_GAP * 3,
+)
 
 export type LibraryViewMode = "grid" | "list"
 
@@ -78,40 +83,28 @@ export default function BookGrid({
   const restoreFrameRef = useRef<number | null>(null)
   const scrollAnchorRef = useRef<ScrollAnchor | null>(null)
   const layoutSignatureRef = useRef<string | null>(null)
-  const [layout, setLayout] = useState({
-    cols: 4,
-    gap: COMFORTABLE_GRID_GAP,
-    gridRowHeight: DEFAULT_GRID_ROW_HEIGHT,
-  })
+  const [layout, setLayout] = useState(DEFAULT_GRID_LAYOUT)
 
   useOverlayScrollbar(scrollHostRef, scrollRef)
 
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
+  useLayoutEffect(() => {
+    const layoutEl = scrollContentRef.current
+    if (!layoutEl) return
 
     const updateLayout = () => {
       frameRef.current = null
-      const layoutEl = scrollContentRef.current ?? el
-      const style = window.getComputedStyle(layoutEl)
-      const paddingX =
-        parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-      const contentWidth = Math.max(0, layoutEl.clientWidth - paddingX)
-      const metrics = getGridLayoutMetrics(contentWidth)
-      const { cols: newCols, gap } = metrics
-      const colWidth = (contentWidth - (newCols - 1) * gap) / newCols
-      const coverHeight = colWidth * 1.5
-      const cardHeight = coverHeight + TEXT_BLOCK_HEIGHT
-      const rowHeight = cardHeight + ROW_GAP
+      const contentWidth = getContentBoxWidth(layoutEl)
+      const nextLayout = getGridLayoutMetrics(contentWidth)
       setLayout((current) => {
         if (
-          current.cols === newCols &&
-          current.gap === gap &&
-          Math.abs(current.gridRowHeight - rowHeight) < 0.5
+          current.cols === nextLayout.cols &&
+          current.gap === nextLayout.gap &&
+          Math.abs(current.cardWidth - nextLayout.cardWidth) < 0.5 &&
+          Math.abs(current.gridRowHeight - nextLayout.gridRowHeight) < 0.5
         ) {
           return current
         }
-        return { cols: newCols, gap, gridRowHeight: rowHeight }
+        return nextLayout
       })
     }
 
@@ -122,10 +115,7 @@ export default function BookGrid({
 
     updateLayout()
     const ro = new ResizeObserver(scheduleLayoutUpdate)
-    ro.observe(el)
-    if (scrollContentRef.current) {
-      ro.observe(scrollContentRef.current)
-    }
+    ro.observe(layoutEl)
     return () => {
       ro.disconnect()
       if (frameRef.current !== null) {
@@ -135,10 +125,10 @@ export default function BookGrid({
   }, [])
 
   const isList = viewMode === "list"
-  const { cols, gap, gridRowHeight } = layout
+  const { cols, gap, cardWidth, gridRowHeight } = layout
   const rowCount = isList ? total : Math.ceil(total / cols)
   const rowHeight = isList ? LIST_ROW_HEIGHT : gridRowHeight
-  const layoutSignature = `${viewMode}:${cols}:${Math.round(rowHeight)}`
+  const layoutSignature = `${viewMode}:${cols}`
 
   const virtualizer = useVirtualizer({
     count: rowCount,
@@ -220,10 +210,12 @@ export default function BookGrid({
     }
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Layout changes must restore the transient scroll anchor before paint.
   useLayoutEffect(() => {
     virtualizer.measure()
+  }, [rowHeight, virtualizer])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Column changes must restore the transient scroll anchor before paint.
+  useLayoutEffect(() => {
     const previousSignature = layoutSignatureRef.current
     layoutSignatureRef.current = layoutSignature
 
@@ -322,7 +314,8 @@ export default function BookGrid({
                     className="grid"
                     style={{
                       columnGap: gap,
-                      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                      gridTemplateColumns: `repeat(${cols}, ${cardWidth}px)`,
+                      justifyContent: cols > 1 ? "center" : "start",
                     }}
                   >
                     {Array.from({ length: cols }, (_, c) => {
@@ -362,22 +355,65 @@ export default function BookGrid({
   )
 }
 
-function getGridLayoutMetrics(contentWidth: number) {
-  const compact = contentWidth < 480
-  const gap = compact ? COMPACT_GRID_GAP : COMFORTABLE_GRID_GAP
-  const minColWidth = compact
-    ? COMPACT_MIN_COL_WIDTH
-    : COMFORTABLE_MIN_COL_WIDTH
-  const measuredCols = Math.max(
-    1,
-    Math.floor((contentWidth + gap) / (minColWidth + gap)),
+export function getGridLayoutMetrics(contentWidth: number) {
+  let cols = MIN_GRID_COLUMNS
+  while (
+    getAvailableCardWidth(contentWidth, cols + 1, GRID_GAP) >=
+    NEXT_COLUMN_CARD_WIDTH
+  ) {
+    cols += 1
+  }
+
+  const minimumCardWidth = Math.min(
+    MIN_GRID_CARD_WIDTH,
+    getAvailableCardWidth(contentWidth, cols, MIN_GRID_GAP),
   )
-  const minCols = contentWidth > gap ? MIN_GRID_COLUMNS : 1
+  const cardWidth = snapLayoutValue(
+    clamp(
+      getAvailableCardWidth(contentWidth, cols, GRID_GAP),
+      minimumCardWidth,
+      MAX_GRID_CARD_WIDTH,
+    ),
+  )
+  const gap = snapLayoutValue(
+    cols > 1
+      ? clamp(
+          (contentWidth - cardWidth * cols) / (cols - 1),
+          MIN_GRID_GAP,
+          MAX_GRID_GAP,
+        )
+      : 0,
+  )
 
   return {
-    cols: Math.max(minCols, measuredCols),
+    cols,
     gap,
+    cardWidth,
+    gridRowHeight: cardWidth * 1.5 + TEXT_BLOCK_HEIGHT + ROW_GAP,
   }
+}
+
+function getAvailableCardWidth(
+  contentWidth: number,
+  cols: number,
+  gap: number,
+) {
+  return Math.max(0, (contentWidth - (cols - 1) * gap) / cols)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function snapLayoutValue(value: number) {
+  return Math.round(value * 2) / 2
+}
+
+function getContentBoxWidth(element: HTMLElement) {
+  const style = window.getComputedStyle(element)
+  const paddingX =
+    parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+  return Math.max(0, element.clientWidth - paddingX)
 }
 
 /**
@@ -428,16 +464,16 @@ function isActiveBook(
 
 export function BookRowSkeleton() {
   return (
-    <div className="flex min-h-14 animate-pulse items-center gap-3 rounded-md px-2.5 py-1.5">
-      <div className="h-[42px] w-[30px] shrink-0 rounded-sm bg-muted" />
+    <div className="flex min-h-14 items-center gap-3 rounded-md px-2.5 py-1.5">
+      <Skeleton className="h-[42px] w-[30px] shrink-0 rounded-sm" />
       <div className="min-w-0 flex-1">
-        <div className="h-3.5 w-1/2 rounded bg-muted" />
-        <div className="mt-0.5 h-3 w-1/3 rounded bg-muted" />
-        <div className="mt-0.5 h-3.5 w-8 rounded bg-muted" />
+        <Skeleton className="h-3.5 w-1/2 rounded" />
+        <Skeleton className="mt-0.5 h-3 w-1/3 rounded" />
+        <Skeleton className="mt-0.5 h-3.5 w-8 rounded" />
       </div>
       <div className="flex shrink-0 items-center gap-0.5">
-        <div className="size-7 rounded bg-muted" />
-        <div className="size-7 rounded bg-muted" />
+        <Skeleton className="size-7 rounded" />
+        <Skeleton className="size-7 rounded" />
       </div>
     </div>
   )
@@ -445,12 +481,12 @@ export function BookRowSkeleton() {
 
 export function BookCardSkeleton() {
   return (
-    <div className="animate-pulse min-w-0">
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-muted" />
+    <div className="min-w-0">
+      <Skeleton className="aspect-[2/3] w-full rounded-lg" />
       <div className="mt-2 px-0.5">
-        <div className="h-3.5 w-3/4 rounded bg-muted" />
-        <div className="mt-0.5 h-3 w-1/2 rounded bg-muted" />
-        <div className="mt-1 h-3.5 w-10 rounded bg-muted" />
+        <Skeleton className="h-3.5 w-3/4 rounded" />
+        <Skeleton className="mt-0.5 h-3 w-1/2 rounded" />
+        <Skeleton className="mt-1 h-3.5 w-10 rounded" />
       </div>
     </div>
   )
@@ -464,8 +500,8 @@ export function LibrarySkeletonGrid({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-6">
       <div className="mb-4 flex items-baseline gap-2.5 pt-5">
-        <div className="h-5 w-14 animate-pulse rounded bg-muted" />
-        <div className="h-3.5 w-6 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-5 w-14 rounded" />
+        <Skeleton className="h-3.5 w-6 rounded" />
       </div>
       {viewMode === "list" ? (
         <div>
@@ -474,7 +510,7 @@ export function LibrarySkeletonGrid({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(152px,1fr))] gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(136px,148px))] justify-between gap-5">
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (
             <BookCardSkeleton key={i} />
           ))}
