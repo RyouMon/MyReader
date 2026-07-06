@@ -17,7 +17,7 @@ function book(id: string, coverUri = `file:///covers/${id}.jpg`): BookItem {
 }
 
 describe("resolveCoverThumbnailBookIds", () => {
-  it("queues visible books with covers", () => {
+  it("should queue visible books with covers when building the cover thumbnail window", () => {
     const visibleBooks = [
       book("0"),
       book("1"),
@@ -37,7 +37,7 @@ describe("resolveCoverThumbnailBookIds", () => {
     ).toEqual(["1"])
   })
 
-  it("can include nearby books when a caller explicitly asks for lookaround", () => {
+  it("should can include nearby books when a caller explicitly asks for lookaround", () => {
     const visibleBooks = [
       book("0"),
       book("1"),
@@ -57,7 +57,7 @@ describe("resolveCoverThumbnailBookIds", () => {
     ).toEqual(["1", "3"])
   })
 
-  it("ignores non-viewable change tokens", () => {
+  it("should ignore non-viewable change tokens when building the cover thumbnail window", () => {
     const visibleBooks = [book("0"), book("1"), book("2")]
 
     expect(
@@ -71,7 +71,7 @@ describe("resolveCoverThumbnailBookIds", () => {
     ).toBe(0)
   })
 
-  it("falls back to the token item when FlashList does not provide an index", () => {
+  it("should fall back to the token item when FlashList does not provide an index", () => {
     const visibleBooks = [book("0"), book("1")]
 
     expect(
@@ -87,7 +87,7 @@ describe("resolveCoverThumbnailBookIds", () => {
 })
 
 describe("resolveInitialCoverThumbnailBookIds", () => {
-  it("queues only the bounded first screen candidates", () => {
+  it("should queue only the bounded first screen candidates when building the cover thumbnail window", () => {
     const visibleBooks = [
       book("0"),
       { ...book("1"), coverUri: undefined },

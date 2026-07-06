@@ -128,7 +128,7 @@ beforeEach(() => {
 })
 
 describe("resolveCoverThumbnailPixelSize", () => {
-  it("resolves physical pixels from the display size", () => {
+  it("should resolve physical pixels from the display size when generating cover thumbnails", () => {
     expect(resolveCoverThumbnailPixelSize(150, 214.5, 2)).toEqual({
       widthPx: 300,
       heightPx: 429,
@@ -139,7 +139,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
-  it("publishes generated thumbnails in batches while generation continues", async () => {
+  it("should publish generated thumbnails in batches while generation continues when generating cover thumbnails", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -209,7 +209,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("writes generated thumbnails to the persistent manifest", async () => {
+  it("should write generated thumbnails to the persistent manifest when generating cover thumbnails", async () => {
     const size = resolveCoverThumbnailPixelSize(100, 150)
     jest.mocked(ensureCoverThumbnailFileAsync).mockResolvedValue({
       fileName: "1-generated.jpg",
@@ -245,7 +245,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("uses a valid persistent manifest entry without regenerating", async () => {
+  it("should use a valid persistent manifest entry without regenerating when generating cover thumbnails", async () => {
     const size = resolveCoverThumbnailPixelSize(100, 150)
     jest.mocked(listBookCoverThumbnailCache).mockResolvedValue([
       {
@@ -287,7 +287,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(ensureCoverThumbnailFileAsync).not.toHaveBeenCalled()
   })
 
-  it("publishes existing cached files while generation is paused", async () => {
+  it("should publish existing cached files while generation is paused when generating cover thumbnails", async () => {
     jest.mocked(getCachedCoverThumbnailFile).mockReturnValue({
       fileName: "1-existing.jpg",
       fileSizeBytes: 222,
@@ -315,7 +315,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(ensureCoverThumbnailFileAsync).not.toHaveBeenCalled()
   })
 
-  it("only generates thumbnails for books in the generation window", async () => {
+  it("should only generate thumbnails for books in the generation window when generating cover thumbnails", async () => {
     jest.mocked(ensureCoverThumbnailFileAsync).mockResolvedValue({
       fileName: "1-generated.jpg",
       fileSizeBytes: 123,
@@ -343,7 +343,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("respects the configured thumbnail generation concurrency", async () => {
+  it("should respect the configured thumbnail generation concurrency when generating cover thumbnails", async () => {
     const books = Array.from(
       { length: COVER_THUMBNAIL_GENERATION_CONCURRENCY + 1 },
       (_, index) => book(String(index + 1)),
@@ -418,7 +418,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
-  it("applies runtime thumbnail generation concurrency", async () => {
+  it("should apply runtime thumbnail generation concurrency when generating cover thumbnails", async () => {
     const runtimeConcurrency = 2
     const books = [book("1"), book("2"), book("3")]
     const thumbnailsByBookId = new Map(
@@ -490,7 +490,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
-  it("queues background thumbnails after visible-priority thumbnails", async () => {
+  it("should queue background thumbnails after visible-priority thumbnails when generating cover thumbnails", async () => {
     jest.mocked(ensureCoverThumbnailFileAsync).mockResolvedValue({
       fileName: "generated.jpg",
       fileSizeBytes: 123,
@@ -524,7 +524,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("generates the nearest grid thumbnail first and then the companion profile", async () => {
+  it("should generate the nearest grid thumbnail first and then the companion profile when generating cover thumbnails", async () => {
     jest
       .mocked(ensureCoverThumbnailFilesAsync)
       .mockImplementation(async (inputs, onFile) => {
@@ -584,7 +584,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("defers publishing generated thumbnails while thumbnail work is paused", async () => {
+  it("should defer publishing generated thumbnails while thumbnail work is paused when generating cover thumbnails", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -639,7 +639,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("does not enqueue duplicate generation when the hook rerenders", async () => {
+  it("should not enqueue duplicate generation when the hook rerenders", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -687,7 +687,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     })
   })
 
-  it("removes a manifest row when the cached file is gone", async () => {
+  it("should remove a manifest row when the cached file is gone", async () => {
     const size = resolveCoverThumbnailPixelSize(100, 150)
     jest.mocked(listBookCoverThumbnailCache).mockResolvedValue([
       {
@@ -731,7 +731,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     )
   })
 
-  it("keeps ready thumbnails for books that leave the visible window", async () => {
+  it("should keep ready thumbnails for books that leave the visible window when generating cover thumbnails", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number
@@ -802,7 +802,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(ensureCoverThumbnailFileAsync).toHaveBeenCalledTimes(2)
   })
 
-  it("does not clear ready thumbnails while disabled", async () => {
+  it("should not clear ready thumbnails while disabled when generating cover thumbnails", async () => {
     jest.mocked(ensureCoverThumbnailFileAsync).mockResolvedValue({
       fileName: "1-generated.jpg",
       fileSizeBytes: 123,
@@ -832,7 +832,7 @@ describe("resolveCoverThumbnailPixelSize", () => {
     expect(sessionUri(result.current, book("1"))).toBe("file:///cache/1.jpg")
   })
 
-  it("reuses a ready thumbnail after the rendered size changes", async () => {
+  it("should reuse a ready thumbnail after the rendered size changes when generating cover thumbnails", async () => {
     const firstThumbnail = deferred<{
       fileName: string
       fileSizeBytes: number

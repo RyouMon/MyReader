@@ -8,7 +8,7 @@ import {
 const t = (key: string) => key
 
 describe("locatorToPercent", () => {
-  it("prefers total progression over resource progression", () => {
+  it("should prefer total progression when resource progression is also available", () => {
     expect(
       locatorToPercent({
         href: "chapter.xhtml",
@@ -17,7 +17,7 @@ describe("locatorToPercent", () => {
     ).toBe(25)
   })
 
-  it("falls back to resource progression and clamps bounds", () => {
+  it("should clamp resource progression when total progression is missing", () => {
     expect(
       locatorToPercent({
         href: "chapter.xhtml",
@@ -32,14 +32,14 @@ describe("locatorToPercent", () => {
     ).toBe(0)
   })
 
-  it("returns undefined when no usable progression exists", () => {
+  it("should return undefined when no usable progression exists", () => {
     expect(locatorToPercent({ href: "chapter.xhtml" })).toBeUndefined()
     expect(locatorToPercent(null)).toBeUndefined()
   })
 })
 
 describe("readingProgressRowsToMap", () => {
-  it("indexes progress by book id and uppercase format", () => {
+  it("should index progress by book id and uppercase format when rows are mapped", () => {
     expect(
       readingProgressRowsToMap([
         {
@@ -66,7 +66,7 @@ describe("readingProgressRowsToMap", () => {
 })
 
 describe("getProgressDisplay", () => {
-  it("matches mobile unread, finished, and percent labels", () => {
+  it("should match mobile progress labels when progress display is requested", () => {
     expect(getProgressDisplay(undefined, t)).toMatchObject({
       text: "bookRow.unread",
       isUnread: true,

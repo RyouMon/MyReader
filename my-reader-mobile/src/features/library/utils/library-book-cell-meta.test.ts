@@ -16,7 +16,7 @@ function makeBook(overrides: Partial<BookItem> = {}): BookItem {
 }
 
 describe("buildLibraryBookCellMetaById", () => {
-  it("precomputes labels, menu actions, progress and remote download subscription", () => {
+  it("should precompute labels, menu actions, progress and remote download subscription when building library book cell metadata", () => {
     const metaById = buildLibraryBookCellMetaById({
       bookActiveFormatsById: new Map([["book-1", "PDF"]]),
       bookDownloadStatusById: { "book-1": "downloading" },
@@ -55,7 +55,7 @@ describe("buildLibraryBookCellMetaById", () => {
     ).toBe("Remove from Favorites")
   })
 
-  it("uses active download format when no reader format is resolved yet", () => {
+  it("should use active download format when no reader format is resolved yet", () => {
     const metaById = buildLibraryBookCellMetaById({
       bookActiveFormatsById: new Map([["book-1", "PDF"]]),
       bookDownloadStatusById: { "book-1": "downloading" },
@@ -77,7 +77,7 @@ describe("buildLibraryBookCellMetaById", () => {
     expect(meta?.progress).toBeUndefined()
   })
 
-  it("does not subscribe local books to download progress", () => {
+  it("should not subscribe local books to download progress when building library book cell metadata", () => {
     const metaById = buildLibraryBookCellMetaById({
       bookActiveFormatsById: new Map([["book-1", "EPUB"]]),
       bookDownloadStatusById: { "book-1": "downloading" },
@@ -97,7 +97,7 @@ describe("buildLibraryBookCellMetaById", () => {
     expect(meta?.subscriptionFormat).toBeUndefined()
   })
 
-  it("normalizes unknown statuses and only builds metadata for visible books", () => {
+  it("should normalize unknown statuses and only builds metadata for visible books when building library book cell metadata", () => {
     const metaById = buildLibraryBookCellMetaById({
       bookActiveFormatsById: new Map(),
       bookDownloadStatusById: {

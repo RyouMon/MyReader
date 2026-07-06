@@ -61,7 +61,7 @@ describe("ReadingListCard", () => {
     jest.clearAllMocks()
   })
 
-  it("should render menu trigger without responder wrapper", () => {
+  it("should render menu trigger without responder wrapper when rendering card menu actions", () => {
     render(
       <ReadingListCard
         book={baseBook}

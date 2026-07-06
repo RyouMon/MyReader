@@ -169,7 +169,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should treat file with null size as absent", async () => {
+    it("should treat file with null size as absent when resolving book detail formats", async () => {
       mockFile(true, null)
 
       const { result } = await renderHook(
@@ -213,7 +213,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should ignore local format path updates after unmount", async () => {
+    it("should ignore local format path updates after unmount when resolving book detail formats", async () => {
       const { promise, resolve } =
         createDeferred<Array<{ format: string; relativePath: string }>>()
       jest.mocked(getBookFormatPaths).mockReturnValue(promise)
@@ -231,7 +231,7 @@ describe("useBookDetailFormats", () => {
       await act(async () => {})
     })
 
-    it("should ignore local format path errors after unmount", async () => {
+    it("should ignore local format path errors after unmount when resolving book detail formats", async () => {
       const { promise, reject } =
         createDeferred<Array<{ format: string; relativePath: string }>>()
       jest.mocked(getBookFormatPaths).mockReturnValue(promise)
@@ -249,7 +249,7 @@ describe("useBookDetailFormats", () => {
   })
 
   describe("remote library", () => {
-    it("should map file state rows to format info", async () => {
+    it("should map file state rows to format info when resolving book detail formats", async () => {
       jest.mocked(useFileStates).mockReturnValue({
         data: [
           { path: "Author/Test Book/Test Book.epub", localState: "present" },
@@ -315,7 +315,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should ignore remote format path updates after unmount", async () => {
+    it("should ignore remote format path updates after unmount when resolving book detail formats", async () => {
       const { promise, resolve } =
         createDeferred<Array<{ format: string; relativePath: string }>>()
       jest.mocked(getBookFormatPaths).mockReturnValue(promise)
@@ -332,7 +332,7 @@ describe("useBookDetailFormats", () => {
       await act(async () => {})
     })
 
-    it("should ignore remote format path errors after unmount", async () => {
+    it("should ignore remote format path errors after unmount when resolving book detail formats", async () => {
       const { promise, reject } =
         createDeferred<Array<{ format: string; relativePath: string }>>()
       jest.mocked(getBookFormatPaths).mockReturnValue(promise)
@@ -848,7 +848,7 @@ describe("useBookDetailFormats", () => {
       expect(alertSpy).not.toHaveBeenCalled()
     })
 
-    it("should update format state and consume done tasks on delete confirm", async () => {
+    it("should update format state and consume done tasks on delete confirm when resolving book detail formats", async () => {
       jest.mocked(useFileStates).mockReturnValue({
         data: [
           { path: "Author/Test Book/Test Book.epub", localState: "present" },
@@ -938,7 +938,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should restore format state on delete error", async () => {
+    it("should restore format state on delete error when resolving book detail formats", async () => {
       jest.mocked(useFileStates).mockReturnValue({
         data: [
           { path: "Author/Test Book/Test Book.epub", localState: "present" },
@@ -970,7 +970,7 @@ describe("useBookDetailFormats", () => {
       })
     })
 
-    it("should handle non-Error delete failure", async () => {
+    it("should handle non-Error delete failure when resolving book detail formats", async () => {
       jest.mocked(useFileStates).mockReturnValue({
         data: [
           { path: "Author/Test Book/Test Book.epub", localState: "present" },
@@ -1004,7 +1004,7 @@ describe("useBookDetailFormats", () => {
   })
 
   describe("handleShareFormat", () => {
-    it("should share local file", async () => {
+    it("should share local file when resolving book detail formats", async () => {
       jest
         .mocked(shareBookFileModule.resolveShareableFormat)
         .mockResolvedValue({

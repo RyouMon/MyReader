@@ -185,7 +185,7 @@ describe("SettingsScreen developer tools", () => {
     jest.clearAllMocks()
   })
 
-  it("clears image and thumbnail caches from the developer section", async () => {
+  it("should clear image and thumbnail caches from the developer section when using developer settings", async () => {
     render(<SettingsScreen />)
 
     expect(screen.getByText("settings.developer.title")).toBeTruthy()
@@ -212,7 +212,7 @@ describe("SettingsScreen developer tools", () => {
     })
   })
 
-  it("toggles the library performance profiler from the developer section", () => {
+  it("should toggle the library performance profiler from the developer section when using developer settings", () => {
     render(<SettingsScreen />)
 
     expect(screen.queryByText("settings.developer.disabled")).toBeNull()
@@ -226,7 +226,7 @@ describe("SettingsScreen developer tools", () => {
     expect(mockSetLibraryPerformanceProfilerEnabled).toHaveBeenCalledWith(true)
   })
 
-  it("toggles the cover loading animation from the developer section", () => {
+  it("should toggle the cover loading animation from the developer section when using developer settings", () => {
     render(<SettingsScreen />)
 
     fireEvent(
@@ -238,7 +238,7 @@ describe("SettingsScreen developer tools", () => {
     expect(mockSetCoverLoadingSkeletonPulseEnabled).toHaveBeenCalledWith(false)
   })
 
-  it("changes cover thumbnail concurrency from the developer stepper", () => {
+  it("should change cover thumbnail concurrency from the developer stepper when using developer settings", () => {
     render(<SettingsScreen />)
 
     fireEvent(

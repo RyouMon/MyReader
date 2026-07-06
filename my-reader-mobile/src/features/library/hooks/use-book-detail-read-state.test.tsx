@@ -103,7 +103,7 @@ describe("useBookDetailReadState", () => {
       expect(result.current.readableSelectedFormat).toBeNull()
     })
 
-    it("should filter formats with isReadableInAppFormat", () => {
+    it("should filter formats with isReadableInAppFormat when resolving book detail read state", () => {
       const { isReadableInAppFormat } = jest.requireMock(
         "@my-reader/tools/utils",
       )
@@ -117,7 +117,7 @@ describe("useBookDetailReadState", () => {
       expect(result.current.canReadInApp).toBe(true)
     })
 
-    it("should use provided selectedFormat", () => {
+    it("should use provided selectedFormat when resolving book detail read state", () => {
       const { result } = renderReadState({ selectedFormat: "PDF" })
 
       expect(result.current.readableSelectedFormat).toBe("PDF")
@@ -264,7 +264,7 @@ describe("useBookDetailReadState", () => {
       expect(result.current.readButtonTitle).toBe("bookDetail.downloadAndRead")
     })
 
-    it("should show no readable format title for remote library without readable formats", () => {
+    it("should show no readable format title for remote library without readable formats when resolving book detail read state", () => {
       const { isReadableInAppFormat } = jest.requireMock(
         "@my-reader/tools/utils",
       )

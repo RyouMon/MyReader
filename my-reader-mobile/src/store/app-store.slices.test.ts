@@ -181,7 +181,7 @@ describe("settings slice", () => {
     })
   })
 
-  it("clamps cover thumbnail concurrency to the supported range", () => {
+  it("should clamp cover thumbnail concurrency to the supported range when updating app store slices", () => {
     const harness = createHarness(createSettingsSlice, {
       settings: defaultSettings,
     })

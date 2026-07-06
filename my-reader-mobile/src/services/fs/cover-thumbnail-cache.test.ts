@@ -132,7 +132,7 @@ describe("cover thumbnail cache", () => {
     })
   })
 
-  it("places thumbnail files under Expo's cache directory", () => {
+  it("should place thumbnail files under Expo's cache directory when building the cover thumbnail cache", () => {
     const file = getCoverThumbnailCacheFile({
       libraryId: "library/one",
       bookId: "book/42",
@@ -147,7 +147,7 @@ describe("cover thumbnail cache", () => {
     )
   })
 
-  it("returns an existing cached thumbnail without generating it", () => {
+  it("should return an existing cached thumbnail without generating it when building the cover thumbnail cache", () => {
     const file = getCoverThumbnailCacheFile({
       libraryId: "lib",
       bookId: "book",
@@ -170,7 +170,7 @@ describe("cover thumbnail cache", () => {
     ).toBe(file.uri)
   })
 
-  it("downloads remote covers with headers before thumbnail generation", async () => {
+  it("should download remote covers with headers before thumbnail generation when building the cover thumbnail cache", async () => {
     const saveAsync = jest.fn(async () => ({
       uri: "file:///manipulator/result.jpg",
       width: 300,
@@ -235,7 +235,7 @@ describe("cover thumbnail cache", () => {
     )
   })
 
-  it("prepares one source image while generating multiple thumbnail sizes", async () => {
+  it("should prepare one source image while generating multiple thumbnail sizes when building the cover thumbnail cache", async () => {
     const firstSaveAsync = jest.fn(async () => ({
       uri: "file:///manipulator/first.jpg",
       width: 300,
@@ -321,7 +321,7 @@ describe("cover thumbnail cache", () => {
     )
   })
 
-  it("omits headers when remote cover generation has no headers", async () => {
+  it("should omit headers when remote cover generation has no headers", async () => {
     const saveAsync = jest.fn(async () => ({
       uri: "file:///manipulator/result.jpg",
       width: 300,
@@ -356,7 +356,7 @@ describe("cover thumbnail cache", () => {
     )
   })
 
-  it("falls back to ImageManipulator metadata when image size lookup fails", async () => {
+  it("should fall back to ImageManipulator metadata when image size lookup fails", async () => {
     mockGetImageSize.mockRejectedValueOnce(new Error("size unavailable"))
     const sourceRef = {
       height: 900,

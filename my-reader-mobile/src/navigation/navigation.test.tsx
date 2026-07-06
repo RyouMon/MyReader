@@ -19,7 +19,7 @@ function SettingsRoute() {
 }
 
 describe("App navigation smoke", () => {
-  it("opens and shows home screen", () => {
+  it("should open and shows home screen when rendering navigation", () => {
     const { getPathname } = renderRouter(
       {
         "(tabs)/index": TabsIndexRoute,
