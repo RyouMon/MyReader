@@ -1,5 +1,6 @@
-import { createRequire } from "node:module"
+import { execFileSync } from "node:child_process"
 import { copyFileSync, mkdirSync } from "node:fs"
+import { createRequire } from "node:module"
 import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
@@ -25,18 +26,34 @@ function syncPdfJsWorkerToPublic(): void {
   }
 }
 
+function syncReaderFontsToPublic(): void {
+  try {
+    execFileSync(process.execPath, ["scripts/prepare-reader-fonts.mjs"], {
+      cwd: __dirname,
+      stdio: "inherit",
+    })
+  } catch (e) {
+    console.warn("[vite] prepare reader fonts skipped:", e)
+  }
+}
+
 export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@my-reader/db": path.resolve(__dirname, "../packages/db/src"),
+      "@my-reader/fonts": path.resolve(
+        __dirname,
+        "../packages/fonts/src/index.ts",
+      ),
     },
   },
   plugins: [
     {
-      name: "sync-pdfjs-worker",
+      name: "sync-public-assets",
       buildStart() {
         syncPdfJsWorkerToPublic()
+        syncReaderFontsToPublic()
       },
     },
     tanstackRouter({

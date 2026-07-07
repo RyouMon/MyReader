@@ -1,5 +1,6 @@
-import type { SpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import type { ReaderThemeKey } from "@my-reader/tools/reader-themes"
+import type { SpreadPreference } from "@/lib/readium/epubReaderPrefs"
+import type { ReaderFontFamilyKey } from "@/lib/readium/readerFonts"
 
 export type ReadingLayout = "paginate" | "scroll"
 export type DisplayMode = "single" | "spread"
@@ -13,7 +14,8 @@ export type ReaderTheme = ReaderThemeKey
 
 export interface ReaderSettings {
   theme: ReaderTheme
-  fontFamily: string
+  fontFamily: ReaderFontFamilyKey
+  fontFamiliesByLanguage: Record<string, ReaderFontFamilyKey>
   fontSize: number
   lineHeight: number
   paddingX: number
@@ -24,7 +26,8 @@ export interface ReaderSettings {
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
   theme: "paper",
-  fontFamily: "'Lora', 'Noto Serif SC', serif",
+  fontFamily: "default",
+  fontFamiliesByLanguage: {},
   fontSize: 18,
   lineHeight: 1.85,
   paddingX: 2.5,

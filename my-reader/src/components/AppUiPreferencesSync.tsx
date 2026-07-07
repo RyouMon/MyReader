@@ -1,5 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core"
+import { listen } from "@tauri-apps/api/event"
 import { useEffect } from "react"
+import { READER_PREFERENCES_REFRESH_EVENT } from "@/lib/readerPreferencesEvents"
 import { api } from "@/lib/tauri-api"
 
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -46,6 +48,25 @@ export function AppUiPreferencesSync() {
     })()
     return () => {
       cancelled = true
+    }
+  }, [hydrateReaderPreferences, markReaderPreferencesHydrated])
+
+  useEffect(() => {
+    if (!isTauri()) return
+    let cancelled = false
+    const unlisten = listen(READER_PREFERENCES_REFRESH_EVENT, async () => {
+      try {
+        const prefs = await api.getReaderUiPreferences()
+        if (cancelled) return
+        hydrateReaderPreferences(prefs as ReaderUiPreferencesPayload)
+        markReaderPreferencesHydrated()
+      } catch (e) {
+        console.error("Failed to refresh reader UI preferences. error:", e)
+      }
+    })
+    return () => {
+      cancelled = true
+      unlisten.then((fn) => fn()).catch(() => {})
     }
   }, [hydrateReaderPreferences, markReaderPreferencesHydrated])
 

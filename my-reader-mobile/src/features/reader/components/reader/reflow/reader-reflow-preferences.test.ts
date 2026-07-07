@@ -38,10 +38,10 @@ describe("reader reflow preferences", () => {
     })
   })
 
-  it("should omit optional preferences when using system font and auto layout", () => {
+  it("should omit optional preferences when using default font and auto layout", () => {
     const prefs = buildPreferences(
       "neutral",
-      "system",
+      "default",
       16,
       1.5,
       10,
@@ -54,11 +54,29 @@ describe("reader reflow preferences", () => {
     expect(prefs.columnCount).toBeUndefined()
   })
 
+  it("should pass language and custom font family to Readium", () => {
+    expect(
+      buildPreferences(
+        "paper",
+        "noto-serif-sc",
+        18,
+        1.85,
+        20,
+        "auto",
+        "auto",
+        "zh-CN",
+      ),
+    ).toMatchObject({
+      fontFamily: "MyReaderNotoSerifSC",
+      language: "zh-CN",
+    })
+  })
+
   it("should use neutral colors when theme is unknown", () => {
     expect(
       buildPreferences(
         "unknown" as never,
-        "system",
+        "default",
         16,
         1.5,
         10,
@@ -74,7 +92,7 @@ describe("reader reflow preferences", () => {
 
   it("should map start alignment when text align is start", () => {
     expect(
-      buildPreferences("neutral", "system", 16, 1.5, 10, "start", "auto")
+      buildPreferences("neutral", "default", 16, 1.5, 10, "start", "auto")
         .textAlign,
     ).toBe("start")
   })

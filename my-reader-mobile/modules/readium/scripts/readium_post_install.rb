@@ -61,4 +61,32 @@ def readium_post_install(installer)
       end
     end
   end
+
+  patch_readium_webview_server_cors(installer)
+end
+
+def patch_readium_webview_server_cors(installer)
+  webview_server_path = File.join(
+    installer.sandbox.root,
+    'ReadiumNavigator',
+    'Sources',
+    'Navigator',
+    'EPUB',
+    'WebViewServer.swift'
+  )
+  return unless File.exist?(webview_server_path)
+
+  source = File.read(webview_server_path)
+  return if source.include?('"Access-Control-Allow-Origin": "*"')
+
+  cors_header = '            "Access-Control-Allow-Origin": "*",' + "\n"
+  patched = source.sub(/(            "Accept-Ranges": "bytes",\n)/, "\\1#{cors_header}")
+
+  if patched == source
+    warn "Unable to patch ReadiumNavigator WebViewServer CORS headers"
+    return
+  end
+
+  File.chmod(0o644, webview_server_path)
+  File.write(webview_server_path, patched)
 end

@@ -1,11 +1,12 @@
-import type { StateCreator } from "zustand"
+import type { ReaderFontFamilyKey } from "@my-reader/fonts"
 import type { ReaderThemeKey } from "@my-reader/tools/reader-themes"
+import type { StateCreator } from "zustand"
 
 import type { ThemeMode } from "../design/tokens"
-import type { StatusSlice } from "./status-slice"
 import type { DataSourceSlice } from "./data-source-slice"
 import type { LibrarySlice } from "./library-slice"
-import type { SettingsSlice, ProgramSlice } from "./settings-slice"
+import type { ProgramSlice, SettingsSlice } from "./settings-slice"
+import type { StatusSlice } from "./status-slice"
 
 export type ReaderTheme = ReaderThemeKey
 export type FixedNavigationMode = "horizontal" | "vertical"
@@ -14,7 +15,7 @@ export type HomeCardStyle = "adaptive" | "coverBlur"
 
 export type TextAlignment = "auto" | "justify" | "start"
 export type ColumnCount = "1" | "auto"
-export type FontFamilyKey = "serif" | "sans" | "system"
+export type FontFamilyKey = ReaderFontFamilyKey
 export type FixedBackground = "auto" | "black" | "white"
 export type Spread = "auto" | "never" | "always"
 export type ReadingProgression = "ltr" | "rtl"
@@ -22,6 +23,7 @@ export type ReadingProgression = "ltr" | "rtl"
 export type ReflowableReaderSettings = {
   theme: ReaderTheme
   fontFamily: FontFamilyKey
+  fontFamiliesByLanguage: Record<string, FontFamilyKey>
   fontSize: number
   lineHeight: number
   paddingX: number

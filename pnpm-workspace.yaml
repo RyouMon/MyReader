@@ -1,5 +1,6 @@
 packages:
   - "packages/db"
+  - "packages/fonts"
   - "packages/tools"
   - "my-reader"
   - "my-reader-mobile"

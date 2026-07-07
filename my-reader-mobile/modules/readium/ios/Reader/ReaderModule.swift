@@ -1,4 +1,5 @@
 import Foundation
+import ReadiumNavigator
 import UIKit
 import ReadiumShared
 
@@ -11,7 +12,9 @@ protocol ReaderModuleAPI {
     for publication: Publication,
     bookId: String,
     locator: ReadiumShared.Locator?,
-    selectionActions: [SelectionActionData]?
+    preferences: PreferencesRecord?,
+    selectionActions: [SelectionActionData]?,
+    fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
   ) -> ReaderViewController?
 }
 
@@ -39,7 +42,9 @@ final class ReaderModule: ReaderModuleAPI {
     for publication: Publication,
     bookId: String,
     locator: ReadiumShared.Locator?,
-    selectionActions: [SelectionActionData]?
+    preferences: PreferencesRecord?,
+    selectionActions: [SelectionActionData]?,
+    fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
   ) -> ReaderViewController? {
     guard let module = self.formatModules.first(
       where:{ $0.supports(publication) }
@@ -53,7 +58,9 @@ final class ReaderModule: ReaderModuleAPI {
         for: publication,
         locator: locator,
         bookId: bookId,
-        selectionActions: selectionActions
+        preferences: preferences,
+        selectionActions: selectionActions,
+        fontFamilyDeclarations: fontFamilyDeclarations
       )
     } catch {
       print("An unexpected error occurred when attempting to build the reader view.")

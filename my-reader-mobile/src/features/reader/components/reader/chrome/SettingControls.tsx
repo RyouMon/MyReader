@@ -5,6 +5,7 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight, View } from "@/tw"
 import Slider from "@react-native-community/slider"
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { StyleSheet } from "react-native"
 
@@ -24,11 +25,25 @@ function SectionLabel({ label, color }: { label: string; color: string }) {
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="mb-2 mt-3 text-base font-bold uppercase tracking-[0.8px]"
+      className="mb-2 text-base font-bold uppercase tracking-[0.8px]"
       style={{ color }}
     >
       {label}
     </Text>
+  )
+}
+
+function SettingsSection({
+  children,
+  testID,
+}: {
+  children: ReactNode
+  testID?: string
+}) {
+  return (
+    <View testID={testID} style={styles.section}>
+      {children}
+    </View>
   )
 }
 
@@ -47,23 +62,26 @@ export function ThemeSwatches({
 }) {
   const { t } = useTranslation()
   return (
-    <>
+    <SettingsSection testID="theme-swatches-section">
       <SectionLabel
         label={t("reader.settingsTheme")}
         color={palette.textMuted}
       />
-      <View className="flex-row flex-wrap gap-2.5">
+      <View testID="theme-swatches-grid" style={styles.themeGrid}>
         {READER_THEME_OPTIONS.map((option) => {
           const active = value === option.key
           return (
             <TouchableHighlight
               key={option.key}
               underlayColor={mixInk(option.fg, option.swatch, 18)}
-              className="relative min-h-[44px] w-[23%] items-center justify-center rounded-xl border-2"
-              style={{
-                backgroundColor: option.swatch,
-                borderColor: active ? palette.accent : "transparent",
-              }}
+              className="relative min-h-[44px] items-center justify-center rounded-xl border-2"
+              style={[
+                styles.themeSwatch,
+                {
+                  backgroundColor: option.swatch,
+                  borderColor: active ? palette.accent : "transparent",
+                },
+              ]}
               onPress={() => onChange(option.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -78,6 +96,9 @@ export function ThemeSwatches({
                 <Text
                   className="text-base font-semibold"
                   style={{ color: option.fg }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.78}
                 >
                   {t(option.label)}
                 </Text>
@@ -98,7 +119,7 @@ export function ThemeSwatches({
           )
         })}
       </View>
-    </>
+    </SettingsSection>
   )
 }
 
@@ -121,9 +142,9 @@ export function SegmentPicker<T extends string>({
 }) {
   const { t } = useTranslation()
   return (
-    <>
+    <SettingsSection>
       {label ? <SectionLabel label={label} color={palette.textMuted} /> : null}
-      <View className="flex-row gap-2.5">
+      <View style={styles.optionGrid}>
         {options.map((opt) => {
           const active = value === opt.key
           return (
@@ -133,13 +154,16 @@ export function SegmentPicker<T extends string>({
                 active ? palette.segmentActive : palette.segmentIdle,
                 palette.bg,
               )}
-              className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
-              style={{
-                backgroundColor: active
-                  ? palette.segmentActive
-                  : palette.segmentIdle,
-                borderColor: active ? palette.border : "transparent",
-              }}
+              className="min-h-[44px] items-center justify-center rounded-2xl border px-2"
+              style={[
+                styles.segmentOption,
+                {
+                  backgroundColor: active
+                    ? palette.segmentActive
+                    : palette.segmentIdle,
+                  borderColor: active ? palette.border : "transparent",
+                },
+              ]}
               onPress={() => onChange(opt.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -152,6 +176,9 @@ export function SegmentPicker<T extends string>({
                 style={{
                   color: active ? palette.accentText : palette.textMuted,
                 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.82}
               >
                 {opt.label}
               </Text>
@@ -159,7 +186,7 @@ export function SegmentPicker<T extends string>({
           )
         })}
       </View>
-    </>
+    </SettingsSection>
   )
 }
 
@@ -167,30 +194,26 @@ export function SegmentPicker<T extends string>({
    Font family segment control
    ═══════════════════════════════════════ */
 
-const FONT_OPTIONS = [
-  { key: "serif", label: "Serif" },
-  { key: "sans", label: "Sans" },
-  { key: "system", label: "系统" },
-] as const
-
 export function FontPicker({
+  options,
   value,
   onChange,
   palette,
 }: {
+  options: readonly { key: string; label: string }[]
   value: string
   onChange: (key: string) => void
   palette: ReaderChromePalette
 }) {
   const { t } = useTranslation()
   return (
-    <>
+    <SettingsSection testID="font-picker-section">
       <SectionLabel
         label={t("reader.font") ?? "字体"}
         color={palette.textMuted}
       />
-      <View className="flex-row gap-2.5">
-        {FONT_OPTIONS.map((opt) => {
+      <View testID="font-picker-grid" style={styles.optionGrid}>
+        {options.map((opt) => {
           const active = value === opt.key
           return (
             <TouchableHighlight
@@ -199,13 +222,16 @@ export function FontPicker({
                 active ? palette.segmentActive : palette.segmentIdle,
                 palette.bg,
               )}
-              className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border"
-              style={{
-                backgroundColor: active
-                  ? palette.segmentActive
-                  : palette.segmentIdle,
-                borderColor: active ? palette.border : "transparent",
-              }}
+              className="min-h-[44px] items-center justify-center rounded-2xl border px-2"
+              style={[
+                styles.fontOption,
+                {
+                  backgroundColor: active
+                    ? palette.segmentActive
+                    : palette.segmentIdle,
+                  borderColor: active ? palette.border : "transparent",
+                },
+              ]}
               onPress={() => onChange(opt.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -218,6 +244,9 @@ export function FontPicker({
                 style={{
                   color: active ? palette.accentText : palette.textMuted,
                 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.78}
               >
                 {opt.label}
               </Text>
@@ -225,7 +254,7 @@ export function FontPicker({
           )
         })}
       </View>
-    </>
+    </SettingsSection>
   )
 }
 
@@ -253,10 +282,10 @@ export function SliderControl({
   palette: ReaderChromePalette
 }) {
   return (
-    <>
+    <SettingsSection>
       <SectionLabel label={label} color={palette.textMuted} />
       <View
-        className="mb-2.5 flex-row items-center gap-3 rounded-2xl px-4 py-3"
+        className="flex-row items-center gap-3 rounded-2xl px-4 py-3"
         style={{ backgroundColor: palette.segmentIdle }}
       >
         <Slider
@@ -283,6 +312,38 @@ export function SliderControl({
           </Text>
         </View>
       </View>
-    </>
+    </SettingsSection>
   )
 }
+
+const styles = StyleSheet.create({
+  section: {
+    marginBottom: 18,
+  },
+  themeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  themeSwatch: {
+    flexBasis: "22%",
+    flexGrow: 1,
+    flexShrink: 0,
+    minWidth: 68,
+  },
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  segmentOption: {
+    flexBasis: "31%",
+    flexGrow: 1,
+    flexShrink: 0,
+  },
+  fontOption: {
+    flexBasis: "31%",
+    flexGrow: 1,
+    flexShrink: 0,
+  },
+})

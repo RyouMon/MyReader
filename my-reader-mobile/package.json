@@ -3,8 +3,10 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile",
+    "eas-build-pre-install": "cd .. && pnpm install --frozen-lockfile && pnpm --filter my-reader-mobile prepare:reader-fonts",
     "eas-build-post-install": "rm -rf node_modules/.cache",
+    "postinstall": "node scripts/prepare-reader-fonts.mjs",
+    "prepare:reader-fonts": "node scripts/prepare-reader-fonts.mjs",
     "sync:design-tokens": "node ../scripts/sync-design-tokens.mjs",
     "start": "expo start",
     "android": "expo run:android --device",
@@ -30,6 +32,7 @@
     "@material/material-color-utilities": "^0.4.0",
     "@my-reader/book-transition": "link:modules/book-transition",
     "@my-reader/db": "workspace:*",
+    "@my-reader/fonts": "workspace:*",
     "@my-reader/readium": "link:./modules/readium",
     "@my-reader/tools": "workspace:*",
     "@noble/hashes": "^2.2.0",
@@ -133,6 +136,8 @@
       "^@/tw$": "<rootDir>/__mocks__/tw.tsx",
       "^@/(.*)$": "<rootDir>/$1",
       "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
+      "^@my-reader/fonts$": "<rootDir>/../packages/fonts/src/index.ts",
+      "^@my-reader/fonts/(.*)$": "<rootDir>/../packages/fonts/src/$1",
       "^@my-reader/tools/(.*)$": "<rootDir>/../packages/tools/src/$1",
       "^@my-reader/readium$": "<rootDir>/modules/readium/src/index.ts",
       "^@my-reader/readium/(.*)$": "<rootDir>/modules/readium/src/$1"

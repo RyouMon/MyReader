@@ -1,7 +1,12 @@
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet"
 import { forwardRef, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { Dimensions, Platform, View as RNView, StyleSheet } from "react-native"
+import {
+  Platform,
+  View as RNView,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type {
@@ -15,6 +20,7 @@ import type {
   TextAlignment,
 } from "@/src/store/app-store.types"
 import { Text, View } from "@/tw"
+import type { ReaderFontOption } from "../reflow/reader-font-options"
 import {
   FontPicker,
   SegmentPicker,
@@ -63,10 +69,13 @@ const SPREAD_OPTIONS = [
   { key: "never", labelKey: "reader.spreadSingle" },
 ] as const satisfies { key: Spread; labelKey: string }[]
 
+const READER_SETTINGS_SHEET_MAX_HEIGHT_RATIO = 0.6
+
 export type ReflowSettingsBundle = {
   theme: ReaderTheme
   onThemeChange: (key: ReaderTheme) => void
   fontFamily: FontFamilyKey
+  fontOptions: readonly ReaderFontOption[]
   onFontFamilyChange: (v: FontFamilyKey) => void
   fontSize: number
   onFontSizeChange: (v: number) => void
@@ -127,6 +136,10 @@ function ReflowGroup({
         palette={palette}
       />
       <FontPicker
+        options={bundle.fontOptions.map((option) => ({
+          key: option.key,
+          label: t(option.labelKey),
+        }))}
         value={bundle.fontFamily}
         onChange={(key) => bundle.onFontFamilyChange(key as FontFamilyKey)}
         palette={palette}
@@ -251,6 +264,7 @@ const ReaderSettingsSheet = forwardRef<
   ref,
 ) {
   const { t } = useTranslation()
+  const { height: windowHeight } = useWindowDimensions()
 
   const renderHandle = useCallback(
     () => (
@@ -265,8 +279,10 @@ const ReaderSettingsSheet = forwardRef<
     <BottomSheetModal
       ref={ref}
       accessible={false}
-      snapPoints={["60%"]}
-      maxDynamicContentSize={Dimensions.get("window").height * 0.6}
+      enableDynamicSizing
+      maxDynamicContentSize={
+        windowHeight * READER_SETTINGS_SHEET_MAX_HEIGHT_RATIO
+      }
       enablePanDownToClose
       style={styles.sheetShadow}
       backgroundStyle={[
@@ -285,8 +301,12 @@ const ReaderSettingsSheet = forwardRef<
           {t("reader.settings")}
         </Text>
       </RNView>
-      <BottomSheetScrollView showsVerticalScrollIndicator={false}>
-        <View className="px-5 pb-8">
+      <BottomSheetScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
           {layout === "reflowable" && reflow ? (
             <ReflowGroup bundle={reflow} palette={palette} />
           ) : null}
@@ -330,5 +350,13 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: 4,
+  },
+  scrollArea: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
 })

@@ -1,13 +1,17 @@
+import {
+  coerceReaderFontFamily,
+  normalizeReaderFontFamiliesByLanguage,
+} from "@my-reader/fonts"
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
-
+import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
+import { createExpoJsonStorage } from "../services/storage/json-storage"
 import {
   DEFAULT_LIBRARY_VIEW_MODE,
-  excludeLocalLibrarySource,
   defaultSettings,
+  excludeLocalLibrarySource,
   STORE_NAME,
 } from "./app-store.constants"
-import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
 import type {
   AppState,
   LibraryViewMode,
@@ -15,9 +19,8 @@ import type {
   ReaderSettings,
 } from "./app-store.types"
 import { createDataSourceSlice } from "./data-source-slice"
-import { createExpoJsonStorage } from "../services/storage/json-storage"
 import { createLibrarySlice } from "./library-slice"
-import { createSettingsSlice, createProgramSlice } from "./settings-slice"
+import { createProgramSlice, createSettingsSlice } from "./settings-slice"
 import { createStatusSlice } from "./status-slice"
 
 const jsonStorage = createExpoJsonStorage()
@@ -74,6 +77,14 @@ export const useAppStore = create<AppState>()(
             reflowable: {
               ...defaultSettings.reflowable,
               ...persistedSettings?.reflowable,
+              fontFamily: coerceReaderFontFamily(
+                persistedSettings?.reflowable?.fontFamily,
+                "mobile",
+              ),
+              fontFamiliesByLanguage: normalizeReaderFontFamiliesByLanguage(
+                persistedSettings?.reflowable?.fontFamiliesByLanguage,
+                "mobile",
+              ),
             },
             fixed: { ...defaultSettings.fixed, ...persistedSettings?.fixed },
           },

@@ -153,3 +153,9 @@ This module's own source is MIT-licensed under the project's top-level
   Copyright (c) 2021 Jacob Spizziri (ported reader core + bridge rewrite)
 - [Readium Swift/Kotlin Toolkit](https://github.com/readium/swift-toolkit) —
   BSD 3-Clause, Copyright (c) 2017, Readium (runtime dependency + adapted navigator source)
+- [Noto Sans SC / Noto Serif SC](https://github.com/googlefonts/noto-cjk) —
+  SIL Open Font License 1.1 (reader font assets generated from npm packages)
+- [LXGW WenKai](https://github.com/lxgw/LxgwWenKai) —
+  SIL Open Font License 1.1 (reader font asset generated from an npm package)
+- [Alimama FangYuanTi VF](https://www.iconfont.cn/fonts/detail?cnid=pOvFIr086ADR) —
+  reader font asset and package metadata notice generated from an npm package

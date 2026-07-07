@@ -113,6 +113,7 @@ export type LoadState =
       bookId: number
       format: string
       title: string
+      languages: string[]
       initialPage: number
       initialLocator: Locator | null
       layoutMode: "fixedLayout" | "reflowable" | "unknown"
@@ -338,6 +339,7 @@ export function useBookLoader(
           bookId: calibreId,
           format: fmt,
           title: detail.title,
+          languages: detail.languages,
           initialPage,
           initialLocator,
           layoutMode: detailLayoutMode,

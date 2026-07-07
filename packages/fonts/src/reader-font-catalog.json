@@ -1,0 +1,276 @@
+{
+  "families": [
+    {
+      "key": "default",
+      "labelKey": "reader.fontOptions.default",
+      "languageLabelKeys": {
+        "zh": "reader.fontOptions.defaultChinese"
+      },
+      "languages": ["*"],
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "key": "serif",
+      "labelKey": "reader.fontOptions.serif",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "serif",
+        "mobile": "serif"
+      }
+    },
+    {
+      "key": "sans",
+      "labelKey": "reader.fontOptions.sans",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "sans-serif",
+        "mobile": "sans-serif"
+      }
+    },
+    {
+      "key": "monospace",
+      "labelKey": "reader.fontOptions.monospace",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "monospace",
+        "mobile": "monospace"
+      }
+    },
+    {
+      "key": "readium-old-style",
+      "labelKey": "reader.fontOptions.oldStyle",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "var(--RS__oldStyleTf)",
+        "mobile": "Iowan Old Style"
+      }
+    },
+    {
+      "key": "readium-modern",
+      "labelKey": "reader.fontOptions.modern",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "var(--RS__modernTf)",
+        "mobile": "Athelas"
+      }
+    },
+    {
+      "key": "readium-humanist",
+      "labelKey": "reader.fontOptions.humanist",
+      "languages": ["latin"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "var(--RS__humanistTf)",
+        "mobile": "Seravek"
+      }
+    },
+    {
+      "key": "open-dyslexic",
+      "labelKey": "reader.fontOptions.openDyslexic",
+      "languages": ["latin"],
+      "platforms": ["mobile"],
+      "readiumFamilies": {
+        "mobile": "OpenDyslexic"
+      }
+    },
+    {
+      "key": "accessible-dfa",
+      "labelKey": "reader.fontOptions.accessibleDfa",
+      "languages": ["latin"],
+      "platforms": ["mobile"],
+      "readiumFamilies": {
+        "mobile": "AccessibleDfA"
+      }
+    },
+    {
+      "key": "ia-writer-duospace",
+      "labelKey": "reader.fontOptions.iaWriterDuospace",
+      "languages": ["latin"],
+      "platforms": ["mobile"],
+      "readiumFamilies": {
+        "mobile": "IA Writer Duospace"
+      }
+    },
+    {
+      "key": "noto-sans-sc",
+      "labelKey": "reader.fontOptions.notoSansSc",
+      "languages": ["zh"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "MyReaderNotoSansSC",
+        "mobile": "MyReaderNotoSansSC"
+      },
+      "fallbacks": ["sans-serif"],
+      "fontFaces": {
+        "desktop": [
+          {
+            "packageName": "@expo-google-fonts/noto-sans-sc",
+            "source": "400Regular/NotoSansSC_400Regular.ttf",
+            "target": "NotoSansSC-Regular.ttf",
+            "format": "truetype",
+            "style": "normal",
+            "weight": "400",
+            "preload": true
+          }
+        ],
+        "mobile": [
+          {
+            "packageName": "@expo-google-fonts/noto-sans-sc",
+            "source": "400Regular/NotoSansSC_400Regular.ttf",
+            "target": "NotoSansSC-Regular.ttf",
+            "style": "normal",
+            "weight": 400,
+            "preload": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "noto-serif-sc",
+      "labelKey": "reader.fontOptions.notoSerifSc",
+      "languages": ["zh"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "MyReaderNotoSerifSC",
+        "mobile": "MyReaderNotoSerifSC"
+      },
+      "fallbacks": ["serif"],
+      "fontFaces": {
+        "desktop": [
+          {
+            "packageName": "@expo-google-fonts/noto-serif-sc",
+            "source": "400Regular/NotoSerifSC_400Regular.ttf",
+            "target": "NotoSerifSC-Regular.ttf",
+            "format": "truetype",
+            "style": "normal",
+            "weight": "400",
+            "preload": true
+          }
+        ],
+        "mobile": [
+          {
+            "packageName": "@expo-google-fonts/noto-serif-sc",
+            "source": "400Regular/NotoSerifSC_400Regular.ttf",
+            "target": "NotoSerifSC-Regular.ttf",
+            "style": "normal",
+            "weight": 400,
+            "preload": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "lxgw-wenkai-gb",
+      "labelKey": "reader.fontOptions.lxgwWenkaiGb",
+      "languages": ["zh"],
+      "platforms": ["desktop"],
+      "readiumFamilies": {
+        "desktop": "MyReaderLXGWWenKaiGB"
+      },
+      "fallbacks": ["serif"],
+      "webFontCss": {
+        "packageName": "lxgw-wenkai-gb-web",
+        "sourceDir": "lxgwwenkaigb-regular",
+        "cssFile": "result.css",
+        "sourceFamily": "LXGW WenKai GB",
+        "targetFamily": "MyReaderLXGWWenKaiGB"
+      }
+    },
+    {
+      "key": "lxgw-wenkai",
+      "labelKey": "reader.fontOptions.lxgwWenkai",
+      "languages": ["zh"],
+      "platforms": ["mobile"],
+      "readiumFamilies": {
+        "mobile": "MyReaderLXGWWenKai"
+      },
+      "fallbacks": ["serif"],
+      "fontFaces": {
+        "mobile": [
+          {
+            "packageName": "@fontsource/lxgw-wenkai",
+            "source": "files/lxgw-wenkai-latin-500-normal.woff2",
+            "target": "LXGWWenKai-Regular.woff2",
+            "style": "normal",
+            "weight": 400,
+            "preload": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "975-maru-sc",
+      "labelKey": "reader.fontOptions.maru975Sc",
+      "languages": ["zh"],
+      "platforms": ["desktop", "mobile"],
+      "readiumFamilies": {
+        "desktop": "MyReaderAlimamaFangYuanTi",
+        "mobile": "MyReaderAlimamaFangYuanTi"
+      },
+      "fallbacks": ["sans-serif"],
+      "fontFaces": {
+        "desktop": [
+          {
+            "packageName": "@fontpkg/alimama-fang-yuan-ti-vf",
+            "source": "AlimamaFangYuanTiVF-Thin.woff2",
+            "target": "AlimamaFangYuanTiVF.woff2",
+            "format": "woff2",
+            "style": "normal",
+            "weight": "200 700",
+            "preload": true
+          }
+        ],
+        "mobile": [
+          {
+            "packageName": "@fontpkg/alimama-fang-yuan-ti-vf",
+            "source": "AlimamaFangYuanTiVF-Thin.ttf",
+            "target": "AlimamaFangYuanTiVF.ttf",
+            "style": "normal",
+            "weight": 400,
+            "preload": true
+          }
+        ]
+      }
+    }
+  ],
+  "legacyKeyMap": {
+    "system": "default",
+    "'Lora', 'Noto Serif SC', serif": "default"
+  },
+  "platformFallbacks": {
+    "desktop": {
+      "lxgw-wenkai": "lxgw-wenkai-gb",
+      "open-dyslexic": "default",
+      "accessible-dfa": "default",
+      "ia-writer-duospace": "default"
+    },
+    "mobile": {
+      "lxgw-wenkai-gb": "lxgw-wenkai"
+    }
+  },
+  "licenses": [
+    {
+      "packageName": "@expo-google-fonts/noto-sans-sc",
+      "source": "LICENSE_FONT",
+      "target": "LICENSE-Noto-CJK.txt",
+      "platforms": ["desktop", "mobile"]
+    },
+    {
+      "packageName": "@fontsource/lxgw-wenkai",
+      "source": "LICENSE",
+      "target": "LICENSE-LXGW-WenKai.txt",
+      "platforms": ["mobile"]
+    },
+    {
+      "packageName": "@fontpkg/alimama-fang-yuan-ti-vf",
+      "source": "README.md",
+      "target": "NOTICE-Alimama-FangYuanTi.md",
+      "platforms": ["desktop", "mobile"]
+    }
+  ]
+}

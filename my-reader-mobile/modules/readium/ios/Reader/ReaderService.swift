@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import ReadiumNavigator
 import ReadiumShared
 import ReadiumStreamer
 import UIKit
@@ -45,7 +46,9 @@ final class ReaderService: Loggable {
     url: String,
     bookId: String,
     locator: ReadiumShared.Locator?,
+    preferences: PreferencesRecord?,
     selectionActions: [SelectionActionData]?,
+    fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration],
     sender: UIViewController?,
     completion: @escaping (ReaderViewController) -> Void
   ) {
@@ -65,7 +68,9 @@ final class ReaderService: Loggable {
               for: pub,
               bookId: bookId,
               locator: locator,
-              selectionActions: selectionActions
+              preferences: preferences,
+              selectionActions: selectionActions,
+              fontFamilyDeclarations: fontFamilyDeclarations
             ) else {
               return
             }

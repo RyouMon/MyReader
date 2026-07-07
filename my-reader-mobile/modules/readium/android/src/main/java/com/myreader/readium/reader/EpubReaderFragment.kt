@@ -14,6 +14,8 @@ import androidx.fragment.app.commitNow
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.myreader.readium.R
+import com.myreader.readium.Types.FontFamilyDeclarationRecord
+import com.myreader.readium.Types.FontFaceDeclarationRecord
 import kotlinx.coroutines.launch
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.SelectableNavigator
@@ -21,6 +23,9 @@ import org.readium.r2.navigator.epub.EpubNavigatorFragment
 import org.readium.r2.navigator.Navigator
 import org.readium.r2.navigator.epub.EpubPreferences
 import org.readium.r2.navigator.epub.EpubNavigatorFactory
+import org.readium.r2.navigator.epub.css.FontStyle
+import org.readium.r2.navigator.epub.css.FontWeight
+import org.readium.r2.navigator.preferences.FontFamily
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 
@@ -45,6 +50,7 @@ class EpubReaderFragment : VisualReaderFragment() {
 
     // Selection actions configuration
     private var selectionActions: List<SelectionAction> = emptyList()
+    private var fontFamilyDeclarations: List<FontFamilyDeclarationRecord> = emptyList()
 
     // Custom selection action mode callback for adding custom action buttons
     val customSelectionActionModeCallback: ActionMode.Callback by lazy {
@@ -87,6 +93,10 @@ class EpubReaderFragment : VisualReaderFragment() {
       selectionActions = actions
     }
 
+    fun updateFontFamilyDeclarations(declarations: List<FontFamilyDeclarationRecord>) {
+      fontFamilyDeclarations = declarations
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
       check(::navigatorFactory.isInitialized) { "EpubReaderFragment factory was not initialized" }
 
@@ -103,6 +113,29 @@ class EpubReaderFragment : VisualReaderFragment() {
               initialLocator = model.initialLocation,
               initialPreferences = userPreferences,
               configuration = EpubNavigatorFragment.Configuration {
+                val assetPatterns = fontFamilyDeclarations
+                  .flatMap { it.fontFaces.orEmpty() }
+                  .mapNotNull { servedAssetPattern(it.source) }
+                  .distinct()
+                servedAssets = servedAssets + assetPatterns
+
+                fontFamilyDeclarations.forEach { declaration ->
+                  val family = declaration.fontFamily.trim()
+                  if (family.isEmpty()) return@forEach
+                  addFontFamilyDeclaration(
+                    FontFamily(family),
+                    declaration.alternates.orEmpty().map { FontFamily(it) }
+                  ) {
+                    declaration.fontFaces.orEmpty().forEach { face ->
+                      addFontFace {
+                        addSource(face.source, face.preload == true)
+                        fontStyleFor(face)?.let { setFontStyle(it) }
+                        fontWeightFor(face)?.let { setFontWeight(it) }
+                      }
+                    }
+                  }
+                }
+
                 if (selectionActions.isNotEmpty()) {
                   selectionActionModeCallback = customSelectionActionModeCallback
                 }
@@ -218,6 +251,40 @@ class EpubReaderFragment : VisualReaderFragment() {
             // Clean up action mappings
             actionIdMap.clear()
         }
+    }
+
+    private fun servedAssetPattern(source: String): String? {
+      val trimmed = source.trim().trimStart('/')
+      if (trimmed.isEmpty()) return null
+      val slashIndex = trimmed.lastIndexOf('/')
+      return if (slashIndex >= 0) {
+        trimmed.substring(0, slashIndex) + "/.*"
+      } else {
+        trimmed
+      }
+    }
+
+    private fun fontStyleFor(face: FontFaceDeclarationRecord): FontStyle? {
+      return when (face.style) {
+        "italic" -> FontStyle.ITALIC
+        "normal" -> FontStyle.NORMAL
+        else -> null
+      }
+    }
+
+    private fun fontWeightFor(face: FontFaceDeclarationRecord): FontWeight? {
+      return when (face.weight?.toInt()) {
+        100 -> FontWeight.THIN
+        200 -> FontWeight.EXTRA_LIGHT
+        300 -> FontWeight.LIGHT
+        400 -> FontWeight.NORMAL
+        500 -> FontWeight.MEDIUM
+        600 -> FontWeight.SEMI_BOLD
+        700 -> FontWeight.BOLD
+        800 -> FontWeight.EXTRA_BOLD
+        900 -> FontWeight.BLACK
+        else -> null
+      }
     }
 
     companion object {

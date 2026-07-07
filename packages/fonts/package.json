@@ -1,0 +1,27 @@
+{
+  "name": "@my-reader/fonts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepare:reader-fonts": "node scripts/prepare-reader-fonts.mjs"
+  },
+  "dependencies": {
+    "@expo-google-fonts/noto-sans-sc": "0.4.3",
+    "@expo-google-fonts/noto-serif-sc": "0.4.3",
+    "@fontpkg/alimama-fang-yuan-ti-vf": "1.0.5",
+    "@fontsource/lxgw-wenkai": "5.2.5",
+    "lxgw-wenkai-gb-web": "1.522.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2",
+    "vitest": "^4.1.5"
+  }
+}

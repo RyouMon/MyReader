@@ -7,6 +7,10 @@ import {
   type ReaderSettings,
 } from "@/components/reader/types"
 import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
+import {
+  coerceReaderFontFamily,
+  normalizeReaderFontFamiliesByLanguage,
+} from "@/lib/readium/readerFonts"
 import { api } from "@/lib/tauri-api"
 import type {
   AppThemeMode,
@@ -33,6 +37,7 @@ const DEFAULT_REFLOWABLE: ReflowablePreferencesSlice = {
 }
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null
+let persistPromise: Promise<void> | null = null
 
 /** Returns whether a value is a supported persisted library view mode. */
 function isLibraryViewMode(value: unknown): value is LibraryViewMode {
@@ -43,33 +48,60 @@ function isAppThemeMode(value: unknown): value is AppThemeMode {
   return value === "light" || value === "dark" || value === "system"
 }
 
+function readerPreferencesPayload(s: AppUiState): ReaderUiPreferencesPayload {
+  return {
+    version: 5,
+    appTheme: s.appThemeMode,
+    libraryViewMode: s.libraryViewMode,
+    detailFullScreen: s.detailFullScreen,
+    fixedLayout: s.fixedLayout,
+    reflowable: s.reflowable,
+    cache: s.cache,
+  }
+}
+
+function persistReaderPreferences(get: () => AppUiState): Promise<void> {
+  if (!isTauri() || !get().readerPreferencesHydrated) {
+    return Promise.resolve()
+  }
+  const payload = readerPreferencesPayload(get())
+
+  const run = async () => {
+    console.info(
+      `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
+    )
+    try {
+      await api.setReaderUiPreferences(payload)
+      console.info("Success to persist reader UI preferences.")
+    } catch (e) {
+      console.error("Failed to persist reader UI preferences. error:", e)
+    }
+  }
+
+  const previous = persistPromise ?? Promise.resolve()
+  const next = previous.then(run, run)
+  persistPromise = next
+  void next.finally(() => {
+    if (persistPromise === next) persistPromise = null
+  })
+  return next
+}
+
 function schedulePersistReaderPreferences(get: () => AppUiState) {
   if (!isTauri() || !get().readerPreferencesHydrated) return
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => {
     persistTimer = null
-    const s = get()
-    const payload: ReaderUiPreferencesPayload = {
-      version: 5,
-      appTheme: s.appThemeMode,
-      libraryViewMode: s.libraryViewMode,
-      detailFullScreen: s.detailFullScreen,
-      fixedLayout: s.fixedLayout,
-      reflowable: s.reflowable,
-      cache: s.cache,
-    }
-    console.info(
-      `Start to persist reader UI preferences. version: ${payload.version}, theme: "${payload.reflowable.settings.theme}", font size: ${payload.reflowable.settings.fontSize}`,
-    )
-    void api
-      .setReaderUiPreferences(payload)
-      .then(() => {
-        console.info("Success to persist reader UI preferences.")
-      })
-      .catch((e) => {
-        console.error("Failed to persist reader UI preferences. error:", e)
-      })
+    void persistReaderPreferences(get)
   }, 450)
+}
+
+function persistReaderPreferencesNow(get: () => AppUiState): Promise<void> {
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+  return persistReaderPreferences(get)
 }
 
 export interface AppUiState {
@@ -93,6 +125,7 @@ export interface AppUiState {
     patch: Partial<ReflowablePreferencesSlice["tts"]>,
   ) => void
   patchCacheSettings: (patch: Partial<CachePreferencesSlice>) => void
+  persistReaderPreferencesNow: () => Promise<void>
   hydrateReaderPreferences: (data: ReaderUiPreferencesPayload) => void
   markReaderPreferencesHydrated: () => void
 }
@@ -159,8 +192,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
     }))
     schedulePersistReaderPreferences(get)
   },
+  persistReaderPreferencesNow: () => persistReaderPreferencesNow(get),
   hydrateReaderPreferences: (data) => {
     const rawTheme = data.reflowable?.settings?.theme as string | undefined
+    const rawSettings = data.reflowable?.settings
     const migratedTheme =
       rawTheme === "contrast3"
         ? "ocean"
@@ -184,12 +219,20 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
       reflowable: {
         settings: {
           ...DEFAULT_SETTINGS,
-          ...data.reflowable.settings,
+          ...rawSettings,
           theme: (typeof migratedTheme === "string"
             ? migratedTheme
             : DEFAULT_SETTINGS.theme) as typeof DEFAULT_SETTINGS.theme,
+          fontFamily: coerceReaderFontFamily(
+            rawSettings?.fontFamily,
+            "desktop",
+          ),
+          fontFamiliesByLanguage: normalizeReaderFontFamiliesByLanguage(
+            rawSettings?.fontFamiliesByLanguage,
+            "desktop",
+          ),
         },
-        tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable.tts },
+        tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable?.tts },
       },
       cache: {
         maxCacheSizeMB: data.cache?.maxCacheSizeMB ?? 2048,

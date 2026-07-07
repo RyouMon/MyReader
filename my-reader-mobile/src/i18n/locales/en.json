@@ -248,6 +248,23 @@
     "pageLabel": "Page {{page}}",
     "positionLabel": "Loc.",
     "font": "Font",
+    "fontOptions": {
+      "default": "Default",
+      "defaultChinese": "Chinese Default",
+      "notoSansSc": "Noto Sans SC",
+      "notoSerifSc": "Noto Serif SC",
+      "lxgwWenkai": "LXGW WenKai",
+      "maru975Sc": "Alimama FangYuanTi",
+      "oldStyle": "Old Style",
+      "modern": "Modern Serif",
+      "serif": "Serif",
+      "sans": "Sans",
+      "humanist": "Humanist Sans",
+      "monospace": "Monospace",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA Writer"
+    },
     "moreActions": "More Actions",
     "closeReader": "Close Reader"
   },

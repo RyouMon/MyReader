@@ -4,7 +4,8 @@ import { readerSettingsToEpubPreferences } from "../readium/readerSettingsBridge
 
 const BASE_SETTINGS: ReaderSettings = {
   theme: "paper",
-  fontFamily: "'Lora', serif",
+  fontFamily: "default",
+  fontFamiliesByLanguage: {},
   fontSize: 18,
   lineHeight: 1.85,
   paddingX: 2.5,
@@ -71,5 +72,33 @@ describe("readerSettingsToEpubPreferences", () => {
       colCount: "2",
     })
     expect(prefs.maximalLineLength).toBeUndefined()
+  })
+
+  it("should omit fontFamily when reader font is default", () => {
+    const prefs = readerSettingsToEpubPreferences(BASE_SETTINGS)
+
+    expect(prefs.fontFamily).toBeUndefined()
+  })
+
+  it("should use language fontFamily override when language matches", () => {
+    const prefs = readerSettingsToEpubPreferences(
+      {
+        ...BASE_SETTINGS,
+        fontFamily: "serif",
+        fontFamiliesByLanguage: { zh: "noto-serif-sc" },
+      },
+      "zh-Hans",
+    )
+
+    expect(prefs.fontFamily).toBe("MyReaderNotoSerifSC")
+  })
+
+  it("should use Readium font stack variable when latin option is selected", () => {
+    const prefs = readerSettingsToEpubPreferences({
+      ...BASE_SETTINGS,
+      fontFamily: "readium-old-style",
+    })
+
+    expect(prefs.fontFamily).toBe("var(--RS__oldStyleTf)")
   })
 })

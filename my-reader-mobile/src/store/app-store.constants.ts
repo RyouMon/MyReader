@@ -20,7 +20,8 @@ export const defaultSettings: ReaderSettings = {
   libraryPerformanceProfilerEnabled: false,
   reflowable: {
     theme: "paper",
-    fontFamily: "serif",
+    fontFamily: "default",
+    fontFamiliesByLanguage: {},
     fontSize: 18,
     lineHeight: 1.85,
     paddingX: 20,

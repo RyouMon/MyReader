@@ -3,6 +3,8 @@ android/build/
 android/.gradle/
 android/captures/
 ios/build/
+ios/Generated/
+ios/Resources/reader-fonts/
 
 # Machine-specific (SDK paths, signing)
 android/local.properties

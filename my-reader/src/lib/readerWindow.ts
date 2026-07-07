@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import i18n from "@/i18n"
+import { READER_PREFERENCES_REFRESH_EVENT } from "@/lib/readerPreferencesEvents"
 
 function readerWindowLabel(bookId: string): string {
   return `reader-${bookId}`
@@ -27,6 +28,14 @@ export async function openReaderInNewWindow(
   )
   const existing = await WebviewWindow.getByLabel(label)
   if (existing) {
+    await existing
+      .emitTo(label, READER_PREFERENCES_REFRESH_EVENT)
+      .catch((e) => {
+        console.error(
+          `Failed to refresh existing reader window preferences. label: "${label}", error:`,
+          e,
+        )
+      })
     await existing.setTitle(windowTitle)
     await existing.show()
     await existing.setFocus()

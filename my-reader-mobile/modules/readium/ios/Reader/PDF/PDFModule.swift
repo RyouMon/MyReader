@@ -1,4 +1,5 @@
 import Foundation
+import ReadiumNavigator
 import UIKit
 import ReadiumShared
 
@@ -18,7 +19,9 @@ final class PDFModule: ReaderFormatModule {
         for publication: Publication,
         locator: ReadiumShared.Locator?,
         bookId: String,
-        selectionActions: [SelectionActionData]?
+        preferences: PreferencesRecord?,
+        selectionActions: [SelectionActionData]?,
+        fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
     ) throws -> ReaderViewController {
         let pdfViewController = try PDFViewController(
             publication: publication,

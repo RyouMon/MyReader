@@ -7,6 +7,7 @@ import com.myreader.readium.Converters.readiumMetadataToMap
 import com.myreader.readium.Streamer.PublicationStore
 import com.myreader.readium.Streamer.StreamerConfig
 import com.myreader.readium.Types.DecorationGroupRecord
+import com.myreader.readium.Types.FontFamilyDeclarationRecord
 import com.myreader.readium.Types.FormatRegistrationRecord
 import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.PreferencesRecord
@@ -43,6 +44,10 @@ class ReadiumModule : Module() {
 
       Prop("preferences") { view: ReadiumView, value: PreferencesRecord? ->
         view.preferences = value
+      }
+
+      Prop("fontFamilyDeclarations") { view: ReadiumView, value: List<FontFamilyDeclarationRecord>? ->
+        view.fontFamilyDeclarations = value
       }
 
       Prop("decorations") { view: ReadiumView, value: List<DecorationGroupRecord>? ->

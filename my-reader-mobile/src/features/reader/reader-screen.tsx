@@ -55,6 +55,14 @@ import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/ch
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet"
 import {
+  coerceReaderFontOption,
+  getReaderFontOptions,
+  readerFontLanguageKey,
+  READER_FONT_DECLARATIONS,
+  resolveReaderFont,
+  resolveReaderLanguage,
+} from "@/src/features/reader/components/reader/reflow/reader-font-options"
+import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
 } from "@/src/features/reader/reader-open-transition"
@@ -89,6 +97,7 @@ export default function ReaderScreen() {
   const { palette, colorScheme } = useTheme()
   const insets = useSafeAreaInsets()
   const [readerState, setReaderState] = useState<ReaderState | null>(null)
+  const [publicationLanguages, setPublicationLanguages] = useState<string[]>([])
   const [toc, setToc] = useState<ReaderTocItem[]>([])
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
   const [gotoPageCmd, setGotoPageCmd] = useState<number | undefined>(undefined)
@@ -118,6 +127,10 @@ export default function ReaderScreen() {
 
   const handleTocReady = useCallback(async (items: ReaderTocItem[]) => {
     setToc(items)
+  }, [])
+
+  const handlePublicationLanguagesReady = useCallback((languages: string[]) => {
+    setPublicationLanguages(languages)
   }, [])
 
   const closeReader = useCallback(() => {
@@ -153,6 +166,10 @@ export default function ReaderScreen() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    setPublicationLanguages([])
+  }, [id, formatParam])
 
   const handleRequestClose = useCallback(async () => {
     closeReader()
@@ -210,6 +227,18 @@ export default function ReaderScreen() {
   const progressPercent = readerState?.progress ?? 0
   const reflowSettings = settings.reflowable
   const fixedSettings = settings.fixed
+  const fallbackLanguages =
+    loadState.status === "ready" ? loadState.languages : []
+  const readerLanguage = resolveReaderLanguage(
+    publicationLanguages,
+    fallbackLanguages,
+  )
+  const fontOptions = getReaderFontOptions(readerLanguage)
+  const activeFontFamily = coerceReaderFontOption(
+    resolveReaderFont(readerLanguage, reflowSettings),
+    fontOptions,
+  )
+  const activeFontLanguageKey = readerFontLanguageKey(readerLanguage)
 
   const isReflowReady =
     loadState.status === "ready" && loadState.layoutMode === "reflowable"
@@ -410,17 +439,22 @@ export default function ReaderScreen() {
                         epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
                         initialLocator={loadState.initialLocator ?? undefined}
                         onStateChange={handleStateChange}
+                        onPublicationLanguagesReady={
+                          handlePublicationLanguagesReady
+                        }
                         onTocReady={handleTocReady}
                         onRequestClose={handleRequestClose}
                         onToggleChrome={toggleChrome}
                         gotoTocIndex={gotoPageCmd}
                         theme={reflowSettings.theme}
-                        fontFamily={reflowSettings.fontFamily}
+                        fontFamily={activeFontFamily}
+                        fontFamilyDeclarations={READER_FONT_DECLARATIONS}
                         fontSize={reflowSettings.fontSize}
                         lineHeight={reflowSettings.lineHeight}
                         paddingX={reflowSettings.paddingX}
                         textAlign={reflowSettings.textAlign}
                         columnCount={reflowSettings.columnCount}
+                        language={readerLanguage}
                       />
                     </Animated.View>
                   ) : null
@@ -531,9 +565,15 @@ export default function ReaderScreen() {
                       theme: reflowSettings.theme,
                       onThemeChange: (key) =>
                         patchReflowableReaderSettings({ theme: key }),
-                      fontFamily: reflowSettings.fontFamily,
+                      fontFamily: activeFontFamily,
+                      fontOptions,
                       onFontFamilyChange: (v) =>
-                        patchReflowableReaderSettings({ fontFamily: v }),
+                        patchReflowableReaderSettings({
+                          fontFamiliesByLanguage: {
+                            ...reflowSettings.fontFamiliesByLanguage,
+                            [activeFontLanguageKey]: v,
+                          },
+                        }),
                       fontSize: reflowSettings.fontSize,
                       onFontSizeChange: (v) =>
                         patchReflowableReaderSettings({ fontSize: v }),

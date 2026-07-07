@@ -20,6 +20,7 @@ import com.myreader.readium.Converters.readiumLocatorToMap
 import com.myreader.readium.Converters.readiumMetadataToMap
 import com.myreader.readium.Streamer.PublicationStore
 import com.myreader.readium.Types.DecorationGroupRecord
+import com.myreader.readium.Types.FontFamilyDeclarationRecord
 import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.PreferencesRecord
 import com.myreader.readium.Types.ReadiumFileRecord
@@ -137,6 +138,15 @@ class ReadiumView(
       field = value
       updateSelectionActions()
     }
+
+  var fontFamilyDeclarations: List<FontFamilyDeclarationRecord>? = null
+    set(value) {
+      field = value
+      fontFamilyDeclarationsReceived = true
+      buildForViewIfReady()
+    }
+
+  private var fontFamilyDeclarationsReceived = false
 
   private fun ensureService() {
     if (svc == null) {
@@ -257,6 +267,7 @@ class ReadiumView(
     if (!isAttached) return
     if (isFragmentAdded) return
     if (isBuilding) return
+    if (!fontFamilyDeclarationsReceived) return
     val currentFile = file ?: return
     val fileUrl = currentFile.url
     if (fileUrl.isEmpty()) return
@@ -307,6 +318,10 @@ class ReadiumView(
       if (frag is EpubReaderFragment) {
         frag.updateSelectionActions(actions.map { FragmentSelectionAction(it.id, it.label) })
       }
+    }
+
+    if (frag is EpubReaderFragment) {
+      frag.updateFontFamilyDeclarations(fontFamilyDeclarations.orEmpty())
     }
 
     preferences?.let { updatePreferences() }

@@ -19,7 +19,9 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
       publication: Publication,
       locator: ReadiumShared.Locator?,
       bookId: String,
-      selectionActions: [SelectionActionData]? = nil
+      preferences: PreferencesRecord? = nil,
+      selectionActions: [SelectionActionData]? = nil,
+      fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration] = []
     ) throws {
       // Convert typed selection actions directly to EditingActions (no JSON)
       var editingActions: [EditingAction] = []
@@ -45,11 +47,18 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
         editingActions.append(contentsOf: EditingAction.defaultActions)
       }
 
+      let epubPreferences = preferences.map(preferencesRecordToEPUB) ?? .empty
       let navigator = try EPUBNavigatorViewController(
         publication: publication,
         initialLocation: locator,
         config: EPUBNavigatorViewController.Configuration(
-          editingActions: editingActions
+          preferences: epubPreferences,
+          editingActions: editingActions,
+          fontFamilyDeclarations: fontFamilyDeclarations,
+          readiumCSSRSProperties: Self.readiumCSSRSProperties(
+            for: epubPreferences,
+            fontFamilyDeclarations: fontFamilyDeclarations
+          )
         )
       )
 
@@ -71,6 +80,22 @@ class EPUBViewController: ReaderViewController, SelectionActionHandlerDelegate {
 
     var epubNavigator: EPUBNavigatorViewController {
       return navigator as! EPUBNavigatorViewController
+    }
+
+    private static func readiumCSSRSProperties(
+      for preferences: EPUBPreferences,
+      fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
+    ) -> CSSRSProperties {
+      guard let fontFamily = preferences.fontFamily else {
+        return CSSRSProperties()
+      }
+
+      let alternates = fontFamilyDeclarations
+        .first { $0.fontFamily == fontFamily }?
+        .alternates
+        .map(\.rawValue) ?? []
+
+      return CSSRSProperties(baseFontFamily: [fontFamily.rawValue] + alternates)
     }
 
     func updateSelectionActions(_ selectionActions: [SelectionActionData]?) {

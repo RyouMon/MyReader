@@ -112,7 +112,8 @@ export async function setupLibrariesMock(
           reflowable: {
             settings: {
               theme: "default",
-              fontFamily: "system",
+              fontFamily: "default",
+              fontFamiliesByLanguage: {},
               fontSize: 18,
               lineHeight: 1.6,
               paddingX: 16,

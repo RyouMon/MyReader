@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import ReadiumNavigator
 import ReadiumShared
 
 final class EPUBModule: ReaderFormatModule {
@@ -20,7 +21,9 @@ final class EPUBModule: ReaderFormatModule {
       for publication: Publication,
       locator: ReadiumShared.Locator?,
       bookId: String,
-      selectionActions: [SelectionActionData]?
+      preferences: PreferencesRecord?,
+      selectionActions: [SelectionActionData]?,
+      fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
     ) throws -> ReaderViewController {
         // CBZ/Divina publications often lack an identifier; only require one for EPUB.
         guard !publication.conforms(to: .epub) || publication.metadata.identifier != nil else {
@@ -31,7 +34,9 @@ final class EPUBModule: ReaderFormatModule {
             publication: publication,
             locator: locator,
             bookId: bookId,
-            selectionActions: selectionActions
+            preferences: preferences,
+            selectionActions: selectionActions,
+            fontFamilyDeclarations: fontFamilyDeclarations
         )
         epubViewController.moduleDelegate = delegate
         return epubViewController

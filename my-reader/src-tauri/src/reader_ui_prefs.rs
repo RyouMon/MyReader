@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -64,6 +66,8 @@ pub struct ReaderSettingsDto {
     pub theme: String,
     #[serde(default = "default_font_family")]
     pub font_family: String,
+    #[serde(default)]
+    pub font_families_by_language: BTreeMap<String, String>,
     #[serde(default = "default_font_size")]
     pub font_size: f64,
     #[serde(default = "default_line_height")]
@@ -82,7 +86,7 @@ fn default_theme() -> String {
     "paper".into()
 }
 fn default_font_family() -> String {
-    "'Lora', 'Noto Serif SC', serif".into()
+    "default".into()
 }
 fn default_font_size() -> f64 {
     18.0
@@ -108,6 +112,7 @@ impl Default for ReaderSettingsDto {
         Self {
             theme: default_theme(),
             font_family: default_font_family(),
+            font_families_by_language: BTreeMap::new(),
             font_size: default_font_size(),
             line_height: default_line_height(),
             padding_x: default_padding_x(),
@@ -253,5 +258,53 @@ mod tests {
         assert!(prefs.detail_full_screen);
         let serialized = serde_json::to_value(&prefs).expect("preferences should serialize");
         assert_eq!(serialized["detailFullScreen"], json!(true));
+    }
+
+    #[test]
+    fn reader_ui_preferences_default_should_use_reader_font_key() {
+        let prefs = ReaderUiPreferences::default();
+
+        assert_eq!(prefs.reflowable.settings.font_family, "default");
+        assert!(prefs
+            .reflowable
+            .settings
+            .font_families_by_language
+            .is_empty());
+    }
+
+    #[test]
+    fn reader_ui_preferences_should_round_trip_language_font_families() {
+        let prefs: ReaderUiPreferences = serde_json::from_value(json!({
+            "version": 5,
+            "appTheme": "system",
+            "libraryViewMode": "grid",
+            "fixedLayout": {},
+            "reflowable": {
+                "settings": {
+                    "fontFamily": "serif",
+                    "fontFamiliesByLanguage": {
+                        "zh": "noto-serif-sc"
+                    }
+                }
+            },
+            "cache": {},
+        }))
+        .expect("preferences should deserialize");
+
+        assert_eq!(prefs.reflowable.settings.font_family, "serif");
+        assert_eq!(
+            prefs
+                .reflowable
+                .settings
+                .font_families_by_language
+                .get("zh"),
+            Some(&"noto-serif-sc".to_string())
+        );
+
+        let serialized = serde_json::to_value(&prefs).expect("preferences should serialize");
+        assert_eq!(
+            serialized["reflowable"]["settings"]["fontFamiliesByLanguage"]["zh"],
+            json!("noto-serif-sc")
+        );
     }
 }

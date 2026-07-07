@@ -37,3 +37,34 @@ retained as each license requires.
    layout resources retain their original file headers reading
    "Copyright ... Readium Foundation ... BSD-style license" and are governed by
    this same BSD 3-Clause License text.
+
+
+3. Noto Sans SC / Noto Serif SC
+   Copyright 2024 The Noto Project Authors
+   Licensed under the SIL Open Font License 1.1 — see licenses/OFL-1.1.txt
+   https://github.com/googlefonts/noto-cjk
+
+   MyReader packages the Regular Simplified Chinese reader fonts from
+   @expo-google-fonts/noto-sans-sc and @expo-google-fonts/noto-serif-sc at
+   build time. The font binaries are generated from npm dependencies and are
+   not stored in this repository.
+
+
+4. LXGW WenKai
+   Copyright (c) 2021-2024 LXGW WenKai Project Authors
+   Licensed under the SIL Open Font License 1.1 — see licenses/OFL-1.1.txt
+   https://github.com/lxgw/LxgwWenKai
+
+   MyReader packages the LXGW WenKai reader font from @fontsource/lxgw-wenkai
+   at build time. The font binary is generated from an npm dependency and is
+   not stored in this repository.
+
+
+5. Alimama FangYuanTi VF
+   Copyright (c) 2023 Alibaba (China) Co., Ltd. All rights reserved.
+   https://www.iconfont.cn/fonts/detail?cnid=pOvFIr086ADR
+
+   MyReader packages the Alimama FangYuanTi VF reader font from
+   @fontpkg/alimama-fang-yuan-ti-vf at build time. The font binary and package
+   metadata notice are generated from an npm dependency and are not stored in
+   this repository.

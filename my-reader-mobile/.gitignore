@@ -13,6 +13,8 @@ expo-env.d.ts
 .gradle
 .kotlin/
 modules/*/android/build/
+/assets/reader-fonts/
+/modules/readium/ios/Generated/
 *.orig.*
 *.jks
 *.p8

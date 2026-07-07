@@ -248,6 +248,23 @@
     "pageLabel": "第 {{page}} 页",
     "positionLabel": "位置",
     "font": "字体",
+    "fontOptions": {
+      "default": "默认",
+      "defaultChinese": "默认中文",
+      "notoSansSc": "思源黑体",
+      "notoSerifSc": "思源宋体",
+      "lxgwWenkai": "霞鹜文楷",
+      "maru975Sc": "阿里妈妈方圆体",
+      "oldStyle": "旧式衬线",
+      "modern": "现代衬线",
+      "serif": "衬线",
+      "sans": "无衬线",
+      "humanist": "人文无衬线",
+      "monospace": "等宽",
+      "openDyslexic": "OpenDyslexic",
+      "accessibleDfa": "AccessibleDfA",
+      "iaWriterDuospace": "IA Writer"
+    },
     "moreActions": "更多操作",
     "closeReader": "关闭阅读器"
   },

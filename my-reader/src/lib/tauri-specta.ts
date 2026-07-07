@@ -206,6 +206,7 @@ export type PreparedBookSource = {
 export type ReaderSettingsDto = {
 	theme?: string,
 	fontFamily?: string,
+	fontFamiliesByLanguage?: { [key in string]: string },
 	fontSize?: number | null,
 	lineHeight?: number | null,
 	paddingX?: number | null,

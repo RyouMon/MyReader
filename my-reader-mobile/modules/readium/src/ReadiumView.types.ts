@@ -2,6 +2,7 @@ import type {
   Preferences,
   Locator,
   ReadiumFile,
+  FontFamilyDeclaration,
   DecorationGroup,
   SelectionAction,
   PublicationReadyEvent,
@@ -22,6 +23,7 @@ export type ReadiumViewRef = {
 export type ReadiumProps = {
   file: ReadiumFile
   preferences: Preferences
+  fontFamilyDeclarations?: FontFamilyDeclaration[]
   decorations?: DecorationGroup[]
   selectionActions?: SelectionAction[]
   style?: any

@@ -1,10 +1,14 @@
-import { EpubPreferences, TextAlignment } from "@readium/navigator"
 import { isReaderThemeKey } from "@my-reader/tools/reader-themes"
+import { EpubPreferences, TextAlignment } from "@readium/navigator"
 import type { ReaderSettings, ReaderTheme } from "@/components/reader/types"
 import {
   epubPreferencesForReflowTheme,
   type ReflowThemePreset,
 } from "@/lib/readium/epubReaderPrefs"
+import {
+  resolveReaderFont,
+  toReadiumFontFamily,
+} from "@/lib/readium/readerFonts"
 
 const READIUM_FONT_SCALE_MIN = 0.7
 const READIUM_FONT_SCALE_MAX = 4
@@ -42,6 +46,7 @@ function uiColCountToReadium(colCount: string): number | null {
 /** 将已持久化的 `ReaderSettings` 转为提交给 `EpubNavigator` 的偏好。 */
 export function readerSettingsToEpubPreferences(
   settings: ReaderSettings,
+  language?: string,
 ): EpubPreferences {
   const preset = readerThemeToReflowPreset(settings.theme)
   const base = epubPreferencesForReflowTheme(preset)
@@ -56,10 +61,12 @@ export function readerSettingsToEpubPreferences(
     Math.min(56, Math.max(4, 6 + settings.paddingX * 10)),
   )
 
+  const fontFamily = toReadiumFontFamily(resolveReaderFont(language, settings))
+
   return new EpubPreferences({
     backgroundColor: base.backgroundColor,
     textColor: base.textColor,
-    fontFamily: settings.fontFamily,
+    fontFamily,
     fontSize: readerFontSizePxToReadiumScale(settings.fontSize),
     lineHeight: lh,
     scroll: settings.readingLayout === "scroll",

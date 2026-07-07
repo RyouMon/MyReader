@@ -40,3 +40,16 @@ export interface Preferences {
   wordSpacing?: number
   merging?: boolean
 }
+
+export interface FontFaceDeclaration {
+  source: string
+  preload?: boolean
+  style?: "normal" | "italic"
+  weight?: number
+}
+
+export interface FontFamilyDeclaration {
+  fontFamily: string
+  alternates?: string[]
+  fontFaces?: FontFaceDeclaration[]
+}

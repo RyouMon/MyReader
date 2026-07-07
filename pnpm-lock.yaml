@@ -27,6 +27,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.3.0
         version: 1.4.1(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@my-reader/fonts':
+        specifier: workspace:*
+        version: link:../packages/fonts
       '@my-reader/tools':
         specifier: workspace:*
         version: link:../packages/tools
@@ -247,6 +250,9 @@ importers:
       '@my-reader/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@my-reader/fonts':
+        specifier: workspace:*
+        version: link:../packages/fonts
       '@my-reader/readium':
         specifier: link:./modules/readium
         version: link:modules/readium
@@ -478,7 +484,7 @@ importers:
         version: 19.2.14
       babel-preset-expo:
         specifier: ~56.0.14
-        version: 56.0.14(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@56.0.8)(react-refresh@0.14.2)(supports-color@8.1.1)
+        version: 56.0.14(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@56.0.8)(react-refresh@0.17.0)(supports-color@8.1.1)
       eslint:
         specifier: ^9.25.0
         version: 9.39.4(jiti@2.7.0)(supports-color@8.1.1)
@@ -510,6 +516,31 @@ importers:
       drizzle-kit:
         specifier: ^0.30.0
         version: 0.30.6(supports-color@8.1.1)
+
+  packages/fonts:
+    dependencies:
+      '@expo-google-fonts/noto-sans-sc':
+        specifier: 0.4.3
+        version: 0.4.3
+      '@expo-google-fonts/noto-serif-sc':
+        specifier: 0.4.3
+        version: 0.4.3
+      '@fontpkg/alimama-fang-yuan-ti-vf':
+        specifier: 1.0.5
+        version: 1.0.5
+      '@fontsource/lxgw-wenkai':
+        specifier: 5.2.5
+        version: 5.2.5
+      lxgw-wenkai-gb-web:
+        specifier: 1.522.0
+        version: 1.522.0
+    devDependencies:
+      typescript:
+        specifier: ~5.6.2
+        version: 5.6.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.2(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.22.0)(yaml@2.9.0))
 
   packages/tools:
     devDependencies:
@@ -1893,6 +1924,12 @@ packages:
   '@expo-google-fonts/material-symbols@0.4.37':
     resolution: {integrity: sha512-ll8twI7PcfxmjG2hMDS+QNEZ3qYmMERG0YVSJxgYHPlx3VqSNGCasMDAOgPzCE+RhKAVNqlrgTUcIFc8XrHqZQ==}
 
+  '@expo-google-fonts/noto-sans-sc@0.4.3':
+    resolution: {integrity: sha512-9rAwdFTFHbO/u6Cs0gj2jZbW74TGIiaFNQnXYH2s5wA1bzVkwbaviL4t8YUV642eGYjg86eH6DkAEQmfNHDncQ==}
+
+  '@expo-google-fonts/noto-serif-sc@0.4.3':
+    resolution: {integrity: sha512-fSmUpiSFtSeyHV45/2xUOy5SdfExklQwwMKN3cQjAZAujITHDmSbpMHCVdCMhRqMjQtu0ZRgc29u8A+CU3akfw==}
+
   '@expo/cli@56.1.13':
     resolution: {integrity: sha512-7n5VzlBr7TKW0BgWgpEopWy+v8buPhMvbSEsuXD+bI1YIJBopkfWAub0qTvlc357E8wWOvV5MJXYyoeRvoOjoQ==}
     hasBin: true
@@ -2110,6 +2147,12 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontpkg/alimama-fang-yuan-ti-vf@1.0.5':
+    resolution: {integrity: sha512-lwNA/hF0tlJuqEvCZc7Y6sXLtO5IKYOmvEQkJlvRBMlTLO9jVojnkqDbLiTXCnrHQRUUgYOJTjbX1DKnbhudSg==}
+
+  '@fontsource/lxgw-wenkai@5.2.5':
+    resolution: {integrity: sha512-lIBouZW7qNw3VdVnjc0NC80iDfxjU7OnaKGaz6QHiHjC8z0fv9MyrHpeBMzkPnyEVabcpUu4Wf8DnaihfGVYtw==}
 
   '@gorhom/bottom-sheet@5.2.14':
     resolution: {integrity: sha512-uLQFlDjp9z+jrOFcMSEldPqL5JdaXL3vXOh+juhwoNvXgTsEorJLjHTugXu+YccAG/0KJnShzKCrb71MHBsvJg==}
@@ -7479,6 +7522,9 @@ packages:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
     engines: {node: '>=12'}
 
+  lxgw-wenkai-gb-web@1.522.0:
+    resolution: {integrity: sha512-aklciHOJfGOY2s/csLcNUwVnZ5JziCi8xrnW0PWI9cDVFDl8qTiKOQFDBuVLMCQtZFZkUDrhNWmkhuPa4VjnJg==}
+
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -11055,6 +11101,10 @@ snapshots:
 
   '@expo-google-fonts/material-symbols@0.4.37': {}
 
+  '@expo-google-fonts/noto-sans-sc@0.4.3': {}
+
+  '@expo-google-fonts/noto-serif-sc@0.4.3': {}
+
   '@expo/cli@56.1.13(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.13)(expo-constants@56.0.16)(expo-font@56.0.5)(expo-router@56.2.8)(expo@56.0.8)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
@@ -11478,6 +11528,10 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontpkg/alimama-fang-yuan-ti-vf@1.0.5': {}
+
+  '@fontsource/lxgw-wenkai@5.2.5': {}
 
   '@gorhom/bottom-sheet@5.2.14(f619bb64667e261b5575b503acc2554b)':
     dependencies:
@@ -14765,7 +14819,7 @@ snapshots:
       '@babel/plugin-syntax-private-property-in-object': 7.14.5(@babel/core@7.29.0)
       '@babel/plugin-syntax-top-level-await': 7.14.5(@babel/core@7.29.0)
 
-  babel-preset-expo@56.0.14(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@56.0.8)(react-refresh@0.14.2)(supports-color@8.1.1):
+  babel-preset-expo@56.0.14(@babel/core@7.29.0)(@babel/runtime@7.29.2)(expo@56.0.8)(react-refresh@0.17.0)(supports-color@8.1.1):
     dependencies:
       '@babel/generator': 7.29.1
       '@babel/helper-module-imports': 7.28.6
@@ -14809,7 +14863,7 @@ snapshots:
       babel-plugin-syntax-hermes-parser: 0.33.3
       babel-plugin-transform-flow-enums: 0.0.2(@babel/core@7.29.0)
       debug: 4.4.3(supports-color@8.1.1)
-      react-refresh: 0.14.2
+      react-refresh: 0.17.0
     optionalDependencies:
       '@babel/runtime': 7.29.2
       expo: 56.0.8(499b165cd6ed5fccb412109914389210)
@@ -17992,6 +18046,8 @@ snapshots:
   luxon@3.2.1: {}
 
   luxon@3.7.2: {}
+
+  lxgw-wenkai-gb-web@1.522.0: {}
 
   lz-string@1.5.0: {}
 

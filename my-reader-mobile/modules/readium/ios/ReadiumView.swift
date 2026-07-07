@@ -25,7 +25,15 @@ final class ReadiumView: ExpoView {
   }
 
   var preferences: PreferencesRecord? = nil {
-    didSet { updatePreferences() }
+    didSet {
+      preferencesReceived = true
+      if shouldReloadEPUBForFontFamilyChange(from: oldValue, to: preferences) {
+        reloadEPUBPreservingLocation()
+      } else {
+        tryLoadBook()
+        updatePreferences()
+      }
+    }
   }
 
   var decorations: [DecorationGroupRecord]? = nil {
@@ -39,6 +47,13 @@ final class ReadiumView: ExpoView {
     }
   }
 
+  var fontFamilyDeclarations: [FontFamilyDeclarationRecord]? = nil {
+    didSet {
+      fontFamilyDeclarationsReceived = true
+      tryLoadBook()
+    }
+  }
+
   // MARK: - State
 
   private let readerService = ReaderService()
@@ -47,8 +62,11 @@ final class ReadiumView: ExpoView {
   private var inputObserverTokens = Set<InputObservableToken>()
   private var pendingFileUrl: String?
   private var pendingInitialLocation: RLocator?
+  private var loadedFileUrl: String?
   private var hasLoadedBook = false
+  private var preferencesReceived = false
   private var selectionActionsReceived = false
+  private var fontFamilyDeclarationsReceived = false
   private var activeDecorationGroups = Set<String>()
 
   private var viewController: UIViewController? {
@@ -88,7 +106,9 @@ final class ReadiumView: ExpoView {
 
   private func tryLoadBook() {
     guard let url = pendingFileUrl,
+          preferencesReceived,
           selectionActionsReceived,
+          fontFamilyDeclarationsReceived,
           !hasLoadedBook else {
       return
     }
@@ -104,6 +124,7 @@ final class ReadiumView: ExpoView {
   private func loadBook(url: String, location: RLocator?) {
     guard let rootViewController = UIApplication.shared.delegate?.window??.rootViewController else { return }
 
+    loadedFileUrl = url
     let readiumLocator = location
 
     let actionData: [SelectionActionData]? = {
@@ -116,7 +137,9 @@ final class ReadiumView: ExpoView {
       url: url,
       bookId: url,
       locator: readiumLocator,
+      preferences: preferences,
       selectionActions: actionData,
+      fontFamilyDeclarations: fontFamilyDeclarationsToReadium(fontFamilyDeclarations),
       sender: rootViewController,
       completion: { [weak self] vc in
         Task { @MainActor [weak self] in
@@ -150,6 +173,30 @@ final class ReadiumView: ExpoView {
       epubNavigator.submitPreferences(preferencesRecordToEPUB(prefs))
     } else if let pdfNavigator = readerViewController?.navigator as? PDFNavigatorViewController {
       pdfNavigator.submitPreferences(preferencesRecordToPDF(prefs))
+    }
+  }
+
+  private func shouldReloadEPUBForFontFamilyChange(
+    from oldPreferences: PreferencesRecord?,
+    to newPreferences: PreferencesRecord?
+  ) -> Bool {
+    guard readerViewController?.navigator is EPUBNavigatorViewController else {
+      return false
+    }
+    return oldPreferences?.fontFamily != newPreferences?.fontFamily
+  }
+
+  private func reloadEPUBPreservingLocation() {
+    guard let url = loadedFileUrl else {
+      updatePreferences()
+      return
+    }
+
+    Task { @MainActor [weak self] in
+      guard let self = self else { return }
+      let location = (self.readerViewController?.navigator as? EPUBNavigatorViewController)?.currentLocation
+      self.cleanup()
+      self.loadBook(url: url, location: location)
     }
   }
 

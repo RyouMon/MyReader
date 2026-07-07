@@ -9,6 +9,7 @@ import {
 import { StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import type {
+  FontFamilyDeclaration,
   Locator,
   PublicationReadyEvent,
   ReadiumFile,
@@ -47,6 +48,7 @@ export type ReadiumReflowReaderProps = {
   /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => void
+  onPublicationLanguagesReady?: (languages: string[]) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
@@ -54,11 +56,13 @@ export type ReadiumReflowReaderProps = {
   gotoTocIndex?: number
   theme?: ReaderTheme
   fontFamily?: FontFamilyKey
+  fontFamilyDeclarations?: FontFamilyDeclaration[]
   fontSize?: number
   lineHeight?: number
   paddingX?: number
   textAlign?: TextAlignment
   columnCount?: ColumnCount
+  language?: string
 }
 
 const ReadiumReflowReader = forwardRef<
@@ -69,16 +73,19 @@ const ReadiumReflowReader = forwardRef<
     epubPath,
     initialLocator,
     onStateChange,
+    onPublicationLanguagesReady,
     onTocReady,
     onToggleChrome,
     gotoTocIndex,
     theme = "paper",
-    fontFamily = "serif",
+    fontFamily = "default",
+    fontFamilyDeclarations,
     fontSize = 18,
     lineHeight = 1.85,
     paddingX = 20,
     textAlign = "auto",
     columnCount = "auto",
+    language,
   },
   ref,
 ) {
@@ -111,8 +118,18 @@ const ReadiumReflowReader = forwardRef<
         paddingX,
         textAlign,
         columnCount,
+        language,
       ),
-    [theme, fontFamily, fontSize, lineHeight, paddingX, textAlign, columnCount],
+    [
+      theme,
+      fontFamily,
+      fontSize,
+      lineHeight,
+      paddingX,
+      textAlign,
+      columnCount,
+      language,
+    ],
   )
 
   const handlePublicationReady = useCallback(
@@ -121,20 +138,21 @@ const ReadiumReflowReader = forwardRef<
       const tocItems = linksToTocItems(event.tableOfContents, event.positions)
       tocItemsRef.current = tocItems
       onTocReady(tocItems)
+      onPublicationLanguagesReady?.(event.metadata.language ?? [])
 
       const totalPages = Math.max(1, event.positions.length)
 
       // Resolve initial position using position/progression from stored locator,
       // then find the matching native locator from positions list.
       let startLocator: Locator | undefined = event.positions[0]
-      if (initialLocator) {
-        const resolved = resolveNativeLocator(event.positions, initialLocator)
-        if (resolved) startLocator = resolved
-      } else if (currentLocatorRef.current) {
+      if (currentLocatorRef.current) {
         const resolved = resolveNativeLocator(
           event.positions,
           currentLocatorRef.current,
         )
+        if (resolved) startLocator = resolved
+      } else if (initialLocator) {
+        const resolved = resolveNativeLocator(event.positions, initialLocator)
         if (resolved) startLocator = resolved
       }
       currentLocatorRef.current = startLocator ?? null
@@ -170,7 +188,7 @@ const ReadiumReflowReader = forwardRef<
         readiumRef.current?.goTo(startLocator)
       }
     },
-    [initialLocator, onTocReady, onStateChange],
+    [initialLocator, onPublicationLanguagesReady, onTocReady, onStateChange],
   )
 
   const handleLocationChange = useCallback(
@@ -235,6 +253,7 @@ const ReadiumReflowReader = forwardRef<
         ref={readiumRef}
         file={file}
         preferences={preferences}
+        fontFamilyDeclarations={fontFamilyDeclarations}
         style={styles.reader}
         onPublicationReady={handlePublicationReady}
         onLocationChange={handleLocationChange}

@@ -206,7 +206,8 @@ export async function setupDownloadStateMocks(page: Page) {
           reflowable: {
             settings: {
               theme: "default",
-              fontFamily: "system",
+              fontFamily: "default",
+              fontFamiliesByLanguage: {},
               fontSize: 18,
               lineHeight: 1.6,
               paddingX: 16,

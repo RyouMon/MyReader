@@ -7,6 +7,7 @@ import type {
   ReaderTheme,
   TextAlignment,
 } from "@/src/store/app-store.types"
+import { toReadiumFontFamily } from "./reader-font-options"
 
 /**
  * Readium `Preferences.theme` 使用 light / dark / sepia（见库类型定义）。
@@ -37,6 +38,7 @@ export function buildPreferences(
   paddingX: number,
   textAlign: TextAlignment,
   columnCount: ColumnCount,
+  language?: string,
 ): Preferences {
   const t = READER_THEMES[theme] ?? READER_THEMES.neutral
   const prefs: Preferences = {
@@ -49,10 +51,12 @@ export function buildPreferences(
     backgroundColor: t.bg,
     publisherStyles: false,
   }
-  if (fontFamily === "serif") {
-    prefs.fontFamily = "serif"
-  } else if (fontFamily === "sans") {
-    prefs.fontFamily = "sans-serif"
+  const readiumFontFamily = toReadiumFontFamily(fontFamily)
+  if (readiumFontFamily) {
+    prefs.fontFamily = readiumFontFamily
+  }
+  if (language) {
+    prefs.language = language
   }
   if (textAlign !== "auto") {
     prefs.textAlign = textAlign === "justify" ? "justify" : "start"

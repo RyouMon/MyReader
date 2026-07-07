@@ -1,5 +1,5 @@
-import { EpubNavigator } from "@readium/navigator"
 import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
+import { EpubNavigator } from "@readium/navigator"
 import {
   Layout,
   type Links,
@@ -7,6 +7,7 @@ import {
   LocatorLocations,
   type Publication,
 } from "@readium/shared"
+import { isTauri } from "@tauri-apps/api/core"
 import {
   AlignJustify,
   AlignLeft,
@@ -33,6 +34,7 @@ import {
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import type {
   ColCount,
+  ReaderSettings,
   ReadingLayout,
   TextAlign,
 } from "@/components/reader/types"
@@ -49,6 +51,18 @@ import {
   type SpreadPreference,
 } from "@/lib/readium/epubReaderPrefs"
 import {
+  coerceReaderFontOption,
+  createReaderFontInjectables,
+  getReaderFontOptions,
+  loadReaderFontFamily,
+  preloadReaderFontFamilies,
+  type ReaderFontFamilyKey,
+  readerFontLanguageKey,
+  registerReaderFontFaces,
+  resolveReaderFont,
+  resolveReaderLanguage,
+} from "@/lib/readium/readerFonts"
+import {
   readerSettingsToEpubPreferences,
   readerThemeToReflowPreset,
 } from "@/lib/readium/readerSettingsBridge"
@@ -57,11 +71,62 @@ import {
   tocTargetReadingOrderIndex,
   tocTargetToLocator,
 } from "@/lib/readium/tocNavigation"
+import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
+import type { ReaderUiPreferencesPayload } from "@/types/readerUiPreferences"
 
 const RANGE_INPUT_CLASS =
   "mt-1.5 block w-full accent-primary disabled:opacity-50"
+const setupIframeDocuments = new WeakSet<Document>()
+const preloadedIframeFontDocuments = new WeakSet<Document>()
+const COMMON_READER_FONT_FAMILIES_TO_PRELOAD = [
+  "MyReaderNotoSansSC",
+  "MyReaderNotoSerifSC",
+  "MyReaderAlimamaFangYuanTi",
+] as const
+
+async function refreshReaderPreferencesBeforeNavigatorInit(): Promise<void> {
+  if (!isTauri()) return
+  try {
+    const prefs = await api.getReaderUiPreferences()
+    const store = useAppUiStore.getState()
+    store.hydrateReaderPreferences(prefs as ReaderUiPreferencesPayload)
+    store.markReaderPreferencesHydrated()
+  } catch (error: unknown) {
+    console.error("Failed to refresh reader preferences before init.", error)
+  }
+}
+
+function getDocumentReaderFontFamily(doc: Document): string {
+  return doc.documentElement.style.getPropertyValue("--USER__fontFamily").trim()
+}
+
+function scheduleReaderFontPreload(doc: Document): void {
+  if (preloadedIframeFontDocuments.has(doc)) return
+  preloadedIframeFontDocuments.add(doc)
+
+  const wnd = doc.defaultView
+  const preload = () => {
+    void preloadReaderFontFamilies(doc, COMMON_READER_FONT_FAMILIES_TO_PRELOAD)
+  }
+  if (!wnd) {
+    window.setTimeout(preload, 0)
+    return
+  }
+
+  const idleWindow = wnd as Window & {
+    requestIdleCallback?: (
+      callback: IdleRequestCallback,
+      options?: IdleRequestOptions,
+    ) => number
+  }
+  if (idleWindow.requestIdleCallback) {
+    idleWindow.requestIdleCallback(preload, { timeout: 2500 })
+  } else {
+    wnd.setTimeout(preload, 800)
+  }
+}
 
 function walkTocLinks(
   links: Links | undefined,
@@ -120,13 +185,30 @@ function setupIframeWindow(
     isScrollMode: boolean
     paddingX: number
     getChromeVisible: () => boolean
+    getCurrentFontFamily: () => string | null | undefined
   },
 ): (() => void) | undefined {
-  const iframe = wnd.frameElement as HTMLIFrameElement | null
-  const alreadySetup = iframe?.dataset.myreaderSetup === "1"
-  if (iframe) iframe.dataset.myreaderSetup = "1"
-
   const doc = wnd.document
+  const alreadySetup = setupIframeDocuments.has(doc)
+  setupIframeDocuments.add(doc)
+
+  void registerReaderFontFaces(doc)
+    .then(async () => {
+      const activeFontFamily =
+        getDocumentReaderFontFamily(doc) || opts.getCurrentFontFamily()
+      setReaderFontFamilyProperty(doc, activeFontFamily)
+      if (!activeFontFamily) return
+      await loadReaderFontFamily(doc, activeFontFamily)
+      if (getDocumentReaderFontFamily(doc) === activeFontFamily) {
+        setReaderFontFamilyProperty(doc, activeFontFamily)
+      }
+    })
+    .catch((error: unknown) => {
+      console.warn("Failed to load active reader font for iframe.", error)
+    })
+    .finally(() => {
+      scheduleReaderFontPreload(doc)
+    })
   injectReaderScrollbarStyles()
   doc.documentElement.classList.toggle(
     "reader-scrollbar-visible",
@@ -174,15 +256,65 @@ function removeScrollPadding(docs: Document[]): void {
   })
 }
 
+function forceReaderFontRepaint(doc: Document): void {
+  const root = doc.documentElement
+  root.dataset.myreaderFontRepaint =
+    root.dataset.myreaderFontRepaint === "1" ? "0" : "1"
+  void root.offsetHeight
+}
+
+function setReaderFontFamilyProperty(
+  doc: Document,
+  fontFamily: string | null | undefined,
+): void {
+  if (fontFamily) {
+    doc.documentElement.style.setProperty("--USER__fontFamily", fontFamily)
+  } else {
+    doc.documentElement.style.removeProperty("--USER__fontFamily")
+  }
+  forceReaderFontRepaint(doc)
+}
+
+async function loadReaderFontForDoc(
+  doc: Document,
+  fontFamily: string | null | undefined,
+): Promise<void> {
+  try {
+    await loadReaderFontFamily(doc, fontFamily)
+  } catch (error: unknown) {
+    console.warn("Failed to load reader font for iframe.", error)
+  }
+}
+
+async function loadReaderFontInIframeDocs(
+  fontFamily: string | null | undefined,
+): Promise<void> {
+  await Promise.all(
+    getIframeDocs().map((doc) => loadReaderFontForDoc(doc, fontFamily)),
+  )
+}
+
+function setReaderFontInIframeDocs(
+  fontFamily: string | null | undefined,
+): void {
+  getIframeDocs().forEach((doc) => {
+    setReaderFontFamilyProperty(doc, fontFamily)
+  })
+}
+
 type EpubSettingsPanelProps = {
   visible: boolean
   isFixedLayout: boolean
+  readerLanguage: string
+  onFontFamilyChange: (fontFamily: ReaderFontFamilyKey) => void
   onClose: () => void
 }
 
 function EpubSettingsPanel({
   visible,
   isFixedLayout,
+  readerLanguage,
+  onFontFamilyChange,
   onClose,
 }: EpubSettingsPanelProps) {
   const { t } = useTranslation()
@@ -193,6 +325,14 @@ function EpubSettingsPanel({
     (s) => s.patchReflowableSettings,
   )
   const reflowThemeActive = readerThemeToReflowPreset(readerSettings.theme)
+  const fontOptions = useMemo(
+    () => getReaderFontOptions(readerLanguage),
+    [readerLanguage],
+  )
+  const activeFont = coerceReaderFontOption(
+    resolveReaderFont(readerLanguage, readerSettings),
+    fontOptions,
+  )
 
   const onSpreadChange = useCallback(
     (mode: SpreadPreference) => {
@@ -285,6 +425,29 @@ function EpubSettingsPanel({
                       }}
                     />
                     {t(`reader.themes.${theme.labelKey}`)}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+                {t("reader.fontFamily")}
+              </Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {fontOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => onFontFamilyChange(option.key)}
+                    className={cn(
+                      "min-h-9 rounded-md border px-2.5 py-1.5 text-start text-[12px] transition-colors",
+                      activeFont === option.key
+                        ? "border-primary bg-accent text-reader-chrome-fg"
+                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                    )}
+                  >
+                    {t(option.labelKey)}
                   </button>
                 ))}
               </div>
@@ -528,6 +691,7 @@ export function ReadiumEpubReader({
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
   const chromeVisibleRef = useRef(chromeVisible)
+  const reflowablePreferenceApplyRef = useRef(0)
   useEffect(() => {
     chromeVisibleRef.current = chromeVisible
   }, [chromeVisible])
@@ -537,10 +701,17 @@ export function ReadiumEpubReader({
   )
   const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
   const readerSettings = useAppUiStore((s) => s.reflowable.settings)
+  const patchReflowableSettings = useAppUiStore(
+    (s) => s.patchReflowableSettings,
+  )
 
   const isFixedLayout = useMemo(
     () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
     [publication],
+  )
+  const readerLanguage = useMemo(
+    () => resolveReaderLanguage(publication.metadata.languages),
+    [publication.metadata.languages],
   )
 
   const epubNavigatorDefaults = useMemo(
@@ -573,6 +744,61 @@ export function ReadiumEpubReader({
     },
     [isFixedLayout, publication, closePanels],
   )
+
+  const applyReflowablePreferences = useCallback(
+    async (settings: ReaderSettings) => {
+      if (isFixedLayout) return
+      const applyId = ++reflowablePreferenceApplyRef.current
+      const nav = navigatorRef.current
+      const preferences = readerSettingsToEpubPreferences(
+        settings,
+        readerLanguage,
+      )
+      const fontFamily = preferences.fontFamily
+
+      setReaderFontInIframeDocs(fontFamily)
+      await loadReaderFontInIframeDocs(fontFamily)
+      if (applyId !== reflowablePreferenceApplyRef.current) return
+
+      await nav?.submitPreferences(preferences)
+      if (applyId !== reflowablePreferenceApplyRef.current) return
+
+      setReaderFontInIframeDocs(fontFamily)
+      await nav?.resizeHandler()
+    },
+    [isFixedLayout, readerLanguage],
+  )
+
+  const onReaderFontFamilyChange = useCallback(
+    (fontFamily: ReaderFontFamilyKey) => {
+      const currentSettings = useAppUiStore.getState().reflowable.settings
+      const languageKey = readerFontLanguageKey(readerLanguage)
+      const patch: Partial<ReaderSettings> =
+        languageKey === "default"
+          ? { fontFamily }
+          : {
+              fontFamiliesByLanguage: {
+                ...currentSettings.fontFamiliesByLanguage,
+                [languageKey]: fontFamily,
+              },
+            }
+      patchReflowableSettings(patch)
+      void useAppUiStore.getState().persistReaderPreferencesNow()
+      const nextSettings = { ...currentSettings, ...patch }
+      void applyReflowablePreferences(nextSettings).catch((error: unknown) => {
+        console.error("Failed to apply reader font preference.", error)
+      })
+    },
+    [applyReflowablePreferences, patchReflowableSettings, readerLanguage],
+  )
+
+  const getCurrentReflowableFontFamily = useCallback(() => {
+    if (isFixedLayout) return undefined
+    return readerSettingsToEpubPreferences(
+      useAppUiStore.getState().reflowable.settings,
+      readerLanguage,
+    ).fontFamily
+  }, [isFixedLayout, readerLanguage])
 
   const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
@@ -615,9 +841,9 @@ export function ReadiumEpubReader({
       readerSettings.readingLayout === "scroll" && !isFixedLayout
 
     const cleanups: (() => void)[] = []
+    const watchedIframes = new Set<HTMLIFrameElement>()
 
     const trySetup = (iframe: HTMLIFrameElement) => {
-      if (iframe.dataset.myreaderSetup === "1") return
       const doSetup = () => {
         try {
           const wnd = iframe.contentWindow
@@ -626,16 +852,23 @@ export function ReadiumEpubReader({
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
+            getCurrentFontFamily: getCurrentReflowableFontFamily,
           })
           if (cleanup) cleanups.push(cleanup)
         } catch {
           // cross-origin or not ready
         }
       }
-      if (iframe.contentDocument?.readyState === "complete") {
+      if (!watchedIframes.has(iframe)) {
+        watchedIframes.add(iframe)
+        iframe.addEventListener("load", doSetup)
+        cleanups.push(() => iframe.removeEventListener("load", doSetup))
+      }
+      if (
+        iframe.contentDocument?.readyState === "complete" &&
+        !setupIframeDocuments.has(iframe.contentDocument)
+      ) {
         doSetup()
-      } else {
-        iframe.addEventListener("load", doSetup, { once: true })
       }
     }
 
@@ -662,7 +895,12 @@ export function ReadiumEpubReader({
         fn()
       })
     }
-  }, [readerSettings.readingLayout, isFixedLayout, readerSettings.paddingX])
+  }, [
+    readerSettings.readingLayout,
+    isFixedLayout,
+    readerSettings.paddingX,
+    getCurrentReflowableFontFamily,
+  ])
 
   useLocatorProgressSync({
     enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0,
@@ -679,16 +917,20 @@ export function ReadiumEpubReader({
       void applySpreadPreference(nav, spreadMode)
       return
     }
-    void (async () => {
-      await nav.submitPreferences(
-        readerSettingsToEpubPreferences(readerSettings),
-      )
-      await nav.resizeHandler()
-    })()
-  }, [readerPreferencesHydrated, isFixedLayout, spreadMode, readerSettings])
+    void applyReflowablePreferences(readerSettings).catch((error: unknown) => {
+      console.error("Failed to apply reader reflowable preferences.", error)
+    })
+  }, [
+    applyReflowablePreferences,
+    readerPreferencesHydrated,
+    isFixedLayout,
+    spreadMode,
+    readerSettings,
+  ])
 
   useEffect(() => {
     if (!containerRef.current) return
+    if (!readerPreferencesHydrated) return
 
     async function init() {
       try {
@@ -728,10 +970,21 @@ export function ReadiumEpubReader({
           }
         }
 
+        await refreshReaderPreferencesBeforeNavigatorInit()
         const ui = useAppUiStore.getState()
         const initialPreferences = isFixedLayout
           ? epubPreferencesForSpread(ui.fixedLayout.spreadMode)
-          : readerSettingsToEpubPreferences(ui.reflowable.settings)
+          : readerSettingsToEpubPreferences(
+              ui.reflowable.settings,
+              readerLanguage,
+            )
+        const navigatorConfiguration = {
+          preferences: initialPreferences,
+          defaults: epubNavigatorDefaults,
+          ...(isFixedLayout
+            ? {}
+            : { injectables: createReaderFontInjectables() }),
+        }
 
         const nav = new EpubNavigator(
           container,
@@ -745,6 +998,7 @@ export function ReadiumEpubReader({
                   !isFixedLayout,
                 paddingX: ui.reflowable.settings.paddingX,
                 getChromeVisible: () => chromeVisibleRef.current,
+                getCurrentFontFamily: getCurrentReflowableFontFamily,
               })
             },
             positionChanged: (locator) => {
@@ -802,10 +1056,7 @@ export function ReadiumEpubReader({
           },
           positions,
           initialPosition,
-          {
-            preferences: initialPreferences,
-            defaults: epubNavigatorDefaults,
-          },
+          navigatorConfiguration,
         )
         if (isFixedLayout) {
           patchEpubNavigatorFixedLayoutGoNav(nav)
@@ -824,10 +1075,7 @@ export function ReadiumEpubReader({
           if (isFixedLayout) {
             await applySpreadPreference(nav, store.fixedLayout.spreadMode)
           } else {
-            await nav.submitPreferences(
-              readerSettingsToEpubPreferences(store.reflowable.settings),
-            )
-            await nav.resizeHandler()
+            await applyReflowablePreferences(store.reflowable.settings)
           }
         }
         setCurrentLocator(nav.currentLocator)
@@ -851,6 +1099,10 @@ export function ReadiumEpubReader({
     showChrome,
     epubNavigatorDefaults,
     isFixedLayout,
+    readerLanguage,
+    readerPreferencesHydrated,
+    applyReflowablePreferences,
+    getCurrentReflowableFontFamily,
   ])
 
   if (initError) {
@@ -896,6 +1148,8 @@ export function ReadiumEpubReader({
         <EpubSettingsPanel
           visible={settingsOpen}
           isFixedLayout={isFixedLayout}
+          readerLanguage={readerLanguage}
+          onFontFamilyChange={onReaderFontFamilyChange}
           onClose={closePanels}
         />
       }

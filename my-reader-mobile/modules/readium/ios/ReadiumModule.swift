@@ -28,6 +28,9 @@ public final class ReadiumModule: Module {
       Prop("preferences") { (view: ReadiumView, preferences: PreferencesRecord?) in
         view.preferences = preferences
       }
+      Prop("fontFamilyDeclarations") { (view: ReadiumView, declarations: [FontFamilyDeclarationRecord]?) in
+        view.fontFamilyDeclarations = declarations
+      }
       Prop("decorations") { (view: ReadiumView, groups: [DecorationGroupRecord]?) in
         view.decorations = groups
       }

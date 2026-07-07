@@ -14,6 +14,7 @@ import type {
   Locator,
   Preferences,
   ReadiumFile,
+  FontFamilyDeclaration,
   DecorationGroup,
   SelectionAction,
   PublicationReadyEvent,
@@ -32,6 +33,7 @@ export type { ReadiumViewRef, ReadiumProps } from "./ReadiumView.types"
 type NativeReadiumViewProps = {
   file: ReadiumFile
   preferences?: Preferences
+  fontFamilyDeclarations?: FontFamilyDeclaration[]
   decorations?: DecorationGroup[]
   selectionActions?: SelectionAction[]
   style?: any
@@ -62,6 +64,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       onSelectionAction,
       onTap,
       preferences,
+      fontFamilyDeclarations,
       decorations,
       selectionActions,
       ...props
@@ -122,7 +125,6 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
     useEffect(() => () => {}, [])
 
     const isReady = width > 0 && height > 0
-
     return (
       <View style={styles.container} onLayout={onLayout}>
         {isReady && (
@@ -131,6 +133,7 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             style={{ width, height }}
             {...props}
             preferences={preferences}
+            fontFamilyDeclarations={fontFamilyDeclarations ?? []}
             decorations={decorations}
             selectionActions={selectionActions ?? []}
             onLocationChange={

@@ -1,6 +1,9 @@
+import {
+  coerceReaderFontFamily,
+  type ReaderFontFamilyKey,
+} from "@my-reader/fonts"
 import { LOCAL_LIBRARY_DATA_SOURCE_ID } from "@/src/constants/local-library-data-source"
 import type { DataSource } from "@/src/domain/types"
-import type { FontFamilyKey } from "@/src/store/app-store.types"
 import { buildPreferences } from "@/src/features/reader/components/reader/reflow/reader-reflow-preferences"
 
 import {
@@ -24,7 +27,8 @@ describe("defaultSettings", () => {
     expect(defaultSettings.reflowable).toEqual(
       expect.objectContaining({
         theme: "paper",
-        fontFamily: "serif",
+        fontFamily: "default",
+        fontFamiliesByLanguage: {},
         fontSize: 18,
         lineHeight: 1.85,
         paddingX: 20,
@@ -51,7 +55,7 @@ describe("defaultSettings", () => {
 })
 
 describe("buildPreferences fontFamily", () => {
-  const build = (fontFamily: FontFamilyKey) =>
+  const build = (fontFamily: ReaderFontFamilyKey) =>
     buildPreferences("paper", fontFamily, 18, 1.85, 20, "auto", "auto")
 
   test("serif maps to the serif family", () => {
@@ -62,7 +66,11 @@ describe("buildPreferences fontFamily", () => {
     expect(build("sans").fontFamily).toBe("sans-serif")
   })
 
-  test("system omits fontFamily so Readium uses its default", () => {
-    expect(build("system").fontFamily).toBeUndefined()
+  test("legacy system font coerces to default", () => {
+    expect(coerceReaderFontFamily("system", "mobile")).toBe("default")
+  })
+
+  test("default omits fontFamily so Readium uses language defaults", () => {
+    expect(build("default").fontFamily).toBeUndefined()
   })
 })

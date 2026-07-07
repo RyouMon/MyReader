@@ -54,6 +54,21 @@ struct PreferencesRecord: Record {
   @Field var wordSpacing: Double? = nil
 }
 
+// MARK: - Font declarations
+
+struct FontFaceDeclarationRecord: Record {
+  @Field var source: String = ""
+  @Field var preload: Bool? = nil
+  @Field var style: String? = nil
+  @Field var weight: Double? = nil
+}
+
+struct FontFamilyDeclarationRecord: Record {
+  @Field var fontFamily: String = ""
+  @Field var alternates: [String]? = nil
+  @Field var fontFaces: [FontFaceDeclarationRecord]? = nil
+}
+
 // MARK: - Decoration (REP-008)
 
 struct DecorationStyleRecord: Record {

@@ -66,6 +66,108 @@ func preferencesRecordToPDF(_ prefs: PreferencesRecord) -> PDFPreferences {
   )
 }
 
+// MARK: - Font declarations (Record -> Readium)
+
+private func localFontURL(for source: String) -> URL? {
+  let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return nil }
+
+  let path = trimmed as NSString
+  let filename = path.lastPathComponent as NSString
+  let basename = filename.deletingPathExtension
+  let ext = filename.pathExtension
+  let subdirectory = path.deletingLastPathComponent
+  let moduleBundle = Bundle(for: ReadiumModule.self)
+  let fontBundleURL = Bundle.main.url(forResource: "ReadiumReaderFonts", withExtension: "bundle")
+    ?? moduleBundle.url(forResource: "ReadiumReaderFonts", withExtension: "bundle")
+  let fontBundle = fontBundleURL.flatMap { Bundle(url: $0) }
+
+  var candidates = [
+    Bundle.main.resourceURL?.appendingPathComponent(trimmed),
+    Bundle.main.resourceURL?.appendingPathComponent(path.lastPathComponent),
+    fontBundle?.resourceURL?.appendingPathComponent(trimmed),
+    fontBundle?.resourceURL?.appendingPathComponent(path.lastPathComponent),
+    moduleBundle.resourceURL?.appendingPathComponent(trimmed),
+    moduleBundle.resourceURL?.appendingPathComponent(path.lastPathComponent),
+  ].compactMap { $0 }
+
+  if !basename.isEmpty, !ext.isEmpty {
+    candidates.append(contentsOf: [
+      Bundle.main.url(forResource: basename, withExtension: ext),
+      subdirectory.isEmpty
+        ? nil
+        : Bundle.main.url(
+            forResource: basename,
+            withExtension: ext,
+            subdirectory: subdirectory
+          ),
+      fontBundle?.url(forResource: basename, withExtension: ext),
+      subdirectory.isEmpty
+        ? nil
+        : fontBundle?.url(
+            forResource: basename,
+            withExtension: ext,
+            subdirectory: subdirectory
+          ),
+      moduleBundle.url(forResource: basename, withExtension: ext),
+      subdirectory.isEmpty
+        ? nil
+        : moduleBundle.url(
+            forResource: basename,
+            withExtension: ext,
+            subdirectory: subdirectory
+          ),
+    ].compactMap { $0 })
+  }
+
+  return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+}
+
+private func fontFileURL(for source: String) -> FileURL? {
+  localFontURL(for: source).flatMap { FileURL(url: $0) }
+}
+
+private func cssFontWeight(_ weight: Double?) -> CSSFontWeight? {
+  guard let weight else { return nil }
+  switch Int(weight.rounded()) {
+  case 100: return .standard(.thin)
+  case 200: return .standard(.extraLight)
+  case 300: return .standard(.light)
+  case 400: return .standard(.normal)
+  case 500: return .standard(.medium)
+  case 600: return .standard(.semiBold)
+  case 700: return .standard(.bold)
+  case 800: return .standard(.extraBold)
+  case 900: return .standard(.black)
+  default: return nil
+  }
+}
+
+func fontFamilyDeclarationsToReadium(
+  _ declarations: [FontFamilyDeclarationRecord]?
+) -> [AnyHTMLFontFamilyDeclaration] {
+  return (declarations ?? []).compactMap { declaration in
+    let family = declaration.fontFamily.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !family.isEmpty else { return nil }
+
+    let fontFaces = (declaration.fontFaces ?? []).compactMap { face -> CSSFontFace? in
+      guard let file = fontFileURL(for: face.source) else { return nil }
+      return CSSFontFace(
+        file: file,
+        preload: face.preload ?? false,
+        style: face.style == "italic" ? .italic : .normal,
+        weight: cssFontWeight(face.weight)
+      )
+    }
+
+    return CSSFontFamilyDeclaration(
+      fontFamily: FontFamily(rawValue: family),
+      alternates: (declaration.alternates ?? []).map { FontFamily(rawValue: $0) },
+      fontFaces: fontFaces
+    ).eraseToAnyHTMLFontFamilyDeclaration()
+  }
+}
+
 // MARK: - Locator / Decoration (Record → Readium)
 
 func locatorRecordToReadium(_ rec: LocatorRecord) -> RLocator? {

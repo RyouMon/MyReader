@@ -61,6 +61,23 @@ data class PreferencesRecord(
   @Field val wordSpacing: Double? = null
 ) : Record
 
+// MARK: - Font declarations
+
+@OptimizedRecord
+data class FontFaceDeclarationRecord(
+  @Field val source: String = "",
+  @Field val preload: Boolean? = null,
+  @Field val style: String? = null,
+  @Field val weight: Double? = null,
+) : Record
+
+@OptimizedRecord
+data class FontFamilyDeclarationRecord(
+  @Field val fontFamily: String = "",
+  @Field val alternates: List<String>? = null,
+  @Field val fontFaces: List<FontFaceDeclarationRecord>? = null,
+) : Record
+
 // MARK: - Decoration (REP-008)
 
 @OptimizedRecord

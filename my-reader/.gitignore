@@ -12,6 +12,7 @@ dist
 
 # Copied from node_modules by Vite buildStart (pdf.js worker)
 public/pdf.worker.min.mjs
+public/reader-fonts/Generated/
 dist-ssr
 *.local
 msedgedriver.exe

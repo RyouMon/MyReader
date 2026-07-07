@@ -3,12 +3,15 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
     "types": ["jest"],
     "paths": {
       "@/src": ["./src"],
       "@/tw": ["./src/tw/index.tsx"],
       "@/tw/*": ["./src/tw/*"],
       "@/*": ["./*"],
+      "@my-reader/fonts": ["../packages/fonts/src/index.ts"],
+      "@my-reader/fonts/*": ["../packages/fonts/src/*"],
       "@my-reader/tools/*": ["../packages/tools/src/*"]
     }
   },

@@ -1,4 +1,5 @@
 import Foundation
+import ReadiumNavigator
 import UIKit
 import ReadiumShared
 
@@ -15,7 +16,9 @@ protocol ReaderFormatModule {
     for publication: Publication,
     locator: ReadiumShared.Locator?,
     bookId: String,
-    selectionActions: [SelectionActionData]?
+    preferences: PreferencesRecord?,
+    selectionActions: [SelectionActionData]?,
+    fontFamilyDeclarations: [AnyHTMLFontFamilyDeclaration]
   ) throws -> ReaderViewController
 
 }

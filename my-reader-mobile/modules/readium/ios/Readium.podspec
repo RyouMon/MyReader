@@ -20,6 +20,10 @@ Pod::Spec.new do |s|
   s.swift_version  = '5.0'
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
+  s.prepare_command = "cd ../../.. && node scripts/prepare-reader-fonts.mjs"
+  s.resource_bundles = {
+    "ReadiumReaderFonts" => ["Generated/reader-fonts/*"]
+  }
 
   s.dependency 'ExpoModulesCore'
   s.dependency 'ReadiumShared',            '~> 3.9.0'

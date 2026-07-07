@@ -16,9 +16,23 @@ android {
     versionCode 1
     versionName "0.1.0"
   }
+  sourceSets {
+    main {
+      assets.srcDirs += ["../ios/Generated"]
+    }
+  }
   buildFeatures {
     viewBinding true
   }
+}
+
+def prepareReaderFonts = tasks.register("prepareReaderFonts", Exec) {
+  workingDir file("../../..")
+  commandLine "node", "scripts/prepare-reader-fonts.mjs"
+}
+
+tasks.named("preBuild").configure {
+  dependsOn(prepareReaderFonts)
 }
 
 repositories {
