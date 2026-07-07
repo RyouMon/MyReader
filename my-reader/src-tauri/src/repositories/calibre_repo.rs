@@ -15,6 +15,12 @@ use crate::entities::calibre::{
 use crate::error::AppError;
 use crate::models::BookEntry;
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BookFilePathRequest {
+    pub book_id: i64,
+    pub format: String,
+}
+
 /// Lightweight summary for cover download — avoids joining all book columns.
 pub struct CoverSummary {
     pub id: i64,
@@ -102,6 +108,60 @@ impl CalibreBookRepository {
                 has_cover: m.has_cover.unwrap_or(0) != 0,
             })
             .collect())
+    }
+
+    pub async fn get_book_file_paths(
+        &self,
+        library_path: &str,
+        requests: &[BookFilePathRequest],
+    ) -> Result<HashMap<(i64, String), PathBuf>, AppError> {
+        if requests.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let book_ids: Vec<i64> = requests.iter().map(|item| item.book_id).collect();
+        let book_rows = books::Entity::find()
+            .filter(books::Column::Id.is_in(book_ids.clone()))
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let data_rows = data::Entity::find()
+            .filter(data::Column::Book.is_in(book_ids))
+            .all(&self.db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let books_by_id: HashMap<i64, books::Model> =
+            book_rows.into_iter().map(|book| (book.id, book)).collect();
+        let mut data_by_book: HashMap<i64, Vec<data::Model>> = HashMap::new();
+        for row in data_rows {
+            data_by_book.entry(row.book).or_default().push(row);
+        }
+
+        let mut result = HashMap::new();
+        for request in requests {
+            let Some(book) = books_by_id.get(&request.book_id) else {
+                continue;
+            };
+            let Some(rows) = data_by_book.get(&request.book_id) else {
+                continue;
+            };
+            let Some(format_row) = rows
+                .iter()
+                .find(|row| row.format.eq_ignore_ascii_case(&request.format))
+            else {
+                continue;
+            };
+            let path = Path::new(library_path)
+                .join(book.path.clone().unwrap_or_default())
+                .join(format!(
+                    "{}.{}",
+                    format_row.name,
+                    format_row.format.to_lowercase()
+                ));
+            result.insert((request.book_id, request.format.to_uppercase()), path);
+        }
+        Ok(result)
     }
 }
 

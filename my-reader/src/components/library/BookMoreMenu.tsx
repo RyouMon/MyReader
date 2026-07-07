@@ -1,7 +1,27 @@
 import { BookOpen, Download, Ellipsis, Loader2, Trash2, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import {
+  cloneElement,
+  type ElementType,
+  type HTMLAttributes,
+  type ReactElement,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import {
   clearDownloadProgress,
   setDownloadCancelled,
@@ -30,6 +50,27 @@ import { cn } from "@/lib/utils"
 type FileAction = "download" | "cancel" | "delete"
 const BOOK_MORE_MENU_WIDTH_CLASS = "w-52"
 
+interface MenuParts {
+  Item: ElementType
+  Sub: ElementType
+  SubContent: ElementType
+  SubTrigger: ElementType
+}
+
+const dropdownMenuParts: MenuParts = {
+  Item: DropdownMenuItem,
+  Sub: DropdownMenuSub,
+  SubContent: DropdownMenuSubContent,
+  SubTrigger: DropdownMenuSubTrigger,
+}
+
+const contextMenuParts: MenuParts = {
+  Item: ContextMenuItem,
+  Sub: ContextMenuSub,
+  SubContent: ContextMenuSubContent,
+  SubTrigger: ContextMenuSubTrigger,
+}
+
 interface BookMoreMenuProps {
   book: {
     id: number
@@ -42,6 +83,15 @@ interface BookMoreMenuProps {
   selectedFormat?: string
 }
 
+interface BookContextMenuProps
+  extends Omit<BookMoreMenuProps, "triggerVariant"> {
+  children: ReactElement<
+    HTMLAttributes<HTMLElement> & {
+      "data-book-context-menu-trigger"?: string
+    }
+  >
+}
+
 export function BookMoreMenu({
   book,
   libraryId,
@@ -50,14 +100,6 @@ export function BookMoreMenu({
   selectedFormat,
 }: BookMoreMenuProps) {
   const { t } = useTranslation()
-  const readableFormats = getReadableFormats(book.formats)
-  const activeFormat = resolveReadFormat(book.formats, selectedFormat)
-  const sortedFormats = activeFormat
-    ? [
-        ...readableFormats.filter((format) => format === activeFormat),
-        ...readableFormats.filter((format) => format !== activeFormat),
-      ]
-    : readableFormats
   const TriggerIcon = Ellipsis
 
   return (
@@ -77,65 +119,250 @@ export function BookMoreMenu({
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
+      <BookMoreMenuContent
+        book={book}
+        libraryId={libraryId}
+        fileActionsEnabled={fileActionsEnabled}
+        selectedFormat={selectedFormat}
+        parts={dropdownMenuParts}
+      />
+    </DropdownMenu>
+  )
+}
+
+export function BookContextMenu({
+  book,
+  children,
+  libraryId,
+  fileActionsEnabled = true,
+  selectedFormat,
+}: BookContextMenuProps) {
+  const triggerId = useId().replace(/[^a-zA-Z0-9_-]/g, "")
+  const [menuResetKey, setMenuResetKey] = useState(0)
+  const isReplayingContextMenuRef = useRef(false)
+  const shouldSuppressNativeContextMenuRef = useRef(false)
+  const childOnContextMenuCapture = children.props.onContextMenuCapture
+  const childOnPointerDownCapture = children.props.onPointerDownCapture
+
+  function replayContextMenuAtEvent(
+    trigger: HTMLElement,
+    event: ReactMouseEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+  ) {
+    const doc = trigger.ownerDocument
+    const win = doc.defaultView
+    if (!win) return false
+
+    const activeMenu = doc.querySelector(
+      `[data-book-context-menu-content="${triggerId}"][data-state="open"]`,
+    )
+    if (!activeMenu) return false
+
+    const eventInit = {
+      altKey: event.altKey,
+      bubbles: true,
+      button: 2,
+      buttons: 2,
+      cancelable: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      screenX: event.screenX,
+      screenY: event.screenY,
+      shiftKey: event.shiftKey,
+      view: win,
+    }
+
+    setMenuResetKey((current) => current + 1)
+
+    win.setTimeout(() => {
+      const nextTrigger = doc.querySelector(
+        `[data-book-context-menu-trigger="${triggerId}"]`,
+      )
+      if (!nextTrigger) return
+      isReplayingContextMenuRef.current = true
+      nextTrigger.dispatchEvent(new win.MouseEvent("contextmenu", eventInit))
+    }, 0)
+
+    return true
+  }
+
+  function stopContextMenuRefreshEvent(
+    event: ReactMouseEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+    event.nativeEvent.stopImmediatePropagation?.()
+  }
+
+  function handlePointerDownCapture(event: ReactPointerEvent<HTMLElement>) {
+    childOnPointerDownCapture?.(event)
+    if (event.defaultPrevented || event.button !== 2) return
+
+    if (!replayContextMenuAtEvent(event.currentTarget, event)) return
+
+    stopContextMenuRefreshEvent(event)
+    shouldSuppressNativeContextMenuRef.current = true
+
+    const win = event.currentTarget.ownerDocument.defaultView
+    win?.setTimeout(() => {
+      shouldSuppressNativeContextMenuRef.current = false
+    }, 300)
+  }
+
+  function handleContextMenuCapture(event: ReactMouseEvent<HTMLElement>) {
+    childOnContextMenuCapture?.(event)
+    if (event.defaultPrevented) return
+
+    if (isReplayingContextMenuRef.current) {
+      isReplayingContextMenuRef.current = false
+      return
+    }
+
+    if (shouldSuppressNativeContextMenuRef.current) {
+      shouldSuppressNativeContextMenuRef.current = false
+      stopContextMenuRefreshEvent(event)
+      return
+    }
+
+    if (!replayContextMenuAtEvent(event.currentTarget, event)) return
+
+    stopContextMenuRefreshEvent(event)
+  }
+
+  const trigger = cloneElement(children, {
+    "data-book-context-menu-trigger": triggerId,
+    onPointerDownCapture: handlePointerDownCapture,
+    onContextMenuCapture: handleContextMenuCapture,
+  })
+
+  return (
+    <ContextMenu key={menuResetKey} modal={false}>
+      <ContextMenuTrigger asChild>{trigger}</ContextMenuTrigger>
+      <ContextMenuContent
+        data-book-context-menu-content={triggerId}
         className={BOOK_MORE_MENU_WIDTH_CLASS}
-        onClick={(event) => event.stopPropagation()}
       >
-        {sortedFormats.length > 1 ? (
-          <DefaultFormatSubMenu
-            activeFormat={activeFormat}
+        <BookMoreMenuItems
+          book={book}
+          libraryId={libraryId}
+          fileActionsEnabled={fileActionsEnabled}
+          selectedFormat={selectedFormat}
+          parts={contextMenuParts}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+function BookMoreMenuContent({
+  book,
+  libraryId,
+  fileActionsEnabled,
+  parts,
+  selectedFormat,
+  align = "end",
+}: Omit<BookMoreMenuProps, "triggerVariant"> & {
+  align?: "start" | "center" | "end"
+  parts: MenuParts
+}) {
+  return (
+    <DropdownMenuContent
+      align={align}
+      className={BOOK_MORE_MENU_WIDTH_CLASS}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <BookMoreMenuItems
+        book={book}
+        libraryId={libraryId}
+        fileActionsEnabled={fileActionsEnabled}
+        selectedFormat={selectedFormat}
+        parts={parts}
+      />
+    </DropdownMenuContent>
+  )
+}
+
+function BookMoreMenuItems({
+  book,
+  libraryId,
+  fileActionsEnabled,
+  parts,
+  selectedFormat,
+}: Omit<BookMoreMenuProps, "triggerVariant"> & {
+  parts: MenuParts
+}) {
+  const { t } = useTranslation()
+  const Item = parts.Item
+  const readableFormats = getReadableFormats(book.formats)
+  const activeFormat = resolveReadFormat(book.formats, selectedFormat)
+  const sortedFormats = activeFormat
+    ? [
+        ...readableFormats.filter((format) => format === activeFormat),
+        ...readableFormats.filter((format) => format !== activeFormat),
+      ]
+    : readableFormats
+
+  return (
+    <>
+      {sortedFormats.length > 1 ? (
+        <DefaultFormatSubMenu
+          activeFormat={activeFormat}
+          bookId={book.id}
+          formats={sortedFormats}
+          libraryId={libraryId}
+          parts={parts}
+        />
+      ) : null}
+      {!fileActionsEnabled ? (
+        <Item disabled>
+          <Download />
+          {t("bookMore.localLibrary")}
+        </Item>
+      ) : sortedFormats.length === 0 ? (
+        <Item disabled>
+          <Download />
+          {t("bookMore.noReadableFormat")}
+        </Item>
+      ) : sortedFormats.length === 1 ? (
+        <BookFormatActionMenuItem
+          libraryId={libraryId}
+          bookId={book.id}
+          format={sortedFormats[0]}
+          parts={parts}
+        />
+      ) : (
+        <>
+          <FormatActionSubMenu
+            action="download"
             bookId={book.id}
             formats={sortedFormats}
+            hideNonMatchingItems
+            hideWhenNoMatchingAction
             libraryId={libraryId}
+            parts={parts}
           />
-        ) : null}
-        {!fileActionsEnabled ? (
-          <DropdownMenuItem disabled>
-            <Download />
-            {t("bookMore.localLibrary")}
-          </DropdownMenuItem>
-        ) : sortedFormats.length === 0 ? (
-          <DropdownMenuItem disabled>
-            <Download />
-            {t("bookMore.noReadableFormat")}
-          </DropdownMenuItem>
-        ) : sortedFormats.length === 1 ? (
-          <BookFormatActionMenuItem
-            libraryId={libraryId}
+          <FormatActionSubMenu
+            action="cancel"
             bookId={book.id}
-            format={sortedFormats[0]}
+            formats={sortedFormats}
+            hideNonMatchingItems
+            hideWhenNoMatchingAction
+            libraryId={libraryId}
+            parts={parts}
           />
-        ) : (
-          <>
-            <FormatActionSubMenu
-              action="download"
-              bookId={book.id}
-              formats={sortedFormats}
-              hideNonMatchingItems
-              hideWhenNoMatchingAction
-              libraryId={libraryId}
-            />
-            <FormatActionSubMenu
-              action="cancel"
-              bookId={book.id}
-              formats={sortedFormats}
-              hideNonMatchingItems
-              hideWhenNoMatchingAction
-              libraryId={libraryId}
-            />
-            <FormatActionSubMenu
-              action="delete"
-              bookId={book.id}
-              formats={sortedFormats}
-              hideNonMatchingItems
-              hideWhenNoMatchingAction
-              libraryId={libraryId}
-            />
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <FormatActionSubMenu
+            action="delete"
+            bookId={book.id}
+            formats={sortedFormats}
+            hideNonMatchingItems
+            hideWhenNoMatchingAction
+            libraryId={libraryId}
+            parts={parts}
+          />
+        </>
+      )}
+    </>
   )
 }
 
@@ -144,13 +371,19 @@ function DefaultFormatSubMenu({
   bookId,
   formats,
   libraryId,
+  parts,
 }: {
   activeFormat: string | null
   bookId: number
   formats: string[]
   libraryId: string | null
+  parts: MenuParts
 }) {
   const { t } = useTranslation()
+  const Item = parts.Item
+  const Sub = parts.Sub
+  const SubContent = parts.SubContent
+  const SubTrigger = parts.SubTrigger
   const setBookReadingFormat = useSetBookReadingFormat(libraryId)
   const [pendingFormat, setPendingFormat] = useState<string | null>(null)
   const disabled = !libraryId
@@ -171,16 +404,16 @@ function DefaultFormatSubMenu({
   }
 
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger className="w-full" disabled={disabled}>
+    <Sub>
+      <SubTrigger className="w-full" disabled={disabled}>
         <BookOpen />
         {t("bookMore.setDefaultFormat")}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className={BOOK_MORE_MENU_WIDTH_CLASS}>
+      </SubTrigger>
+      <SubContent className={BOOK_MORE_MENU_WIDTH_CLASS}>
         {formats.map((format) => {
           const isActive = format === activeFormat
           return (
-            <DropdownMenuItem
+            <Item
               key={format}
               disabled={isActive || pendingFormat != null}
               onSelect={() => {
@@ -188,11 +421,11 @@ function DefaultFormatSubMenu({
               }}
             >
               <span className="font-medium uppercase">{format}</span>
-            </DropdownMenuItem>
+            </Item>
           )
         })}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+      </SubContent>
+    </Sub>
   )
 }
 
@@ -203,6 +436,7 @@ function FormatActionSubMenu({
   hideNonMatchingItems = false,
   hideWhenNoMatchingAction = false,
   libraryId,
+  parts,
 }: {
   action: FileAction
   bookId: number
@@ -210,9 +444,13 @@ function FormatActionSubMenu({
   hideNonMatchingItems?: boolean
   hideWhenNoMatchingAction?: boolean
   libraryId: string | null
+  parts: MenuParts
 }) {
   const { t } = useTranslation()
   const Icon = actionIcon(action)
+  const Sub = parts.Sub
+  const SubContent = parts.SubContent
+  const SubTrigger = parts.SubTrigger
   const [actionByFormat, setActionByFormat] = useState<
     Record<string, FileAction | null>
   >({})
@@ -242,8 +480,8 @@ function FormatActionSubMenu({
         />
       ))}
       {shouldHide ? null : (
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger
+        <Sub>
+          <SubTrigger
             className={cn(
               "w-full",
               action === "delete" &&
@@ -252,8 +490,8 @@ function FormatActionSubMenu({
           >
             <Icon />
             {t(`bookMore.${action}`)}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className={BOOK_MORE_MENU_WIDTH_CLASS}>
+          </SubTrigger>
+          <SubContent className={BOOK_MORE_MENU_WIDTH_CLASS}>
             {formats.map((format) => (
               <BookFormatActionMenuItem
                 key={`${action}-${format}`}
@@ -264,6 +502,7 @@ function FormatActionSubMenu({
                   hideNonMatchingItems && actionByFormat[format] !== action
                 }
                 libraryId={libraryId}
+                parts={parts}
                 onActionChange={(nextAction) => {
                   setActionByFormat((current) => {
                     if (current[format] === nextAction) return current
@@ -272,8 +511,8 @@ function FormatActionSubMenu({
                 }}
               />
             ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+          </SubContent>
+        </Sub>
       )}
     </>
   )
@@ -308,6 +547,7 @@ function BookFormatActionMenuItem({
   hidden = false,
   libraryId,
   onActionChange,
+  parts,
 }: {
   action?: FileAction
   bookId: number
@@ -315,8 +555,10 @@ function BookFormatActionMenuItem({
   hidden?: boolean
   libraryId: string | null
   onActionChange?: (action: FileAction | null) => void
+  parts: MenuParts
 }) {
   const { t } = useTranslation()
+  const Item = parts.Item
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
   const fmt = format.toUpperCase()
@@ -376,10 +618,10 @@ function BookFormatActionMenuItem({
   }
 
   return (
-    <DropdownMenuItem
+    <Item
       disabled={disabled}
       variant={resolvedAction === "delete" ? "destructive" : "default"}
-      onSelect={(event) => {
+      onSelect={(event: Event) => {
         event.preventDefault()
         void runAction()
       }}
@@ -388,7 +630,7 @@ function BookFormatActionMenuItem({
         <Icon className={pending ? "animate-spin" : undefined} />
       ) : null}
       {requestedAction == null && action ? t(`bookMore.${action}`) : fmt}
-    </DropdownMenuItem>
+    </Item>
   )
 }
 

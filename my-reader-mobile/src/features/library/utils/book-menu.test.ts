@@ -52,7 +52,7 @@ describe("buildBookMenuActions", () => {
     ])
   })
 
-  it("should filter out non-readable formats from share", () => {
+  it("should filter out non-readable formats from share when building book menu actions", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
       formats: ["epub", "mobi", "pdf"],
@@ -130,7 +130,7 @@ describe("buildBookMenuActions", () => {
     expect(actions.map((a) => a.id)).toEqual(["detail", "favorite", "share"])
   })
 
-  it("should not offer remote-only actions for local library", () => {
+  it("should not offer remote-only actions for local library when building book menu actions", () => {
     const actions = buildBookMenuActions("notDownloaded", {
       isRemote: false,
       formats: ["epub"],
@@ -165,7 +165,7 @@ describe("buildBookMenuActions", () => {
     expect(actions.find((a) => a.id === "setDefaultFormat")).toBeUndefined()
   })
 
-  it("should mark selected format in default format submenu", () => {
+  it("should mark selected format in default format submenu when building book menu actions", () => {
     const actions = buildBookMenuActions("downloaded", {
       isRemote: false,
       formats: ["pdf", "epub", "cbz"],

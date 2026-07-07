@@ -21,19 +21,19 @@
 //   Then 列表应仅显示状态为已下载的图书
 
 describe("书库搜索与筛选", () => {
-  it("按书名搜索时应返回匹配的图书列表", () => {
+  it("should 按书名搜索时应返回匹配的图书列表 when searching library books", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("按作者搜索时应返回该作者的图书列表", () => {
+  it("should 按作者搜索时应返回该作者的图书列表 when searching library books", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("切换排序方式时应按指定字段重新排序", () => {
+  it("should 切换排序方式时应按指定字段重新排序 when searching library books", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("筛选下载状态时应仅显示符合条件的图书", () => {
+  it("should 筛选下载状态时应仅显示符合条件的图书 when searching library books", () => {
     // TODO: BDD 审核通过后实现
   })
 })

@@ -24,10 +24,11 @@ function homeFileAction(page: Page, label: string): Locator {
   return page.getByRole("menuitem", { name: label, exact: true })
 }
 
-async function openHomeBookMoreMenu(page: Page) {
+async function openHomeBookContextMenu(page: Page) {
   await page.goto("/")
-  await page.getByRole("button", { name: /下载状态测试书/ }).hover()
-  await page.getByRole("button", { name: /更多操作|More actions/i }).click()
+  await page
+    .getByRole("button", { name: /下载状态测试书/ })
+    .click({ button: "right" })
   await expect(page.getByRole("menu")).toBeVisible()
 }
 
@@ -116,14 +117,14 @@ Then("该书籍文件状态显示为未下载", async ({ page }) => {
   ).toBeVisible()
 })
 
-When("用户在书库首页打开该书籍的更多菜单", async ({ page }) => {
-  await openHomeBookMoreMenu(page)
+When("用户在书库首页打开该书籍的上下文菜单", async ({ page }) => {
+  await openHomeBookContextMenu(page)
 })
 
 When(
   "用户在书库首页将该书籍默认阅读格式设为 {word}",
   async ({ page }, format: string) => {
-    await openHomeBookMoreMenu(page)
+    await openHomeBookContextMenu(page)
     await page.getByRole("menuitem", { name: "默认阅读格式" }).click()
     await page.getByRole("menuitem", { name: format }).click()
   },
@@ -135,20 +136,23 @@ Then("默认阅读格式操作不显示", async ({ page }) => {
   ).not.toBeVisible()
 })
 
-Then("首页菜单应只显示以下文件操作:", async ({ page }, table: DataTable) => {
-  const expected = new Set(table.hashes().map((row) => row.操作))
-  for (const label of HOME_FILE_ACTION_LABELS) {
-    const assertion = expect(homeFileAction(page, label))
-    if (expected.has(label)) {
-      await assertion.toBeVisible()
-    } else {
-      await assertion.not.toBeVisible()
+Then(
+  "首页上下文菜单应只显示以下文件操作:",
+  async ({ page }, table: DataTable) => {
+    const expected = new Set(table.hashes().map((row) => row.操作))
+    for (const label of HOME_FILE_ACTION_LABELS) {
+      const assertion = expect(homeFileAction(page, label))
+      if (expected.has(label)) {
+        await assertion.toBeVisible()
+      } else {
+        await assertion.not.toBeVisible()
+      }
     }
-  }
-})
+  },
+)
 
 Then(
-  "用户悬浮删除本地文件操作后首页菜单仍显示删除本地文件操作",
+  "用户悬浮删除本地文件操作后首页上下文菜单仍显示删除本地文件操作",
   async ({ page }) => {
     const action = homeFileAction(page, "删除本地文件")
     await action.hover()

@@ -30,6 +30,6 @@ Feature: 书库网格视图行距一致性
 
     Examples:
       | viewport_width | expected_spacing |
-      | 300            | 24               |
-      | 1280           | 24               |
-      | 1920           | 24               |
+      | 300            | 12               |
+      | 1280           | 12               |
+      | 1920           | 12               |

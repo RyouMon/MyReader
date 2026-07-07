@@ -718,7 +718,7 @@ describe("useBookActions", () => {
       expect(showAlertWithStatusBarRestore).toHaveBeenCalled()
     })
 
-    it("should invoke setFormat from default format prompt", async () => {
+    it("should invoke setFormat from default format prompt when opening the default format prompt", async () => {
       jest.mocked(getBookFormatPaths).mockResolvedValue([
         { format: "EPUB", relativePath: "Author/Test Book/Test Book.epub" },
         { format: "PDF", relativePath: "Author/Test Book/Test Book.pdf" },

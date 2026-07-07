@@ -63,7 +63,7 @@ describe("BookMoreMenu", () => {
     tauriApiMock.setBookReadingFormat.mockReset()
   })
 
-  it("首页下载任务启动失败时显示全局失败通知", async () => {
+  it("should show global failure toast when home download fails", async () => {
     const user = userEvent.setup()
 
     renderWithClient(
@@ -91,7 +91,7 @@ describe("BookMoreMenu", () => {
     })
   })
 
-  it("多格式图书可以从首页更多菜单设置默认阅读格式", async () => {
+  it("should set default reading format when a multi-format book uses home more menu", async () => {
     const user = userEvent.setup()
 
     renderWithClient(
@@ -121,7 +121,7 @@ describe("BookMoreMenu", () => {
     })
   })
 
-  it("单格式图书不显示默认阅读格式菜单", async () => {
+  it("should hide default reading format menu when book has one format", async () => {
     const user = userEvent.setup()
 
     renderWithClient(
@@ -141,7 +141,7 @@ describe("BookMoreMenu", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("主菜单保留图标，子菜单格式项不显示操作图标", async () => {
+  it("should keep parent menu icons when default format submenu renders", async () => {
     const user = userEvent.setup()
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",

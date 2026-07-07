@@ -13,7 +13,7 @@ Given("窗口宽度足够显示侧边栏", async ({ page }) => {
 
 Given("侧边栏已折叠", async ({ page }) => {
   const mainPage = new MainPage(page)
-  await mainPage.clickSidebarCollapseButton()
+  await mainPage.clickSidebarToggleButton()
   await mainPage.assertSidebarCollapsed()
 })
 
@@ -24,17 +24,22 @@ Given("窗口宽度调整为移动端宽度", async ({ page }) => {
 
 Given("侧边栏已以叠加层形式展开", async ({ page }) => {
   const mainPage = new MainPage(page)
-  await mainPage.clickSidebarExpandButton()
+  await mainPage.clickSidebarToggleButton()
+})
+
+When("用户点击侧边栏开关按钮", async ({ page }) => {
+  const mainPage = new MainPage(page)
+  await mainPage.clickSidebarToggleButton()
 })
 
 When("用户点击侧边栏折叠按钮", async ({ page }) => {
   const mainPage = new MainPage(page)
-  await mainPage.clickSidebarCollapseButton()
+  await mainPage.clickSidebarToggleButton()
 })
 
 When("用户点击侧边栏展开按钮", async ({ page }) => {
   const mainPage = new MainPage(page)
-  await mainPage.clickSidebarExpandButton()
+  await mainPage.clickSidebarToggleButton()
 })
 
 When("用户点击叠加层外的空白区域", async ({ page }) => {

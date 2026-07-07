@@ -51,6 +51,7 @@ export const commands = {
 	enforceCacheLimit: () => typedError<null, ErrorKind>(__TAURI_INVOKE("enforce_cache_limit")),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
 	checkBookFileState: (libraryId: string, bookId: number, format: string) => typedError<FileStateDto, ErrorKind>(__TAURI_INVOKE("check_book_file_state", { libraryId, bookId, format })),
+	checkBookFileStates: (libraryId: string, requests: FileStateRequestDto[]) => typedError<BookFileStateDto[], ErrorKind>(__TAURI_INVOKE("check_book_file_states", { libraryId, requests })),
 	downloadBookFile: (libraryId: string, bookId: number, format: string) => typedError<string, ErrorKind>(__TAURI_INVOKE("download_book_file", { libraryId, bookId, format })),
 	deleteLocalBookFile: (libraryId: string, bookId: number, format: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_local_book_file", { libraryId, bookId, format })),
 	cancelBookDownload: (libraryId: string, bookId: number, format: string) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("cancel_book_download", { libraryId, bookId, format })),
@@ -83,6 +84,15 @@ export type BookEntry = {
 	languages: string[],
 	rating: number | null,
 	uuid: string | null,
+};
+
+/**  Returned by `check_book_file_states`: keyed file cache state for a book format. */
+export type BookFileStateDto = {
+	bookId: number,
+	format: string,
+	path: string,
+	localState: string,
+	localSize: number | null,
 };
 
 export type BookIdentifier = {
@@ -121,6 +131,12 @@ export type FileStateDto = {
 	path: string,
 	localState: string,
 	localSize: number | null,
+};
+
+/**  Request item for `check_book_file_states`. */
+export type FileStateRequestDto = {
+	bookId: number,
+	format: string,
 };
 
 /**  与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。 */

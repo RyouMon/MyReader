@@ -93,7 +93,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should treat local library books as downloaded and use embedded formats", async () => {
+  it("should treat local library books as downloaded and use embedded formats when resolving library book metadata", async () => {
     const books = [{ ...baseBook, formats: ["EPUB", "PDF"] }]
     const { result, unmount } = renderHook(
       () => useLibraryBookMeta(localLibrary, books, {}),
@@ -188,7 +188,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should compute remote download status from file state rows", async () => {
+  it("should compute remote download status from file state rows when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: fileStateRows,
       isLoading: false,
@@ -236,7 +236,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should ignore file state rows that do not belong to the book", async () => {
+  it("should ignore file state rows that do not belong to the book when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
         { path: "Author/Other Book/Other Book.epub", localState: "present" },
@@ -259,7 +259,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should ignore file state rows with non-downloaded local states", async () => {
+  it("should ignore file state rows with non-downloaded local states when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
         { path: "Author/Test Book/Test Book.epub", localState: "remote_only" },
@@ -302,7 +302,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should reflect downloading status from active tasks", async () => {
+  it("should reflect downloading status from active tasks when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -382,7 +382,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should ignore tasks with irrelevant statuses", async () => {
+  it("should ignore tasks with irrelevant statuses when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -407,7 +407,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should ignore path-lookup tasks with irrelevant statuses", async () => {
+  it("should ignore path-lookup tasks with irrelevant statuses when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -440,7 +440,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should skip tasks whose path does not match any book", async () => {
+  it("should skip tasks whose path does not match any book when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -465,7 +465,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should aggregate multiple tasks for the same book", async () => {
+  it("should aggregate multiple tasks for the same book when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -498,7 +498,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should skip book-bound tasks during path lookup", async () => {
+  it("should skip book-bound tasks during path lookup when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -531,7 +531,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should skip path-lookup tasks for other libraries", async () => {
+  it("should skip path-lookup tasks for other libraries when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -564,7 +564,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should aggregate multiple path-lookup tasks for the same book", async () => {
+  it("should aggregate multiple path-lookup tasks for the same book when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -597,7 +597,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should mark remote book without readable formats as not downloaded", async () => {
+  it("should mark remote book without readable formats as not downloaded when resolving library book metadata", async () => {
     jest.mocked(useFileStates).mockReturnValue({
       data: [
         { path: "Author/Test Book/Test Book.mobi", localState: "present" },
@@ -653,7 +653,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should skip active tasks with unresolvable format", async () => {
+  it("should skip active tasks with unresolvable format when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",
@@ -678,7 +678,7 @@ describe("useLibraryBookMeta", () => {
     unmount()
   })
 
-  it("should skip tasks for other libraries", async () => {
+  it("should skip tasks for other libraries when resolving library book metadata", async () => {
     jest.mocked(useDownloadStatusTasks).mockReturnValue([
       {
         id: "task-1",

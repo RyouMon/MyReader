@@ -17,6 +17,10 @@ void ensurePdfJsWorker().catch((e) => {
 installForwardConsoleToLog()
 void useLibraryUiStore.getState().hydrateActiveLibraryId()
 
+document.addEventListener("contextmenu", (event) => {
+  event.preventDefault()
+})
+
 const router = createRouter({ routeTree })
 
 declare module "@tanstack/react-router" {

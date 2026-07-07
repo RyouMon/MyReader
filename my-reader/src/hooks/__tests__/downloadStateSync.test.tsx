@@ -62,6 +62,16 @@ function makeClient() {
   })
 }
 
+function makeClientWithDefaultQueryFreshness() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+}
+
 function renderWithClient(client: QueryClient, children: ReactNode) {
   return render(
     <QueryClientProvider client={client}>{children}</QueryClientProvider>,
@@ -89,6 +99,7 @@ describe("download state synchronization", () => {
     tauriEventMock.listeners.clear()
     tauriEventMock.listen.mockClear()
     toastMock.error.mockClear()
+    tauriApiMock.checkBookFileState.mockClear()
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",
       localState: "remote_only",
@@ -96,7 +107,7 @@ describe("download state synchronization", () => {
     })
   })
 
-  it("全局下载完成事件会同步所有已挂载入口", async () => {
+  it("should synchronize mounted entries when global download completes", async () => {
     const client = makeClient()
     client.setQueryData(bookFileStateKeys.detail(libraryId, bookId, format), {
       path: "book.epub",
@@ -140,7 +151,7 @@ describe("download state synchronization", () => {
     ).toMatchObject({ status: "done" })
   })
 
-  it("远端文件状态重置事件会清掉旧下载终态", async () => {
+  it("should clear stale terminal progress when remote file state resets", async () => {
     const client = makeClient()
     client.setQueryData(bookFileStateKeys.detail(libraryId, bookId, format), {
       path: "book.epub",
@@ -191,7 +202,7 @@ describe("download state synchronization", () => {
     ).not.toMatchObject({ status: "done" })
   })
 
-  it("晚挂载入口会从文件状态快照恢复正在下载状态", async () => {
+  it("should restore active download state when entry mounts after download starts", async () => {
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",
       localState: "downloading",
@@ -206,7 +217,34 @@ describe("download state synchronization", () => {
     })
   })
 
-  it("取消事件不会被后台仍活跃的文件状态查询覆盖", async () => {
+  it("should reuse cached file state when entry remounts with same query key", async () => {
+    const client = makeClientWithDefaultQueryFreshness()
+
+    const first = renderWithClient(
+      client,
+      <DownloadStatus testId="first-status" />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("first-status")).toHaveTextContent(
+        "remote_only",
+      )
+    })
+    expect(tauriApiMock.checkBookFileState).toHaveBeenCalledTimes(1)
+
+    first.unmount()
+
+    renderWithClient(client, <DownloadStatus testId="second-status" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("second-status")).toHaveTextContent(
+        "remote_only",
+      )
+    })
+    expect(tauriApiMock.checkBookFileState).toHaveBeenCalledTimes(1)
+  })
+
+  it("should keep cancellation state when background file state remains active", async () => {
     const client = makeClient()
     client.setQueryData(bookFileStateKeys.detail(libraryId, bookId, format), {
       path: "book.epub",
@@ -253,7 +291,7 @@ describe("download state synchronization", () => {
     expect(screen.getByTestId("home-status")).toHaveTextContent("remote_only")
   })
 
-  it("失败事件会让文件状态回到未下载", async () => {
+  it("should return to remote-only state when download fails", async () => {
     const client = makeClient()
     client.setQueryData(bookFileStateKeys.detail(libraryId, bookId, format), {
       path: "book.epub",
@@ -305,7 +343,7 @@ describe("download state synchronization", () => {
     )
   })
 
-  it("failed download remains remote-only when stale file state reports present", async () => {
+  it("should remain remote-only when stale file state reports present after failed download", async () => {
     const client = makeClient()
     client.setQueryData(bookFileStateKeys.detail(libraryId, bookId, format), {
       path: "book.epub",

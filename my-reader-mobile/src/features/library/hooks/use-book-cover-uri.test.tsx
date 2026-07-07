@@ -58,7 +58,7 @@ describe("useBookCoverUri", () => {
     expect(result.current.coverUri).toBe("file:///list/cover.jpg")
   })
 
-  it("should resolve coverUri from detail", async () => {
+  it("should resolve coverUri from detail when resolving book cover URIs", async () => {
     jest
       .mocked(resolveCoverForDetail)
       .mockResolvedValue("file:///resolved/cover.jpg")
@@ -82,7 +82,7 @@ describe("useBookCoverUri", () => {
     expect(result.current.coverUri).toBeUndefined()
   })
 
-  it("should ignore resolved cover after unmount", async () => {
+  it("should ignore resolved cover after unmount when resolving book cover URIs", async () => {
     const { promise, resolve } = createDeferred<string | undefined>()
     jest.mocked(resolveCoverForDetail).mockReturnValue(promise)
 

@@ -37,14 +37,14 @@ describe("BookCover", () => {
     resetCoverImageDisplayStoreForTests()
   })
 
-  it("renders default cover art when no cover is available", () => {
+  it("should render default cover art when no cover is available", () => {
     render(<BookCover book={baseBook} width={100} height={150} />)
 
     expect(screen.getByText("Fallback Book")).toBeTruthy()
     expect(screen.getByText("Author")).toBeTruthy()
   })
 
-  it("removes loading skeleton after the image displays", () => {
+  it("should remove loading skeleton after the image displays when rendering book covers", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
@@ -68,7 +68,7 @@ describe("BookCover", () => {
     expect(screen.queryByText("Author")).toBeNull()
   })
 
-  it("uses a visible loading skeleton color in light mode", () => {
+  it("should use a visible loading skeleton color in light mode when rendering book covers", () => {
     const backgroundSecondary = "#f2efe8"
     const textMuted = "#7a6b5d"
 
@@ -92,7 +92,7 @@ describe("BookCover", () => {
     )
   })
 
-  it("animates the loading skeleton pulse", () => {
+  it("should animate the loading skeleton pulse when rendering book covers", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
@@ -108,7 +108,7 @@ describe("BookCover", () => {
     expect(skeletonStyle.opacity).toBe(COVER_LOADING_SKELETON_DARK_OPACITY)
   })
 
-  it("shows the light loading skeleton state when pulse animation is disabled", () => {
+  it("should show the light loading skeleton state when pulse animation is disabled", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}
@@ -125,7 +125,7 @@ describe("BookCover", () => {
     expect(skeletonStyle.opacity).toBe(COVER_LOADING_SKELETON_LIGHT_OPACITY)
   })
 
-  it("renders a previously displayed cover without fallback art", () => {
+  it("should render a previously displayed cover without fallback art when rendering book covers", () => {
     const coverUri = "https://example.com/cover.png"
     const firstRender = render(
       <BookCover book={{ ...baseBook, coverUri }} width={100} height={150} />,
@@ -147,7 +147,7 @@ describe("BookCover", () => {
     ).toBeNull()
   })
 
-  it("uses a display cover URI instead of the original cover URI", () => {
+  it("should use a display cover URI instead of the original cover URI when rendering book covers", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
@@ -165,7 +165,7 @@ describe("BookCover", () => {
     )
   })
 
-  it("cross-dissolves from loading art to the loaded image", () => {
+  it("should cross-dissolves from loading art to the loaded image when rendering book covers", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
@@ -180,7 +180,7 @@ describe("BookCover", () => {
     ).toEqual({ duration: 140 })
   })
 
-  it("can defer image rendering until the display cover URI is ready", () => {
+  it("should defer image rendering until the display cover URI is ready when rendering book covers", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/original.jpg" }}
@@ -195,7 +195,7 @@ describe("BookCover", () => {
     expect(screen.queryByText("Fallback Book")).toBeNull()
   })
 
-  it("subscribes to the thumbnail session URI for list covers", () => {
+  it("should subscribe to the thumbnail session URI for list covers when rendering book covers", () => {
     const scopeKey = "library-1:200x300"
     const book = {
       ...baseBook,
@@ -232,7 +232,7 @@ describe("BookCover", () => {
     expect(screen.getByTestId("book-cover-loading-book-1")).toBeTruthy()
   })
 
-  it("falls back to default cover art when image loading fails", () => {
+  it("should fall back to default cover art when image loading fails", () => {
     render(
       <BookCover
         book={{ ...baseBook, coverUri: "https://example.com/cover.png" }}

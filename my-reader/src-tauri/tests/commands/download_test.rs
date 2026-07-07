@@ -113,6 +113,78 @@ async fn check_book_file_state_should_report_downloading_when_remote_file_is_act
 }
 
 #[tokio::test]
+async fn check_book_file_states_should_report_present_when_local_library_has_book() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let seeded = seed_minimal_calibre_library(dir.path()).await;
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-a".into(),
+            name: "Lib".into(),
+            path: dir.path().to_string_lossy().to_string(),
+            source_type: Some("local".into()),
+            data_source_id: None,
+            source_path: None,
+        }],
+        active_library_id: Some("lib-a".into()),
+        ..Default::default()
+    });
+
+    let rows: Value = invoke_ok(
+        &app,
+        "check_book_file_states",
+        json!({
+            "libraryId": "lib-a",
+            "requests": [{ "bookId": seeded.book_id, "format": seeded.format }]
+        }),
+    );
+
+    assert_eq!(rows[0]["bookId"], json!(seeded.book_id));
+    assert_eq!(rows[0]["format"], json!("EPUB"));
+    assert_eq!(rows[0]["localState"], json!("present"));
+}
+
+#[tokio::test]
+async fn check_book_file_states_should_report_downloading_when_remote_file_is_active() {
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![LibraryConfig {
+            id: "lib-remote".into(),
+            name: "Remote".into(),
+            path: "/remote/library".into(),
+            source_type: Some("webdav".into()),
+            data_source_id: Some("ds-a".into()),
+            source_path: Some("/books".into()),
+        }],
+        active_library_id: Some("lib-remote".into()),
+        ..Default::default()
+    });
+    let root = app.app_data_dir().join("libraries").join("lib-remote");
+    tokio::fs::create_dir_all(&root)
+        .await
+        .expect("create remote library container");
+    let seeded = seed_minimal_calibre_library(&root).await;
+    tokio::fs::remove_file(&seeded.file_path)
+        .await
+        .expect("remote cache file should be absent");
+
+    let service = app.app.state::<DownloadService>();
+    let _rx = service
+        .start("lib-remote", seeded.book_id, &seeded.format)
+        .expect("download should be active");
+
+    let rows: Value = invoke_ok(
+        &app,
+        "check_book_file_states",
+        json!({
+            "libraryId": "lib-remote",
+            "requests": [{ "bookId": seeded.book_id, "format": seeded.format }]
+        }),
+    );
+
+    assert_eq!(rows[0]["localState"], json!("downloading"));
+    service.finish("lib-remote", seeded.book_id, &seeded.format);
+}
+
+#[tokio::test]
 async fn delete_local_book_file_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::new();
 

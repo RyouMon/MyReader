@@ -26,7 +26,7 @@ function decodeBookPathFromCoverUrl(url: string): string {
 }
 
 describe("buildCoverUrl", () => {
-  it("在 Windows 环境输出 bookcover 的 http URL", async () => {
+  it("should output bookcover http URL when running on Windows", async () => {
     setUserAgentForModuleLoad("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     vi.resetModules()
     const { buildCoverUrl } = await import("../cover")
@@ -37,7 +37,7 @@ describe("buildCoverUrl", () => {
     expect(decodeBookPathFromCoverUrl(url)).toBe("Author/Book (1)")
   })
 
-  it("在非 Windows 环境输出 bookcover 自定义协议 URL", async () => {
+  it("should output bookcover custom protocol URL when not running on Windows", async () => {
     setUserAgentForModuleLoad("Mozilla/5.0 (X11; Linux x86_64)")
     vi.resetModules()
     const { buildCoverUrl } = await import("../cover")

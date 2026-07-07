@@ -10,7 +10,7 @@ describe("Skeleton", () => {
     jest.clearAllMocks()
   })
 
-  it("shares one pulse animation for skeletons with the same sync key", () => {
+  it("should share one pulse animation for skeletons with the same sync key when rendering synchronized skeletons", () => {
     render(
       <View>
         <Skeleton animated pulseSyncKey="cover-loading" />

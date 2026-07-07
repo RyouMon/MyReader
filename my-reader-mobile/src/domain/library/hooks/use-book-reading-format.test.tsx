@@ -48,7 +48,7 @@ describe("useBookReadingFormat", () => {
     jest.clearAllMocks()
   })
 
-  it("returns an empty map when no library is selected", async () => {
+  it("should return an empty map when no library is selected", async () => {
     const { result, unmount } = renderHook(() => useBookReadingFormat(null), {
       wrapper,
     })
@@ -60,7 +60,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("returns an empty map when fetching formats without a library", async () => {
+  it("should return an empty map when fetching formats without a library", async () => {
     const result = await fetchBookReadingFormats(null)
 
     expect(result).toEqual({})
@@ -68,7 +68,7 @@ describe("useBookReadingFormat", () => {
     expect(getAllBookFormats).not.toHaveBeenCalled()
   })
 
-  it("returns selected formats only for books with multiple readable formats", async () => {
+  it("should return selected formats only for books with multiple readable formats when managing selected reading formats", async () => {
     jest.mocked(listBookReadingFormats).mockResolvedValue([
       { bookId: 1, readingFormat: "epub" },
       { bookId: 2, readingFormat: "pdf" },
@@ -96,7 +96,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("sets the reading format when the book has multiple readable formats", async () => {
+  it("should set the reading format when the book has multiple readable formats", async () => {
     jest
       .mocked(listBookReadingFormats)
       .mockResolvedValue(
@@ -124,7 +124,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("clears the reading format when set to null", async () => {
+  it("should clear the reading format when set to null", async () => {
     jest
       .mocked(listBookReadingFormats)
       .mockResolvedValue(
@@ -150,7 +150,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("clears the reading format when the book has only one readable format", async () => {
+  it("should clear the reading format when the book has only one readable format", async () => {
     jest
       .mocked(listBookReadingFormats)
       .mockResolvedValue(
@@ -178,7 +178,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("does nothing when setting format without a library", async () => {
+  it("should does nothing when setting format without a library", async () => {
     const { result, unmount } = renderHook(() => useBookReadingFormat(null), {
       wrapper,
     })
@@ -193,7 +193,7 @@ describe("useBookReadingFormat", () => {
     unmount()
   })
 
-  it("returns an empty map when the query fails", async () => {
+  it("should return an empty map when the query fails", async () => {
     jest.mocked(listBookReadingFormats).mockRejectedValue(new Error("db error"))
 
     const { result, unmount } = renderHook(

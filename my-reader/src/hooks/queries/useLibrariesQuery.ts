@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import type { Library } from "@my-reader/tools/types/library"
+import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { api } from "@/lib/tauri-api"
+import { useLibraryUiStore } from "@/stores/libraryUiStore"
 
 export const libraryKeys = {
   all: ["libraries"] as const,
@@ -24,6 +26,15 @@ function mapLibraryFromBackendJson(raw: Record<string, unknown>): Library {
   }
 }
 
+async function syncActiveLibraryId() {
+  try {
+    const activeLibraryId = await api.getActiveLibraryId()
+    useLibraryUiStore.setState({ activeLibraryId })
+  } catch {
+    // keep add-library success independent from UI active-library hydration
+  }
+}
+
 export function useLibrariesQuery() {
   return useQuery({
     queryKey: libraryKeys.all,
@@ -39,7 +50,9 @@ export function useLibraryMutations() {
       const info = await api.addLibrary(path, null)
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      resetBrokenCovers()
+      await syncActiveLibraryId()
       void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     },
   })
@@ -61,7 +74,9 @@ export function useLibraryMutations() {
       )
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      resetBrokenCovers()
+      await syncActiveLibraryId()
       void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     },
   })
@@ -83,7 +98,9 @@ export function useLibraryMutations() {
       )
       return mapLibraryFromBackendJson(info)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      resetBrokenCovers()
+      await syncActiveLibraryId()
       void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     },
   })
@@ -111,6 +128,7 @@ export function useLibraryMutations() {
       }
     },
     onSuccess: () => {
+      resetBrokenCovers()
       void queryClient.invalidateQueries({ queryKey: libraryKeys.all })
     },
   })

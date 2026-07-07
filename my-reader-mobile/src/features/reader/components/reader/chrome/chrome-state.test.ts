@@ -6,31 +6,31 @@ describe("chromeReducer", () => {
   }
 
   describe("When content is tapped", () => {
-    it("Should show chrome when tapping content in reading state", () => {
+    it("should show chrome when tapping content in reading state", () => {
       expect(chromeReducer(ChromeState.Reading, { type: "contentTap" })).toBe(
         ChromeState.Chrome,
       )
     })
 
-    it("Should hide chrome when tapping content in chrome state", () => {
+    it("should hide chrome when tapping content in chrome state", () => {
       expect(chromeReducer(ChromeState.Chrome, { type: "contentTap" })).toBe(
         ChromeState.Reading,
       )
     })
 
-    it("Should return to reading when tapping content in expanded state", () => {
+    it("should return to reading when tapping content in expanded state", () => {
       expect(chromeReducer(ChromeState.Expanded, { type: "contentTap" })).toBe(
         ChromeState.Reading,
       )
     })
 
-    it("Should return to chrome when tapping content in toc sheet state", () => {
+    it("should return to chrome when tapping content in toc sheet state", () => {
       expect(chromeReducer(ChromeState.TocSheet, { type: "contentTap" })).toBe(
         ChromeState.Chrome,
       )
     })
 
-    it("Should return to chrome when tapping content in settings sheet state", () => {
+    it("should return to chrome when tapping content in settings sheet state", () => {
       expect(
         chromeReducer(ChromeState.SettingsSheet, { type: "contentTap" }),
       ).toBe(ChromeState.Chrome)
@@ -38,13 +38,13 @@ describe("chromeReducer", () => {
   })
 
   describe("When more button is tapped", () => {
-    it("Should expand actions when tapping more button in chrome state", () => {
+    it("should expand actions when tapping more button in chrome state", () => {
       expect(chromeReducer(ChromeState.Chrome, { type: "moreButtonTap" })).toBe(
         ChromeState.Expanded,
       )
     })
 
-    it("Should ignore more button tap in non-chrome states", () => {
+    it("should ignore more button tap in non-chrome states when running the scenario", () => {
       expect(
         chromeReducer(ChromeState.Reading, { type: "moreButtonTap" }),
       ).toBe(ChromeState.Reading)
@@ -61,13 +61,13 @@ describe("chromeReducer", () => {
   })
 
   describe("When toc pill is tapped", () => {
-    it("Should open toc sheet when tapping toc pill in expanded state", () => {
+    it("should open toc sheet when tapping toc pill in expanded state", () => {
       expect(chromeReducer(ChromeState.Expanded, { type: "tocPillTap" })).toBe(
         ChromeState.TocSheet,
       )
     })
 
-    it("Should ignore toc pill tap in non-expanded states", () => {
+    it("should ignore toc pill tap in non-expanded states when running the scenario", () => {
       expect(chromeReducer(ChromeState.Reading, { type: "tocPillTap" })).toBe(
         ChromeState.Reading,
       )
@@ -78,13 +78,13 @@ describe("chromeReducer", () => {
   })
 
   describe("When settings pill is tapped", () => {
-    it("Should open settings sheet when tapping settings pill in expanded state", () => {
+    it("should open settings sheet when tapping settings pill in expanded state", () => {
       expect(
         chromeReducer(ChromeState.Expanded, { type: "settingsPillTap" }),
       ).toBe(ChromeState.SettingsSheet)
     })
 
-    it("Should ignore settings pill tap in non-expanded states", () => {
+    it("should ignore settings pill tap in non-expanded states when running the scenario", () => {
       expect(
         chromeReducer(ChromeState.Reading, { type: "settingsPillTap" }),
       ).toBe(ChromeState.Reading)
@@ -95,7 +95,7 @@ describe("chromeReducer", () => {
   })
 
   describe("When a toc item is selected", () => {
-    it("Should return to reading when selecting a toc item", () => {
+    it("should return to reading when selecting a toc item", () => {
       expect(chromeReducer(ChromeState.TocSheet, { type: "tocSelect" })).toBe(
         ChromeState.Reading,
       )
@@ -107,7 +107,7 @@ describe("chromeReducer", () => {
       )
     })
 
-    it("Should stay in reading when dismissing toc after selecting", () => {
+    it("should stay in reading when dismissing toc after selecting", () => {
       const result = reduceFrom(
         ChromeState.TocSheet,
         { type: "tocSelect" },
@@ -118,13 +118,13 @@ describe("chromeReducer", () => {
   })
 
   describe("When toc sheet is dismissed", () => {
-    it("Should return to chrome when dismissing toc sheet", () => {
+    it("should return to chrome when dismissing toc sheet", () => {
       expect(chromeReducer(ChromeState.TocSheet, { type: "tocDismiss" })).toBe(
         ChromeState.Chrome,
       )
     })
 
-    it("Should ignore dismiss when not in toc sheet state", () => {
+    it("should ignore dismiss when not in toc sheet state", () => {
       expect(chromeReducer(ChromeState.Reading, { type: "tocDismiss" })).toBe(
         ChromeState.Reading,
       )
@@ -141,13 +141,13 @@ describe("chromeReducer", () => {
   })
 
   describe("When settings sheet is dismissed", () => {
-    it("Should return to chrome when dismissing settings sheet", () => {
+    it("should return to chrome when dismissing settings sheet", () => {
       expect(
         chromeReducer(ChromeState.SettingsSheet, { type: "settingsDismiss" }),
       ).toBe(ChromeState.Chrome)
     })
 
-    it("Should ignore dismiss when not in settings sheet state", () => {
+    it("should ignore dismiss when not in settings sheet state", () => {
       expect(
         chromeReducer(ChromeState.Reading, { type: "settingsDismiss" }),
       ).toBe(ChromeState.Reading)
@@ -158,7 +158,7 @@ describe("chromeReducer", () => {
   })
 
   describe("Complete user flows", () => {
-    it("Should return to reading after browsing toc and selecting a chapter", () => {
+    it("should return to reading after browsing toc and selecting a chapter when running the scenario", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },
@@ -169,7 +169,7 @@ describe("chromeReducer", () => {
       expect(result).toBe(ChromeState.Reading)
     })
 
-    it("Should return to reading after opening and closing settings", () => {
+    it("should return to reading after opening and closing settings when running the scenario", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },
@@ -181,7 +181,7 @@ describe("chromeReducer", () => {
       expect(result).toBe(ChromeState.Reading)
     })
 
-    it("Should stay in reading when toc dismiss arrives after toc select", () => {
+    it("should stay in reading when toc dismiss arrives after toc select", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },
@@ -193,7 +193,7 @@ describe("chromeReducer", () => {
       expect(result).toBe(ChromeState.Reading)
     })
 
-    it("Should toggle chrome visibility on consecutive content taps", () => {
+    it("should toggle chrome visibility on consecutive content taps when running the scenario", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },
@@ -202,7 +202,7 @@ describe("chromeReducer", () => {
       expect(result).toBe(ChromeState.Reading)
     })
 
-    it("Should return to reading when tapping content while expanded", () => {
+    it("should return to reading when tapping content while expanded", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },

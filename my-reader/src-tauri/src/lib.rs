@@ -86,6 +86,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::cache::enforce_cache_limit,
             commands::sync::sync_db_for_library::<tauri::Wry>,
             commands::download::check_book_file_state::<tauri::Wry>,
+            commands::download::check_book_file_states::<tauri::Wry>,
             commands::download::download_book_file::<tauri::Wry>,
             commands::download::delete_local_book_file::<tauri::Wry>,
             commands::download::cancel_book_download::<tauri::Wry>,

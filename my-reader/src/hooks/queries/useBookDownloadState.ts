@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo } from "react"
 import { resolveReadFormat } from "@/lib/readFormats"
-import { bookFileStateKeys, useBookFileState } from "./useBookFileState"
 import { useDownloadProgress } from "../useDownloadProgress"
+import { bookFileStateKeys, useBookFileState } from "./useBookFileState"
 
 export type BookDownloadStatus =
   | "remote_only"
@@ -16,11 +16,16 @@ export type BookDownloadSnapshot = {
   percent?: number
 }
 
+export type BookDownloadStateOptions = {
+  fileStateSource?: "query" | "prefetched"
+}
+
 export function useBookDownloadState(
   libraryId: string | null,
   bookId: number,
   formats: string[],
   selectedFormat?: string,
+  options: BookDownloadStateOptions = {},
 ): BookDownloadSnapshot | null {
   const queryClient = useQueryClient()
   const format = useMemo(
@@ -28,11 +33,12 @@ export function useBookDownloadState(
     [formats, selectedFormat],
   )
   const fmt = format?.toUpperCase() ?? null
+  const queryFileState = options.fileStateSource !== "prefetched"
   const { data: fileState, isLoading } = useBookFileState(
     libraryId,
     bookId,
     fmt,
-    Boolean(fmt),
+    Boolean(fmt && queryFileState),
   )
   const progress = useDownloadProgress(libraryId, bookId, fmt)
 

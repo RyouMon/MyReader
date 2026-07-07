@@ -4,7 +4,7 @@ import {
 } from "./cover-skeleton"
 
 describe("coverLoadingSkeletonColor", () => {
-  it("keeps the static light state lighter than the animated dark state", () => {
+  it("should keep the static light state lighter than the animated dark state when evaluating cover skeleton colors", () => {
     expect(COVER_LOADING_SKELETON_LIGHT_OPACITY).toBeLessThan(
       COVER_LOADING_SKELETON_DARK_OPACITY,
     )

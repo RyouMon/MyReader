@@ -21,19 +21,19 @@
 //   Then 系统应记录错误日志，用户阅读界面不受影响
 
 describe("阅读进度自动保存", () => {
-  it("阅读位置变化后应在防抖时间内自动保存进度", () => {
+  it("should 阅读位置变化后应在防抖时间内自动保存进度 when saving reader progress", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("连续快速翻页后应只保存最终位置", () => {
+  it("should 连续快速翻页后应只保存最终位置 when saving reader progress", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("切换书籍时应正确切换进度保存上下文", () => {
+  it("should 切换书籍时应正确切换进度保存上下文 when saving reader progress", () => {
     // TODO: BDD 审核通过后实现
   })
 
-  it("保存失败时应静默处理并记录日志", () => {
+  it("should 保存失败时应静默处理并记录日志 when saving reader progress", () => {
     // TODO: BDD 审核通过后实现
   })
 })

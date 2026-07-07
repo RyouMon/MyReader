@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: [path.resolve(__dirname, "tests/**/*.test.ts")],
+    include: ["tests/**/*.test.ts"],
     reporters: ["default"],
   },
 })

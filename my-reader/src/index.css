@@ -201,7 +201,6 @@
   }
 }
 
-/* Book card entrance */
 @keyframes card-fade-in {
   to {
     opacity: 1;
