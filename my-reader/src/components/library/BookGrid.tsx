@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from "react"
-import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
 import { pickReadableFormat } from "@/lib/readFormats"
 import {
   getBookProgressSnapshot,
@@ -210,6 +210,7 @@ export default function BookGrid({
     }
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Row height changes must remeasure virtualized rows.
   useLayoutEffect(() => {
     virtualizer.measure()
   }, [rowHeight, virtualizer])
@@ -341,6 +342,7 @@ export default function BookGrid({
                           selectedFormat={selectedFormat}
                           progress={progress}
                           active={isActiveBook(book.id, activeBookId)}
+                          fileStateSource="prefetched"
                         />
                       )
                     })}
@@ -451,6 +453,7 @@ function renderListRow(
       selectedFormat={selectedFormat}
       progress={progress}
       active={isActiveBook(book.id, activeBookId)}
+      fileStateSource="prefetched"
     />
   )
 }

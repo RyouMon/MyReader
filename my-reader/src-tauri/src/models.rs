@@ -284,6 +284,25 @@ pub struct FileStateDto {
     pub local_size: Option<i64>,
 }
 
+/// Request item for `check_book_file_states`.
+#[derive(Debug, Clone, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileStateRequestDto {
+    pub book_id: i64,
+    pub format: String,
+}
+
+/// Returned by `check_book_file_states`: keyed file cache state for a book format.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BookFileStateDto {
+    pub book_id: i64,
+    pub format: String,
+    pub path: String,
+    pub local_state: String,
+    pub local_size: Option<i64>,
+}
+
 /// Wrapper around `serde_json::Value` that exports as TypeScript `any` via specta.
 /// The inner value is public so callers can access `.0` directly.
 #[derive(Debug, Clone, Deserialize, Serialize)]

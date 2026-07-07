@@ -4,7 +4,7 @@ use tracing::{error, info};
 use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
-use crate::models::FileStateDto;
+use crate::models::{BookFileStateDto, FileStateDto, FileStateRequestDto};
 use crate::services::download_service::DownloadService;
 
 #[tauri::command]
@@ -43,6 +43,43 @@ pub async fn check_book_file_state<R: tauri::Runtime>(
         Err(err) => error!(
             "Failed to check book file state. library id: \"{}\", book id: {}, format: \"{}\", error: {}",
             library_id, book_id, format, err
+        ),
+    }
+
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn check_book_file_states<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    service: State<'_, DownloadService>,
+    library_id: String,
+    requests: Vec<FileStateRequestDto>,
+) -> Result<Vec<BookFileStateDto>, AppError> {
+    info!(
+        "Start to check book file states. library id: \"{}\", count: {}",
+        library_id,
+        requests.len()
+    );
+
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
+
+    let result = service
+        .check_file_states_with_active_download(&app_data_dir, &config, &library_id, &requests)
+        .await;
+
+    match &result {
+        Ok(rows) => info!(
+            "Success to check book file states. library id: \"{}\", count: {}",
+            library_id,
+            rows.len()
+        ),
+        Err(err) => error!(
+            "Failed to check book file states. library id: \"{}\", error: {}",
+            library_id, err
         ),
     }
 

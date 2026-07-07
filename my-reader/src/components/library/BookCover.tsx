@@ -9,7 +9,8 @@ import {
 } from "react"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import { buildCoverUrl } from "@/lib/cover"
+import { useCoverObjectUrl } from "@/hooks/useCoverObjectUrl"
+import { getCoverGradientClass } from "@/lib/cover-gradient"
 import {
   getCoverFailureKey,
   getCoverFailuresRevision,
@@ -18,7 +19,7 @@ import {
   resetBrokenCovers,
   subscribeCoverFailures,
 } from "@/lib/coverFailureCache"
-import { getCoverGradientClass } from "@/lib/cover-gradient"
+import { removeCachedCoverObjectUrl } from "@/lib/coverObjectUrlCache"
 import type { BookProgressSnapshot } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 
@@ -69,19 +70,26 @@ export const BookCover = memo(function BookCover({
     bookPath: book.path,
     kind: book.hasCover ? "expected" : "probe",
   })
-  useSyncExternalStore(
+  const coverFailuresRevision = useSyncExternalStore(
     subscribeCoverFailures,
     getCoverFailuresRevision,
     getCoverFailuresRevision,
   )
   const imgFailed = isBrokenCover(coverFailureKey)
-  const [imgLoaded, setImgLoaded] = useState(false)
+  const [loadedCoverSrc, setLoadedCoverSrc] = useState<string | null>(null)
   const hasExpectedCover = book.hasCover && !!libraryId
   const shouldProbeCover = probeCoverWhenUnknown && !!libraryId && !!book.path
   const shouldLoadCover = (hasExpectedCover || shouldProbeCover) && !imgFailed
-  const coverSrc =
-    shouldLoadCover && libraryId ? buildCoverUrl(libraryId, book.path) : null
-  const showLoadingSkeleton = !!coverSrc && !imgLoaded && !imgFailed
+  const { coverSrc, coverCacheKey, coverLoadError, coverLoading } =
+    useCoverObjectUrl({
+      libraryId,
+      bookPath: book.path,
+      enabled: shouldLoadCover,
+      reloadKey: coverFailuresRevision,
+    })
+  const imgLoaded = !!coverSrc && loadedCoverSrc === coverSrc
+  const showLoadingSkeleton =
+    (coverLoading || (!!coverSrc && !imgLoaded)) && !imgFailed
   const showFallbackCover =
     (!hasExpectedCover && !shouldProbeCover) || imgFailed
   const showFallbackMetaContent =
@@ -94,17 +102,24 @@ export const BookCover = memo(function BookCover({
       : undefined
 
   const handleImgLoad = useCallback(() => {
-    setImgLoaded(true)
-  }, [])
+    if (coverSrc) {
+      setLoadedCoverSrc(coverSrc)
+    }
+  }, [coverSrc])
 
   const handleImgError = useCallback(() => {
+    if (coverCacheKey) {
+      removeCachedCoverObjectUrl(coverCacheKey)
+    }
     markBrokenCover(coverFailureKey)
-    setImgLoaded(false)
-  }, [coverFailureKey])
+    setLoadedCoverSrc(null)
+  }, [coverCacheKey, coverFailureKey])
 
   useEffect(() => {
-    setImgLoaded(false)
-  }, [coverFailureKey])
+    if (coverLoadError) {
+      markBrokenCover(coverFailureKey)
+    }
+  }, [coverFailureKey, coverLoadError])
 
   return (
     <div

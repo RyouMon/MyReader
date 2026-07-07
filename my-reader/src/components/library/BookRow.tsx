@@ -4,7 +4,10 @@ import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
+import {
+  type BookDownloadStateOptions,
+  useBookDownloadState,
+} from "@/hooks/queries/useBookDownloadState"
 import { getReadActionLabel } from "@/lib/readingProgress"
 import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
@@ -22,6 +25,7 @@ interface BookRowProps {
   fileActionsEnabled?: boolean
   selectedFormat?: string
   active?: boolean
+  fileStateSource?: BookDownloadStateOptions["fileStateSource"]
 }
 
 /**
@@ -36,6 +40,7 @@ const BookRow = memo(function BookRow({
   fileActionsEnabled = true,
   selectedFormat,
   active = false,
+  fileStateSource,
 }: BookRowProps) {
   const { t } = useTranslation()
   const displayAuthor = book.authors.join(", ")
@@ -47,6 +52,7 @@ const BookRow = memo(function BookRow({
     book.id,
     book.formats,
     selectedFormat,
+    { fileStateSource },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

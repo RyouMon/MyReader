@@ -62,6 +62,16 @@ function makeClient() {
   })
 }
 
+function makeClientWithDefaultQueryFreshness() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+}
+
 function renderWithClient(client: QueryClient, children: ReactNode) {
   return render(
     <QueryClientProvider client={client}>{children}</QueryClientProvider>,
@@ -89,6 +99,7 @@ describe("download state synchronization", () => {
     tauriEventMock.listeners.clear()
     tauriEventMock.listen.mockClear()
     toastMock.error.mockClear()
+    tauriApiMock.checkBookFileState.mockClear()
     tauriApiMock.checkBookFileState.mockResolvedValue({
       path: "book.epub",
       localState: "remote_only",
@@ -204,6 +215,33 @@ describe("download state synchronization", () => {
     await waitFor(() => {
       expect(screen.getByTestId("late-status")).toHaveTextContent("starting")
     })
+  })
+
+  it("should reuse cached file state when entry remounts with same query key", async () => {
+    const client = makeClientWithDefaultQueryFreshness()
+
+    const first = renderWithClient(
+      client,
+      <DownloadStatus testId="first-status" />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId("first-status")).toHaveTextContent(
+        "remote_only",
+      )
+    })
+    expect(tauriApiMock.checkBookFileState).toHaveBeenCalledTimes(1)
+
+    first.unmount()
+
+    renderWithClient(client, <DownloadStatus testId="second-status" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId("second-status")).toHaveTextContent(
+        "remote_only",
+      )
+    })
+    expect(tauriApiMock.checkBookFileState).toHaveBeenCalledTimes(1)
   })
 
   it("should keep cancellation state when background file state remains active", async () => {

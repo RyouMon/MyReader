@@ -1,7 +1,10 @@
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { type KeyboardEvent, memo } from "react"
 import { useTranslation } from "react-i18next"
-import { useBookDownloadState } from "@/hooks/queries/useBookDownloadState"
+import {
+  type BookDownloadStateOptions,
+  useBookDownloadState,
+} from "@/hooks/queries/useBookDownloadState"
 import { cn } from "@/lib/utils"
 import { BookCover, type BookProgressSnapshot } from "./BookCover"
 import { BookDownloadIndicator } from "./BookDownloadIndicator"
@@ -18,6 +21,7 @@ interface BookCardProps {
   fileActionsEnabled?: boolean
   selectedFormat?: string
   active?: boolean
+  fileStateSource?: BookDownloadStateOptions["fileStateSource"]
 }
 
 /**
@@ -31,6 +35,7 @@ const BookCard = memo(function BookCard({
   fileActionsEnabled = true,
   selectedFormat,
   active = false,
+  fileStateSource,
 }: BookCardProps) {
   const { t } = useTranslation()
   const downloadState = useBookDownloadState(
@@ -38,6 +43,7 @@ const BookCard = memo(function BookCard({
     book.id,
     book.formats,
     selectedFormat,
+    { fileStateSource },
   )
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {

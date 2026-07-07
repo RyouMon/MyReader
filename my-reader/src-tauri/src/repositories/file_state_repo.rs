@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 use crate::entities::app::file_state;
@@ -19,6 +21,25 @@ impl SqliteFileStateRepository {
             .one(db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))
+    }
+
+    pub async fn get_by_paths(
+        db: &DatabaseConnection,
+        paths: &[String],
+    ) -> Result<HashMap<String, file_state::Model>, AppError> {
+        if paths.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let rows = file_state::Entity::find()
+            .filter(file_state::Column::Path.is_in(paths.iter().cloned()))
+            .all(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(rows
+            .into_iter()
+            .map(|row| (row.path.clone(), row))
+            .collect())
     }
 
     pub async fn upsert(

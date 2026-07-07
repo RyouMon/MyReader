@@ -15,6 +15,10 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import {
+  type BookFileStateLookup,
+  useBookFileStates,
+} from "@/hooks/queries/useBookFileState"
 import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
 import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
 import {
@@ -25,11 +29,12 @@ import {
   readingProgressKeys,
   useBookReadingProgress,
 } from "@/hooks/queries/useReadingProgressQuery"
-import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useOpenReader } from "@/hooks/reader/useOpenReader"
-import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { usePaginatedBooks } from "@/hooks/reader/usePaginatedBooks"
 import { useWindowSizeClass } from "@/hooks/use-window-size-class"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
+import { pickReadableFormat } from "@/lib/readFormats"
 import { api } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
@@ -39,6 +44,8 @@ import BookDetailPane from "./BookDetailPane"
 interface LibraryWorkspaceProps {
   activeBookId: string | null
 }
+
+const EMPTY_SELECTED_FORMATS: Record<string, string> = {}
 
 export default function LibraryWorkspace({
   activeBookId,
@@ -55,7 +62,7 @@ export default function LibraryWorkspace({
   const activeLibrary = libraries.find((l) => l.id === activeLibraryId) ?? null
   const fileActionsEnabled =
     activeLibrary?.sourceType != null && activeLibrary.sourceType !== "local"
-  const { data: selectedFormatById = {} } =
+  const { data: selectedFormatById = EMPTY_SELECTED_FORMATS } =
     useBookReadingFormats(activeLibraryId)
   const { data: progressByBookId = {} } =
     useBookReadingProgress(activeLibraryId)
@@ -116,6 +123,20 @@ export default function LibraryWorkspace({
       ? () => void favoriteBooksQuery.refetch()
       : refresh
   const loading = libLoading || displayedLoading
+  const fileStateLookups = useMemo<BookFileStateLookup[]>(() => {
+    if (!activeLibraryId || !fileActionsEnabled) return []
+
+    return Array.from(displayedBooks.values(), (book) => ({
+      bookId: book.id,
+      format:
+        selectedFormatById[String(book.id)] ?? pickReadableFormat(book.formats),
+    }))
+  }, [activeLibraryId, displayedBooks, fileActionsEnabled, selectedFormatById])
+  useBookFileStates(
+    activeLibraryId,
+    fileStateLookups,
+    fileActionsEnabled && !loading && !displayedError && displayedTotal > 0,
+  )
 
   const handleRefresh = async () => {
     if (!activeLibraryId) return

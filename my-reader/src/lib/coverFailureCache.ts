@@ -1,3 +1,5 @@
+import { resetCoverObjectUrlCache } from "./coverObjectUrlCache"
+
 export type CoverFailureKind = "expected" | "probe"
 
 const brokenCoverKeys = new Set<string>()
@@ -34,7 +36,8 @@ export function markBrokenCover(key: string) {
 }
 
 export function resetBrokenCovers() {
-  if (brokenCoverKeys.size === 0) return
+  const didResetObjectUrls = resetCoverObjectUrlCache()
+  if (brokenCoverKeys.size === 0 && !didResetObjectUrls) return
   brokenCoverKeys.clear()
   emitCoverFailureChange()
 }

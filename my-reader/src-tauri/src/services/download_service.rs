@@ -9,8 +9,12 @@ use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
 use crate::error::AppError;
-use crate::models::{AppConfig, FileStateDto, LibraryConfig};
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
+use crate::models::{
+    AppConfig, BookFileStateDto, FileStateDto, FileStateRequestDto, LibraryConfig,
+};
+use crate::repositories::calibre_repo::{
+    BookFilePathRequest, BookRepository, CalibreBookRepository,
+};
 use crate::repositories::file_state_repo::SqliteFileStateRepository;
 use crate::services::library_service::LibraryService;
 use crate::storage::from_data_source;
@@ -273,6 +277,24 @@ impl DownloadService {
         Ok(dto)
     }
 
+    /// Check a batch of file states and overlay any currently active in-memory downloads.
+    pub async fn check_file_states_with_active_download(
+        &self,
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        requests: &[FileStateRequestDto],
+    ) -> Result<Vec<BookFileStateDto>, AppError> {
+        let mut rows = Self::check_file_states(app_data_dir, config, library_id, requests).await?;
+        for row in &mut rows {
+            if row.local_state != "present" && self.is_active(library_id, row.book_id, &row.format)
+            {
+                row.local_state = "downloading".into();
+            }
+        }
+        Ok(rows)
+    }
+
     /// Cancel a remote library download and broadcast the terminal state.
     pub fn cancel_book_download<R: Runtime>(
         &self,
@@ -437,6 +459,82 @@ impl DownloadService {
                 None
             },
         })
+    }
+
+    /// Check the local cache state of multiple book files using one Calibre DB
+    /// connection and one sidecar file_state query.
+    pub async fn check_file_states(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: &str,
+        requests: &[FileStateRequestDto],
+    ) -> Result<Vec<BookFileStateDto>, AppError> {
+        if requests.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let lib = LibraryService::resolve_library(Some(library_id), config)?;
+        let lib_root = library_root_path(&lib, app_data_dir);
+        let lib_root_string = lib_root.to_string_lossy().to_string();
+        let repo = CalibreBookRepository::open(&lib_root_string).await?;
+        let normalized_requests: Vec<BookFilePathRequest> = requests
+            .iter()
+            .map(|item| BookFilePathRequest {
+                book_id: item.book_id,
+                format: Self::normalize_format(&item.format),
+            })
+            .collect();
+        let file_paths = repo
+            .get_book_file_paths(&lib_root_string, &normalized_requests)
+            .await?;
+
+        let mut relative_paths = Vec::with_capacity(normalized_requests.len());
+        let mut relative_by_key = HashMap::with_capacity(normalized_requests.len());
+        for item in &normalized_requests {
+            let key = (item.book_id, item.format.clone());
+            let file_path = file_paths.get(&key).ok_or_else(|| {
+                AppError::NotFound(format!(
+                    "BOOK_FORMAT_NOT_FOUND: book={}, format={}",
+                    item.book_id, item.format
+                ))
+            })?;
+            let relative_path = compute_book_relative_path(file_path, &lib_root)?;
+            relative_paths.push(relative_path.clone());
+            relative_by_key.insert(key, (file_path.clone(), relative_path));
+        }
+
+        let rows_by_path = if lib.is_remote() {
+            let sidecar_root = library_sidecar_path(&lib, app_data_dir);
+            let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
+            SqliteFileStateRepository::get_by_paths(&db, &relative_paths).await?
+        } else {
+            HashMap::new()
+        };
+
+        let mut result = Vec::with_capacity(normalized_requests.len());
+        for item in normalized_requests {
+            let (file_path, relative_path) = relative_by_key
+                .get(&(item.book_id, item.format.clone()))
+                .cloned()
+                .expect("relative path should be resolved for request");
+            let row = rows_by_path.get(&relative_path);
+            let present = Self::is_book_file_present(&file_path).await
+                && (!lib.is_remote()
+                    || row.is_some_and(|row| row.local_state.as_str() == "present"));
+            result.push(BookFileStateDto {
+                book_id: item.book_id,
+                format: item.format,
+                path: relative_path,
+                local_state: if present { "present" } else { "remote_only" }.to_string(),
+                local_size: if present {
+                    row.and_then(|row| row.local_size)
+                } else {
+                    None
+                },
+            });
+        }
+
+        Ok(result)
     }
 
     /// Delete a locally cached book file and reset its state to remote_only.

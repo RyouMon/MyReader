@@ -107,6 +107,7 @@ impl TestApp {
                 my_reader_lib::commands::cache::enforce_cache_limit,
                 my_reader_lib::commands::sync::sync_db_for_library::<MockRuntime>,
                 my_reader_lib::commands::download::check_book_file_state::<MockRuntime>,
+                my_reader_lib::commands::download::check_book_file_states::<MockRuntime>,
                 my_reader_lib::commands::download::download_book_file::<MockRuntime>,
                 my_reader_lib::commands::download::delete_local_book_file::<MockRuntime>,
                 my_reader_lib::commands::download::cancel_book_download::<MockRuntime>,

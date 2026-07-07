@@ -1,10 +1,12 @@
 import type {
   BookDetail,
   BookEntry,
+  BookFileStateDto,
   CacheUsageDto,
   DataSourceDto,
   DbSyncReport,
   FileStateDto,
+  FileStateRequestDto,
   LibraryInfo,
   OnedriveAuthResultDto,
   OnedriveFolderEntry,
@@ -438,6 +440,14 @@ export const demoCommands = {
   syncDbForLibrary: () => ok<DbSyncReport>({ pushed: 0, pulled: 0 }),
   checkBookFileState: (_libraryId: string, bookId: number, format: string) =>
     ok<FileStateDto>(cachedFileState(bookId, format)),
+  checkBookFileStates: (_libraryId: string, requests: FileStateRequestDto[]) =>
+    ok<BookFileStateDto[]>(
+      requests.map((request) => ({
+        bookId: request.bookId,
+        format: request.format.toUpperCase(),
+        ...cachedFileState(request.bookId, request.format),
+      })),
+    ),
   downloadBookFile: (_libraryId: string, bookId: number, format: string) =>
     ok<string>(`C:/Demo/cache/${bookId}.${format.toLocaleLowerCase()}`),
   deleteLocalBookFile: () => ok<null>(null),

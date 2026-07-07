@@ -54,6 +54,7 @@ import {
 import { useLibrariesQuery } from "@/hooks/queries/useLibrariesQuery"
 import { useBookReadingProgress } from "@/hooks/queries/useReadingProgressQuery"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
+import { useCoverObjectUrl } from "@/hooks/useCoverObjectUrl"
 import {
   clearDownloadProgress,
   setDownloadCancelled,
@@ -61,7 +62,7 @@ import {
   setDownloadStarting,
   useDownloadProgress,
 } from "@/hooks/useDownloadProgress"
-import { buildCoverUrl } from "@/lib/cover"
+import { getCoverGradientClass } from "@/lib/cover-gradient"
 import {
   getCoverFailureKey,
   getCoverFailuresRevision,
@@ -69,7 +70,7 @@ import {
   markBrokenCover,
   subscribeCoverFailures,
 } from "@/lib/coverFailureCache"
-import { getCoverGradientClass } from "@/lib/cover-gradient"
+import { removeCachedCoverObjectUrl } from "@/lib/coverObjectUrlCache"
 import { openReaderInNewWindow } from "@/lib/readerWindow"
 import { getReadableFormats, pickReadableFormat } from "@/lib/readFormats"
 import {
@@ -287,8 +288,9 @@ export default function BookDetailPane({
         )
         setError(String(e))
       } finally {
-        if (cancelled) return
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
     load()
@@ -299,6 +301,7 @@ export default function BookDetailPane({
   }, [bookId, activeLibraryId])
 
   useEffect(() => {
+    if (!bookId) return
     bodyRef.current?.scrollTo({ top: 0 })
     setSynopsisExpanded(false)
     setShowNarrowCoverBackdrop(false)
@@ -329,7 +332,7 @@ export default function BookDetailPane({
     })
     observer.observe(hero)
     return () => observer.disconnect()
-  }, [book?.id, forceNarrowHero, forceWideHero])
+  }, [forceNarrowHero, forceWideHero])
 
   useEffect(() => {
     if (!isNarrowHero) {
@@ -353,12 +356,31 @@ export default function BookDetailPane({
     coverFailuresRevision >= 0 && coverFailureKey
       ? isBrokenCover(coverFailureKey)
       : false
+  const {
+    coverSrc,
+    coverCacheKey: detailCoverCacheKey,
+    coverLoadError,
+  } = useCoverObjectUrl({
+    libraryId: activeLibraryId,
+    bookPath: book?.path ?? "",
+    enabled: Boolean(book?.hasCover && activeLibraryId && !coverFailed),
+    reloadKey: coverFailuresRevision,
+  })
 
   const handleCoverError = useCallback(() => {
+    if (detailCoverCacheKey) {
+      removeCachedCoverObjectUrl(detailCoverCacheKey)
+    }
     if (coverFailureKey) {
       markBrokenCover(coverFailureKey)
     }
-  }, [coverFailureKey])
+  }, [coverFailureKey, detailCoverCacheKey])
+
+  useEffect(() => {
+    if (coverLoadError && coverFailureKey) {
+      markBrokenCover(coverFailureKey)
+    }
+  }, [coverFailureKey, coverLoadError])
 
   const isFavorite = favoriteSet.has(Number(bookId))
   const handleToggleFavorite = useCallback(() => {
@@ -426,10 +448,6 @@ export default function BookDetailPane({
   const readButtonLabel = canReadInApp
     ? getReadActionLabel(currentProgress, t)
     : t("bookMore.noReadableFormat")
-  const coverSrc =
-    book?.hasCover && activeLibraryId && !coverFailed
-      ? buildCoverUrl(activeLibraryId, book.path)
-      : null
   const showMutedCoverBackdrop = !isNarrowHero || showNarrowCoverBackdrop
   const isNarrowCoverBackdropActive = isNarrowHero && showNarrowCoverBackdrop
 
@@ -1706,8 +1724,19 @@ function RelatedBookCard({
     kind: "expected",
   })
   const imgFailed = coverFailuresRevision >= 0 && isBrokenCover(coverFailureKey)
-  const showCover = book.hasCover && libraryId && !imgFailed
-  const coverSrc = showCover ? buildCoverUrl(libraryId, book.path) : null
+  const showCover = Boolean(book.hasCover && libraryId && !imgFailed)
+  const { coverSrc, coverCacheKey, coverLoadError } = useCoverObjectUrl({
+    libraryId,
+    bookPath: book.path,
+    enabled: showCover,
+    reloadKey: coverFailuresRevision,
+  })
+
+  useEffect(() => {
+    if (coverLoadError) {
+      markBrokenCover(coverFailureKey)
+    }
+  }, [coverFailureKey, coverLoadError])
 
   return (
     <button
@@ -1728,6 +1757,9 @@ function RelatedBookCard({
             className="absolute inset-0 size-full object-cover"
             loading="lazy"
             onError={() => {
+              if (coverCacheKey) {
+                removeCachedCoverObjectUrl(coverCacheKey)
+              }
               markBrokenCover(coverFailureKey)
             }}
           />
