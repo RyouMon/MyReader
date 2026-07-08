@@ -6,6 +6,7 @@ use sea_orm::DatabaseConnection;
 use serde::Serialize;
 use tracing::{info, warn};
 
+use crate::cache;
 use crate::db;
 use crate::error::AppError;
 use crate::models::AppConfig;
@@ -91,6 +92,7 @@ impl SyncService {
         };
 
         info!("Success to sync db for library. pushed={pushed}, pulled={pulled}");
+        cache::clear_library_missing_cover_markers(app_data_dir, library_id)?;
         Ok(DbSyncReport { pushed, pulled })
     }
 

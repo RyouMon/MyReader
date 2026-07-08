@@ -332,6 +332,7 @@ impl LibraryService {
         let book_ids: Vec<i64> = repo.get_all_books().await?.iter().map(|b| b.id).collect();
 
         cache::clear_orphaned_library_cache_files(id, &book_ids)?;
+        cache::clear_library_missing_cover_markers(app_data_dir, id)?;
 
         let lib_name = remote_path
             .trim_end_matches('/')
@@ -392,6 +393,7 @@ impl LibraryService {
         let book_ids: Vec<i64> = repo.get_all_books().await?.iter().map(|b| b.id).collect();
 
         cache::clear_orphaned_library_cache_files(id, &book_ids)?;
+        cache::clear_library_missing_cover_markers(app_data_dir, id)?;
 
         let lib_name = remote_path
             .trim_end_matches('/')
