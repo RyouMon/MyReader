@@ -19,6 +19,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -213,6 +214,8 @@ export default function BookDetailPane({
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
   const [isNarrowHero, setIsNarrowHero] = useState(false)
   const [showNarrowCoverBackdrop, setShowNarrowCoverBackdrop] = useState(false)
+  const [detailHeroElement, setDetailHeroElement] =
+    useState<HTMLDivElement | null>(null)
   const coverFailuresRevision = useSyncExternalStore(
     subscribeCoverFailures,
     getCoverFailuresRevision,
@@ -221,7 +224,6 @@ export default function BookDetailPane({
 
   const bodyHostRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
-  const detailHeroRef = useRef<HTMLDivElement>(null)
   const mobileCoverArtRef = useRef<HTMLDivElement>(null)
 
   useOverlayScrollbar(bodyHostRef, bodyRef, !loading && !error && Boolean(book))
@@ -307,8 +309,8 @@ export default function BookDetailPane({
     setShowNarrowCoverBackdrop(false)
   }, [bookId])
 
-  useEffect(() => {
-    const hero = detailHeroRef.current
+  useLayoutEffect(() => {
+    const hero = detailHeroElement
     if (!hero) return
 
     const updateNarrowHero = (width: number) => {
@@ -332,7 +334,7 @@ export default function BookDetailPane({
     })
     observer.observe(hero)
     return () => observer.disconnect()
-  }, [forceNarrowHero, forceWideHero])
+  }, [detailHeroElement, forceNarrowHero, forceWideHero])
 
   useEffect(() => {
     if (!isNarrowHero) {
@@ -660,9 +662,9 @@ export default function BookDetailPane({
           <div className={cn(!isNarrowHero && "pt-14")}>
             <div className="relative mx-auto w-full min-w-0 max-w-[1320px]">
               <div
-                ref={detailHeroRef}
+                ref={setDetailHeroElement}
                 className="detail-hero-responsive mb-8"
-                data-narrow-hero={forceNarrowHero ? "true" : undefined}
+                data-narrow-hero={isNarrowHero ? "true" : undefined}
                 data-wide-hero={forceWideHero ? "true" : undefined}
               >
                 <div className="detail-mobile-hero overflow-hidden">

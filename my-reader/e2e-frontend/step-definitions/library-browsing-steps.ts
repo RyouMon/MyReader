@@ -9,6 +9,17 @@ const { Given, When, Then } = createBdd(test)
 const ANCHOR_PERCENT_TOLERANCE = 8
 const TOP_ROW_ANCHOR_BOOK_NUMBER = "topRowAnchorBookNumber"
 
+Given(
+  "用户在 {int} 像素宽的窗口中打开第 {int} 本书的详情页",
+  async ({ page }, width: number, bookNumber: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.setViewport(width)
+    await libraryPage.goto()
+    await libraryPage.waitForBooksLoaded()
+    await libraryPage.openBookDetail(bookNumber)
+  },
+)
+
 Given("书库中已存在 {int} 本书", async ({ page }, count: number) => {
   await setupLibraryMocks(page, count)
 })
@@ -289,4 +300,37 @@ Then("每个可见书籍卡片的宽高比应为 2:3", async ({ page }) => {
       `Card ${i} ratio ${ratio} deviates from 2/3 at ${box!.width}x${box!.height}`,
     ).toBeLessThan(0.05)
   }
+})
+
+Then("详情页封面区应从详情面板顶部开始", async ({ page }) => {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const pane = document.querySelector<HTMLElement>(
+          '[data-testid="book-detail-pane"]',
+        )
+        const hero = pane?.querySelector<HTMLElement>(".detail-hero-responsive")
+        const bodyPaddingHost =
+          pane?.querySelector<HTMLElement>(".detail-body > div")
+        if (!pane || !hero || !bodyPaddingHost) {
+          return Number.POSITIVE_INFINITY
+        }
+
+        const paneTop = pane.getBoundingClientRect().top
+        const heroTop = hero.getBoundingClientRect().top
+        const paddingTop = parseFloat(
+          getComputedStyle(bodyPaddingHost).paddingTop,
+        )
+        return Math.abs(heroTop - paneTop) + paddingTop
+      }),
+    )
+    .toBeLessThanOrEqual(1)
+})
+
+Then("详情页顶部栏应保持透明", async ({ page }) => {
+  const background = await page
+    .locator(".detail-headerbar")
+    .evaluate((el) => getComputedStyle(el).backgroundColor)
+
+  expect(background).toBe("rgba(0, 0, 0, 0)")
 })
