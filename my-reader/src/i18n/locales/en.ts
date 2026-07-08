@@ -162,7 +162,7 @@ export const en = {
       format: "Format",
       size: "Size",
       action: "Action",
-      defaultReadingFormat: "Default reading format",
+      defaultReadingFormat: "Default",
       notSupported: "Not supported",
       formatCount: "{{count}} formats",
       seriesSection: "Series · {{series}}",
@@ -184,6 +184,7 @@ export const en = {
       cancelDownloadFailed: "Failed to cancel download",
       defaultFormat: "Default",
       setDefaultFormat: "Set default",
+      setAsDefaultReadingFormat: "Set as default reading format",
       setDefaultFormatFor: "Set {{format}} as default reading format",
     },
     settings: {

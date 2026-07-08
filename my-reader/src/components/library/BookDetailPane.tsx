@@ -8,10 +8,10 @@ import {
   ChevronDown,
   ChevronLeft,
   Download,
-  Heart,
   Loader2,
   Maximize2,
   Minimize2,
+  Star,
   Trash2,
   X,
 } from "lucide-react"
@@ -40,6 +40,11 @@ import {
 } from "@/components/ui/empty"
 import { Progress } from "@/components/ui/progress"
 import { Switch } from "@/components/ui/switch"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   bookFileStateKeys,
   useBookFileState,
@@ -450,6 +455,8 @@ export default function BookDetailPane({
   const readButtonLabel = canReadInApp
     ? getReadActionLabel(currentProgress, t)
     : t("bookMore.noReadableFormat")
+  const detailIconActionButtonClassName =
+    "detail-icon-action inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-[var(--detail-hero-control-bg)] text-[var(--detail-hero-fg)] shadow-sm transition-colors hover:bg-[var(--detail-hero-control-hover)] hover:text-[var(--detail-hero-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
   const showMutedCoverBackdrop = !isNarrowHero || showNarrowCoverBackdrop
   const isNarrowCoverBackdropActive = isNarrowHero && showNarrowCoverBackdrop
 
@@ -524,8 +531,6 @@ export default function BookDetailPane({
             : book.seriesIndex.toFixed(1),
         })
       : book.series
-  const primaryFormat =
-    activeSelectedFormat ?? readableFormats[0] ?? book.formats[0]?.toUpperCase()
   const synopsisText = stripHtml(book.comment ?? "").trim()
   const hasSynopsis = synopsisText.length > 0
   const heroSynopsis = hasSynopsis ? synopsisText : t("bookDetail.noSynopsis")
@@ -567,10 +572,9 @@ export default function BookDetailPane({
         )}
       </div>
       {hasSynopsis && synopsisText.length > 160 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 h-auto gap-1 px-0 text-[13px] font-medium text-[var(--detail-hero-muted)] hover:bg-transparent hover:text-[var(--detail-hero-fg)]"
+        <button
+          type="button"
+          className="mt-2 inline-flex h-auto items-center gap-1 p-0 text-[13px] font-medium text-[var(--detail-hero-muted)] transition-colors hover:text-[var(--detail-hero-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           onClick={() => setSynopsisExpanded(!synopsisExpanded)}
         >
           {synopsisExpanded ? t("bookDetail.collapse") : t("bookDetail.expand")}
@@ -580,15 +584,15 @@ export default function BookDetailPane({
               synopsisExpanded && "rotate-180",
             )}
           />
-        </Button>
+        </button>
       )}
     </div>
   )
 
   const renderHeroAuthors = (className: string, keyPrefix: string) => (
-    <div className={cn("grid shrink-0 gap-x-8 gap-y-3", className)}>
+    <div className={cn("flex shrink-0 flex-wrap gap-x-8 gap-y-3", className)}>
       {authorCredits.map((author) => (
-        <div key={`${keyPrefix}-${author}`} className="min-w-0">
+        <div key={`${keyPrefix}-${author}`} className="min-w-[5rem] max-w-full">
           <div className="truncate text-[14.5px] font-semibold text-[var(--detail-hero-fg)]">
             {author}
           </div>
@@ -718,11 +722,6 @@ export default function BookDetailPane({
 
                   <div className="detail-mobile-info-panel space-y-5 px-4 pt-4 pb-6 sm:px-6 lg:px-8 xl:px-6 2xl:px-8">
                     <div className="detail-anim-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[14.5px] font-medium text-[var(--detail-hero-body)]">
-                      {primaryFormat && (
-                        <span className="rounded-sm border border-[var(--detail-hero-border)] px-1.5 py-0.5 text-[12px] font-semibold leading-none text-[var(--detail-hero-fg)] uppercase">
-                          {primaryFormat}
-                        </span>
-                      )}
                       {book.pubdate && <span>{formatDate(book.pubdate)}</span>}
                       {book.pubdate && book.publisher && <MetaDot inverse />}
                       {book.publisher && <span>{book.publisher}</span>}
@@ -775,15 +774,9 @@ export default function BookDetailPane({
                         <span>{readButtonLabel}</span>
                       </Button>
 
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "detail-icon-action size-12 shrink-0 rounded-full bg-transparent text-[var(--detail-hero-fg)] hover:bg-[var(--detail-hero-control-bg)] hover:text-[var(--detail-hero-fg)]",
-                          isFavorite &&
-                            "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                        )}
+                        className={detailIconActionButtonClassName}
                         title={
                           isFavorite
                             ? t("bookDetail.unfavorite")
@@ -794,14 +787,15 @@ export default function BookDetailPane({
                             ? t("bookDetail.unfavorite")
                             : t("bookDetail.favorite")
                         }
+                        aria-pressed={isFavorite}
                         disabled={favoritePending}
                         onClick={handleToggleFavorite}
                       >
-                        <Heart
-                          className="size-6"
+                        <Star
+                          className={cn("size-6", isFavorite && "text-primary")}
                           fill={isFavorite ? "currentColor" : "none"}
                         />
-                      </Button>
+                      </button>
 
                       <BookMoreMenu
                         book={book}
@@ -835,10 +829,9 @@ export default function BookDetailPane({
                         )}
                       </div>
                       {hasSynopsis && synopsisText.length > 160 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2 h-auto gap-1 px-0 text-[13px] font-medium text-[var(--detail-hero-muted)] hover:bg-transparent hover:text-[var(--detail-hero-fg)]"
+                        <button
+                          type="button"
+                          className="mt-2 inline-flex h-auto items-center gap-1 p-0 text-[13px] font-medium text-[var(--detail-hero-muted)] transition-colors hover:text-[var(--detail-hero-fg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                           onClick={() => setSynopsisExpanded(!synopsisExpanded)}
                         >
                           {synopsisExpanded
@@ -850,13 +843,13 @@ export default function BookDetailPane({
                               synopsisExpanded && "rotate-180",
                             )}
                           />
-                        </Button>
+                        </button>
                       )}
                     </div>
 
-                    <div className="detail-anim-8 grid shrink-0 gap-x-8 gap-y-3">
+                    <div className="detail-anim-8 flex shrink-0 flex-wrap gap-x-8 gap-y-3">
                       {authorCredits.map((author) => (
-                        <div key={author} className="min-w-0">
+                        <div key={author} className="min-w-[5rem] max-w-full">
                           <div className="truncate text-[14.5px] font-semibold text-[var(--detail-hero-fg)]">
                             {author}
                           </div>
@@ -921,11 +914,6 @@ export default function BookDetailPane({
                         )}
 
                         <div className="detail-hero-meta detail-anim-3 mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13.5px] font-medium text-[var(--detail-hero-body)]">
-                          {primaryFormat && (
-                            <span className="rounded-sm border border-[var(--detail-hero-border)] px-1.5 py-0.5 text-[12px] font-semibold leading-none text-[var(--detail-hero-fg)] uppercase">
-                              {primaryFormat}
-                            </span>
-                          )}
                           {book.pubdate && (
                             <span>{formatDate(book.pubdate)}</span>
                           )}
@@ -984,15 +972,9 @@ export default function BookDetailPane({
                             <span>{readButtonLabel}</span>
                           </Button>
 
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "detail-icon-action size-11 shrink-0 rounded-full bg-[var(--detail-hero-control-bg)] text-[var(--detail-hero-fg)] shadow-sm hover:bg-[var(--detail-hero-control-hover)] hover:text-[var(--detail-hero-fg)]",
-                              isFavorite &&
-                                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                            )}
+                            className={detailIconActionButtonClassName}
                             title={
                               isFavorite
                                 ? t("bookDetail.unfavorite")
@@ -1003,14 +985,18 @@ export default function BookDetailPane({
                                 ? t("bookDetail.unfavorite")
                                 : t("bookDetail.favorite")
                             }
+                            aria-pressed={isFavorite}
                             disabled={favoritePending}
                             onClick={handleToggleFavorite}
                           >
-                            <Heart
-                              className="size-[18px]"
+                            <Star
+                              className={cn(
+                                "size-[18px]",
+                                isFavorite && "text-primary",
+                              )}
                               fill={isFavorite ? "currentColor" : "none"}
                             />
-                          </Button>
+                          </button>
 
                           <BookMoreMenu
                             book={book}
@@ -1029,10 +1015,7 @@ export default function BookDetailPane({
                           "text-[14.5px] leading-[1.72]",
                           "h-10",
                         )}
-                        {renderHeroAuthors(
-                          "detail-anim-8 sm:grid-cols-2",
-                          "desktop-side",
-                        )}
+                        {renderHeroAuthors("detail-anim-8", "desktop-side")}
                       </div>
                     </div>
 
@@ -1043,10 +1026,7 @@ export default function BookDetailPane({
                         "text-[15px] leading-[1.7]",
                         "h-12",
                       )}
-                      {renderHeroAuthors(
-                        "detail-anim-8 sm:grid-cols-2",
-                        "desktop-below",
-                      )}
+                      {renderHeroAuthors("detail-anim-8", "desktop-below")}
                     </div>
                   </div>
                 </div>
@@ -1062,23 +1042,23 @@ export default function BookDetailPane({
                 <div className="scroll-mt-6">
                   {book.formats.length > 0 && (
                     <DetailSection title={t("bookDetail.fileFormats")}>
-                      <div className="overflow-hidden rounded-md">
-                        <table className="w-full table-fixed border-collapse">
+                      <div className="book-format-table overflow-x-auto overflow-y-hidden rounded-md">
+                        <table className="w-full min-w-[25rem] table-auto border-collapse">
                           <thead>
                             <tr className="bg-muted text-start text-[11.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              <th className="w-[24%] rounded-ts-md px-3 py-2">
+                              <th className="w-12 rounded-ts-md px-2 py-2 text-center whitespace-nowrap">
                                 {t("bookDetail.format")}
                               </th>
-                              <th className="w-[17%] px-3 py-2">
+                              <th className="w-16 px-2 py-2 text-center whitespace-nowrap">
                                 {t("bookDetail.size")}
                               </th>
-                              <th className="w-[24%] px-3 py-2">
+                              <th className="w-24 px-3 py-2 text-start whitespace-nowrap">
                                 {t("library.sort.progress")}
                               </th>
-                              <th className="w-[25%] px-3 py-2 text-center leading-snug whitespace-normal">
+                              <th className="w-14 px-2 py-2 text-center whitespace-nowrap">
                                 {t("bookDetail.defaultReadingFormat")}
                               </th>
-                              <th className="w-12 rounded-te-md px-2 py-2 text-end">
+                              <th className="w-20 rounded-te-md px-2 py-2 text-center whitespace-nowrap">
                                 {t("bookDetail.action")}
                               </th>
                             </tr>
@@ -1103,13 +1083,38 @@ export default function BookDetailPane({
                                 rowProgress,
                                 t,
                               )
+                              const setDefaultFormatLabel = t(
+                                "bookDetail.setDefaultFormatFor",
+                                {
+                                  format: upperFormat,
+                                },
+                              )
+                              const setDefaultFormatTooltip = t(
+                                "bookDetail.setAsDefaultReadingFormat",
+                              )
+                              const defaultFormatSwitch = (
+                                <Switch
+                                  size="sm"
+                                  checked={isDefaultFormat}
+                                  disabled={!isReadable || isDefaultFormat}
+                                  aria-label={setDefaultFormatLabel}
+                                  onCheckedChange={(checked) => {
+                                    if (!checked || !isReadable) return
+                                    setSelectedFormat(upperFormat)
+                                    void setBookReadingFormat(
+                                      book.id,
+                                      upperFormat,
+                                    )
+                                  }}
+                                />
+                              )
                               return (
                                 <tr
                                   key={fmt}
                                   className="border-b border-border transition-colors last:border-b-0 hover:bg-accent/30"
                                 >
-                                  <td className="px-3 py-3">
-                                    <div className="flex min-w-0 items-center gap-2.5">
+                                  <td className="px-2 py-3">
+                                    <div className="flex min-w-0 items-center justify-center gap-2.5">
                                       <div
                                         className={cn(
                                           "flex size-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold uppercase",
@@ -1118,52 +1123,61 @@ export default function BookDetailPane({
                                       >
                                         {fmt}
                                       </div>
-                                      <span className="min-w-0 truncate text-[13.5px] font-medium">
-                                        {fmt}
-                                      </span>
                                     </div>
                                   </td>
-                                  <td className="px-3 py-3 text-[13.5px]">
+                                  <td className="px-2 py-3 text-center text-[13.5px] whitespace-nowrap">
                                     {formatFileSize(
                                       formatSizeMap.get(fmt) ?? 0,
                                     )}
                                   </td>
-                                  <td className="px-3 py-3">
-                                    <div className="min-w-0 max-w-[140px]">
-                                      <span className="text-[12px] tabular-nums text-muted-foreground">
-                                        {rowProgressDisplay.text}
-                                      </span>
+                                  <td className="w-24 px-3 py-3">
+                                    <div className="flex min-w-0 items-center gap-2">
                                       {rowProgress?.percent !== undefined ? (
-                                        <Progress
-                                          value={rowProgress.percent}
-                                          className="mt-1 h-1"
-                                        />
-                                      ) : null}
+                                        <>
+                                          <div className="book-format-progress-bar flex min-w-0 flex-1 items-center gap-2">
+                                            <Progress
+                                              value={rowProgress.percent}
+                                              className="h-1.5 min-w-10 flex-1"
+                                            />
+                                            <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                                              {rowProgressDisplay.text}
+                                            </span>
+                                          </div>
+                                          <span className="book-format-progress-compact shrink-0 items-center gap-1.5 text-[12px] tabular-nums text-muted-foreground">
+                                            <CircularDownloadProgress
+                                              percent={rowProgress.percent}
+                                              className="size-5"
+                                            />
+                                            {rowProgressDisplay.text}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                                          {rowProgressDisplay.text}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
-                                  <td className="px-3 py-3 text-center">
-                                    <Switch
-                                      size="sm"
-                                      checked={isDefaultFormat}
-                                      disabled={!isReadable || isDefaultFormat}
-                                      aria-label={t(
-                                        "bookDetail.setDefaultFormatFor",
-                                        {
-                                          format: upperFormat,
-                                        },
-                                      )}
-                                      onCheckedChange={(checked) => {
-                                        if (!checked || !isReadable) return
-                                        setSelectedFormat(upperFormat)
-                                        void setBookReadingFormat(
-                                          book.id,
-                                          upperFormat,
-                                        )
-                                      }}
-                                    />
+                                  <td className="w-14 px-2 py-3 text-center">
+                                    {!isDefaultFormat && isReadable ? (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          {defaultFormatSwitch}
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                          side="top"
+                                          align="center"
+                                          sideOffset={6}
+                                        >
+                                          {setDefaultFormatTooltip}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : (
+                                      defaultFormatSwitch
+                                    )}
                                   </td>
-                                  <td className="px-2 py-3 text-end">
-                                    <div className="flex justify-end">
+                                  <td className="px-2 py-3 text-center">
+                                    <div className="flex justify-center">
                                       <ButtonGroup>
                                         {isReadable ? (
                                           <Button
@@ -1233,7 +1247,7 @@ export default function BookDetailPane({
                     })}
                     className="mb-4"
                   >
-                    <div className="flex gap-[18px] overflow-x-auto pb-2">
+                    <div className="detail-horizontal-scrollbar flex gap-[18px] overflow-x-auto pb-2">
                       {seriesBooks.map((rb) => (
                         <RelatedBookCard
                           key={rb.id}
@@ -1311,7 +1325,7 @@ function DetailPaneHeaderBar({
             data-testid={navigationTestId}
             onClick={onBackToList}
           >
-            <NavigationIcon />
+            <NavigationIcon className="detail-header-icon" />
           </Button>
         ) : null}
       </div>
@@ -1328,7 +1342,7 @@ function DetailPaneHeaderBar({
             data-testid="book-detail-fullscreen-toggle"
             onClick={onToggleDetailFullScreen}
           >
-            <FullScreenIcon />
+            <FullScreenIcon className="detail-header-icon" />
           </Button>
         ) : null}
       </div>

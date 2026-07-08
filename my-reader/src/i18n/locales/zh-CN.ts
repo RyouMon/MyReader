@@ -161,7 +161,7 @@ export const zhCN = {
       format: "格式",
       size: "大小",
       action: "操作",
-      defaultReadingFormat: "默认阅读格式",
+      defaultReadingFormat: "默认",
       notSupported: "不支持",
       formatCount: "{{count}} 种格式",
       seriesSection: "同系列 · {{series}}",
@@ -183,6 +183,7 @@ export const zhCN = {
       cancelDownloadFailed: "取消下载失败",
       defaultFormat: "默认",
       setDefaultFormat: "设为默认",
+      setAsDefaultReadingFormat: "设置为默认阅读格式",
       setDefaultFormatFor: "将 {{format}} 设为默认阅读格式",
     },
     settings: {

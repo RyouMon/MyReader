@@ -58,8 +58,8 @@ const demoBooks: BookEntry[] = [
   {
     id: 2,
     title: "玻璃港的星期三",
-    authorSort: "Qiao Nan",
-    authors: ["乔南"],
+    authorSort: "Qiao Nan & Hai Zhou",
+    authors: ["乔南", "海舟"],
     tags: ["散文", "旅行"],
     series: null,
     seriesIndex: null,
@@ -270,7 +270,7 @@ function cachedFileState(bookId: number, format: string): FileStateDto {
   const upperFormat = format.toUpperCase()
   return {
     path: `C:/Demo/cache/${bookId}.${upperFormat.toLocaleLowerCase()}`,
-    localState: "cached",
+    localState: "present",
     localSize:
       formatSizes[upperFormat as keyof typeof formatSizes] ?? 1_048_576,
   }
