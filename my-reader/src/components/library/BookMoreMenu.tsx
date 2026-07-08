@@ -652,9 +652,9 @@ function actionIcon(action: FileAction) {
 function triggerClassName(variant: BookMoreMenuProps["triggerVariant"]) {
   if (variant === "card") {
     return cn(
-      "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-ink-inverse/35",
-      "bg-ink-inverse/20 text-ink-inverse shadow-xs backdrop-blur-sm transition-colors",
-      "hover:bg-ink-inverse/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+      "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-cover-fg-35",
+      "bg-cover-fg-20 text-cover-fg shadow-xs backdrop-blur-sm transition-colors",
+      "hover:bg-cover-fg-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
     )
   }
   if (variant === "row") {

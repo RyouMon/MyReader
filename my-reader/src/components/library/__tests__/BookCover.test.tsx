@@ -153,7 +153,8 @@ describe("BookCover", () => {
 
     await waitFor(() => {
       expect(container.querySelector('[data-slot="skeleton"]')).toBeNull()
-      expect(screen.getByText(book.title)).toBeInTheDocument()
+      expect(screen.getByText(book.title)).toHaveClass("text-cover-fg")
+      expect(screen.getByText(book.authors[0])).toHaveClass("text-cover-muted")
     })
   })
 
@@ -220,6 +221,7 @@ describe("BookCover", () => {
     const { container } = render(<BookCover book={book} libraryId="lib-1" />)
 
     expect(container.querySelector('[data-slot="skeleton"]')).toBeNull()
-    expect(screen.getByText(book.title)).toBeInTheDocument()
+    expect(screen.getByText(book.title)).toHaveClass("text-cover-fg")
+    expect(screen.getByText(book.authors[0])).toHaveClass("text-cover-muted")
   })
 })

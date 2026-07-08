@@ -62,7 +62,7 @@ import {
   setDownloadStarting,
   useDownloadProgress,
 } from "@/hooks/useDownloadProgress"
-import { getCoverGradientClass } from "@/lib/cover-gradient"
+import { generateCoverGradient } from "@/lib/cover-gradient"
 import {
   getCoverFailureKey,
   getCoverFailuresRevision,
@@ -634,8 +634,8 @@ export default function BookDetailPane({
               isNarrowCoverBackdropActive
                 ? "opacity-[0.14]"
                 : "opacity-[0.045]",
-              getCoverGradientClass(book.title),
             )}
+            style={{ background: generateCoverGradient(book.title) }}
             aria-hidden="true"
           />
         )}
@@ -680,10 +680,10 @@ export default function BookDetailPane({
                       />
                     ) : (
                       <div
-                        className={cn(
-                          "absolute inset-0",
-                          getCoverGradientClass(book.title),
-                        )}
+                        className="absolute inset-0"
+                        style={{
+                          background: generateCoverGradient(book.title),
+                        }}
                         aria-hidden="true"
                       />
                     )}
@@ -872,10 +872,10 @@ export default function BookDetailPane({
                     <div className="detail-cover-wrap mx-auto w-[128px] max-w-[58vw] shrink-0 sm:mx-0 sm:w-full">
                       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-lg">
                         <div
-                          className={cn(
-                            "absolute inset-0",
-                            getCoverGradientClass(book.title),
-                          )}
+                          className="absolute inset-0"
+                          style={{
+                            background: generateCoverGradient(book.title),
+                          }}
                           aria-hidden="true"
                         />
 
@@ -889,10 +889,10 @@ export default function BookDetailPane({
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center px-5 py-6 text-center">
                             <div className="pointer-events-none absolute inset-0 bg-overlay" />
-                            <span className="relative z-10 text-xl leading-[1.35] font-bold text-[var(--detail-hero-fg)]">
+                            <span className="relative z-10 text-xl leading-[1.35] font-bold text-cover-fg">
                               {book.title}
                             </span>
-                            <span className="relative z-10 mt-2 text-[12.5px] text-[var(--detail-hero-muted)]">
+                            <span className="relative z-10 mt-2 text-[12.5px] text-cover-muted">
                               {displayAuthors}
                             </span>
                           </div>
@@ -1746,7 +1746,8 @@ function RelatedBookCard({
     >
       <div className="relative aspect-[2/3] w-[120px] overflow-hidden rounded-lg shadow-md transition-all duration-200 group-hover/related:-translate-y-[3px]">
         <div
-          className={cn("absolute inset-0", getCoverGradientClass(book.title))}
+          className="absolute inset-0"
+          style={{ background: generateCoverGradient(book.title) }}
           aria-hidden="true"
         />
 
@@ -1765,7 +1766,7 @@ function RelatedBookCard({
           />
         ) : (
           <div className="absolute inset-0 flex size-full flex-col items-center justify-center px-2 py-3 text-center">
-            <span className="text-[13px] font-semibold text-ink-inverse [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
+            <span className="text-[13px] font-semibold text-cover-fg [text-shadow:0_1px_3px_rgba(0,0,0,0.3)]">
               {book.title}
             </span>
           </div>

@@ -10,7 +10,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCoverObjectUrl } from "@/hooks/useCoverObjectUrl"
-import { getCoverGradientClass } from "@/lib/cover-gradient"
+import { generateCoverGradient } from "@/lib/cover-gradient"
 import {
   getCoverFailureKey,
   getCoverFailuresRevision,
@@ -130,7 +130,8 @@ export const BookCover = memo(function BookCover({
     >
       {showFallbackCover ? (
         <div
-          className={cn("absolute inset-0", getCoverGradientClass(book.title))}
+          className="absolute inset-0"
+          style={{ background: generateCoverGradient(book.title) }}
           aria-hidden="true"
         />
       ) : null}
@@ -167,14 +168,14 @@ export const BookCover = memo(function BookCover({
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-[var(--cover-scrim-rest)]" />
           <span
             className={cn(
-              "relative z-10 line-clamp-3 text-base font-semibold leading-[1.4] text-ink-inverse [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
+              "relative z-10 line-clamp-3 text-base font-semibold leading-[1.4] text-cover-fg [text-shadow:0_1px_4px_rgba(0,0,0,0.3)]",
               titleClassName,
             )}
           >
             {book.title}
           </span>
           {book.authors.length > 0 ? (
-            <span className="relative z-10 mt-1.5 line-clamp-1 text-[11px] text-ink-inverse/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
+            <span className="relative z-10 mt-1.5 line-clamp-1 text-[11px] text-cover-muted [text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
               {book.authors.join(", ")}
             </span>
           ) : null}

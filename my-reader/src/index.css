@@ -113,6 +113,21 @@
   .text-ink-inverse {
     color: var(--ink-inverse);
   }
+  .text-cover-fg {
+    color: #faf5ef;
+  }
+  .text-cover-muted {
+    color: rgba(250, 245, 239, 0.8);
+  }
+  .border-cover-fg-35 {
+    border-color: rgba(250, 245, 239, 0.35);
+  }
+  .bg-cover-fg-20 {
+    background-color: rgba(250, 245, 239, 0.2);
+  }
+  .bg-cover-fg-30 {
+    background-color: rgba(250, 245, 239, 0.3);
+  }
 
   /* Primary tint utilities */
   .bg-primary-soft {

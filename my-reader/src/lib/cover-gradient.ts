@@ -1,21 +1,15 @@
-const COVER_GRADIENT_CLASSES = [
-  "bg-[linear-gradient(160deg,var(--primary)_0%,var(--secondary)_50%,var(--ink-1)_100%)]",
-  "bg-[linear-gradient(160deg,var(--secondary)_0%,var(--primary)_48%,var(--ink-1)_100%)]",
-  "bg-[linear-gradient(160deg,var(--ink-2)_0%,var(--secondary)_54%,var(--ink-1)_100%)]",
-  "bg-[linear-gradient(160deg,var(--secondary)_0%,var(--ink-2)_52%,var(--ink-1)_100%)]",
-  "bg-[linear-gradient(160deg,var(--primary)_0%,var(--ink-2)_54%,var(--ink-1)_100%)]",
-  "bg-[linear-gradient(160deg,var(--ink-2)_0%,var(--primary)_52%,var(--ink-1)_100%)]",
-]
-
 /**
- * Returns a deterministic Tailwind fallback cover gradient for books without a
- * real cover. The palette uses semantic MyReader tokens instead of inline CSS.
+ * Generate a muted, earth-tone fallback gradient for books without a cover.
+ *
+ * Matches the design in .superdesign/design_iterations/library_grid_1.html:
+ * a three-stop linear gradient (160deg) with low saturation.
  */
-export function getCoverGradientClass(title: string): string {
+export function generateCoverGradient(title: string): string {
   let hash = 0
   for (let i = 0; i < title.length; i++) {
     hash = ((hash << 5) - hash + title.charCodeAt(i)) | 0
   }
+  const hue = Math.abs(hash) % 360
 
-  return COVER_GRADIENT_CLASSES[Math.abs(hash) % COVER_GRADIENT_CLASSES.length]
+  return `linear-gradient(160deg, hsl(${hue}, 22%, 38%) 0%, hsl(${(hue + 15) % 360}, 18%, 28%) 50%, hsl(${(hue + 30) % 360}, 15%, 20%) 100%)`
 }
