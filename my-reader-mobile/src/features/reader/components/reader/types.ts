@@ -23,4 +23,6 @@ export type ReaderTocItem = {
   href?: string
   /** 目录项对应的首个 position {@link Locator}，用于 `goTo`（优先于 href 匹配）。 */
   locator?: Locator
+  /** `resource` means a fragment link borrowed the parent resource start. */
+  locatorSource?: "resource" | "content"
 }

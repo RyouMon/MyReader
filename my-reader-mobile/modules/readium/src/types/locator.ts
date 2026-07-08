@@ -4,6 +4,7 @@
  * so locators can be persisted and restored across platforms.
  */
 export interface LocatorLocations {
+  fragments?: string[]
   progression: number
   position?: number
   totalProgression?: number

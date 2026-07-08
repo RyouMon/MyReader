@@ -4,6 +4,7 @@ import Foundation
 // MARK: - Locator (REP-003)
 
 struct LocatorLocationsRecord: Record {
+  @Field var fragments: [String]? = nil
   @Field var progression: Double = 0
   @Field var position: Double? = nil
   @Field var totalProgression: Double? = nil

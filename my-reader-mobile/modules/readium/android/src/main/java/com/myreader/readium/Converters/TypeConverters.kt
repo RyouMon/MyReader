@@ -87,6 +87,9 @@ internal fun locatorRecordToReadium(loc: LocatorRecord): ReadiumLocator? {
   // Merge any fragment from the href into locations.fragments
   val fragments = buildList {
     normalized.fragment?.let { add(it) }
+    loc.locations?.fragments
+      ?.filter { it.isNotEmpty() && !contains(it) }
+      ?.forEach { add(it) }
   }
 
   return ReadiumLocator(
@@ -211,6 +214,9 @@ internal fun readiumLocatorToMap(loc: ReadiumLocator): Map<String, Any?> {
   val locations = mutableMapOf<String, Any?>("progression" to (loc.locations.progression ?: 0.0))
   loc.locations.position?.let { locations["position"] = it }
   loc.locations.totalProgression?.let { locations["totalProgression"] = it }
+  if (loc.locations.fragments.isNotEmpty()) {
+    locations["fragments"] = loc.locations.fragments
+  }
 
   val dict = mutableMapOf<String, Any?>(
     "href" to loc.href.toString(),

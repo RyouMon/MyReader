@@ -54,6 +54,7 @@ import {
 import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet"
+import { resolveReaderToc } from "@/src/features/reader/components/reader/reader-toc-resolver"
 import {
   coerceReaderFontOption,
   getReaderFontOptions,
@@ -393,7 +394,15 @@ export default function ReaderScreen() {
     chromeActive &&
     readerState?.totalPages != null &&
     readerState.totalPages > 1
-  const chapterLabelTitle = readerState?.chapterTitle?.trim() || null
+  const tocResolution = resolveReaderToc({
+    toc,
+    locator: readerState?.locator,
+    currentPage: readerState?.currentPage,
+    currentTitle: readerState?.chapterTitle,
+  })
+  const activeTocIndex = tocResolution.index
+  const chapterLabelTitle =
+    tocResolution.title?.trim() || readerState?.chapterTitle?.trim() || null
   const showChapterLabel =
     Boolean(chapterLabelTitle) &&
     chromeActive &&
@@ -547,7 +556,7 @@ export default function ReaderScreen() {
             <ReaderTocSheet
               ref={tocSheetRef}
               toc={toc}
-              currentHref={readerState?.locator?.href ?? null}
+              activeIndex={activeTocIndex}
               palette={chromePalette}
               onSelectPage={handleTocSelect}
               onDismiss={handleTocDismiss}

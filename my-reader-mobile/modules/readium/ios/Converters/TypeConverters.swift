@@ -178,6 +178,7 @@ func locatorRecordToReadium(_ rec: LocatorRecord) -> RLocator? {
     title: rec.title,
     locations: rec.locations.map {
       LocationsData(
+        fragments: $0.fragments,
         progression: $0.progression,
         position: $0.position.map { Int($0) },
         totalProgression: $0.totalProgression
@@ -220,6 +221,9 @@ func locatorToDict(_ loc: RLocator) -> [String: Any] {
   }
   if let totalProgression = loc.locations.totalProgression {
     locations["totalProgression"] = totalProgression
+  }
+  if !loc.locations.fragments.isEmpty {
+    locations["fragments"] = loc.locations.fragments
   }
 
   var dict: [String: Any] = [

@@ -8,7 +8,9 @@ import {
 } from "react"
 import { StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
+import { publication as readiumPublication } from "@my-reader/readium"
 import type {
+  ContentResult,
   FontFamilyDeclaration,
   Locator,
   PublicationReadyEvent,
@@ -20,6 +22,10 @@ import type {
   ReaderState,
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
+import {
+  positionIndexForLocator,
+  resolveReaderToc,
+} from "@/src/features/reader/components/reader/reader-toc-resolver"
 import type {
   ReaderTheme,
   TextAlignment,
@@ -27,11 +33,10 @@ import type {
   FontFamilyKey,
 } from "@/src/store/app-store.types"
 import {
-  chapterTitleForLocator,
+  enhanceTocItemsWithContentLocators,
   findLocatorForLinkHref,
-  hrefRoughlyMatches,
   linksToTocItems,
-  positionIndexForLocator,
+  locatorWithTocSelection,
   resolveNativeLocator,
 } from "./reader-reflow-navigation"
 import { buildPreferences } from "./reader-reflow-preferences"
@@ -91,9 +96,11 @@ const ReadiumReflowReader = forwardRef<
 ) {
   const readiumRef = useRef<ReadiumViewRef>(null)
   const tocItemsRef = useRef<ReaderTocItem[]>([])
+  const selectedTocItemRef = useRef<ReaderTocItem | null>(null)
   const positionsRef = useRef<Locator[]>([])
   const currentLocatorRef = useRef<Locator | null>(null)
   const chapterTitleRef = useRef("")
+  const publicationReadySeqRef = useRef(0)
 
   useImperativeHandle(ref, () => ({
     goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
@@ -134,6 +141,9 @@ const ReadiumReflowReader = forwardRef<
 
   const handlePublicationReady = useCallback(
     (event: PublicationReadyEvent) => {
+      const publicationSeq = publicationReadySeqRef.current + 1
+      publicationReadySeqRef.current = publicationSeq
+
       positionsRef.current = event.positions
       const tocItems = linksToTocItems(event.tableOfContents, event.positions)
       tocItemsRef.current = tocItems
@@ -166,10 +176,16 @@ const ReadiumReflowReader = forwardRef<
         0
       const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
       const chapterTitle =
-        (startLocator
-          ? chapterTitleForLocator(tocItems, event.positions, startLocator)
-          : undefined) ??
-        (chapterTitleRef.current || event.metadata.title)
+        ((startLocator
+          ? resolveReaderToc({
+              toc: tocItems,
+              positions: event.positions,
+              locator: startLocator,
+              fallbackTitle: chapterTitleRef.current || event.metadata.title,
+            }).title
+          : null) ??
+          chapterTitleRef.current) ||
+        event.metadata.title
       chapterTitleRef.current = chapterTitle
 
       onStateChange({
@@ -187,14 +203,66 @@ const ReadiumReflowReader = forwardRef<
       if (startLocator && startLocator !== event.positions[0]) {
         readiumRef.current?.goTo(startLocator)
       }
+
+      void readiumPublication
+        .getContent(event.publicationId)
+        .then((contentResult) => {
+          if (publicationReadySeqRef.current !== publicationSeq) return
+
+          const result = contentResult as ContentResult & {
+            content?: ContentResult["utterances"]
+          }
+          const utterances = result.utterances ?? result.content ?? []
+          const enhancedTocItems = enhanceTocItemsWithContentLocators(
+            tocItemsRef.current,
+            utterances,
+          )
+          if (enhancedTocItems === tocItemsRef.current) return
+
+          tocItemsRef.current = enhancedTocItems
+          onTocReady(enhancedTocItems)
+
+          const currentLocator = currentLocatorRef.current
+          if (!currentLocator) return
+
+          const enhancedTitle =
+            resolveReaderToc({
+              toc: enhancedTocItems,
+              positions: positionsRef.current,
+              locator: currentLocator,
+              fallbackTitle: chapterTitleRef.current,
+            }).title ?? chapterTitleRef.current
+          if (enhancedTitle === chapterTitleRef.current) return
+
+          const positions = positionsRef.current
+          const totalPages = Math.max(1, positions.length)
+          const currentPage = positionIndexForLocator(positions, currentLocator)
+          const progression =
+            currentLocator.locations?.totalProgression ??
+            currentLocator.locations?.progression ??
+            0
+          chapterTitleRef.current = enhancedTitle
+          onStateChange({
+            ready: true,
+            currentPage,
+            totalPages,
+            progress: Math.round(progression * PROGRESS_PERCENT_MULTIPLIER),
+            chapterTitle: enhancedTitle,
+            loading: false,
+            error: null,
+            locator: currentLocator,
+          })
+        })
+        .catch(() => {
+          // Content locators refine TOC matching only; reading must continue if
+          // the optional content pass is unavailable for a publication.
+        })
     },
     [initialLocator, onPublicationLanguagesReady, onTocReady, onStateChange],
   )
 
-  const handleLocationChange = useCallback(
-    (locator: Locator) => {
-      currentLocatorRef.current = locator
-
+  const emitLocationState = useCallback(
+    (locator: Locator, selectedToc: ReaderTocItem | null) => {
       const positions = positionsRef.current
       const totalPages = Math.max(1, positions.length)
       const progression =
@@ -203,18 +271,21 @@ const ReadiumReflowReader = forwardRef<
         0
       const progress = Math.round(progression * PROGRESS_PERCENT_MULTIPLIER)
 
-      const currentPage = positionIndexForLocator(positions, locator)
-
-      const href = locator.href
       const tocItems = tocItemsRef.current
-      const matchedToc = tocItems.find(
-        (item) => item.href && hrefRoughlyMatches(href, item.href),
-      )
+      const stateLocator = locatorWithTocSelection(locator, selectedToc)
+      currentLocatorRef.current = stateLocator
+
+      const currentPage = positionIndexForLocator(positions, stateLocator)
+
       const chapterTitle =
-        locator.title ??
-        chapterTitleForLocator(tocItems, positions, locator) ??
-        matchedToc?.label ??
-        chapterTitleRef.current
+        resolveReaderToc({
+          toc: tocItems,
+          positions,
+          locator: stateLocator,
+          selectedTocItem: selectedToc,
+          fallbackTitle:
+            stateLocator.title ?? locator.title ?? chapterTitleRef.current,
+        }).title ?? chapterTitleRef.current
       chapterTitleRef.current = chapterTitle
 
       onStateChange({
@@ -225,10 +296,19 @@ const ReadiumReflowReader = forwardRef<
         chapterTitle,
         loading: false,
         error: null,
-        locator,
+        locator: stateLocator,
       })
     },
     [onStateChange],
+  )
+
+  const handleLocationChange = useCallback(
+    (locator: Locator) => {
+      const selectedToc = selectedTocItemRef.current
+      selectedTocItemRef.current = null
+      emitLocationState(locator, selectedToc)
+    },
+    [emitLocationState],
   )
 
   useEffect(() => {
@@ -243,9 +323,13 @@ const ReadiumReflowReader = forwardRef<
         ? findLocatorForLinkHref(positionsRef.current, tocItem.href)
         : undefined)
     if (target) {
+      selectedTocItemRef.current = tocItem
       readiumRef.current?.goTo(target)
+      emitLocationState(target, tocItem)
+    } else {
+      selectedTocItemRef.current = null
     }
-  }, [gotoTocIndex])
+  }, [emitLocationState, gotoTocIndex])
 
   return (
     <View style={styles.reader}>

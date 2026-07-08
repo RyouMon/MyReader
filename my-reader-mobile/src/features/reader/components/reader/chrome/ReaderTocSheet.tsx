@@ -1,5 +1,5 @@
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet"
-import { forwardRef, useCallback } from "react"
+import { forwardRef, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { View as RNView, StyleSheet } from "react-native"
 
@@ -21,21 +21,13 @@ import {
   READER_TOC_SHEET_SNAP_POINTS,
 } from "./readerChromeConstants"
 
-function stripFragment(href: string): string {
-  const i = href.indexOf("#")
-  return i >= 0 ? href.slice(0, i) : href
-}
-
-function hrefRoughlyMatches(a: string, b: string): boolean {
-  if (!a || !b) return false
-  const na = stripFragment(a)
-  const nb = stripFragment(b)
-  return na === nb || na.endsWith(nb) || nb.endsWith(na)
-}
+const READER_TOC_ROW_HEIGHT = 52
+const READER_TOC_ROW_GAP = 2
+const READER_TOC_ROW_EXTENT = READER_TOC_ROW_HEIGHT + READER_TOC_ROW_GAP
 
 export type ReaderTocSheetProps = {
   toc: ReaderTocItem[]
-  currentHref: string | null
+  activeIndex: number
   palette: ReaderChromePalette
   onSelectPage: (pageIndex: number) => void
   onDismiss: () => void
@@ -43,10 +35,14 @@ export type ReaderTocSheetProps = {
 
 const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
   function ReaderTocSheet(
-    { toc, currentHref, palette, onSelectPage, onDismiss },
+    { toc, activeIndex, palette, onSelectPage, onDismiss },
     ref,
   ) {
     const { t } = useTranslation()
+    const initialScrollOffset = useMemo(
+      () => (activeIndex <= 0 ? 0 : activeIndex * READER_TOC_ROW_EXTENT),
+      [activeIndex],
+    )
 
     const renderHandle = useCallback(
       () => (
@@ -83,12 +79,13 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
             {t("reader.toc")}
           </Text>
         </RNView>
-        <BottomSheetScrollView showsVerticalScrollIndicator={false}>
-          {toc.map((item) => {
-            const isActive =
-              currentHref !== null &&
-              item.href !== undefined &&
-              hrefRoughlyMatches(currentHref, item.href)
+        <BottomSheetScrollView
+          key={`toc-${activeIndex}`}
+          contentOffset={{ x: 0, y: initialScrollOffset }}
+          showsVerticalScrollIndicator={false}
+        >
+          {toc.map((item, index) => {
+            const isActive = index === activeIndex
             const depth = Math.min(item.depth ?? 0, 4)
             return (
               <TouchableHighlight
@@ -99,17 +96,20 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
                   isActive ? palette.tocRowActive : palette.tocRowIdle,
                   palette.bg,
                 )}
-                className="mx-3 mb-0.5 rounded-xl px-5 py-[14px]"
+                className="mx-3 rounded-xl px-5"
                 style={{
                   backgroundColor: isActive
                     ? palette.tocRowActive
                     : palette.tocRowIdle,
+                  height: READER_TOC_ROW_HEIGHT,
+                  justifyContent: "center",
+                  marginBottom: READER_TOC_ROW_GAP,
                   paddingLeft: 20 + depth * 18,
                 }}
                 onPress={() => onSelectPage(item.pageIndex)}
               >
                 <Text
-                  className="text-base flex-1"
+                  className="text-base"
                   style={{
                     color: isActive ? palette.accentText : palette.text,
                   }}

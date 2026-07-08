@@ -18,8 +18,8 @@ struct LocatorData: Codable {
       return nil
     }
 
-    var fragments: [String] = []
-    if let fragment = normalized.fragment {
+    var fragments = locations?.fragments ?? []
+    if let fragment = normalized.fragment, !fragments.contains(fragment) {
       fragments.append(fragment)
     }
 
@@ -54,6 +54,7 @@ struct LocatorData: Codable {
 
 /// Helper struct for deserializing locations
 struct LocationsData: Codable {
+  let fragments: [String]?
   let progression: Double?
   let position: Int?
   let totalProgression: Double?
