@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 export interface MockBook {
   id: number
   title: string
+  authorSort: string
   authors: string[]
   tags: string[]
   series: string | null
@@ -25,6 +26,9 @@ export interface MockLibrary {
   name: string
   path: string
   bookCount: number
+  sourceType?: string
+  dataSourceId?: string | null
+  sourcePath?: string | null
 }
 
 export const TEST_LIBRARY_ID = "test-lib-01"
@@ -33,6 +37,7 @@ export function generateBooks(count: number): MockBook[] {
   return Array.from({ length: count }, (_, i) => ({
     id: i + 1,
     title: `测试书籍 ${i + 1}`,
+    authorSort: `作者 ${(i % 10) + 1}`,
     authors: [`作者 ${(i % 10) + 1}`],
     tags: [],
     series: i % 5 === 0 ? `系列 ${Math.floor(i / 5) + 1}` : null,
@@ -62,6 +67,9 @@ export function createMockLibrary(
     name,
     path: path ?? `/test/library/${id}`,
     bookCount,
+    sourceType: "local",
+    dataSourceId: null,
+    sourcePath: path ?? `/test/library/${id}`,
   }
 }
 
@@ -104,6 +112,45 @@ export async function setupLibrariesMock(
             items: pageItems,
             total: bookList.length,
           }
+        },
+        get_book_detail: (args: Record<string, unknown>) => {
+          const id = Number(args?.bookId)
+          const book = bookList.find((item) => item.id === id) ?? bookList[0]
+          return {
+            ...book,
+            formatSizes: book.formats.map((format) => ({
+              format,
+              sizeBytes: 1024,
+            })),
+            identifiers: [],
+          }
+        },
+        get_series_books: () => [],
+        list_favorite_book_ids: () => [],
+        list_book_reading_formats: () => ({}),
+        list_reading_progress: () => [],
+        check_book_file_state: (args: Record<string, unknown>) => {
+          const bookId = Number(args?.bookId)
+          const format = String(args?.format ?? "EPUB").toUpperCase()
+          return {
+            path: `/test/library/book_${bookId}.${format.toLowerCase()}`,
+            localState: "present",
+            localSize: 1024,
+          }
+        },
+        check_book_file_states: (args: Record<string, unknown>) => {
+          const requests =
+            (args?.requests as Array<{ bookId: number; format: string }>) ?? []
+          return requests.map((request) => {
+            const format = request.format.toUpperCase()
+            return {
+              bookId: request.bookId,
+              format,
+              path: `/test/library/book_${request.bookId}.${format.toLowerCase()}`,
+              localState: "present",
+              localSize: 1024,
+            }
+          })
         },
         get_reader_ui_preferences: () => ({
           version: 4,

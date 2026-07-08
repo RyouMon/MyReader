@@ -1,11 +1,13 @@
 import { expect } from "@playwright/test"
-import { createBdd } from "playwright-bdd"
+import { createBdd, DataTable } from "playwright-bdd"
 import { setupLibraryMocks } from "../fixtures/library-mock"
 import { test } from "../fixtures/test"
 import { LibraryPage } from "../pages/LibraryPage"
 import { MainPage } from "../pages/MainPage"
 
 const { Given, When, Then } = createBdd(test)
+const ANCHOR_PERCENT_TOLERANCE = 8
+const TOP_ROW_ANCHOR_BOOK_NUMBER = "topRowAnchorBookNumber"
 
 Given("书库中已存在 {int} 本书", async ({ page }, count: number) => {
   await setupLibraryMocks(page, count)
@@ -16,12 +18,84 @@ Given("用户访问书库首页", async ({ page }) => {
   await libraryPage.goto()
 })
 
+Given(
+  "用户正在 {int} 像素宽的网格视图中从第 {int} 本书所在行开始浏览",
+  async ({ page }, width: number, bookNumber: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.setViewport(width)
+    await libraryPage.goto()
+    await libraryPage.waitForBooksLoaded()
+    await libraryPage.scrollBookRowToTop(bookNumber)
+    const [topBookNumber] = await libraryPage.getTopVisibleBookNumbers()
+    expect(topBookNumber).toEqual(expect.any(Number))
+    ;(page as unknown as Record<string, unknown>)[TOP_ROW_ANCHOR_BOOK_NUMBER] =
+      topBookNumber
+  },
+)
+
+Given(
+  "用户正在 {int} 像素宽的网格视图中浏览书库",
+  async ({ page }, width: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.setViewport(width)
+    await libraryPage.goto()
+    await libraryPage.waitForBooksLoaded()
+  },
+)
+
+Given(
+  "用户已在网格视图中打开第 {int} 本书的详情页",
+  async ({ page }, bookNumber: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.setViewport(1280)
+    await libraryPage.goto()
+    await libraryPage.waitForBooksLoaded()
+    await libraryPage.scrollBookCenterToPercent(bookNumber, 50)
+    await libraryPage.openBookDetail(bookNumber)
+  },
+)
+
+Given(
+  "第 {int} 本书中心位于可见区域高度的 {int}% 处",
+  async ({ page }, bookNumber: number, anchorPercent: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.scrollBookCenterToPercent(bookNumber, anchorPercent)
+  },
+)
+
+Given(
+  "第 {int} 本书中心位于书库列表可见区域高度的 {int}% 处",
+  async ({ page }, bookNumber: number, anchorPercent: number) => {
+    const libraryPage = new LibraryPage(page)
+    await libraryPage.scrollBookCenterToPercent(bookNumber, anchorPercent)
+  },
+)
+
 When("窗口宽度调整为 {int} 像素", async ({ page }, width: number) => {
   const libraryPage = new LibraryPage(page)
   await libraryPage.setViewport(width)
   // Allow ResizeObserver to settle and virtual list to recalculate
   await page.waitForTimeout(300)
   await libraryPage.waitForBooksLoaded()
+})
+
+When("窗口宽度依次调整为:", async ({ page }, dataTable: DataTable) => {
+  const libraryPage = new LibraryPage(page)
+  const rows = dataTable.hashes() as Array<{ width: string }>
+  for (const row of rows) {
+    await libraryPage.setViewport(Number(row.width))
+    await libraryPage.waitForBooksLoaded()
+  }
+})
+
+When("用户打开第 {int} 本书的详情页", async ({ page }, bookNumber: number) => {
+  const libraryPage = new LibraryPage(page)
+  await libraryPage.openBookDetail(bookNumber)
+})
+
+When("用户关闭书籍详情页", async ({ page }) => {
+  const libraryPage = new LibraryPage(page)
+  await libraryPage.closeBookDetail()
 })
 
 When("用户向下滚动书库列表", async ({ page }) => {
@@ -42,6 +116,38 @@ Then("页面应该显示主内容区域", async ({ page }) => {
     page.locator('main, [class*="sidebar-inset"], [data-slot="sidebar-inset"]'),
   ).toBeVisible()
 })
+
+Then("页面顶部第一行应包含调整前位于顶部第一行的第一本书", async ({ page }) => {
+  const libraryPage = new LibraryPage(page)
+  const bookNumber = (page as unknown as Record<string, unknown>)[
+    TOP_ROW_ANCHOR_BOOK_NUMBER
+  ] as number | undefined
+  expect(bookNumber).toEqual(expect.any(Number))
+  await expect
+    .poll(() => libraryPage.isBookInTopVisibleRow(bookNumber!), {
+      message: `Expected book ${bookNumber} to stay in the top visible grid row`,
+    })
+    .toBe(true)
+})
+
+Then(
+  "第 {int} 本书中心仍应接近书库列表可见区域高度的 {int}% 处",
+  async ({ page }, bookNumber: number, anchorPercent: number) => {
+    const libraryPage = new LibraryPage(page)
+    await expect
+      .poll(
+        async () => {
+          const actualPercent =
+            await libraryPage.getBookCenterPercent(bookNumber)
+          return Math.abs(actualPercent - anchorPercent)
+        },
+        {
+          message: `Expected book ${bookNumber} center to stay near ${anchorPercent}%`,
+        },
+      )
+      .toBeLessThanOrEqual(ANCHOR_PERCENT_TOLERANCE)
+  },
+)
 
 Then("网格中每本书的封面和标题都完整可见", async ({ page }) => {
   const libraryPage = new LibraryPage(page)
