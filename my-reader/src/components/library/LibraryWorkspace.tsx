@@ -81,6 +81,8 @@ export default function LibraryWorkspace({
     activeBookId && !isSmallWindow && !detailFullScreen,
   )
   const showListPane = !activeBookId || isSplitMode
+  const keepsListSplitGeometry = Boolean(activeBookId && !isSmallWindow)
+  const isDetailOverlay = Boolean(activeBookId && !showListPane)
   const showDetailPane = Boolean(activeBookId)
   const forceNarrowDetailHero = isSmallWindow || (isSplitMode && isMediumWindow)
   const canToggleDetailFullScreen = Boolean(activeBookId && !isSmallWindow)
@@ -209,11 +211,15 @@ export default function LibraryWorkspace({
           data-testid="library-pane"
           aria-hidden={!showListPane}
           className={cn(
-            "flex min-w-0 flex-1 flex-col animate-in fade-in-0 duration-150",
+            "flex min-w-0 flex-1 flex-col",
             showListPane
               ? "relative z-10"
-              : "pointer-events-none invisible absolute inset-0 z-0 h-full",
-            isSplitMode && "w-1/2 max-w-none flex-none shrink-0",
+              : "pointer-events-none invisible absolute top-0 bottom-0 start-0 z-0 h-full",
+            keepsListSplitGeometry
+              ? "w-1/2 max-w-none flex-none shrink-0"
+              : showListPane
+                ? "flex-1"
+                : "end-0",
           )}
         >
           <Toolbar
@@ -311,9 +317,11 @@ export default function LibraryWorkspace({
         {showDetailPane ? (
           <aside
             className={cn(
-              "flex min-w-0 flex-1 flex-col bg-background p-0 animate-in fade-in-0 duration-150",
+              "flex min-w-0 flex-1 flex-col bg-background p-0",
               isSplitMode && "w-1/2 flex-none",
-              !showListPane && "relative z-10",
+              isDetailOverlay
+                ? "absolute inset-0 z-20"
+                : "relative z-10 animate-in fade-in-0 duration-150",
             )}
             data-testid="book-detail-shell"
           >

@@ -2,6 +2,7 @@ import type { CalibreBook } from "@my-reader/tools/types/book"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import {
   type ReactNode,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -89,35 +90,47 @@ export default function BookGrid({
 
   useOverlayScrollbar(scrollHostRef, scrollRef)
 
+  const updateMeasuredLayout = useCallback(() => {
+    const layoutEl = scrollContentRef.current
+    if (!layoutEl) return
+
+    frameRef.current = null
+    const contentWidth = getContentBoxWidth(layoutEl)
+    const nextLayout = getGridLayoutMetrics(contentWidth)
+    setLayout((current) => {
+      if (
+        current.cols === nextLayout.cols &&
+        current.gap === nextLayout.gap &&
+        Math.abs(current.cardWidth - nextLayout.cardWidth) < 0.5 &&
+        Math.abs(current.gridRowHeight - nextLayout.gridRowHeight) < 0.5
+      ) {
+        layoutChangePendingRef.current = false
+        return current
+      }
+      return nextLayout
+    })
+  }, [])
+
+  // Keep parent-driven pane width changes from painting with stale grid metrics.
+  useLayoutEffect(() => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current)
+      frameRef.current = null
+    }
+    updateMeasuredLayout()
+  }, [activeBookId, updateMeasuredLayout, viewMode])
+
   useLayoutEffect(() => {
     const layoutEl = scrollContentRef.current
     if (!layoutEl) return
 
-    const updateLayout = () => {
-      frameRef.current = null
-      const contentWidth = getContentBoxWidth(layoutEl)
-      const nextLayout = getGridLayoutMetrics(contentWidth)
-      setLayout((current) => {
-        if (
-          current.cols === nextLayout.cols &&
-          current.gap === nextLayout.gap &&
-          Math.abs(current.cardWidth - nextLayout.cardWidth) < 0.5 &&
-          Math.abs(current.gridRowHeight - nextLayout.gridRowHeight) < 0.5
-        ) {
-          layoutChangePendingRef.current = false
-          return current
-        }
-        return nextLayout
-      })
-    }
-
     const scheduleLayoutUpdate = () => {
       layoutChangePendingRef.current = true
       if (frameRef.current !== null) return
-      frameRef.current = window.requestAnimationFrame(updateLayout)
+      frameRef.current = window.requestAnimationFrame(updateMeasuredLayout)
     }
 
-    updateLayout()
+    updateMeasuredLayout()
     const ro = new ResizeObserver(scheduleLayoutUpdate)
     ro.observe(layoutEl)
     return () => {
@@ -126,7 +139,7 @@ export default function BookGrid({
         window.cancelAnimationFrame(frameRef.current)
       }
     }
-  }, [])
+  }, [updateMeasuredLayout])
 
   const isList = viewMode === "list"
   const { cols, gap, cardWidth, gridRowHeight } = layout
