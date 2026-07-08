@@ -5,6 +5,12 @@ import ReadiumNavigator
 
 class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
     private var selectionActionHandler: SelectionActionHandler?
+    private weak var pdfDocumentView: PDFDocumentView?
+    private var pendingPDFViewFit = false
+    private var isPDFViewMaintenanceScheduled = false
+    private var pendingForcedPDFViewFit = false
+    private var lastFittedPDFViewSize: CGSize?
+    private var lastAppliedPDFViewScaleFactor: CGFloat?
     weak var selectionActionDelegate: SelectionActionDelegate?
     var onSelectionChange: ((ReadiumShared.Locator, String) -> Void)?
     var onTap: ((CGPoint) -> Void)?
@@ -43,6 +49,7 @@ class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
         publication: publication,
         initialLocation: locator,
         config: PDFNavigatorViewController.Configuration(
+          defaults: PDFDefaults(visibleScrollbar: false),
           editingActions: editingActions
         )
       )
@@ -65,6 +72,14 @@ class PDFViewController: ReaderViewController, SelectionActionHandlerDelegate {
 
     var pdfNavigator: PDFNavigatorViewController {
       return navigator as! PDFNavigatorViewController
+    }
+
+    override func viewDidLayoutSubviews() {
+      super.viewDidLayoutSubviews()
+
+      configurePDFViewChrome(view)
+      guard let pdfDocumentView else { return }
+      fitPDFViewIfNeeded(pdfDocumentView)
     }
 
     func updateSelectionActions(_ selectionActions: [SelectionActionData]?) {
@@ -115,12 +130,172 @@ extension PDFViewController: PDFNavigatorDelegate {
   }
 
   func navigator(_ navigator: PDFNavigatorViewController, setupPDFView view: PDFDocumentView) {
+    observePDFView(view)
+    maintainPDFView(view)
+    schedulePDFViewMaintenance(view, forceFit: true)
+
     guard onTap != nil else { return }
 
     let tap = UITapGestureRecognizer(target: self, action: #selector(handlePdfTap(_:)))
     tap.cancelsTouchesInView = false
     tap.delegate = self
     view.addGestureRecognizer(tap)
+  }
+
+  private func configurePDFViewChrome(_ view: UIView) {
+    if let scrollView = view as? UIScrollView {
+      // PDFKit may recreate nested scroll views after Readium applies preferences.
+      // Keep this as a layout-time fallback so the bottom indicator stays hidden.
+      scrollView.showsHorizontalScrollIndicator = false
+      scrollView.showsVerticalScrollIndicator = false
+    }
+
+    for subview in view.subviews {
+      configurePDFViewChrome(subview)
+    }
+  }
+
+  private func observePDFView(_ view: PDFDocumentView) {
+    guard pdfDocumentView !== view else {
+      resetPDFViewFitState()
+      return
+    }
+
+    if let pdfDocumentView {
+      NotificationCenter.default.removeObserver(self, name: nil, object: pdfDocumentView)
+    }
+
+    pdfDocumentView = view
+    resetPDFViewFitState()
+    [
+      NSNotification.Name.PDFViewDocumentChanged,
+      NSNotification.Name.PDFViewPageChanged,
+      NSNotification.Name.PDFViewVisiblePagesChanged,
+      NSNotification.Name.PDFViewDisplayModeChanged
+    ].forEach { name in
+      NotificationCenter.default.addObserver(
+        self,
+        selector: #selector(pdfViewDidChange(_:)),
+        name: name,
+        object: view
+      )
+    }
+  }
+
+  private func resetPDFViewFitState() {
+    pendingPDFViewFit = true
+    lastFittedPDFViewSize = nil
+    lastAppliedPDFViewScaleFactor = nil
+  }
+
+  @objc private func pdfViewDidChange(_ notification: Notification) {
+    guard let view = notification.object as? PDFDocumentView else { return }
+
+    let shouldForceFit =
+      notification.name == .PDFViewDocumentChanged ||
+      notification.name == .PDFViewDisplayModeChanged
+    if shouldForceFit {
+      resetPDFViewFitState()
+    }
+
+    schedulePDFViewMaintenance(view, forceFit: shouldForceFit)
+  }
+
+  private func schedulePDFViewMaintenance(_ view: PDFDocumentView, forceFit: Bool = false) {
+    pendingForcedPDFViewFit = pendingForcedPDFViewFit || forceFit
+
+    guard !isPDFViewMaintenanceScheduled else { return }
+    isPDFViewMaintenanceScheduled = true
+
+    // PDFKit notifications can arrive before visiblePages/contentInset settle.
+    // Coalescing to the next main turn avoids fixed delay retries.
+    DispatchQueue.main.async { [weak self, weak view] in
+      guard let self, let view else { return }
+      let forceFit = self.pendingForcedPDFViewFit
+      self.isPDFViewMaintenanceScheduled = false
+      self.pendingForcedPDFViewFit = false
+      self.maintainPDFView(view, forceFit: forceFit)
+    }
+  }
+
+  private func maintainPDFView(_ view: PDFDocumentView, forceFit: Bool = false) {
+    view.layoutIfNeeded()
+    configurePDFViewChrome(self.view)
+    fitPDFViewIfNeeded(view, force: forceFit)
+  }
+
+  private func fitPDFViewIfNeeded(_ view: PDFDocumentView, force: Bool = false) {
+    guard view.document != nil else { return }
+
+    let boundsSize = view.bounds.size
+    guard boundsSize.width > 0, boundsSize.height > 0 else { return }
+
+    guard let scaleFactor = scaleFactorToFitPDFView(view) else { return }
+    guard scaleFactor.isFinite, scaleFactor > 0 else { return }
+
+    let isAtLastAppliedScale = lastAppliedPDFViewScaleFactor
+      .map { abs(view.scaleFactor - $0) <= 0.01 }
+      ?? true
+    let boundsChanged = lastFittedPDFViewSize != boundsSize
+    let targetScaleChanged = lastAppliedPDFViewScaleFactor
+      .map { abs(scaleFactor - $0) > 0.01 }
+      ?? true
+    // After our initial fit, only auto-fit while the user is still at our scale.
+    // This keeps late PDFKit layout updates from fighting pinch zoom.
+    guard force || pendingPDFViewFit || ((boundsChanged || targetScaleChanged) && isAtLastAppliedScale) else {
+      return
+    }
+
+    view.minScaleFactor = scaleFactor
+    if abs(view.scaleFactor - scaleFactor) > 0.01 {
+      view.scaleFactor = scaleFactor
+    }
+
+    pendingPDFViewFit = false
+    lastFittedPDFViewSize = boundsSize
+    lastAppliedPDFViewScaleFactor = scaleFactor
+  }
+
+  private func scaleFactorToFitPDFView(_ view: PDFDocumentView) -> CGFloat? {
+    guard view.displayMode == .twoUp else {
+      return view.scaleFactorForSizeToFit
+    }
+
+    // PDFKit's generic fit scale is unreliable for paginated two-up spreads.
+    // Readium has an internal spread-aware helper; mirror the visible-pages part here.
+    let pages = view.visiblePages
+    guard !pages.isEmpty else { return nil }
+
+    var contentSize = CGSize.zero
+    for page in pages {
+      let pageSize = page.bounds(for: view.displayBox).size
+      contentSize.width += pageSize.width
+      contentSize.height = max(contentSize.height, pageSize.height)
+    }
+    guard contentSize.width > 0, contentSize.height > 0 else { return nil }
+
+    let contentInset = firstScrollView(in: view)?.contentInset ?? .zero
+    let availableSize = CGSize(
+      width: view.bounds.width - contentInset.left - contentInset.right,
+      height: view.bounds.height - contentInset.top - contentInset.bottom
+    )
+    guard availableSize.width > 0, availableSize.height > 0 else { return nil }
+
+    return min(availableSize.width / contentSize.width, availableSize.height / contentSize.height)
+  }
+
+  private func firstScrollView(in view: UIView) -> UIScrollView? {
+    if let scrollView = view as? UIScrollView {
+      return scrollView
+    }
+
+    for subview in view.subviews {
+      if let scrollView = firstScrollView(in: subview) {
+        return scrollView
+      }
+    }
+
+    return nil
   }
 
   @objc private func handlePdfTap(_ gesture: UITapGestureRecognizer) {

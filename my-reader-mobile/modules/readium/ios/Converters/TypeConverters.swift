@@ -62,7 +62,8 @@ func preferencesRecordToPDF(_ prefs: PreferencesRecord) -> PDFPreferences {
     backgroundColor: bgColor,
     readingProgression: prefs.readingProgression.flatMap { ReadiumNavigator.ReadingProgression(rawValue: $0) },
     scroll: prefs.scroll ?? false,
-    spread: prefs.spread.flatMap { Spread(rawValue: $0) }
+    spread: prefs.spread.flatMap { Spread(rawValue: $0) },
+    visibleScrollbar: false
   )
 }
 
