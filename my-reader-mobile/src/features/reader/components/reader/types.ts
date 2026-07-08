@@ -17,6 +17,7 @@ export type ReaderState = {
 export type ReaderTocItem = {
   id: string
   label: string
+  depth?: number
   pageIndex: number
   chapterIndex?: number
   href?: string

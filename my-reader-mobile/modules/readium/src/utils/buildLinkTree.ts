@@ -3,48 +3,41 @@ import type { Link } from "../types/link"
 /**
  * Reconstructs a nested Link tree from the flat array produced by the native
  * bridge. Each flat link carries `depth`, `hasChildren`, `parentHref`, and
- * `position` fields set by the native flattener. The tree is built using
- * `parentHref` to establish parent-child relationships and `position` to order
- * siblings.
+ * `position` fields set by the native flattener. The native array is emitted in
+ * pre-order, so `depth` is the only stable way to restore parents; TOC entries
+ * commonly reuse the same href.
  */
 export function buildLinkTree(flatLinks: Link[]): Link[] {
-  const linksByHref = new Map<string, Link>()
   const positionOf = new Map<Link, number>()
   const root: Link[] = []
+  const stack: Link[] = []
 
-  const nodes: { link: Link; parentHref?: string; position: number }[] = []
   for (const flat of flatLinks) {
     const {
       depth: _d,
       hasChildren: _h,
       parentHref: _p,
       position: _pos,
+      children: _c,
       ...rest
     } = flat
     const link: Link = { ...rest }
-    linksByHref.set(link.href, link)
     positionOf.set(link, flat.position ?? 0)
-    nodes.push({
-      link,
-      parentHref: flat.parentHref ?? undefined,
-      position: flat.position ?? 0,
-    })
-  }
 
-  for (const { link, parentHref } of nodes) {
-    if (parentHref == null) {
-      root.push(link)
+    const depth =
+      typeof flat.depth === "number" && Number.isFinite(flat.depth)
+        ? Math.max(0, Math.trunc(flat.depth))
+        : 0
+
+    stack.length = Math.min(stack.length, depth)
+    const parent = depth > 0 ? stack[depth - 1] : undefined
+    if (parent) {
+      parent.children = parent.children ?? []
+      parent.children.push(link)
     } else {
-      const parent = linksByHref.get(parentHref)
-      if (parent) {
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(link)
-      } else {
-        root.push(link)
-      }
+      root.push(link)
     }
+    stack[depth] = link
   }
 
   const sortByPosition = (a: Link, b: Link) =>

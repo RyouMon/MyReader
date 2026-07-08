@@ -89,6 +89,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
               currentHref !== null &&
               item.href !== undefined &&
               hrefRoughlyMatches(currentHref, item.href)
+            const depth = Math.min(item.depth ?? 0, 4)
             return (
               <TouchableHighlight
                 key={item.id}
@@ -103,6 +104,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
                   backgroundColor: isActive
                     ? palette.tocRowActive
                     : palette.tocRowIdle,
+                  paddingLeft: 20 + depth * 18,
                 }}
                 onPress={() => onSelectPage(item.pageIndex)}
               >

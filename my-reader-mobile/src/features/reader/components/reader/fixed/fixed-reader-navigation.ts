@@ -74,6 +74,7 @@ export function linksToFixedTocItems(
       items.push({
         id: buildTocItemId("pdf-toc", path),
         label: link.title?.trim() || fallbackLabel(flatIndex),
+        depth: parentPath.length,
         pageIndex: flatIndex,
         chapterIndex: flatIndex,
         href: link.href,

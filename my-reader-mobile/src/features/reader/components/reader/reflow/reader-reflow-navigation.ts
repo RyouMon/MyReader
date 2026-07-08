@@ -100,6 +100,7 @@ export function linksToTocItems(
       items.push({
         id: buildTocItemId("readium", path, href),
         label: link.title ?? `Chapter ${flatIndex + 1}`,
+        depth: parentPath.length,
         pageIndex: flatIndex,
         chapterIndex: flatIndex,
         href,
