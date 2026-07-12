@@ -3,6 +3,31 @@ import { describe, expect, it, vi } from "vitest"
 import { ReaderBottomStatusBar } from "../ReaderBottomStatusBar"
 
 describe("ReaderBottomStatusBar", () => {
+  it("should size the position label to its content when text is shown", () => {
+    render(
+      <ReaderBottomStatusBar visible leftText="Page 1 / 12" progress={8} />,
+    )
+
+    const label = screen.getByText("Page 1 / 12")
+    expect(label).toHaveClass("w-fit", "rounded-md")
+    expect(label).not.toHaveClass("w-full", "rounded-full")
+  })
+
+  it("should emphasize the position label when emphasis is requested", () => {
+    render(
+      <ReaderBottomStatusBar
+        visible
+        emphasizePositionLabel
+        leftText="Page 1 / 12"
+        progress={8}
+      />,
+    )
+
+    const label = screen.getByText("Page 1 / 12")
+    expect(label).toHaveClass("font-semibold", "text-reader-chrome-fg")
+    expect(label).not.toHaveClass("text-reader-chrome-muted/80")
+  })
+
   it("should keep the full handle inside the track when progress reaches either edge", () => {
     const { rerender } = render(
       <ReaderBottomStatusBar visible leftText="0%" progress={0} />,

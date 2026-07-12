@@ -397,6 +397,7 @@ export function ReadiumPdfReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
+          emphasizePositionLabel
           leftText={
             totalPages > 0
               ? t("reader.pageCount", { current: pageNum, total: totalPages })

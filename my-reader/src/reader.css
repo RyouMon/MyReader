@@ -346,6 +346,15 @@
     transform: translateY(var(--reader-position-label-offset-y));
   }
 
+  .reader-window-paper[data-reader-mode="fixed-layout"] .reader-position-label {
+    padding-block: 0.5rem;
+    background-color: color-mix(
+      in srgb,
+      var(--reader-chrome-bg) 72%,
+      transparent
+    );
+  }
+
   .reader-window-paper[data-reader-mode="fixed-layout"]
     :is(.reader-window-header, .reader-window-footer) {
     position: absolute;
@@ -354,6 +363,19 @@
 
   .reader-window-paper[data-reader-mode="fixed-layout"] .reader-window-header {
     top: 0;
+    background-color: transparent;
+    transition: background-color 300ms ease-out;
+  }
+
+  .reader-window-paper[data-reader-mode="fixed-layout"][data-reader-chrome-visible="true"]
+    .reader-window-header {
+    background-color: color-mix(
+      in srgb,
+      var(--reader-chrome-bg) 72%,
+      transparent
+    );
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    backdrop-filter: blur(20px) saturate(1.2);
   }
 
   .reader-window-paper[data-reader-mode="fixed-layout"] .reader-window-footer {

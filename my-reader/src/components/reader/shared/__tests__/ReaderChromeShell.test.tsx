@@ -93,6 +93,50 @@ describe("ReaderChromeShell", () => {
     )
   })
 
+  it("should mark fixed-layout chrome visible when chrome is shown", () => {
+    const { container } = render(
+      <ReaderChromeShell
+        readerRootRef={{ current: null }}
+        chromeVisible
+        showChrome={vi.fn()}
+        scheduleChromeHide={vi.fn()}
+        readerMode="fixed-layout"
+        topBar={topBar}
+        tocPanel={null}
+        settingsPanel={null}
+        main={<main />}
+        bottomStatusBar={<div />}
+      />,
+    )
+
+    expect(container.querySelector(".reader-window-paper")).toHaveAttribute(
+      "data-reader-chrome-visible",
+      "true",
+    )
+  })
+
+  it("should mark fixed-layout chrome hidden when chrome is hidden", () => {
+    const { container } = render(
+      <ReaderChromeShell
+        readerRootRef={{ current: null }}
+        chromeVisible={false}
+        showChrome={vi.fn()}
+        scheduleChromeHide={vi.fn()}
+        readerMode="fixed-layout"
+        topBar={topBar}
+        tocPanel={null}
+        settingsPanel={null}
+        main={<main />}
+        bottomStatusBar={<div />}
+      />,
+    )
+
+    expect(container.querySelector(".reader-window-paper")).toHaveAttribute(
+      "data-reader-chrome-visible",
+      "false",
+    )
+  })
+
   it("should schedule chrome hiding when the pointer leaves the bottom region", () => {
     const scheduleChromeHide = vi.fn()
     const { container } = render(

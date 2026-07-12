@@ -490,6 +490,7 @@ export function ReadiumDivinaReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
+          emphasizePositionLabel
           leftText={
             positions.length > 0
               ? t("reader.pageCount", {

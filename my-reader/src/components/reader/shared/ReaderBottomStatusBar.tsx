@@ -21,6 +21,7 @@ function clampProgress(progress: number): number {
 interface ReaderBottomStatusBarProps {
   visible: boolean
   leftText?: string
+  emphasizePositionLabel?: boolean
   rightText?: string
   progress?: number
   getProgressPreview?: (progress: number) => ReaderProgressPreview
@@ -36,6 +37,7 @@ interface ReaderBottomStatusBarProps {
 export function ReaderBottomStatusBar({
   visible,
   leftText,
+  emphasizePositionLabel = false,
   progress,
   getProgressPreview,
   resolveProgressCommit,
@@ -225,7 +227,14 @@ export function ReaderBottomStatusBar({
       )}
     >
       {leftText ? (
-        <span className="reader-position-label col-start-1 row-start-2 block w-full self-center justify-self-center select-none rounded-full px-2 text-center text-xs foxsnt-semibold tabular-nums text-reader-chrome-muted/80">
+        <span
+          className={cn(
+            "reader-position-label col-start-1 row-start-2 block w-fit self-center justify-self-center select-none rounded-md px-2 text-center text-xs tabular-nums",
+            emphasizePositionLabel
+              ? "font-semibold text-reader-chrome-fg"
+              : "text-reader-chrome-muted/80",
+          )}
+        >
           {leftText}
         </span>
       ) : null}

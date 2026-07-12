@@ -150,6 +150,7 @@ export function ReaderChromeShell({
         className="reader-window-paper relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         data-reader-theme={theme || undefined}
         data-reader-mode={readerMode}
+        data-reader-chrome-visible={chromeVisible}
         style={chromeThemeStyle}
       >
         <ReaderTopBar
