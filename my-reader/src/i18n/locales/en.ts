@@ -395,6 +395,28 @@ export const en = {
         paginate: "Paginated",
         scroll: "Scroll",
       },
+      background: "Background",
+      backgroundOptions: {
+        auto: "Auto",
+        black: "Black",
+        white: "White",
+      },
+      pageDirection: "Page direction",
+      pageDirectionOptions: {
+        horizontal: "Horizontal",
+        vertical: "Vertical",
+      },
+      readingProgression: "Reading direction",
+      readingProgressionOptions: {
+        ltr: "Left to right",
+        rtl: "Right to left",
+      },
+      pageLayout: "Page layout",
+      pageLayoutOptions: {
+        auto: "Auto",
+        single: "Always single",
+        double: "Always spread",
+      },
       typography: "Typography",
       typographyOptions: {
         auto: "Auto",

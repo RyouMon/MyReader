@@ -651,6 +651,18 @@
     transform: translateY(-50%);
   }
 
+  .reader-window-paper[data-reader-mode="fixed-layout"] .reader-progress-track {
+    background: color-mix(
+      in srgb,
+      var(--reader-chrome-bg) 74%,
+      var(--reader-chrome-fg) 16%
+    );
+    box-shadow:
+      inset 0 0 0 1px
+      color-mix(in srgb, var(--reader-chrome-fg) 9%, transparent),
+      0 1px 4px color-mix(in srgb, var(--reader-chrome-bg) 55%, transparent);
+  }
+
   .reader-progress-handle {
     position: absolute;
     top: 50%;

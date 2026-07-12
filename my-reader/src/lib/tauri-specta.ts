@@ -142,6 +142,8 @@ export type FileStateRequestDto = {
 
 /**  与前端 `FixedLayoutSettings` 对齐，作为机器本地偏好持久化在 `config.json` 的 `readerUi` 字段。 */
 export type FixedLayoutSettingsDto = {
+	background?: string,
+	navigationMode?: string,
 	readingLayout?: string,
 	displayMode?: string,
 	spreadMode?: string,

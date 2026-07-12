@@ -1,12 +1,13 @@
-import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 import { Locator, LocatorLocations } from "@readium/shared"
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
+import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 
 export const PDF_RENDER_BASE = 1.25
 export const PDF_SCALE_MIN = 0.75
 export const PDF_SCALE_MAX = 3
 
 export type SpreadMode = "auto" | "single" | "double"
+export type PdfReadingProgression = "ltr" | "rtl"
 
 /** RFC 3778 / Readium locators: page fragments live in `locations.fragments`, not in `href`. */
 export function pdfPageFragment(page: number): string {
@@ -149,6 +150,17 @@ export class PdfNavigator {
     return [page]
   }
 
+  getSpreadPagesInReadingOrder(
+    containerWidth: number,
+    containerHeight: number,
+    readingProgression: PdfReadingProgression,
+  ): number[] {
+    const pages = this.getSpreadPages(containerWidth, containerHeight)
+    return readingProgression === "rtl" && pages.length === 2
+      ? [...pages].reverse()
+      : pages
+  }
+
   get currentLocator(): Locator {
     const prog =
       this._totalPages > 1
@@ -259,11 +271,16 @@ export class PdfNavigator {
     canvas: HTMLCanvasElement,
     containerWidth: number,
     containerHeight: number,
+    readingProgression: PdfReadingProgression = "ltr",
   ): Promise<void> {
     const pdf = this.pdf
     if (!pdf || this._currentPage < 1) return
 
-    const pages = this.getSpreadPages(containerWidth, containerHeight)
+    const pages = this.getSpreadPagesInReadingOrder(
+      containerWidth,
+      containerHeight,
+      readingProgression,
+    )
     const scale = await this.computeFitScale(
       containerWidth,
       containerHeight,
@@ -300,5 +317,26 @@ export class PdfNavigator {
       await page2.render({ canvasContext: ctx, viewport: vp2, canvas }).promise
       ctx.restore()
     }
+  }
+
+  async renderSinglePage(
+    canvas: HTMLCanvasElement,
+    pageNumber: number,
+    containerWidth: number,
+    containerHeight: number,
+  ): Promise<void> {
+    if (!this.pdf || pageNumber < 1 || pageNumber > this._totalPages) return
+
+    const page = await this.getPage(pageNumber)
+    const scale = await this.computeFitScale(containerWidth, containerHeight, [
+      pageNumber,
+    ])
+    const viewport = page.getViewport({ scale })
+    const context = canvas.getContext("2d")
+    if (!context) return
+
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    await page.render({ canvasContext: context, viewport, canvas }).promise
   }
 }

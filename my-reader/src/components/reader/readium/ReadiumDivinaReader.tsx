@@ -1,25 +1,29 @@
 import { EpubNavigator } from "@readium/navigator"
-import { Locator, LocatorLocations, type Publication } from "@readium/shared"
+import {
+  Locator,
+  LocatorLocations,
+  Page,
+  type Publication,
+  ReadingProgression,
+} from "@readium/shared"
 import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useTheme } from "@/components/AppThemeProvider"
 import {
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
+import { FixedLayoutSettingsPanel } from "@/components/reader/shared/FixedLayoutSettingsPanel"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
   READER_SETTINGS_CONTENT_CLASS,
-  READER_SETTINGS_LABEL_CLASS,
-  READER_SETTINGS_OPTION_CLASS,
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
-  readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
@@ -29,12 +33,29 @@ import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayou
 import {
   applySpreadPreference,
   epubPreferencesForSpread,
-  type SpreadPreference,
 } from "@/lib/readium/epubReaderPrefs"
+import { resolveFixedBackgroundColor } from "@/lib/readium/fixedLayoutPreferences"
 import { tocTargetToLocator } from "@/lib/readium/tocNavigation"
-import { cn } from "@/lib/utils"
+import { useAppUiStore } from "@/stores/appUiStore"
 
-type DivinaSurface = "black" | "dim" | "paper"
+function applyPublicationReadingProgression(
+  publication: Publication,
+  direction: "ltr" | "rtl",
+) {
+  const target =
+    direction === "rtl" ? ReadingProgression.rtl : ReadingProgression.ltr
+  if (publication.metadata.readingProgression === target) return
+
+  publication.metadata.readingProgression = target
+  for (const item of publication.readingOrder.items) {
+    const page = item.properties?.page
+    if (page === Page.left || page === Page.right) {
+      item.properties = item.properties?.add({
+        page: page === Page.left ? Page.right : Page.left,
+      })
+    }
+  }
+}
 
 export type ReadiumDivinaReaderProps = {
   bookTitle: string
@@ -56,8 +77,10 @@ export function ReadiumDivinaReader({
   progressSyncEnabled,
 }: ReadiumDivinaReaderProps) {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
+  const currentLocatorRef = useRef<Locator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
     useReaderPanels()
   const {
@@ -73,15 +96,10 @@ export function ReadiumDivinaReader({
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
-  const [spreadMode, setSpreadMode] = useState<SpreadPreference>("auto")
-  const [surface, setSurface] = useState<DivinaSurface>("black")
-
-  const onSpreadChange = useCallback(async (mode: SpreadPreference) => {
-    const nav = navigatorRef.current
-    if (!nav) return
-    await applySpreadPreference(nav, mode)
-    setSpreadMode(mode)
-  }, [])
+  const background = useAppUiStore((state) => state.fixedLayout.background)
+  const direction = useAppUiStore((state) => state.fixedLayout.direction)
+  const spreadMode = useAppUiStore((state) => state.fixedLayout.spreadMode)
+  const backgroundColor = resolveFixedBackgroundColor(background, resolvedTheme)
 
   const positions = useMemo(() => {
     const items = publication.readingOrder.items
@@ -109,7 +127,7 @@ export function ReadiumDivinaReader({
       href: item.href,
       type: item.type,
     }))
-  }, [publication])
+  }, [publication, t])
 
   const goToIndex = useCallback(
     (targetIndex: number) => {
@@ -139,7 +157,7 @@ export function ReadiumDivinaReader({
     [publication, closePanels, goToIndex],
   )
 
-  const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
+  const isRtl = direction === "rtl"
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
@@ -213,6 +231,11 @@ export function ReadiumDivinaReader({
   })
 
   useEffect(() => {
+    const nav = navigatorRef.current
+    if (nav) void applySpreadPreference(nav, spreadMode)
+  }, [spreadMode])
+
+  useEffect(() => {
     if (!containerRef.current) return
 
     let cancelled = false
@@ -221,17 +244,19 @@ export function ReadiumDivinaReader({
     async function init() {
       try {
         const container = containerRef.current!
+        applyPublicationReadingProgression(publication, direction)
         const items = publication.readingOrder.items
         if (items.length === 0) throw new Error("No pages in comic")
 
         let initialPosition: Locator = positions[0]
-        if (initialSavedLocator) {
-          const pos = initialSavedLocator.locations?.position
+        const restoredLocator = currentLocatorRef.current ?? initialSavedLocator
+        if (restoredLocator) {
+          const pos = restoredLocator.locations?.position
           if (typeof pos === "number" && pos >= 1 && pos <= positions.length) {
             initialPosition = positions[pos - 1]
           } else {
             const m = positions.findIndex(
-              (p) => p.href === initialSavedLocator.href,
+              (p) => p.href === restoredLocator.href,
             )
             if (m >= 0) initialPosition = positions[m]
           }
@@ -254,6 +279,7 @@ export function ReadiumDivinaReader({
           {
             frameLoaded: () => {},
             positionChanged: (locator) => {
+              currentLocatorRef.current = locator
               setCurrentLocator(locator)
               const idx = (locator.locations?.position ?? 1) - 1
               const itemTitle = items[idx]?.title?.trim()
@@ -283,8 +309,7 @@ export function ReadiumDivinaReader({
             peripheral: (ev) => {
               const rec = ev as { key?: string; keyCode?: number }
               const key = rec.key ?? ""
-              const isRtl =
-                publication.metadata.effectiveReadingProgression === "rtl"
+              const isRtl = direction === "rtl"
               if (
                 key === "ArrowRight" ||
                 key === "PageDown" ||
@@ -303,13 +328,18 @@ export function ReadiumDivinaReader({
           positions,
           initialPosition,
           {
-            preferences: epubPreferencesForSpread("auto"),
+            preferences: epubPreferencesForSpread(
+              useAppUiStore.getState().fixedLayout.spreadMode,
+            ),
             defaults: {},
           },
         )
         patchEpubNavigatorFixedLayoutGoNav(nav)
         await nav.load()
-        await applySpreadPreference(nav, "auto")
+        await applySpreadPreference(
+          nav,
+          useAppUiStore.getState().fixedLayout.spreadMode,
+        )
         requestAnimationFrame(() => {
           void nav!.resizeHandler()
           requestAnimationFrame(() => {
@@ -338,6 +368,7 @@ export function ReadiumDivinaReader({
 
         navigatorRef.current = nav
         setReadiumNavReady(true)
+        currentLocatorRef.current = nav.currentLocator
         setCurrentLocator(nav.currentLocator)
         const p0 = nav.currentLocator.locations?.position ?? 1
         setChapterTitle(
@@ -361,7 +392,7 @@ export function ReadiumDivinaReader({
       void nav?.destroy()
       navigatorRef.current = null
     }
-  }, [publication, initialSavedLocator, positions, showChrome])
+  }, [direction, initialSavedLocator, positions, publication, showChrome, t])
 
   if (initError) {
     return (
@@ -385,6 +416,7 @@ export function ReadiumDivinaReader({
       panelsOpen={tocOpen || settingsOpen}
       onClosePanels={closePanels}
       readerMode="fixed-layout"
+      readerBackgroundColor={backgroundColor}
       topBar={{
         bookTitle,
         chapterTitle: format.toUpperCase() === "CBZ" ? "" : chapterTitle,
@@ -412,60 +444,7 @@ export function ReadiumDivinaReader({
             onClose={closePanels}
           />
           <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
-            <section className="space-y-2">
-              <Label className={READER_SETTINGS_LABEL_CLASS}>
-                {t("reader.layout")}
-              </Label>
-              <div className="flex flex-col gap-2">
-                {(
-                  [
-                    ["auto", t("reader.layoutOptions.auto")],
-                    ["single", t("reader.layoutOptions.single")],
-                    ["double", t("reader.layoutOptions.double")],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => void onSpreadChange(value)}
-                    className={cn(
-                      READER_SETTINGS_OPTION_CLASS,
-                      "text-start",
-                      readerSettingsOptionStateClass(spreadMode === value),
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="space-y-2">
-              <Label className={READER_SETTINGS_LABEL_CLASS}>
-                {t("reader.canvasBg")}
-              </Label>
-              <div className="flex flex-col gap-2">
-                {(
-                  [
-                    ["black", t("reader.canvasBgOptions.black")],
-                    ["dim", t("reader.canvasBgOptions.dim")],
-                    ["paper", t("reader.canvasBgOptions.paper")],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSurface(value)}
-                    className={cn(
-                      READER_SETTINGS_OPTION_CLASS,
-                      "text-start",
-                      readerSettingsOptionStateClass(surface === value),
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </section>
+            <FixedLayoutSettingsPanel showPageDirection={false} />
           </ReaderSidePanelScrollArea>
         </ReaderSidePanelFrame>
       }
@@ -516,12 +495,8 @@ export function ReadiumDivinaReader({
       main={
         <div
           ref={containerRef}
-          className={cn(
-            "readium-divina-host relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden",
-            surface === "black" && "bg-black",
-            surface === "dim" && "bg-zinc-950",
-            surface === "paper" && "bg-background",
-          )}
+          className="readium-divina-host relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden"
+          style={{ backgroundColor }}
         />
       }
     />

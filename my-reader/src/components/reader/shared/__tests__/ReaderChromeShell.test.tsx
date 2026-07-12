@@ -137,6 +137,48 @@ describe("ReaderChromeShell", () => {
     )
   })
 
+  it("should recreate fixed-layout background layer when settings panel remains open", () => {
+    const props = {
+      readerRootRef: { current: null },
+      chromeVisible: true,
+      showChrome: vi.fn(),
+      scheduleChromeHide: vi.fn(),
+      panelsOpen: true,
+      onClosePanels: vi.fn(),
+      readerMode: "fixed-layout" as const,
+      topBar,
+      tocPanel: null,
+      settingsPanel: <aside data-testid="settings-panel" />,
+      main: <main />,
+    }
+    const { container, rerender } = render(
+      <ReaderChromeShell {...props} readerBackgroundColor="#000000" />,
+    )
+
+    expect(screen.getByTestId("settings-panel")).toBeInTheDocument()
+    expect(container.querySelector(".reader-window-paper")).toHaveStyle({
+      "--reader-bg": "#000000",
+      "--viewer-bg": "#000000",
+    })
+    const blackBackgroundLayer = container.querySelector(
+      ".reader-fixed-layout-background",
+    )
+    expect(blackBackgroundLayer).toHaveStyle({ backgroundColor: "#000000" })
+
+    rerender(<ReaderChromeShell {...props} readerBackgroundColor="#FFFFFF" />)
+
+    expect(screen.getByTestId("settings-panel")).toBeInTheDocument()
+    expect(container.querySelector(".reader-window-paper")).toHaveStyle({
+      "--reader-bg": "#FFFFFF",
+      "--viewer-bg": "#FFFFFF",
+    })
+    const whiteBackgroundLayer = container.querySelector(
+      ".reader-fixed-layout-background",
+    )
+    expect(whiteBackgroundLayer).toHaveStyle({ backgroundColor: "#FFFFFF" })
+    expect(whiteBackgroundLayer).not.toBe(blackBackgroundLayer)
+  })
+
   it("should schedule chrome hiding when the pointer leaves the bottom region", () => {
     const scheduleChromeHide = vi.fn()
     const { container } = render(

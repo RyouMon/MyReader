@@ -386,6 +386,28 @@ export const zhCN = {
         paginate: "分页",
         scroll: "连续滚动",
       },
+      background: "背景",
+      backgroundOptions: {
+        auto: "自动",
+        black: "黑色",
+        white: "白色",
+      },
+      pageDirection: "翻页方向",
+      pageDirectionOptions: {
+        horizontal: "左右翻页",
+        vertical: "上下翻页",
+      },
+      readingProgression: "阅读方向",
+      readingProgressionOptions: {
+        ltr: "从左到右",
+        rtl: "从右到左",
+      },
+      pageLayout: "页面布局",
+      pageLayoutOptions: {
+        auto: "自动",
+        single: "始终单页",
+        double: "始终双页",
+      },
       typography: "排版",
       typographyOptions: {
         auto: "自动",

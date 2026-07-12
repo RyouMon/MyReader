@@ -1,40 +1,29 @@
+import type { Locator } from "@readium/shared"
+import { Settings } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { useTheme } from "@/components/AppThemeProvider"
 import {
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
+import { FixedLayoutSettingsPanel } from "@/components/reader/shared/FixedLayoutSettingsPanel"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
   READER_SETTINGS_CONTENT_CLASS,
-  READER_SETTINGS_LABEL_CLASS,
-  READER_SETTINGS_OPTION_CLASS,
-  READER_SETTINGS_VALUE_CLASS,
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
-  readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import {
-  PdfNavigator,
-  PDF_RENDER_BASE,
-  PDF_SCALE_MIN,
-  PDF_SCALE_MAX,
-  type SpreadMode,
-} from "@/lib/readium/PdfNavigator"
+import { resolveFixedBackgroundColor } from "@/lib/readium/fixedLayoutPreferences"
+import { PdfNavigator } from "@/lib/readium/PdfNavigator"
 import { useAppUiStore } from "@/stores/appUiStore"
-import { Locator } from "@readium/shared"
-import { Settings } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { cn } from "@/lib/utils"
-
-type PdfSurface = "black" | "dim" | "paper"
 
 export type ReadiumPdfReaderProps = {
   bookTitle: string
@@ -56,8 +45,11 @@ export function ReadiumPdfReader({
   progressSyncEnabled,
 }: ReadiumPdfReaderProps) {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const verticalScrollRef = useRef<HTMLDivElement>(null)
+  const verticalScrollPageChangeRef = useRef(false)
   const navRef = useRef<PdfNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
     useReaderPanels()
@@ -67,18 +59,18 @@ export function ReadiumPdfReader({
   const [initError, setInitError] = useState<string | null>(null)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
-  const [renderScale, setRenderScale] = useState(PDF_RENDER_BASE)
-  const [spreadMode, setSpreadMode] = useState<SpreadMode>("auto")
-  const [surface, setSurface] = useState<PdfSurface>("black")
+  const background = useAppUiStore((s) => s.fixedLayout.background)
+  const navigationMode = useAppUiStore((s) => s.fixedLayout.navigationMode)
+  const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
   const direction = useAppUiStore((s) => s.fixedLayout.direction)
+  const backgroundColor = resolveFixedBackgroundColor(background, resolvedTheme)
 
   const totalPages = navRef.current?.totalPages ?? 0
   const pageNum = currentLocator?.locations?.position ?? 1
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
-    const nav = navRef.current
-    if (!nav || nav.totalPages < 1) return []
-    return Array.from({ length: nav.totalPages }, (_, i) => ({
+    if (totalPages < 1) return []
+    return Array.from({ length: totalPages }, (_, i) => ({
       key: `page-${i + 1}`,
       depth: 0,
       title: t("reader.pageCount", { current: i + 1, total: "" }).replace(
@@ -88,7 +80,7 @@ export function ReadiumPdfReader({
       href: `page-${i + 1}`,
       type: "application/pdf",
     }))
-  }, [readiumNavReady])
+  }, [t, totalPages])
 
   useLocatorProgressSync({
     enabled:
@@ -114,6 +106,7 @@ export function ReadiumPdfReader({
       },
       click: () => false,
     })
+    nav.spreadMode = useAppUiStore.getState().fixedLayout.spreadMode
 
     void (async () => {
       try {
@@ -136,18 +129,47 @@ export function ReadiumPdfReader({
       navRef.current = null
       void nav.destroy()
     }
-  }, [fileUrl, initialSavedLocator])
+  }, [fileUrl, initialSavedLocator, showChrome])
 
-  // Re-render when page, scale, spread mode, or container size changes
   useEffect(() => {
     const nav = navRef.current
-    const canvas = canvasRef.current
+    if (!nav) return
+    nav.spreadMode = navigationMode === "vertical" ? "single" : spreadMode
+    setCurrentLocator(nav.currentLocator)
+  }, [navigationMode, spreadMode])
+
+  const renderPdfPages = useCallback(() => {
+    const nav = navRef.current
     const container = containerRef.current
-    if (!nav || !canvas || !container || !readiumNavReady) return
+    if (!nav || !container || !readiumNavReady) return
+    nav.spreadMode = navigationMode === "vertical" ? "single" : spreadMode
     const { width, height } = container.getBoundingClientRect()
     if (width === 0 || height === 0) return
-    void nav.renderPage(canvas, width, height)
-  }, [pageNum, renderScale, spreadMode, readiumNavReady])
+
+    if (navigationMode === "horizontal") {
+      const canvas = canvasRef.current
+      if (canvas) void nav.renderPage(canvas, width, height, direction)
+      return
+    }
+
+    const canvases = verticalScrollRef.current?.querySelectorAll(
+      "canvas[data-pdf-page]",
+    )
+    canvases?.forEach((canvas) => {
+      const pageNumber = Number(canvas.getAttribute("data-pdf-page"))
+      if (
+        canvas instanceof HTMLCanvasElement &&
+        Number.isFinite(pageNumber) &&
+        Math.abs(pageNumber - pageNum) <= 2
+      ) {
+        void nav.renderSinglePage(canvas, pageNumber, width, height)
+      }
+    })
+  }, [direction, navigationMode, pageNum, readiumNavReady, spreadMode])
+
+  useEffect(() => {
+    renderPdfPages()
+  }, [renderPdfPages])
 
   // Observe container resize (debounced to avoid flicker during chrome transitions)
   useEffect(() => {
@@ -157,12 +179,7 @@ export function ReadiumPdfReader({
     const observer = new ResizeObserver(() => {
       cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
-        const nav = navRef.current
-        const canvas = canvasRef.current
-        if (!nav || !canvas) return
-        const { width, height } = container.getBoundingClientRect()
-        if (width === 0 || height === 0) return
-        void nav.renderPage(canvas, width, height)
+        renderPdfPages()
       })
     })
     observer.observe(container)
@@ -170,29 +187,73 @@ export function ReadiumPdfReader({
       cancelAnimationFrame(rafId)
       observer.disconnect()
     }
-  }, [readiumNavReady])
+  }, [readiumNavReady, renderPdfPages])
 
-  const onSpreadChange = useCallback((mode: SpreadMode) => {
+  const goToPdfPage = useCallback(
+    (pageNumber: number) => {
+      const nav = navRef.current
+      if (!nav) return
+      nav.goToPage(pageNumber)
+      if (navigationMode === "vertical") {
+        requestAnimationFrame(() => {
+          verticalScrollRef.current
+            ?.querySelector<HTMLElement>(`[data-pdf-page-slot="${pageNumber}"]`)
+            ?.scrollIntoView({ block: "start" })
+        })
+      }
+    },
+    [navigationMode],
+  )
+
+  useEffect(() => {
+    if (navigationMode !== "vertical" || !readiumNavReady) return
+    if (verticalScrollPageChangeRef.current) {
+      verticalScrollPageChangeRef.current = false
+      return
+    }
+    goToPdfPage(pageNum)
+  }, [goToPdfPage, navigationMode, pageNum, readiumNavReady])
+
+  const onVerticalScroll = useCallback(() => {
+    const viewport = verticalScrollRef.current
     const nav = navRef.current
-    if (nav) nav.spreadMode = mode
-    setSpreadMode(mode)
+    if (!viewport || !nav || viewport.clientHeight <= 0) return
+    const nextPage = Math.max(
+      1,
+      Math.min(
+        nav.totalPages,
+        Math.round(viewport.scrollTop / viewport.clientHeight) + 1,
+      ),
+    )
+    if (nextPage === nav.currentPage) return
+    verticalScrollPageChangeRef.current = true
+    nav.goToPage(nextPage)
   }, [])
 
   const onPdfEdgePrev = useCallback(() => {
-    navRef.current?.goBackward()
-  }, [])
+    const nav = navRef.current
+    if (!nav) return
+    nav.goBackward()
+    if (navigationMode === "vertical") goToPdfPage(nav.currentPage)
+  }, [goToPdfPage, navigationMode])
 
   const onPdfEdgeNext = useCallback(() => {
-    navRef.current?.goForward()
-  }, [])
-
-  const onProgressSeek = useCallback((progress: number) => {
     const nav = navRef.current
-    if (!nav || nav.totalPages < 1) return
-    const normalized = Math.max(0, Math.min(100, progress)) / 100
-    const targetPage = Math.round(normalized * (nav.totalPages - 1)) + 1
-    nav.goToPage(targetPage)
-  }, [])
+    if (!nav) return
+    nav.goForward()
+    if (navigationMode === "vertical") goToPdfPage(nav.currentPage)
+  }, [goToPdfPage, navigationMode])
+
+  const onProgressSeek = useCallback(
+    (progress: number) => {
+      const nav = navRef.current
+      if (!nav || nav.totalPages < 1) return
+      const normalized = Math.max(0, Math.min(100, progress)) / 100
+      const targetPage = Math.round(normalized * (nav.totalPages - 1)) + 1
+      goToPdfPage(targetPage)
+    },
+    [goToPdfPage],
+  )
   const resolveProgressCommit = useCallback(
     (progress: number) => {
       if (totalPages <= 1) return 0
@@ -223,10 +284,10 @@ export function ReadiumPdfReader({
   const onTocSelect = useCallback(
     (row: ReadiumTocRow) => {
       const m = /^page-(\d+)$/i.exec(row.href)
-      if (m) navRef.current?.goToPage(Number(m[1]))
+      if (m) goToPdfPage(Number(m[1]))
       closePanels()
     },
-    [closePanels],
+    [closePanels, goToPdfPage],
   )
 
   useEffect(() => {
@@ -235,17 +296,21 @@ export function ReadiumPdfReader({
       if (!nav) return
       const isRtl = direction === "rtl"
       if (e.key === "ArrowRight" || e.key === "PageDown") {
-        isRtl ? nav.goBackward() : nav.goForward()
+        isRtl ? onPdfEdgePrev() : onPdfEdgeNext()
       } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        isRtl ? nav.goForward() : nav.goBackward()
+        isRtl ? onPdfEdgeNext() : onPdfEdgePrev()
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [direction])
+  }, [direction, onPdfEdgeNext, onPdfEdgePrev])
 
   const isRtl = direction === "rtl"
-  const edgeTurnActive = readiumNavReady && !tocOpen && !settingsOpen
+  const edgeTurnActive =
+    navigationMode === "horizontal" &&
+    readiumNavReady &&
+    !tocOpen &&
+    !settingsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
@@ -273,6 +338,7 @@ export function ReadiumPdfReader({
       panelsOpen={tocOpen || settingsOpen}
       onClosePanels={closePanels}
       readerMode="fixed-layout"
+      readerBackgroundColor={backgroundColor}
       topBar={{
         bookTitle,
         chapterTitle: "",
@@ -300,99 +366,21 @@ export function ReadiumPdfReader({
             onClose={closePanels}
           />
           <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
-            <section className="space-y-2">
-              <Label className={READER_SETTINGS_LABEL_CLASS}>
-                {t("reader.layout")}
-              </Label>
-              <div className="flex flex-col gap-2">
-                {(
-                  [
-                    ["auto", t("reader.layoutOptions.auto")],
-                    ["single", t("reader.layoutOptions.single")],
-                    ["double", t("reader.layoutOptions.double")],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => onSpreadChange(value)}
-                    className={cn(
-                      READER_SETTINGS_OPTION_CLASS,
-                      "text-start",
-                      readerSettingsOptionStateClass(spreadMode === value),
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="space-y-2">
-              <Label className={READER_SETTINGS_LABEL_CLASS}>
-                {t("reader.canvasBg")}
-              </Label>
-              <div className="flex flex-col gap-2">
-                {(
-                  [
-                    ["black", t("reader.canvasBgOptions.black")],
-                    ["dim", t("reader.canvasBgOptions.dim")],
-                    ["paper", t("reader.canvasBgOptions.paper")],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setSurface(value)}
-                    className={cn(
-                      READER_SETTINGS_OPTION_CLASS,
-                      "text-start",
-                      readerSettingsOptionStateClass(surface === value),
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </section>
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label
-                  htmlFor="pdf-render-scale"
-                  className={READER_SETTINGS_LABEL_CLASS}
-                >
-                  {t("reader.renderScale")}
-                </Label>
-                <span className={READER_SETTINGS_VALUE_CLASS}>
-                  {renderScale.toFixed(2)}×
-                </span>
-              </div>
-              <input
-                id="pdf-render-scale"
-                type="range"
-                min={PDF_SCALE_MIN}
-                max={PDF_SCALE_MAX}
-                step={0.05}
-                value={renderScale}
-                onChange={(e) => {
-                  const scale = Number(e.target.value)
-                  setRenderScale(scale)
-                  if (navRef.current) navRef.current.renderScale = scale
-                }}
-                className="w-full accent-reader-chrome-active"
-              />
-            </section>
+            <FixedLayoutSettingsPanel showPageDirection />
           </ReaderSidePanelScrollArea>
         </ReaderSidePanelFrame>
       }
       edgeTurnOverlays={
-        <ReaderPaginateEdgeTurnStrips
-          showPrev={isRtl ? nearRight : nearLeft}
-          showNext={isRtl ? nearLeft : nearRight}
-          onPrev={onPdfEdgePrev}
-          onNext={onPdfEdgeNext}
-          prevLabel={t("reader.prevPage")}
-          nextLabel={t("reader.nextPage")}
-        />
+        navigationMode === "horizontal" ? (
+          <ReaderPaginateEdgeTurnStrips
+            showPrev={isRtl ? nearRight : nearLeft}
+            showNext={isRtl ? nearLeft : nearRight}
+            onPrev={onPdfEdgePrev}
+            onNext={onPdfEdgeNext}
+            prevLabel={t("reader.prevPage")}
+            nextLabel={t("reader.nextPage")}
+          />
+        ) : null
       }
       bottomStatusBar={
         <ReaderBottomStatusBar
@@ -416,19 +404,40 @@ export function ReadiumPdfReader({
       main={
         <div
           ref={containerRef}
-          className={cn(
-            "relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-hidden",
-            surface === "black" && "bg-black",
-            surface === "dim" && "bg-zinc-950",
-            surface === "paper" && "bg-background",
-          )}
+          className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col items-center justify-center overflow-hidden"
+          style={{ backgroundColor }}
         >
           {!readiumNavReady ? (
             <div className="text-sm text-muted-foreground">
               {t("reader.loadingPdf")}
             </div>
-          ) : (
+          ) : navigationMode === "horizontal" ? (
             <canvas ref={canvasRef} className="max-h-full max-w-full" />
+          ) : (
+            <div
+              ref={verticalScrollRef}
+              className="h-full w-full overflow-y-auto overscroll-contain"
+              onScroll={onVerticalScroll}
+            >
+              {Array.from({ length: totalPages }, (_, index) => {
+                const page = index + 1
+                const shouldRender = Math.abs(page - pageNum) <= 2
+                return (
+                  <div
+                    key={page}
+                    data-pdf-page-slot={page}
+                    className="flex h-full min-h-full w-full items-center justify-center p-4"
+                  >
+                    {shouldRender ? (
+                      <canvas
+                        data-pdf-page={page}
+                        className="max-h-full max-w-full shadow-md"
+                      />
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
       }

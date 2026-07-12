@@ -8,6 +8,10 @@ import {
 } from "@/components/reader/types"
 import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import {
+  normalizeFixedBackground,
+  normalizeFixedNavigationMode,
+} from "@/lib/readium/fixedLayoutPreferences"
+import {
   coerceReaderFontFamily,
   normalizeReaderFontFamiliesByLanguage,
 } from "@/lib/readium/readerFonts"
@@ -214,6 +218,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
       fixedLayout: {
         ...DEFAULT_FIXED_LAYOUT_SETTINGS,
         ...data.fixedLayout,
+        background: normalizeFixedBackground(data.fixedLayout?.background),
+        navigationMode: normalizeFixedNavigationMode(
+          data.fixedLayout?.navigationMode,
+        ),
         spreadMode: normalizeSpreadPreference(data.fixedLayout?.spreadMode),
       },
       reflowable: {

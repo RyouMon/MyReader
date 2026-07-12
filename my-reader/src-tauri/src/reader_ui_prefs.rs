@@ -7,6 +7,10 @@ use specta::Type;
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FixedLayoutSettingsDto {
+    #[serde(default = "default_fixed_background")]
+    pub background: String,
+    #[serde(default = "default_navigation_mode")]
+    pub navigation_mode: String,
     #[serde(default = "default_reading_layout")]
     pub reading_layout: String,
     #[serde(default = "default_display_mode")]
@@ -23,6 +27,12 @@ pub struct FixedLayoutSettingsDto {
     pub page_gap: f64,
 }
 
+fn default_fixed_background() -> String {
+    "auto".into()
+}
+fn default_navigation_mode() -> String {
+    "horizontal".into()
+}
 fn default_reading_layout() -> String {
     "paginate".into()
 }
@@ -48,6 +58,8 @@ fn default_page_gap() -> f64 {
 impl Default for FixedLayoutSettingsDto {
     fn default() -> Self {
         Self {
+            background: default_fixed_background(),
+            navigation_mode: default_navigation_mode(),
             reading_layout: default_reading_layout(),
             display_mode: default_display_mode(),
             spread_mode: default_spread_mode(),
@@ -305,6 +317,31 @@ mod tests {
         assert_eq!(
             serialized["reflowable"]["settings"]["fontFamiliesByLanguage"]["zh"],
             json!("noto-serif-sc")
+        );
+    }
+
+    #[test]
+    fn reader_ui_preferences_should_round_trip_fixed_layout_settings() {
+        let prefs: ReaderUiPreferences = serde_json::from_value(json!({
+            "fixedLayout": {
+                "background": "black",
+                "navigationMode": "vertical",
+                "direction": "rtl",
+                "spreadMode": "single"
+            }
+        }))
+        .expect("preferences should deserialize");
+
+        assert_eq!(prefs.fixed_layout.background, "black");
+        assert_eq!(prefs.fixed_layout.navigation_mode, "vertical");
+        assert_eq!(prefs.fixed_layout.direction, "rtl");
+        assert_eq!(prefs.fixed_layout.spread_mode, "single");
+
+        let serialized = serde_json::to_value(&prefs).expect("preferences should serialize");
+        assert_eq!(serialized["fixedLayout"]["background"], json!("black"));
+        assert_eq!(
+            serialized["fixedLayout"]["navigationMode"],
+            json!("vertical")
         );
     }
 }

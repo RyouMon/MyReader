@@ -56,9 +56,14 @@ export type ReaderChromeShellProps = {
   /** 当前阅读主题，用于设置 data-reader-theme 以驱动工具栏颜色。 */
   theme?: string
   readerMode?: "fixed-layout"
+  /** 固定版式阅读画布背景；写入外壳变量，确保侧栏打开时也能即时更新。 */
+  readerBackgroundColor?: string
 }
 
-type ReaderChromeStyle = CSSProperties & Record<`--reader-${string}`, string>
+type ReaderChromeStyle = CSSProperties &
+  Record<`--reader-${string}`, string> & {
+    "--viewer-bg"?: string
+  }
 
 export function readerChromeThemeStyle(
   theme?: string,
@@ -114,11 +119,17 @@ export function ReaderChromeShell({
   onClosePanels,
   theme,
   readerMode,
+  readerBackgroundColor,
 }: ReaderChromeShellProps) {
-  const chromeThemeStyle = useMemo(
-    () => readerChromeThemeStyle(theme, readerMode),
-    [readerMode, theme],
-  )
+  const chromeThemeStyle = useMemo(() => {
+    const themeStyle = readerChromeThemeStyle(theme, readerMode)
+    if (!readerBackgroundColor) return themeStyle
+    return {
+      ...themeStyle,
+      "--reader-bg": readerBackgroundColor,
+      "--viewer-bg": readerBackgroundColor,
+    }
+  }, [readerBackgroundColor, readerMode, theme])
 
   const onReaderRootPointerLeave = (e: ReactPointerEvent<HTMLDivElement>) => {
     const next = e.relatedTarget
@@ -171,6 +182,14 @@ export function ReaderChromeShell({
           <ReaderPanelsBackdrop onClose={onClosePanels} />
         ) : null}
         <div className="reader-window-content relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {readerMode === "fixed-layout" && readerBackgroundColor ? (
+            <div
+              key={readerBackgroundColor}
+              aria-hidden="true"
+              className="reader-fixed-layout-background pointer-events-none absolute inset-0 z-0"
+              style={{ backgroundColor: readerBackgroundColor }}
+            />
+          ) : null}
           {beforeMain}
           {main}
           {bottomChrome}
