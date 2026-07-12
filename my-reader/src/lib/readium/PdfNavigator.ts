@@ -68,6 +68,10 @@ export class PdfNavigator {
 
   /** Page proxy cache: avoids re-fetching page data on every render. */
   private pageCache = new Map<number, PDFPageProxy>()
+  private canvasRenderState = new WeakMap<
+    HTMLCanvasElement,
+    { generation: number; tail: Promise<void> }
+  >()
 
   constructor(fileUrl: string, listeners: Partial<PdfNavigatorListeners> = {}) {
     this.fileUrl = fileUrl
@@ -246,6 +250,34 @@ export class PdfNavigator {
     return page
   }
 
+  /** Serialize work per canvas because pdf.js forbids overlapping render tasks. */
+  private async queueCanvasRender(
+    canvas: HTMLCanvasElement,
+    render: () => Promise<void>,
+  ): Promise<void> {
+    const previous = this.canvasRenderState.get(canvas)
+    const state = {
+      generation: (previous?.generation ?? 0) + 1,
+      tail: Promise.resolve(),
+    }
+    state.tail = (previous?.tail ?? Promise.resolve())
+      .catch(() => {})
+      .then(async () => {
+        if (this._destroyed) return
+        if (this.canvasRenderState.get(canvas) !== state) return
+        await render()
+      })
+    this.canvasRenderState.set(canvas, state)
+
+    try {
+      await state.tail
+    } finally {
+      if (this.canvasRenderState.get(canvas) === state) {
+        this.canvasRenderState.delete(canvas)
+      }
+    }
+  }
+
   /** Compute scale to fit page(s) within the container. */
   private async computeFitScale(
     containerWidth: number,
@@ -273,50 +305,54 @@ export class PdfNavigator {
     containerHeight: number,
     readingProgression: PdfReadingProgression = "ltr",
   ): Promise<void> {
-    const pdf = this.pdf
-    if (!pdf || this._currentPage < 1) return
+    await this.queueCanvasRender(canvas, async () => {
+      const pdf = this.pdf
+      if (!pdf || this._currentPage < 1) return
 
-    const pages = this.getSpreadPagesInReadingOrder(
-      containerWidth,
-      containerHeight,
-      readingProgression,
-    )
-    const scale = await this.computeFitScale(
-      containerWidth,
-      containerHeight,
-      pages,
-    )
+      const pages = this.getSpreadPagesInReadingOrder(
+        containerWidth,
+        containerHeight,
+        readingProgression,
+      )
+      const scale = await this.computeFitScale(
+        containerWidth,
+        containerHeight,
+        pages,
+      )
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+      const ctx = canvas.getContext("2d")
+      if (!ctx) return
 
-    if (pages.length === 1) {
-      const page = await this.getPage(pages[0])
-      const vp = page.getViewport({ scale })
-      canvas.width = vp.width
-      canvas.height = vp.height
-      await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
-    } else {
-      // Double-page spread: render side by side
-      const [page1, page2] = await Promise.all([
-        this.getPage(pages[0]),
-        this.getPage(pages[1]),
-      ])
-      const vp1 = page1.getViewport({ scale })
-      const vp2 = page2.getViewport({ scale })
-      const gap = 4
-      const totalWidth = Math.ceil(vp1.width + gap + vp2.width)
-      const totalHeight = Math.ceil(Math.max(vp1.height, vp2.height))
-      canvas.width = totalWidth
-      canvas.height = totalHeight
-      // Render left page at origin
-      await page1.render({ canvasContext: ctx, viewport: vp1, canvas }).promise
-      // Render right page offset by left page width + gap
-      ctx.save()
-      ctx.translate(Math.ceil(vp1.width) + gap, 0)
-      await page2.render({ canvasContext: ctx, viewport: vp2, canvas }).promise
-      ctx.restore()
-    }
+      if (pages.length === 1) {
+        const page = await this.getPage(pages[0])
+        const vp = page.getViewport({ scale })
+        canvas.width = vp.width
+        canvas.height = vp.height
+        await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
+      } else {
+        // Double-page spread: render side by side
+        const [page1, page2] = await Promise.all([
+          this.getPage(pages[0]),
+          this.getPage(pages[1]),
+        ])
+        const vp1 = page1.getViewport({ scale })
+        const vp2 = page2.getViewport({ scale })
+        const gap = 4
+        const totalWidth = Math.ceil(vp1.width + gap + vp2.width)
+        const totalHeight = Math.ceil(Math.max(vp1.height, vp2.height))
+        canvas.width = totalWidth
+        canvas.height = totalHeight
+        // Render left page at origin
+        await page1.render({ canvasContext: ctx, viewport: vp1, canvas })
+          .promise
+        // Render right page offset by left page width + gap
+        ctx.save()
+        ctx.translate(Math.ceil(vp1.width) + gap, 0)
+        await page2.render({ canvasContext: ctx, viewport: vp2, canvas })
+          .promise
+        ctx.restore()
+      }
+    })
   }
 
   async renderSinglePage(
@@ -325,18 +361,22 @@ export class PdfNavigator {
     containerWidth: number,
     containerHeight: number,
   ): Promise<void> {
-    if (!this.pdf || pageNumber < 1 || pageNumber > this._totalPages) return
+    await this.queueCanvasRender(canvas, async () => {
+      if (!this.pdf || pageNumber < 1 || pageNumber > this._totalPages) return
 
-    const page = await this.getPage(pageNumber)
-    const scale = await this.computeFitScale(containerWidth, containerHeight, [
-      pageNumber,
-    ])
-    const viewport = page.getViewport({ scale })
-    const context = canvas.getContext("2d")
-    if (!context) return
+      const page = await this.getPage(pageNumber)
+      const scale = await this.computeFitScale(
+        containerWidth,
+        containerHeight,
+        [pageNumber],
+      )
+      const viewport = page.getViewport({ scale })
+      const context = canvas.getContext("2d")
+      if (!context) return
 
-    canvas.width = viewport.width
-    canvas.height = viewport.height
-    await page.render({ canvasContext: context, viewport, canvas }).promise
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      await page.render({ canvasContext: context, viewport, canvas }).promise
+    })
   }
 }
