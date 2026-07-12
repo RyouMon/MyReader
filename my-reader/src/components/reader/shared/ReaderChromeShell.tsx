@@ -22,6 +22,7 @@ export type ReaderChromeTopBarConfig = {
   bookmarked: boolean
   tocOpen?: boolean
   settingsOpen?: boolean
+  showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
   onToggleBookmark: () => void
@@ -158,6 +159,7 @@ export function ReaderChromeShell({
           bookmarked={topBar.bookmarked}
           tocOpen={topBar.tocOpen}
           settingsOpen={topBar.settingsOpen}
+          showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}
           onToggleBookmark={topBar.onToggleBookmark}

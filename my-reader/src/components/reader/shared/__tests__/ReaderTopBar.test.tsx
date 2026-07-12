@@ -5,9 +5,16 @@ import { ReaderTopBar } from "../ReaderTopBar"
 const platformMocks = vi.hoisted(() => ({
   isMacPlatform: vi.fn(() => false),
 }))
+const tauriMocks = vi.hoisted(() => ({
+  isTauri: vi.fn(() => false),
+  startDragging: vi.fn(),
+}))
 
 vi.mock("@/lib/platform", () => platformMocks)
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false }))
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: tauriMocks.isTauri }))
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ startDragging: tauriMocks.startDragging }),
+}))
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -25,6 +32,8 @@ const defaultProps = {
 describe("ReaderTopBar", () => {
   beforeEach(() => {
     platformMocks.isMacPlatform.mockReturnValue(false)
+    tauriMocks.isTauri.mockReturnValue(false)
+    tauriMocks.startDragging.mockReset()
   })
 
   it("should remove the chapter label when no chapter is resolved", () => {
@@ -71,5 +80,27 @@ describe("ReaderTopBar", () => {
     const tocButton = screen.getByTitle("reader.toc")
     expect(tocButton.closest("header")).toHaveClass("pl-[9px]", "pr-[9px]")
     expect(tocButton.parentElement).toHaveClass("gap-4")
+  })
+
+  it("should keep window controls and dragging when reader actions are unavailable", () => {
+    tauriMocks.isTauri.mockReturnValue(true)
+    const { container } = render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        showReaderActions={false}
+      />,
+    )
+
+    expect(screen.getByTitle("reader.close")).toBeInTheDocument()
+    expect(screen.queryByTitle("reader.toc")).not.toBeInTheDocument()
+    expect(screen.queryByTitle("reader.settings")).not.toBeInTheDocument()
+    expect(screen.queryByTitle("reader.bookmark")).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(container.querySelector("header") as Element, {
+      button: 0,
+    })
+
+    expect(tauriMocks.startDragging).toHaveBeenCalledOnce()
   })
 })

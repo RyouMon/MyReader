@@ -18,6 +18,7 @@ interface ReaderTopBarProps {
   bookmarked: boolean
   tocOpen?: boolean
   settingsOpen?: boolean
+  showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
   onToggleBookmark: () => void
@@ -33,6 +34,7 @@ export function ReaderTopBar({
   bookmarked,
   tocOpen,
   settingsOpen,
+  showReaderActions = true,
   previewNativeMacFullscreen = false,
   onToggleToc,
   onToggleBookmark,
@@ -260,14 +262,16 @@ export function ReaderTopBar({
             onZoom={toggleMaximizeWindow}
           />
         ) : null}
-        <TopBarButton
-          title={t("reader.toc")}
-          onClick={onToggleToc}
-          active={tocOpen}
-          chromeVisible={visible}
-        >
-          <List className="size-[17px]" />
-        </TopBarButton>
+        {showReaderActions ? (
+          <TopBarButton
+            title={t("reader.toc")}
+            onClick={onToggleToc}
+            active={tocOpen}
+            chromeVisible={visible}
+          >
+            <List className="size-[17px]" />
+          </TopBarButton>
+        ) : null}
       </div>
 
       <div
@@ -287,26 +291,30 @@ export function ReaderTopBar({
       </div>
 
       <div className="relative z-10 flex items-center justify-end gap-[9px]">
-        <TopBarButton
-          title={t("reader.settings")}
-          onClick={onToggleSettings}
-          active={settingsOpen}
-          chromeVisible={visible}
-        >
-          <Settings className="size-[17px]" />
-        </TopBarButton>
-        <TopBarButton
-          title={t("reader.bookmark")}
-          onClick={onToggleBookmark}
-          active={bookmarked}
-          chromeVisible={visible}
-          keepActiveIconVisible
-        >
-          <Bookmark
-            className="size-[17px]"
-            fill={bookmarked ? "currentColor" : "none"}
-          />
-        </TopBarButton>
+        {showReaderActions ? (
+          <>
+            <TopBarButton
+              title={t("reader.settings")}
+              onClick={onToggleSettings}
+              active={settingsOpen}
+              chromeVisible={visible}
+            >
+              <Settings className="size-[17px]" />
+            </TopBarButton>
+            <TopBarButton
+              title={t("reader.bookmark")}
+              onClick={onToggleBookmark}
+              active={bookmarked}
+              chromeVisible={visible}
+              keepActiveIconVisible
+            >
+              <Bookmark
+                className="size-[17px]"
+                fill={bookmarked ? "currentColor" : "none"}
+              />
+            </TopBarButton>
+          </>
+        ) : null}
       </div>
     </header>
   )

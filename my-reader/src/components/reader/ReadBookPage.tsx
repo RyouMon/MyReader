@@ -14,9 +14,6 @@ import {
   ReaderSidePanelScrollArea,
   readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import type { ReadingProgressDto } from "@/hooks/reader/useLocatorProgressSync"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
@@ -32,6 +29,7 @@ import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
 import { api } from "@/lib/tauri-api"
+import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { Locator } from "@readium/shared"
 import { useQueryClient } from "@tanstack/react-query"
@@ -41,7 +39,14 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { AlertCircle, List, Loader2, Type } from "lucide-react"
 import pTimeout from "p-timeout"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import {
   Empty,
@@ -61,6 +66,10 @@ function formatFileSize(bytes: number): string {
 function toReaderAssetSrc(path: string): string {
   return isTauri() ? convertFileSrc(path) : path
 }
+
+const READER_STATE_ACTION_CLASS =
+  "h-9 w-full rounded-md border border-reader-chrome-border bg-[var(--reader-chrome-action-surface)] px-4 text-sm font-medium text-[var(--reader-chrome-action-text)] transition-colors hover:bg-[var(--reader-chrome-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--reader-chrome-active)]"
+const NOOP = () => {}
 
 function isBrowserDemoReader(): boolean {
   if (!import.meta.env.DEV || isTauri() || typeof window === "undefined") {
@@ -85,6 +94,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   const queryClient = useQueryClient()
   const { t } = useTranslation()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
+  const readerTheme = useAppUiStore((s) => s.reflowable.settings.theme)
 
   const [bookTitle, setBookTitle] = useState("")
   const [format, setFormat] = useState("")
@@ -102,6 +112,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   >("idle")
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const closingRef = useRef(false)
+  const readerStateRootRef = useRef<HTMLDivElement>(null)
 
   const mainHandoff = useMemo(() => isMainWebviewWindow(), [])
 
@@ -385,19 +396,49 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     enabled: format === "CBZ" && Boolean(bookPayload?.source.extractedDirPath),
   })
 
+  const renderWindowState = (content: ReactNode) => (
+    <ReaderChromeShell
+      readerRootRef={readerStateRootRef}
+      chromeVisible
+      showChrome={NOOP}
+      scheduleChromeHide={NOOP}
+      topBar={{
+        bookTitle: bookTitle || t("reader.defaultTitle"),
+        chapterTitle: "",
+        bookmarked: false,
+        showReaderActions: false,
+        onToggleToc: NOOP,
+        onToggleBookmark: NOOP,
+        onToggleSettings: NOOP,
+      }}
+      tocPanel={null}
+      settingsPanel={null}
+      main={content}
+      rootClassName="min-h-screen"
+      theme={readerTheme}
+      readerMode={
+        format === "PDF" || format === "CBZ" ? "fixed-layout" : undefined
+      }
+    />
+  )
+
   if (mainHandoff) {
-    return <ReadBookLoading message={t("reader.openWindow")} />
+    return (
+      <div className="flex min-h-screen">
+        <ReadBookLoading message={t("reader.openWindow")} />
+      </div>
+    )
   }
 
   if (fetchError) {
-    return (
+    return renderWindowState(
       <ReadBookError
         message={fetchError}
         actionLabel={
           isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
         }
         onAction={handleErrorClose}
-      />
+      />,
     )
   }
 
@@ -412,7 +453,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
             ),
           )
         : undefined
-    return (
+    return renderWindowState(
       <ReadBookDownloading
         downloadingLabel={t("reader.downloading")}
         percent={percent}
@@ -420,32 +461,34 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         totalBytes={downloadProgress?.totalBytes}
         cancelLabel={t("common.cancel")}
         onCancel={handleCancelDownload}
-      />
+      />,
     )
   }
 
   if (downloadState === "error") {
-    return (
+    return renderWindowState(
       <ReadBookError
         message={downloadError ?? t("reader.downloadFailed")}
         actionLabel={t("reader.retryDownload")}
         onAction={handleRetryDownload}
-      />
+      />,
     )
   }
 
   if (downloadState === "cancelled") {
-    return (
+    return renderWindowState(
       <ReadBookError
         message={t("reader.downloadCancelled")}
         actionLabel={t("reader.retryDownload")}
         onAction={handleRetryDownload}
-      />
+      />,
     )
   }
 
   if (!bookPayload) {
-    return <ReadBookLoading message={t("reader.loadingBook")} />
+    return renderWindowState(
+      <ReadBookLoading message={t("reader.loadingBook")} />,
+    )
   }
 
   if (isBrowserDemoReader()) {
@@ -459,17 +502,19 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   if (format === "EPUB") {
     if (readiumPub.loading) {
-      return <ReadBookLoading message={t("reader.loadingReadium")} />
+      return renderWindowState(
+        <ReadBookLoading message={t("reader.loadingReadium")} />,
+      )
     }
     if (readiumPub.error || !readiumPub.publication) {
-      return (
+      return renderWindowState(
         <ReadBookError
           message={readiumPub.error ?? t("reader.loadEpubFailed")}
           actionLabel={
             isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
           }
           onAction={handleErrorClose}
-        />
+        />,
       )
     }
     return (
@@ -487,28 +532,30 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
 
   if (format === "CBZ") {
     if (!bookPayload.source.extractedDirPath) {
-      return (
+      return renderWindowState(
         <ReadBookError
           message={t("reader.comicDirUnavailable")}
           actionLabel={
             isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
           }
           onAction={handleErrorClose}
-        />
+        />,
       )
     }
     if (divinaPub.loading) {
-      return <ReadBookLoading message={t("reader.loadingComic")} />
+      return renderWindowState(
+        <ReadBookLoading message={t("reader.loadingComic")} />,
+      )
     }
     if (divinaPub.error || !divinaPub.publication) {
-      return (
+      return renderWindowState(
         <ReadBookError
           message={divinaPub.error ?? t("reader.loadComicFailed")}
           actionLabel={
             isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
           }
           onAction={handleErrorClose}
-        />
+        />,
       )
     }
     return (
@@ -538,14 +585,14 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     )
   }
 
-  return (
+  return renderWindowState(
     <ReadBookError
       message={t("reader.unsupportedFormat")}
       actionLabel={
         isTauri() ? t("reader.closeWindow") : t("reader.backToDetail")
       }
       onAction={handleErrorClose}
-    />
+    />,
   )
 }
 
@@ -831,9 +878,12 @@ function DemoReaderPreview({
 
 function ReadBookLoading({ message }: { message: string }) {
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4">
+    <div
+      className="flex min-h-0 w-full flex-1 flex-col items-center justify-center bg-reader-bg px-4 text-reader-fg"
+      data-reader-state="loading"
+    >
       <div
-        className="flex flex-col items-center gap-3 text-muted-foreground"
+        className="flex flex-col items-center gap-3 text-[var(--reader-chrome-active)]"
         role="status"
         aria-label={message}
         aria-live="polite"
@@ -860,29 +910,42 @@ function ReadBookDownloading({
   onCancel: () => void
 }) {
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md rounded-lg">
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center justify-between text-sm">
+    <div
+      className="flex min-h-0 w-full flex-1 items-center justify-center bg-reader-bg p-6 text-reader-fg"
+      data-reader-state="downloading"
+    >
+      <div className="w-full max-w-md">
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center justify-between gap-6 text-sm">
             <span className="font-medium">{downloadingLabel}</span>
-            <span className="tabular-nums text-muted-foreground">
+            <span className="shrink-0 tabular-nums text-reader-chrome-muted">
               {percent != null ? `${percent}%` : "—"}
               {totalBytes != null && totalBytes > 0
                 ? ` (${formatFileSize(bytesWritten)} / ${formatFileSize(totalBytes)})`
                 : null}
             </span>
           </div>
-          <Progress value={percent} className="h-3" />
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
+          <div
+            className="h-2 w-full overflow-hidden rounded-full bg-[var(--reader-chrome-slider-track)]"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent ?? 0}
+          >
+            <div
+              className="h-full rounded-full bg-[var(--reader-chrome-active)] transition-[width] duration-300"
+              style={{ width: `${percent ?? 0}%` }}
+            />
+          </div>
+          <button
+            type="button"
+            className={READER_STATE_ACTION_CLASS}
             onClick={onCancel}
           >
             {cancelLabel}
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -898,19 +961,33 @@ function ReadBookError({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-6">
-      <Empty className="w-full max-w-md">
+    <div
+      className="flex min-h-0 w-full flex-1 items-center justify-center bg-reader-bg p-6 text-reader-fg"
+      data-reader-state="error"
+    >
+      <Empty className="w-full max-w-md text-reader-fg">
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <AlertCircle className="text-destructive" />
+          <EmptyMedia
+            variant="icon"
+            className="bg-[var(--reader-chrome-segment-idle)] text-[var(--reader-chrome-active)]"
+          >
+            <AlertCircle />
           </EmptyMedia>
-          <EmptyTitle>{t("reader.loadFailed")}</EmptyTitle>
-          <EmptyDescription>{message}</EmptyDescription>
+          <EmptyTitle className="text-reader-fg">
+            {t("reader.loadFailed")}
+          </EmptyTitle>
+          <EmptyDescription className="text-reader-chrome-muted">
+            {message}
+          </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" size="sm" onClick={onAction}>
+          <button
+            type="button"
+            className={READER_STATE_ACTION_CLASS}
+            onClick={onAction}
+          >
             {actionLabel}
-          </Button>
+          </button>
         </EmptyContent>
       </Empty>
     </div>
