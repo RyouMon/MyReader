@@ -9,6 +9,7 @@ export { default as ReaderCloseButton } from "./ReaderCloseButton"
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
 
 export { default as ReaderActionsExpanded } from "./ReaderActionsExpanded"
+export type { ReaderProgressPreview } from "./reader-progress-scrubber"
 
 export { default as ReaderTocSheet } from "./ReaderTocSheet"
 export type { ReaderTocSheetProps } from "./ReaderTocSheet"

@@ -3,6 +3,7 @@ import {
   enhanceTocItemsWithContentLocators,
   linksToTocItems,
   resolveReaderToc,
+  resolveReaderTocAtPosition,
   type ReaderContentElement,
   type ReaderLink,
   type ReaderLocator,
@@ -1847,14 +1848,12 @@ export function ReadiumEpubReader({
         publication.readingOrder.items[readingOrderIndex]?.title?.trim() ??
         undefined
       const chapterTitle =
-        (targetLocator
-          ? (resolveReaderToc({
-              toc: tocItems,
-              positions: readerPositions,
-              locator: readiumLocatorToReaderLocator(targetLocator),
-              fallbackTitle,
-            }).title ?? undefined)
-          : undefined) ?? fallbackTitle
+        resolveReaderTocAtPosition({
+          toc: tocItems,
+          positions: readerPositions,
+          positionIndex: targetIndex,
+          fallbackTitle,
+        }).title?.trim() || fallbackTitle
 
       return {
         chapterTitle,

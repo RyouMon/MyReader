@@ -19,15 +19,19 @@ export function useReaderChromePressFeedback() {
   }))
 
   const handlePressIn = useCallback(() => {
-    pressScale.value = withTiming(READER_FLOATING_BUTTON_PRESS_SCALE, {
-      duration: READER_FLOATING_BUTTON_PRESS_DURATION_MS,
-    })
+    pressScale.set(
+      withTiming(READER_FLOATING_BUTTON_PRESS_SCALE, {
+        duration: READER_FLOATING_BUTTON_PRESS_DURATION_MS,
+      }),
+    )
   }, [pressScale])
 
   const handlePressOut = useCallback(() => {
-    pressScale.value = withTiming(READER_FLOATING_BUTTON_VISIBLE_SCALE, {
-      duration: READER_FLOATING_BUTTON_PRESS_DURATION_MS,
-    })
+    pressScale.set(
+      withTiming(READER_FLOATING_BUTTON_VISIBLE_SCALE, {
+        duration: READER_FLOATING_BUTTON_PRESS_DURATION_MS,
+      }),
+    )
   }, [pressScale])
 
   return {

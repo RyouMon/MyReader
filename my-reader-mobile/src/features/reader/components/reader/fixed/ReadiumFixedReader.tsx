@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -45,11 +44,10 @@ export type ReadiumFixedReaderProps = {
   /** Restored Readium Locator used as `ReadiumFile.initialLocation`. */
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => void
+  onPositionsReady?: (positions: Locator[]) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
-  /** Page index from TOC sheet selection. */
-  gotoPageCommand?: number
   showChapterTitle?: boolean
   backgroundColor: string
   navigationMode: FixedNavigationMode
@@ -81,9 +79,9 @@ const ReadiumFixedReader = forwardRef<
     filePath,
     initialLocator,
     onStateChange,
+    onPositionsReady,
     onTocReady,
     onToggleChrome,
-    gotoPageCommand,
     showChapterTitle = true,
     backgroundColor,
     navigationMode,
@@ -99,9 +97,13 @@ const ReadiumFixedReader = forwardRef<
   const hasPublicationTocRef = useRef(false)
   const chapterTitleRef = useRef("")
 
-  useImperativeHandle(ref, () => ({
-    goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
-  }))
+  useImperativeHandle(
+    ref,
+    () => ({
+      goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
+    }),
+    [],
+  )
 
   // Don't pass initialLocator as initialLocation — its href may not match
   // the native publication format. Instead, navigate after publicationReady.
@@ -125,6 +127,7 @@ const ReadiumFixedReader = forwardRef<
   const handlePublicationReady = useCallback(
     (event: PublicationReadyEvent) => {
       positionsRef.current = event.positions
+      onPositionsReady?.(event.positions)
       hasPublicationTocRef.current = hasTocTitle(event.tableOfContents)
       const tocItems = hasPublicationTocRef.current
         ? linksToFixedTocItems(
@@ -190,7 +193,13 @@ const ReadiumFixedReader = forwardRef<
         readiumRef.current?.goTo(startLocator)
       }
     },
-    [initialLocator, onTocReady, onStateChange, showChapterTitle],
+    [
+      initialLocator,
+      onPositionsReady,
+      onTocReady,
+      onStateChange,
+      showChapterTitle,
+    ],
   )
 
   const handleLocationChange = useCallback(
@@ -231,22 +240,6 @@ const ReadiumFixedReader = forwardRef<
     },
     [onStateChange, showChapterTitle],
   )
-
-  useEffect(() => {
-    if (gotoPageCommand == null || gotoPageCommand < 0) return
-
-    const tocItem = tocItemsRef.current[gotoPageCommand]
-    if (!tocItem) return
-
-    const target =
-      tocItem.locator ??
-      (tocItem.href
-        ? positionsRef.current.find((p) => p.href === tocItem.href)
-        : undefined)
-    if (target) {
-      readiumRef.current?.goTo(target)
-    }
-  }, [gotoPageCommand])
 
   return (
     <View style={styles.reader}>

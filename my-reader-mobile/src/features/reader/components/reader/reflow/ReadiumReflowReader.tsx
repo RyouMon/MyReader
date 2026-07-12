@@ -1,14 +1,15 @@
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
 } from "react"
 import { StyleSheet, View } from "react-native"
-import { ReadiumView } from "@my-reader/readium"
-import { publication as readiumPublication } from "@my-reader/readium"
+import {
+  publication as readiumPublication,
+  ReadiumView,
+} from "@my-reader/readium"
 import {
   positionIndexForLocator,
   resolveReaderToc,
@@ -34,7 +35,6 @@ import type {
 } from "@/src/store/app-store.types"
 import {
   enhanceTocItemsWithContentLocators,
-  findLocatorForLinkHref,
   linksToTocItems,
   locatorWithTocSelection,
   resolveNativeLocator,
@@ -44,7 +44,7 @@ import { buildPreferences } from "./reader-reflow-preferences"
 const PROGRESS_PERCENT_MULTIPLIER = 100
 
 export type ReadiumReflowReaderRef = {
-  goTo: (locator: Locator) => void
+  goTo: (locator: Locator, tocItem?: ReaderTocItem) => void
 }
 
 export type ReadiumReflowReaderProps = {
@@ -53,12 +53,11 @@ export type ReadiumReflowReaderProps = {
   /** 自 DB 恢复的 Readium Locator，作为 `ReadiumFile.initialLocation` 传给原生层。 */
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => void
+  onPositionsReady?: (positions: Locator[]) => void
   onPublicationLanguagesReady?: (languages: string[]) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onRequestClose: () => void
   onToggleChrome?: () => void
-  /** 与 {@link ReaderTocItem.pageIndex} 一致，由目录 sheet 选择触发。 */
-  gotoTocIndex?: number
   theme?: ReaderTheme
   fontFamily?: FontFamilyKey
   fontFamilyDeclarations?: FontFamilyDeclaration[]
@@ -78,10 +77,10 @@ const ReadiumReflowReader = forwardRef<
     epubPath,
     initialLocator,
     onStateChange,
+    onPositionsReady,
     onPublicationLanguagesReady,
     onTocReady,
     onToggleChrome,
-    gotoTocIndex,
     theme = "paper",
     fontFamily = "default",
     fontFamilyDeclarations,
@@ -102,9 +101,16 @@ const ReadiumReflowReader = forwardRef<
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
 
-  useImperativeHandle(ref, () => ({
-    goTo: (locator: Locator) => readiumRef.current?.goTo(locator),
-  }))
+  useImperativeHandle(
+    ref,
+    () => ({
+      goTo: (locator: Locator, tocItem?: ReaderTocItem) => {
+        selectedTocItemRef.current = tocItem ?? null
+        readiumRef.current?.goTo(locator)
+      },
+    }),
+    [],
+  )
 
   // Don't pass initialLocator as initialLocation — its href may not match
   // the native publication format. Instead, navigate after publicationReady.
@@ -145,6 +151,7 @@ const ReadiumReflowReader = forwardRef<
       publicationReadySeqRef.current = publicationSeq
 
       positionsRef.current = event.positions
+      onPositionsReady?.(event.positions)
       const tocItems = linksToTocItems(event.tableOfContents, event.positions)
       tocItemsRef.current = tocItems
       onTocReady(tocItems)
@@ -258,7 +265,13 @@ const ReadiumReflowReader = forwardRef<
           // the optional content pass is unavailable for a publication.
         })
     },
-    [initialLocator, onPublicationLanguagesReady, onTocReady, onStateChange],
+    [
+      initialLocator,
+      onPositionsReady,
+      onPublicationLanguagesReady,
+      onTocReady,
+      onStateChange,
+    ],
   )
 
   const emitLocationState = useCallback(
@@ -310,26 +323,6 @@ const ReadiumReflowReader = forwardRef<
     },
     [emitLocationState],
   )
-
-  useEffect(() => {
-    if (gotoTocIndex == null || gotoTocIndex < 0) return
-
-    const tocItem = tocItemsRef.current[gotoTocIndex]
-    if (!tocItem) return
-
-    const target =
-      tocItem.locator ??
-      (tocItem.href
-        ? findLocatorForLinkHref(positionsRef.current, tocItem.href)
-        : undefined)
-    if (target) {
-      selectedTocItemRef.current = tocItem
-      readiumRef.current?.goTo(target)
-      emitLocationState(target, tocItem)
-    } else {
-      selectedTocItemRef.current = null
-    }
-  }, [emitLocationState, gotoTocIndex])
 
   return (
     <View style={styles.reader}>

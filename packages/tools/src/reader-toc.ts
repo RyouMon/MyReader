@@ -81,6 +81,13 @@ export type ResolveReaderTocInput = {
   fallbackTitle?: string | null
 }
 
+export type ResolveReaderTocAtPositionInput = {
+  toc: ReaderTocItem[]
+  positions: ReaderLocator[]
+  positionIndex: number
+  fallbackTitle?: string | null
+}
+
 export function stripFragment(href: string): string {
   const i = href.indexOf("#")
   return i >= 0 ? href.slice(0, i) : href
@@ -507,6 +514,22 @@ export function resolveReaderToc({
   }
 
   return emptyResolution(page, fallbackTitle ?? currentTitle ?? null)
+}
+
+export function resolveReaderTocAtPosition({
+  toc,
+  positions,
+  positionIndex,
+  fallbackTitle,
+}: ResolveReaderTocAtPositionInput): ReaderTocResolution {
+  const locator = positions[positionIndex]
+  return resolveReaderToc({
+    toc,
+    positions,
+    locator,
+    currentPage: positionIndex,
+    fallbackTitle: fallbackTitle ?? locator?.title,
+  })
 }
 
 function hrefExactlyMatches(a: string, b: string): boolean {

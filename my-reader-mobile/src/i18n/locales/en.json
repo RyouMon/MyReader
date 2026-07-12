@@ -247,6 +247,8 @@
     "navVertical": "Vertical",
     "pageLabel": "Page {{page}}",
     "positionLabel": "Loc.",
+    "positionProgress": "Loc. {{current}} / {{total}}",
+    "pageProgress": "Page {{current}} / {{total}}",
     "font": "Font",
     "fontOptions": {
       "default": "Default",

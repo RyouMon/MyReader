@@ -14,6 +14,8 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import type { ReaderProgressPreview } from "./reader-progress-scrubber"
+import { ReaderTocProgressAction } from "./ReaderTocProgressAction"
 import {
   READER_EXPANDED_ACTION_BOTTOM_OFFSET,
   READER_EXPANDED_ACTION_ICON_SIZE,
@@ -29,7 +31,6 @@ import {
   READER_EXPANDED_ACTION_SHEET_SHADOW_OPACITY,
   READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS,
   READER_EXPANDED_ACTION_STACK_GAP,
-  READER_EXPANDED_ACTION_TEXT_GAP,
   readerExpandedActionWidth,
 } from "./readerChromeConstants"
 import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
@@ -37,10 +38,14 @@ import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
 type Props = {
   insetsBottom: number
   visible: boolean
+  currentPositionIndex: number
+  positionCount: number
   progressPercent: number
   palette: ReaderChromePalette
   onOpenToc: () => void
   onOpenSettings: () => void
+  onPreviewPosition: (positionIndex: number) => ReaderProgressPreview
+  onCommitPosition: (positionIndex: number) => void
 }
 
 type ExpandedActionButtonProps = {
@@ -87,10 +92,14 @@ function ExpandedActionButton({
 export default function ReaderActionsExpanded({
   insetsBottom,
   visible,
+  currentPositionIndex,
+  positionCount,
   progressPercent,
   palette,
   onOpenToc,
   onOpenSettings,
+  onPreviewPosition,
+  onCommitPosition,
 }: Props) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
@@ -114,14 +123,13 @@ export default function ReaderActionsExpanded({
       translateY.value = withTiming(8, { duration: 150 })
       scale.value = withTiming(0.95, { duration: 150 })
     }
-  }, [visible])
+  }, [opacity, scale, translateY, visible])
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
     opacity: opacity.value,
   }))
   const actionPillWidth = readerExpandedActionWidth(windowWidth)
-  const progressClipWidth = (actionPillWidth * progressPercent) / 100
 
   return (
     <Animated.View
@@ -138,77 +146,17 @@ export default function ReaderActionsExpanded({
       pointerEvents={visible ? "auto" : "none"}
     >
       <RNView style={[styles.pillContainer, styles.sheetShadow]}>
-        <ExpandedActionButton
+        <ReaderTocProgressAction
           accessibilityLabel={t("reader.toc")}
           actionPillWidth={actionPillWidth}
+          currentPositionIndex={currentPositionIndex}
+          positionCount={positionCount}
+          progressPercent={progressPercent}
           palette={palette}
-          onPress={onOpenToc}
-        >
-          <RNView style={styles.pillInner} accessibilityElementsHidden={true}>
-            <RNView style={styles.pillFill} pointerEvents="none">
-              <RNView
-                style={[
-                  styles.pillFillBar,
-                  {
-                    backgroundColor: palette.progressFill,
-                    width: `${progressPercent}%`,
-                  },
-                ]}
-              />
-            </RNView>
-            {/* actionText layer — full width background text */}
-            <RNView style={styles.pillContent}>
-              <RNView style={styles.tocLabelGroup}>
-                <Text
-                  className="text-lg font-semibold"
-                  style={{ color: palette.actionText }}
-                >
-                  {t("reader.toc")}
-                </Text>
-                <Text
-                  className="text-lg font-semibold"
-                  style={{ color: palette.actionText }}
-                >
-                  {progressPercent}%
-                </Text>
-              </RNView>
-              <ReaderChromeIcon
-                name="toc"
-                size={READER_EXPANDED_ACTION_ICON_SIZE}
-                color={palette.actionText}
-              />
-            </RNView>
-            {/* progressText layer — clipped to progress width, using pixel value to match pillFill baseline */}
-            <RNView
-              style={[styles.progressTextClip, { width: progressClipWidth }]}
-              pointerEvents="none"
-            >
-              <RNView style={[styles.pillInner, { width: actionPillWidth }]}>
-                <RNView style={styles.pillContent}>
-                  <RNView style={styles.tocLabelGroup}>
-                    <Text
-                      className="text-lg font-semibold"
-                      style={{ color: palette.progressText }}
-                    >
-                      {t("reader.toc")}
-                    </Text>
-                    <Text
-                      className="text-lg font-semibold"
-                      style={{ color: palette.progressText }}
-                    >
-                      {progressPercent}%
-                    </Text>
-                  </RNView>
-                  <ReaderChromeIcon
-                    name="toc"
-                    size={READER_EXPANDED_ACTION_ICON_SIZE}
-                    color={palette.progressText}
-                  />
-                </RNView>
-              </RNView>
-            </RNView>
-          </RNView>
-        </ExpandedActionButton>
+          onOpenToc={onOpenToc}
+          onPreviewPosition={onPreviewPosition}
+          onCommitPosition={onCommitPosition}
+        />
 
         <ExpandedActionButton
           accessibilityLabel={t("reader.settings")}
@@ -262,32 +210,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: READER_EXPANDED_ACTION_PADDING_HORIZONTAL,
     paddingVertical: READER_EXPANDED_ACTION_PADDING_VERTICAL,
   },
-  pillFill: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  pillFillBar: {
-    height: "100%",
-  },
-  progressTextClip: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    overflow: "hidden",
-  },
   pillContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  tocLabelGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: READER_EXPANDED_ACTION_TEXT_GAP,
-    flex: 1,
   },
 })

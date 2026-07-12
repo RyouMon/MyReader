@@ -29,13 +29,13 @@ export type ReaderTocSheetProps = {
   toc: ReaderTocItem[]
   activeIndex: number
   palette: ReaderChromePalette
-  onSelectPage: (pageIndex: number) => void
+  onSelectItem: (item: ReaderTocItem) => void
   onDismiss: () => void
 }
 
 const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
   function ReaderTocSheet(
-    { toc, activeIndex, palette, onSelectPage, onDismiss },
+    { toc, activeIndex, palette, onSelectItem, onDismiss },
     ref,
   ) {
     const { t } = useTranslation()
@@ -106,7 +106,7 @@ const ReaderTocSheet = forwardRef<BottomSheetModal, ReaderTocSheetProps>(
                   marginBottom: READER_TOC_ROW_GAP,
                   paddingLeft: 20 + depth * 18,
                 }}
-                onPress={() => onSelectPage(item.pageIndex)}
+                onPress={() => onSelectItem(item)}
               >
                 <Text
                   className="text-base"

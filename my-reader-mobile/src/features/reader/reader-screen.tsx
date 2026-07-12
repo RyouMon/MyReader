@@ -11,6 +11,7 @@ import {
   BottomSheetModal,
   BottomSheetModalProvider,
 } from "@gorhom/bottom-sheet"
+import type { Locator } from "@my-reader/readium"
 import { router, useLocalSearchParams } from "expo-router"
 import {
   lazy,
@@ -46,6 +47,7 @@ import {
   ReaderCloseButton,
   ReaderMoreButton,
   ReaderPositionLabel,
+  type ReaderProgressPreview,
 } from "@/src/features/reader/components/reader/chrome"
 import {
   chromeReducer,
@@ -54,7 +56,13 @@ import {
 import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet"
-import { resolveReaderToc } from "@/src/features/reader/components/reader/reader-toc-resolver"
+import type { FixedReaderSurfaceRef } from "@/src/features/reader/components/reader/fixed/FixedReaderSurface"
+import {
+  findLocatorForLinkHref,
+  resolveReaderToc,
+  resolveReaderTocAtPosition,
+} from "@/src/features/reader/components/reader/reader-toc-resolver"
+import type { ReadiumReflowReaderRef } from "@/src/features/reader/components/reader/reflow/ReadiumReflowReader"
 import {
   coerceReaderFontOption,
   getReaderFontOptions,
@@ -85,23 +93,56 @@ const ReadiumReflowReader = lazy(
     ),
 )
 
-const TOC_GOTO_RESET_DELAY_MS = 100
 const READER_CONTENT_FADE_MS = 220
 const CLOSE_ROUTE_BACK_LEAD_MS = 180
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
+
+type ReaderRuntime = {
+  publicationKey: string
+  readerState: ReaderState | null
+  publicationLanguages: string[]
+  toc: ReaderTocItem[]
+}
+
+function emptyReaderRuntime(publicationKey: string): ReaderRuntime {
+  return {
+    publicationKey,
+    readerState: null,
+    publicationLanguages: [],
+    toc: [],
+  }
+}
+
+function updateReaderRuntime(
+  current: ReaderRuntime,
+  publicationKey: string,
+  patch: Partial<Omit<ReaderRuntime, "publicationKey">>,
+): ReaderRuntime {
+  const active =
+    current.publicationKey === publicationKey
+      ? current
+      : emptyReaderRuntime(publicationKey)
+  return { ...active, ...patch }
+}
+
 export default function ReaderScreen() {
   const { t } = useTranslation()
   const { id, format: formatParam } = useLocalSearchParams<{
     id?: string
     format?: string
   }>()
+  const publicationKey = `${id ?? ""}:${formatParam?.toUpperCase() ?? ""}`
   const { palette, colorScheme } = useTheme()
   const insets = useSafeAreaInsets()
-  const [readerState, setReaderState] = useState<ReaderState | null>(null)
-  const [publicationLanguages, setPublicationLanguages] = useState<string[]>([])
-  const [toc, setToc] = useState<ReaderTocItem[]>([])
+  const [readerRuntime, setReaderRuntime] = useState<ReaderRuntime>(() =>
+    emptyReaderRuntime(publicationKey),
+  )
+  const activeReaderRuntime =
+    readerRuntime.publicationKey === publicationKey
+      ? readerRuntime
+      : emptyReaderRuntime(publicationKey)
+  const { readerState, publicationLanguages, toc } = activeReaderRuntime
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
-  const [gotoPageCmd, setGotoPageCmd] = useState<number | undefined>(undefined)
   const settings = useAppStore((s) => s.settings)
   const patchReflowableReaderSettings = useAppStore(
     (s) => s.patchReflowableReaderSettings,
@@ -112,27 +153,64 @@ export default function ReaderScreen() {
 
   const tocSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<BottomSheetModal>(null)
+  const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
+  const fixedReaderRef = useRef<FixedReaderSurfaceRef>(null)
+  const readerPositionsRef = useRef<{
+    publicationKey: string
+    positions: Locator[]
+  }>({ publicationKey, positions: [] })
   const closeRouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
-
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const { loadState } = useBookLoader(id, formatParam, activeLibraryId)
+  const isReflowReady =
+    loadState.status === "ready" && loadState.layoutMode === "reflowable"
   useReaderProgressSaver(activeLibraryId, loadState, readerState)
   const closeTransitionFormat =
     loadState.status === "ready" ? loadState.format : formatParam
 
-  const handleStateChange = useCallback(async (state: ReaderState) => {
-    setReaderState(state)
-  }, [])
+  const handleStateChange = useCallback(
+    async (state: ReaderState) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, { readerState: state }),
+      )
+    },
+    [publicationKey],
+  )
 
-  const handleTocReady = useCallback(async (items: ReaderTocItem[]) => {
-    setToc(items)
-  }, [])
+  const handlePositionsReady = useCallback(
+    (positions: Locator[]) => {
+      readerPositionsRef.current = { publicationKey, positions }
+    },
+    [publicationKey],
+  )
 
-  const handlePublicationLanguagesReady = useCallback((languages: string[]) => {
-    setPublicationLanguages(languages)
-  }, [])
+  const handleTocReady = useCallback(
+    async (items: ReaderTocItem[]) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, { toc: items }),
+      )
+    },
+    [publicationKey],
+  )
+
+  const handlePublicationLanguagesReady = useCallback(
+    (languages: string[]) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, {
+          publicationLanguages: languages,
+        }),
+      )
+    },
+    [publicationKey],
+  )
+
+  const getReaderPositions = useCallback(() => {
+    return readerPositionsRef.current.publicationKey === publicationKey
+      ? readerPositionsRef.current.positions
+      : []
+  }, [publicationKey])
 
   const closeReader = useCallback(() => {
     if (router.canGoBack()) {
@@ -168,10 +246,6 @@ export default function ReaderScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    setPublicationLanguages([])
-  }, [id, formatParam])
-
   const handleRequestClose = useCallback(async () => {
     closeReader()
   }, [closeReader])
@@ -197,12 +271,27 @@ export default function ReaderScreen() {
     dispatch({ type: "contentTap" })
   }, [chromeState])
 
-  const handleTocSelect = useCallback((pageIndex: number) => {
-    setGotoPageCmd(pageIndex)
-    tocSheetRef.current?.dismiss()
-    dispatch({ type: "tocSelect" })
-    setTimeout(() => setGotoPageCmd(undefined), TOC_GOTO_RESET_DELAY_MS)
-  }, [])
+  const navigateToLocator = useCallback(
+    (locator: Locator, tocItem?: ReaderTocItem) => {
+      if (isReflowReady) {
+        reflowReaderRef.current?.goTo(locator, tocItem)
+        return
+      }
+      fixedReaderRef.current?.goTo(locator)
+    },
+    [isReflowReady],
+  )
+
+  const handleTocSelect = useCallback(
+    (item: ReaderTocItem) => {
+      const targetLocator =
+        item.locator ?? findLocatorForLinkHref(getReaderPositions(), item.href)
+      if (targetLocator) navigateToLocator(targetLocator, item)
+      tocSheetRef.current?.dismiss()
+      dispatch({ type: "tocSelect" })
+    },
+    [getReaderPositions, navigateToLocator],
+  )
 
   const handleTocDismiss = useCallback(() => {
     dispatch({ type: "tocDismiss" })
@@ -241,8 +330,50 @@ export default function ReaderScreen() {
   )
   const activeFontLanguageKey = readerFontLanguageKey(readerLanguage)
 
-  const isReflowReady =
-    loadState.status === "ready" && loadState.layoutMode === "reflowable"
+  const previewReaderPosition = useCallback(
+    (positionIndex: number): ReaderProgressPreview => {
+      const positionCount = Math.max(1, readerState?.totalPages ?? 1)
+      const targetPositionIndex = Math.max(
+        0,
+        Math.min(positionCount - 1, Math.round(positionIndex)),
+      )
+      const chapterTitle = resolveReaderTocAtPosition({
+        toc,
+        positions: getReaderPositions(),
+        positionIndex: targetPositionIndex,
+      }).title?.trim()
+
+      return {
+        chapterTitle: chapterTitle || undefined,
+        positionLabel: isReflowReady
+          ? t("reader.positionProgress", {
+              current: targetPositionIndex + 1,
+              total: positionCount,
+            })
+          : t("reader.pageProgress", {
+              current: targetPositionIndex + 1,
+              total: positionCount,
+            }),
+      }
+    },
+    [getReaderPositions, isReflowReady, readerState?.totalPages, t, toc],
+  )
+
+  const handleProgressCommit = useCallback(
+    (positionIndex: number) => {
+      const targetLocator = getReaderPositions()[positionIndex]
+      if (targetLocator) navigateToLocator(targetLocator)
+    },
+    [getReaderPositions, navigateToLocator],
+  )
+
+  const handleOpenToc = useCallback(() => {
+    dispatch({ type: "tocPillTap" })
+  }, [])
+
+  const handleOpenSettings = useCallback(() => {
+    dispatch({ type: "settingsPillTap" })
+  }, [])
   const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
   const shouldUseReflowTheme =
     isReflowReady || (loadState.status === "loading" && isReflowFormatHint)
@@ -445,16 +576,17 @@ export default function ReaderScreen() {
                       ]}
                     >
                       <ReadiumReflowReader
+                        ref={reflowReaderRef}
                         epubPath={toNativeFilesystemPath(loadState.epubFileUri)}
                         initialLocator={loadState.initialLocator ?? undefined}
                         onStateChange={handleStateChange}
+                        onPositionsReady={handlePositionsReady}
                         onPublicationLanguagesReady={
                           handlePublicationLanguagesReady
                         }
                         onTocReady={handleTocReady}
                         onRequestClose={handleRequestClose}
                         onToggleChrome={toggleChrome}
-                        gotoTocIndex={gotoPageCmd}
                         theme={reflowSettings.theme}
                         fontFamily={activeFontFamily}
                         fontFamilyDeclarations={READER_FONT_DECLARATIONS}
@@ -469,16 +601,17 @@ export default function ReaderScreen() {
                   ) : null
                 ) : isFixedSurface ? (
                   <FixedReaderSurface
+                    ref={fixedReaderRef}
                     archiveUri={loadState.bookArchiveUri}
                     pdfLocalUri={loadState.pdfLocalUri}
                     format={loadState.format}
                     initialPage={loadState.initialPage}
                     initialLocator={loadState.initialLocator ?? undefined}
                     onStateChange={handleStateChange}
+                    onPositionsReady={handlePositionsReady}
                     onTocReady={handleTocReady}
                     onRequestClose={handleRequestClose}
                     onToggleChrome={toggleChrome}
-                    gotoPageCommand={gotoPageCmd}
                     fallback={domFallback}
                     backgroundColor={fixedBgColor}
                     navigationMode={fixedSettings.navigationMode}
@@ -546,10 +679,14 @@ export default function ReaderScreen() {
             <ReaderActionsExpanded
               insetsBottom={insets.bottom}
               visible={chromeState === ChromeState.Expanded}
+              currentPositionIndex={readerState?.currentPage ?? 0}
+              positionCount={readerState?.totalPages ?? 1}
               progressPercent={progressPercent}
               palette={chromePalette}
-              onOpenToc={() => dispatch({ type: "tocPillTap" })}
-              onOpenSettings={() => dispatch({ type: "settingsPillTap" })}
+              onOpenToc={handleOpenToc}
+              onOpenSettings={handleOpenSettings}
+              onPreviewPosition={previewReaderPosition}
+              onCommitPosition={handleProgressCommit}
             />
 
             {/* State 4: TOC bottom sheet */}
@@ -558,7 +695,7 @@ export default function ReaderScreen() {
               toc={toc}
               activeIndex={activeTocIndex}
               palette={chromePalette}
-              onSelectPage={handleTocSelect}
+              onSelectItem={handleTocSelect}
               onDismiss={handleTocDismiss}
             />
 

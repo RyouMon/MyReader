@@ -247,6 +247,8 @@
     "navVertical": "上下翻页",
     "pageLabel": "第 {{page}} 页",
     "positionLabel": "位置",
+    "positionProgress": "位置 {{current}} / {{total}}",
+    "pageProgress": "{{current}} / {{total}} 页",
     "font": "字体",
     "fontOptions": {
       "default": "默认",

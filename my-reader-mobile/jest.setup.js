@@ -3,6 +3,22 @@ jest.mock("react-native-reanimated", () => {
 
   const passthrough = (value) => value
   const createAnimatedComponent = (Component) => Component
+  const createSharedValue = (initialValue) => {
+    let currentValue = initialValue
+    return {
+      get value() {
+        return currentValue
+      },
+      set value(nextValue) {
+        currentValue = nextValue
+      },
+      get: () => currentValue,
+      set: (nextValue) => {
+        currentValue =
+          typeof nextValue === "function" ? nextValue(currentValue) : nextValue
+      },
+    }
+  }
   const makeLayoutAnimationBuilder = () => {
     const builder = {
       delay: () => builder,
@@ -25,13 +41,12 @@ jest.mock("react-native-reanimated", () => {
     },
     FadeIn: makeLayoutAnimationBuilder(),
     FadeOut: makeLayoutAnimationBuilder(),
-    runOnJS: (callback) => callback,
     runOnUI: (callback) => callback,
     ScrollView: ReactNative.ScrollView,
     useAnimatedProps: (updater) => updater(),
     useAnimatedStyle: (updater) => updater(),
-    useSharedValue: (value) => ({ value }),
-    makeMutable: jest.fn((value) => ({ value })),
+    useSharedValue: createSharedValue,
+    makeMutable: jest.fn(createSharedValue),
     View: ReactNative.View,
     withDelay: (_delay, animation) => animation,
     withRepeat: jest.fn((animation) => animation),
@@ -46,6 +61,10 @@ jest.mock("react-native-reanimated", () => {
     default: reanimated,
   }
 })
+
+jest.mock("react-native-worklets", () => ({
+  scheduleOnRN: (callback, ...args) => callback(...args),
+}))
 
 jest.mock("expo-crypto", () => ({
   randomUUID: () => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",

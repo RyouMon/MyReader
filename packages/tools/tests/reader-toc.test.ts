@@ -6,6 +6,7 @@ import {
   locatorWithHrefFragments,
   positionIndexForLocator,
   resolveReaderToc,
+  resolveReaderTocAtPosition,
   type ReaderLink,
   type ReaderLocator,
 } from "../src/reader-toc"
@@ -179,6 +180,54 @@ describe("reader toc utilities", () => {
         }),
       }).title,
     ).toBe("聚焦于情感")
+  })
+
+  it("should resolve a nested chapter when given a position index", () => {
+    const chapterPositions = [
+      locator("OPS/chapter-3.xhtml", {
+        position: 1,
+        progression: 0,
+      }),
+      locator("OPS/chapter-3.xhtml", {
+        position: 2,
+        progression: 0.6,
+      }),
+    ]
+    const toc = enhanceTocItemsWithContentLocators(
+      linksToTocItems(
+        [
+          {
+            href: "chapter-3.xhtml",
+            title: "第三章",
+            children: [
+              {
+                href: "chapter-3.xhtml#section-3",
+                title: "第三节 论总能提供地租的生产物",
+              },
+            ],
+          },
+        ],
+        chapterPositions,
+      ),
+      [
+        {
+          text: "第三节 论总能提供地租的生产物",
+          locator: locator("OPS/chapter-3.xhtml", {
+            fragments: ["section-3"],
+            position: 2,
+            progression: 0.6,
+          }),
+        },
+      ],
+    )
+
+    expect(
+      resolveReaderTocAtPosition({
+        toc,
+        positions: chapterPositions,
+        positionIndex: 1,
+      }).title,
+    ).toBe("第三节 论总能提供地租的生产物")
   })
 
   it("should prefer the anchored heading when a summary repeats its title", () => {

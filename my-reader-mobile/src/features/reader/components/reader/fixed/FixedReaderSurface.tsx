@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react"
+import { forwardRef, lazy, Suspense, useMemo } from "react"
 
 import type { Locator } from "@my-reader/readium"
 
@@ -13,6 +13,7 @@ import type {
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
+import type { ReadiumFixedReaderRef } from "./ReadiumFixedReader"
 
 const ReadiumFixedReader = lazy(async () => import("./ReadiumFixedReader"))
 
@@ -25,16 +26,18 @@ export type FixedReaderSurfaceProps = {
   /** 精确阅读位置（固定版式 Readium Locator），优先于 `initialPage`。 */
   initialLocator?: Locator
   onStateChange: (state: ReaderState) => Promise<void>
+  onPositionsReady?: (positions: Locator[]) => void
   onTocReady: (toc: ReaderTocItem[]) => Promise<void>
   onRequestClose: () => Promise<void>
   onToggleChrome?: () => void
-  gotoPageCommand?: number
   fallback: React.ReactNode
   backgroundColor: string
   navigationMode: FixedNavigationMode
   readingProgression: ReadingProgression
   spread: Spread
 }
+
+export type FixedReaderSurfaceRef = ReadiumFixedReaderRef
 
 function isPdfFormat(format: string): boolean {
   return format.toUpperCase() === "PDF"
@@ -44,23 +47,29 @@ function isCbzFormat(format: string): boolean {
   return format.toUpperCase() === "CBZ"
 }
 
-export default function FixedReaderSurface({
-  archiveUri,
-  format,
-  pdfLocalUri,
-  initialPage,
-  initialLocator,
-  onStateChange,
-  onTocReady,
-  onRequestClose,
-  onToggleChrome,
-  gotoPageCommand,
-  fallback,
-  backgroundColor,
-  navigationMode,
-  readingProgression,
-  spread,
-}: FixedReaderSurfaceProps) {
+const FixedReaderSurface = forwardRef<
+  FixedReaderSurfaceRef,
+  FixedReaderSurfaceProps
+>(function FixedReaderSurface(
+  {
+    archiveUri,
+    format,
+    pdfLocalUri,
+    initialPage,
+    initialLocator,
+    onStateChange,
+    onPositionsReady,
+    onTocReady,
+    onRequestClose,
+    onToggleChrome,
+    fallback,
+    backgroundColor,
+    navigationMode,
+    readingProgression,
+    spread,
+  },
+  ref,
+) {
   const domFallback = useMemo(() => fallback, [fallback])
 
   if (isCbzFormat(format)) {
@@ -74,13 +83,14 @@ export default function FixedReaderSurface({
     return (
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
+          ref={ref}
           filePath={cbzFilePath}
           initialLocator={initialLocator}
           onStateChange={onStateChange}
+          onPositionsReady={onPositionsReady}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
-          gotoPageCommand={gotoPageCommand}
           showChapterTitle={false}
           backgroundColor={backgroundColor}
           navigationMode={navigationMode}
@@ -117,13 +127,14 @@ export default function FixedReaderSurface({
     return (
       <Suspense fallback={domFallback}>
         <ReadiumFixedReader
+          ref={ref}
           filePath={pdfFilePath}
           initialLocator={pdfInitialLocator}
           onStateChange={onStateChange}
+          onPositionsReady={onPositionsReady}
           onTocReady={onTocReady}
           onRequestClose={onRequestClose}
           onToggleChrome={onToggleChrome}
-          gotoPageCommand={gotoPageCommand}
           showChapterTitle
           backgroundColor={backgroundColor}
           navigationMode={navigationMode}
@@ -136,4 +147,6 @@ export default function FixedReaderSurface({
 
   console.warn("[fixed-reader-surface] unsupported-fixed-format", { format })
   return null
-}
+})
+
+export default FixedReaderSurface
