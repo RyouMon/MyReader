@@ -11,12 +11,18 @@ import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomSt
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
+  READER_SETTINGS_CONTENT_CLASS,
+  READER_SETTINGS_LABEL_CLASS,
+  READER_SETTINGS_OPTION_CLASS,
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
+  ReaderSidePanelScrollArea,
+  readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
+import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
@@ -54,8 +60,14 @@ export function ReadiumDivinaReader({
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
     useReaderPanels()
-  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
-    useReadingChrome(false, tocOpen || settingsOpen)
+  const {
+    readerRootRef,
+    chromeVisible,
+    showChrome,
+    scheduleChromeHide,
+    handlePointerPosition,
+  } = useReadingChrome(false, tocOpen || settingsOpen)
+  useReaderIframePointerBridge(containerRef, handlePointerPosition)
   const [bookmarked, setBookmarked] = useState(false)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -89,6 +101,7 @@ export function ReadiumDivinaReader({
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     return publication.readingOrder.items.map((item, i) => ({
+      key: item.href,
       depth: 0,
       title:
         item.title?.trim() ||
@@ -129,7 +142,7 @@ export function ReadiumDivinaReader({
   const isRtl = publication.metadata.effectiveReadingProgression === "rtl"
   const edgeTurnActive =
     readiumNavReady && !tocOpen && !settingsOpen && !initError
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+  const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
   )
@@ -153,6 +166,43 @@ export function ReadiumDivinaReader({
     const targetSlide = Math.min(positions.length - 1, currentSlide + perPage)
     goToIndex(targetSlide)
   }, [goToIndex, positions])
+
+  const onProgressSeek = useCallback(
+    (progress: number) => {
+      if (positions.length === 0) return
+      const normalized = Math.max(0, Math.min(100, progress)) / 100
+      const targetIndex = Math.round(normalized * (positions.length - 1))
+      goToIndex(targetIndex)
+    },
+    [goToIndex, positions],
+  )
+  const resolveProgressCommit = useCallback(
+    (progress: number) => {
+      if (positions.length <= 1) return 0
+      const normalized = Math.max(0, Math.min(100, progress)) / 100
+      const targetIndex = Math.round(normalized * (positions.length - 1))
+      return (targetIndex / (positions.length - 1)) * 100
+    },
+    [positions.length],
+  )
+  const getProgressPreview = useCallback(
+    (nextProgress: number) => {
+      const total = Math.max(1, positions.length)
+      const targetIndex =
+        total > 1
+          ? Math.round(
+              (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
+            )
+          : 0
+      const current = targetIndex + 1
+      const label = t("reader.pageCount", { current, total })
+      return {
+        chapterTitle: tocRows[targetIndex]?.title ?? label,
+        label,
+      }
+    },
+    [positions.length, t, tocRows],
+  )
 
   useLocatorProgressSync({
     enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0,
@@ -334,10 +384,13 @@ export function ReadiumDivinaReader({
       scheduleChromeHide={scheduleChromeHide}
       panelsOpen={tocOpen || settingsOpen}
       onClosePanels={closePanels}
+      readerMode="fixed-layout"
       topBar={{
         bookTitle,
-        chapterTitle,
+        chapterTitle: format.toUpperCase() === "CBZ" ? "" : chapterTitle,
         bookmarked,
+        tocOpen,
+        settingsOpen,
         onToggleToc: toggleToc,
         onToggleBookmark: () => setBookmarked((b) => !b),
         onToggleSettings: toggleSettings,
@@ -346,7 +399,7 @@ export function ReadiumDivinaReader({
         <ReadiumTocPanel
           visible={tocOpen}
           rows={tocRows}
-          activeHref={currentLocator?.href ?? null}
+          activeKey={currentLocator?.href ?? null}
           onSelect={onTocSelect}
           onClose={closePanels}
         />
@@ -358,12 +411,12 @@ export function ReadiumDivinaReader({
             icon={Settings}
             onClose={closePanels}
           />
-          <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
+          <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
             <section className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+              <Label className={READER_SETTINGS_LABEL_CLASS}>
                 {t("reader.layout")}
               </Label>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {(
                   [
                     ["auto", t("reader.layoutOptions.auto")],
@@ -376,10 +429,9 @@ export function ReadiumDivinaReader({
                     type="button"
                     onClick={() => void onSpreadChange(value)}
                     className={cn(
-                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
-                      spreadMode === value
-                        ? "border-primary bg-accent text-reader-chrome-fg"
-                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                      READER_SETTINGS_OPTION_CLASS,
+                      "text-start",
+                      readerSettingsOptionStateClass(spreadMode === value),
                     )}
                   >
                     {label}
@@ -388,10 +440,10 @@ export function ReadiumDivinaReader({
               </div>
             </section>
             <section className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+              <Label className={READER_SETTINGS_LABEL_CLASS}>
                 {t("reader.canvasBg")}
               </Label>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {(
                   [
                     ["black", t("reader.canvasBgOptions.black")],
@@ -404,10 +456,9 @@ export function ReadiumDivinaReader({
                     type="button"
                     onClick={() => setSurface(value)}
                     className={cn(
-                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
-                      surface === value
-                        ? "border-primary bg-accent text-reader-chrome-fg"
-                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                      READER_SETTINGS_OPTION_CLASS,
+                      "text-start",
+                      readerSettingsOptionStateClass(surface === value),
                     )}
                   >
                     {label}
@@ -415,7 +466,7 @@ export function ReadiumDivinaReader({
                 ))}
               </div>
             </section>
-          </div>
+          </ReaderSidePanelScrollArea>
         </ReaderSidePanelFrame>
       }
       beforeMain={
@@ -428,8 +479,8 @@ export function ReadiumDivinaReader({
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
-          nearLeft={isRtl ? nearRight : nearLeft}
-          nearRight={isRtl ? nearLeft : nearRight}
+          showPrev={isRtl ? nearRight : nearLeft}
+          showNext={isRtl ? nearLeft : nearRight}
           onPrev={onReadiumEdgePrev}
           onNext={onReadiumEdgeNext}
           prevLabel={t("reader.prevPage")}
@@ -441,7 +492,10 @@ export function ReadiumDivinaReader({
           visible={chromeVisible}
           leftText={
             positions.length > 0
-              ? `t("reader.pageCount", { current: currentLocator?.locations?.position ?? 1, total: positions.length })`
+              ? t("reader.pageCount", {
+                  current: currentLocator?.locations?.position ?? 1,
+                  total: positions.length,
+                })
               : undefined
           }
           progress={
@@ -451,6 +505,11 @@ export function ReadiumDivinaReader({
                 100
               : 0
           }
+          getProgressPreview={getProgressPreview}
+          resolveProgressCommit={resolveProgressCommit}
+          onProgressChange={onProgressSeek}
+          onProgressStepBackward={onReadiumEdgePrev}
+          onProgressStepForward={onReadiumEdgeNext}
         />
       }
       main={

@@ -8,12 +8,25 @@ use crate::models::JsonAny;
 use crate::reader_ui_prefs::ReaderUiPreferences;
 use crate::services::library_service::LibraryService;
 use crate::services::reader_service::ReaderService;
+use crate::services::reader_window_service::ReaderWindowService;
 use crate::streamer::StreamerState;
 
 #[tauri::command]
 #[specta::specta]
 pub fn write_epub_readium_manifest(dir_path: String, manifest: JsonAny) -> Result<(), AppError> {
     ReaderService::write_epub_readium_manifest(&dir_path, &manifest.0)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_reader_traffic_lights_visible<R: tauri::Runtime>(
+    window: tauri::Window<R>,
+    visible: bool,
+    x: i32,
+    y: i32,
+    reposition: bool,
+) -> Result<(), AppError> {
+    ReaderWindowService::set_traffic_lights_visible(window, visible, x, y, reposition)
 }
 
 #[tauri::command]

@@ -33,21 +33,23 @@ export function useReadingChrome(
 
   /** 正文区移动或离开顶栏后：延迟收起，避免手抖立刻关掉。 */
   const scheduleChromeHide = useCallback(() => {
-    clearHideTimer()
+    if (hideTimerRef.current !== null) return
     hideTimerRef.current = window.setTimeout(() => {
       setChromeVisible(false)
       hideTimerRef.current = null
     }, CHROME_HIDE_DELAY_MS)
-  }, [clearHideTimer])
+  }, [])
 
-  useEffect(() => {
-    const onMove = (e: PointerEvent) => {
+  const handlePointerPosition = useCallback(
+    (clientX: number, clientY: number) => {
       const root = readerRootRef.current
       if (!root) return
       const r = root.getBoundingClientRect()
-      const { clientX: x, clientY: y } = e
       const insideRoot =
-        x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
+        clientX >= r.left &&
+        clientX <= r.right &&
+        clientY >= r.top &&
+        clientY <= r.bottom
 
       if (!insideRoot) {
         scheduleChromeHide()
@@ -60,11 +62,10 @@ export function useReadingChrome(
         return
       }
 
-      const relY = y - r.top
-      const h = r.height
+      const relY = clientY - r.top
       const bottomBand = readingChromeBottomBandPx(expandBottomForTts)
       const inChromeZone =
-        relY < READING_CHROME_TOP_BAND_PX || relY > h - bottomBand
+        relY < READING_CHROME_TOP_BAND_PX || relY > r.height - bottomBand
 
       if (inChromeZone) {
         clearHideTimer()
@@ -72,9 +73,16 @@ export function useReadingChrome(
       } else {
         scheduleChromeHide()
       }
+    },
+    [clearHideTimer, expandBottomForTts, scheduleChromeHide, sidePanelsOpen],
+  )
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      handlePointerPosition(e.clientX, e.clientY)
     }
 
-    /** capture：尽量在事件落到 iframe 前收到，否则从顶栏移入正文时父窗口可能收不到 move，顶栏会一直亮。 */
+    /** 宿主文档路径；Readium iframe 由 `useReaderIframePointerBridge` 转发到同一控制器。 */
     document.addEventListener("pointermove", onMove, {
       passive: true,
       capture: true,
@@ -83,7 +91,7 @@ export function useReadingChrome(
       document.removeEventListener("pointermove", onMove, { capture: true })
       clearHideTimer()
     }
-  }, [expandBottomForTts, sidePanelsOpen, clearHideTimer, scheduleChromeHide])
+  }, [clearHideTimer, handlePointerPosition])
 
   const hideChrome = useCallback(() => {
     clearHideTimer()
@@ -102,5 +110,6 @@ export function useReadingChrome(
     showChrome,
     hideChrome,
     scheduleChromeHide,
+    handlePointerPosition,
   }
 }

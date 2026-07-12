@@ -433,6 +433,12 @@ export const demoCommands = {
       streamerUrl: null,
     }),
   writeEpubReadiumManifest: () => ok<null>(null),
+  setReaderTrafficLightsVisible: (
+    _visible: boolean,
+    _x: number,
+    _y: number,
+    _reposition: boolean,
+  ) => ok<null>(null),
   closeBookStreamer: () => ok<null>(null),
   getCacheUsage: () =>
     ok<CacheUsageDto>({ totalBytes: 12_582_912, maxBytes: 2_147_483_648 }),

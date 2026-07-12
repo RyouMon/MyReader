@@ -14,6 +14,9 @@ const READIUM_FONT_SCALE_MIN = 0.7
 const READIUM_FONT_SCALE_MAX = 4
 const READIUM_LINE_HEIGHT_MIN = 1
 const READIUM_LINE_HEIGHT_MAX = 2
+const READER_INLINE_PADDING_BASE_PX = 20
+const READER_INLINE_PADDING_STEP_PX = 10
+const READER_INLINE_PADDING_MAX_PX = 60
 
 /** 将 UI 字号（px，约等于 CSS px）映射到 Readium `fontSize` 缩放系数。 */
 export function readerFontSizePxToReadiumScale(px: number): number {
@@ -43,6 +46,18 @@ function uiColCountToReadium(colCount: string): number | null {
   return null
 }
 
+export function readerPaddingXToInlinePaddingPx(paddingX: number): number {
+  const extra = Number.isFinite(paddingX)
+    ? Math.max(0, paddingX) * READER_INLINE_PADDING_STEP_PX
+    : 0
+  return Math.round(
+    Math.min(
+      READER_INLINE_PADDING_MAX_PX,
+      READER_INLINE_PADDING_BASE_PX + extra,
+    ),
+  )
+}
+
 /** 将已持久化的 `ReaderSettings` 转为提交给 `EpubNavigator` 的偏好。 */
 export function readerSettingsToEpubPreferences(
   settings: ReaderSettings,
@@ -57,9 +72,7 @@ export function readerSettingsToEpubPreferences(
       Math.round(settings.lineHeight * 10) / 10,
     ),
   )
-  const gutter = Math.round(
-    Math.min(56, Math.max(4, 6 + settings.paddingX * 10)),
-  )
+  const gutter = readerPaddingXToInlinePaddingPx(settings.paddingX)
 
   const fontFamily = toReadiumFontFamily(resolveReaderFont(language, settings))
 

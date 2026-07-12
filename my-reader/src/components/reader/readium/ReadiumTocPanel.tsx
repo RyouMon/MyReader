@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next"
 import {
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
+  ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
-import { cn } from "@/lib/utils"
 
 export type ReadiumTocRow = {
+  key?: string
   depth: number
   title: string
   href: string
@@ -16,15 +17,19 @@ export type ReadiumTocRow = {
 interface ReadiumTocPanelProps {
   visible: boolean
   rows: ReadiumTocRow[]
-  activeHref: string | null
+  activeKey: string | null
   onSelect: (row: ReadiumTocRow) => void
   onClose?: () => void
+}
+
+function readiumTocRowKey(row: ReadiumTocRow, index: number): string {
+  return row.key ?? `${index}-${row.depth}-${row.href}-${row.title}`
 }
 
 export function ReadiumTocPanel({
   visible,
   rows,
-  activeHref,
+  activeKey,
   onSelect,
   onClose,
 }: ReadiumTocPanelProps) {
@@ -36,26 +41,29 @@ export function ReadiumTocPanel({
         icon={List}
         onClose={onClose}
       />
-      <nav className="reader-chrome-scroll max-h-[calc(100vh-8rem)] overflow-y-auto px-2 py-2">
-        <ul className="space-y-0.5">
-          {rows.map((row, index) => (
-            <li key={`${index}-${row.depth}-${row.href}-${row.title}`}>
-              <button
-                type="button"
-                className={cn(
-                  "reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-start text-sm text-reader-chrome-fg transition-colors",
-                  activeHref === row.href.split("#")[0] &&
-                    "bg-reader-chrome-muted/35",
-                )}
-                style={{ paddingInlineStart: `${8 + row.depth * 12}px` }}
-                onClick={() => onSelect(row)}
-              >
-                {row.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <ReaderSidePanelScrollArea>
+        <nav className="px-4 py-3">
+          <ul className="space-y-0.5">
+            {rows.map((row, index) => {
+              const rowKey = readiumTocRowKey(row, index)
+              const isActive = activeKey === rowKey
+              return (
+                <li key={rowKey}>
+                  <button
+                    type="button"
+                    className="reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-start text-sm transition-colors"
+                    aria-current={isActive ? "location" : undefined}
+                    style={{ paddingInlineStart: `${8 + row.depth * 12}px` }}
+                    onClick={() => onSelect(row)}
+                  >
+                    {row.title}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+      </ReaderSidePanelScrollArea>
     </ReaderSidePanelFrame>
   )
 }

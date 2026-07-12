@@ -9,6 +9,10 @@ import {
 import { StyleSheet, View } from "react-native"
 import { ReadiumView } from "@my-reader/readium"
 import { publication as readiumPublication } from "@my-reader/readium"
+import {
+  positionIndexForLocator,
+  resolveReaderToc,
+} from "@my-reader/tools/reader-toc"
 import type {
   ContentResult,
   FontFamilyDeclaration,
@@ -22,10 +26,6 @@ import type {
   ReaderState,
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
-import {
-  positionIndexForLocator,
-  resolveReaderToc,
-} from "@/src/features/reader/components/reader/reader-toc-resolver"
 import type {
   ReaderTheme,
   TextAlignment,

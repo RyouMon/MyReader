@@ -1,4 +1,5 @@
 import type { Locator } from "@my-reader/readium"
+import type { ReaderTocItem as SharedReaderTocItem } from "@my-reader/tools/reader-toc"
 
 export type ReaderState = {
   ready: boolean
@@ -14,15 +15,4 @@ export type ReaderState = {
   locator?: Locator
 }
 
-export type ReaderTocItem = {
-  id: string
-  label: string
-  depth?: number
-  pageIndex: number
-  chapterIndex?: number
-  href?: string
-  /** 目录项对应的首个 position {@link Locator}，用于 `goTo`（优先于 href 匹配）。 */
-  locator?: Locator
-  /** `resource` means a fragment link borrowed the parent resource start. */
-  locatorSource?: "resource" | "content"
-}
+export type ReaderTocItem = SharedReaderTocItem

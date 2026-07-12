@@ -543,7 +543,14 @@ importers:
         version: 4.1.6(@types/node@25.8.0)(@vitest/coverage-v8@4.1.6)(@vitest/ui@4.1.6)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.2(@types/node@25.8.0)(jiti@2.7.0)(lightningcss@1.30.1)(terser@5.47.1)(tsx@4.22.0)(yaml@2.9.0))
 
   packages/tools:
+    dependencies:
+      chroma-js:
+        specifier: ^3.2.0
+        version: 3.2.0
     devDependencies:
+      '@types/chroma-js':
+        specifier: ^3.1.0
+        version: 3.1.2
       '@vitest/ui':
         specifier: ^4.1.5
         version: 4.1.6(vitest@4.1.6)

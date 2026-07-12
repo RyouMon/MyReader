@@ -32,6 +32,7 @@ export function useReadiumDivinaPublication({
     if (!extractedDirUrl) {
       setPublication(null)
       setError(null)
+      setLoading(false)
       return
     }
 
@@ -88,5 +89,11 @@ export function useReadiumDivinaPublication({
     load()
   }, [enabled, load])
 
-  return { publication, loading, error }
+  return {
+    publication,
+    loading:
+      loading ||
+      (enabled && Boolean(extractedDirUrl) && !publication && !error),
+    error,
+  }
 }

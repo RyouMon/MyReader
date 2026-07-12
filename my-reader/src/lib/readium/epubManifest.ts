@@ -18,6 +18,12 @@ interface EpubTocItem {
   children?: EpubTocItem[]
 }
 
+interface ManifestTocLink {
+  href: string
+  title: string
+  children?: ManifestTocLink[]
+}
+
 function toFetchableUrl(path: string): string {
   if (
     path.startsWith("http://") ||
@@ -58,6 +64,16 @@ function resolveTocHrefs(
     children: item.children
       ? resolveTocHrefs(item.children, basePath)
       : undefined,
+  }))
+}
+
+function tocItemsToManifestLinks(items: EpubTocItem[]): ManifestTocLink[] {
+  return items.map((item) => ({
+    href: item.href,
+    title: item.label,
+    ...(item.children && item.children.length > 0
+      ? { children: tocItemsToManifestLinks(item.children) }
+      : {}),
   }))
 }
 
@@ -328,13 +344,7 @@ export async function buildReadiumManifest(
       readingOrder,
       ...(resources.length > 0 && { resources }),
       ...(toc.length > 0 && {
-        toc: toc.map((item) => ({
-          href: item.href,
-          title: item.label,
-          ...(item.children && item.children.length > 0
-            ? { children: item.children }
-            : {}),
-        })),
+        toc: tocItemsToManifestLinks(toc),
       }),
     }
 

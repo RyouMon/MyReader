@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import type { ReaderSettings } from "../../components/reader/types"
-import { readerSettingsToEpubPreferences } from "../readium/readerSettingsBridge"
+import {
+  readerPaddingXToInlinePaddingPx,
+  readerSettingsToEpubPreferences,
+} from "../readium/readerSettingsBridge"
 
 const BASE_SETTINGS: ReaderSettings = {
   theme: "paper",
@@ -48,6 +51,16 @@ describe("readerSettingsToEpubPreferences", () => {
     const prefs = readerSettingsToEpubPreferences(BASE_SETTINGS)
     expect(prefs.backgroundColor).toBe("#E9DDC8")
     expect(prefs.textColor).toBe("#000000")
+  })
+
+  it("should keep inline padding at 20px when page margin is 0", () => {
+    expect(readerPaddingXToInlinePaddingPx(0)).toBe(20)
+
+    const prefs = readerSettingsToEpubPreferences({
+      ...BASE_SETTINGS,
+      paddingX: 0,
+    })
+    expect(prefs.pageGutter).toBe(20)
   })
 
   it("should set maximalLineLength to null when colCount is 1", () => {

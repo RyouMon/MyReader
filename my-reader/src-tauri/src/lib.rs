@@ -80,6 +80,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::reader::set_reader_ui_preferences::<tauri::Wry>,
             commands::reader::prepare_book_source::<tauri::Wry>,
             commands::reader::write_epub_readium_manifest,
+            commands::reader::set_reader_traffic_lights_visible::<tauri::Wry>,
             commands::reader::close_book_streamer,
             commands::cache::get_cache_usage,
             commands::cache::clear_cache,

@@ -1,17 +1,28 @@
-import type { ReactNode, PointerEvent as ReactPointerEvent, Ref } from "react"
-import { useEffect } from "react"
+import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
+import { readerThemePresetFor } from "@my-reader/tools/reader-themes"
+import {
+  type CSSProperties,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+  type Ref,
+  useEffect,
+  useMemo,
+} from "react"
 import { ReaderPanelsBackdrop } from "@/components/reader/shared/ReaderPanelsBackdrop"
 import { ReaderTopBar } from "@/components/reader/shared/ReaderTopBar"
 import { ReadingChromeEdgeZones } from "@/components/reader/shared/ReadingChromeEdgeZones"
 import { cn } from "@/lib/utils"
 
 const READER_ROOT_LAYOUT =
-  "relative flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-background"
+  "reader-window-root relative flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden"
 
 export type ReaderChromeTopBarConfig = {
   bookTitle: string
   chapterTitle: string
   bookmarked: boolean
+  tocOpen?: boolean
+  settingsOpen?: boolean
+  previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
@@ -34,7 +45,7 @@ export type ReaderChromeShellProps = {
   bottomChrome?: ReactNode
   /** 底部状态栏（页码、进度文字），轻量悬浮风格。 */
   bottomStatusBar?: ReactNode
-  /** 叠在正文区上的左右边缘翻页（须放在 `relative` 阅读区内，由调用方包一层 `relative` 或经此槽置于内容槽末尾）。 */
+  /** 叠在正文区上的左右翻页按钮。 */
   edgeTurnOverlays?: ReactNode
   /** 追加在根布局 class 上。 */
   rootClassName?: string
@@ -43,6 +54,40 @@ export type ReaderChromeShellProps = {
   onClosePanels?: () => void
   /** 当前阅读主题，用于设置 data-reader-theme 以驱动工具栏颜色。 */
   theme?: string
+  readerMode?: "fixed-layout"
+}
+
+type ReaderChromeStyle = CSSProperties & Record<`--reader-${string}`, string>
+
+export function readerChromeThemeStyle(
+  theme?: string,
+  readerMode?: "fixed-layout",
+): ReaderChromeStyle | undefined {
+  if (!theme || readerMode === "fixed-layout") return undefined
+
+  const preset = readerThemePresetFor(theme)
+  const palette = readerChromePalette(
+    preset.foregroundColor,
+    preset.backgroundColor,
+  )
+
+  return {
+    "--reader-chrome-bg": palette.bg,
+    "--reader-chrome-fg": palette.text,
+    "--reader-chrome-muted": palette.textMuted,
+    "--reader-chrome-border": palette.border,
+    "--reader-chrome-hover": palette.segmentIdle,
+    "--reader-chrome-active": palette.accent,
+    "--reader-chrome-action-surface": palette.actionSurface,
+    "--reader-chrome-action-text": palette.actionText,
+    "--reader-chrome-segment-idle": palette.segmentIdle,
+    "--reader-chrome-segment-active": palette.segmentActive,
+    "--reader-chrome-toc-row-idle": "transparent",
+    "--reader-chrome-toc-row-hover": palette.segmentIdle,
+    "--reader-chrome-toc-row-active": palette.tocRowActive,
+    "--reader-chrome-slider-track": palette.sliderTrack,
+    "--reader-panel-bg": palette.sheetSurface,
+  }
 }
 
 /**
@@ -67,7 +112,13 @@ export function ReaderChromeShell({
   panelsOpen = false,
   onClosePanels,
   theme,
+  readerMode,
 }: ReaderChromeShellProps) {
+  const chromeThemeStyle = useMemo(
+    () => readerChromeThemeStyle(theme, readerMode),
+    [readerMode, theme],
+  )
+
   const onReaderRootPointerLeave = (e: ReactPointerEvent<HTMLDivElement>) => {
     const next = e.relatedTarget
     if (next instanceof Node && e.currentTarget.contains(next)) return
@@ -90,35 +141,54 @@ export function ReaderChromeShell({
       ref={readerRootRef}
       className={cn(READER_ROOT_LAYOUT, rootClassName)}
       data-reader-theme={theme || undefined}
+      data-reader-mode={readerMode}
+      style={chromeThemeStyle}
       onPointerLeave={onReaderRootPointerLeave}
     >
-      <ReaderTopBar
-        bookTitle={topBar.bookTitle}
-        chapterTitle={topBar.chapterTitle}
-        visible={chromeVisible}
-        bookmarked={topBar.bookmarked}
-        onToggleToc={topBar.onToggleToc}
-        onToggleBookmark={topBar.onToggleBookmark}
-        onToggleSettings={topBar.onToggleSettings}
-        scheduleChromeHide={scheduleChromeHide}
-      />
-      {panelsOpen && onClosePanels ? (
-        <ReaderPanelsBackdrop onClose={onClosePanels} />
-      ) : null}
-      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {beforeMain}
-        {main}
-        {bottomChrome}
-        {bottomStatusBar}
-        {edgeTurnOverlays}
-      </div>
-      {tocPanel}
-      {settingsPanel}
-      <ReadingChromeEdgeZones
-        passThrough={chromeVisible}
-        onReveal={showChrome}
-        expandBottomForTts={expandBottomForTts}
-      />
+      <section
+        className="reader-window-paper relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        data-reader-theme={theme || undefined}
+        data-reader-mode={readerMode}
+        style={chromeThemeStyle}
+      >
+        <ReaderTopBar
+          bookTitle={topBar.bookTitle}
+          chapterTitle={topBar.chapterTitle}
+          visible={chromeVisible}
+          bookmarked={topBar.bookmarked}
+          tocOpen={topBar.tocOpen}
+          settingsOpen={topBar.settingsOpen}
+          previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
+          onToggleToc={topBar.onToggleToc}
+          onToggleBookmark={topBar.onToggleBookmark}
+          onToggleSettings={topBar.onToggleSettings}
+          scheduleChromeHide={scheduleChromeHide}
+        />
+        {panelsOpen && onClosePanels ? (
+          <ReaderPanelsBackdrop onClose={onClosePanels} />
+        ) : null}
+        <div className="reader-window-content relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {beforeMain}
+          {main}
+          {bottomChrome}
+          {edgeTurnOverlays}
+        </div>
+        {bottomStatusBar ? (
+          <div
+            className="reader-window-footer z-[51] w-full"
+            onPointerLeave={chromeVisible ? scheduleChromeHide : undefined}
+          >
+            {bottomStatusBar}
+          </div>
+        ) : null}
+        {tocPanel}
+        {settingsPanel}
+        <ReadingChromeEdgeZones
+          passThrough={chromeVisible}
+          onReveal={showChrome}
+          expandBottomForTts={expandBottomForTts}
+        />
+      </section>
     </div>
   )
 }

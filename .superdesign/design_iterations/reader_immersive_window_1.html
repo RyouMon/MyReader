@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>沉浸式阅读窗口原型</title>
+  <style>
+    :root {
+      --app-bg: #060504;
+      --paper: #eadcc4;
+      --paper-strong: #f0e4ce;
+      --ink: #31281f;
+      --ink-soft: rgba(49, 40, 31, 0.58);
+      --ink-faint: rgba(49, 40, 31, 0.34);
+      --chrome-bg: rgba(255, 249, 238, 0.74);
+      --chrome-bg-strong: rgba(255, 249, 238, 0.88);
+      --chrome-border: rgba(49, 40, 31, 0.08);
+      --chrome-hover: rgba(49, 40, 31, 0.08);
+      --accent: #a65e2e;
+      --accent-soft: rgba(166, 94, 46, 0.13);
+      --panel-bg: rgba(255, 249, 238, 0.92);
+      --shadow-soft: 0 34px 80px rgba(0, 0, 0, 0.38);
+      --paper-radius: clamp(26px, 3vw, 42px);
+      --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+      --reading-font: "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #111;
+      color: var(--ink);
+      font-family: var(--ui-font);
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .prototype-controls {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: #ddd6ca;
+      font-size: 13px;
+    }
+
+    .prototype-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .state-tabs {
+      display: inline-flex;
+      gap: 3px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .state-tab {
+      appearance: none;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.66);
+      font: inherit;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .state-tab[aria-pressed="true"] {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff8ec;
+    }
+
+    .stage {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    .reader-window {
+      position: relative;
+      width: min(100%, 1160px);
+      aspect-ratio: 16 / 10;
+      min-height: 620px;
+      max-height: calc(100vh - 86px);
+      overflow: hidden;
+      border-radius: 34px;
+      background: var(--app-bg);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), var(--shadow-soft);
+      isolation: isolate;
+      transition:
+        width 220ms ease,
+        min-height 220ms ease,
+        border-radius 220ms ease,
+        transform 180ms ease,
+        opacity 180ms ease;
+    }
+
+    .reader-window.is-window-maximized {
+      width: min(100%, 1240px);
+      min-height: min(760px, calc(100vh - 86px));
+      border-radius: 24px;
+    }
+
+    .reader-window.is-window-minimized {
+      transform: translateY(10px) scale(0.985);
+      opacity: 0.82;
+    }
+
+    .paper {
+      position: absolute;
+      inset: clamp(26px, 4.8vw, 48px);
+      overflow: hidden;
+      border-radius: var(--paper-radius);
+      background: var(--paper);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        0 28px 72px rgba(0, 0, 0, 0.2);
+    }
+
+    .paper::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 28% 12%, rgba(255, 255, 255, 0.18), transparent 32%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 28%, transparent 72%, rgba(111, 78, 41, 0.04));
+      opacity: 0.76;
+    }
+
+    .paper[data-theme="sepia"] {
+      --paper: #f1dfbc;
+      --paper-strong: #f7ebd0;
+    }
+
+    .paper[data-theme="gray"] {
+      --paper: #e4e0d6;
+      --paper-strong: #ece8df;
+    }
+
+    .ambient-title {
+      position: absolute;
+      top: 24px;
+      inset-inline: 20%;
+      z-index: 3;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.2;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    [data-state="quiet"] .ambient-title,
+    [data-state="tools"] .ambient-title,
+    [data-state="progress"] .ambient-title {
+      opacity: 0;
+      transform: translateY(-3px);
+    }
+
+    .text-layout {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding:
+        clamp(76px, 8.6vw, 104px)
+        clamp(64px, 8.8vw, 108px)
+        clamp(70px, 7.8vw, 92px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: clamp(54px, 8vw, 92px);
+      font-family: var(--reading-font);
+      font-size: clamp(20px, 1.58vw, 25px);
+      line-height: 1.72;
+      font-weight: 700;
+      color: var(--ink);
+      transition:
+        opacity 150ms ease,
+        transform 180ms ease,
+        font-size 160ms ease,
+        line-height 160ms ease;
+    }
+
+    .text-layout.is-turning-next {
+      opacity: 0;
+      transform: translateX(-16px);
+    }
+
+    .text-layout.is-turning-prev {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+
+    .text-column {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .text-column p {
+      margin: 0 0 0.8em;
+      text-indent: 2em;
+    }
+
+    .page-number {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 38px;
+      transform: translateX(-50%);
+      color: var(--ink-faint);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      transition: opacity 180ms ease;
+    }
+
+    [data-state="quiet"] .page-number,
+    [data-state="progress"] .page-number {
+      opacity: 0;
+    }
+
+    .top-chrome {
+      position: absolute;
+      z-index: 10;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    [data-state="tools"] .top-chrome,
+    [data-state="progress"] .top-chrome {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .chrome-left,
+    .chrome-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .chrome-right {
+      justify-content: flex-end;
+    }
+
+    .chrome-title {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 800;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .chrome-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 38px;
+      padding: 4px;
+      border: 1px solid var(--chrome-border);
+      border-radius: 999px;
+      background: var(--chrome-bg);
+      -webkit-backdrop-filter: blur(20px) saturate(1.12);
+      backdrop-filter: blur(20px) saturate(1.12);
+      box-shadow:
+        0 10px 26px rgba(76, 56, 34, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.42);
+    }
+
+    .window-controls {
+      gap: 8px;
+      min-height: 38px;
+      padding-inline: 4px 8px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .chrome-button {
+      width: 30px;
+      height: 30px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      transition:
+        background-color 150ms ease,
+        color 150ms ease,
+        box-shadow 150ms ease,
+        transform 90ms ease;
+    }
+
+    .chrome-button:hover {
+      background: var(--chrome-hover);
+    }
+
+    .chrome-button:active {
+      transform: scale(0.94);
+    }
+
+    .chrome-button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(49, 40, 31, 0.24);
+    }
+
+    .chrome-button[aria-pressed="true"] {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .chrome-button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bookmark-button[aria-pressed="true"] svg {
+      fill: currentColor;
+    }
+
+    .window-button {
+      position: relative;
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      border: 0.5px solid rgba(0, 0, 0, 0.18);
+      box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.38);
+      color: rgba(0, 0, 0, 0.56);
+      cursor: pointer;
+    }
+
+    .window-button.close {
+      background: #ff5f57;
+      color: #8f211b;
+    }
+
+    .window-button.minimize {
+      background: #ffbd2e;
+      color: #8f6500;
+    }
+
+    .window-button.maximize {
+      background: #28c840;
+      color: #0b6a24;
+    }
+
+    .window-button:hover {
+      filter: brightness(0.95);
+    }
+
+    .window-button:active {
+      transform: scale(0.92);
+    }
+
+    .window-button svg {
+      display: none;
+    }
+
+    .window-controls:hover .window-button::before,
+    .window-controls:hover .window-button::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      display: block;
+      border-radius: 999px;
+      background: currentColor;
+      transform-origin: center;
+    }
+
+    .window-controls:hover .window-button.close::before,
+    .window-controls:hover .window-button.close::after {
+      width: 7px;
+      height: 1.6px;
+    }
+
+    .window-controls:hover .window-button.close::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .window-controls:hover .window-button.close::after {
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    .window-controls:hover .window-button.minimize::before {
+      width: 7px;
+      height: 1.8px;
+      transform: translate(-50%, -50%);
+    }
+
+    .window-controls:hover .window-button.maximize::before {
+      width: 7px;
+      height: 1.7px;
+      border-radius: 0;
+      background: currentColor;
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+
+    .window-controls:hover .window-button.maximize::after {
+      width: 4px;
+      height: 4px;
+      border-radius: 0;
+      background: transparent;
+      border-top: 1.7px solid currentColor;
+      border-right: 1.7px solid currentColor;
+      transform: translate(-35%, -65%);
+    }
+
+    .window-button.close:hover {
+      background: #ff5f57;
+    }
+
+    .text-button {
+      width: auto;
+      min-width: 48px;
+      padding-inline: 9px;
+      gap: 5px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .solo-group {
+      width: 42px;
+      height: 42px;
+      min-height: 42px;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 999px;
+    }
+
+    .solo-group .chrome-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+    }
+
+    .edge-button {
+      position: absolute;
+      z-index: 9;
+      top: 50%;
+      width: 36px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 18px;
+      padding: 6px 4px;
+      color: rgba(49, 40, 31, 0.72);
+      background: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-50%) scale(0.98);
+      transition:
+        opacity 180ms ease,
+        transform 180ms ease,
+        background-color 180ms ease,
+        color 150ms ease;
+    }
+
+    .edge-button svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .edge-button.prev {
+      left: clamp(16px, 3.2vw, 42px);
+    }
+
+    .edge-button.next {
+      right: clamp(16px, 3.2vw, 42px);
+    }
+
+    [data-state="progress"] .edge-button {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) scale(1);
+    }
+
+    .edge-button:hover {
+      background: rgba(255, 249, 238, 0.54);
+      color: rgba(49, 40, 31, 0.88);
+    }
+
+    .bottom-chrome {
+      position: absolute;
+      z-index: 10;
+      left: clamp(48px, 7vw, 90px);
+      right: clamp(48px, 7vw, 90px);
+      bottom: 18px;
+      display: grid;
+      grid-template-columns: minmax(220px, 420px);
+      justify-content: center;
+      align-items: end;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    [data-state="progress"] .bottom-chrome {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .progress-center {
+      min-width: min(420px, 38vw);
+      display: grid;
+      gap: 13px;
+      justify-items: center;
+    }
+
+    .progress-label {
+      color: var(--ink-soft);
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(49, 40, 31, 0.12);
+    }
+
+    .progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 26.5%;
+      border-radius: inherit;
+      background: rgba(49, 40, 31, 0.52);
+    }
+
+    .progress-thumb {
+      position: absolute;
+      left: 26.5%;
+      top: 50%;
+      width: 26px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(49, 40, 31, 0.56);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 1px 4px rgba(49, 40, 31, 0.2);
+    }
+
+    .progress-range {
+      position: absolute;
+      inset: -14px 0;
+      width: 100%;
+      cursor: pointer;
+      opacity: 0;
+    }
+
+    .progress-center:hover .progress-thumb {
+      background: rgba(49, 40, 31, 0.72);
+    }
+
+    .floating-panel {
+      position: absolute;
+      z-index: 12;
+      border: 1px solid var(--chrome-border);
+      border-radius: 24px;
+      background: var(--panel-bg);
+      color: var(--ink);
+      -webkit-backdrop-filter: blur(24px) saturate(1.16);
+      backdrop-filter: blur(24px) saturate(1.16);
+      box-shadow:
+        0 18px 44px rgba(64, 48, 30, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.98);
+      transition:
+        opacity 160ms ease,
+        transform 180ms ease;
+    }
+
+    .floating-panel.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .toc-panel {
+      top: 62px;
+      left: 18px;
+      width: min(300px, calc(100% - 36px));
+      padding: 12px;
+    }
+
+    .toc-list {
+      display: grid;
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .toc-item {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--ink-soft);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
+      padding: 9px 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .toc-item:hover {
+      background: var(--chrome-hover);
+      color: var(--ink);
+    }
+
+    .toc-item[aria-current="true"] {
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .toc-page {
+      color: var(--ink-faint);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .settings-panel {
+      top: 62px;
+      right: 64px;
+      width: min(312px, calc(100% - 36px));
+      padding: 14px;
+    }
+
+    .settings-row {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .settings-label {
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .segmented {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .round-control {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(49, 40, 31, 0.06);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      transition:
+        background-color 150ms ease,
+        transform 90ms ease;
+    }
+
+    .round-control:hover {
+      background: rgba(49, 40, 31, 0.11);
+    }
+
+    .round-control:active {
+      transform: scale(0.94);
+    }
+
+    .font-readout {
+      min-width: 68px;
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .theme-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .theme-chip {
+      min-width: 58px;
+      border: 1px solid var(--chrome-border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.28);
+      color: var(--ink-soft);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    .theme-chip:hover {
+      background: var(--chrome-hover);
+      color: var(--ink);
+    }
+
+    .theme-chip[aria-pressed="true"] {
+      border-color: rgba(166, 94, 46, 0.26);
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .toast {
+      position: absolute;
+      z-index: 20;
+      left: 50%;
+      bottom: 36px;
+      min-width: 96px;
+      border-radius: 999px;
+      background: rgba(49, 40, 31, 0.78);
+      color: #fff8ec;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 8px 12px;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition:
+        opacity 160ms ease,
+        transform 180ms ease;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 12px;
+      }
+
+      .prototype-controls {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .reader-window {
+        min-height: 680px;
+        aspect-ratio: 4 / 5;
+      }
+
+      .paper {
+        inset: 22px;
+      }
+
+      .text-layout {
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding: 82px 76px 78px;
+        font-size: clamp(21px, 5.8vw, 28px);
+      }
+
+      .edge-button {
+        width: 32px;
+        height: 44px;
+        border-radius: 16px;
+        padding: 6px 3px;
+      }
+
+      .edge-button svg {
+        width: 25px;
+        height: 25px;
+      }
+
+      .edge-button.prev {
+        left: 28px;
+      }
+
+      .edge-button.next {
+        right: 28px;
+      }
+
+      .text-column:nth-child(2) {
+        display: none;
+      }
+
+      .top-chrome {
+        grid-template-columns: 1fr auto;
+        left: 12px;
+        right: 12px;
+      }
+
+      .chrome-title {
+        display: none;
+      }
+
+      .chrome-left {
+        gap: 7px;
+      }
+
+      .bottom-chrome {
+        left: 42px;
+        right: 42px;
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+
+      .progress-center {
+        width: 100%;
+      }
+
+      .toc-panel {
+        top: 64px;
+        left: 12px;
+        right: auto;
+        width: min(260px, 48%);
+      }
+
+      .settings-panel {
+        top: 64px;
+        left: auto;
+        right: 12px;
+        width: min(248px, 44%);
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="prototype-controls" aria-label="原型状态">
+    <h1 class="prototype-title">MyReader 沉浸式阅读窗口 · Superdesign iteration</h1>
+    <div class="state-tabs" role="group" aria-label="阅读窗口状态">
+      <button class="state-tab" type="button" data-set-state="quiet" aria-pressed="true">静息</button>
+      <button class="state-tab" type="button" data-set-state="tools" aria-pressed="false">工具</button>
+      <button class="state-tab" type="button" data-set-state="progress" aria-pressed="false">进度</button>
+    </div>
+  </section>
+
+  <main class="stage">
+    <article class="reader-window" data-state="quiet" aria-label="沉浸式阅读窗口">
+      <section class="paper">
+        <div class="ambient-title">国富论（超值白金版）</div>
+
+        <header class="top-chrome" aria-label="阅读工具栏">
+          <div class="chrome-left">
+            <div class="chrome-group window-controls" aria-label="窗口控制">
+              <button class="chrome-button window-button close" type="button" title="关闭" data-window-action="close">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l8 8M16 8l-8 8" /></svg>
+              </button>
+              <button class="chrome-button window-button minimize" type="button" title="最小化" data-window-action="minimize">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+              </button>
+              <button class="chrome-button window-button maximize" type="button" title="最大化" data-window-action="maximize" aria-pressed="false">
+                <svg viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M2 8.8V4.2L7.8 10H3.2A1.2 1.2 0 0 1 2 8.8Z" />
+                  <path d="M10 3.2v4.6L4.2 2h4.6A1.2 1.2 0 0 1 10 3.2Z" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="chrome-group" aria-label="阅读视图">
+              <button class="chrome-button" type="button" title="目录" data-panel-toggle="toc" aria-pressed="false" aria-controls="toc-panel">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12" /><path d="M4 6h.01M4 12h.01M4 18h.01" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="chrome-title">国富论（超值白金版）</div>
+
+          <div class="chrome-right">
+            <div class="chrome-group" aria-label="阅读设置">
+              <button class="chrome-button text-button" type="button" title="字号" data-panel-toggle="settings" aria-pressed="false" aria-controls="settings-panel">大小</button>
+              <button class="chrome-button" type="button" title="搜索" data-action="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></svg>
+              </button>
+            </div>
+            <div class="chrome-group solo-group" aria-label="书签">
+              <button class="chrome-button bookmark-button" type="button" title="添加书签" data-action="bookmark" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16l-5-3-5 3z" /></svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="text-layout" aria-label="正文">
+          <div class="text-column" data-column="left">
+            <p>可见，贵金属的数量一定也像别的地方一样已经增加，贵金属同土地和劳动年产品的比例也会随之改变。</p>
+            <p>可是，这种增加并没有同时改善制造业和农业，也没有直接改善居民的处境。一个国家的财富，终究取决于年产品与劳动的真实交换。</p>
+            <p>若金银从远地输入，不仅要负担运输和保险，还要承担限制与税费。于是金银对土地和劳动年产品的比例，在不同地区会形成显著差别。</p>
+            <p>制度可以废除，习惯却仍会延续。没有更好的秩序取而代之时，贸易的表象常常遮住生产本身的贫弱。</p>
+          </div>
+          <div class="text-column" data-column="right">
+            <p>货物品类货币价格的降低，并不能证明一国的贫困或富足。谷物、牲畜和各种猎物的价格，往往受土地、人口和耕作程度共同影响。</p>
+            <p>如果畜牧荒地远大于谷物耕地，牲畜的货币价格便会显得低廉；若地价低于耕地，也只能说明土地尚未完全改良。</p>
+            <p>这些现象说明，资本量与人口并不总是按土地面积同比增长。社会状态尚在幼稚阶段时，价格的高低尤其容易误导判断。</p>
+            <p>因此，比较富裕与贫困，必须把货币、产物和劳动连同制度一起观察，不能只看某一类货物的价格。</p>
+          </div>
+        </div>
+
+        <div class="page-number" data-page-mini>205</div>
+
+        <button class="edge-button prev" type="button" title="上一页" data-turn="prev">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-6 7 6 7" /></svg>
+        </button>
+        <button class="edge-button next" type="button" title="下一页" data-turn="next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l6 7-6 7" /></svg>
+        </button>
+
+        <footer class="bottom-chrome" aria-label="阅读进度">
+          <div class="progress-center">
+            <div class="progress-label" data-progress-label>205/772 页</div>
+            <div class="progress-track">
+              <div class="progress-fill" data-progress-fill></div>
+              <div class="progress-thumb" data-progress-thumb></div>
+              <input class="progress-range" type="range" min="1" max="772" value="205" aria-label="阅读进度" data-progress-range />
+            </div>
+          </div>
+        </footer>
+
+        <aside class="floating-panel toc-panel" id="toc-panel" data-panel="toc" aria-label="目录">
+          <h2 class="panel-title">目录</h2>
+          <div class="toc-list" data-toc-list></div>
+        </aside>
+
+        <aside class="floating-panel settings-panel" id="settings-panel" data-panel="settings" aria-label="字体设置">
+          <h2 class="panel-title">字体设置</h2>
+          <div class="settings-row">
+            <div class="settings-label">字号</div>
+            <div class="segmented">
+              <button class="round-control" type="button" data-font-step="-1" title="减小字号">A-</button>
+              <div class="font-readout" data-font-readout>23 px</div>
+              <button class="round-control" type="button" data-font-step="1" title="增大字号">A+</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">行距</div>
+            <div class="segmented">
+              <button class="round-control" type="button" data-line-step="-0.04" title="减小行距">-</button>
+              <div class="font-readout" data-line-readout>1.72</div>
+              <button class="round-control" type="button" data-line-step="0.04" title="增大行距">+</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label">纸张</div>
+            <div class="theme-options">
+              <button class="theme-chip" type="button" data-theme="paper" aria-pressed="true">纸色</button>
+              <button class="theme-chip" type="button" data-theme="sepia" aria-pressed="false">暖黄</button>
+              <button class="theme-chip" type="button" data-theme="gray" aria-pressed="false">雾灰</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="toast" aria-live="polite" data-toast></div>
+      </section>
+    </article>
+  </main>
+
+  <script>
+    const readerWindow = document.querySelector(".reader-window")
+    const paper = document.querySelector(".paper")
+    const textLayout = document.querySelector(".text-layout")
+    const leftColumn = document.querySelector('[data-column="left"]')
+    const rightColumn = document.querySelector('[data-column="right"]')
+    const ambientTitle = document.querySelector(".ambient-title")
+    const chromeTitle = document.querySelector(".chrome-title")
+    const miniPage = document.querySelector("[data-page-mini]")
+    const progressLabel = document.querySelector("[data-progress-label]")
+    const progressFill = document.querySelector("[data-progress-fill]")
+    const progressThumb = document.querySelector("[data-progress-thumb]")
+    const progressRange = document.querySelector("[data-progress-range]")
+    const bookmarkButton = document.querySelector("[data-action='bookmark']")
+    const toast = document.querySelector("[data-toast]")
+    const tocList = document.querySelector("[data-toc-list]")
+    const tabs = Array.from(document.querySelectorAll("[data-set-state]"))
+    const panels = Array.from(document.querySelectorAll("[data-panel]"))
+    const panelButtons = Array.from(document.querySelectorAll("[data-panel-toggle]"))
+    const fontReadout = document.querySelector("[data-font-readout]")
+    const lineReadout = document.querySelector("[data-line-readout]")
+    const themeButtons = Array.from(document.querySelectorAll("[data-theme]"))
+
+    const bookTitle = "国富论（超值白金版）"
+    const totalPages = 772
+    const bookmarks = new Set()
+    let currentPage = 205
+    let fontSize = 22.75
+    let lineHeight = 1.72
+    let activePanel = null
+    let toastTimer = 0
+
+    const toc = [
+      { title: "导论及全书设计", page: 1 },
+      { title: "第一篇 劳动生产力", page: 38 },
+      { title: "第四章 货币的起源和使用", page: 126 },
+      { title: "第七章 商品的自然价格", page: 198 },
+      { title: "第十一章 地租", page: 205 },
+      { title: "第二篇 资本的性质", page: 286 },
+      { title: "第四篇 政治经济学体系", page: 548 },
+    ]
+
+    const pageSamples = [
+      {
+        left: [
+          "可见，贵金属的数量一定也像别的地方一样已经增加，贵金属同土地和劳动年产品的比例也会随之改变。",
+          "可是，这种增加并没有同时改善制造业和农业，也没有直接改善居民的处境。一个国家的财富，终究取决于年产品与劳动的真实交换。",
+          "若金银从远地输入，不仅要负担运输和保险，还要承担限制与税费。于是金银对土地和劳动年产品的比例，在不同地区会形成显著差别。",
+          "制度可以废除，习惯却仍会延续。没有更好的秩序取而代之时，贸易的表象常常遮住生产本身的贫弱。",
+        ],
+        right: [
+          "货物品类货币价格的降低，并不能证明一国的贫困或富足。谷物、牲畜和各种猎物的价格，往往受土地、人口和耕作程度共同影响。",
+          "如果畜牧荒地远大于谷物耕地，牲畜的货币价格便会显得低廉；若地价低于耕地，也只能说明土地尚未完全改良。",
+          "这些现象说明，资本量与人口并不总是按土地面积同比增长。社会状态尚在幼稚阶段时，价格的高低尤其容易误导判断。",
+          "因此，比较富裕与贫困，必须把货币、产物和劳动连同制度一起观察，不能只看某一类货物的价格。",
+        ],
+      },
+      {
+        left: [
+          "金银本身不是财富的唯一尺度。它们只是交换的工具，若离开可供交换的谷物、织物和劳动，就不能独自改善民生。",
+          "同一数量的货币，在富庶地方可以买到较少的劳动；在贫困地方可以买到较多的劳动。这并不说明货币更有价值，而说明劳动环境不同。",
+          "所以，估计一国真实收入时，必须看每年土地和劳动生产出来的总量，而不只是看市场上流通的铸币数量。",
+        ],
+        right: [
+          "某些地区的银价显得高昂，只因为运输道路艰险、贸易受限、赋税繁重。价格差异常常是制度和地理的痕迹。",
+          "倘若贸易自由，货币与货物会趋向更稳定的比例。可是，任何人为阻隔都会让价格暂时背离真实生产力。",
+          "这正是商业社会容易误判的地方：人们看见价格上涨，便以为财富增加；看见价格下降，便以为贫困降临。",
+        ],
+      },
+      {
+        left: [
+          "谷物是劳动者最普遍的生活资料，它的价格比金银更接近真实价值的尺度。谷物能直接维持劳动，而金银只能间接取得谷物。",
+          "当谷物价格长期低廉时，劳动者的生活未必困苦；若同时工资也极低，低廉反而可能表示生产还没有充分展开。",
+          "判断这种情况，需要同时观察人口、耕作面积和市场通达程度。",
+        ],
+        right: [
+          "在早期社会，土地广阔而人口稀少，牲畜容易取得，肉类价格往往低于谷物。随着耕作扩大，这种比例会逐渐改变。",
+          "资本进入农业以后，荒地会被改良，牲畜饲养也会更有秩序。价格于是从偶然的丰饶转向稳定的生产费用。",
+          "这种转变不是货币本身造成的，而是劳动分工、资本积累和市场扩张共同造成的。",
+        ],
+      },
+      {
+        left: [
+          "一个国家若拥有大量矿山，却缺少勤勉的劳动和良好的制度，也不能因此变得富裕。财富不在矿石中，而在持续生产的秩序中。",
+          "矿山带来的金银也许能繁荣一时的贸易，却不能替代耕作、制造和运输这些更基础的劳动。",
+          "若制度妨碍这些劳动，金银最终只会成为奢侈消费的材料。",
+        ],
+        right: [
+          "反过来，矿山贫乏的国家，只要劳动分工细密、市场广阔、产权稳定，仍然可以通过交换取得所需金银。",
+          "商业的关键不是一国能不能从土地中挖出贵金属，而是它能不能以自己的产品换得别国愿意接受的货物。",
+          "因此，财富的根基总是生产，而不是铸币；是劳动的效率，而不是金属的光泽。",
+        ],
+      },
+    ]
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value))
+    }
+
+    function getChapterForPage(page) {
+      let current = toc[0]
+      for (const item of toc) {
+        if (item.page <= page) current = item
+      }
+      return current
+    }
+
+    function getNextChapterPage(page) {
+      return toc.find((item) => item.page > page)?.page ?? totalPages + 1
+    }
+
+    function renderToc() {
+      const chapter = getChapterForPage(currentPage)
+      tocList.innerHTML = toc
+        .map(
+          (item) => `
+            <button class="toc-item" type="button" data-toc-page="${item.page}" aria-current="${item === chapter ? "true" : "false"}">
+              <span>${item.title}</span>
+              <span class="toc-page">${item.page}</span>
+            </button>
+          `,
+        )
+        .join("")
+    }
+
+    function renderPageContent(direction) {
+      const sample = pageSamples[Math.abs(currentPage - 205) % pageSamples.length]
+      if (direction) {
+        textLayout.classList.add(direction === "next" ? "is-turning-next" : "is-turning-prev")
+      }
+      window.setTimeout(() => {
+        leftColumn.innerHTML = sample.left.map((text) => `<p>${text}</p>`).join("")
+        rightColumn.innerHTML = sample.right.map((text) => `<p>${text}</p>`).join("")
+        textLayout.classList.remove("is-turning-next", "is-turning-prev")
+      }, direction ? 150 : 0)
+    }
+
+    function updateProgress() {
+      const pct = ((currentPage - 1) / (totalPages - 1)) * 100
+      progressRange.value = String(currentPage)
+      progressFill.style.width = `${pct}%`
+      progressThumb.style.left = `${pct}%`
+      miniPage.textContent = String(currentPage)
+      progressLabel.textContent = `${currentPage}/${totalPages} 页`
+    }
+
+    function updateBookmark() {
+      const active = bookmarks.has(currentPage)
+      bookmarkButton.setAttribute("aria-pressed", active ? "true" : "false")
+      bookmarkButton.title = active ? "取消书签" : "添加书签"
+    }
+
+    function renderAll(direction) {
+      const chapter = getChapterForPage(currentPage)
+      ambientTitle.textContent = bookTitle
+      chromeTitle.textContent = bookTitle
+      paper.dataset.chapter = chapter.title
+      renderPageContent(direction)
+      updateProgress()
+      updateBookmark()
+      renderToc()
+    }
+
+    function setPage(page, direction) {
+      const nextPage = clamp(Math.round(page), 1, totalPages)
+      if (nextPage === currentPage && direction) return
+      currentPage = nextPage
+      renderAll(direction)
+    }
+
+    function turnPage(direction) {
+      setPage(currentPage + (direction === "next" ? 1 : -1), direction)
+      setState("progress")
+    }
+
+    function setState(state) {
+      readerWindow.dataset.state = state
+      for (const tab of tabs) {
+        tab.setAttribute("aria-pressed", tab.dataset.setState === state ? "true" : "false")
+      }
+      if (state === "quiet") closePanel()
+    }
+
+    function closePanel() {
+      activePanel = null
+      for (const panel of panels) panel.classList.remove("is-open")
+      for (const button of panelButtons) button.setAttribute("aria-pressed", "false")
+    }
+
+    function togglePanel(name) {
+      activePanel = activePanel === name ? null : name
+      for (const panel of panels) {
+        panel.classList.toggle("is-open", panel.dataset.panel === activePanel)
+      }
+      for (const button of panelButtons) {
+        button.setAttribute("aria-pressed", button.dataset.panelToggle === activePanel ? "true" : "false")
+      }
+      if (activePanel) setState("tools")
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer)
+      toast.textContent = message
+      toast.classList.add("is-visible")
+      toastTimer = window.setTimeout(() => {
+        toast.classList.remove("is-visible")
+      }, 1200)
+    }
+
+    function applyReadingSettings() {
+      textLayout.style.fontSize = `${fontSize}px`
+      textLayout.style.lineHeight = String(lineHeight)
+      fontReadout.textContent = `${Math.round(fontSize)} px`
+      lineReadout.textContent = lineHeight.toFixed(2)
+    }
+
+    function setTheme(theme) {
+      paper.dataset.theme = theme
+      for (const button of themeButtons) {
+        button.setAttribute("aria-pressed", button.dataset.theme === theme ? "true" : "false")
+      }
+    }
+
+    for (const tab of tabs) {
+      tab.addEventListener("click", () => setState(tab.dataset.setState))
+    }
+
+    for (const button of panelButtons) {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation()
+        togglePanel(button.dataset.panelToggle)
+      })
+    }
+
+    document.querySelectorAll("[data-turn]").forEach((button) => {
+      button.addEventListener("click", () => turnPage(button.dataset.turn))
+    })
+
+    progressRange.addEventListener("input", () => {
+      setPage(Number(progressRange.value))
+      setState("progress")
+    })
+
+    progressRange.addEventListener("change", () => {
+      showToast(`已跳转到第 ${currentPage} 页`)
+    })
+
+    bookmarkButton.addEventListener("click", () => {
+      if (bookmarks.has(currentPage)) {
+        bookmarks.delete(currentPage)
+        showToast("已取消书签")
+      } else {
+        bookmarks.add(currentPage)
+        showToast("已加入书签")
+      }
+      updateBookmark()
+    })
+
+    document.querySelector("[data-action='search']").addEventListener("click", () => {
+      showToast("搜索面板")
+    })
+
+    document.querySelectorAll("[data-window-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.windowAction
+        if (action === "close") {
+          showToast("关闭窗口")
+          return
+        }
+        if (action === "minimize") {
+          readerWindow.classList.add("is-window-minimized")
+          showToast("最小化")
+          window.setTimeout(() => readerWindow.classList.remove("is-window-minimized"), 520)
+          return
+        }
+        if (action === "maximize") {
+          const active = readerWindow.classList.toggle("is-window-maximized")
+          button.setAttribute("aria-pressed", active ? "true" : "false")
+          showToast(active ? "进入最大化" : "退出最大化")
+        }
+      })
+    })
+
+    document.querySelectorAll("[data-font-step]").forEach((button) => {
+      button.addEventListener("click", () => {
+        fontSize = clamp(fontSize + Number(button.dataset.fontStep), 18, 30)
+        applyReadingSettings()
+      })
+    })
+
+    document.querySelectorAll("[data-line-step]").forEach((button) => {
+      button.addEventListener("click", () => {
+        lineHeight = clamp(lineHeight + Number(button.dataset.lineStep), 1.44, 2)
+        applyReadingSettings()
+      })
+    })
+
+    for (const button of themeButtons) {
+      button.addEventListener("click", () => setTheme(button.dataset.theme))
+    }
+
+    tocList.addEventListener("click", (event) => {
+      const item = event.target.closest("[data-toc-page]")
+      if (!item) return
+      setPage(Number(item.dataset.tocPage), "next")
+      closePanel()
+      setState("progress")
+      showToast(`跳转到第 ${currentPage} 页`)
+    })
+
+    paper.addEventListener("click", (event) => {
+      if (event.target.closest("button, input, .floating-panel")) return
+      const rect = paper.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      if (x < rect.width * 0.28) turnPage("prev")
+      if (x > rect.width * 0.72) turnPage("next")
+    })
+
+    readerWindow.addEventListener("dblclick", (event) => {
+      if (event.target.closest("button, input, .floating-panel")) return
+      const current = readerWindow.dataset.state
+      setState(current === "quiet" ? "tools" : "quiet")
+    })
+
+    document.addEventListener("click", (event) => {
+      if (!activePanel) return
+      if (event.target.closest(".floating-panel, [data-panel-toggle]")) return
+      closePanel()
+    })
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight") turnPage("next")
+      if (event.key === "ArrowLeft") turnPage("prev")
+      if (event.key === "Escape") closePanel()
+    })
+
+    applyReadingSettings()
+    setTheme("paper")
+    renderAll()
+  </script>
+</body>
+</html>

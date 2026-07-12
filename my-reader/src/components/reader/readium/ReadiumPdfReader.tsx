@@ -6,12 +6,18 @@ import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomSt
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
 import {
+  READER_SETTINGS_CONTENT_CLASS,
+  READER_SETTINGS_LABEL_CLASS,
+  READER_SETTINGS_OPTION_CLASS,
+  READER_SETTINGS_VALUE_CLASS,
   ReaderSidePanelFrame,
   ReaderSidePanelHeader,
+  ReaderSidePanelScrollArea,
+  readerSettingsOptionStateClass,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderPaginateEdgeTurn } from "@/hooks/reader/useReaderPaginateEdgeTurn"
+import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import {
@@ -73,6 +79,7 @@ export function ReadiumPdfReader({
     const nav = navRef.current
     if (!nav || nav.totalPages < 1) return []
     return Array.from({ length: nav.totalPages }, (_, i) => ({
+      key: `page-${i + 1}`,
       depth: 0,
       title: t("reader.pageCount", { current: i + 1, total: "" }).replace(
         " / ",
@@ -179,6 +186,40 @@ export function ReadiumPdfReader({
     navRef.current?.goForward()
   }, [])
 
+  const onProgressSeek = useCallback((progress: number) => {
+    const nav = navRef.current
+    if (!nav || nav.totalPages < 1) return
+    const normalized = Math.max(0, Math.min(100, progress)) / 100
+    const targetPage = Math.round(normalized * (nav.totalPages - 1)) + 1
+    nav.goToPage(targetPage)
+  }, [])
+  const resolveProgressCommit = useCallback(
+    (progress: number) => {
+      if (totalPages <= 1) return 0
+      const normalized = Math.max(0, Math.min(100, progress)) / 100
+      const targetPage = Math.round(normalized * (totalPages - 1)) + 1
+      return ((targetPage - 1) / (totalPages - 1)) * 100
+    },
+    [totalPages],
+  )
+  const getProgressPreview = useCallback(
+    (nextProgress: number) => {
+      const total = Math.max(1, totalPages)
+      const current =
+        total > 1
+          ? Math.round(
+              (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
+            ) + 1
+          : 1
+      const label = t("reader.pageCount", { current, total })
+      return {
+        chapterTitle: tocRows[current - 1]?.title ?? label,
+        label,
+      }
+    },
+    [t, tocRows, totalPages],
+  )
+
   const onTocSelect = useCallback(
     (row: ReadiumTocRow) => {
       const m = /^page-(\d+)$/i.exec(row.href)
@@ -205,7 +246,7 @@ export function ReadiumPdfReader({
 
   const isRtl = direction === "rtl"
   const edgeTurnActive = readiumNavReady && !tocOpen && !settingsOpen
-  const { nearLeft, nearRight } = useReaderPaginateEdgeTurn(
+  const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
   )
@@ -223,11 +264,6 @@ export function ReadiumPdfReader({
     )
   }
 
-  const chapterTitle =
-    totalPages > 0
-      ? t("reader.pageCount", { current: pageNum, total: totalPages })
-      : ""
-
   return (
     <ReaderChromeShell
       readerRootRef={readerRootRef}
@@ -236,10 +272,13 @@ export function ReadiumPdfReader({
       scheduleChromeHide={scheduleChromeHide}
       panelsOpen={tocOpen || settingsOpen}
       onClosePanels={closePanels}
+      readerMode="fixed-layout"
       topBar={{
         bookTitle,
-        chapterTitle,
+        chapterTitle: "",
         bookmarked,
+        tocOpen,
+        settingsOpen,
         onToggleToc: toggleToc,
         onToggleBookmark: () => setBookmarked((b) => !b),
         onToggleSettings: toggleSettings,
@@ -248,7 +287,7 @@ export function ReadiumPdfReader({
         <ReadiumTocPanel
           visible={tocOpen}
           rows={tocRows}
-          activeHref={`page-${pageNum}`}
+          activeKey={`page-${pageNum}`}
           onSelect={onTocSelect}
           onClose={closePanels}
         />
@@ -260,12 +299,12 @@ export function ReadiumPdfReader({
             icon={Settings}
             onClose={closePanels}
           />
-          <div className="reader-chrome-muted space-y-5 px-4 py-3 text-xs leading-relaxed">
+          <ReaderSidePanelScrollArea className={READER_SETTINGS_CONTENT_CLASS}>
             <section className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+              <Label className={READER_SETTINGS_LABEL_CLASS}>
                 {t("reader.layout")}
               </Label>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {(
                   [
                     ["auto", t("reader.layoutOptions.auto")],
@@ -278,10 +317,9 @@ export function ReadiumPdfReader({
                     type="button"
                     onClick={() => onSpreadChange(value)}
                     className={cn(
-                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
-                      spreadMode === value
-                        ? "border-primary bg-accent text-reader-chrome-fg"
-                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                      READER_SETTINGS_OPTION_CLASS,
+                      "text-start",
+                      readerSettingsOptionStateClass(spreadMode === value),
                     )}
                   >
                     {label}
@@ -290,10 +328,10 @@ export function ReadiumPdfReader({
               </div>
             </section>
             <section className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80">
+              <Label className={READER_SETTINGS_LABEL_CLASS}>
                 {t("reader.canvasBg")}
               </Label>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {(
                   [
                     ["black", t("reader.canvasBgOptions.black")],
@@ -306,10 +344,9 @@ export function ReadiumPdfReader({
                     type="button"
                     onClick={() => setSurface(value)}
                     className={cn(
-                      "rounded-md border px-3 py-2 text-start text-[13px] transition-colors",
-                      surface === value
-                        ? "border-primary bg-accent text-reader-chrome-fg"
-                        : "border-reader-chrome-border bg-transparent text-reader-chrome-fg/90 hover:bg-reader-chrome-muted/25",
+                      READER_SETTINGS_OPTION_CLASS,
+                      "text-start",
+                      readerSettingsOptionStateClass(surface === value),
                     )}
                   >
                     {label}
@@ -318,12 +355,17 @@ export function ReadiumPdfReader({
               </div>
             </section>
             <section className="space-y-2">
-              <Label
-                htmlFor="pdf-render-scale"
-                className="text-[11px] font-semibold uppercase tracking-wide text-reader-chrome-fg/80"
-              >
-                {t("reader.renderScale")}
-              </Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label
+                  htmlFor="pdf-render-scale"
+                  className={READER_SETTINGS_LABEL_CLASS}
+                >
+                  {t("reader.renderScale")}
+                </Label>
+                <span className={READER_SETTINGS_VALUE_CLASS}>
+                  {renderScale.toFixed(2)}×
+                </span>
+              </div>
               <input
                 id="pdf-render-scale"
                 type="range"
@@ -336,19 +378,16 @@ export function ReadiumPdfReader({
                   setRenderScale(scale)
                   if (navRef.current) navRef.current.renderScale = scale
                 }}
-                className="mt-1 w-full accent-primary"
+                className="w-full accent-reader-chrome-active"
               />
-              <p className="text-[11px] tabular-nums text-reader-chrome-fg/70">
-                {renderScale.toFixed(2)}×
-              </p>
             </section>
-          </div>
+          </ReaderSidePanelScrollArea>
         </ReaderSidePanelFrame>
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
-          nearLeft={isRtl ? nearRight : nearLeft}
-          nearRight={isRtl ? nearLeft : nearRight}
+          showPrev={isRtl ? nearRight : nearLeft}
+          showNext={isRtl ? nearLeft : nearRight}
           onPrev={onPdfEdgePrev}
           onNext={onPdfEdgeNext}
           prevLabel={t("reader.prevPage")}
@@ -366,6 +405,11 @@ export function ReadiumPdfReader({
           progress={
             totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
           }
+          getProgressPreview={getProgressPreview}
+          resolveProgressCommit={resolveProgressCommit}
+          onProgressChange={onProgressSeek}
+          onProgressStepBackward={onPdfEdgePrev}
+          onProgressStepForward={onPdfEdgeNext}
         />
       }
       main={

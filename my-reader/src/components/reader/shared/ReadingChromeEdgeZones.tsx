@@ -46,6 +46,9 @@ export function ReadingChromeEdgeZones({
         aria-hidden
         className={cn("absolute inset-x-0 top-0 z-[41]", capture)}
         style={{ height: topPx }}
+        onClick={onReveal}
+        onMouseDown={onReveal}
+        onMouseEnter={onReveal}
         onPointerDown={onReveal}
         onPointerEnter={onReveal}
       />
@@ -53,6 +56,9 @@ export function ReadingChromeEdgeZones({
         aria-hidden
         className={cn("absolute inset-x-0 bottom-0 z-[41]", capture)}
         style={{ height: bottomPx }}
+        onClick={onReveal}
+        onMouseDown={onReveal}
+        onMouseEnter={onReveal}
         onPointerDown={onReveal}
         onPointerEnter={onReveal}
       />

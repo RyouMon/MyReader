@@ -33,6 +33,7 @@ export function useReadiumPublication({
     if (!assetBaseUrl) {
       setPublication(null)
       setError(null)
+      setLoading(false)
       return
     }
 
@@ -90,5 +91,10 @@ export function useReadiumPublication({
     load()
   }, [enabled, load])
 
-  return { publication, loading, error }
+  return {
+    publication,
+    loading:
+      loading || (enabled && Boolean(assetBaseUrl) && !publication && !error),
+    error,
+  }
 }

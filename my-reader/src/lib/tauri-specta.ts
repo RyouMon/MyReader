@@ -45,6 +45,7 @@ export const commands = {
 	setReaderUiPreferences: (preferences: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { preferences })),
 	prepareBookSource: (libraryId: string | null, bookId: number, format: string) => typedError<PreparedBookSource, ErrorKind>(__TAURI_INVOKE("prepare_book_source", { libraryId, bookId, format })),
 	writeEpubReadiumManifest: (dirPath: string, manifest: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("write_epub_readium_manifest", { dirPath, manifest })),
+	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
 	getCacheUsage: () => typedError<CacheUsageDto, ErrorKind>(__TAURI_INVOKE("get_cache_usage")),
 	clearCache: () => typedError<null, ErrorKind>(__TAURI_INVOKE("clear_cache")),

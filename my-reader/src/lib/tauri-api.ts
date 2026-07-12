@@ -66,6 +66,7 @@ export const api = {
   setReaderUiPreferences: wrap(commands.setReaderUiPreferences),
   prepareBookSource: wrap(commands.prepareBookSource),
   writeEpubReadiumManifest: wrap(commands.writeEpubReadiumManifest),
+  setReaderTrafficLightsVisible: wrap(commands.setReaderTrafficLightsVisible),
   closeBookStreamer: wrap(commands.closeBookStreamer),
   getCacheUsage: wrap(commands.getCacheUsage),
   clearCache: wrap(commands.clearCache),

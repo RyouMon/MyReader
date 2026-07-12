@@ -1,10 +1,42 @@
-import { isTauri } from "@tauri-apps/api/core"
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 import i18n from "@/i18n"
+import { isMacPlatform } from "@/lib/platform"
+import { MACOS_READER_TRAFFIC_LIGHT_POSITION } from "@/lib/readerWindowChrome"
 import { READER_PREFERENCES_REFRESH_EVENT } from "@/lib/readerPreferencesEvents"
+import { isTauri } from "@tauri-apps/api/core"
+import { LogicalPosition } from "@tauri-apps/api/dpi"
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow"
 
 function readerWindowLabel(bookId: string): string {
   return `reader-${bookId}`
+}
+
+function disableReaderWindowDecorations(
+  win: WebviewWindow,
+  label: string,
+): void {
+  const attempts = [0, 50, 250]
+  for (const delay of attempts) {
+    window.setTimeout(() => {
+      void win
+        .setDecorations(false)
+        .then(() => win.isDecorated())
+        .then((decorated) => {
+          if (decorated) {
+            console.warn(
+              `Reader window is still decorated after disabling decorations. label: "${label}"`,
+            )
+          }
+        })
+        .catch((e) => {
+          if (delay === attempts[attempts.length - 1]) {
+            console.error(
+              `Failed to disable reader window decorations. label: "${label}", error:`,
+              e,
+            )
+          }
+        })
+    }, delay)
+  }
 }
 
 /**
@@ -45,6 +77,7 @@ export async function openReaderInNewWindow(
 
   const search = format ? `?format=${encodeURIComponent(format)}` : ""
   const url = `/read/${encodeURIComponent(bookId)}${search}`
+  const useNativeMacTitleBar = isMacPlatform()
 
   const win = new WebviewWindow(label, {
     url,
@@ -54,9 +87,23 @@ export async function openReaderInNewWindow(
     minWidth: 400,
     minHeight: 320,
     center: true,
+    decorations: useNativeMacTitleBar,
+    hiddenTitle: useNativeMacTitleBar,
+    shadow: true,
+    titleBarStyle: useNativeMacTitleBar ? "overlay" : undefined,
+    trafficLightPosition: useNativeMacTitleBar
+      ? new LogicalPosition(
+          MACOS_READER_TRAFFIC_LIGHT_POSITION.x,
+          MACOS_READER_TRAFFIC_LIGHT_POSITION.y,
+        )
+      : undefined,
     resizable: true,
     focus: true,
   })
+
+  if (!useNativeMacTitleBar) {
+    disableReaderWindowDecorations(win, label)
+  }
 
   win.once("tauri://error", (e) => {
     console.error(
