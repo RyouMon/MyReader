@@ -529,7 +529,6 @@
     display: flex;
     align-items: center;
     gap: 0.55rem;
-    min-width: 4.625rem;
   }
 
   .reader-window-dot {

@@ -226,7 +226,7 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "reader-window-header z-50 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-[9px]",
+        "reader-window-header z-50 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-5",
         !visible && "pointer-events-none",
       )}
       onPointerDown={startWindowDragFromHeader}
@@ -240,7 +240,7 @@ export function ReaderTopBar({
     >
       <div
         className={cn(
-          "relative z-10 flex min-w-0 items-center justify-start gap-4",
+          "relative z-10 flex min-w-0 items-center justify-start gap-5",
           chromeVisibilityClass,
         )}
       >
