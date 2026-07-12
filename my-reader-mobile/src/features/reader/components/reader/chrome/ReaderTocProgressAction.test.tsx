@@ -1,6 +1,6 @@
-import { type ReactNode } from "react"
-import { StyleSheet } from "react-native"
 import { act, render, screen } from "@testing-library/react-native"
+import type { ReactNode } from "react"
+import { StyleSheet } from "react-native"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 
@@ -64,6 +64,7 @@ describe("ReaderTocProgressAction", () => {
     const commonProps = {
       accessibilityLabel: "目录",
       actionPillWidth: 240,
+      readingProgression: "ltr" as const,
       positionCount: 10,
       palette,
       onOpenToc: jest.fn(),
@@ -116,5 +117,32 @@ describe("ReaderTocProgressAction", () => {
       mockUseReaderProgressScrubGesture.mock.calls.at(-1)?.[0].progressPercent,
     ).toBeCloseTo(55.56)
     expect(screen.queryByText("位置 6 / 10")).toBeNull()
+  })
+
+  it("should anchor progress feedback to the right when reading right to left", () => {
+    render(
+      <ReaderTocProgressAction
+        accessibilityLabel="目录"
+        actionPillWidth={240}
+        readingProgression="rtl"
+        currentPositionIndex={2}
+        positionCount={10}
+        progressPercent={25}
+        palette={palette}
+        onOpenToc={jest.fn()}
+        onPreviewPosition={(positionIndex) => ({
+          positionLabel: `位置 ${positionIndex + 1} / 10`,
+        })}
+        onCommitPosition={jest.fn()}
+      />,
+    )
+
+    act(() => scrubOptions.onPreviewPosition(5))
+
+    expect(scrubOptions.direction).toBe("rtl")
+    const originMarker = screen.getByTestId("reader-progress-origin-marker", {
+      includeHiddenElements: true,
+    })
+    expect(StyleSheet.flatten(originMarker.props.style).left).toBe(180)
   })
 })

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from "react"
-import { StyleSheet, View as RNView } from "react-native"
+import { View as RNView, StyleSheet } from "react-native"
 import { GestureDetector } from "react-native-gesture-handler"
 import Animated from "react-native-reanimated"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import { Text } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
+import {
+  clampReaderPositionIndex,
+  type ReaderProgressDirection,
+  type ReaderProgressPreview,
+  readerProgressOffset,
+  readerProgressPercentForPosition,
+} from "./reader-progress-scrubber"
 import {
   READER_EXPANDED_ACTION_ICON_SIZE,
   READER_EXPANDED_ACTION_PADDING_HORIZONTAL,
@@ -14,12 +21,6 @@ import {
   READER_EXPANDED_ACTION_SHEET_SHADOW_COLOR,
   READER_EXPANDED_ACTION_TEXT_GAP,
 } from "./readerChromeConstants"
-import {
-  clampReaderPositionIndex,
-  readerProgressOffset,
-  readerProgressPercentForPosition,
-  type ReaderProgressPreview,
-} from "./reader-progress-scrubber"
 import { useReaderProgressScrubGesture } from "./useReaderProgressScrubGesture"
 
 type DragPreview = ReaderProgressPreview & {
@@ -30,6 +31,7 @@ type DragPreview = ReaderProgressPreview & {
 type Props = {
   accessibilityLabel: string
   actionPillWidth: number
+  readingProgression: ReaderProgressDirection
   currentPositionIndex: number
   positionCount: number
   progressPercent: number
@@ -42,6 +44,7 @@ type Props = {
 export function ReaderTocProgressAction({
   accessibilityLabel,
   actionPillWidth,
+  readingProgression,
   currentPositionIndex,
   positionCount,
   progressPercent,
@@ -99,9 +102,11 @@ export function ReaderTocProgressAction({
 
   const visibleDragPreview = readerReachedCommittedPosition ? null : dragPreview
   const isDragging = visibleDragPreview?.committed === false
+  const isRtl = readingProgression === "rtl"
   const originalProgressOffset = readerProgressOffset(
     actionPillWidth,
     progressPercent,
+    readingProgression,
   )
   const displayProgress = visibleDragPreview
     ? readerProgressPercentForPosition(
@@ -113,6 +118,7 @@ export function ReaderTocProgressAction({
   const { gesture, pressFeedbackStyle, progressFillStyle } =
     useReaderProgressScrubGesture({
       width: actionPillWidth,
+      direction: readingProgression,
       currentPositionIndex,
       positionCount,
       progressPercent: displayProgress,
@@ -214,6 +220,7 @@ export function ReaderTocProgressAction({
               <Animated.View
                 style={[
                   styles.pillFillBar,
+                  isRtl ? styles.progressFromRight : styles.progressFromLeft,
                   progressFillStyle,
                   { backgroundColor: palette.progressFill },
                 ]}
@@ -229,10 +236,20 @@ export function ReaderTocProgressAction({
             </RNView>
 
             <Animated.View
-              style={[styles.progressTextClip, progressFillStyle]}
+              style={[
+                styles.progressTextClip,
+                isRtl ? styles.progressFromRight : styles.progressFromLeft,
+                progressFillStyle,
+              ]}
               pointerEvents="none"
             >
-              <RNView style={[styles.pillInner, { width: actionPillWidth }]}>
+              <RNView
+                style={[
+                  styles.pillInner,
+                  { width: actionPillWidth },
+                  isRtl ? styles.progressContentFromRight : null,
+                ]}
+              >
                 <TocPillContent
                   label={accessibilityLabel}
                   progressPercent={Math.round(displayProgress)}
@@ -322,7 +339,20 @@ const styles = StyleSheet.create({
     left: 0,
   },
   pillFillBar: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
     height: "100%",
+  },
+  progressFromLeft: {
+    left: 0,
+  },
+  progressFromRight: {
+    right: 0,
+  },
+  progressContentFromRight: {
+    position: "absolute",
+    right: 0,
   },
   originMarker: {
     position: "absolute",
@@ -347,7 +377,6 @@ const styles = StyleSheet.create({
   progressTextClip: {
     position: "absolute",
     top: 0,
-    left: 0,
     bottom: 0,
     overflow: "hidden",
   },

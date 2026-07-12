@@ -1934,6 +1934,7 @@ export function ReadiumEpubReader({
       edgeTurnOverlays={
         readerSettings.readingLayout !== "scroll" ? (
           <ReaderPaginateEdgeTurnStrips
+            direction={isRtl ? "rtl" : "ltr"}
             showPrev={isRtl ? nearRight : nearLeft}
             showNext={isRtl ? nearLeft : nearRight}
             onPrev={onReadiumEdgePrev}
@@ -1946,6 +1947,7 @@ export function ReadiumEpubReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
+          direction={isRtl ? "rtl" : "ltr"}
           leftText={
             isFixedLayout
               ? t("reader.pageCount", {

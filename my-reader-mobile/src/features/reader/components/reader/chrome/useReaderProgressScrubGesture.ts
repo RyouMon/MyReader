@@ -9,16 +9,17 @@ import {
 import { scheduleOnRN } from "react-native-worklets"
 
 import {
-  READER_FLOATING_BUTTON_PRESS_DURATION_MS,
-  READER_FLOATING_BUTTON_PRESS_SCALE,
-  READER_FLOATING_BUTTON_VISIBLE_SCALE,
-} from "./readerChromeConstants"
-import {
   clampReaderPositionIndex,
+  type ReaderProgressDirection,
   readerPositionIndexForScrubberTranslation,
   readerProgressOffset,
   readerProgressPercentForPosition,
 } from "./reader-progress-scrubber"
+import {
+  READER_FLOATING_BUTTON_PRESS_DURATION_MS,
+  READER_FLOATING_BUTTON_PRESS_SCALE,
+  READER_FLOATING_BUTTON_VISIBLE_SCALE,
+} from "./readerChromeConstants"
 import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
 
 const SCRUB_ACTIVATION_DISTANCE = 8
@@ -26,6 +27,7 @@ const SCRUB_VERTICAL_TOLERANCE = 16
 
 type Options = {
   width: number
+  direction: ReaderProgressDirection
   currentPositionIndex: number
   positionCount: number
   progressPercent: number
@@ -49,6 +51,7 @@ function animatePressScale(
 
 export function useReaderProgressScrubGesture({
   width,
+  direction,
   currentPositionIndex,
   positionCount,
   progressPercent,
@@ -89,6 +92,7 @@ export function useReaderProgressScrubGesture({
           event.translationX,
           width,
           positionCount,
+          direction,
         )
         animatedProgressPercent.set(
           readerProgressPercentForPosition(nextPositionIndex, positionCount),
@@ -125,6 +129,7 @@ export function useReaderProgressScrubGesture({
   }, [
     animatedProgressPercent,
     currentPositionIndex,
+    direction,
     onCancel,
     onCommitPosition,
     onPreviewPosition,

@@ -19,6 +19,15 @@ describe("reader progress scrubber", () => {
     )
   })
 
+  it("should reverse horizontal dragging when reading from right to left", () => {
+    expect(
+      readerPositionIndexForScrubberTranslation(40, 40, 200, 101, "rtl"),
+    ).toBe(20)
+    expect(
+      readerPositionIndexForScrubberTranslation(40, -40, 200, 101, "rtl"),
+    ).toBe(60)
+  })
+
   it("should clamp relative dragging at publication boundaries", () => {
     expect(readerPositionIndexForScrubberTranslation(10, -200, 200, 101)).toBe(
       0,
@@ -36,5 +45,10 @@ describe("reader progress scrubber", () => {
   it("should use the full pill width when positioning progress visuals", () => {
     expect(readerProgressOffset(240, 25)).toBe(60)
     expect(readerProgressOffset(240, 100)).toBe(240)
+  })
+
+  it("should position right-to-left progress from the opposite edge", () => {
+    expect(readerProgressOffset(240, 25, "rtl")).toBe(180)
+    expect(readerProgressOffset(240, 100, "rtl")).toBe(0)
   })
 })

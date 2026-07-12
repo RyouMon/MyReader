@@ -373,6 +373,7 @@ export function ReadiumPdfReader({
       edgeTurnOverlays={
         navigationMode === "horizontal" ? (
           <ReaderPaginateEdgeTurnStrips
+            direction={direction}
             showPrev={isRtl ? nearRight : nearLeft}
             showNext={isRtl ? nearLeft : nearRight}
             onPrev={onPdfEdgePrev}
@@ -385,6 +386,7 @@ export function ReadiumPdfReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
+          direction={direction}
           emphasizePositionLabel
           leftText={
             totalPages > 0

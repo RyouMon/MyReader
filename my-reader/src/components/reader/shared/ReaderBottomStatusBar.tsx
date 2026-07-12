@@ -20,6 +20,7 @@ function clampProgress(progress: number): number {
 
 interface ReaderBottomStatusBarProps {
   visible: boolean
+  direction?: "ltr" | "rtl"
   leftText?: string
   emphasizePositionLabel?: boolean
   rightText?: string
@@ -36,6 +37,7 @@ interface ReaderBottomStatusBarProps {
  */
 export function ReaderBottomStatusBar({
   visible,
+  direction = "ltr",
   leftText,
   emphasizePositionLabel = false,
   progress,
@@ -58,6 +60,8 @@ export function ReaderBottomStatusBar({
   const progressValue =
     typeof progress === "number" ? clampProgress(progress) : 0
   const displayProgress = draftProgress ?? committedProgress ?? progressValue
+  const displayOffset =
+    direction === "rtl" ? 100 - displayProgress : displayProgress
   const tooltipPreview = useMemo(
     () =>
       getProgressPreview?.(displayProgress) ??
@@ -142,9 +146,10 @@ export function ReaderBottomStatusBar({
       const rect = track.getBoundingClientRect()
       if (rect.width <= 0) return progressValue
       const next = ((clientX - rect.left) / rect.width) * 100
-      return clampProgress(next)
+      const physicalProgress = clampProgress(next)
+      return direction === "rtl" ? 100 - physicalProgress : physicalProgress
     },
-    [progressValue],
+    [direction, progressValue],
   )
 
   const onTrackPointerDown = useCallback(
@@ -156,15 +161,19 @@ export function ReaderBottomStatusBar({
       setDraftProgress(null)
       setCommittedProgress(null)
       progressAtCommitRef.current = null
-      const rect = track.getBoundingClientRect()
-      const handleX = rect.left + (progressValue / 100) * rect.width
-      if (event.clientX < handleX) {
+      const pointerProgress = progressFromPointer(event.clientX)
+      if (pointerProgress < progressValue) {
         onProgressStepBackward?.()
       } else {
         onProgressStepForward?.()
       }
     },
-    [onProgressStepBackward, onProgressStepForward, progressValue],
+    [
+      onProgressStepBackward,
+      onProgressStepForward,
+      progressFromPointer,
+      progressValue,
+    ],
   )
 
   const onHandlePointerDown = useCallback(
@@ -249,8 +258,8 @@ export function ReaderBottomStatusBar({
             ref={tooltipRef}
             className="reader-progress-tooltip select-none"
             style={{
-              left: `${displayProgress}%`,
-              transform: `translateX(${-displayProgress}%)`,
+              left: `${displayOffset}%`,
+              transform: `translateX(${-displayOffset}%)`,
               width: tooltipFit.width > 0 ? tooltipFit.width : undefined,
             }}
           >
@@ -284,8 +293,8 @@ export function ReaderBottomStatusBar({
           type="button"
           className="reader-progress-handle"
           style={{
-            left: `${displayProgress}%`,
-            transform: `translate(${-displayProgress}%, -50%)`,
+            left: `${displayOffset}%`,
+            transform: `translate(${-displayOffset}%, -50%)`,
           }}
           aria-label={leftText}
           aria-valuemin={0}

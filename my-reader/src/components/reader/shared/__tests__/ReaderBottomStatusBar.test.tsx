@@ -47,6 +47,55 @@ describe("ReaderBottomStatusBar", () => {
     })
   })
 
+  it("should mirror the handle position when reading from right to left", () => {
+    render(
+      <ReaderBottomStatusBar
+        visible
+        direction="rtl"
+        leftText="25%"
+        progress={25}
+      />,
+    )
+
+    expect(screen.getByRole("slider")).toHaveStyle({
+      left: "75%",
+      transform: "translate(-75%, -50%)",
+    })
+  })
+
+  it("should step forward on the physical left when reading from right to left", () => {
+    const onProgressStepBackward = vi.fn()
+    const onProgressStepForward = vi.fn()
+    const { container } = render(
+      <ReaderBottomStatusBar
+        visible
+        direction="rtl"
+        leftText="25%"
+        progress={25}
+        onProgressStepBackward={onProgressStepBackward}
+        onProgressStepForward={onProgressStepForward}
+      />,
+    )
+    const track = container.querySelector(".reader-progress-control")
+    expect(track).not.toBeNull()
+    vi.spyOn(track!, "getBoundingClientRect").mockReturnValue({
+      bottom: 10,
+      height: 10,
+      left: 0,
+      right: 100,
+      top: 0,
+      width: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    })
+
+    fireEvent.pointerDown(track!, { button: 0, clientX: 25 })
+
+    expect(onProgressStepForward).toHaveBeenCalledOnce()
+    expect(onProgressStepBackward).not.toHaveBeenCalled()
+  })
+
   it("should keep the tooltip inside the track when dragging at the screen edge", () => {
     const getProgressPreview = vi.fn(() => ({ label: "100%" }))
     const { container } = render(

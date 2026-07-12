@@ -3,6 +3,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 export type ReaderPaginateEdgeTurnStripsProps = {
+  direction?: "ltr" | "rtl"
   showPrev: boolean
   showNext: boolean
   onPrev: () => void
@@ -17,6 +18,7 @@ export type ReaderPaginateEdgeTurnStripsProps = {
  * 分页模式下贴靠阅读区左右两侧的窄翻页按钮。
  */
 export function ReaderPaginateEdgeTurnStrips({
+  direction = "ltr",
   showPrev,
   showNext,
   onPrev,
@@ -25,38 +27,43 @@ export function ReaderPaginateEdgeTurnStrips({
   nextLabel,
   buttonZClass = "z-[50]",
 }: ReaderPaginateEdgeTurnStripsProps) {
-  const [hoverPrev, setHoverPrev] = useState(false)
-  const [hoverNext, setHoverNext] = useState(false)
-  const prevVisible = showPrev || hoverPrev
-  const nextVisible = showNext || hoverNext
+  const [hoverLeft, setHoverLeft] = useState(false)
+  const [hoverRight, setHoverRight] = useState(false)
+  const isRtl = direction === "rtl"
+  const leftVisible = (isRtl ? showNext : showPrev) || hoverLeft
+  const rightVisible = (isRtl ? showPrev : showNext) || hoverRight
+  const onLeft = isRtl ? onNext : onPrev
+  const onRight = isRtl ? onPrev : onNext
+  const leftLabel = isRtl ? nextLabel : prevLabel
+  const rightLabel = isRtl ? prevLabel : nextLabel
 
   return (
     <>
       <div
         className="absolute inset-y-0 start-0 z-[49] w-16"
         onPointerEnter={() => {
-          setHoverPrev(true)
-          setHoverNext(false)
+          setHoverLeft(true)
+          setHoverRight(false)
         }}
         onPointerMove={() => {
-          setHoverPrev(true)
-          setHoverNext(false)
+          setHoverLeft(true)
+          setHoverRight(false)
         }}
-        onPointerLeave={() => setHoverPrev(false)}
+        onPointerLeave={() => setHoverLeft(false)}
       >
         <button
           type="button"
-          aria-label={prevLabel}
-          title={prevLabel}
+          aria-label={leftLabel}
+          title={leftLabel}
           className={cn(
             "reader-edge-turn-btn absolute start-[9px] top-1/2 flex -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center border-none p-0 outline-none select-none",
             buttonZClass,
-            prevVisible
+            leftVisible
               ? "pointer-events-auto opacity-100 scale-100"
               : "pointer-events-none opacity-0 scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
-          onClick={onPrev}
+          onClick={onLeft}
         >
           <ChevronLeft className="size-[18px]" aria-hidden />
         </button>
@@ -64,28 +71,28 @@ export function ReaderPaginateEdgeTurnStrips({
       <div
         className="absolute inset-y-0 end-0 z-[49] w-16"
         onPointerEnter={() => {
-          setHoverNext(true)
-          setHoverPrev(false)
+          setHoverRight(true)
+          setHoverLeft(false)
         }}
         onPointerMove={() => {
-          setHoverNext(true)
-          setHoverPrev(false)
+          setHoverRight(true)
+          setHoverLeft(false)
         }}
-        onPointerLeave={() => setHoverNext(false)}
+        onPointerLeave={() => setHoverRight(false)}
       >
         <button
           type="button"
-          aria-label={nextLabel}
-          title={nextLabel}
+          aria-label={rightLabel}
+          title={rightLabel}
           className={cn(
             "reader-edge-turn-btn absolute end-[9px] top-1/2 flex -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center border-none p-0 outline-none select-none",
             buttonZClass,
-            nextVisible
+            rightVisible
               ? "pointer-events-auto opacity-100 scale-100"
               : "pointer-events-none opacity-0 scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
-          onClick={onNext}
+          onClick={onRight}
         >
           <ChevronRight className="size-[18px]" aria-hidden />
         </button>

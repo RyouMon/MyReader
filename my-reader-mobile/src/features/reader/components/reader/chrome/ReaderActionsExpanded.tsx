@@ -14,8 +14,11 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
-import type { ReaderProgressPreview } from "./reader-progress-scrubber"
 import { ReaderTocProgressAction } from "./ReaderTocProgressAction"
+import type {
+  ReaderProgressDirection,
+  ReaderProgressPreview,
+} from "./reader-progress-scrubber"
 import {
   READER_EXPANDED_ACTION_BOTTOM_OFFSET,
   READER_EXPANDED_ACTION_ICON_SIZE,
@@ -41,6 +44,7 @@ type Props = {
   currentPositionIndex: number
   positionCount: number
   progressPercent: number
+  readingProgression: ReaderProgressDirection
   palette: ReaderChromePalette
   onOpenToc: () => void
   onOpenSettings: () => void
@@ -95,6 +99,7 @@ export default function ReaderActionsExpanded({
   currentPositionIndex,
   positionCount,
   progressPercent,
+  readingProgression,
   palette,
   onOpenToc,
   onOpenSettings,
@@ -152,6 +157,7 @@ export default function ReaderActionsExpanded({
           currentPositionIndex={currentPositionIndex}
           positionCount={positionCount}
           progressPercent={progressPercent}
+          readingProgression={readingProgression}
           palette={palette}
           onOpenToc={onOpenToc}
           onPreviewPosition={onPreviewPosition}

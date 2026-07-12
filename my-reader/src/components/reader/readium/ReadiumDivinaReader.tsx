@@ -458,6 +458,7 @@ export function ReadiumDivinaReader({
       }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
+          direction={direction}
           showPrev={isRtl ? nearRight : nearLeft}
           showNext={isRtl ? nearLeft : nearRight}
           onPrev={onReadiumEdgePrev}
@@ -469,6 +470,7 @@ export function ReadiumDivinaReader({
       bottomStatusBar={
         <ReaderBottomStatusBar
           visible={chromeVisible}
+          direction={direction}
           emphasizePositionLabel
           leftText={
             positions.length > 0

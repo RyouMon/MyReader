@@ -3,6 +3,8 @@ export type ReaderProgressPreview = {
   positionLabel: string
 }
 
+export type ReaderProgressDirection = "ltr" | "rtl"
+
 export function clampReaderPositionIndex(
   positionIndex: number,
   positionCount: number,
@@ -17,10 +19,12 @@ export function readerPositionIndexForScrubberTranslation(
   translationX: number,
   width: number,
   positionCount: number,
+  direction: ReaderProgressDirection = "ltr",
 ): number {
   "worklet"
   if (width <= 0 || positionCount <= 1) return 0
-  const translatedPositions = (translationX / width) * (positionCount - 1)
+  const logicalTranslation = direction === "rtl" ? -translationX : translationX
+  const translatedPositions = (logicalTranslation / width) * (positionCount - 1)
   return clampReaderPositionIndex(
     startPositionIndex + translatedPositions,
     positionCount,
@@ -43,9 +47,12 @@ export function readerProgressPercentForPosition(
 export function readerProgressOffset(
   width: number,
   progressPercent: number,
+  direction: ReaderProgressDirection = "ltr",
 ): number {
   "worklet"
   if (width <= 0) return 0
   const clampedProgress = Math.max(0, Math.min(100, progressPercent))
-  return (width * clampedProgress) / 100
+  const physicalProgress =
+    direction === "rtl" ? 100 - clampedProgress : clampedProgress
+  return (width * physicalProgress) / 100
 }

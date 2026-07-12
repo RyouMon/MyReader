@@ -682,6 +682,9 @@ export default function ReaderScreen() {
               currentPositionIndex={readerState?.currentPage ?? 0}
               positionCount={readerState?.totalPages ?? 1}
               progressPercent={progressPercent}
+              readingProgression={
+                isFixedSurface ? fixedSettings.readingProgression : "ltr"
+              }
               palette={chromePalette}
               onOpenToc={handleOpenToc}
               onOpenSettings={handleOpenSettings}
