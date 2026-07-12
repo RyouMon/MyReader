@@ -48,6 +48,7 @@ export function ReaderTopBar({
     previewNativeMacFullscreen || useNativeMacWindowControls
   const effectiveNativeMacFullscreen =
     previewNativeMacFullscreen || isNativeMacFullscreen
+  const useMacWindowSpacing = previewNativeMacFullscreen || isMacPlatform()
 
   useEffect(() => {
     if (previewNativeMacFullscreen) {
@@ -226,7 +227,8 @@ export function ReaderTopBar({
   return (
     <header
       className={cn(
-        "reader-window-header z-50 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-5",
+        "reader-window-header z-50 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 pr-[9px]",
+        useMacWindowSpacing ? "pl-[9px]" : "pl-5",
         !visible && "pointer-events-none",
       )}
       onPointerDown={startWindowDragFromHeader}
@@ -240,7 +242,8 @@ export function ReaderTopBar({
     >
       <div
         className={cn(
-          "relative z-10 flex min-w-0 items-center justify-start gap-5",
+          "relative z-10 flex min-w-0 items-center justify-start",
+          useMacWindowSpacing ? "gap-4" : "gap-5",
           chromeVisibilityClass,
         )}
       >
