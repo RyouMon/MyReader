@@ -1,12 +1,67 @@
 import { describe, expect, it } from "vitest"
 import {
+  consumeDoubleClickPointerTap,
   consumeWheelPageTurn,
+  createDoubleClickGestureState,
   createWheelPageTurnState,
+  nextDoubleClickZoomScale,
   wheelZoomFactor,
   zoomAtPoint,
 } from "../fixedLayoutGestures"
 
 describe("fixedLayoutGestures", () => {
+  it("should cycle double-click zoom through half maximum, maximum, and fitted scales", () => {
+    expect(nextDoubleClickZoomScale(1, 6, false)).toBe(3)
+    expect(nextDoubleClickZoomScale(3, 6, true)).toBe(6)
+    expect(nextDoubleClickZoomScale(6, 6, true)).toBe(1)
+  })
+
+  it("should reset zoom when double-clicking after gesture zoom", () => {
+    expect(nextDoubleClickZoomScale(1.5, 6, false)).toBe(1)
+    expect(nextDoubleClickZoomScale(3, 6, false)).toBe(1)
+  })
+
+  it("should recognize every double-click when repeated at the same position", () => {
+    const state = createDoubleClickGestureState()
+    const tap = (timeStamp: number) =>
+      consumeDoubleClickPointerTap(
+        state,
+        { clientX: 100, clientY: 100, timeStamp },
+        { clientX: 100, clientY: 100, timeStamp },
+      )
+
+    expect(tap(0)).toBe(false)
+    expect(tap(100)).toBe(true)
+    expect(tap(200)).toBe(false)
+    expect(tap(300)).toBe(true)
+  })
+
+  it("should ignore a pointer gesture when it moves beyond tap tolerance", () => {
+    const state = createDoubleClickGestureState()
+
+    expect(
+      consumeDoubleClickPointerTap(
+        state,
+        { clientX: 100, clientY: 100, timeStamp: 0 },
+        { clientX: 100, clientY: 100, timeStamp: 0 },
+      ),
+    ).toBe(false)
+    expect(
+      consumeDoubleClickPointerTap(
+        state,
+        { clientX: 100, clientY: 100, timeStamp: 100 },
+        { clientX: 120, clientY: 100, timeStamp: 100 },
+      ),
+    ).toBe(false)
+    expect(
+      consumeDoubleClickPointerTap(
+        state,
+        { clientX: 100, clientY: 100, timeStamp: 200 },
+        { clientX: 100, clientY: 100, timeStamp: 200 },
+      ),
+    ).toBe(false)
+  })
+
   it("should keep the content under the pointer fixed when zooming", () => {
     const next = zoomAtPoint(
       { scale: 1, offsetX: 0, offsetY: 0 },

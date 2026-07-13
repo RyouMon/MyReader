@@ -33,9 +33,68 @@ export type WheelPageTurn = {
   direction: -1 | 1
 }
 
+export type PointerPosition = {
+  clientX: number
+  clientY: number
+  timeStamp: number
+}
+
+export type DoubleClickGestureState = {
+  lastTap: PointerPosition | null
+}
+
 const LINE_DELTA_PIXELS = 40
 const PAGE_TURN_THRESHOLD = 80
 const PAGE_TURN_GESTURE_GAP_MS = 180
+const DOUBLE_CLICK_GAP_MS = 500
+const DOUBLE_CLICK_DISTANCE_PX = 8
+
+export function createDoubleClickGestureState(): DoubleClickGestureState {
+  return { lastTap: null }
+}
+
+export function consumeDoubleClickPointerTap(
+  state: DoubleClickGestureState,
+  pointerDown: PointerPosition,
+  pointerUp: PointerPosition,
+): boolean {
+  if (
+    Math.hypot(
+      pointerUp.clientX - pointerDown.clientX,
+      pointerUp.clientY - pointerDown.clientY,
+    ) > DOUBLE_CLICK_DISTANCE_PX
+  ) {
+    state.lastTap = null
+    return false
+  }
+
+  const lastTap = state.lastTap
+  state.lastTap = pointerUp
+  if (!lastTap) return false
+
+  const elapsed = pointerUp.timeStamp - lastTap.timeStamp
+  const closeEnough =
+    Math.hypot(
+      pointerUp.clientX - lastTap.clientX,
+      pointerUp.clientY - lastTap.clientY,
+    ) <= DOUBLE_CLICK_DISTANCE_PX
+  if (elapsed < 0 || elapsed > DOUBLE_CLICK_GAP_MS || !closeEnough) return false
+
+  state.lastTap = null
+  return true
+}
+
+export function nextDoubleClickZoomScale(
+  currentScale: number,
+  maxScale: number,
+  currentScaleCameFromDoubleClick: boolean,
+): number {
+  if (currentScale <= 1.001) return maxScale / 2
+  if (!currentScaleCameFromDoubleClick || currentScale >= maxScale - 0.001) {
+    return 1
+  }
+  return maxScale
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
