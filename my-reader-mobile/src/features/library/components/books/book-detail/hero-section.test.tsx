@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native"
+import { StyleSheet } from "react-native"
 
 import type { BookDetail } from "@my-reader/tools/types/book"
 
@@ -15,14 +16,6 @@ jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) =>
       params ? `${key}:${JSON.stringify(params)}` : key,
-  }),
-}))
-
-jest.mock("@/src/design/tokens", () => ({
-  getThemePalette: () => ({
-    background: "#1f1b17",
-    text: "#f5efe6",
-    textMuted: "#b8afa6",
   }),
 }))
 
@@ -227,6 +220,23 @@ describe("HeroSection", () => {
     expect(screen.getByTestId("book-detail-cover-title").props.style).toEqual(
       expect.objectContaining({ bottom: 32 }),
     )
+  })
+
+  it("should use active theme colors without outlines when the narrow hero is light", () => {
+    renderHero(390)
+
+    const titleStyle = StyleSheet.flatten(
+      screen.getByTestId("book-detail-title").props.style,
+    )
+    const seriesStyle = StyleSheet.flatten(
+      screen.getByText('bookDetail.seriesInfo:{"series":"Series","index":"2"}')
+        .props.style,
+    )
+
+    expect(titleStyle).toMatchObject({ color: colors.text })
+    expect(titleStyle).not.toHaveProperty("textShadowColor")
+    expect(seriesStyle).toMatchObject({ color: colors.muted })
+    expect(seriesStyle).not.toHaveProperty("textShadowColor")
   })
 
   it("should use body text size for non-title hero content", () => {

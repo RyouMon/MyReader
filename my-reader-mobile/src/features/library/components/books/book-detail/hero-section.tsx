@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next"
 import { StyleSheet, useWindowDimensions, View as RNView } from "react-native"
 
 import { Button, CircularProgress } from "@/src/components/ui"
-import { getThemePalette } from "@/src/design/tokens"
 import type { BookItem } from "@/src/domain/types"
 import { Text, View } from "@/tw"
 import {
@@ -37,12 +36,6 @@ type HeroSectionProps = {
   onSetFormat: (format: string) => void
 }
 
-const COVER_HERO_PALETTE = getThemePalette("dark")
-const COVER_TEXT_SHADOW = {
-  textShadowColor: COVER_HERO_PALETTE.background,
-  textShadowOffset: { height: 1, width: 0 },
-  textShadowRadius: 6,
-}
 const WIDE_COVER_MIN_WIDTH = 152
 const WIDE_COVER_MAX_WIDTH = 280
 
@@ -367,22 +360,12 @@ export function HeroSection({
           <Text
             className="text-3xl"
             numberOfLines={3}
-            style={[
-              COVER_TEXT_SHADOW,
-              { color: COVER_HERO_PALETTE.text, fontWeight: "700" },
-            ]}
+            testID="book-detail-title"
+            style={{ color: colors.text, fontWeight: "700" }}
           >
             {book.title}
             {publicationYear ? (
-              <Text
-                style={[
-                  COVER_TEXT_SHADOW,
-                  {
-                    color: COVER_HERO_PALETTE.textMuted,
-                    fontWeight: "400",
-                  },
-                ]}
-              >
+              <Text style={{ color: colors.muted, fontWeight: "400" }}>
                 {` (${publicationYear})`}
               </Text>
             ) : null}
@@ -391,13 +374,7 @@ export function HeroSection({
             <Text
               className="mt-2 text-base"
               numberOfLines={2}
-              style={[
-                COVER_TEXT_SHADOW,
-                {
-                  color: COVER_HERO_PALETTE.textMuted,
-                  fontWeight: "600",
-                },
-              ]}
+              style={{ color: colors.muted, fontWeight: "600" }}
             >
               {seriesLabel}
             </Text>
