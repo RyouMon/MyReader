@@ -46,6 +46,7 @@ export type ButtonProps = {
   onPress?: () => void
   size?: ButtonSize
   style?: StyleProp<ViewStyle>
+  textClassName?: string
   textStyle?: StyleProp<TextStyle>
   title?: string
   variant?: ButtonVariant
@@ -144,6 +145,7 @@ export function Button({
   onPress,
   size = "lg",
   style,
+  textClassName,
   textStyle,
   title,
   variant = "primary",
@@ -191,7 +193,7 @@ export function Button({
         ) : null}
         {children ?? (
           <Text
-            className={cx(sizeClass.text, "font-bold")}
+            className={cx(textClassName ?? sizeClass.text, "font-bold")}
             style={[{ color: resolvedColors.textColor }, textStyle]}
           >
             {title}

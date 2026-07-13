@@ -1,7 +1,8 @@
 import { useCallback, useMemo, type Ref } from "react"
 
+import { Image as ExpoImage } from "expo-image"
 import { useTranslation } from "react-i18next"
-import type { View as RNView } from "react-native"
+import { StyleSheet, type View as RNView } from "react-native"
 
 import { EmptyState } from "@/src/components/ui"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
@@ -19,6 +20,7 @@ import { useBookCoverUri } from "../../../hooks/use-book-cover-uri"
 import { useBookDetailFormats } from "../../../hooks/use-book-detail-formats"
 import { useBookDetailReadState } from "../../../hooks/use-book-detail-read-state"
 import { FormatSection } from "./format-section"
+import { resolveBookDetailHeroMode } from "./hero-layout"
 import { HeroSection } from "./hero-section"
 import { InfoRowSection } from "./info-row-section"
 import { SynopsisSection } from "./synopsis-section"
@@ -26,8 +28,10 @@ import type { DetailColors, InfoCardItem } from "./types"
 
 type BookDetailContentProps = {
   activeLibrary: Library
+  availableWidth: number
   bookId: string
   colors: DetailColors
+  contentTopInset: number
   detail: BookDetail | null
   detailError: string | null
   detailCoverRef?: Ref<RNView>
@@ -43,10 +47,14 @@ type BookDetailContentProps = {
   dataSources: DataSource[]
 }
 
+const BOOK_DETAIL_MAX_CONTENT_WIDTH = 1120
+
 export function BookDetailContent({
   activeLibrary,
+  availableWidth,
   bookId,
   colors,
+  contentTopInset,
   detail,
   detailError,
   detailCoverRef,
@@ -58,6 +66,8 @@ export function BookDetailContent({
   dataSources,
 }: BookDetailContentProps) {
   const { t } = useTranslation()
+  const contentWidth = Math.min(availableWidth, BOOK_DETAIL_MAX_CONTENT_WIDTH)
+  const heroMode = resolveBookDetailHeroMode(contentWidth)
 
   const { data: progressByBookId } = useBookReadingProgress(activeLibrary)
   const { coverUri } = useBookCoverUri(
@@ -122,7 +132,7 @@ export function BookDetailContent({
         className="flex-1 items-center justify-center px-4"
         style={{ backgroundColor: colors.background }}
       >
-        <Text className="text-sm" style={{ color: colors.palette.textMuted }}>
+        <Text className="text-base" style={{ color: colors.palette.textMuted }}>
           {t("bookDetail.loadingDetail")}
         </Text>
       </View>
@@ -157,6 +167,9 @@ export function BookDetailContent({
   const ratingStars = book.rating ? Math.round(book.rating / 2) : 0
   const ratingValue = book.rating ? (book.rating / 2).toFixed(1) : null
   const synopsisText = book.comment ? stripHtml(book.comment) : ""
+  const readingProgress = readableSelectedFormat
+    ? (progressByFormat?.[readableSelectedFormat.toUpperCase()] ?? 0)
+    : 0
 
   const bookInfoRows: InfoCardItem[] = [
     { label: t("bookDetail.bookTitle"), value: book.title },
@@ -185,15 +198,37 @@ export function BookDetailContent({
   ]
 
   return (
-    <View className="flex-1">
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      {heroMode === "wide" && coverUri ? (
+        <ExpoImage
+          accessible={false}
+          accessibilityElementsHidden
+          cachePolicy="memory-disk"
+          contentFit="cover"
+          importantForAccessibility="no"
+          pointerEvents="none"
+          recyclingKey={`book-detail-backdrop-${bookId}`}
+          source={coverUri}
+          style={[StyleSheet.absoluteFill, { opacity: 0.055 }]}
+          testID="book-detail-backdrop"
+        />
+      ) : null}
       <ScrollView
         className="flex-1"
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior={
+          heroMode === "narrow" ? "never" : "automatic"
+        }
         contentContainerClassName="pb-8"
-        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingTop: contentTopInset }}
+        style={{ backgroundColor: "transparent" }}
+        testID="book-detail-scroll-view"
       >
-        <View className="gap-5">
+        <View
+          className="w-full self-center gap-5"
+          style={{ maxWidth: BOOK_DETAIL_MAX_CONTENT_WIDTH }}
+        >
           <HeroSection
+            availableWidth={contentWidth}
             book={book}
             canReadInApp={canReadInApp}
             colors={colors}
@@ -202,6 +237,7 @@ export function BookDetailContent({
             formats={readableFormats}
             onRead={handleReadAction}
             onSetFormat={handleSetDefaultFormat}
+            readingProgress={readingProgress}
             readButtonTitle={readButtonTitle}
             selectedFormat={readableSelectedFormat}
           />

@@ -4,15 +4,18 @@ import Feather from "@expo/vector-icons/Feather"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { pickReadableFormat } from "@my-reader/tools/utils"
 import { router, Stack, useLocalSearchParams } from "expo-router"
+import { useHeaderHeight } from "expo-router/react-navigation"
 import { useTranslation } from "react-i18next"
 import {
   Dimensions,
   findNodeHandle,
+  type LayoutChangeEvent,
   Platform,
+  useWindowDimensions,
   View as RNView,
 } from "react-native"
 
-import { useTheme } from "@/src/design/tokens"
+import { getThemePalette, useTheme } from "@/src/design/tokens"
 import { View } from "@/tw"
 
 import { EmptyState } from "@/src/components"
@@ -30,14 +33,20 @@ import {
   BookDetailContent,
   getDetailColors,
 } from "@/src/features/library/components/books/book-detail"
+import {
+  resolveBookDetailContentTopInset,
+  resolveBookDetailHeroMode,
+} from "@/src/features/library/components/books/book-detail/hero-layout"
 import { useBooks } from "@/src/features/library/hooks/useLibraryQuery"
 import {
   useScreenHeader,
   type ScreenHeaderAction,
 } from "@/src/navigation/hooks/use-screen-header"
 import { useAppStore } from "@/src/store/app-store"
+import { buildBookDetailScreenOptions } from "./book-detail-screen-options"
 
 const DETAIL_COVER_BORDER_RADIUS = 8
+const COVER_HEADER_PALETTE = getThemePalette("dark")
 
 type DetailCacheEntry = {
   detail: import("@my-reader/tools/types/book").BookDetail | null
@@ -49,6 +58,11 @@ export default function BookDetailScreen() {
   const { t } = useTranslation()
   const { id } = useLocalSearchParams<{ id?: string }>()
   const { colorScheme, palette } = useTheme()
+  const headerHeight = useHeaderHeight()
+  const { width: windowWidth } = useWindowDimensions()
+  const [detailLayoutWidth, setDetailLayoutWidth] = useState<number | null>(
+    null,
+  )
   const activeLibraryId = useAppStore((s) => s.activeLibraryId)
   const { data: books = [] } = useBooks(activeLibraryId)
   const libraries = useAppStore((s) => s.libraries)
@@ -168,6 +182,17 @@ export default function BookDetailScreen() {
   }, [currentId, toggleFavorite])
 
   const isCurrentFavorite = currentId ? isFavorite(currentId) : false
+  const detailAvailableWidth = detailLayoutWidth ?? windowWidth
+  const detailHeroMode = resolveBookDetailHeroMode(detailAvailableWidth)
+  const detailCoverBorderRadius =
+    detailHeroMode === "wide" ? DETAIL_COVER_BORDER_RADIUS : 0
+  const headerForeground =
+    detailHeroMode === "narrow" ? COVER_HEADER_PALETTE.text : palette.text
+  const contentTopInset = resolveBookDetailContentTopInset(
+    Platform.OS,
+    detailHeroMode,
+    headerHeight,
+  )
 
   const leftActions = useMemo<ScreenHeaderAction[] | undefined>(
     () =>
@@ -178,14 +203,14 @@ export default function BookDetailScreen() {
               label: t("bookDetail.back"),
               onPress: handleGoBack,
               icon: (
-                <Feather name="arrow-left" size={20} color={palette.text} />
+                <Feather name="arrow-left" size={20} color={headerForeground} />
               ),
               iosSfSymbol: "chevron.left",
               iconOnly: true,
-              color: palette.text,
+              color: headerForeground,
             },
           ],
-    [handleGoBack, palette.text, t],
+    [handleGoBack, headerForeground, t],
   )
 
   const rightActions = useMemo<ScreenHeaderAction[] | undefined>(() => {
@@ -198,18 +223,18 @@ export default function BookDetailScreen() {
           <MaterialIcons
             name={isCurrentFavorite ? "star" : "star-border"}
             size={22}
-            color={isCurrentFavorite ? palette.primary : detailColors.muted}
+            color={isCurrentFavorite ? palette.primary : headerForeground}
           />
         ),
         iosSfSymbol: isCurrentFavorite ? "star.fill" : "star",
         iconOnly: true,
-        color: isCurrentFavorite ? palette.primary : undefined,
+        color: isCurrentFavorite ? palette.primary : headerForeground,
       },
     ]
   }, [
     currentDetail,
-    detailColors.muted,
     handleToggleFavorite,
+    headerForeground,
     isCurrentFavorite,
     palette.primary,
     t,
@@ -224,12 +249,21 @@ export default function BookDetailScreen() {
   })
 
   const options = useMemo(
-    () => ({
-      ...baseOptions,
-      headerStyle: { backgroundColor: palette.background },
-    }),
-    [baseOptions, palette.background],
+    () =>
+      buildBookDetailScreenOptions(
+        baseOptions,
+        headerForeground,
+        detailHeroMode === "narrow",
+      ),
+    [baseOptions, detailHeroMode, headerForeground],
   )
+
+  const handleDetailLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width
+    setDetailLayoutWidth((currentWidth) =>
+      currentWidth === nextWidth ? currentWidth : nextWidth,
+    )
+  }, [])
 
   const getListBook = useCallback(
     (bookId: string) => books.find((item) => item.id === bookId) ?? null,
@@ -302,7 +336,7 @@ export default function BookDetailScreen() {
             y,
             width,
             height,
-            borderRadius: DETAIL_COVER_BORDER_RADIUS,
+            borderRadius: detailCoverBorderRadius,
           }
           if (__DEV__) {
             console.info("[ReaderBookTransition] detail measure", {
@@ -326,13 +360,13 @@ export default function BookDetailScreen() {
 
       measureReaderTransitionFrame(
         coverNode,
-        { borderRadius: DETAIL_COVER_BORDER_RADIUS },
+        { borderRadius: detailCoverBorderRadius },
         ({ frame, screenWidth, screenHeight, rootX, rootY }) => {
           void startTransition(frame, screenWidth, screenHeight, rootX, rootY)
         },
       )
     },
-    [currentDetail],
+    [currentDetail, detailCoverBorderRadius],
   )
 
   const selectedFormat = currentId
@@ -383,6 +417,7 @@ export default function BookDetailScreen() {
   return (
     <View
       className="flex-1 overflow-hidden"
+      onLayout={handleDetailLayout}
       style={{ backgroundColor: palette.background }}
     >
       <Stack.Screen options={options} />
@@ -403,8 +438,10 @@ export default function BookDetailScreen() {
       >
         <BookDetailContent
           activeLibrary={activeLibrary}
+          availableWidth={detailAvailableWidth}
           bookId={currentId}
           colors={detailColors}
+          contentTopInset={contentTopInset}
           detail={currentEntry?.detail ?? null}
           detailError={currentEntry?.error ?? null}
           detailCoverRef={detailCoverRef}

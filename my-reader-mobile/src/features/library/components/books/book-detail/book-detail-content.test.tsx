@@ -7,6 +7,16 @@ import type { Library } from "@/src/domain/types"
 import { BookDetailContent } from "./book-detail-content"
 import type { DetailColors } from "./types"
 
+jest.mock("expo-image", () => {
+  const React = jest.requireActual<typeof import("react")>("react")
+  const { View } =
+    jest.requireActual<typeof import("react-native")>("react-native")
+
+  return {
+    Image: (props: Record<string, unknown>) => React.createElement(View, props),
+  }
+})
+
 jest.mock("react-i18next", () => {
   const t = (key: string, params?: Record<string, string>) =>
     params ? `${key}:${JSON.stringify(params)}` : key
@@ -118,8 +128,10 @@ function renderContent(
   return render(
     <BookDetailContent
       activeLibrary={localLibrary}
+      availableWidth={390}
       bookId="1"
       colors={mockColors}
+      contentTopInset={0}
       dataSources={[]}
       detail={detail}
       detailError={null}
@@ -134,10 +146,16 @@ function renderContent(
 }
 
 describe("BookDetailContent", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it("should show loading state when loadingDetail is true", () => {
     renderContent({ loadingDetail: true })
 
-    expect(screen.getByText("bookDetail.loadingDetail")).toBeTruthy()
+    expect(
+      screen.getByText("bookDetail.loadingDetail").props.className,
+    ).toContain("text-base")
   })
 
   it("should show empty state when detail is missing", () => {
@@ -168,5 +186,97 @@ describe("BookDetailContent", () => {
     renderContent()
 
     expect(FormatSection).toHaveBeenCalled()
+  })
+
+  it("should not render a faded cover backdrop in narrow mode", () => {
+    const { useBookCoverUri } = jest.requireMock(
+      "../../../hooks/use-book-cover-uri",
+    )
+    useBookCoverUri.mockReturnValueOnce({ coverUri: "file:///cover.jpg" })
+
+    renderContent()
+
+    expect(
+      screen.queryByTestId("book-detail-backdrop", {
+        includeHiddenElements: true,
+      }),
+    ).toBeNull()
+  })
+
+  it("should preserve the desktop-aligned cover backdrop in wide mode", () => {
+    const { useBookCoverUri } = jest.requireMock(
+      "../../../hooks/use-book-cover-uri",
+    )
+    useBookCoverUri.mockReturnValueOnce({ coverUri: "file:///cover.jpg" })
+
+    renderContent({ availableWidth: 834 })
+
+    expect(
+      screen.getByTestId("book-detail-backdrop", {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy()
+  })
+
+  it("should pass current format progress to hero when progress exists", () => {
+    const { useBookReadingProgress } = jest.requireMock(
+      "@/src/domain/library/hooks/use-book-reading-progress",
+    )
+    const { HeroSection } = jest.requireMock("./hero-section")
+    useBookReadingProgress.mockReturnValueOnce({
+      data: { "1": { EPUB: 35 } },
+    })
+
+    renderContent()
+
+    expect(HeroSection).toHaveBeenCalledWith(
+      expect.objectContaining({ readingProgress: 35 }),
+      undefined,
+    )
+  })
+
+  it("should pass measured content width to hero when layout is wide", () => {
+    const { HeroSection } = jest.requireMock("./hero-section")
+
+    renderContent({ availableWidth: 834 })
+
+    expect(HeroSection).toHaveBeenCalledWith(
+      expect.objectContaining({ availableWidth: 834 }),
+      undefined,
+    )
+  })
+
+  it("should remove automatic top inset when content width is narrow", () => {
+    renderContent({ availableWidth: 390 })
+
+    expect(
+      screen.getByTestId("book-detail-scroll-view").props
+        .contentInsetAdjustmentBehavior,
+    ).toBe("never")
+  })
+
+  it("should preserve automatic inset when content width is wide", () => {
+    renderContent({ availableWidth: 834 })
+
+    expect(
+      screen.getByTestId("book-detail-scroll-view").props
+        .contentInsetAdjustmentBehavior,
+    ).toBe("automatic")
+  })
+
+  it("should apply an explicit top inset when the platform requires it", () => {
+    renderContent({ availableWidth: 834, contentTopInset: 64 })
+
+    expect(
+      screen.getByTestId("book-detail-scroll-view").props.contentContainerStyle,
+    ).toEqual({ paddingTop: 64 })
+  })
+
+  it("should preserve detailed information section when hero changes", () => {
+    const { InfoRowSection } = jest.requireMock("./info-row-section")
+
+    renderContent()
+
+    expect(InfoRowSection).toHaveBeenCalled()
   })
 })
