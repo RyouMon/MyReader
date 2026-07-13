@@ -6,6 +6,7 @@ import {
   type FixedLayoutSettings,
   type ReaderSettings,
 } from "@/components/reader/types"
+import { normalizeAppLanguageMode } from "@/lib/appLanguage"
 import { normalizeSpreadPreference } from "@/lib/readium/epubReaderPrefs"
 import {
   normalizeFixedBackground,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/readium/readerFonts"
 import { api } from "@/lib/tauri-api"
 import type {
+  AppLanguageMode,
   AppThemeMode,
   LibraryViewMode,
   ReaderUiPreferencesPayload,
@@ -54,8 +56,9 @@ function isAppThemeMode(value: unknown): value is AppThemeMode {
 
 function readerPreferencesPayload(s: AppUiState): ReaderUiPreferencesPayload {
   return {
-    version: 5,
+    version: 6,
     appTheme: s.appThemeMode,
+    appLanguage: s.appLanguageMode,
     libraryViewMode: s.libraryViewMode,
     detailFullScreen: s.detailFullScreen,
     fixedLayout: s.fixedLayout,
@@ -111,12 +114,14 @@ function persistReaderPreferencesNow(get: () => AppUiState): Promise<void> {
 export interface AppUiState {
   readerPreferencesHydrated: boolean
   appThemeMode: AppThemeMode
+  appLanguageMode: AppLanguageMode
   libraryViewMode: LibraryViewMode
   detailFullScreen: boolean
   fixedLayout: FixedLayoutSettings
   reflowable: ReflowablePreferencesSlice
   cache: CachePreferencesSlice
   setAppThemeMode: (mode: AppThemeMode) => void
+  setAppLanguageMode: (mode: AppLanguageMode) => void
   setLibraryViewMode: (mode: LibraryViewMode) => void
   setDetailFullScreen: (fullScreen: boolean) => void
   patchFixedLayout: (
@@ -137,6 +142,7 @@ export interface AppUiState {
 export const useAppUiStore = create<AppUiState>()((set, get) => ({
   readerPreferencesHydrated: false,
   appThemeMode: "system",
+  appLanguageMode: "system",
   libraryViewMode: "grid",
   detailFullScreen: false,
   fixedLayout: { ...DEFAULT_FIXED_LAYOUT_SETTINGS },
@@ -150,6 +156,10 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   },
   setAppThemeMode: (mode) => {
     set({ appThemeMode: mode })
+    schedulePersistReaderPreferences(get)
+  },
+  setAppLanguageMode: (mode) => {
+    set({ appLanguageMode: mode })
     schedulePersistReaderPreferences(get)
   },
   setLibraryViewMode: (mode) => {
@@ -208,6 +218,7 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
           : rawTheme
     set({
       appThemeMode: isAppThemeMode(data.appTheme) ? data.appTheme : "system",
+      appLanguageMode: normalizeAppLanguageMode(data.appLanguage),
       libraryViewMode: isLibraryViewMode(data.libraryViewMode)
         ? data.libraryViewMode
         : "grid",

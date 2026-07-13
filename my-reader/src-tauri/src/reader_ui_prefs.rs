@@ -177,6 +177,8 @@ pub struct ReaderUiPreferences {
     pub version: u32,
     #[serde(default = "default_app_theme")]
     pub app_theme: String,
+    #[serde(default = "default_app_language")]
+    pub app_language: String,
     #[serde(default = "default_library_view_mode")]
     pub library_view_mode: String,
     #[serde(default)]
@@ -190,10 +192,14 @@ pub struct ReaderUiPreferences {
 }
 
 fn default_version() -> u32 {
-    5
+    6
 }
 
 fn default_app_theme() -> String {
+    "system".into()
+}
+
+fn default_app_language() -> String {
     "system".into()
 }
 
@@ -206,6 +212,7 @@ impl Default for ReaderUiPreferences {
         Self {
             version: default_version(),
             app_theme: default_app_theme(),
+            app_language: default_app_language(),
             library_view_mode: default_library_view_mode(),
             detail_full_screen: false,
             fixed_layout: FixedLayoutSettingsDto::default(),

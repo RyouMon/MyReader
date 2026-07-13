@@ -15,8 +15,9 @@ async fn get_reader_ui_preferences_should_return_defaults_when_config_is_fresh()
 
     // Defaults set by ReaderUiPreferences::default() — pinned here so a future bump
     // of the default version / values is a deliberate change.
-    assert_eq!(prefs["version"], json!(5));
+    assert_eq!(prefs["version"], json!(6));
     assert_eq!(prefs["appTheme"], json!("system"));
+    assert_eq!(prefs["appLanguage"], json!("system"));
     assert_eq!(prefs["libraryViewMode"], json!("grid"));
     assert_eq!(prefs["detailFullScreen"], json!(false));
 }
@@ -25,8 +26,9 @@ async fn get_reader_ui_preferences_should_return_defaults_when_config_is_fresh()
 async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
     let app = TestApp::new();
     let custom = json!({
-        "version": 5,
+        "version": 6,
         "appTheme": "dark",
+        "appLanguage": "en",
         "libraryViewMode": "list",
         "detailFullScreen": true,
         "fixedLayout": {},
@@ -42,6 +44,7 @@ async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
 
     let prefs: Value = invoke_ok(&app, "get_reader_ui_preferences", json!({}));
     assert_eq!(prefs["appTheme"], json!("dark"));
+    assert_eq!(prefs["appLanguage"], json!("en"));
     assert_eq!(prefs["libraryViewMode"], json!("list"));
     assert_eq!(prefs["detailFullScreen"], json!(true));
     assert_eq!(prefs["cache"]["maxCacheSizeMb"], json!(256));

@@ -241,8 +241,18 @@ export const en = {
       },
       appearance: {
         title: "Appearance",
-        description: "Customize theme, font and UI style",
+        description: "Customize the interface language and appearance",
         comingSoon: "Coming soon",
+        languageTitle: "App language",
+        languageDescription:
+          "Choose the language used by the desktop interface.",
+        languageSystem: "System",
+        languageSystemDescription: "Use the operating system language.",
+        languageChinese: "简体中文",
+        languageChineseDescription:
+          "Display the interface in Simplified Chinese.",
+        languageEnglish: "English",
+        languageEnglishDescription: "Display the interface in English.",
         themeTitle: "App theme",
         themeDescription: "Choose how MyReader renders the desktop interface.",
         themeLightDescription: "Warm paper surfaces for daytime reading.",

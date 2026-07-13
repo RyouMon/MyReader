@@ -189,8 +189,9 @@ const demoProgressRows: ReadingProgressDto[] = [
 ]
 
 const readerPreferences: ReaderUiPreferences_Serialize = {
-  version: 4,
+  version: 6,
   appTheme: "system",
+  appLanguage: "system",
   libraryViewMode: "grid",
   detailFullScreen: false,
   fixedLayout: {},
