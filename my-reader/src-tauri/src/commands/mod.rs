@@ -14,16 +14,8 @@ pub struct PreparedBookSource {
     pub streamer_url: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct CacheUsageDto {
-    pub total_bytes: u64,
-    pub max_bytes: u64,
-}
-
 pub mod book;
 pub mod book_reading_format;
-pub mod cache;
 pub(crate) mod common;
 pub mod download;
 pub mod favorite;

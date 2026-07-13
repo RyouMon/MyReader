@@ -193,7 +193,6 @@ export const en = {
         libraries: "Libraries",
         dataSources: "Data Sources",
         appearance: "Appearance",
-        reading: "Reading",
         about: "About",
       },
       libraries: {
@@ -221,18 +220,6 @@ export const en = {
         builtIn: "Built-in",
         confirmDelete: "Click again to confirm",
         deleteTitle: "Delete data source",
-      },
-      reading: {
-        title: "Reading & Cache",
-        description:
-          "Set the maximum reading cache size and clear cache with one click",
-        cacheManagement: "Cache management",
-        cacheUsage: "Cache: {{used}} / {{total}}",
-        cacheUsageEmpty: "Cache: --",
-        mb: "MB",
-        saveLimit: "Save limit",
-        clearAllCache: "Clear all cache",
-        clearing: "Clearing…",
       },
       about: {
         title: "About",

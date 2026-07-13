@@ -1,6 +1,5 @@
 pub mod book_reading_format_service;
 pub mod book_service;
-pub mod cache_service;
 pub mod datasource_service;
 pub mod download_service;
 pub mod favorite_book_service;

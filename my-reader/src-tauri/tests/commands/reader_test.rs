@@ -15,7 +15,7 @@ async fn get_reader_ui_preferences_should_return_defaults_when_config_is_fresh()
 
     // Defaults set by ReaderUiPreferences::default() — pinned here so a future bump
     // of the default version / values is a deliberate change.
-    assert_eq!(prefs["version"], json!(6));
+    assert_eq!(prefs["version"], json!(7));
     assert_eq!(prefs["appTheme"], json!("system"));
     assert_eq!(prefs["appLanguage"], json!("system"));
     assert_eq!(prefs["libraryViewMode"], json!("grid"));
@@ -26,14 +26,13 @@ async fn get_reader_ui_preferences_should_return_defaults_when_config_is_fresh()
 async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
     let app = TestApp::new();
     let custom = json!({
-        "version": 6,
+        "version": 7,
         "appTheme": "dark",
         "appLanguage": "en",
         "libraryViewMode": "list",
         "detailFullScreen": true,
         "fixedLayout": {},
         "reflowable": {},
-        "cache": { "maxCacheSizeMb": 256, "autoCleanupOnLaunch": false },
     });
 
     let _: () = invoke_ok(
@@ -47,8 +46,6 @@ async fn set_then_get_reader_ui_preferences_should_round_trip_custom_values() {
     assert_eq!(prefs["appLanguage"], json!("en"));
     assert_eq!(prefs["libraryViewMode"], json!("list"));
     assert_eq!(prefs["detailFullScreen"], json!(true));
-    assert_eq!(prefs["cache"]["maxCacheSizeMb"], json!(256));
-    assert_eq!(prefs["cache"]["autoCleanupOnLaunch"], json!(false));
 }
 
 #[tokio::test]

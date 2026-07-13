@@ -192,7 +192,6 @@ export const zhCN = {
         libraries: "书库管理",
         dataSources: "数据源管理",
         appearance: "外观",
-        reading: "阅读偏好",
         about: "关于",
       },
       libraries: {
@@ -218,17 +217,6 @@ export const zhCN = {
         builtIn: "内置",
         confirmDelete: "再次点击确认",
         deleteTitle: "删除数据源",
-      },
-      reading: {
-        title: "阅读与缓存",
-        description: "设置阅读缓存最大容量，并支持一键全部清理",
-        cacheManagement: "缓存管理",
-        cacheUsage: "缓存占用：{{used}} / {{total}}",
-        cacheUsageEmpty: "缓存占用：--",
-        mb: "MB",
-        saveLimit: "保存容量上限",
-        clearAllCache: "全部清理缓存",
-        clearing: "清理中…",
       },
       about: {
         title: "关于",

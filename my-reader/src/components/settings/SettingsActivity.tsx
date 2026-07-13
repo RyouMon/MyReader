@@ -4,7 +4,6 @@ import AboutSection from "@/components/settings/sections/AboutSection"
 import AppearanceSection from "@/components/settings/sections/AppearanceSection"
 import DataSourcesSection from "@/components/settings/sections/DataSourcesSection"
 import LibrariesSection from "@/components/settings/sections/LibrariesSection"
-import ReadingSection from "@/components/settings/sections/ReadingSection"
 import type { SettingsSection } from "@/types/settings"
 
 interface SettingsActivityProps {
@@ -30,7 +29,6 @@ export default function SettingsActivity({ onClose }: SettingsActivityProps) {
         {activeSection === "libraries" && <LibrariesSection />}
         {activeSection === "dataSources" && <DataSourcesSection />}
         {activeSection === "appearance" && <AppearanceSection />}
-        {activeSection === "reading" && <ReadingSection />}
         {activeSection === "about" && <AboutSection />}
       </div>
     </section>

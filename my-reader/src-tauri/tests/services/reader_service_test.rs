@@ -18,14 +18,12 @@ async fn reader_ui_preferences_should_round_trip_in_config() {
     let mut prefs = ReaderService::get_reader_ui_preferences(&config);
     prefs.app_theme = "dark".into();
     prefs.library_view_mode = "list".into();
-    prefs.cache.max_cache_size_mb = 512;
 
     ReaderService::set_reader_ui_preferences(&mut config, prefs.clone());
 
     let saved = ReaderService::get_reader_ui_preferences(&config);
     assert_eq!(saved.app_theme, "dark");
     assert_eq!(saved.library_view_mode, "list");
-    assert_eq!(saved.cache.max_cache_size_mb, 512);
 }
 
 #[test]

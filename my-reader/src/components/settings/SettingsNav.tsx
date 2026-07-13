@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  BookOpen,
   Database,
   FolderOpen,
   Info,
@@ -35,7 +34,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: "libraries", tKey: "settings.nav.libraries", Icon: FolderOpen },
   { key: "dataSources", tKey: "settings.nav.dataSources", Icon: Database },
   { key: "appearance", tKey: "settings.nav.appearance", Icon: Palette },
-  { key: "reading", tKey: "settings.nav.reading", Icon: BookOpen },
   { key: "about", tKey: "settings.nav.about", Icon: Info },
 ]
 

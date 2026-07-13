@@ -2,7 +2,6 @@ import type {
   BookDetail,
   BookEntry,
   BookFileStateDto,
-  CacheUsageDto,
   DataSourceDto,
   DbSyncReport,
   FileStateDto,
@@ -189,7 +188,7 @@ const demoProgressRows: ReadingProgressDto[] = [
 ]
 
 const readerPreferences: ReaderUiPreferences_Serialize = {
-  version: 6,
+  version: 7,
   appTheme: "system",
   appLanguage: "system",
   libraryViewMode: "grid",
@@ -211,10 +210,6 @@ const readerPreferences: ReaderUiPreferences_Serialize = {
       ttsConfigId: "default",
       ttsSpeed: 1,
     },
-  },
-  cache: {
-    maxCacheSizeMb: 2048,
-    autoCleanupOnLaunch: true,
   },
 }
 
@@ -441,10 +436,6 @@ export const demoCommands = {
     _reposition: boolean,
   ) => ok<null>(null),
   closeBookStreamer: () => ok<null>(null),
-  getCacheUsage: () =>
-    ok<CacheUsageDto>({ totalBytes: 12_582_912, maxBytes: 2_147_483_648 }),
-  clearCache: () => ok<null>(null),
-  enforceCacheLimit: () => ok<null>(null),
   syncDbForLibrary: () => ok<DbSyncReport>({ pushed: 0, pulled: 0 }),
   checkBookFileState: (_libraryId: string, bookId: number, format: string) =>
     ok<FileStateDto>(cachedFileState(bookId, format)),

@@ -32,11 +32,6 @@ export interface ReflowablePreferencesSlice {
   }
 }
 
-export interface CachePreferencesSlice {
-  maxCacheSizeMB: number
-  autoCleanupOnLaunch: boolean
-}
-
 const DEFAULT_REFLOWABLE: ReflowablePreferencesSlice = {
   settings: DEFAULT_SETTINGS,
   tts: { ttsConfigId: "default", ttsSpeed: 1 },
@@ -56,14 +51,13 @@ function isAppThemeMode(value: unknown): value is AppThemeMode {
 
 function readerPreferencesPayload(s: AppUiState): ReaderUiPreferencesPayload {
   return {
-    version: 6,
+    version: 7,
     appTheme: s.appThemeMode,
     appLanguage: s.appLanguageMode,
     libraryViewMode: s.libraryViewMode,
     detailFullScreen: s.detailFullScreen,
     fixedLayout: s.fixedLayout,
     reflowable: s.reflowable,
-    cache: s.cache,
   }
 }
 
@@ -119,7 +113,6 @@ export interface AppUiState {
   detailFullScreen: boolean
   fixedLayout: FixedLayoutSettings
   reflowable: ReflowablePreferencesSlice
-  cache: CachePreferencesSlice
   setAppThemeMode: (mode: AppThemeMode) => void
   setAppLanguageMode: (mode: AppLanguageMode) => void
   setLibraryViewMode: (mode: LibraryViewMode) => void
@@ -133,7 +126,6 @@ export interface AppUiState {
   patchReflowableTts: (
     patch: Partial<ReflowablePreferencesSlice["tts"]>,
   ) => void
-  patchCacheSettings: (patch: Partial<CachePreferencesSlice>) => void
   persistReaderPreferencesNow: () => Promise<void>
   hydrateReaderPreferences: (data: ReaderUiPreferencesPayload) => void
   markReaderPreferencesHydrated: () => void
@@ -149,10 +141,6 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
   reflowable: {
     settings: { ...DEFAULT_REFLOWABLE.settings },
     tts: { ...DEFAULT_REFLOWABLE.tts },
-  },
-  cache: {
-    maxCacheSizeMB: 2048,
-    autoCleanupOnLaunch: true,
   },
   setAppThemeMode: (mode) => {
     set({ appThemeMode: mode })
@@ -193,15 +181,6 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
       reflowable: {
         ...state.reflowable,
         tts: { ...state.reflowable.tts, ...patch },
-      },
-    }))
-    schedulePersistReaderPreferences(get)
-  },
-  patchCacheSettings: (patch) => {
-    set((state) => ({
-      cache: {
-        ...state.cache,
-        ...patch,
       },
     }))
     schedulePersistReaderPreferences(get)
@@ -252,10 +231,6 @@ export const useAppUiStore = create<AppUiState>()((set, get) => ({
           ),
         },
         tts: { ...DEFAULT_REFLOWABLE.tts, ...data.reflowable?.tts },
-      },
-      cache: {
-        maxCacheSizeMB: data.cache?.maxCacheSizeMB ?? 2048,
-        autoCleanupOnLaunch: data.cache?.autoCleanupOnLaunch ?? true,
       },
     })
   },

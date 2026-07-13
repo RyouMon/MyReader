@@ -1,7 +1,6 @@
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
 
 use tracing::info;
 use zip::ZipArchive;
@@ -187,34 +186,6 @@ pub fn clear_orphaned_library_cache_files(
         }
     }
     Ok(())
-}
-
-pub fn collect_cache_files_sorted_oldest() -> Result<Vec<(PathBuf, u64, u128)>, AppError> {
-    let mut out: Vec<(PathBuf, u64, u128)> = Vec::new();
-    let root = reader_cache_root();
-    if !root.exists() {
-        return Ok(out);
-    }
-    let mut stack = vec![root];
-    while let Some(dir) = stack.pop() {
-        for entry in fs::read_dir(&dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            let meta = entry.metadata()?;
-            if meta.is_dir() {
-                stack.push(path);
-                continue;
-            }
-            let modified = meta
-                .modified()
-                .ok()
-                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                .map_or(0, |d| d.as_millis());
-            out.push((path, meta.len(), modified));
-        }
-    }
-    out.sort_by_key(|(_, _, modified)| *modified);
-    Ok(out)
 }
 
 pub fn extract_zip_to_dir(zip_path: &Path, output_dir: &Path) -> Result<Vec<String>, AppError> {

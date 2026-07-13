@@ -76,8 +76,8 @@ my-reader/
 │
 ├── src-tauri/src/                Rust backend
 │   ├── main.rs → lib.rs          Tauri app bootstrap
-│   ├── commands/                 IPC entry points (book, cache, library, progress, reader, source)
-│   ├── services/                 Business logic (book_service, cache_service, datasource_service,
+│   ├── commands/                 IPC entry points (book, library, progress, reader, source)
+│   ├── services/                 Business logic (book_service, datasource_service,
 │   │                             library_service, progress_service, reader_service)
 │   ├── repositories/             DB access (calibre_repo, progress_repo)
 │   ├── entities/                 SeaORM entities (app/, calibre/)

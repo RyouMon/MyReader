@@ -217,9 +217,7 @@ export async function setupDownloadStateMocks(page: Page) {
             },
             tts: { ttsConfigId: "default", ttsSpeed: 1 },
           },
-          cache: { maxCacheSizeMb: 2048, autoCleanupOnLaunch: true },
         }),
-        get_cache_usage: () => ({ totalBytes: 0, maxBytes: 2147483648 }),
         sync_list_backends: () => [],
       }
 

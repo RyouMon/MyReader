@@ -47,9 +47,6 @@ export const commands = {
 	writeEpubReadiumManifest: (dirPath: string, manifest: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("write_epub_readium_manifest", { dirPath, manifest })),
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
-	getCacheUsage: () => typedError<CacheUsageDto, ErrorKind>(__TAURI_INVOKE("get_cache_usage")),
-	clearCache: () => typedError<null, ErrorKind>(__TAURI_INVOKE("clear_cache")),
-	enforceCacheLimit: () => typedError<null, ErrorKind>(__TAURI_INVOKE("enforce_cache_limit")),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
 	checkBookFileState: (libraryId: string, bookId: number, format: string) => typedError<FileStateDto, ErrorKind>(__TAURI_INVOKE("check_book_file_state", { libraryId, bookId, format })),
 	checkBookFileStates: (libraryId: string, requests: FileStateRequestDto[]) => typedError<BookFileStateDto[], ErrorKind>(__TAURI_INVOKE("check_book_file_states", { libraryId, requests })),
@@ -99,16 +96,6 @@ export type BookFileStateDto = {
 export type BookIdentifier = {
 	idType: string,
 	value: string,
-};
-
-export type CachePreferencesDto = {
-	maxCacheSizeMb?: number,
-	autoCleanupOnLaunch?: boolean,
-};
-
-export type CacheUsageDto = {
-	totalBytes: number,
-	maxBytes: number,
 };
 
 export type DataSourceDetailDto = { kind: "local"; root_path: string } | { kind: "webdav"; endpoint: string; username: string; has_password: boolean; root_path: string | null } | { kind: "onedrive"; client_id: string; tenant_id: string; has_refresh_token: boolean; root_path: string | null; user_name: string | null; user_email: string | null };
@@ -243,7 +230,6 @@ export type ReaderUiPreferences_Deserialize = {
 	libraryViewMode?: string,
 	detailFullScreen?: boolean,
 	fixedLayout?: FixedLayoutSettingsDto,
-	cache?: CachePreferencesDto,
 } & {
 	reflowable?: ReflowableReaderPreferencesDto,
 } | {
@@ -258,7 +244,6 @@ export type ReaderUiPreferences_Serialize = {
 	detailFullScreen: boolean,
 	fixedLayout: FixedLayoutSettingsDto,
 	reflowable: ReflowableReaderPreferencesDto,
-	cache: CachePreferencesDto,
 };
 
 /**  Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`). */

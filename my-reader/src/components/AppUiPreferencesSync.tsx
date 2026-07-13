@@ -34,9 +34,6 @@ export function AppUiPreferencesSync() {
         const prefs = await api.getReaderUiPreferences()
         if (cancelled) return
         hydrateReaderPreferences(prefs as ReaderUiPreferencesPayload)
-        if (prefs.cache?.autoCleanupOnLaunch) {
-          await api.enforceCacheLimit()
-        }
         console.info(
           `Success to load reader UI preferences. version: ${prefs.version}`,
         )

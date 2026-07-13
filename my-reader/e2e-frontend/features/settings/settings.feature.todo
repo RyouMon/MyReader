@@ -59,21 +59,6 @@ Feature: 设置页面
     Then "测试连接" 按钮应禁用
     And "同步数据库" 按钮应禁用
 
-  @reading
-  Scenario: 阅读偏好显示缓存管理
-    Given 用户在 "阅读偏好" 分区
-    Then 应显示缓存占用信息
-    And 应显示缓存容量输入框
-    And 应显示 "保存容量上限" 按钮
-    And 应显示 "全部清理缓存" 按钮
-
-  @reading
-  Scenario: 修改缓存容量上限
-    Given 用户在 "阅读偏好" 分区
-    When 用户修改缓存容量为 "1024"
-    And 用户点击 "保存容量上限" 按钮
-    Then 缓存容量上限应更新为 1024 MB
-
   @appearance
   Scenario: 外观分区显示即将推出提示
     Given 用户在 "外观" 分区
