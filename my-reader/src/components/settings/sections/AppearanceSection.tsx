@@ -41,6 +41,12 @@ const THEME_OPTIONS: Array<{
   descriptionKey: string
 }> = [
   {
+    value: "system",
+    icon: Monitor,
+    tKey: "theme.system",
+    descriptionKey: "settings.appearance.themeSystemDescription",
+  },
+  {
     value: "light",
     icon: Sun,
     tKey: "theme.light",
@@ -51,12 +57,6 @@ const THEME_OPTIONS: Array<{
     icon: Moon,
     tKey: "theme.dark",
     descriptionKey: "settings.appearance.themeDarkDescription",
-  },
-  {
-    value: "system",
-    icon: Monitor,
-    tKey: "theme.system",
-    descriptionKey: "settings.appearance.themeSystemDescription",
   },
 ]
 
