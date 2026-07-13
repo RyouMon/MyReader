@@ -188,6 +188,14 @@ export default function BookDetailScreen() {
     detailHeroMode === "wide" ? DETAIL_COVER_BORDER_RADIUS : 0
   const headerForeground =
     detailHeroMode === "narrow" ? COVER_HEADER_PALETTE.text : palette.text
+  const showAndroidHeaderButtonBackground =
+    Platform.OS === "android" && detailHeroMode === "narrow"
+  const headerButtonBackground = showAndroidHeaderButtonBackground
+    ? COVER_HEADER_PALETTE.overlay
+    : undefined
+  const headerButtonRipple = showAndroidHeaderButtonBackground
+    ? COVER_HEADER_PALETTE.borderStrong
+    : undefined
   const contentTopInset = resolveBookDetailContentTopInset(
     Platform.OS,
     detailHeroMode,
@@ -208,9 +216,17 @@ export default function BookDetailScreen() {
               iosSfSymbol: "chevron.left",
               iconOnly: true,
               color: headerForeground,
+              backgroundColor: headerButtonBackground,
+              rippleColor: headerButtonRipple,
             },
           ],
-    [handleGoBack, headerForeground, t],
+    [
+      handleGoBack,
+      headerButtonBackground,
+      headerButtonRipple,
+      headerForeground,
+      t,
+    ],
   )
 
   const rightActions = useMemo<ScreenHeaderAction[] | undefined>(() => {
@@ -229,11 +245,15 @@ export default function BookDetailScreen() {
         iosSfSymbol: isCurrentFavorite ? "star.fill" : "star",
         iconOnly: true,
         color: isCurrentFavorite ? palette.primary : headerForeground,
+        backgroundColor: headerButtonBackground,
+        rippleColor: headerButtonRipple,
       },
     ]
   }, [
     currentDetail,
     handleToggleFavorite,
+    headerButtonBackground,
+    headerButtonRipple,
     headerForeground,
     isCurrentFavorite,
     palette.primary,

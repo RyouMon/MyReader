@@ -19,6 +19,8 @@ export type ScreenHeaderAction = {
   icon?: ReactNode
   iosSfSymbol?: SFSymbol
   color?: ColorValue
+  backgroundColor?: ColorValue
+  rippleColor?: ColorValue
   iconOnly?: boolean
   loading?: boolean
   disabled?: boolean

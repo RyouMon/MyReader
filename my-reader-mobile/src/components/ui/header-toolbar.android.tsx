@@ -17,6 +17,10 @@ export type HeaderToolbarAction = {
   iosSfSymbol?: SFSymbol
   /** Toolbar icon tint; on iOS maps to `Stack.Toolbar.Button` `tintColor`. */
   color?: ColorValue
+  /** Android-only icon button container color. */
+  backgroundColor?: ColorValue
+  /** Android-only pressed ripple color. */
+  rippleColor?: ColorValue
   iconOnly?: boolean
   loading?: boolean
   disabled?: boolean
@@ -51,10 +55,12 @@ function HeaderToolbarActionButton({
     <AndroidHeaderIconButton
       icon={materialIcon}
       accessibilityLabel={action.label}
+      backgroundColor={action.backgroundColor}
       color={action.color}
       disabled={!enabled}
       loading={action.loading}
       onPress={action.onPress}
+      rippleColor={action.rippleColor}
     />
   )
 }

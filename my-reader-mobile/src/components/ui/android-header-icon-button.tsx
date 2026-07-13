@@ -20,6 +20,8 @@ type AndroidHeaderIconButtonProps = {
   disabled?: boolean
   loading?: boolean
   color?: ColorValue
+  backgroundColor?: ColorValue
+  rippleColor?: ColorValue
   testID?: string
 }
 
@@ -31,6 +33,8 @@ export function AndroidHeaderIconButton({
   disabled = false,
   loading = false,
   color,
+  backgroundColor,
+  rippleColor,
   testID,
 }: AndroidHeaderIconButtonProps) {
   const { palette, colorScheme } = useTheme()
@@ -45,13 +49,28 @@ export function AndroidHeaderIconButton({
       accessibilityState={{ disabled: !enabled }}
       testID={testID}
       android_ripple={{
-        color: isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.12)",
-        borderless: true,
+        color:
+          rippleColor ??
+          (isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.12)"),
+        borderless: backgroundColor === undefined,
         radius: 24,
       }}
       disabled={!enabled}
       hitSlop={8}
       onPress={onPress}
+      style={
+        backgroundColor === undefined
+          ? undefined
+          : {
+              alignItems: "center",
+              backgroundColor,
+              borderRadius: 24,
+              height: 48,
+              justifyContent: "center",
+              overflow: "hidden",
+              width: 48,
+            }
+      }
     >
       <Host matchContents pointerEvents="none" style={{ overflow: "visible" }}>
         <IconButton
