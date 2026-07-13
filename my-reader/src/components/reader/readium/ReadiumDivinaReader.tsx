@@ -1,11 +1,4 @@
-import { EpubNavigator } from "@readium/navigator"
-import {
-  Locator,
-  LocatorLocations,
-  Page,
-  type Publication,
-  ReadingProgression,
-} from "@readium/shared"
+import { Locator, LocatorLocations, type Publication } from "@readium/shared"
 import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -14,6 +7,7 @@ import {
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
+import { FixedLayoutNativePager } from "@/components/reader/shared/FixedLayoutNativePager"
 import { FixedLayoutSettingsPanel } from "@/components/reader/shared/FixedLayoutSettingsPanel"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
@@ -24,38 +18,21 @@ import {
   ReaderSidePanelHeader,
   ReaderSidePanelScrollArea,
 } from "@/components/reader/shared/ReaderSidePanelChrome"
+import { useFixedLayoutPanzoom } from "@/hooks/reader/useFixedLayoutPanzoom"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
-import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
 import {
-  applySpreadPreference,
-  epubPreferencesForSpread,
-} from "@/lib/readium/epubReaderPrefs"
+  consumeWheelPageTurn,
+  createWheelPageTurnState,
+} from "@/lib/readium/fixedLayoutGestures"
+import {
+  buildFixedLayoutSpreads,
+  spreadIndexForPage,
+} from "@/lib/readium/fixedLayoutPagination"
 import { resolveFixedBackgroundColor } from "@/lib/readium/fixedLayoutPreferences"
-import { tocTargetToLocator } from "@/lib/readium/tocNavigation"
 import { useAppUiStore } from "@/stores/appUiStore"
-
-function applyPublicationReadingProgression(
-  publication: Publication,
-  direction: "ltr" | "rtl",
-) {
-  const target =
-    direction === "rtl" ? ReadingProgression.rtl : ReadingProgression.ltr
-  if (publication.metadata.readingProgression === target) return
-
-  publication.metadata.readingProgression = target
-  for (const item of publication.readingOrder.items) {
-    const page = item.properties?.page
-    if (page === Page.left || page === Page.right) {
-      item.properties = item.properties?.add({
-        page: page === Page.left ? Page.right : Page.left,
-      })
-    }
-  }
-}
 
 export type ReadiumDivinaReaderProps = {
   bookTitle: string
@@ -65,6 +42,25 @@ export type ReadiumDivinaReaderProps = {
   bookId: number
   format: string
   progressSyncEnabled: boolean
+}
+
+function initialPage(
+  initialSavedLocator: Locator | null,
+  positions: readonly Locator[],
+): number {
+  const position = initialSavedLocator?.locations?.position
+  if (
+    typeof position === "number" &&
+    position >= 1 &&
+    position <= positions.length
+  ) {
+    return position
+  }
+  const href = initialSavedLocator?.href
+  const index = href
+    ? positions.findIndex((locator) => locator.href === href)
+    : -1
+  return index >= 0 ? index + 1 : 1
 }
 
 export function ReadiumDivinaReader({
@@ -79,23 +75,14 @@ export function ReadiumDivinaReader({
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
-  const navigatorRef = useRef<EpubNavigator | null>(null)
-  const currentLocatorRef = useRef<Locator | null>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const wheelTurnRef = useRef(createWheelPageTurnState())
   const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
     useReaderPanels()
-  const {
-    readerRootRef,
-    chromeVisible,
-    showChrome,
-    scheduleChromeHide,
-    handlePointerPosition,
-  } = useReadingChrome(false, tocOpen || settingsOpen)
-  useReaderIframePointerBridge(containerRef, handlePointerPosition)
+  const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
+    useReadingChrome(false, tocOpen || settingsOpen)
   const [bookmarked, setBookmarked] = useState(false)
-  const [readiumNavReady, setReadiumNavReady] = useState(false)
-  const [initError, setInitError] = useState<string | null>(null)
-  const [chapterTitle, setChapterTitle] = useState("")
-  const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const [landscape, setLandscape] = useState(true)
   const background = useAppUiStore((state) => state.fixedLayout.background)
   const direction = useAppUiStore((state) => state.fixedLayout.direction)
   const spreadMode = useAppUiStore((state) => state.fixedLayout.spreadMode)
@@ -116,106 +103,150 @@ export function ReadiumDivinaReader({
         }),
     )
   }, [publication])
+  const [currentPage, setCurrentPage] = useState(() =>
+    initialPage(initialSavedLocator, positions),
+  )
+  const doublePage =
+    spreadMode === "double" || (spreadMode === "auto" && landscape)
+  const spreads = useMemo(
+    () => buildFixedLayoutSpreads(positions.length, doublePage),
+    [doublePage, positions.length],
+  )
+  const currentSpreadIndex = spreadIndexForPage(spreads, currentPage)
+  const currentLocator = positions[currentPage - 1] ?? positions[0] ?? null
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
-    return publication.readingOrder.items.map((item, i) => ({
+    return publication.readingOrder.items.map((item, index) => ({
       key: item.href,
       depth: 0,
       title:
         item.title?.trim() ||
-        t("reader.pageCount", { current: i + 1, total: "" }).replace(" / ", ""),
+        t("reader.pageCount", { current: index + 1, total: "" }).replace(
+          " / ",
+          "",
+        ),
       href: item.href,
       type: item.type,
     }))
   }, [publication, t])
 
-  const goToIndex = useCallback(
-    (targetIndex: number) => {
-      const nav = navigatorRef.current
-      if (!nav) return
-      if (targetIndex < 0 || targetIndex >= positions.length) return
-      nav.go(positions[targetIndex], false, () => {})
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setLandscape((current) => {
+        const next = width > height
+        return current === next ? current : next
+      })
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
+  const goToPage = useCallback(
+    (pageNumber: number) => {
+      const clamped = Math.max(1, Math.min(positions.length, pageNumber))
+      setCurrentPage(clamped)
     },
-    [positions],
+    [positions.length],
   )
+  const goToSpread = useCallback(
+    (spreadIndex: number) => {
+      const page = spreads[spreadIndex]?.[0]
+      if (page) goToPage(page)
+    },
+    [goToPage, spreads],
+  )
+  const onPrevious = useCallback(() => {
+    goToSpread(Math.max(0, currentSpreadIndex - 1))
+  }, [currentSpreadIndex, goToSpread])
+  const onNext = useCallback(() => {
+    goToSpread(Math.min(spreads.length - 1, currentSpreadIndex + 1))
+  }, [currentSpreadIndex, goToSpread, spreads.length])
+
+  const handleUnzoomedWheel = useCallback(
+    (event: WheelEvent): boolean => {
+      const horizontalTrackpad =
+        event.deltaMode === WheelEvent.DOM_DELTA_PIXEL &&
+        Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      if (horizontalTrackpad) return false
+
+      const turn = consumeWheelPageTurn(
+        wheelTurnRef.current,
+        {
+          clientX: event.clientX,
+          clientY: event.clientY,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          deltaMode: event.deltaMode,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaZ: event.deltaZ,
+          timeStamp: event.timeStamp,
+        },
+        {
+          width: scrollerRef.current?.clientWidth ?? 1,
+          height: scrollerRef.current?.clientHeight ?? 1,
+        },
+      )
+      if (!turn) return true
+      const turnDirection =
+        turn.axis === "x" && direction === "rtl"
+          ? -turn.direction
+          : turn.direction
+      if (turnDirection > 0) onNext()
+      else onPrevious()
+      return true
+    },
+    [direction, onNext, onPrevious],
+  )
+  const { zoomed } = useFixedLayoutPanzoom({
+    scrollerRef,
+    targetKey: `${currentSpreadIndex}-${direction}-${doublePage}`,
+    maxScale: 6,
+    onUnzoomedWheel: handleUnzoomedWheel,
+  })
 
   const onTocSelect = useCallback(
     (row: ReadiumTocRow) => {
-      const nav = navigatorRef.current
-      if (!nav) return
-      const items = publication.readingOrder.items
-      const hrefWithoutFragment = row.href.split("#")[0]
-      const idx = items.findIndex((link) => link.href === hrefWithoutFragment)
-      if (idx >= 0) {
-        goToIndex(idx)
-      } else {
-        const locator = tocTargetToLocator(publication, row)
-        if (locator) nav.go(locator, false, () => {})
-      }
+      const index = publication.readingOrder.items.findIndex(
+        (item) => item.href === row.href.split("#")[0],
+      )
+      if (index >= 0) goToPage(index + 1)
       closePanels()
     },
-    [publication, closePanels, goToIndex],
+    [closePanels, goToPage, publication],
   )
-
-  const isRtl = direction === "rtl"
-  const edgeTurnActive =
-    readiumNavReady && !tocOpen && !settingsOpen && !initError
-  const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
-    edgeTurnActive,
-    readerRootRef,
-  )
-
-  const onReadiumEdgePrev = useCallback(() => {
-    const nav = navigatorRef.current
-    if (!nav) return
-    const fp = (nav as any).framePool
-    const perPage = fp?.perPage ?? 1
-    const currentSlide = fp?.currentSlide ?? 0
-    const targetSlide = Math.max(0, currentSlide - perPage)
-    goToIndex(targetSlide)
-  }, [goToIndex])
-
-  const onReadiumEdgeNext = useCallback(() => {
-    const nav = navigatorRef.current
-    if (!nav) return
-    const fp = (nav as any).framePool
-    const perPage = fp?.perPage ?? 1
-    const currentSlide = fp?.currentSlide ?? 0
-    const targetSlide = Math.min(positions.length - 1, currentSlide + perPage)
-    goToIndex(targetSlide)
-  }, [goToIndex, positions])
-
   const onProgressSeek = useCallback(
     (progress: number) => {
       if (positions.length === 0) return
       const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const targetIndex = Math.round(normalized * (positions.length - 1))
-      goToIndex(targetIndex)
+      goToPage(Math.round(normalized * (positions.length - 1)) + 1)
     },
-    [goToIndex, positions],
+    [goToPage, positions.length],
   )
   const resolveProgressCommit = useCallback(
     (progress: number) => {
       if (positions.length <= 1) return 0
       const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const targetIndex = Math.round(normalized * (positions.length - 1))
-      return (targetIndex / (positions.length - 1)) * 100
+      const page = Math.round(normalized * (positions.length - 1)) + 1
+      return ((page - 1) / (positions.length - 1)) * 100
     },
     [positions.length],
   )
   const getProgressPreview = useCallback(
     (nextProgress: number) => {
       const total = Math.max(1, positions.length)
-      const targetIndex =
+      const page =
         total > 1
           ? Math.round(
               (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
-            )
-          : 0
-      const current = targetIndex + 1
-      const label = t("reader.pageCount", { current, total })
+            ) + 1
+          : 1
+      const label = t("reader.pageCount", { current: page, total })
       return {
-        chapterTitle: tocRows[targetIndex]?.title ?? label,
+        chapterTitle: tocRows[page - 1]?.title ?? label,
         label,
       }
     },
@@ -231,181 +262,23 @@ export function ReadiumDivinaReader({
   })
 
   useEffect(() => {
-    const nav = navigatorRef.current
-    if (nav) void applySpreadPreference(nav, spreadMode)
-  }, [spreadMode])
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    let cancelled = false
-    let nav: EpubNavigator | null = null
-
-    async function init() {
-      try {
-        const container = containerRef.current!
-        applyPublicationReadingProgression(publication, direction)
-        const items = publication.readingOrder.items
-        if (items.length === 0) throw new Error("No pages in comic")
-
-        let initialPosition: Locator = positions[0]
-        const restoredLocator = currentLocatorRef.current ?? initialSavedLocator
-        if (restoredLocator) {
-          const pos = restoredLocator.locations?.position
-          if (typeof pos === "number" && pos >= 1 && pos <= positions.length) {
-            initialPosition = positions[pos - 1]
-          } else {
-            const m = positions.findIndex(
-              (p) => p.href === restoredLocator.href,
-            )
-            if (m >= 0) initialPosition = positions[m]
-          }
-        }
-
-        const stepBy = (delta: 1 | -1) => {
-          const nav2 = navigatorRef.current
-          if (!nav2) return
-          const fp = (nav2 as any).framePool
-          const perPage = fp?.perPage ?? 1
-          const currentSlide = fp?.currentSlide ?? 0
-          const nextSlide = currentSlide + delta * perPage
-          if (nextSlide < 0 || nextSlide >= positions.length) return
-          nav2.go(positions[nextSlide], false, () => {})
-        }
-
-        nav = new EpubNavigator(
-          container,
-          publication,
-          {
-            frameLoaded: () => {},
-            positionChanged: (locator) => {
-              currentLocatorRef.current = locator
-              setCurrentLocator(locator)
-              const idx = (locator.locations?.position ?? 1) - 1
-              const itemTitle = items[idx]?.title?.trim()
-              setChapterTitle(
-                itemTitle ||
-                  t("reader.pageCount", {
-                    current: locator.locations?.position ?? 1,
-                    total: "",
-                  }).replace(" / ", ""),
-              )
-            },
-            tap: () => {
-              showChrome()
-              return false
-            },
-            click: () => false,
-            zoom: () => {},
-            miscPointer: () => {
-              showChrome()
-            },
-            scroll: () => {},
-            customEvent: () => {},
-            handleLocator: () => false,
-            textSelected: () => {},
-            contentProtection: () => {},
-            contextMenu: () => {},
-            peripheral: (ev) => {
-              const rec = ev as { key?: string; keyCode?: number }
-              const key = rec.key ?? ""
-              const isRtl = direction === "rtl"
-              if (
-                key === "ArrowRight" ||
-                key === "PageDown" ||
-                rec.keyCode === 39
-              ) {
-                stepBy(isRtl ? -1 : 1)
-              } else if (
-                key === "ArrowLeft" ||
-                key === "PageUp" ||
-                rec.keyCode === 37
-              ) {
-                stepBy(isRtl ? 1 : -1)
-              }
-            },
-          },
-          positions,
-          initialPosition,
-          {
-            preferences: epubPreferencesForSpread(
-              useAppUiStore.getState().fixedLayout.spreadMode,
-            ),
-            defaults: {},
-          },
-        )
-        patchEpubNavigatorFixedLayoutGoNav(nav)
-        await nav.load()
-        await applySpreadPreference(
-          nav,
-          useAppUiStore.getState().fixedLayout.spreadMode,
-        )
-        requestAnimationFrame(() => {
-          void nav!.resizeHandler()
-          requestAnimationFrame(() => {
-            void nav!.resizeHandler()
-          })
-        })
-        if (cancelled) {
-          await nav.destroy()
-          return
-        }
-
-        const fp = (nav as any).framePool
-        if (fp) {
-          const slide = fp.currentSlide
-          const currentPos = (nav as any).currentLocation?.locations?.position
-          const currentIdx = typeof currentPos === "number" ? currentPos - 1 : 0
-          if (
-            typeof slide === "number" &&
-            slide !== currentIdx &&
-            slide >= 0 &&
-            slide < positions.length
-          ) {
-            ;(nav as any).currentLocation = positions[slide]
-          }
-        }
-
-        navigatorRef.current = nav
-        setReadiumNavReady(true)
-        currentLocatorRef.current = nav.currentLocator
-        setCurrentLocator(nav.currentLocator)
-        const p0 = nav.currentLocator.locations?.position ?? 1
-        setChapterTitle(
-          items[p0 - 1]?.title?.trim() ||
-            t("reader.pageCount", { current: p0, total: "" }).replace(
-              " / ",
-              "",
-            ),
-        )
-      } catch (e) {
-        console.error("[ReadiumDivina]", e)
-        setInitError(String(e))
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        direction === "rtl" ? onPrevious() : onNext()
+      } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        direction === "rtl" ? onNext() : onPrevious()
       }
     }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [direction, onNext, onPrevious])
 
-    void init()
-
-    return () => {
-      cancelled = true
-      setReadiumNavReady(false)
-      void nav?.destroy()
-      navigatorRef.current = null
-    }
-  }, [direction, initialSavedLocator, positions, publication, showChrome, t])
-
-  if (initError) {
-    return (
-      <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
-        <div>
-          <p className="text-destructive font-medium mb-2">
-            {t("reader.loadComicFailed")}
-          </p>
-          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
-        </div>
-      </div>
-    )
-  }
+  const isRtl = direction === "rtl"
+  const edgeTurnActive = positions.length > 0 && !tocOpen && !settingsOpen
+  const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
+    edgeTurnActive,
+    readerRootRef,
+  )
 
   return (
     <ReaderChromeShell
@@ -419,12 +292,12 @@ export function ReadiumDivinaReader({
       readerBackgroundColor={backgroundColor}
       topBar={{
         bookTitle,
-        chapterTitle: format.toUpperCase() === "CBZ" ? "" : chapterTitle,
+        chapterTitle: "",
         bookmarked,
         tocOpen,
         settingsOpen,
         onToggleToc: toggleToc,
-        onToggleBookmark: () => setBookmarked((b) => !b),
+        onToggleBookmark: () => setBookmarked((value) => !value),
         onToggleSettings: toggleSettings,
       }}
       tocPanel={
@@ -448,21 +321,13 @@ export function ReadiumDivinaReader({
           </ReaderSidePanelScrollArea>
         </ReaderSidePanelFrame>
       }
-      beforeMain={
-        <style>{`
-        /* 勿对 iframe 设 width/height/top/left !important：FXL 依赖内联像素尺寸 + transform: scale() 铺满双页 */
-        .readium-navigator-iframe {
-          border: none !important;
-        }
-      `}</style>
-      }
       edgeTurnOverlays={
         <ReaderPaginateEdgeTurnStrips
           direction={direction}
           showPrev={isRtl ? nearRight : nearLeft}
           showNext={isRtl ? nearLeft : nearRight}
-          onPrev={onReadiumEdgePrev}
-          onNext={onReadiumEdgeNext}
+          onPrev={onPrevious}
+          onNext={onNext}
           prevLabel={t("reader.prevPage")}
           nextLabel={t("reader.nextPage")}
         />
@@ -475,31 +340,62 @@ export function ReadiumDivinaReader({
           leftText={
             positions.length > 0
               ? t("reader.pageCount", {
-                  current: currentLocator?.locations?.position ?? 1,
+                  current: currentPage,
                   total: positions.length,
                 })
               : undefined
           }
           progress={
             positions.length > 1
-              ? (((currentLocator?.locations?.position ?? 1) - 1) /
-                  (positions.length - 1)) *
-                100
+              ? ((currentPage - 1) / (positions.length - 1)) * 100
               : 0
           }
           getProgressPreview={getProgressPreview}
           resolveProgressCommit={resolveProgressCommit}
           onProgressChange={onProgressSeek}
-          onProgressStepBackward={onReadiumEdgePrev}
-          onProgressStepForward={onReadiumEdgeNext}
+          onProgressStepBackward={onPrevious}
+          onProgressStepForward={onNext}
         />
       }
       main={
         <div
           ref={containerRef}
-          className="readium-divina-host relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden"
+          className="relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden"
           style={{ backgroundColor }}
-        />
+        >
+          <FixedLayoutNativePager
+            scrollerRef={scrollerRef}
+            spreads={spreads}
+            currentSpreadIndex={currentSpreadIndex}
+            direction={direction}
+            zoomed={zoomed}
+            onSpreadIndexChange={goToSpread}
+            renderSpread={(spread, _logicalIndex, active) => {
+              const pages = direction === "rtl" ? [...spread].reverse() : spread
+              return (
+                <div
+                  data-fixed-layout-panzoom-target
+                  className="flex h-full w-full min-w-0 items-center justify-center"
+                >
+                  {pages.map((page) => {
+                    const item = publication.readingOrder.items[page - 1]
+                    return item ? (
+                      <img
+                        key={item.href}
+                        src={item.href}
+                        alt=""
+                        draggable={false}
+                        decoding="async"
+                        loading={active ? "eager" : "lazy"}
+                        className={`block h-full min-w-0 object-contain select-none ${spread.length > 1 ? "w-1/2" : "w-full"}`}
+                      />
+                    ) : null
+                  })}
+                </div>
+              )
+            }}
+          />
+        </div>
       }
     />
   )

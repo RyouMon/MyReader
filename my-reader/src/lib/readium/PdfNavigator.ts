@@ -3,8 +3,8 @@ import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
 import { ensurePdfJsWorker } from "@/lib/pdfWorker"
 
 export const PDF_RENDER_BASE = 1.25
-export const PDF_SCALE_MIN = 0.75
-export const PDF_SCALE_MAX = 3
+export const PDF_SCALE_MIN = 1
+export const PDF_SCALE_MAX = 4
 
 export type SpreadMode = "auto" | "single" | "double"
 export type PdfReadingProgression = "ltr" | "rtl"
@@ -62,7 +62,7 @@ export class PdfNavigator {
   private pdf: PDFDocumentProxy | null = null
   private _currentPage = 1
   private _totalPages = 0
-  private _renderScale = PDF_RENDER_BASE
+  private _renderScale = 1
   private _spreadMode: SpreadMode = "auto"
   private _destroyed = false
 
@@ -71,6 +71,10 @@ export class PdfNavigator {
   private canvasRenderState = new WeakMap<
     HTMLCanvasElement,
     { generation: number; tail: Promise<void> }
+  >()
+  private canvasRenderCache = new WeakMap<
+    HTMLCanvasElement,
+    { key: string; promise: Promise<void> }
   >()
 
   constructor(fileUrl: string, listeners: Partial<PdfNavigatorListeners> = {}) {
@@ -141,7 +145,18 @@ export class PdfNavigator {
 
   /** Pages rendered in the current spread (1 or 2 page indices). */
   getSpreadPages(containerWidth: number, containerHeight: number): number[] {
-    const page = this._currentPage
+    return this.getSpreadPagesAt(
+      this._currentPage,
+      containerWidth,
+      containerHeight,
+    )
+  }
+
+  private getSpreadPagesAt(
+    page: number,
+    containerWidth: number,
+    containerHeight: number,
+  ): number[] {
     if (!this.isLandscapeSpread(containerWidth, containerHeight)) {
       return [page]
     }
@@ -159,10 +174,36 @@ export class PdfNavigator {
     containerHeight: number,
     readingProgression: PdfReadingProgression,
   ): number[] {
-    const pages = this.getSpreadPages(containerWidth, containerHeight)
+    return this.getSpreadPagesAtInReadingOrder(
+      this._currentPage,
+      containerWidth,
+      containerHeight,
+      readingProgression,
+    )
+  }
+
+  private getSpreadPagesAtInReadingOrder(
+    page: number,
+    containerWidth: number,
+    containerHeight: number,
+    readingProgression: PdfReadingProgression,
+  ): number[] {
+    const pages = this.getSpreadPagesAt(page, containerWidth, containerHeight)
     return readingProgression === "rtl" && pages.length === 2
       ? [...pages].reverse()
       : pages
+  }
+
+  adjacentPage(direction: -1 | 1): number | null {
+    if (direction > 0) {
+      if (!this.canGoForward) return null
+      if (this._spreadMode === "single") return this._currentPage + 1
+      return this._currentPage === 1 ? 2 : this._currentPage + 2
+    }
+
+    if (!this.canGoBackward) return null
+    if (this._spreadMode === "single") return this._currentPage - 1
+    return this._currentPage === 2 ? 1 : Math.max(1, this._currentPage - 2)
   }
 
   get currentLocator(): Locator {
@@ -278,6 +319,43 @@ export class PdfNavigator {
     }
   }
 
+  private renderCanvasWithCache(
+    canvas: HTMLCanvasElement,
+    key: string,
+    render: (isCurrent: () => boolean) => Promise<void>,
+  ): Promise<void> {
+    const cached = this.canvasRenderCache.get(canvas)
+    if (cached?.key === key) return cached.promise
+
+    let entry: { key: string; promise: Promise<void> }
+    const promise = this.queueCanvasRender(canvas, () =>
+      render(() => this.canvasRenderCache.get(canvas) === entry),
+    )
+    entry = { key, promise }
+    this.canvasRenderCache.set(canvas, entry)
+    void promise.catch(() => {
+      if (this.canvasRenderCache.get(canvas) === entry) {
+        this.canvasRenderCache.delete(canvas)
+      }
+    })
+    return promise
+  }
+
+  private commitRenderedCanvas(
+    canvas: HTMLCanvasElement,
+    renderedCanvas: HTMLCanvasElement,
+    cssWidth: number,
+    cssHeight: number,
+  ): void {
+    const context = canvas.getContext("2d")
+    if (!context) return
+    canvas.width = renderedCanvas.width
+    canvas.height = renderedCanvas.height
+    canvas.style.width = `${cssWidth}px`
+    canvas.style.height = `${cssHeight}px`
+    context.drawImage(renderedCanvas, 0, 0)
+  }
+
   /** Compute scale to fit page(s) within the container. */
   private async computeFitScale(
     containerWidth: number,
@@ -292,10 +370,11 @@ export class PdfNavigator {
       totalWidth += vp.width
       maxHeight = Math.max(maxHeight, vp.height)
     }
-    if (totalWidth === 0 || maxHeight === 0) return this._renderScale
-    const scaleX = containerWidth / totalWidth
+    if (totalWidth === 0 || maxHeight === 0) return 1
+    const spreadGap = Math.max(0, pages.length - 1) * 4
+    const scaleX = Math.max(0, containerWidth - spreadGap) / totalWidth
     const scaleY = containerHeight / maxHeight
-    return Math.min(scaleX, scaleY) * this._renderScale
+    return Math.min(scaleX, scaleY)
   }
 
   /** Render the current spread to a canvas element. */
@@ -305,30 +384,73 @@ export class PdfNavigator {
     containerHeight: number,
     readingProgression: PdfReadingProgression = "ltr",
   ): Promise<void> {
-    await this.queueCanvasRender(canvas, async () => {
-      const pdf = this.pdf
-      if (!pdf || this._currentPage < 1) return
+    await this.renderPageAt(
+      canvas,
+      this._currentPage,
+      containerWidth,
+      containerHeight,
+      readingProgression,
+    )
+  }
 
-      const pages = this.getSpreadPagesInReadingOrder(
+  async renderPageAt(
+    canvas: HTMLCanvasElement,
+    pageNumber: number,
+    containerWidth: number,
+    containerHeight: number,
+    readingProgression: PdfReadingProgression = "ltr",
+    keepDisplaySize = false,
+  ): Promise<void> {
+    const renderKey = [
+      "spread",
+      pageNumber,
+      containerWidth,
+      containerHeight,
+      readingProgression,
+      keepDisplaySize,
+      this._renderScale,
+      this._spreadMode,
+    ].join(":")
+    await this.renderCanvasWithCache(canvas, renderKey, async (isCurrent) => {
+      const pdf = this.pdf
+      if (!pdf || pageNumber < 1 || pageNumber > this._totalPages) return
+
+      const pages = this.getSpreadPagesAtInReadingOrder(
+        pageNumber,
         containerWidth,
         containerHeight,
         readingProgression,
       )
-      const scale = await this.computeFitScale(
+      const fitScale = await this.computeFitScale(
         containerWidth,
         containerHeight,
         pages,
       )
+      const scale = fitScale * PDF_RENDER_BASE * this._renderScale
 
-      const ctx = canvas.getContext("2d")
-      if (!ctx) return
+      const cssScale =
+        PDF_RENDER_BASE * (keepDisplaySize ? this._renderScale : 1)
 
       if (pages.length === 1) {
         const page = await this.getPage(pages[0])
         const vp = page.getViewport({ scale })
-        canvas.width = vp.width
-        canvas.height = vp.height
-        await page.render({ canvasContext: ctx, viewport: vp, canvas }).promise
+        const renderedCanvas = canvas.ownerDocument.createElement("canvas")
+        renderedCanvas.width = vp.width
+        renderedCanvas.height = vp.height
+        const context = renderedCanvas.getContext("2d")
+        if (!context) return
+        await page.render({
+          canvasContext: context,
+          viewport: vp,
+          canvas: renderedCanvas,
+        }).promise
+        if (!isCurrent()) return
+        this.commitRenderedCanvas(
+          canvas,
+          renderedCanvas,
+          vp.width / cssScale,
+          vp.height / cssScale,
+        )
       } else {
         // Double-page spread: render side by side
         const [page1, page2] = await Promise.all([
@@ -337,20 +459,39 @@ export class PdfNavigator {
         ])
         const vp1 = page1.getViewport({ scale })
         const vp2 = page2.getViewport({ scale })
-        const gap = 4
-        const totalWidth = Math.ceil(vp1.width + gap + vp2.width)
-        const totalHeight = Math.ceil(Math.max(vp1.height, vp2.height))
-        canvas.width = totalWidth
-        canvas.height = totalHeight
+        const gap = 4 * PDF_RENDER_BASE * this._renderScale
+        const contentWidth = vp1.width + gap + vp2.width
+        const contentHeight = Math.max(vp1.height, vp2.height)
+        const totalWidth = Math.ceil(contentWidth)
+        const totalHeight = Math.ceil(contentHeight)
+        const renderedCanvas = canvas.ownerDocument.createElement("canvas")
+        renderedCanvas.width = totalWidth
+        renderedCanvas.height = totalHeight
+        const context = renderedCanvas.getContext("2d")
+        if (!context) return
         // Render left page at origin
-        await page1.render({ canvasContext: ctx, viewport: vp1, canvas })
-          .promise
+        await page1.render({
+          canvasContext: context,
+          viewport: vp1,
+          canvas: renderedCanvas,
+        }).promise
+        if (!isCurrent()) return
         // Render right page offset by left page width + gap
-        ctx.save()
-        ctx.translate(Math.ceil(vp1.width) + gap, 0)
-        await page2.render({ canvasContext: ctx, viewport: vp2, canvas })
-          .promise
-        ctx.restore()
+        context.save()
+        context.translate(Math.ceil(vp1.width) + gap, 0)
+        await page2.render({
+          canvasContext: context,
+          viewport: vp2,
+          canvas: renderedCanvas,
+        }).promise
+        context.restore()
+        if (!isCurrent()) return
+        this.commitRenderedCanvas(
+          canvas,
+          renderedCanvas,
+          contentWidth / cssScale,
+          contentHeight / cssScale,
+        )
       }
     })
   }
@@ -361,22 +502,42 @@ export class PdfNavigator {
     containerWidth: number,
     containerHeight: number,
   ): Promise<void> {
-    await this.queueCanvasRender(canvas, async () => {
+    const renderKey = [
+      "single",
+      pageNumber,
+      containerWidth,
+      containerHeight,
+      this._renderScale,
+    ].join(":")
+    await this.renderCanvasWithCache(canvas, renderKey, async (isCurrent) => {
       if (!this.pdf || pageNumber < 1 || pageNumber > this._totalPages) return
 
       const page = await this.getPage(pageNumber)
-      const scale = await this.computeFitScale(
+      const fitScale = await this.computeFitScale(
         containerWidth,
         containerHeight,
         [pageNumber],
       )
+      const scale = fitScale * PDF_RENDER_BASE * this._renderScale
       const viewport = page.getViewport({ scale })
-      const context = canvas.getContext("2d")
+      const renderedCanvas = canvas.ownerDocument.createElement("canvas")
+      renderedCanvas.width = viewport.width
+      renderedCanvas.height = viewport.height
+      const context = renderedCanvas.getContext("2d")
       if (!context) return
 
-      canvas.width = viewport.width
-      canvas.height = viewport.height
-      await page.render({ canvasContext: context, viewport, canvas }).promise
+      await page.render({
+        canvasContext: context,
+        viewport,
+        canvas: renderedCanvas,
+      }).promise
+      if (!isCurrent()) return
+      this.commitRenderedCanvas(
+        canvas,
+        renderedCanvas,
+        viewport.width / PDF_RENDER_BASE,
+        viewport.height / PDF_RENDER_BASE,
+      )
     })
   }
 }
