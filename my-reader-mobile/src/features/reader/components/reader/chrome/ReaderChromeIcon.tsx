@@ -5,7 +5,11 @@ import { Platform } from "react-native"
 const READER_CHROME_ICON_SOURCE = {
   check: { ios: "checkmark", android: "check" },
   close: { ios: "xmark", android: "close" },
+  delete: { ios: "trash", android: "delete-outline" },
   more: { ios: "ellipsis", android: "more-horiz" },
+  bookmark: { ios: "bookmark", android: "bookmark-border" },
+  bookmarkActive: { ios: "bookmark.fill", android: "bookmark" },
+  manage: { ios: "checklist", android: "checklist" },
   settings: { ios: "slider.horizontal.3", android: "tune" },
   toc: { ios: "list.bullet", android: "list" },
 } as const

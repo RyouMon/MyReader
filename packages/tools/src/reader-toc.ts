@@ -3,6 +3,25 @@ export interface ReaderLocatorLocations {
   progression: number
   position?: number
   totalProgression?: number
+  cssSelector?: string
+  partialCfi?: string
+  domRange?: ReaderLocatorDomRange
+  otherLocations?:
+    | ReadonlyMap<string, unknown>
+    | Readonly<Record<string, unknown>>
+}
+
+export interface ReaderLocatorDomRangePoint {
+  cssSelector: string
+  textNodeIndex: number
+  charOffset?: number
+  /** Legacy Readium key accepted when restoring older persisted Locators. */
+  offset?: number
+}
+
+export interface ReaderLocatorDomRange {
+  start: ReaderLocatorDomRangePoint
+  end?: ReaderLocatorDomRangePoint
 }
 
 export interface ReaderLocatorText {

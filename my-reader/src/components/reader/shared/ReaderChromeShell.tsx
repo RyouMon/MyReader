@@ -20,6 +20,7 @@ export type ReaderChromeTopBarConfig = {
   bookTitle: string
   chapterTitle: string
   bookmarked: boolean
+  bookmarkDisabled?: boolean
   tocOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
@@ -169,6 +170,7 @@ export function ReaderChromeShell({
           chapterTitle={topBar.chapterTitle}
           visible={chromeVisible}
           bookmarked={topBar.bookmarked}
+          bookmarkDisabled={topBar.bookmarkDisabled}
           tocOpen={topBar.tocOpen}
           settingsOpen={topBar.settingsOpen}
           showReaderActions={topBar.showReaderActions}

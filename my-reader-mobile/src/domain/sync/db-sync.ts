@@ -4,13 +4,36 @@ import {
   usesIosContainerSidecar,
 } from "@/src/services/fs/library-paths"
 import {
-  getReadingProgressUpdatedAt,
-  listReadingProgressSince,
-  upsertReadingProgress,
+  listReaderBookmarksAtOrAfter,
+  upsertReaderBookmarkIfNewer,
+} from "../../repos/bookmarks"
+import {
+  listReadingProgressAtOrAfter,
+  upsertReadingProgressIfNewer,
 } from "../../repos/reading-progress"
 import { getSyncMeta, setSyncMeta } from "../../repos/sync_meta"
 import { withSecurityScopedLibraryAccess } from "../../services/fs/bookmarks"
+import {
+  invalidateReaderBookmarks,
+  invalidateReadingProgress,
+  invalidateRecentlyReadBooks,
+} from "../../services/query/invalidate-table"
 import type { Library } from "../types"
+import {
+  advanceDbPushCursor,
+  allocateDbChangeSequence,
+  buildDbChangeRows,
+  dbSyncLastExternalMirrorSeqKey,
+  dbSyncLastLocalSequenceKey,
+  dbSyncLastPullCursorKey,
+  dbSyncLastPushCursorKey,
+  parseDbChangeRow,
+  parseDbPushCursor,
+  parseReaderBookmarkChange,
+  parseReadingProgressChange,
+  selectPendingDbChanges,
+  serializeDbPushCursor,
+} from "./db-sync-changes"
 import { getOrCreateDeviceId } from "./device"
 import { LocalDirectBackend } from "./local"
 import {
@@ -19,22 +42,27 @@ import {
   type SyncBackend,
 } from "./resolve"
 
-type ChangeRow = {
-  t: string
-  k: Record<string, unknown>
-  v: Record<string, unknown>
-}
+const dbPushTails = new Map<string, Promise<void>>()
 
-function lastPushCursorKey(deviceId: string): string {
-  return `last_push_cursor::${deviceId}`
-}
+async function withSerializedDbPush<T>(
+  scope: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const previous = dbPushTails.get(scope) ?? Promise.resolve()
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const tail = previous.then(() => gate)
+  dbPushTails.set(scope, tail)
 
-function lastExternalMirrorSeqKey(deviceId: string): string {
-  return `last_external_mirror_seq::${deviceId}`
-}
-
-function lastPullCursorKey(deviceId: string, remoteDevice: string): string {
-  return `last_pull_cursor::${deviceId}::${remoteDevice}`
+  await previous
+  try {
+    return await operation()
+  } finally {
+    release()
+    if (dbPushTails.get(scope) === tail) dbPushTails.delete(scope)
+  }
 }
 
 async function pushDbChanges(
@@ -42,34 +70,51 @@ async function pushDbChanges(
   library: Library,
   deviceId: string,
 ): Promise<number> {
-  const cursorKey = lastPushCursorKey(deviceId)
-  const cursorStr = await getSyncMeta(library, cursorKey)
-  const sinceMs = cursorStr ? parseFloat(cursorStr) : 0
+  return withSerializedDbPush(`${library.id}\u0000${deviceId}`, () =>
+    pushDbChangesSerialized(backend, library, deviceId),
+  )
+}
 
-  const rows = await listReadingProgressSince(library, sinceMs)
+async function pushDbChangesSerialized(
+  backend: SyncBackend,
+  library: Library,
+  deviceId: string,
+): Promise<number> {
+  const cursorKey = dbSyncLastPushCursorKey(deviceId)
+  const sequenceKey = dbSyncLastLocalSequenceKey(deviceId)
+  const [cursorStr, sequenceStr] = await Promise.all([
+    getSyncMeta(library, cursorKey),
+    getSyncMeta(library, sequenceKey),
+  ])
+  const cursor = parseDbPushCursor(cursorStr)
 
-  if (rows.length === 0) return 0
+  const [readingProgressRows, bookmarkRows] = await Promise.all([
+    listReadingProgressAtOrAfter(library, cursor.ts),
+    listReaderBookmarksAtOrAfter(library, cursor.ts),
+  ])
+  const changes = selectPendingDbChanges(
+    buildDbChangeRows(readingProgressRows, bookmarkRows),
+    cursor,
+  )
 
-  let maxTs = sinceMs
-  const lines: string[] = []
-  for (const row of rows) {
-    if (row.updatedAt > maxTs) maxTs = row.updatedAt
-    const change: ChangeRow = {
-      t: "reading_progress",
-      k: { book_id: row.bookId, format: row.format },
-      v: { locator_json: row.locatorJson, updated_at: row.updatedAt },
-    }
-    lines.push(JSON.stringify(change))
-  }
+  if (changes.length === 0) return 0
 
-  const payload = `${lines.join("\n")}\n`
-  const seq = Date.now()
+  const payload = `${changes.map((change) => JSON.stringify(change)).join("\n")}\n`
+  const persistedSequence = Number(sequenceStr)
+  const seq = allocateDbChangeSequence(
+    Number.isFinite(persistedSequence) ? persistedSequence : 0,
+  )
   const objectPath = `.myreader/changes/${deviceId}/${seq}.jsonl`
 
   await backend.writeBytes(objectPath, new TextEncoder().encode(payload))
-  await setSyncMeta(library, cursorKey, String(maxTs))
+  await setSyncMeta(library, sequenceKey, String(seq))
+  await setSyncMeta(
+    library,
+    cursorKey,
+    serializeDbPushCursor(advanceDbPushCursor(cursor, changes)),
+  )
 
-  return rows.length
+  return changes.length
 }
 
 async function mirrorChangesToExternal(
@@ -78,7 +123,7 @@ async function mirrorChangesToExternal(
   library: Library,
   deviceId: string,
 ): Promise<number> {
-  const mirrorKey = lastExternalMirrorSeqKey(deviceId)
+  const mirrorKey = dbSyncLastExternalMirrorSeqKey(deviceId)
   const lastSeqStr = await getSyncMeta(library, mirrorKey)
   const lastSeq = lastSeqStr ? parseInt(lastSeqStr, 10) : 0
 
@@ -116,6 +161,8 @@ async function pullDbChanges(
   if (deviceDirs.length === 0) return 0
 
   let applied = 0
+  let bookmarksChanged = false
+  let readingProgressChanged = false
 
   for (const dir of deviceDirs) {
     const remoteDevice = dir.replace(/\/$/, "")
@@ -132,7 +179,7 @@ async function pullDbChanges(
       continue
     }
 
-    const pullKey = lastPullCursorKey(deviceId, remoteDevice)
+    const pullKey = dbSyncLastPullCursorKey(deviceId, remoteDevice)
     const lastSeqStr = await getSyncMeta(library, pullKey)
     const lastSeq = lastSeqStr ? parseInt(lastSeqStr, 10) : 0
 
@@ -150,43 +197,52 @@ async function pullDbChanges(
       for (const line of text.split("\n")) {
         const trimmed = line.trim()
         if (!trimmed) continue
-        let change: ChangeRow
+        let value: unknown
         try {
-          change = JSON.parse(trimmed) as ChangeRow
+          value = JSON.parse(trimmed) as unknown
         } catch {
           console.warn(`[db-sync] pull: malformed line in ${filePath}`)
           continue
         }
-        if (change.t !== "reading_progress") continue
+        const change = parseDbChangeRow(value)
+        if (!change) continue
 
-        const incomingTs =
-          typeof change.v.updated_at === "number" ? change.v.updated_at : 0
-        const bookId = Number(change.k.book_id ?? 0)
-        const format = String(change.k.format ?? "")
-        const locatorJson = String(change.v.locator_json ?? "")
+        const progress = parseReadingProgressChange(change)
+        if (progress) {
+          const appliedProgress = await upsertReadingProgressIfNewer(
+            library,
+            progress,
+          )
+          if (!appliedProgress) continue
+          readingProgressChanged = true
+          applied++
+          continue
+        }
 
-        if (!bookId || !format || !locatorJson || incomingTs <= 0) continue
+        const bookmark = parseReaderBookmarkChange(change)
+        if (!bookmark) continue
 
-        const existingTs = await getReadingProgressUpdatedAt(
+        const appliedBookmark = await upsertReaderBookmarkIfNewer(
           library,
-          bookId,
-          format,
+          bookmark,
         )
-        const baselineTs = existingTs ?? -1
-
-        if (incomingTs <= baselineTs) continue
-
-        await upsertReadingProgress(library, {
-          bookId,
-          format,
-          locatorJson,
-          updatedAt: incomingTs,
-        })
+        if (!appliedBookmark) continue
+        bookmarksChanged = true
         applied++
       }
 
       await setSyncMeta(library, pullKey, String(seq))
     }
+  }
+
+  if (bookmarksChanged) {
+    await invalidateReaderBookmarks(library.id)
+  }
+  if (readingProgressChanged) {
+    await Promise.all([
+      invalidateReadingProgress(library.id),
+      invalidateRecentlyReadBooks(library.id),
+    ])
   }
 
   return applied

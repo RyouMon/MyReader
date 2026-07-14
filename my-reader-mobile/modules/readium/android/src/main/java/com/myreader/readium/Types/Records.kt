@@ -11,7 +11,11 @@ data class LocatorLocationsRecord(
   @Field val fragments: List<String>? = null,
   @Field val progression: Double = 0.0,
   @Field val position: Double? = null,
-  @Field val totalProgression: Double? = null
+  @Field val totalProgression: Double? = null,
+  @Field val cssSelector: String? = null,
+  @Field val partialCfi: String? = null,
+  @Field val domRange: Map<String, Any>? = null,
+  @Field val otherLocations: Map<String, Any>? = null
 ) : Record
 
 @OptimizedRecord

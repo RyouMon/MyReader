@@ -13,6 +13,8 @@ export type EmptyStateIcon = {
   android: string
 }
 
+export type EmptyStateLayout = "screen" | "container"
+
 const DEFAULT_ICON: EmptyStateIcon = {
   ios: "book.closed.fill",
   android: "menu-book",
@@ -26,11 +28,13 @@ export function EmptyState({
   detail,
   action,
   icon = DEFAULT_ICON,
+  layout = "screen",
 }: {
   title: string
   detail: string
   action?: ReactNode
   icon?: EmptyStateIcon
+  layout?: EmptyStateLayout
 }) {
   const palette = useThemePalette()
   const { height: windowHeight } = useWindowDimensions()
@@ -39,12 +43,13 @@ export function EmptyState({
 
   const availableHeight =
     windowHeight - insets.top - insets.bottom - headerHeight - TAB_BAR_ESTIMATE
-  const minHeight = availableHeight - SCREEN_PAD
+  const minHeight =
+    layout === "container" ? 0 : Math.max(availableHeight - SCREEN_PAD, 300)
 
   return (
     <View
       className="flex-1 items-center justify-center px-6"
-      style={{ minHeight: Math.max(minHeight, 300), gap: 24 }}
+      style={{ minHeight, gap: 24 }}
     >
       {Platform.OS === "ios" ? (
         <SymbolView

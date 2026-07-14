@@ -1,14 +1,15 @@
-import i18n from "@/src/i18n"
-
+import type { Locator } from "@my-reader/readium"
+import { resolveReadFormat } from "@my-reader/tools/utils"
+import { File } from "expo-file-system"
+import { useEffect, useRef, useState } from "react"
 import {
   buildCoverUri as buildLocalCoverUri,
   getBookFormatPaths,
   readBookDetailFromMetadata,
   resolveBookFileForRead,
 } from "@/src/domain/library/calibre"
-import { libraryBookFileUri } from "@/src/services/fs/library-paths"
-import { createRemoteOps } from "@/src/domain/library/remote-library"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
+import { createRemoteOps } from "@/src/domain/library/remote-library"
 import { getFileState } from "@/src/domain/sync/actions"
 import type {
   BookItem,
@@ -18,13 +19,12 @@ import type {
 } from "@/src/domain/types"
 import { isRemoteSourceType } from "@/src/domain/types"
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator"
+import i18n from "@/src/i18n"
+import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
-import { resolveReadFormat } from "@my-reader/tools/utils"
-import type { Locator } from "@my-reader/readium"
-import { File } from "expo-file-system"
-import { useEffect, useRef, useState } from "react"
 import { libraryQueryKeys } from "../features/library/hooks/useLibraryQuery"
+import { isReadyBookLoadForRequest } from "./book-load-identity"
 
 const INITIAL_READER_PAGE = 0
 
@@ -103,6 +103,7 @@ export type LoadState =
   | { status: "error"; message: string }
   | {
       status: "ready"
+      libraryId: string
       /** EPUB 容器 `file://` URI，供 Readium 转原生路径打开。 */
       epubFileUri: string | null
       /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
@@ -151,10 +152,12 @@ export function useBookLoader(
     }
 
     if (
-      loadStateRef.current.status === "ready" &&
-      loadStateRef.current.bookId === Number(id) &&
-      loadStateRef.current.format.toUpperCase() ===
-        (formatParam ?? "").toUpperCase()
+      isReadyBookLoadForRequest(
+        loadStateRef.current,
+        activeLibraryId,
+        id,
+        formatParam,
+      )
     ) {
       return
     }
@@ -329,6 +332,7 @@ export function useBookLoader(
 
         setLoadState({
           status: "ready",
+          libraryId: lib.id,
           epubFileUri:
             needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
           pdfLocalUri:

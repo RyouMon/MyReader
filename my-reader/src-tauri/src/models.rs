@@ -275,6 +275,40 @@ pub struct ReadingProgressDto {
     pub updated_at: f64,
 }
 
+pub(crate) fn is_valid_reader_locator(locator: &serde_json::Value) -> bool {
+    let Some(object) = locator.as_object() else {
+        return false;
+    };
+    let has_href = object
+        .get("href")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|href| !href.trim().is_empty());
+    let has_type = object
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|media_type| !media_type.trim().is_empty());
+    has_href
+        && has_type
+        && !object
+            .get("locations")
+            .is_some_and(|locations| !locations.is_object())
+}
+
+/// A durable Readium Locator saved by the reader as an explicit bookmark.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderBookmarkDto {
+    pub id: String,
+    pub library_id: String,
+    pub book_id: i64,
+    pub format: String,
+    pub locator_key: String,
+    #[specta(type = specta_typescript::Any)]
+    pub locator: serde_json::Value,
+    pub created_at: f64,
+    pub updated_at: f64,
+}
+
 /// Returned by `check_book_file_state`: describes whether a book file is cached locally.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]

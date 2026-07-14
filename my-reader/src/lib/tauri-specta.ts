@@ -41,6 +41,9 @@ export const commands = {
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
+	listReaderBookmarks: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderBookmarkDto[], ErrorKind>(__TAURI_INVOKE("list_reader_bookmarks", { libraryId, bookId, format })),
+	addReaderBookmark: (libraryId: string | null, bookId: number, format: string, locatorKey: string, locator: any) => typedError<ReaderBookmarkDto, ErrorKind>(__TAURI_INVOKE("add_reader_bookmark", { libraryId, bookId, format, locatorKey, locator })),
+	deleteReaderBookmark: (libraryId: string | null, bookId: number, format: string, locatorKey: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_reader_bookmark", { libraryId, bookId, format, locatorKey })),
 	getReaderUiPreferences: () => typedError<ReaderUiPreferences_Serialize, ErrorKind>(__TAURI_INVOKE("get_reader_ui_preferences")),
 	setReaderUiPreferences: (preferences: ReaderUiPreferences_Deserialize) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_ui_preferences", { preferences })),
 	prepareBookSource: (libraryId: string | null, bookId: number, format: string) => typedError<PreparedBookSource, ErrorKind>(__TAURI_INVOKE("prepare_book_source", { libraryId, bookId, format })),
@@ -207,6 +210,18 @@ export type PreparedBookSource = {
 	extractedDirPath: string | null,
 	extractedEntries: string[],
 	streamerUrl: string | null,
+};
+
+/**  A durable Readium Locator saved by the reader as an explicit bookmark. */
+export type ReaderBookmarkDto = {
+	id: string,
+	libraryId: string,
+	bookId: number,
+	format: string,
+	locatorKey: string,
+	locator: any,
+	createdAt: number | null,
+	updatedAt: number | null,
 };
 
 export type ReaderSettingsDto = {

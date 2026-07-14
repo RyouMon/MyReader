@@ -1,27 +1,27 @@
 /**
  * Reader chrome state machine:
- *   Reading        — Only chapter label + page label visible
+ *   Reading        — Chapter/page labels + active bookmark affordance
  *   Chrome         — + Close button (top-right) + More button (bottom-right)
- *   Expanded       — + TOC pill + Settings pill (floating, bottom-right)
- *   TocSheet       — TOC bottom sheet open
+ *   Expanded       — + navigation/settings pills and bookmark button
+ *   NavigationSheet — TOC/bookmarks bottom sheet open
  *   SettingsSheet  — Settings bottom sheet open
  */
 export enum ChromeState {
   Reading = 1,
   Chrome = 2,
   Expanded = 3,
-  TocSheet = 4,
+  NavigationSheet = 4,
   SettingsSheet = 5,
 }
 
 export type ChromeAction =
   | { type: "contentTap" }
   | { type: "moreButtonTap" }
-  | { type: "tocPillTap" }
+  | { type: "navigationPillTap" }
   | { type: "settingsPillTap" }
   | { type: "closeButtonTap" }
-  | { type: "tocSelect" }
-  | { type: "tocDismiss" }
+  | { type: "navigationSelect" }
+  | { type: "navigationDismiss" }
   | { type: "settingsDismiss" }
 
 export function chromeReducer(
@@ -30,7 +30,10 @@ export function chromeReducer(
 ): ChromeState {
   switch (action.type) {
     case "contentTap":
-      if (state === ChromeState.TocSheet || state === ChromeState.SettingsSheet)
+      if (
+        state === ChromeState.NavigationSheet ||
+        state === ChromeState.SettingsSheet
+      )
         return ChromeState.Chrome
       if (state === ChromeState.Reading) return ChromeState.Chrome
       return ChromeState.Reading
@@ -39,8 +42,8 @@ export function chromeReducer(
       if (state === ChromeState.Chrome) return ChromeState.Expanded
       return state
 
-    case "tocPillTap":
-      if (state === ChromeState.Expanded) return ChromeState.TocSheet
+    case "navigationPillTap":
+      if (state === ChromeState.Expanded) return ChromeState.NavigationSheet
       return state
 
     case "settingsPillTap":
@@ -50,11 +53,11 @@ export function chromeReducer(
     case "closeButtonTap":
       return state
 
-    case "tocSelect":
+    case "navigationSelect":
       return ChromeState.Reading
 
-    case "tocDismiss":
-      if (state === ChromeState.TocSheet) return ChromeState.Chrome
+    case "navigationDismiss":
+      if (state === ChromeState.NavigationSheet) return ChromeState.Chrome
       return state
 
     case "settingsDismiss":

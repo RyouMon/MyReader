@@ -8,6 +8,25 @@ export interface LocatorLocations {
   progression: number
   position?: number
   totalProgression?: number
+  cssSelector?: string
+  partialCfi?: string
+  domRange?: LocatorDomRange
+  otherLocations?:
+    | ReadonlyMap<string, unknown>
+    | Readonly<Record<string, unknown>>
+}
+
+export interface LocatorDomRangePoint {
+  cssSelector: string
+  textNodeIndex: number
+  charOffset?: number
+  /** Legacy Readium key accepted when restoring older persisted Locators. */
+  offset?: number
+}
+
+export interface LocatorDomRange {
+  start: LocatorDomRangePoint
+  end?: LocatorDomRangePoint
 }
 
 export interface LocatorText {

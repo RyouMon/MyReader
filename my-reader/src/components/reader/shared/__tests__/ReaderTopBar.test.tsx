@@ -65,6 +65,25 @@ describe("ReaderTopBar", () => {
     expect(onToggleSettings).toHaveBeenCalledOnce()
   })
 
+  it("should expose pressed and disabled state when bookmark mutation is unavailable", () => {
+    const onToggleBookmark = vi.fn()
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        bookmarked
+        bookmarkDisabled
+        onToggleBookmark={onToggleBookmark}
+      />,
+    )
+
+    const bookmarkButton = screen.getByTitle("reader.bookmark")
+    expect(bookmarkButton).toHaveAttribute("aria-pressed", "true")
+    expect(bookmarkButton).toBeDisabled()
+    fireEvent.click(bookmarkButton)
+    expect(onToggleBookmark).not.toHaveBeenCalled()
+  })
+
   it("should use Windows window-control spacing when running on Windows", () => {
     render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
 

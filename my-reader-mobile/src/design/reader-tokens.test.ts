@@ -1,5 +1,4 @@
 import {
-  chromeBookmarkIconColor,
   chromeSegmentStyle,
   chromeThemeCardStyle,
   chromeTocLabelStyle,
@@ -8,14 +7,6 @@ import {
 } from "./reader-tokens"
 
 describe("reader chrome tokens", () => {
-  it("should return accent color when bookmark is active", () => {
-    expect(chromeBookmarkIconColor(true)).toBe(READER_CHROME.accent)
-  })
-
-  it("should return idle color when bookmark is inactive", () => {
-    expect(chromeBookmarkIconColor(false)).toBe(READER_CHROME.textIdle)
-  })
-
   it("should return active segment style when segment is active", () => {
     expect(chromeSegmentStyle(true)).toEqual({
       backgroundColor: READER_CHROME.surfaceActive,

@@ -2,12 +2,12 @@ import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
 import {
   enhanceTocItemsWithContentLocators,
   linksToTocItems,
-  resolveReaderToc,
-  resolveReaderTocAtPosition,
   type ReaderContentElement,
   type ReaderLink,
   type ReaderLocator,
   type ReaderTocItem,
+  resolveReaderToc,
+  resolveReaderTocAtPosition,
 } from "@my-reader/tools/reader-toc"
 import { EpubNavigator } from "@readium/navigator"
 import {
@@ -41,6 +41,7 @@ import {
 } from "react"
 import { useTranslation } from "react-i18next"
 import {
+  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -65,15 +66,17 @@ import type {
 } from "@/components/reader/types"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
+import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
-import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
+import { deserializeReaderBookmarkLocator } from "@/lib/readium/bookmarks"
 import {
   type EpubTextResource,
   extractEpubContentLocators,
 } from "@/lib/readium/epubContentLocators"
+import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
 import {
   applySpreadPreference,
   epubPreferencesForSpread,
@@ -1043,11 +1046,16 @@ export function ReadiumEpubReader({
     handlePointerPosition,
   } = useReadingChrome(false, tocOpen || settingsOpen)
   useReaderIframePointerBridge(containerRef, handlePointerPosition)
-  const [bookmarked, setBookmarked] = useState(false)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const readerBookmarks = useReaderBookmarks({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+  })
   const [contentSettling, setContentSettling] = useState(true)
   const chromeVisibleRef = useRef(chromeVisible)
   const reflowablePreferenceApplyRef = useRef(0)
@@ -1145,6 +1153,19 @@ export function ReadiumEpubReader({
   const tocItemByKey = useMemo(() => {
     return new Map(tocItems.map((item) => [item.id, item]))
   }, [tocItems])
+
+  const bookmarkRows = useMemo<ReadiumBookmarkRow[]>(
+    () =>
+      readerBookmarks.bookmarks.map((bookmark) => ({
+        ...bookmark,
+        chapterTitle: resolveReaderToc({
+          toc: tocItems,
+          positions: readerPositions,
+          locator: bookmark.locator,
+        }).title?.trim(),
+      })),
+    [readerBookmarks.bookmarks, readerPositions, tocItems],
+  )
 
   const resolveChapterTitle = useCallback(
     (
@@ -1346,6 +1367,40 @@ export function ReadiumEpubReader({
       isFixedLayout,
       publication,
       selectTocItemForNavigation,
+    ],
+  )
+
+  const onBookmarkSelect = useCallback(
+    async (bookmark: ReadiumBookmarkRow) => {
+      const nav = navigatorRef.current
+      const locator = deserializeReaderBookmarkLocator(bookmark.locator)
+      if (!nav || !locator) return
+
+      const sequence = beginContentNavigation(locator)
+      const position = locator.locations.position
+      if (
+        isFixedLayout &&
+        typeof position === "number" &&
+        Number.isFinite(position) &&
+        position >= 1
+      ) {
+        const targetPosition = Math.min(
+          publication.readingOrder.items.length,
+          Math.floor(position),
+        )
+        await goToReadingOrderPositionBySteps(nav, targetPosition)
+        finishContentNavigation(sequence)
+      } else {
+        nav.go(locator, false, () => finishContentNavigation(sequence))
+      }
+      closePanels()
+    },
+    [
+      beginContentNavigation,
+      closePanels,
+      finishContentNavigation,
+      isFixedLayout,
+      publication.readingOrder.items.length,
     ],
   )
 
@@ -1783,19 +1838,6 @@ export function ReadiumEpubReader({
     resolveChapterTitle,
   ])
 
-  if (initError) {
-    return (
-      <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
-        <div>
-          <p className="text-destructive font-medium mb-2">
-            {t("reader.loadFailed")}
-          </p>
-          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
-        </div>
-      </div>
-    )
-  }
-
   const bottomPositionTotal = isFixedLayout
     ? publication.readingOrder.items.length
     : epubPositions.length
@@ -1872,6 +1914,19 @@ export function ReadiumEpubReader({
     ],
   )
 
+  if (initError) {
+    return (
+      <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8 text-center">
+        <div>
+          <p className="text-destructive font-medium mb-2">
+            {t("reader.loadFailed")}
+          </p>
+          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <ReaderChromeShell
       readerRootRef={readerRootRef}
@@ -1885,11 +1940,12 @@ export function ReadiumEpubReader({
       topBar={{
         bookTitle,
         chapterTitle,
-        bookmarked,
+        bookmarked: readerBookmarks.bookmarked,
+        bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
         settingsOpen,
         onToggleToc: toggleToc,
-        onToggleBookmark: () => setBookmarked((b) => !b),
+        onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
       tocPanel={
@@ -1898,6 +1954,13 @@ export function ReadiumEpubReader({
           rows={tocRows}
           activeKey={activeTocKey}
           onSelect={onTocSelect}
+          bookmarks={bookmarkRows}
+          bookmarksLoading={readerBookmarks.loading}
+          bookmarksMutating={readerBookmarks.mutating}
+          bookmarksError={readerBookmarks.loadError}
+          onBookmarksRetry={readerBookmarks.retry}
+          onBookmarkSelect={onBookmarkSelect}
+          onBookmarkDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }

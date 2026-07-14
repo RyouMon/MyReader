@@ -1,6 +1,11 @@
 import { type ReactNode, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import { View as RNView, StyleSheet, useWindowDimensions } from "react-native"
+import {
+  Pressable,
+  View as RNView,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native"
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -12,7 +17,7 @@ import {
   type ReaderChromePalette,
   underlayFromSurface,
 } from "@/src/design/reader-chrome-palette"
-import { Text, TouchableHighlight } from "@/tw"
+import { Text } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
 import { ReaderTocProgressAction } from "./ReaderTocProgressAction"
 import type {
@@ -56,6 +61,7 @@ type ExpandedActionButtonProps = {
   accessibilityLabel: string
   actionPillWidth: number
   children: ReactNode
+  disabled?: boolean
   palette: ReaderChromePalette
   onPress: () => void
 }
@@ -64,6 +70,7 @@ function ExpandedActionButton({
   accessibilityLabel,
   actionPillWidth,
   children,
+  disabled = false,
   palette,
   onPress,
 }: ExpandedActionButtonProps) {
@@ -72,10 +79,14 @@ function ExpandedActionButton({
 
   return (
     <Animated.View style={pressFeedbackStyle}>
-      <TouchableHighlight
+      <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        underlayColor={underlayFromSurface(palette.actionSurface, palette.bg)}
+        accessibilityState={{ disabled }}
+        android_ripple={{
+          color: underlayFromSurface(palette.actionSurface, palette.bg),
+        }}
+        disabled={disabled}
         style={[
           styles.pillButton,
           {
@@ -88,7 +99,7 @@ function ExpandedActionButton({
         onPressOut={handlePressOut}
       >
         {children}
-      </TouchableHighlight>
+      </Pressable>
     </Animated.View>
   )
 }
@@ -152,7 +163,7 @@ export default function ReaderActionsExpanded({
     >
       <RNView style={[styles.pillContainer, styles.sheetShadow]}>
         <ReaderTocProgressAction
-          accessibilityLabel={t("reader.toc")}
+          accessibilityLabel={t("reader.navigation")}
           actionPillWidth={actionPillWidth}
           currentPositionIndex={currentPositionIndex}
           positionCount={positionCount}

@@ -1,15 +1,13 @@
-import { and, eq, gt } from "drizzle-orm"
-
-import { getLibraryDatabase } from "@/src/services/db/library-db"
-import { uuid } from "@/src/utils/common"
 import { readingProgress } from "@my-reader/db/schema"
 import type { ReadingProgress } from "@my-reader/db/types"
 import type { Library } from "@my-reader/tools/types/library"
-
+import { and, eq, gte, sql } from "drizzle-orm"
+import { getLibraryDatabase } from "@/src/services/db/library-db"
 import {
   invalidateReadingProgress,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
+import { uuid } from "@/src/utils/common"
 
 export async function getReadingProgressRow(
   library: Library,
@@ -27,23 +25,6 @@ export async function getReadingProgressRow(
   return rows[0] ?? null
 }
 
-export async function getReadingProgressUpdatedAt(
-  library: Library,
-  bookId: number,
-  format: string,
-): Promise<number | null> {
-  const fmt = format.toUpperCase()
-  const { db } = await getLibraryDatabase(library)
-  const rows = await db
-    .select({ updatedAt: readingProgress.updatedAt })
-    .from(readingProgress)
-    .where(
-      and(eq(readingProgress.bookId, bookId), eq(readingProgress.format, fmt)),
-    )
-  const row = rows[0]
-  return row ? Number(row.updatedAt) : null
-}
-
 export type ReadingProgressUpsert = {
   bookId: number
   format: string
@@ -55,14 +36,50 @@ export type UpsertReadingProgressOptions = {
   invalidate?: boolean
 }
 
+export type LocalReadingProgressUpsert = Omit<
+  ReadingProgressUpsert,
+  "updatedAt"
+>
+
 export async function upsertReadingProgress(
   library: Library,
-  patch: ReadingProgressUpsert,
+  patch: LocalReadingProgressUpsert,
   options?: UpsertReadingProgressOptions,
 ): Promise<void> {
+  const now = Date.now()
   const fmt = patch.format.toUpperCase()
   const { db } = await getLibraryDatabase(library)
   await db
+    .insert(readingProgress)
+    .values({
+      id: uuid(),
+      bookId: patch.bookId,
+      format: fmt,
+      locatorJson: patch.locatorJson,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [readingProgress.bookId, readingProgress.format],
+      set: {
+        locatorJson: patch.locatorJson,
+        updatedAt: sql<number>`max(excluded.updated_at, ${readingProgress.updatedAt} + 1)`,
+      },
+    })
+
+  if (options?.invalidate ?? true) {
+    void invalidateReadingProgress(library.id)
+    void invalidateRecentlyReadBooks(library.id)
+  }
+}
+
+/** Atomically applies timestamp then BINARY locator JSON LWW ordering. */
+export async function upsertReadingProgressIfNewer(
+  library: Library,
+  patch: ReadingProgressUpsert,
+): Promise<boolean> {
+  const fmt = patch.format.toUpperCase()
+  const { db } = await getLibraryDatabase(library)
+  const rows = await db
     .insert(readingProgress)
     .values({
       id: uuid(),
@@ -73,13 +90,20 @@ export async function upsertReadingProgress(
     })
     .onConflictDoUpdate({
       target: [readingProgress.bookId, readingProgress.format],
-      set: { locatorJson: patch.locatorJson, updatedAt: patch.updatedAt },
+      set: {
+        locatorJson: patch.locatorJson,
+        updatedAt: patch.updatedAt,
+      },
+      setWhere: sql`
+        excluded.updated_at > ${readingProgress.updatedAt}
+        OR (
+          excluded.updated_at = ${readingProgress.updatedAt}
+          AND excluded.locator_json COLLATE BINARY > ${readingProgress.locatorJson} COLLATE BINARY
+        )
+      `,
     })
-
-  if (options?.invalidate ?? true) {
-    void invalidateReadingProgress(library.id)
-    void invalidateRecentlyReadBooks(library.id)
-  }
+    .returning({ id: readingProgress.id })
+  return rows.length > 0
 }
 
 export type ReadingProgressChangeRow = {
@@ -104,7 +128,7 @@ export async function listAllReadingProgress(
     .orderBy(readingProgress.updatedAt)
 }
 
-export async function listReadingProgressSince(
+export async function listReadingProgressAtOrAfter(
   library: Library,
   sinceMs: number,
 ): Promise<ReadingProgressChangeRow[]> {
@@ -117,6 +141,6 @@ export async function listReadingProgressSince(
       updatedAt: readingProgress.updatedAt,
     })
     .from(readingProgress)
-    .where(gt(readingProgress.updatedAt, sinceMs))
+    .where(gte(readingProgress.updatedAt, sinceMs))
     .orderBy(readingProgress.updatedAt)
 }

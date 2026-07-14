@@ -11,6 +11,7 @@ import type {
   OnedriveFolderEntry,
   PaginatedBooks,
   PreparedBookSource,
+  ReaderBookmarkDto,
   ReaderUiPreferences_Serialize,
   ReadingProgressDto,
   WebdavFolderEntry,
@@ -187,6 +188,8 @@ const demoProgressRows: ReadingProgressDto[] = [
   },
 ]
 
+let demoBookmarks: ReaderBookmarkDto[] = []
+
 const readerPreferences: ReaderUiPreferences_Serialize = {
   version: 7,
   appTheme: "system",
@@ -229,6 +232,10 @@ export function isDemoApiEnabled(): boolean {
 
 function ok<T>(data: T): OkResult<T> {
   return Promise.resolve({ status: "ok", data })
+}
+
+function resolveDemoLibraryId(libraryId: string | null): string {
+  return libraryId ?? activeLibraryId
 }
 
 function demoBookDetail(bookId: number): BookDetail {
@@ -413,6 +420,71 @@ export const demoCommands = {
     ),
   listReadingProgress: () => ok<ReadingProgressDto[]>(demoProgressRows),
   setReadingProgress: () => ok<null>(null),
+  listReaderBookmarks: (
+    libraryId: string | null,
+    bookId: number,
+    format: string,
+  ) => {
+    const resolvedLibraryId = resolveDemoLibraryId(libraryId)
+    return ok<ReaderBookmarkDto[]>(
+      demoBookmarks.filter(
+        (bookmark) =>
+          bookmark.libraryId === resolvedLibraryId &&
+          bookmark.bookId === bookId &&
+          bookmark.format === format.toUpperCase(),
+      ),
+    )
+  },
+  addReaderBookmark: (
+    libraryId: string | null,
+    bookId: number,
+    format: string,
+    locatorKey: string,
+    locator: unknown,
+  ) => {
+    const resolvedLibraryId = resolveDemoLibraryId(libraryId)
+    const existing = demoBookmarks.find(
+      (bookmark) =>
+        bookmark.libraryId === resolvedLibraryId &&
+        bookmark.bookId === bookId &&
+        bookmark.format === format.toUpperCase() &&
+        bookmark.locatorKey === locatorKey,
+    )
+    const now = Date.now()
+    const bookmark: ReaderBookmarkDto = {
+      id: existing?.id ?? crypto.randomUUID(),
+      libraryId: resolvedLibraryId,
+      bookId,
+      format: format.toUpperCase(),
+      locatorKey,
+      locator,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    }
+    demoBookmarks = [
+      ...demoBookmarks.filter((item) => item.id !== bookmark.id),
+      bookmark,
+    ]
+    return ok<ReaderBookmarkDto>(bookmark)
+  },
+  deleteReaderBookmark: (
+    libraryId: string | null,
+    bookId: number,
+    format: string,
+    locatorKey: string,
+  ) => {
+    const resolvedLibraryId = resolveDemoLibraryId(libraryId)
+    demoBookmarks = demoBookmarks.filter(
+      (bookmark) =>
+        !(
+          bookmark.libraryId === resolvedLibraryId &&
+          bookmark.bookId === bookId &&
+          bookmark.format === format.toUpperCase() &&
+          bookmark.locatorKey === locatorKey
+        ),
+    )
+    return ok<null>(null)
+  },
   getReaderUiPreferences: () =>
     ok<ReaderUiPreferences_Serialize>(readerPreferences),
   setReaderUiPreferences: () => ok<null>(null),

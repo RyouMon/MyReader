@@ -94,7 +94,6 @@ export async function setReadingProgress(
   options?: { invalidate?: boolean },
 ): Promise<void> {
   const fmt = format.toUpperCase()
-  const updatedAt = Date.now()
   const normalized: Locator = {
     ...locator,
     href: normalizeHrefForStorage(locator.href),
@@ -108,7 +107,6 @@ export async function setReadingProgress(
         bookId,
         format: fmt,
         locatorJson,
-        updatedAt,
       },
       options,
     )

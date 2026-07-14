@@ -1,17 +1,9 @@
 import {
-  readerChromePalette,
-  type ReaderChromePalette,
-} from "@/src/design/reader-chrome-palette"
-import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
-import type {
-  ReaderState,
-  ReaderTocItem,
-} from "@/src/features/reader/components/reader/types"
-import {
-  BottomSheetModal,
+  type BottomSheetModal,
   BottomSheetModalProvider,
 } from "@gorhom/bottom-sheet"
 import type { Locator } from "@my-reader/readium"
+import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
 import { router, useLocalSearchParams } from "expo-router"
 import {
   lazy,
@@ -38,27 +30,36 @@ import {
   withTiming,
 } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-
 import { ErrorBoundary } from "@/src/components/error-boundary"
+import {
+  type ReaderChromePalette,
+  readerChromePalette,
+} from "@/src/design/reader-chrome-palette"
+import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import { useTheme } from "@/src/design/tokens"
 import {
   ReaderActionsExpanded,
+  ReaderBookmarkButton,
+  readerBookmarkButtonVisible,
+  type ReaderBookmarkItem,
   ReaderChapterLabel,
   ReaderCloseButton,
   ReaderMoreButton,
+  ReaderNavigationSheet,
   ReaderPositionLabel,
   type ReaderProgressPreview,
 } from "@/src/features/reader/components/reader/chrome"
 import {
-  chromeReducer,
   ChromeState,
+  chromeReducer,
 } from "@/src/features/reader/components/reader/chrome/chrome-state"
-import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
-import ReaderTocSheet from "@/src/features/reader/components/reader/chrome/ReaderTocSheet"
+import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import type { FixedReaderSurfaceRef } from "@/src/features/reader/components/reader/fixed/FixedReaderSurface"
+import { resolveReaderBookmarkNavigationLocator } from "@/src/features/reader/components/reader/reader-bookmark-navigation"
 import {
   findLocatorForLinkHref,
+  positionIndexForLocator,
   resolveReaderToc,
   resolveReaderTocAtPosition,
 } from "@/src/features/reader/components/reader/reader-toc-resolver"
@@ -66,15 +67,24 @@ import type { ReadiumReflowReaderRef } from "@/src/features/reader/components/re
 import {
   coerceReaderFontOption,
   getReaderFontOptions,
-  readerFontLanguageKey,
   READER_FONT_DECLARATIONS,
+  readerFontLanguageKey,
   resolveReaderFont,
   resolveReaderLanguage,
 } from "@/src/features/reader/components/reader/reflow/reader-font-options"
+import type {
+  ReaderState,
+  ReaderTocItem,
+} from "@/src/features/reader/components/reader/types"
+import { useReaderBookmarks } from "@/src/features/reader/hooks/use-reader-bookmarks"
 import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
 } from "@/src/features/reader/reader-open-transition"
+import {
+  bookLoadRequestKey,
+  isReadyBookLoadForRequest,
+} from "@/src/hooks/book-load-identity"
 import { useBookLoader } from "@/src/hooks/use-book-loader"
 import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
@@ -101,6 +111,7 @@ type ReaderRuntime = {
   publicationKey: string
   readerState: ReaderState | null
   publicationLanguages: string[]
+  positions: Locator[]
   toc: ReaderTocItem[]
 }
 
@@ -109,6 +120,7 @@ function emptyReaderRuntime(publicationKey: string): ReaderRuntime {
     publicationKey,
     readerState: null,
     publicationLanguages: [],
+    positions: [],
     toc: [],
   }
 }
@@ -131,7 +143,8 @@ export default function ReaderScreen() {
     id?: string
     format?: string
   }>()
-  const publicationKey = `${id ?? ""}:${formatParam?.toUpperCase() ?? ""}`
+  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
+  const publicationKey = bookLoadRequestKey(activeLibraryId, id, formatParam)
   const { palette, colorScheme } = useTheme()
   const insets = useSafeAreaInsets()
   const [readerRuntime, setReaderRuntime] = useState<ReaderRuntime>(() =>
@@ -141,7 +154,8 @@ export default function ReaderScreen() {
     readerRuntime.publicationKey === publicationKey
       ? readerRuntime
       : emptyReaderRuntime(publicationKey)
-  const { readerState, publicationLanguages, toc } = activeReaderRuntime
+  const { readerState, publicationLanguages, positions, toc } =
+    activeReaderRuntime
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
   const settings = useAppStore((s) => s.settings)
   const patchReflowableReaderSettings = useAppStore(
@@ -151,7 +165,7 @@ export default function ReaderScreen() {
     (s) => s.patchFixedReaderSettings,
   )
 
-  const tocSheetRef = useRef<BottomSheetModal>(null)
+  const navigationSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<BottomSheetModal>(null)
   const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
   const fixedReaderRef = useRef<FixedReaderSurfaceRef>(null)
@@ -162,13 +176,34 @@ export default function ReaderScreen() {
   const closeRouteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
-  const activeLibraryId = useAppStore((s) => s.activeLibraryId)
+  const activeLibrary = useAppStore(
+    (s) =>
+      s.libraries.find((library) => library.id === s.activeLibraryId) ?? null,
+  )
   const { loadState } = useBookLoader(id, formatParam, activeLibraryId)
-  const isReflowReady =
-    loadState.status === "ready" && loadState.layoutMode === "reflowable"
-  useReaderProgressSaver(activeLibraryId, loadState, readerState)
-  const closeTransitionFormat =
-    loadState.status === "ready" ? loadState.format : formatParam
+  const activeLoadState =
+    loadState.status === "ready" &&
+    isReadyBookLoadForRequest(loadState, activeLibraryId, id, formatParam)
+      ? loadState
+      : null
+  const isReflowReady = activeLoadState?.layoutMode === "reflowable"
+  useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
+  const {
+    bookmarks,
+    isCurrentLocationBookmarked,
+    isLoading: bookmarksLoading,
+    isPending: bookmarkPending,
+    error: bookmarkError,
+    retryBookmarks,
+    toggleCurrentBookmark,
+    removeBookmark,
+  } = useReaderBookmarks(
+    activeLibrary,
+    activeLoadState?.bookId ?? null,
+    activeLoadState?.format ?? null,
+    readerState?.locator,
+  )
+  const closeTransitionFormat = activeLoadState?.format ?? formatParam
 
   const handleStateChange = useCallback(
     async (state: ReaderState) => {
@@ -182,6 +217,9 @@ export default function ReaderScreen() {
   const handlePositionsReady = useCallback(
     (positions: Locator[]) => {
       readerPositionsRef.current = { publicationKey, positions }
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, { positions }),
+      )
     },
     [publicationKey],
   )
@@ -260,10 +298,11 @@ export default function ReaderScreen() {
 
   const handleContentTap = useCallback(() => {
     if (
-      chromeState === ChromeState.TocSheet ||
+      chromeState === ChromeState.NavigationSheet ||
       chromeState === ChromeState.SettingsSheet
     ) {
-      if (chromeState === ChromeState.TocSheet) tocSheetRef.current?.dismiss()
+      if (chromeState === ChromeState.NavigationSheet)
+        navigationSheetRef.current?.dismiss()
       if (chromeState === ChromeState.SettingsSheet)
         settingsSheetRef.current?.dismiss()
       return
@@ -287,24 +326,44 @@ export default function ReaderScreen() {
       const targetLocator =
         item.locator ?? findLocatorForLinkHref(getReaderPositions(), item.href)
       if (targetLocator) navigateToLocator(targetLocator, item)
-      tocSheetRef.current?.dismiss()
-      dispatch({ type: "tocSelect" })
+      navigationSheetRef.current?.dismiss()
+      dispatch({ type: "navigationSelect" })
     },
     [getReaderPositions, navigateToLocator],
   )
 
-  const handleTocDismiss = useCallback(() => {
-    dispatch({ type: "tocDismiss" })
+  const handleNavigationDismiss = useCallback(() => {
+    dispatch({ type: "navigationDismiss" })
   }, [])
+
+  const handleBookmarkSelect = useCallback(
+    (item: ReaderBookmarkItem) => {
+      navigateToLocator(
+        resolveReaderBookmarkNavigationLocator(
+          item.locator,
+          positions,
+          isReflowReady ? "reflowable" : "fixed",
+        ),
+      )
+      navigationSheetRef.current?.dismiss()
+      dispatch({ type: "navigationSelect" })
+    },
+    [isReflowReady, navigateToLocator, positions],
+  )
+
+  const handleBookmarkDelete = useCallback(
+    (item: ReaderBookmarkItem) => removeBookmark(item.locator),
+    [removeBookmark],
+  )
 
   const handleSettingsDismiss = useCallback(() => {
     dispatch({ type: "settingsDismiss" })
   }, [])
 
   useEffect(() => {
-    if (chromeState === ChromeState.TocSheet) {
+    if (chromeState === ChromeState.NavigationSheet) {
       // Use setTimeout to avoid calling present during state transition
-      requestAnimationFrame(() => tocSheetRef.current?.present())
+      requestAnimationFrame(() => navigationSheetRef.current?.present())
     }
   }, [chromeState])
 
@@ -317,8 +376,7 @@ export default function ReaderScreen() {
   const progressPercent = readerState?.progress ?? 0
   const reflowSettings = settings.reflowable
   const fixedSettings = settings.fixed
-  const fallbackLanguages =
-    loadState.status === "ready" ? loadState.languages : []
+  const fallbackLanguages = activeLoadState?.languages ?? []
   const readerLanguage = resolveReaderLanguage(
     publicationLanguages,
     fallbackLanguages,
@@ -368,12 +426,40 @@ export default function ReaderScreen() {
   )
 
   const handleOpenToc = useCallback(() => {
-    dispatch({ type: "tocPillTap" })
+    dispatch({ type: "navigationPillTap" })
   }, [])
 
   const handleOpenSettings = useCallback(() => {
     dispatch({ type: "settingsPillTap" })
   }, [])
+  const currentReaderLocator = readerState?.locator
+  const bookmarkItems = useMemo<ReaderBookmarkItem[]>(() => {
+    return bookmarks.map((bookmark) => {
+      const positionIndex = positionIndexForLocator(positions, bookmark.locator)
+      const position = positionIndex + 1
+      const chapterTitle =
+        resolveReaderToc({
+          toc,
+          positions,
+          locator: bookmark.locator,
+        }).title?.trim() || bookmark.locator.title?.trim()
+      const title = isReflowReady
+        ? chapterTitle || t("reader.bookmarks.position", { position })
+        : t("reader.bookmarks.page", { page: position })
+
+      return {
+        id: bookmark.id,
+        locator: bookmark.locator,
+        title,
+        positionLabel: isReflowReady && chapterTitle ? String(position) : "",
+        createdAt: bookmark.createdAt,
+        active: Boolean(
+          currentReaderLocator &&
+            sameReaderBookmarkLocation(bookmark.locator, currentReaderLocator),
+        ),
+      }
+    })
+  }, [bookmarks, currentReaderLocator, isReflowReady, positions, t, toc])
   const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
   const shouldUseReflowTheme =
     isReflowReady || (loadState.status === "loading" && isReflowFormatHint)
@@ -452,7 +538,10 @@ export default function ReaderScreen() {
     ),
     [themeBgColor, themeFgColor],
   )
-  if (loadState.status === "loading") {
+  if (
+    loadState.status === "loading" ||
+    (loadState.status === "ready" && !activeLoadState)
+  ) {
     return (
       <View className="flex-1" style={{ backgroundColor: themeBgColor }}>
         <StatusBar hidden={false} barStyle={statusBarStyle} />
@@ -521,6 +610,19 @@ export default function ReaderScreen() {
   // horizontal-only and ignores `scroll` — so 上下翻页 can't apply to CBZ.
   const isCbzFixed = isFixedSurface && loadState.format.toUpperCase() === "CBZ"
   const chromeActive = chromeState >= ChromeState.Chrome
+  const moreButtonVisible =
+    chromeState === ChromeState.Chrome ||
+    chromeState === ChromeState.NavigationSheet ||
+    chromeState === ChromeState.SettingsSheet
+  const bookmarkButtonVisible = readerBookmarkButtonVisible(
+    chromeState,
+    isCurrentLocationBookmarked,
+  )
+  const bookmarkActionDisabled =
+    bookmarkPending ||
+    bookmarksLoading ||
+    Boolean(bookmarkError) ||
+    !readerState?.locator
   const positionLabelVisible =
     chromeActive &&
     readerState?.totalPages != null &&
@@ -632,7 +734,7 @@ export default function ReaderScreen() {
             </ErrorBoundary>
 
             {/* Touch blocker: prevent page turns while sheets are open (states 4/5) */}
-            {(chromeState === ChromeState.TocSheet ||
+            {(chromeState === ChromeState.NavigationSheet ||
               chromeState === ChromeState.SettingsSheet) && (
               <Pressable
                 className="absolute inset-0 z-10"
@@ -666,16 +768,23 @@ export default function ReaderScreen() {
 
             {/* State 2/4/5: More button (bottom-right circle); hidden when expanded (3) */}
             <ReaderMoreButton
-              visible={
-                chromeState === ChromeState.Chrome ||
-                chromeState === ChromeState.TocSheet ||
-                chromeState === ChromeState.SettingsSheet
-              }
+              visible={moreButtonVisible}
               palette={chromePalette}
               onPress={() => dispatch({ type: "moreButtonTap" })}
             />
 
-            {/* State 3: Expanded action pills (TOC + Settings) */}
+            {/* Standalone bookmark button (top-left). */}
+            <ReaderBookmarkButton
+              bookmarked={isCurrentLocationBookmarked}
+              disabled={bookmarkActionDisabled}
+              iconOnly={chromeState === ChromeState.Reading}
+              insetsTop={insets.top}
+              visible={bookmarkButtonVisible}
+              palette={chromePalette}
+              onPress={toggleCurrentBookmark}
+            />
+
+            {/* State 3: Expanded action pills */}
             <ReaderActionsExpanded
               insetsBottom={insets.bottom}
               visible={chromeState === ChromeState.Expanded}
@@ -692,14 +801,21 @@ export default function ReaderScreen() {
               onCommitPosition={handleProgressCommit}
             />
 
-            {/* State 4: TOC bottom sheet */}
-            <ReaderTocSheet
-              ref={tocSheetRef}
+            {/* State 4: TOC/bookmarks navigation sheet */}
+            <ReaderNavigationSheet
+              ref={navigationSheetRef}
               toc={toc}
-              activeIndex={activeTocIndex}
+              activeTocIndex={activeTocIndex}
+              bookmarks={bookmarkItems}
+              bookmarksError={Boolean(bookmarkError)}
+              bookmarksLoading={bookmarksLoading}
+              bookmarksPending={bookmarkPending}
               palette={chromePalette}
-              onSelectItem={handleTocSelect}
-              onDismiss={handleTocDismiss}
+              onRetryBookmarks={retryBookmarks}
+              onSelectTocItem={handleTocSelect}
+              onSelectBookmark={handleBookmarkSelect}
+              onDeleteBookmark={handleBookmarkDelete}
+              onDismiss={handleNavigationDismiss}
             />
 
             {/* State 5: Settings bottom sheet */}

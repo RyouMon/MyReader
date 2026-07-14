@@ -30,10 +30,11 @@ use my_reader_lib::models::AppConfig;
 use my_reader_lib::services::download_service::DownloadService;
 use my_reader_lib::streamer::StreamerState;
 
-/// `mock_context()` hands every mock app the same `app_data_dir` (its identifier is hardcoded
-/// to `com.tauri.dev`), so concurrent tests would race on `config.json`. We serialize TestApp
-/// construction + lifetime with a process-wide mutex, and wipe the dir on each acquisition so
-/// the previous test's residue doesn't leak in.
+const TEST_APP_IDENTIFIER: &str = "com.myreader.tests";
+
+/// Every mock app uses a test-only identifier and therefore the same isolated `app_data_dir`.
+/// We serialize TestApp construction + lifetime with a process-wide mutex, and wipe the dir on
+/// each acquisition so the previous test's residue doesn't leak in.
 fn app_data_dir_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
@@ -97,6 +98,9 @@ impl TestApp {
                 my_reader_lib::commands::progress::get_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::progress::list_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::progress::set_reading_progress::<MockRuntime>,
+                my_reader_lib::commands::bookmark::list_reader_bookmarks::<MockRuntime>,
+                my_reader_lib::commands::bookmark::add_reader_bookmark::<MockRuntime>,
+                my_reader_lib::commands::bookmark::delete_reader_bookmark::<MockRuntime>,
                 my_reader_lib::commands::reader::get_reader_ui_preferences,
                 my_reader_lib::commands::reader::set_reader_ui_preferences::<MockRuntime>,
                 my_reader_lib::commands::reader::prepare_book_source::<MockRuntime>,
@@ -111,14 +115,31 @@ impl TestApp {
                 my_reader_lib::commands::download::cancel_book_download::<MockRuntime>,
             ]);
 
+        let mut context = mock_context(noop_assets());
+        context.config_mut().identifier = TEST_APP_IDENTIFIER.into();
         let app = mock_builder()
             .invoke_handler(specta_builder.invoke_handler())
-            .build(mock_context(noop_assets()))
+            .build(context)
             .expect("mock app should build");
 
         // Wipe any state left behind by a previous TestApp using the same identifier.
-        if let Ok(dir) = app.path().app_data_dir() {
-            let _ = std::fs::remove_dir_all(&dir);
+        let dir = app
+            .path()
+            .app_data_dir()
+            .expect("mock runtime should resolve app_data_dir");
+        assert!(
+            dir.ends_with(TEST_APP_IDENTIFIER)
+                && dir.file_name().and_then(|name| name.to_str()) == Some(TEST_APP_IDENTIFIER),
+            "refusing to clean unexpected test app_data_dir: {}",
+            dir.display()
+        );
+        match std::fs::remove_dir_all(&dir) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!(
+                "failed to clean isolated test app_data_dir {}: {error}",
+                dir.display()
+            ),
         }
 
         // Mirror `lib::run()`'s manage() set.
@@ -143,7 +164,7 @@ impl TestApp {
     }
 
     /// Resolve `app_data_dir` exactly as the production code does. The mock runtime
-    /// returns a deterministic path under the OS temp dir.
+    /// returns a deterministic, test-identifier-scoped OS application-data path.
     pub fn app_data_dir(&self) -> std::path::PathBuf {
         self.app
             .path()

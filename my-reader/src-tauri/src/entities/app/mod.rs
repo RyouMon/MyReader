@@ -3,6 +3,7 @@
 pub mod prelude;
 
 pub mod book_reading_format;
+pub mod bookmarks;
 pub mod favorite_books;
 pub mod file_state;
 pub mod reading_progress;

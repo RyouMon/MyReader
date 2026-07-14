@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
+  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -20,9 +21,11 @@ import {
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { useFixedLayoutPanzoom } from "@/hooks/reader/useFixedLayoutPanzoom"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
+import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import { divinaPageForBookmark } from "@/lib/readium/bookmarks"
 import {
   consumeWheelPageTurn,
   createWheelPageTurnState,
@@ -81,7 +84,6 @@ export function ReadiumDivinaReader({
     useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
     useReadingChrome(false, tocOpen || settingsOpen)
-  const [bookmarked, setBookmarked] = useState(false)
   const [landscape, setLandscape] = useState(true)
   const background = useAppUiStore((state) => state.fixedLayout.background)
   const direction = useAppUiStore((state) => state.fixedLayout.direction)
@@ -114,6 +116,12 @@ export function ReadiumDivinaReader({
   )
   const currentSpreadIndex = spreadIndexForPage(spreads, currentPage)
   const currentLocator = positions[currentPage - 1] ?? positions[0] ?? null
+  const readerBookmarks = useReaderBookmarks({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+  })
 
   const tocRows: ReadiumTocRow[] = useMemo(() => {
     return publication.readingOrder.items.map((item, index) => ({
@@ -157,6 +165,14 @@ export function ReadiumDivinaReader({
       if (page) goToPage(page)
     },
     [goToPage, spreads],
+  )
+  const onBookmarkSelect = useCallback(
+    (bookmark: ReadiumBookmarkRow) => {
+      const page = divinaPageForBookmark(bookmark.locator, positions)
+      if (page !== null) goToPage(page)
+      closePanels()
+    },
+    [closePanels, goToPage, positions],
   )
   const onPrevious = useCallback(() => {
     goToSpread(Math.max(0, currentSpreadIndex - 1))
@@ -293,11 +309,12 @@ export function ReadiumDivinaReader({
       topBar={{
         bookTitle,
         chapterTitle: "",
-        bookmarked,
+        bookmarked: readerBookmarks.bookmarked,
+        bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
         settingsOpen,
         onToggleToc: toggleToc,
-        onToggleBookmark: () => setBookmarked((value) => !value),
+        onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
       tocPanel={
@@ -306,6 +323,13 @@ export function ReadiumDivinaReader({
           rows={tocRows}
           activeKey={currentLocator?.href ?? null}
           onSelect={onTocSelect}
+          bookmarks={readerBookmarks.bookmarks}
+          bookmarksLoading={readerBookmarks.loading}
+          bookmarksMutating={readerBookmarks.mutating}
+          bookmarksError={readerBookmarks.loadError}
+          onBookmarksRetry={readerBookmarks.retry}
+          onBookmarkSelect={onBookmarkSelect}
+          onBookmarkDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }

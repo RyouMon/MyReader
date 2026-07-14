@@ -15,6 +15,16 @@ describe("queryKeys", () => {
       "reading-progress",
       "lib-1",
     ])
+    expect(queryKeys.readerBookmarksRoot("lib-1")).toEqual([
+      "reader-bookmarks",
+      "lib-1",
+    ])
+    expect(queryKeys.readerBookmarks("lib-1", 7, "epub")).toEqual([
+      "reader-bookmarks",
+      "lib-1",
+      7,
+      "EPUB",
+    ])
     expect(queryKeys.recentlyReadBooks("lib-1")).toEqual([
       "recently-read-books",
       "lib-1",
@@ -52,6 +62,12 @@ describe("queryKeys", () => {
     expect(queryKeys.favoriteBooks()).toEqual(["favorite-books", undefined])
     expect(queryKeys.bookFormats()).toEqual([
       "book-formats",
+      undefined,
+      undefined,
+    ])
+    expect(queryKeys.readerBookmarks()).toEqual([
+      "reader-bookmarks",
+      undefined,
       undefined,
       undefined,
     ])

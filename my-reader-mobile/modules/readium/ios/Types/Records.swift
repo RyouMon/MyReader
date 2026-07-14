@@ -8,6 +8,10 @@ struct LocatorLocationsRecord: Record {
   @Field var progression: Double = 0
   @Field var position: Double? = nil
   @Field var totalProgression: Double? = nil
+  @Field var cssSelector: String? = nil
+  @Field var partialCfi: String? = nil
+  @Field var domRange: [String: Any]? = nil
+  @Field var otherLocations: [String: Any]? = nil
 }
 
 struct LocatorTextRecord: Record {

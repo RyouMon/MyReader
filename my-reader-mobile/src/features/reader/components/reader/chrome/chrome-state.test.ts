@@ -24,10 +24,10 @@ describe("chromeReducer", () => {
       )
     })
 
-    it("should return to chrome when tapping content in toc sheet state", () => {
-      expect(chromeReducer(ChromeState.TocSheet, { type: "contentTap" })).toBe(
-        ChromeState.Chrome,
-      )
+    it("should return to chrome when tapping content in navigation sheet state", () => {
+      expect(
+        chromeReducer(ChromeState.NavigationSheet, { type: "contentTap" }),
+      ).toBe(ChromeState.Chrome)
     })
 
     it("should return to chrome when tapping content in settings sheet state", () => {
@@ -52,28 +52,28 @@ describe("chromeReducer", () => {
         chromeReducer(ChromeState.Expanded, { type: "moreButtonTap" }),
       ).toBe(ChromeState.Expanded)
       expect(
-        chromeReducer(ChromeState.TocSheet, { type: "moreButtonTap" }),
-      ).toBe(ChromeState.TocSheet)
+        chromeReducer(ChromeState.NavigationSheet, { type: "moreButtonTap" }),
+      ).toBe(ChromeState.NavigationSheet)
       expect(
         chromeReducer(ChromeState.SettingsSheet, { type: "moreButtonTap" }),
       ).toBe(ChromeState.SettingsSheet)
     })
   })
 
-  describe("When toc pill is tapped", () => {
-    it("should open toc sheet when tapping toc pill in expanded state", () => {
-      expect(chromeReducer(ChromeState.Expanded, { type: "tocPillTap" })).toBe(
-        ChromeState.TocSheet,
-      )
+  describe("When navigation pill is tapped", () => {
+    it("should open navigation sheet when tapping navigation pill in expanded state", () => {
+      expect(
+        chromeReducer(ChromeState.Expanded, { type: "navigationPillTap" }),
+      ).toBe(ChromeState.NavigationSheet)
     })
 
-    it("should ignore toc pill tap in non-expanded states when running the scenario", () => {
-      expect(chromeReducer(ChromeState.Reading, { type: "tocPillTap" })).toBe(
-        ChromeState.Reading,
-      )
-      expect(chromeReducer(ChromeState.Chrome, { type: "tocPillTap" })).toBe(
-        ChromeState.Chrome,
-      )
+    it("should ignore navigation pill tap in non-expanded states when running the scenario", () => {
+      expect(
+        chromeReducer(ChromeState.Reading, { type: "navigationPillTap" }),
+      ).toBe(ChromeState.Reading)
+      expect(
+        chromeReducer(ChromeState.Chrome, { type: "navigationPillTap" }),
+      ).toBe(ChromeState.Chrome)
     })
   })
 
@@ -94,48 +94,54 @@ describe("chromeReducer", () => {
     })
   })
 
-  describe("When a toc item is selected", () => {
-    it("should return to reading when selecting a toc item", () => {
-      expect(chromeReducer(ChromeState.TocSheet, { type: "tocSelect" })).toBe(
-        ChromeState.Reading,
-      )
-      expect(chromeReducer(ChromeState.Chrome, { type: "tocSelect" })).toBe(
-        ChromeState.Reading,
-      )
-      expect(chromeReducer(ChromeState.Expanded, { type: "tocSelect" })).toBe(
-        ChromeState.Reading,
-      )
+  describe("When a navigation item is selected", () => {
+    it("should return to reading when selecting a navigation item", () => {
+      expect(
+        chromeReducer(ChromeState.NavigationSheet, {
+          type: "navigationSelect",
+        }),
+      ).toBe(ChromeState.Reading)
+      expect(
+        chromeReducer(ChromeState.Chrome, { type: "navigationSelect" }),
+      ).toBe(ChromeState.Reading)
+      expect(
+        chromeReducer(ChromeState.Expanded, { type: "navigationSelect" }),
+      ).toBe(ChromeState.Reading)
     })
 
-    it("should stay in reading when dismissing toc after selecting", () => {
+    it("should stay in reading when dismissing navigation after selecting", () => {
       const result = reduceFrom(
-        ChromeState.TocSheet,
-        { type: "tocSelect" },
-        { type: "tocDismiss" },
+        ChromeState.NavigationSheet,
+        { type: "navigationSelect" },
+        { type: "navigationDismiss" },
       )
       expect(result).toBe(ChromeState.Reading)
     })
   })
 
-  describe("When toc sheet is dismissed", () => {
-    it("should return to chrome when dismissing toc sheet", () => {
-      expect(chromeReducer(ChromeState.TocSheet, { type: "tocDismiss" })).toBe(
-        ChromeState.Chrome,
-      )
+  describe("When navigation sheet is dismissed", () => {
+    it("should return to chrome when dismissing navigation sheet", () => {
+      expect(
+        chromeReducer(ChromeState.NavigationSheet, {
+          type: "navigationDismiss",
+        }),
+      ).toBe(ChromeState.Chrome)
     })
 
-    it("should ignore dismiss when not in toc sheet state", () => {
-      expect(chromeReducer(ChromeState.Reading, { type: "tocDismiss" })).toBe(
-        ChromeState.Reading,
-      )
-      expect(chromeReducer(ChromeState.Chrome, { type: "tocDismiss" })).toBe(
-        ChromeState.Chrome,
-      )
-      expect(chromeReducer(ChromeState.Expanded, { type: "tocDismiss" })).toBe(
-        ChromeState.Expanded,
-      )
+    it("should ignore dismiss when not in navigation sheet state", () => {
       expect(
-        chromeReducer(ChromeState.SettingsSheet, { type: "tocDismiss" }),
+        chromeReducer(ChromeState.Reading, { type: "navigationDismiss" }),
+      ).toBe(ChromeState.Reading)
+      expect(
+        chromeReducer(ChromeState.Chrome, { type: "navigationDismiss" }),
+      ).toBe(ChromeState.Chrome)
+      expect(
+        chromeReducer(ChromeState.Expanded, { type: "navigationDismiss" }),
+      ).toBe(ChromeState.Expanded)
+      expect(
+        chromeReducer(ChromeState.SettingsSheet, {
+          type: "navigationDismiss",
+        }),
       ).toBe(ChromeState.SettingsSheet)
     })
   })
@@ -152,8 +158,10 @@ describe("chromeReducer", () => {
         chromeReducer(ChromeState.Reading, { type: "settingsDismiss" }),
       ).toBe(ChromeState.Reading)
       expect(
-        chromeReducer(ChromeState.TocSheet, { type: "settingsDismiss" }),
-      ).toBe(ChromeState.TocSheet)
+        chromeReducer(ChromeState.NavigationSheet, {
+          type: "settingsDismiss",
+        }),
+      ).toBe(ChromeState.NavigationSheet)
     })
   })
 
@@ -163,8 +171,8 @@ describe("chromeReducer", () => {
         ChromeState.Reading,
         { type: "contentTap" },
         { type: "moreButtonTap" },
-        { type: "tocPillTap" },
-        { type: "tocSelect" },
+        { type: "navigationPillTap" },
+        { type: "navigationSelect" },
       )
       expect(result).toBe(ChromeState.Reading)
     })
@@ -181,14 +189,14 @@ describe("chromeReducer", () => {
       expect(result).toBe(ChromeState.Reading)
     })
 
-    it("should stay in reading when toc dismiss arrives after toc select", () => {
+    it("should stay in reading when navigation dismiss arrives after selection", () => {
       const result = reduceFrom(
         ChromeState.Reading,
         { type: "contentTap" },
         { type: "moreButtonTap" },
-        { type: "tocPillTap" },
-        { type: "tocSelect" },
-        { type: "tocDismiss" },
+        { type: "navigationPillTap" },
+        { type: "navigationSelect" },
+        { type: "navigationDismiss" },
       )
       expect(result).toBe(ChromeState.Reading)
     })

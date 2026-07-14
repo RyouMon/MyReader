@@ -16,6 +16,7 @@ interface ReaderTopBarProps {
   bookTitle: string
   chapterTitle: string
   bookmarked: boolean
+  bookmarkDisabled?: boolean
   tocOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
@@ -32,6 +33,7 @@ export function ReaderTopBar({
   bookTitle,
   chapterTitle,
   bookmarked,
+  bookmarkDisabled = false,
   tocOpen,
   settingsOpen,
   showReaderActions = true,
@@ -305,6 +307,8 @@ export function ReaderTopBar({
               title={t("reader.bookmark")}
               onClick={onToggleBookmark}
               active={bookmarked}
+              pressed={bookmarked}
+              disabled={bookmarkDisabled}
               chromeVisible={visible}
               keepActiveIconVisible
             >
@@ -324,6 +328,8 @@ function TopBarButton({
   title,
   onClick,
   active,
+  pressed,
+  disabled = false,
   chromeVisible = true,
   keepActiveIconVisible = false,
   children,
@@ -331,6 +337,8 @@ function TopBarButton({
   title: string
   onClick: () => void
   active?: boolean
+  pressed?: boolean
+  disabled?: boolean
   chromeVisible?: boolean
   keepActiveIconVisible?: boolean
   children: ReactNode
@@ -340,6 +348,8 @@ function TopBarButton({
       type="button"
       title={title}
       onClick={onClick}
+      aria-pressed={pressed}
+      disabled={disabled}
       className="reader-chrome-icon-btn"
       data-active={active ? "true" : undefined}
       data-chrome-visible={chromeVisible ? "true" : "false"}
@@ -398,6 +408,7 @@ function MacWindowControls({
           viewBox="0 0 12 12"
           aria-hidden
         >
+          <title>{zoomLabel}</title>
           <path d="M3 1.75h3.75v1.1H4.88l2.35 2.35-.78.78L4.1 3.63V5.5H3V1.75Zm6 8.5H5.25v-1.1h1.87L4.77 6.8l.78-.78L7.9 8.37V6.5H9v3.75Z" />
         </svg>
       </button>

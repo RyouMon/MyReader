@@ -29,6 +29,13 @@
       "when": 1780000000002,
       "tag": "0003_add_book_cover_thumbnail_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783949592104,
+      "tag": "0004_add_bookmarks",
+      "breakpoints": true
     }
   ]
 }

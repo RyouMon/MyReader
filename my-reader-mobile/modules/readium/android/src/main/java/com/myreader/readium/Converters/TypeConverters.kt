@@ -91,6 +91,12 @@ internal fun locatorRecordToReadium(loc: LocatorRecord): ReadiumLocator? {
       ?.filter { it.isNotEmpty() && !contains(it) }
       ?.forEach { add(it) }
   }
+  val otherLocations = buildMap<String, Any> {
+    putAll(loc.locations?.otherLocations.orEmpty())
+    loc.locations?.cssSelector?.let { put("cssSelector", it) }
+    loc.locations?.partialCfi?.let { put("partialCfi", it) }
+    loc.locations?.domRange?.let { put("domRange", it) }
+  }
 
   return ReadiumLocator(
     href = href,
@@ -100,7 +106,8 @@ internal fun locatorRecordToReadium(loc: LocatorRecord): ReadiumLocator? {
       fragments = fragments,
       progression = loc.locations?.progression,
       position = loc.locations?.position?.toInt(),
-      totalProgression = loc.locations?.totalProgression
+      totalProgression = loc.locations?.totalProgression,
+      otherLocations = otherLocations
     ),
     text = ReadiumLocator.Text(
       before = loc.text?.before,
@@ -211,7 +218,9 @@ internal fun parseColorString(colorString: String?): Int {
 // MARK: - Readium → JS Map
 
 internal fun readiumLocatorToMap(loc: ReadiumLocator): Map<String, Any?> {
-  val locations = mutableMapOf<String, Any?>("progression" to (loc.locations.progression ?: 0.0))
+  val locations = mutableMapOf<String, Any?>()
+  locations.putAll(loc.locations.otherLocations)
+  locations["progression"] = loc.locations.progression ?: 0.0
   loc.locations.position?.let { locations["position"] = it }
   loc.locations.totalProgression?.let { locations["totalProgression"] = it }
   if (loc.locations.fragments.isNotEmpty()) {

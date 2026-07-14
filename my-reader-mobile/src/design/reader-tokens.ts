@@ -85,14 +85,6 @@ export const READER_FIXED = {
 } as const
 
 /**
- * Returns the chrome icon color for the bookmark button.
- * Active = accent, idle = cream text.
- */
-export function chromeBookmarkIconColor(active: boolean): string {
-  return active ? READER_CHROME.accent : READER_CHROME.textIdle
-}
-
-/**
  * Segment control surface style (reading mode selector, page direction selector).
  */
 export function chromeSegmentStyle(active: boolean): {

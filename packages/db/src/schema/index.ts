@@ -1,5 +1,6 @@
 export { bookCoverThumbnailCache } from "./book-cover-thumbnail-cache"
 export { bookReadingFormat } from "./book-reading-format"
+export { bookmarks } from "./bookmarks"
 export { favoriteBooks } from "./favorite-books"
 export { fileState } from "./file-state"
 export { readingProgress } from "./reading-progress"

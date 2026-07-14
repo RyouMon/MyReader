@@ -8,11 +8,17 @@ export { default as ReaderCloseButton } from "./ReaderCloseButton"
 
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
 
+export { default as ReaderBookmarkButton } from "./ReaderBookmarkButton"
+export { readerBookmarkButtonVisible } from "./ReaderBookmarkButton"
+
 export { default as ReaderActionsExpanded } from "./ReaderActionsExpanded"
 export type { ReaderProgressPreview } from "./reader-progress-scrubber"
 
-export { default as ReaderTocSheet } from "./ReaderTocSheet"
-export type { ReaderTocSheetProps } from "./ReaderTocSheet"
+export { default as ReaderNavigationSheet } from "./ReaderNavigationSheet"
+export type {
+  ReaderBookmarkItem,
+  ReaderNavigationSheetProps,
+} from "./ReaderNavigationSheet"
 
 export { default as ReaderSettingsSheet } from "./ReaderSettingsSheet"
 export type { ReaderSettingsSheetProps } from "./ReaderSettingsSheet"

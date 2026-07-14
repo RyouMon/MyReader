@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
 use tracing::info;
 
 use crate::constants::path::{MYREADER_LIBRARY_DB_FILE_NAME, MYREADER_LIBRARY_DIR_NAME};
@@ -21,6 +21,27 @@ pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, AppError>
         .sync(&db)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
+
+    // Keep bookmark index names aligned with packages/db/src/schema/bookmarks.ts.
+    // SeaORM prefixes named entity indexes, so normalize the generated name after
+    // sync. The Entity still declares the column set so later syncs preserve the
+    // shared unique index instead of treating it as obsolete.
+    db.execute_unprepared(
+        "DROP INDEX IF EXISTS \"idx-bookmarks-idx_bookmarks_book_format_locator\"",
+    )
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
+    db.execute_unprepared(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_book_format_locator \
+         ON bookmarks (book_id, format, locator_key)",
+    )
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
+    db.execute_unprepared(
+        "CREATE INDEX IF NOT EXISTS idx_bookmarks_updated_at ON bookmarks (updated_at)",
+    )
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
 
     info!(
         "Success to open reading progress database. path: \"{}\"",

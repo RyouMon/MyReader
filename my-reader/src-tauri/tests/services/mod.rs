@@ -2,6 +2,7 @@
 
 pub mod book_reading_format_service_test;
 pub mod book_service_test;
+pub mod bookmark_service_test;
 pub mod datasource_service_test;
 pub mod download_service_test;
 pub mod favorite_book_service_test;

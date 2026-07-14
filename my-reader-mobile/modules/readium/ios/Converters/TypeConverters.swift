@@ -171,6 +171,26 @@ func fontFamilyDeclarationsToReadium(
 
 // MARK: - Locator / Decoration (Record → Readium)
 
+private func locatorOtherLocations(
+  _ locations: LocatorLocationsRecord?
+) -> [String: JSONValue] {
+  guard let locations else { return [:] }
+
+  var result = (locations.otherLocations ?? [:]).compactMapValues {
+    JSONValue($0)
+  }
+  if let cssSelector = locations.cssSelector {
+    result["cssSelector"] = .string(cssSelector)
+  }
+  if let partialCfi = locations.partialCfi {
+    result["partialCfi"] = .string(partialCfi)
+  }
+  if let domRange = locations.domRange, let value = JSONValue(domRange) {
+    result["domRange"] = value
+  }
+  return result
+}
+
 func locatorRecordToReadium(_ rec: LocatorRecord) -> RLocator? {
   let data = LocatorData(
     href: rec.href,
@@ -181,7 +201,8 @@ func locatorRecordToReadium(_ rec: LocatorRecord) -> RLocator? {
         fragments: $0.fragments,
         progression: $0.progression,
         position: $0.position.map { Int($0) },
-        totalProgression: $0.totalProgression
+        totalProgression: $0.totalProgression,
+        otherLocations: locatorOtherLocations(rec.locations)
       )
     },
     text: rec.text.map { TextData(before: $0.before, highlight: $0.highlight, after: $0.after) }
@@ -215,7 +236,8 @@ func decorationRecordToReadium(_ rec: DecorationRecord) -> RDecoration? {
 // MARK: - Readium → JS dict
 
 func locatorToDict(_ loc: RLocator) -> [String: Any] {
-  var locations: [String: Any] = ["progression": loc.locations.progression ?? 0]
+  var locations = loc.locations.otherLocations.mapValues(\.any)
+  locations["progression"] = loc.locations.progression ?? 0
   if let position = loc.locations.position {
     locations["position"] = position
   }

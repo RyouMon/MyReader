@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryFilter,
+    Statement,
+};
 
 use crate::entities::app::reading_progress;
 use crate::error::AppError;
@@ -73,36 +76,64 @@ impl SqliteProgressRepository {
         locator_json: &str,
         updated_at: f64,
     ) -> Result<(), AppError> {
-        let existing = reading_progress::Entity::find()
-            .filter(reading_progress::Column::BookId.eq(book_id))
-            .filter(reading_progress::Column::Format.eq(format))
-            .one(db)
+        db.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            r#"
+INSERT INTO reading_progress (id, book_id, format, locator_json, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(book_id, format) DO UPDATE SET
+    locator_json = excluded.locator_json,
+    updated_at = MAX(excluded.updated_at, reading_progress.updated_at + 1.0)
+"#,
+            vec![
+                uuid::Uuid::new_v4().as_simple().to_string().into(),
+                book_id.into(),
+                format.to_string().into(),
+                locator_json.to_string().into(),
+                updated_at.into(),
+            ],
+        ))
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(())
+    }
+
+    pub async fn apply_sync_revision(
+        db: &DatabaseConnection,
+        book_id: i64,
+        format: &str,
+        locator_json: &str,
+        updated_at: f64,
+    ) -> Result<bool, AppError> {
+        let result = db
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Sqlite,
+                r#"
+INSERT INTO reading_progress (id, book_id, format, locator_json, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT(book_id, format) DO UPDATE SET
+    locator_json = excluded.locator_json,
+    updated_at = excluded.updated_at
+WHERE
+    excluded.updated_at > reading_progress.updated_at
+    OR (
+        excluded.updated_at = reading_progress.updated_at
+        AND excluded.locator_json COLLATE BINARY
+            > reading_progress.locator_json COLLATE BINARY
+    )
+"#,
+                vec![
+                    uuid::Uuid::new_v4().as_simple().to_string().into(),
+                    book_id.into(),
+                    format.to_string().into(),
+                    locator_json.to_string().into(),
+                    updated_at.into(),
+                ],
+            ))
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        if let Some(model) = existing {
-            let mut active: reading_progress::ActiveModel = model.into();
-            active.locator_json = Set(locator_json.to_string());
-            active.updated_at = Set(updated_at);
-            active
-                .update(db)
-                .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
-        } else {
-            let id = uuid::Uuid::new_v4().as_simple().to_string();
-            let active = reading_progress::ActiveModel {
-                id: Set(id),
-                book_id: Set(book_id),
-                format: Set(format.to_string()),
-                locator_json: Set(locator_json.to_string()),
-                updated_at: Set(updated_at),
-            };
-            active
-                .insert(db)
-                .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
-        }
-        Ok(())
+        Ok(result.rows_affected() > 0)
     }
 
     pub async fn list_latest_book_updates(
@@ -125,5 +156,62 @@ impl SqliteProgressRepository {
                 .or_insert(row.updated_at);
         }
         Ok(latest)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REMOTE_LOCATOR: &str = r#"{"href":"remote.xhtml"}"#;
+    const LOCAL_LOCATOR: &str = r#"{"href":"local.xhtml"}"#;
+
+    async fn open_temp() -> (tempfile::TempDir, DatabaseConnection) {
+        let temp = tempfile::tempdir().unwrap();
+        let db = SqliteProgressRepository::open(temp.path().to_string_lossy().as_ref())
+            .await
+            .unwrap();
+        (temp, db)
+    }
+
+    #[tokio::test]
+    async fn local_set_should_advance_from_current_row_when_remote_revision_is_newer() {
+        let (_temp, db) = open_temp().await;
+        SqliteProgressRepository::apply_sync_revision(&db, 1, "EPUB", REMOTE_LOCATOR, 300.0)
+            .await
+            .unwrap();
+
+        SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, 200.0)
+            .await
+            .unwrap();
+
+        let model = reading_progress::Entity::find()
+            .filter(reading_progress::Column::BookId.eq(1))
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(model.locator_json, LOCAL_LOCATOR);
+        assert_eq!(model.updated_at, 301.0);
+    }
+
+    #[tokio::test]
+    async fn local_and_remote_sets_should_linearize_without_timestamp_regression() {
+        let (_temp, db) = open_temp().await;
+        let local = SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, 200.0);
+        let remote =
+            SqliteProgressRepository::apply_sync_revision(&db, 1, "EPUB", REMOTE_LOCATOR, 300.0);
+
+        let (local_result, remote_result) = tokio::join!(local, remote);
+        local_result.unwrap();
+        remote_result.unwrap();
+        let model = reading_progress::Entity::find()
+            .filter(reading_progress::Column::BookId.eq(1))
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(model.updated_at >= 300.0);
+        assert!(model.locator_json == REMOTE_LOCATOR || model.locator_json == LOCAL_LOCATOR);
     }
 }

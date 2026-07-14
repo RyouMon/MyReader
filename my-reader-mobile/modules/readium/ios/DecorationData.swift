@@ -4,7 +4,7 @@ import ReadiumNavigator
 import UIKit
 
 /// Helper struct for deserializing locator data
-struct LocatorData: Codable {
+struct LocatorData {
   let href: String
   let type: String
   let title: String?
@@ -27,7 +27,8 @@ struct LocatorData: Codable {
       fragments: fragments,
       progression: locations?.progression,
       totalProgression: locations?.totalProgression,
-      position: locations?.position
+      position: locations?.position,
+      otherLocations: locations?.otherLocations ?? [:]
     )
 
     // Convert text data to Locator.Text if present
@@ -53,11 +54,12 @@ struct LocatorData: Codable {
 }
 
 /// Helper struct for deserializing locations
-struct LocationsData: Codable {
+struct LocationsData {
   let fragments: [String]?
   let progression: Double?
   let position: Int?
   let totalProgression: Double?
+  let otherLocations: [String: JSONValue]?
 }
 
 /// Helper struct for deserializing text locator data

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
 import {
+  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -20,9 +21,14 @@ import {
 } from "@/components/reader/shared/ReaderSidePanelChrome"
 import { useFixedLayoutPanzoom } from "@/hooks/reader/useFixedLayoutPanzoom"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
+import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import {
+  deserializeReaderBookmarkLocator,
+  pdfPageForBookmark,
+} from "@/lib/readium/bookmarks"
 import {
   consumeWheelPageTurn,
   createWheelPageTurnState,
@@ -69,10 +75,15 @@ export function ReadiumPdfReader({
     useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
     useReadingChrome(false, tocOpen || settingsOpen)
-  const [bookmarked, setBookmarked] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const readerBookmarks = useReaderBookmarks({
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+  })
   const [totalPages, setTotalPages] = useState(0)
   const [landscape, setLandscape] = useState(true)
   const background = useAppUiStore((state) => state.fixedLayout.background)
@@ -244,6 +255,24 @@ export function ReadiumPdfReader({
       }
     },
     [navigationMode],
+  )
+  const onBookmarkSelect = useCallback(
+    (bookmark: ReadiumBookmarkRow) => {
+      const nav = navRef.current
+      if (!nav) return
+      const storedPage = pdfPageForBookmark(bookmark.locator, totalPages)
+      if (storedPage !== null) {
+        goToPdfPage(storedPage)
+        closePanels()
+        return
+      }
+      const locator = deserializeReaderBookmarkLocator(bookmark.locator)
+      if (!locator) return
+      nav.go(locator)
+      goToPdfPage(nav.currentPage)
+      closePanels()
+    },
+    [closePanels, goToPdfPage, totalPages],
   )
   const goToSpread = useCallback(
     (spreadIndex: number) => {
@@ -540,11 +569,12 @@ export function ReadiumPdfReader({
       topBar={{
         bookTitle,
         chapterTitle: "",
-        bookmarked,
+        bookmarked: readerBookmarks.bookmarked,
+        bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
         settingsOpen,
         onToggleToc: toggleToc,
-        onToggleBookmark: () => setBookmarked((value) => !value),
+        onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
       tocPanel={
@@ -553,6 +583,13 @@ export function ReadiumPdfReader({
           rows={tocRows}
           activeKey={`page-${pageNum}`}
           onSelect={onTocSelect}
+          bookmarks={readerBookmarks.bookmarks}
+          bookmarksLoading={readerBookmarks.loading}
+          bookmarksMutating={readerBookmarks.mutating}
+          bookmarksError={readerBookmarks.loadError}
+          onBookmarksRetry={readerBookmarks.retry}
+          onBookmarkSelect={onBookmarkSelect}
+          onBookmarkDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }

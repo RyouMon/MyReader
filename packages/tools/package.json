@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./human-readable-time": "./src/human-readable-time.ts",
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
+    "./reader-bookmarks": "./src/reader-bookmarks.ts",
     "./reader-themes": "./src/reader-themes.ts",
     "./reader-toc": "./src/reader-toc.ts",
     "./utils": "./src/utils/index.ts",
@@ -13,7 +15,8 @@
     "./store/*": "./src/store/*.ts"
   },
   "dependencies": {
-    "chroma-js": "^3.2.0"
+    "chroma-js": "^3.2.0",
+    "dayjs": "^1.11.21"
   },
   "scripts": {
     "test": "vitest run",

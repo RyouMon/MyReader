@@ -25,6 +25,12 @@ export function invalidateReadingProgress(libraryId?: string) {
   })
 }
 
+export function invalidateReaderBookmarks(libraryId?: string) {
+  return queryClient.invalidateQueries({
+    queryKey: queryKeys.readerBookmarksRoot(libraryId),
+  })
+}
+
 export function invalidateRecentlyReadBooks(libraryId?: string) {
   return queryClient.invalidateQueries({
     queryKey: queryKeys.recentlyReadBooks(libraryId),
