@@ -2,7 +2,7 @@ import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { TFunction } from "i18next"
 import { Bookmark, Check, CircleCheck, List, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ReaderSidePanelFrame,
@@ -108,11 +108,25 @@ export function ReadiumTocPanel({
   const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const activeTocRowRef = useRef<HTMLButtonElement>(null)
   const language = i18n.resolvedLanguage ?? i18n.language
+  const tocRowCount = rows.length
   const selectedBookmarks = bookmarks.filter((bookmark) =>
     selectedBookmarkIds.has(bookmark.id),
   )
   const selectionMode = selectedBookmarks.length > 0
+
+  useEffect(() => {
+    if (
+      !visible ||
+      activeTab !== "toc" ||
+      activeKey === null ||
+      tocRowCount === 0
+    ) {
+      return
+    }
+    activeTocRowRef.current?.scrollIntoView?.({ block: "center" })
+  }, [activeKey, activeTab, tocRowCount, visible])
 
   useEffect(() => {
     if (visible) return
@@ -196,6 +210,7 @@ export function ReadiumTocPanel({
                 return (
                   <li key={rowKey}>
                     <button
+                      ref={isActive ? activeTocRowRef : undefined}
                       type="button"
                       className="reader-chrome-toc-item w-full rounded-md px-2 py-1.5 text-start text-sm transition-colors"
                       aria-current={isActive ? "location" : undefined}

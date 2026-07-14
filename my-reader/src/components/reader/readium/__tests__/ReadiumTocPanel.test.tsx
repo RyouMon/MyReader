@@ -4,6 +4,48 @@ import { describe, expect, it, vi } from "vitest"
 import { ReadiumTocPanel } from "../ReadiumTocPanel"
 
 describe("ReadiumTocPanel", () => {
+  it("should scroll the active row into view when the table of contents opens", () => {
+    const rows = [
+      {
+        key: "chapter-1",
+        depth: 0,
+        title: "第一章",
+        href: "chapter-1.xhtml",
+      },
+      {
+        key: "chapter-12",
+        depth: 0,
+        title: "第十二章",
+        href: "chapter-12.xhtml",
+      },
+    ]
+    const { rerender } = render(
+      <ReadiumTocPanel
+        visible={false}
+        activeKey="chapter-12"
+        rows={rows}
+        onSelect={vi.fn()}
+      />,
+    )
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(
+      screen.getByRole("button", { name: "第十二章" }),
+      "scrollIntoView",
+      { configurable: true, value: scrollIntoView },
+    )
+
+    rerender(
+      <ReadiumTocPanel
+        visible
+        activeKey="chapter-12"
+        rows={rows}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center" })
+  })
+
   it("should highlight only the active row key when rows share href", () => {
     const rows = [
       {
