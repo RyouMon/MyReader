@@ -14,6 +14,7 @@ import {
   View as RNView,
   StyleSheet,
 } from "react-native"
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { EmptyState } from "@/src/components/ui"
@@ -140,12 +141,28 @@ const BookmarkRow = memo(function BookmarkRow({
     }
     onSelectBookmark(item)
   }, [item, onSelectBookmark, onToggleSelection, selectionMode])
+  const tapGesture = useMemo(
+    () =>
+      Gesture.Tap()
+        .maxDuration(350)
+        .runOnJS(true)
+        .onEnd((_event, success) => {
+          if (success) handlePress()
+        }),
+    [handlePress],
+  )
   const accessibilityLabel = [item.title, dateLabel, item.positionLabel]
     .filter(Boolean)
     .join(", ")
-
+  const backgroundColor = highlighted
+    ? palette.tocRowActive
+    : palette.tocRowIdle
+  const pressedBackgroundColor = underlayFromSurface(
+    backgroundColor,
+    palette.bg,
+  )
   const row = (
-    <TouchableHighlight
+    <Pressable
       accessibilityRole={selectionMode ? "checkbox" : "button"}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={
@@ -162,16 +179,10 @@ const BookmarkRow = memo(function BookmarkRow({
           : [{ name: "delete", label: t("common.delete") }]),
       ]}
       className="mx-3 mb-0.5 rounded-xl"
-      style={{
+      style={({ pressed }) => ({
         minHeight: 72,
-        backgroundColor: highlighted
-          ? palette.tocRowActive
-          : palette.tocRowIdle,
-      }}
-      underlayColor={underlayFromSurface(
-        highlighted ? palette.tocRowActive : palette.tocRowIdle,
-        palette.bg,
-      )}
+        backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
+      })}
       onAccessibilityAction={({ nativeEvent }) =>
         handleAction(nativeEvent.actionName)
       }
@@ -231,20 +242,22 @@ const BookmarkRow = memo(function BookmarkRow({
           ) : null}
         </View>
       </View>
-    </TouchableHighlight>
+    </Pressable>
   )
 
   if (selectionMode) return row
 
   return (
-    <MenuView
-      actions={menuActions}
-      shouldOpenOnLongPress
-      isAnchoredToRight={Platform.OS === "android"}
-      onPressAction={({ nativeEvent }) => handleAction(nativeEvent.event)}
-    >
-      {row}
-    </MenuView>
+    <GestureDetector gesture={tapGesture}>
+      <MenuView
+        actions={menuActions}
+        shouldOpenOnLongPress
+        isAnchoredToRight={Platform.OS === "android"}
+        onPressAction={({ nativeEvent }) => handleAction(nativeEvent.event)}
+      >
+        {row}
+      </MenuView>
+    </GestureDetector>
   )
 })
 

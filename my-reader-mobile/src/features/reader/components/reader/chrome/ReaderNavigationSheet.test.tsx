@@ -1,6 +1,7 @@
 import type { Locator } from "@my-reader/readium"
 import { MenuView } from "@react-native-menu/menu"
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
+import { Gesture } from "react-native-gesture-handler"
 
 import { readerChromePalette } from "@/src/design/reader-chrome-palette"
 import ReaderNavigationSheet, {
@@ -33,6 +34,24 @@ jest.mock("@react-native-menu/menu", () => {
         children,
       ),
     ),
+  }
+})
+
+jest.mock("react-native-gesture-handler", () => {
+  const mockReact = jest.requireActual("react")
+  const mockReactNative = jest.requireActual("react-native")
+  return {
+    Gesture: {
+      Tap: jest.fn(() => {
+        const gesture: Record<string, jest.Mock> = {}
+        gesture.maxDuration = jest.fn(() => gesture)
+        gesture.onEnd = jest.fn(() => gesture)
+        gesture.runOnJS = jest.fn(() => gesture)
+        return gesture
+      }),
+    },
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      mockReact.createElement(mockReactNative.View, null, children),
   }
 })
 
@@ -125,6 +144,14 @@ function getMenuProps(index = 0) {
   return (MenuView as unknown as jest.Mock).mock.calls[index]?.[0]
 }
 
+function getTapEnd(index = 0) {
+  const tapGesture = (Gesture.Tap as jest.Mock).mock.results[index]?.value
+  return tapGesture.onEnd.mock.calls[0]?.[0] as (
+    event: unknown,
+    success: boolean,
+  ) => void
+}
+
 const baseProps = {
   toc: [
     {
@@ -204,7 +231,7 @@ describe("ReaderNavigationSheet", () => {
     expect(onRetryBookmarks).toHaveBeenCalledTimes(1)
   })
 
-  it("should show chapter, date, and position without a visible delete button", () => {
+  it("should navigate to the bookmark when a short tap succeeds", () => {
     const onSelectBookmark = jest.fn()
     const item = bookmark(2)
     const screen = render(
@@ -221,8 +248,11 @@ describe("ReaderNavigationSheet", () => {
     expect(screen.getByText("2")).toBeTruthy()
     expect(screen.queryByLabelText("delete Chapter 2")).toBeNull()
 
-    fireEvent.press(screen.getByLabelText(/Chapter 2/))
+    act(() => getTapEnd(0)({}, true))
     expect(onSelectBookmark).toHaveBeenCalledWith(item)
+
+    act(() => getTapEnd(0)({}, false))
+    expect(onSelectBookmark).toHaveBeenCalledTimes(1)
   })
 
   it("should align position typography with the chapter title when bookmarks exist", () => {
