@@ -273,6 +273,7 @@ export function useReaderBookmarks({
   return {
     bookmarks: scopedBookmarks,
     bookmarked: currentBookmark !== null,
+    currentBookmarkLocatorKey: currentBookmark?.locatorKey ?? null,
     loading,
     mutating,
     error: loadError ?? mutationError,

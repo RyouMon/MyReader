@@ -324,6 +324,7 @@ export function ReadiumDivinaReader({
           activeKey={currentLocator?.href ?? null}
           onSelect={onTocSelect}
           bookmarks={readerBookmarks.bookmarks}
+          activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
           bookmarksLoading={readerBookmarks.loading}
           bookmarksMutating={readerBookmarks.mutating}
           bookmarksError={readerBookmarks.loadError}

@@ -1955,6 +1955,7 @@ export function ReadiumEpubReader({
           activeKey={activeTocKey}
           onSelect={onTocSelect}
           bookmarks={bookmarkRows}
+          activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
           bookmarksLoading={readerBookmarks.loading}
           bookmarksMutating={readerBookmarks.mutating}
           bookmarksError={readerBookmarks.loadError}

@@ -89,6 +89,38 @@ describe("ReadiumTocPanel", () => {
     expect(onBookmarkDelete).toHaveBeenCalledWith(bookmark)
   })
 
+  it("should use table-of-contents row states when a bookmark is current", () => {
+    const bookmark = {
+      id: "bookmark-1",
+      locatorKey: "v1:position:8",
+      locator: {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+        title: "第八章",
+        locations: { progression: 0.4, position: 8 },
+      },
+      createdAt: new Date(2026, 6, 9, 12).getTime(),
+    }
+
+    render(
+      <ReadiumTocPanel
+        visible
+        activeKey={null}
+        activeBookmarkLocatorKey={bookmark.locatorKey}
+        rows={[]}
+        bookmarks={[bookmark]}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("tab", { name: "书签" }))
+
+    const activeBookmark = screen.getByRole("button", { name: /第八章/ })
+    expect(activeBookmark).toHaveClass("reader-chrome-toc-item")
+    expect(activeBookmark).toHaveAttribute("aria-current", "location")
+    expect(screen.getByText("第八章")).not.toHaveClass("text-reader-chrome-fg")
+  })
+
   it("should show the resolved chapter before the position when the locator title is missing", () => {
     const bookmark = {
       id: "bookmark-1",

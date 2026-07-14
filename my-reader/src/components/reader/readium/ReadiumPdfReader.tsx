@@ -584,6 +584,7 @@ export function ReadiumPdfReader({
           activeKey={`page-${pageNum}`}
           onSelect={onTocSelect}
           bookmarks={readerBookmarks.bookmarks}
+          activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
           bookmarksLoading={readerBookmarks.loading}
           bookmarksMutating={readerBookmarks.mutating}
           bookmarksError={readerBookmarks.loadError}

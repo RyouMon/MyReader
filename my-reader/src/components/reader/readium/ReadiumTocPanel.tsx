@@ -31,6 +31,7 @@ interface ReadiumTocPanelProps {
   activeKey: string | null
   onSelect: (row: ReadiumTocRow) => void
   bookmarks?: ReadiumBookmarkRow[]
+  activeBookmarkLocatorKey?: string | null
   bookmarksLoading?: boolean
   bookmarksMutating?: boolean
   bookmarksError?: string | null
@@ -93,6 +94,7 @@ export function ReadiumTocPanel({
   activeKey,
   onSelect,
   bookmarks = EMPTY_BOOKMARKS,
+  activeBookmarkLocatorKey = null,
   bookmarksLoading = false,
   bookmarksMutating = false,
   bookmarksError,
@@ -236,16 +238,18 @@ export function ReadiumTocPanel({
                 {bookmarks.map((bookmark, index) => {
                   const display = bookmarkDisplay(bookmark, index, language, t)
                   const selected = selectedBookmarkIds.has(bookmark.id)
+                  const active =
+                    !selectionMode &&
+                    activeBookmarkLocatorKey === bookmark.locatorKey
                   return (
                     <ContextMenu key={bookmark.id} modal={false}>
                       <ContextMenuTrigger asChild>
-                        <li
-                          className={`reader-chrome-toc-item rounded-md transition-colors ${selected ? "bg-[var(--reader-chrome-toc-row-active)]" : ""}`}
-                        >
+                        <li>
                           <button
                             type="button"
+                            aria-current={active ? "location" : undefined}
                             aria-pressed={selectionMode ? selected : undefined}
-                            className="flex w-full items-start gap-2.5 rounded-md px-2 py-2.5 text-start"
+                            className={`reader-chrome-toc-item flex w-full items-start gap-2.5 rounded-md px-2 py-2.5 text-start transition-colors ${selected ? "bg-[var(--reader-chrome-toc-row-active)]" : ""}`}
                             onClick={() => {
                               if (selectionMode) {
                                 toggleBookmarkSelection(bookmark.id)
@@ -264,7 +268,7 @@ export function ReadiumTocPanel({
                             ) : null}
                             <span className="min-w-0 flex-1">
                               <span className="flex min-w-0 items-start gap-3">
-                                <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-5 text-reader-chrome-fg">
+                                <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-5">
                                   {display.primary}
                                 </span>
                                 {display.trailing ? (

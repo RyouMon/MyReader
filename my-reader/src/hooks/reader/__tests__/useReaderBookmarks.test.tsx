@@ -91,6 +91,7 @@ describe("useReaderBookmarks", () => {
       expect.objectContaining({ href: "publication.pdf" }),
     )
     expect(result.current.bookmarked).toBe(true)
+    expect(result.current.currentBookmarkLocatorKey).toBe(locatorKey)
 
     await act(async () => {
       await result.current.toggleCurrentBookmark()
@@ -102,6 +103,7 @@ describe("useReaderBookmarks", () => {
       locatorKey,
     )
     expect(result.current.bookmarked).toBe(false)
+    expect(result.current.currentBookmarkLocatorKey).toBeNull()
   })
 
   it("should ignore rapid toggle when bookmark mutation is already pending", async () => {
