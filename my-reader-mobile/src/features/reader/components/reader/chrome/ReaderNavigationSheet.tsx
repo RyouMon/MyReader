@@ -100,7 +100,8 @@ const BookmarkRow = memo(function BookmarkRow({
     item.createdAt,
     i18n.resolvedLanguage ?? i18n.language,
   )
-  const highlighted = selected || (!selectionMode && item.active)
+  const [rowPressed, setRowPressed] = useState(false)
+  const rowActive = selectionMode ? selected : item.active
   const selectionActionTitle = t(
     selected ? "reader.bookmarks.deselect" : "reader.bookmarks.select",
   )
@@ -141,22 +142,24 @@ const BookmarkRow = memo(function BookmarkRow({
     }
     onSelectBookmark(item)
   }, [item, onSelectBookmark, onToggleSelection, selectionMode])
+  const handlePressIn = useCallback(() => setRowPressed(true), [])
+  const handlePressOut = useCallback(() => setRowPressed(false), [])
   const tapGesture = useMemo(
     () =>
       Gesture.Tap()
         .maxDuration(350)
         .runOnJS(true)
+        .onBegin(handlePressIn)
         .onEnd((_event, success) => {
           if (success) handlePress()
-        }),
-    [handlePress],
+        })
+        .onFinalize(handlePressOut),
+    [handlePress, handlePressIn, handlePressOut],
   )
   const accessibilityLabel = [item.title, dateLabel, item.positionLabel]
     .filter(Boolean)
     .join(", ")
-  const backgroundColor = highlighted
-    ? palette.tocRowActive
-    : palette.tocRowIdle
+  const backgroundColor = rowActive ? palette.tocRowActive : palette.tocRowIdle
   const pressedBackgroundColor = underlayFromSurface(
     backgroundColor,
     palette.bg,
@@ -179,13 +182,15 @@ const BookmarkRow = memo(function BookmarkRow({
           : [{ name: "delete", label: t("common.delete") }]),
       ]}
       className="mx-3 mb-0.5 rounded-xl"
-      style={({ pressed }) => ({
+      style={{
         minHeight: 72,
-        backgroundColor: pressed ? pressedBackgroundColor : backgroundColor,
-      })}
+        backgroundColor: rowPressed ? pressedBackgroundColor : backgroundColor,
+      }}
       onAccessibilityAction={({ nativeEvent }) =>
         handleAction(nativeEvent.actionName)
       }
+      onPressIn={selectionMode ? handlePressIn : undefined}
+      onPressOut={selectionMode ? handlePressOut : undefined}
       onPress={handlePress}
     >
       <View className="flex-1 flex-row items-center px-5 py-2">
@@ -213,7 +218,7 @@ const BookmarkRow = memo(function BookmarkRow({
               className="min-w-0 flex-1 text-base font-semibold"
               style={{
                 color:
-                  item.active && !selectionMode
+                  rowActive && !selectionMode
                     ? palette.accentText
                     : palette.text,
               }}

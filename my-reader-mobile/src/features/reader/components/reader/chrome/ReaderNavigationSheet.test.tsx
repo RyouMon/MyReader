@@ -1,9 +1,13 @@
 import type { Locator } from "@my-reader/readium"
 import { MenuView } from "@react-native-menu/menu"
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
+import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 import { Gesture } from "react-native-gesture-handler"
 
-import { readerChromePalette } from "@/src/design/reader-chrome-palette"
+import {
+  readerChromePalette,
+  underlayFromSurface,
+} from "@/src/design/reader-chrome-palette"
 import ReaderNavigationSheet, {
   type ReaderBookmarkItem,
 } from "./ReaderNavigationSheet"
@@ -45,7 +49,9 @@ jest.mock("react-native-gesture-handler", () => {
       Tap: jest.fn(() => {
         const gesture: Record<string, jest.Mock> = {}
         gesture.maxDuration = jest.fn(() => gesture)
+        gesture.onBegin = jest.fn(() => gesture)
         gesture.onEnd = jest.fn(() => gesture)
+        gesture.onFinalize = jest.fn(() => gesture)
         gesture.runOnJS = jest.fn(() => gesture)
         return gesture
       }),
@@ -152,6 +158,16 @@ function getTapEnd(index = 0) {
   ) => void
 }
 
+function getTapCallback(name: "onBegin" | "onFinalize", index = 0) {
+  const tapGesture = (Gesture.Tap as jest.Mock).mock.results[index]?.value
+  return tapGesture[name].mock.calls[0]?.[0] as () => void
+}
+
+function getBackgroundColor(instance: { props: { style?: unknown } }) {
+  return StyleSheet.flatten(instance.props.style as StyleProp<ViewStyle>)
+    ?.backgroundColor
+}
+
 const baseProps = {
   toc: [
     {
@@ -253,6 +269,34 @@ describe("ReaderNavigationSheet", () => {
 
     act(() => getTapEnd(0)({}, false))
     expect(onSelectBookmark).toHaveBeenCalledTimes(1)
+  })
+
+  it("should match table-of-contents row colors when active and pressed", () => {
+    const screen = render(
+      <ReaderNavigationSheet {...baseProps} bookmarks={[bookmark(2)]} />,
+    )
+
+    expect(getBackgroundColor(screen.getByLabelText("Chapter one"))).toBe(
+      palette.tocRowActive,
+    )
+
+    fireEvent.press(screen.getByLabelText("reader.bookmarks.title"))
+
+    const activeBookmark = screen.getByLabelText(/Chapter 2/)
+    expect(getBackgroundColor(activeBookmark)).toBe(palette.tocRowActive)
+    expect(
+      StyleSheet.flatten(screen.getByText("Chapter 2").props.style)?.color,
+    ).toBe(palette.accentText)
+
+    act(() => getTapCallback("onBegin")())
+    expect(getBackgroundColor(screen.getByLabelText(/Chapter 2/))).toBe(
+      underlayFromSurface(palette.tocRowActive, palette.bg),
+    )
+
+    act(() => getTapCallback("onFinalize")())
+    expect(getBackgroundColor(screen.getByLabelText(/Chapter 2/))).toBe(
+      palette.tocRowActive,
+    )
   })
 
   it("should align position typography with the chapter title when bookmarks exist", () => {
