@@ -9,9 +9,10 @@ Apply these when writing, reviewing, or refactoring code:
 1. **Simplicity First** — Minimum code that solves the problem. No speculative abstractions, no features beyond what was asked, no error handling for impossible scenarios.
 2. **Surgical Changes** — Touch only what you must. Don't improve adjacent code, comments, or formatting. Match existing style. Remove only imports/variables/functions that *your* changes made unused.
 3. **Goal-Driven Execution** — Define verifiable success criteria before implementing. Transform tasks into testable goals (e.g., "Write a test that reproduces the bug, then make it pass").
-4. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
-5. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/` vs `features/` vs `repos/` vs `services/`). No upward imports, no bypassing layers.
-6. **Verification Gate** — After code changes, run the full unit test suite for every touched package before reporting completion. Targeted tests may be used during development, but they do not replace the final full package unit test run. All tests must pass. If a suite cannot be run, state the exact command and blocker.
+4. **Test Value Gate** — Before writing or changing a test, first decide whether it protects a durable behavior, contract, invariant, or meaningful regression. Do not apply TDD mechanically to every change. Avoid tests that merely mirror implementation details or freeze incidental styling that is expected to be tuned. Exact `padding`, margin, gap, pixel, or utility-class assertions are a canonical anti-pattern; validate those visual refinements in the rendered UI instead. Test styling only when it represents a durable product requirement, accessibility/safety constraint, or structural layout invariant (for example, a required column count).
+5. **Think Before Coding** — State assumptions explicitly. If multiple interpretations exist, present them. If something is unclear, ask before implementing.
+6. **Respect the Layering** — Dependencies must only flow downward. For mobile, see module rules in `.agents/rules/mobile.md` (`domain/` vs `features/` vs `repos/` vs `services/`). No upward imports, no bypassing layers.
+7. **Verification Gate** — After code changes, run the full unit test suite for every touched package before reporting completion. Targeted tests may be used during development, but they do not replace the final full package unit test run. All tests must pass. If a suite cannot be run, state the exact command and blocker.
 
 ---
 
