@@ -12,7 +12,7 @@ import ReaderNavigationSheet, {
   type ReaderBookmarkItem,
 } from "./ReaderNavigationSheet"
 
-jest.mock("@gorhom/bottom-sheet", () => {
+jest.mock("@expo/ui/community/bottom-sheet", () => {
   const mockReact = jest.requireActual("react")
   const mockReactNative = jest.requireActual("react-native")
   return {
@@ -20,9 +20,15 @@ jest.mock("@gorhom/bottom-sheet", () => {
       { children, ...props }: { children: React.ReactNode },
       _ref: React.Ref<unknown>,
     ) {
-      return mockReact.createElement(mockReactNative.View, props, children)
+      return mockReact.createElement(
+        mockReactNative.View,
+        { ...props, testID: "reader-navigation-bottom-sheet" },
+        children,
+      )
     }),
-    BottomSheetFlatList: mockReactNative.FlatList,
+    BottomSheetFlatList: jest.fn((props) =>
+      mockReact.createElement(mockReactNative.FlatList, props),
+    ),
     BottomSheetScrollView: mockReactNative.ScrollView,
   }
 })
@@ -60,10 +66,6 @@ jest.mock("react-native-gesture-handler", () => {
       mockReact.createElement(mockReactNative.View, null, children),
   }
 })
-
-jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 47, right: 0, bottom: 34, left: 0 }),
-}))
 
 jest.mock("@/tw", () => {
   const mockReactNative = jest.requireActual("react-native")
@@ -431,5 +433,45 @@ describe("ReaderNavigationSheet", () => {
     fireEvent.press(screen.getByLabelText("Chapter one"))
 
     expect(onSelectTocItem).toHaveBeenCalledWith(baseProps.toc[0])
+  })
+
+  it("should virtualize and position a long table of contents", () => {
+    const toc = Array.from({ length: 100 }, (_, index) => ({
+      id: `toc-${index}`,
+      label: `Chapter ${index}`,
+      pageIndex: index,
+      locator: locator(index + 1),
+    }))
+
+    const screen = render(
+      <ReaderNavigationSheet {...baseProps} toc={toc} activeTocIndex={80} />,
+    )
+
+    const { BottomSheetFlatList } = jest.requireMock(
+      "@expo/ui/community/bottom-sheet",
+    )
+    const tocListProps = (BottomSheetFlatList as jest.Mock).mock.calls.find(
+      ([props]) => props.data === toc,
+    )?.[0]
+
+    expect(tocListProps).toEqual(
+      expect.objectContaining({
+        initialScrollIndex: 80,
+        initialNumToRender: 12,
+        maxToRenderPerBatch: 12,
+        windowSize: 5,
+      }),
+    )
+    expect(tocListProps.getItemLayout(toc, 80)).toEqual({
+      index: 80,
+      length: 54,
+      offset: 4320,
+    })
+    expect(screen.getByTestId("reader-navigation-bottom-sheet").props).toEqual(
+      expect.objectContaining({
+        enableDynamicSizing: false,
+        snapPoints: ["100%"],
+      }),
+    )
   })
 })

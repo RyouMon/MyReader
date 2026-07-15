@@ -251,9 +251,9 @@
     "themeSepia": "护眼米黄",
     "themeGreen": "护眼绿色",
     "themeOcean": "深海",
-    "themeContrast1": "高对比度 1",
+    "themeContrast1": "高对比 1",
     "themeNight": "夜间",
-    "themeContrast2": "高对比度 2",
+    "themeContrast2": "高对比 2",
     "themes": {
       "neutral": "纯白",
       "paper": "羊皮纸",
@@ -261,8 +261,8 @@
       "green": "护眼绿色",
       "ocean": "深海",
       "night": "夜间",
-      "contrast1": "高对比度 1",
-      "contrast2": "高对比度 2"
+      "contrast1": "高对比 1",
+      "contrast2": "高对比 2"
     },
     "layoutScroll": "滚动",
     "layoutPaginate": "左右翻页",

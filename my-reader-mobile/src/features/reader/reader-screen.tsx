@@ -1,7 +1,7 @@
 import {
   type BottomSheetModal,
   BottomSheetModalProvider,
-} from "@gorhom/bottom-sheet"
+} from "@expo/ui/community/bottom-sheet"
 import type { Locator } from "@my-reader/readium"
 import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
 import { router, useLocalSearchParams } from "expo-router"
@@ -53,7 +53,9 @@ import {
   ChromeState,
   chromeReducer,
 } from "@/src/features/reader/components/reader/chrome/chrome-state"
-import ReaderSettingsSheet from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
+import ReaderSettingsSheet, {
+  type ReaderSettingsSheetRef,
+} from "@/src/features/reader/components/reader/chrome/ReaderSettingsSheet"
 import { READER_THEME_OPTIONS } from "@/src/features/reader/components/reader/chrome/readerChromeConstants"
 import type { FixedReaderSurfaceRef } from "@/src/features/reader/components/reader/fixed/FixedReaderSurface"
 import { resolveReaderBookmarkNavigationLocator } from "@/src/features/reader/components/reader/reader-bookmark-navigation"
@@ -166,7 +168,7 @@ export default function ReaderScreen() {
   )
 
   const navigationSheetRef = useRef<BottomSheetModal>(null)
-  const settingsSheetRef = useRef<BottomSheetModal>(null)
+  const settingsSheetRef = useRef<ReaderSettingsSheetRef>(null)
   const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
   const fixedReaderRef = useRef<FixedReaderSurfaceRef>(null)
   const readerPositionsRef = useRef<{

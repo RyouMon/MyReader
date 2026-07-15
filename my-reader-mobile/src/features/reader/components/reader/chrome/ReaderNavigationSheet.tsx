@@ -1,8 +1,7 @@
 import {
   BottomSheetFlatList,
   BottomSheetModal,
-  BottomSheetScrollView,
-} from "@gorhom/bottom-sheet"
+} from "@expo/ui/community/bottom-sheet"
 import type { Locator } from "@my-reader/readium"
 import { formatHumanReadableTime } from "@my-reader/tools/human-readable-time"
 import { MenuView, type MenuAction } from "@react-native-menu/menu"
@@ -10,12 +9,12 @@ import { forwardRef, memo, useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
+  type ListRenderItem,
   Platform,
   View as RNView,
   StyleSheet,
 } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { EmptyState } from "@/src/components/ui"
 import {
@@ -26,13 +25,6 @@ import type { ReaderTocItem } from "@/src/features/reader/components/reader/type
 import { Pressable, Text, TouchableHighlight, View } from "@/tw"
 import { ReaderChromeIcon } from "./ReaderChromeIcon"
 import {
-  READER_SHEET_ELEVATION,
-  READER_SHEET_RADIUS,
-  READER_SHEET_SHADOW_COLOR,
-  READER_SHEET_SHADOW_OFFSET_X,
-  READER_SHEET_SHADOW_OFFSET_Y,
-  READER_SHEET_SHADOW_OPACITY,
-  READER_SHEET_SHADOW_RADIUS,
   READER_TOC_SHEET_INITIAL_INDEX,
   READER_TOC_SHEET_SNAP_POINTS,
 } from "./readerChromeConstants"
@@ -44,6 +36,21 @@ const READER_NAVIGATION_ROW_EXTENT =
 const BOOKMARK_EMPTY_ICON = {
   ios: "bookmark",
   android: "bookmark-border",
+}
+
+function readerTocKeyExtractor(item: ReaderTocItem) {
+  return item.id
+}
+
+function getReaderNavigationRowLayout(
+  _data: ArrayLike<ReaderTocItem> | null | undefined,
+  index: number,
+) {
+  return {
+    length: READER_NAVIGATION_ROW_EXTENT,
+    offset: READER_NAVIGATION_ROW_EXTENT * index,
+    index,
+  }
 }
 
 export type ReaderBookmarkItem = {
@@ -74,6 +81,13 @@ export type ReaderNavigationSheetProps = {
 
 type NavigationTab = "toc" | "bookmarks"
 
+type TocRowProps = {
+  item: ReaderTocItem
+  active: boolean
+  palette: ReaderChromePalette
+  onSelect: (item: ReaderTocItem) => void
+}
+
 type BookmarkRowProps = {
   item: ReaderBookmarkItem
   deletionDisabled: boolean
@@ -84,6 +98,44 @@ type BookmarkRowProps = {
   onSelectBookmark: ReaderNavigationSheetProps["onSelectBookmark"]
   onToggleSelection: (id: string) => void
 }
+
+const TocRow = memo(function TocRow({
+  item,
+  active,
+  palette,
+  onSelect,
+}: TocRowProps) {
+  const depth = Math.min(item.depth ?? 0, 4)
+
+  return (
+    <TouchableHighlight
+      accessibilityRole="button"
+      accessibilityLabel={item.label}
+      underlayColor={underlayFromSurface(
+        active ? palette.tocRowActive : palette.tocRowIdle,
+        palette.bg,
+      )}
+      className="mx-3 rounded-xl px-5"
+      style={{
+        backgroundColor: active ? palette.tocRowActive : palette.tocRowIdle,
+        height: READER_NAVIGATION_ROW_HEIGHT,
+        justifyContent: "center",
+        marginBottom: READER_NAVIGATION_ROW_GAP,
+        paddingLeft: 20 + depth * 18,
+      }}
+      onPress={() => onSelect(item)}
+    >
+      <Text
+        className="text-base"
+        style={{ color: active ? palette.accentText : palette.text }}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {item.label}
+      </Text>
+    </TouchableHighlight>
+  )
+})
 
 const BookmarkRow = memo(function BookmarkRow({
   item,
@@ -287,7 +339,6 @@ const ReaderNavigationSheet = forwardRef<
   ref,
 ) {
   const { t } = useTranslation()
-  const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<NavigationTab>("toc")
   const [managingBookmarks, setManagingBookmarks] = useState(false)
   const [selectedBookmarkIds, setSelectedBookmarkIds] = useState<Set<string>>(
@@ -302,20 +353,10 @@ const ReaderNavigationSheet = forwardRef<
   const mutationDisabled = bookmarksPending || deletingSelection
   const selectionDeletionDisabled =
     mutationDisabled || selectedBookmarks.length === 0
-  const initialScrollOffset = useMemo(
-    () =>
-      activeTocIndex <= 0 ? 0 : activeTocIndex * READER_NAVIGATION_ROW_EXTENT,
-    [activeTocIndex],
-  )
-
-  const renderHandle = useCallback(
-    () => (
-      <RNView style={styles.handleContainer}>
-        <RNView style={[styles.handle, { backgroundColor: palette.handle }]} />
-      </RNView>
-    ),
-    [palette.handle],
-  )
+  const initialTocIndex =
+    toc.length === 0
+      ? undefined
+      : Math.min(Math.max(activeTocIndex, 0), toc.length - 1)
   const toggleBookmarkSelection = useCallback((id: string) => {
     setManagingBookmarks(true)
     setSelectedBookmarkIds((current) => {
@@ -379,6 +420,17 @@ const ReaderNavigationSheet = forwardRef<
       toggleBookmarkSelection,
     ],
   )
+  const renderTocItem = useCallback<ListRenderItem<ReaderTocItem>>(
+    ({ item, index }) => (
+      <TocRow
+        item={item}
+        active={index === activeTocIndex}
+        palette={palette}
+        onSelect={onSelectTocItem}
+      />
+    ),
+    [activeTocIndex, onSelectTocItem, palette],
+  )
 
   return (
     <BottomSheetModal
@@ -387,16 +439,14 @@ const ReaderNavigationSheet = forwardRef<
       snapPoints={READER_TOC_SHEET_SNAP_POINTS}
       enableDynamicSizing={false}
       enablePanDownToClose
-      style={styles.sheetShadow}
-      backgroundStyle={[
-        styles.background,
-        { backgroundColor: palette.sheetSurface },
-      ]}
-      handleComponent={renderHandle}
+      backgroundStyle={{ backgroundColor: palette.sheetSurface }}
       onDismiss={handleDismiss}
-      accessibilityLabel={t("reader.navigationSheet")}
     >
-      <RNView style={styles.tabs} accessibilityRole="tablist">
+      <RNView
+        style={styles.tabs}
+        accessibilityRole="tablist"
+        accessibilityLabel={t("reader.navigationSheet")}
+      >
         {(["toc", "bookmarks"] as const).map((tab) => {
           const selected = activeTab === tab
           return (
@@ -429,53 +479,26 @@ const ReaderNavigationSheet = forwardRef<
       </RNView>
 
       {activeTab === "toc" ? (
-        <BottomSheetScrollView
-          key={`toc-${activeTocIndex}`}
-          contentOffset={{ x: 0, y: initialScrollOffset }}
+        <BottomSheetFlatList<ReaderTocItem>
+          key={`toc-${initialTocIndex ?? "empty"}`}
+          data={toc}
+          keyExtractor={readerTocKeyExtractor}
+          renderItem={renderTocItem}
+          getItemLayout={getReaderNavigationRowLayout}
+          initialScrollIndex={initialTocIndex}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === "android"}
+          style={styles.tocList}
           showsVerticalScrollIndicator={false}
-        >
-          {toc.length === 0 ? (
+          contentContainerStyle={
+            toc.length === 0 ? styles.emptyListContent : undefined
+          }
+          ListEmptyComponent={
             <NavigationEmptyLabel label={t("reader.noToc")} palette={palette} />
-          ) : (
-            toc.map((item, index) => {
-              const isActive = index === activeTocIndex
-              const depth = Math.min(item.depth ?? 0, 4)
-              return (
-                <TouchableHighlight
-                  key={item.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  underlayColor={underlayFromSurface(
-                    isActive ? palette.tocRowActive : palette.tocRowIdle,
-                    palette.bg,
-                  )}
-                  className="mx-3 rounded-xl px-5"
-                  style={{
-                    backgroundColor: isActive
-                      ? palette.tocRowActive
-                      : palette.tocRowIdle,
-                    height: READER_NAVIGATION_ROW_HEIGHT,
-                    justifyContent: "center",
-                    marginBottom: READER_NAVIGATION_ROW_GAP,
-                    paddingLeft: 20 + depth * 18,
-                  }}
-                  onPress={() => onSelectTocItem(item)}
-                >
-                  <Text
-                    className="text-base"
-                    style={{
-                      color: isActive ? palette.accentText : palette.text,
-                    }}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {item.label}
-                  </Text>
-                </TouchableHighlight>
-              )
-            })
-          )}
-        </BottomSheetScrollView>
+          }
+        />
       ) : bookmarksLoading ? (
         <View
           accessibilityRole="progressbar"
@@ -513,7 +536,7 @@ const ReaderNavigationSheet = forwardRef<
       ) : (
         <RNView
           testID="reader-bookmarks-content"
-          style={[styles.bookmarksContent, { paddingBottom: insets.bottom }]}
+          style={styles.bookmarksContent}
         >
           <BottomSheetFlatList
             data={bookmarks}
@@ -627,10 +650,6 @@ function NavigationEmptyLabel({
 export default ReaderNavigationSheet
 
 const styles = StyleSheet.create({
-  background: {
-    borderTopLeftRadius: READER_SHEET_RADIUS,
-    borderTopRightRadius: READER_SHEET_RADIUS,
-  },
   bookmarksContent: {
     flex: 1,
   },
@@ -640,33 +659,14 @@ const styles = StyleSheet.create({
   emptyListContent: {
     flexGrow: 1,
   },
-  sheetShadow: {
-    borderTopLeftRadius: READER_SHEET_RADIUS,
-    borderTopRightRadius: READER_SHEET_RADIUS,
-    shadowColor: READER_SHEET_SHADOW_COLOR,
-    shadowOpacity: READER_SHEET_SHADOW_OPACITY,
-    shadowRadius: READER_SHEET_SHADOW_RADIUS,
-    shadowOffset: {
-      width: READER_SHEET_SHADOW_OFFSET_X,
-      height: READER_SHEET_SHADOW_OFFSET_Y,
-    },
-    elevation: READER_SHEET_ELEVATION,
-  },
-  handleContainer: {
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-  },
   tabs: {
     flexDirection: "row",
     gap: 4,
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 10,
+  },
+  tocList: {
+    flex: 1,
   },
 })

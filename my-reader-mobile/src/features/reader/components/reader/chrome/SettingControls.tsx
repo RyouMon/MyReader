@@ -5,15 +5,11 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { Text, TouchableHighlight, View } from "@/tw"
 import Slider from "@react-native-community/slider"
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { StyleSheet } from "react-native"
 
-import { ReaderChromeIcon } from "./ReaderChromeIcon"
-import {
-  READER_THEME_CHECK_ICON_SIZE,
-  READER_THEME_OPTIONS,
-} from "./readerChromeConstants"
+import { READER_THEME_OPTIONS } from "./readerChromeConstants"
 
 /* ═══════════════════════════════════════
    Shared helpers
@@ -61,6 +57,40 @@ export function ThemeSwatches({
   palette: ReaderChromePalette
 }) {
   const { t } = useTranslation()
+  const swatches = READER_THEME_OPTIONS.map((option) => {
+    const active = value === option.key
+    return (
+      <TouchableHighlight
+        key={option.key}
+        underlayColor={mixInk(option.fg, option.swatch, 18)}
+        className="rounded-xl border-2"
+        style={[
+          styles.themeSwatch,
+          {
+            backgroundColor: option.swatch,
+            borderColor: active ? palette.accent : "transparent",
+          },
+        ]}
+        onPress={() => onChange(option.key)}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={`${t("reader.settingsTheme")}: ${t(option.label)}${
+          active ? `, ${t("common.selected")}` : ""
+        }`}
+      >
+        <View className="min-h-14 items-center justify-center px-1 py-1.5">
+          <Text
+            className="flex-shrink text-center text-base font-semibold"
+            style={{ color: option.fg }}
+            numberOfLines={1}
+          >
+            {t(option.label)}
+          </Text>
+        </View>
+      </TouchableHighlight>
+    )
+  })
+
   return (
     <SettingsSection testID="theme-swatches-section">
       <SectionLabel
@@ -68,56 +98,14 @@ export function ThemeSwatches({
         color={palette.textMuted}
       />
       <View testID="theme-swatches-grid" style={styles.themeGrid}>
-        {READER_THEME_OPTIONS.map((option) => {
-          const active = value === option.key
-          return (
-            <TouchableHighlight
-              key={option.key}
-              underlayColor={mixInk(option.fg, option.swatch, 18)}
-              className="relative min-h-[44px] items-center justify-center rounded-xl border-2"
-              style={[
-                styles.themeSwatch,
-                {
-                  backgroundColor: option.swatch,
-                  borderColor: active ? palette.accent : "transparent",
-                },
-              ]}
-              onPress={() => onChange(option.key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`${t("reader.settingsTheme")}: ${t(option.label)}${
-                active ? `, ${t("common.selected")}` : ""
-              }`}
-            >
-              <View
-                style={StyleSheet.absoluteFill}
-                className="items-center justify-center"
-              >
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: option.fg }}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.78}
-                >
-                  {t(option.label)}
-                </Text>
-                {active ? (
-                  <View
-                    className="absolute right-1.5 top-1.5 h-[18px] w-[18px] items-center justify-center rounded-full"
-                    style={{ backgroundColor: palette.accent }}
-                  >
-                    <ReaderChromeIcon
-                      name="check"
-                      size={READER_THEME_CHECK_ICON_SIZE}
-                      color={palette.bg}
-                    />
-                  </View>
-                ) : null}
-              </View>
-            </TouchableHighlight>
-          )
-        })}
+        {Array.from(
+          { length: Math.ceil(swatches.length / 4) },
+          (_, rowIndex) => (
+            <View key={rowIndex} style={styles.themeRow}>
+              {swatches.slice(rowIndex * 4, rowIndex * 4 + 4)}
+            </View>
+          ),
+        )}
       </View>
     </SettingsSection>
   )
@@ -281,6 +269,9 @@ export function SliderControl({
   formatValue: (v: number) => string
   palette: ReaderChromePalette
 }) {
+  const [draft, setDraft] = useState({ sourceValue: value, value })
+  const displayedValue = draft.sourceValue === value ? draft.value : value
+
   return (
     <SettingsSection>
       <SectionLabel label={label} color={palette.textMuted} />
@@ -290,15 +281,21 @@ export function SliderControl({
       >
         <Slider
           accessibilityLabel={label}
-          accessibilityValue={{ text: formatValue(value) }}
+          accessibilityValue={{ text: formatValue(displayedValue) }}
           accessibilityRole="adjustable"
           tapToSeek
           style={{ flex: 1 }}
           minimumValue={min}
           maximumValue={max}
           step={step}
-          value={value}
-          onValueChange={onChange}
+          value={displayedValue}
+          onValueChange={(nextValue) =>
+            setDraft({ sourceValue: value, value: nextValue })
+          }
+          onSlidingComplete={(nextValue) => {
+            setDraft({ sourceValue: value, value: nextValue })
+            onChange(nextValue)
+          }}
           minimumTrackTintColor={palette.accent}
           maximumTrackTintColor={palette.sliderTrack}
           thumbTintColor={palette.accent}
@@ -308,7 +305,7 @@ export function SliderControl({
             className="text-base font-semibold"
             style={{ color: palette.text }}
           >
-            {formatValue(value)}
+            {formatValue(displayedValue)}
           </Text>
         </View>
       </View>
@@ -321,15 +318,17 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   themeGrid: {
+    gap: 8,
+  },
+  themeRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
   },
   themeSwatch: {
-    flexBasis: "22%",
+    flexBasis: 0,
     flexGrow: 1,
-    flexShrink: 0,
-    minWidth: 68,
+    flexShrink: 1,
+    minWidth: 0,
   },
   optionGrid: {
     flexDirection: "row",

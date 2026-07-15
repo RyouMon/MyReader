@@ -1,12 +1,7 @@
-import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet"
-import { forwardRef, useCallback } from "react"
+import { BottomSheetScrollView } from "@expo/ui/community/bottom-sheet"
+import { forwardRef } from "react"
 import { useTranslation } from "react-i18next"
-import {
-  Platform,
-  View as RNView,
-  StyleSheet,
-  useWindowDimensions,
-} from "react-native"
+import { Platform, View as RNView, StyleSheet } from "react-native"
 
 import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type {
@@ -27,16 +22,8 @@ import {
   SliderControl,
   ThemeSwatches,
 } from "./SettingControls"
-import {
-  READER_SHEET_ELEVATION,
-  READER_SHEET_RADIUS,
-  READER_SHEET_SHADOW_COLOR,
-  READER_SHEET_SHADOW_OFFSET_X,
-  READER_SHEET_SHADOW_OFFSET_Y,
-  READER_SHEET_SHADOW_OPACITY,
-  READER_SHEET_SHADOW_RADIUS,
-} from "./readerChromeConstants"
-
+import ReaderSettingsSheetContainer from "./ReaderSettingsSheetContainer"
+import type { ReaderSettingsSheetRef } from "./ReaderSettingsSheetContainer.types"
 const ALIGNMENT_OPTIONS = [
   { key: "auto", labelKey: "reader.alignmentAuto" },
   { key: "justify", labelKey: "reader.alignmentJustify" },
@@ -68,8 +55,6 @@ const SPREAD_OPTIONS = [
   { key: "auto", labelKey: "reader.spreadAuto" },
   { key: "never", labelKey: "reader.spreadSingle" },
 ] as const satisfies { key: Spread; labelKey: string }[]
-
-const READER_SETTINGS_SHEET_MAX_HEIGHT_RATIO = 0.6
 
 export type ReflowSettingsBundle = {
   theme: ReaderTheme
@@ -257,39 +242,18 @@ function FixedGroup({
 }
 
 const ReaderSettingsSheet = forwardRef<
-  BottomSheetModal,
+  ReaderSettingsSheetRef,
   ReaderSettingsSheetProps
 >(function ReaderSettingsSheet(
   { palette, onDismiss, layout, reflow, fixed },
   ref,
 ) {
   const { t } = useTranslation()
-  const { height: windowHeight } = useWindowDimensions()
-
-  const renderHandle = useCallback(
-    () => (
-      <RNView style={styles.handleContainer}>
-        <RNView style={[styles.handle, { backgroundColor: palette.handle }]} />
-      </RNView>
-    ),
-    [palette.handle],
-  )
 
   return (
-    <BottomSheetModal
+    <ReaderSettingsSheetContainer
       ref={ref}
-      accessible={false}
-      enableDynamicSizing
-      maxDynamicContentSize={
-        windowHeight * READER_SETTINGS_SHEET_MAX_HEIGHT_RATIO
-      }
-      enablePanDownToClose
-      style={styles.sheetShadow}
-      backgroundStyle={[
-        styles.background,
-        { backgroundColor: palette.sheetSurface },
-      ]}
-      handleComponent={renderHandle}
+      backgroundColor={palette.sheetSurface}
       onDismiss={onDismiss}
     >
       <RNView style={styles.header}>
@@ -315,39 +279,14 @@ const ReaderSettingsSheet = forwardRef<
           ) : null}
         </View>
       </BottomSheetScrollView>
-    </BottomSheetModal>
+    </ReaderSettingsSheetContainer>
   )
 })
 
 export default ReaderSettingsSheet
+export type { ReaderSettingsSheetRef }
 
 const styles = StyleSheet.create({
-  background: {
-    borderTopLeftRadius: READER_SHEET_RADIUS,
-    borderTopRightRadius: READER_SHEET_RADIUS,
-  },
-  sheetShadow: {
-    borderTopLeftRadius: READER_SHEET_RADIUS,
-    borderTopRightRadius: READER_SHEET_RADIUS,
-    shadowColor: READER_SHEET_SHADOW_COLOR,
-    shadowOpacity: READER_SHEET_SHADOW_OPACITY,
-    shadowRadius: READER_SHEET_SHADOW_RADIUS,
-    shadowOffset: {
-      width: READER_SHEET_SHADOW_OFFSET_X,
-      height: READER_SHEET_SHADOW_OFFSET_Y,
-    },
-    elevation: READER_SHEET_ELEVATION,
-  },
-  handleContainer: {
-    alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-  },
   header: {
     paddingBottom: 4,
   },
