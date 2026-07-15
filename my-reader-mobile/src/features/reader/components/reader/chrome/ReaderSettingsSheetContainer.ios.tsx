@@ -56,8 +56,8 @@ const ReaderSettingsSheetContainer = forwardRef<
       ipadSheetRef.current?.dismiss()
       return
     }
-    finishPhoneDismiss()
-  }, [finishPhoneDismiss])
+    setPresented(false)
+  }, [])
 
   useImperativeHandle(
     ref,
@@ -96,8 +96,9 @@ const ReaderSettingsSheetContainer = forwardRef<
       <BottomSheet
         isPresented={presented}
         onIsPresentedChange={(isPresented) => {
-          if (!isPresented) finishPhoneDismiss()
+          if (!isPresented) setPresented(false)
         }}
+        onDismiss={finishPhoneDismiss}
       >
         <Group modifiers={modifiers}>
           <RNHostView>

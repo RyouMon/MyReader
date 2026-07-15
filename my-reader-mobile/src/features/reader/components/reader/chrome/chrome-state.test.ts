@@ -44,19 +44,22 @@ describe("chromeReducer", () => {
       )
     })
 
-    it("should ignore more button tap in non-chrome states when running the scenario", () => {
+    it("should expand actions when more button receives a tap from sheet state", () => {
+      expect(
+        chromeReducer(ChromeState.NavigationSheet, { type: "moreButtonTap" }),
+      ).toBe(ChromeState.Expanded)
+      expect(
+        chromeReducer(ChromeState.SettingsSheet, { type: "moreButtonTap" }),
+      ).toBe(ChromeState.Expanded)
+    })
+
+    it("should ignore more button tap in hidden or expanded states when running the scenario", () => {
       expect(
         chromeReducer(ChromeState.Reading, { type: "moreButtonTap" }),
       ).toBe(ChromeState.Reading)
       expect(
         chromeReducer(ChromeState.Expanded, { type: "moreButtonTap" }),
       ).toBe(ChromeState.Expanded)
-      expect(
-        chromeReducer(ChromeState.NavigationSheet, { type: "moreButtonTap" }),
-      ).toBe(ChromeState.NavigationSheet)
-      expect(
-        chromeReducer(ChromeState.SettingsSheet, { type: "moreButtonTap" }),
-      ).toBe(ChromeState.SettingsSheet)
     })
   })
 

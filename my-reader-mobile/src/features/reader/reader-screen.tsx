@@ -298,20 +298,6 @@ export default function ReaderScreen() {
     dispatch({ type: "contentTap" })
   }, [])
 
-  const handleContentTap = useCallback(() => {
-    if (
-      chromeState === ChromeState.NavigationSheet ||
-      chromeState === ChromeState.SettingsSheet
-    ) {
-      if (chromeState === ChromeState.NavigationSheet)
-        navigationSheetRef.current?.dismiss()
-      if (chromeState === ChromeState.SettingsSheet)
-        settingsSheetRef.current?.dismiss()
-      return
-    }
-    dispatch({ type: "contentTap" })
-  }, [chromeState])
-
   const navigateToLocator = useCallback(
     (locator: Locator, tocItem?: ReaderTocItem) => {
       if (isReflowReady) {
@@ -363,16 +349,27 @@ export default function ReaderScreen() {
   }, [])
 
   useEffect(() => {
-    if (chromeState === ChromeState.NavigationSheet) {
-      // Use setTimeout to avoid calling present during state transition
-      requestAnimationFrame(() => navigationSheetRef.current?.present())
+    if (chromeState !== ChromeState.NavigationSheet) {
+      navigationSheetRef.current?.dismiss()
+      return
     }
+
+    const frame = requestAnimationFrame(() =>
+      navigationSheetRef.current?.present(),
+    )
+    return () => cancelAnimationFrame(frame)
   }, [chromeState])
 
   useEffect(() => {
-    if (chromeState === ChromeState.SettingsSheet) {
-      requestAnimationFrame(() => settingsSheetRef.current?.present())
+    if (chromeState !== ChromeState.SettingsSheet) {
+      settingsSheetRef.current?.dismiss()
+      return
     }
+
+    const frame = requestAnimationFrame(() =>
+      settingsSheetRef.current?.present(),
+    )
+    return () => cancelAnimationFrame(frame)
   }, [chromeState])
 
   const progressPercent = readerState?.progress ?? 0
@@ -734,15 +731,6 @@ export default function ReaderScreen() {
                   readerLoadingOverlay}
               </View>
             </ErrorBoundary>
-
-            {/* Touch blocker: prevent page turns while sheets are open (states 4/5) */}
-            {(chromeState === ChromeState.NavigationSheet ||
-              chromeState === ChromeState.SettingsSheet) && (
-              <Pressable
-                className="absolute inset-0 z-10"
-                onPress={handleContentTap}
-              />
-            )}
 
             {showChapterLabel ? (
               <ReaderChapterLabel

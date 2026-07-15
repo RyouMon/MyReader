@@ -39,7 +39,12 @@ export function chromeReducer(
       return ChromeState.Reading
 
     case "moreButtonTap":
-      if (state === ChromeState.Chrome) return ChromeState.Expanded
+      if (
+        state === ChromeState.Chrome ||
+        state === ChromeState.NavigationSheet ||
+        state === ChromeState.SettingsSheet
+      )
+        return ChromeState.Expanded
       return state
 
     case "navigationPillTap":

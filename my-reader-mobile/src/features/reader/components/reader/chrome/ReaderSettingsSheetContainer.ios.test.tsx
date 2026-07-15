@@ -107,7 +107,7 @@ function loadContainer(isPad: boolean) {
 }
 
 describe("ReaderSettingsSheetContainer on iOS", () => {
-  it("should_preserve_half_height_native_sheet_when_running_on_iphone", () => {
+  it("should preserve half height native sheet when running on iPhone", () => {
     const ReaderSettingsSheetContainer = loadContainer(false)
     const ref = mockReact.createRef<ReaderSettingsSheetRef>()
     const onDismiss = jest.fn()
@@ -145,10 +145,14 @@ describe("ReaderSettingsSheetContainer on iOS", () => {
         .props.onIsPresentedChange(false),
     )
 
+    expect(onDismiss).not.toHaveBeenCalled()
+
+    act(() => screen.getByTestId("ios-settings-native-sheet").props.onDismiss())
+
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it("should_use_navigation_sized_native_sheet_when_running_on_ipad", () => {
+  it("should use navigation sized native sheet when running on iPad", () => {
     const ReaderSettingsSheetContainer = loadContainer(true)
     const ref = mockReact.createRef<ReaderSettingsSheetRef>()
     const onDismiss = jest.fn()
