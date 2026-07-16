@@ -1,4 +1,8 @@
-import { READER_THEME_PRESETS } from "@my-reader/tools/reader-themes"
+import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
+import {
+  READER_THEME_PRESETS,
+  readerThemePresetFor,
+} from "@my-reader/tools/reader-themes"
 import {
   enhanceTocItemsWithContentLocators,
   linksToTocItems,
@@ -15,6 +19,7 @@ import {
   type Links,
   Locator,
   LocatorLocations,
+  LocatorText,
   type Publication,
 } from "@readium/shared"
 import { isTauri } from "@tauri-apps/api/core"
@@ -40,6 +45,7 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
+import { ReadiumSearchPanel } from "@/components/reader/readium/ReadiumSearchPanel"
 import {
   type ReadiumBookmarkRow,
   ReadiumTocPanel,
@@ -70,6 +76,7 @@ import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
+import { useReaderSearch } from "@/hooks/reader/useReaderSearch"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { deserializeReaderBookmarkLocator } from "@/lib/readium/bookmarks"
 import {
@@ -83,6 +90,11 @@ import {
   type ReflowThemePreset,
   type SpreadPreference,
 } from "@/lib/readium/epubReaderPrefs"
+import { EpubSearchService } from "@/lib/readium/epubSearch"
+import {
+  applyEpubSearchHighlight,
+  clearEpubSearchHighlight,
+} from "@/lib/readium/epubSearchHighlight"
 import {
   coerceReaderFontOption,
   createReaderFontInjectables,
@@ -197,6 +209,7 @@ function tocItemToReadiumRow(item: ReaderTocItem): ReadiumTocRow {
 }
 
 function readiumLocatorToReaderLocator(locator: Locator): ReaderLocator {
+  const otherLocations = locator.locations.otherLocations
   return {
     href: locator.href,
     type: locator.type,
@@ -211,6 +224,10 @@ function readiumLocatorToReaderLocator(locator: Locator): ReaderLocator {
               0,
             position: locator.locations.position,
             totalProgression: locator.locations.totalProgression,
+            cssSelector: otherLocations?.get("cssSelector"),
+            partialCfi: otherLocations?.get("partialCfi"),
+            domRange: otherLocations?.get("domRange"),
+            otherLocations,
           },
         }
       : { locations: { progression: 0 } }),
@@ -221,6 +238,26 @@ function readiumLocatorToReaderLocator(locator: Locator): ReaderLocator {
 function readerLocatorToReadiumLocator(locator: ReaderLocator): Locator {
   const [href, hrefFragment] = locator.href.split("#", 2)
   const fragments = locator.locations?.fragments ?? []
+  const otherLocations = new Map<string, unknown>()
+  const sourceOtherLocations = locator.locations?.otherLocations
+  if (sourceOtherLocations instanceof Map) {
+    sourceOtherLocations.forEach((value, key) => {
+      otherLocations.set(key, value)
+    })
+  } else if (sourceOtherLocations) {
+    Object.entries(sourceOtherLocations).forEach(([key, value]) => {
+      otherLocations.set(key, value)
+    })
+  }
+  if (locator.locations?.cssSelector) {
+    otherLocations.set("cssSelector", locator.locations.cssSelector)
+  }
+  if (locator.locations?.partialCfi) {
+    otherLocations.set("partialCfi", locator.locations.partialCfi)
+  }
+  if (locator.locations?.domRange) {
+    otherLocations.set("domRange", locator.locations.domRange)
+  }
   return new Locator({
     href,
     type: locator.type,
@@ -233,7 +270,9 @@ function readerLocatorToReadiumLocator(locator: ReaderLocator): Locator {
       progression: locator.locations?.progression ?? 0,
       position: locator.locations?.position,
       totalProgression: locator.locations?.totalProgression,
+      otherLocations: otherLocations.size > 0 ? otherLocations : undefined,
     }),
+    text: locator.text ? new LocatorText(locator.text) : undefined,
   })
 }
 
@@ -370,7 +409,11 @@ async function resolveEpubPositions(
 async function resolveEpubNavigationData(
   publication: Publication,
   isFixedLayout: boolean,
-): Promise<{ positions: Locator[]; contentElements: ReaderContentElement[] }> {
+): Promise<{
+  positions: Locator[]
+  contentElements: ReaderContentElement[]
+  resources: EpubTextResource[]
+}> {
   const resourcesPromise = isFixedLayout
     ? Promise.resolve([])
     : loadEpubTextResources(publication)
@@ -378,6 +421,7 @@ async function resolveEpubNavigationData(
   const resources = await resourcesPromise
   return {
     positions,
+    resources,
     contentElements: isFixedLayout
       ? []
       : extractEpubContentLocators(
@@ -1036,15 +1080,22 @@ export function ReadiumEpubReader({
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
-    useReaderPanels()
+  const {
+    tocOpen,
+    searchOpen,
+    settingsOpen,
+    toggleToc,
+    toggleSearch,
+    toggleSettings,
+    closePanels,
+  } = useReaderPanels()
   const {
     readerRootRef,
     chromeVisible,
     showChrome,
     scheduleChromeHide,
     handlePointerPosition,
-  } = useReadingChrome(false, tocOpen || settingsOpen)
+  } = useReadingChrome(false, tocOpen || searchOpen || settingsOpen)
   useReaderIframePointerBridge(containerRef, handlePointerPosition)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -1084,6 +1135,11 @@ export function ReadiumEpubReader({
   const patchReflowableSettings = useAppUiStore(
     (s) => s.patchReflowableSettings,
   )
+  const searchHighlightTint = useMemo(() => {
+    const preset = readerThemePresetFor(readerSettings.theme)
+    return readerChromePalette(preset.foregroundColor, preset.backgroundColor)
+      .accent
+  }, [readerSettings.theme])
 
   const isFixedLayout = useMemo(
     () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
@@ -1103,11 +1159,15 @@ export function ReadiumEpubReader({
   const [epubContentElements, setEpubContentElements] = useState<
     ReaderContentElement[]
   >([])
+  const [epubTextResources, setEpubTextResources] = useState<
+    EpubTextResource[]
+  >([])
 
   useEffect(() => {
     let cancelled = false
     setEpubPositions([])
     setEpubContentElements([])
+    setEpubTextResources([])
     setReadiumNavReady(false)
     setContentSettling(true)
     setCurrentLocator(null)
@@ -1116,16 +1176,18 @@ export function ReadiumEpubReader({
     setSelectedTocItem(null)
 
     void resolveEpubNavigationData(publication, isFixedLayout)
-      .then(({ positions, contentElements }) => {
+      .then(({ positions, contentElements, resources }) => {
         if (cancelled) return
         setEpubPositions(positions)
         setEpubContentElements(contentElements)
+        setEpubTextResources(resources)
       })
       .catch((error: unknown) => {
         if (cancelled) return
         console.error("Failed to resolve EPUB positions.", error)
         setEpubPositions(createReadingOrderEpubPositions(publication))
         setEpubContentElements([])
+        setEpubTextResources([])
       })
 
     return () => {
@@ -1137,6 +1199,41 @@ export function ReadiumEpubReader({
     () => epubPositions.map(readiumLocatorToReaderLocator),
     [epubPositions],
   )
+
+  const epubSearchService = useMemo(
+    () =>
+      !isFixedLayout && epubTextResources.length > 0
+        ? new EpubSearchService(epubTextResources, readerPositions)
+        : null,
+    [epubTextResources, isFixedLayout, readerPositions],
+  )
+  const {
+    capabilities: searchCapabilities,
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    locators: searchLocators,
+    resultCount: searchResultCount,
+    done: searchDone,
+    loading: searchLoading,
+    error: searchError,
+    status: searchStatus,
+    activeLocator: activeSearchLocator,
+    selectLocator: selectSearchLocator,
+    search: searchInBook,
+    loadMore: loadMoreSearchResults,
+    clear: clearSearch,
+  } = useReaderSearch(epubSearchService)
+
+  useEffect(() => {
+    const navigator = navigatorRef.current
+    if (!epubSearchService && navigator) {
+      clearEpubSearchHighlight(navigator)
+    }
+    return () => {
+      const activeNavigator = navigatorRef.current
+      if (activeNavigator) clearEpubSearchHighlight(activeNavigator)
+    }
+  }, [epubSearchService])
 
   const tocItems = useMemo(() => {
     const items = linksToTocItems(
@@ -1401,6 +1498,49 @@ export function ReadiumEpubReader({
       finishContentNavigation,
       isFixedLayout,
       publication.readingOrder.items.length,
+    ],
+  )
+
+  const onSearchSubmit = useCallback(() => {
+    const navigator = navigatorRef.current
+    if (navigator) clearEpubSearchHighlight(navigator)
+    void searchInBook()
+  }, [searchInBook])
+
+  const onSearchClear = useCallback(() => {
+    const navigator = navigatorRef.current
+    if (navigator) clearEpubSearchHighlight(navigator)
+    clearSearch()
+  }, [clearSearch])
+
+  const onSearchSelect = useCallback(
+    (readerLocator: ReaderLocator) => {
+      const nav = navigatorRef.current
+      if (!nav) return
+
+      const locator = readerLocatorToReadiumLocator(readerLocator)
+      const sequence = beginContentNavigation(locator)
+      clearEpubSearchHighlight(nav)
+      selectSearchLocator(readerLocator)
+      nav.go(locator, false, (ok) => {
+        finishContentNavigation(sequence)
+        if (sequence !== navigationSequenceRef.current) return
+        if (!ok) return
+        window.requestAnimationFrame(() => {
+          if (sequence !== navigationSequenceRef.current) return
+          if (!applyEpubSearchHighlight(nav, locator, searchHighlightTint)) {
+            console.warn("Failed to highlight the active EPUB search result.")
+          }
+        })
+      })
+      closePanels()
+    },
+    [
+      beginContentNavigation,
+      closePanels,
+      finishContentNavigation,
+      searchHighlightTint,
+      selectSearchLocator,
     ],
   )
 
@@ -1933,7 +2073,7 @@ export function ReadiumEpubReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || settingsOpen}
+      panelsOpen={tocOpen || searchOpen || settingsOpen}
       onClosePanels={closePanels}
       theme={readerSettings.theme}
       readerMode={isFixedLayout ? "fixed-layout" : undefined}
@@ -1943,8 +2083,12 @@ export function ReadiumEpubReader({
         bookmarked: readerBookmarks.bookmarked,
         bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
+        searchOpen,
         settingsOpen,
         onToggleToc: toggleToc,
+        onToggleSearch: searchCapabilities.searchable
+          ? toggleSearch
+          : undefined,
         onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
@@ -1964,6 +2108,29 @@ export function ReadiumEpubReader({
           onBookmarkDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
+      }
+      searchPanel={
+        searchCapabilities.searchable ? (
+          <ReadiumSearchPanel
+            visible={searchOpen}
+            query={searchQuery}
+            locators={searchLocators}
+            toc={tocItems}
+            positions={readerPositions}
+            resultCount={searchResultCount}
+            loading={searchLoading}
+            done={searchDone}
+            error={searchError}
+            status={searchStatus}
+            activeLocator={activeSearchLocator}
+            onQueryChange={setSearchQuery}
+            onSearch={onSearchSubmit}
+            onClear={onSearchClear}
+            onLoadMore={loadMoreSearchResults}
+            onSelect={onSearchSelect}
+            onClose={closePanels}
+          />
+        ) : null
       }
       settingsPanel={
         <EpubSettingsPanel

@@ -6,9 +6,10 @@ import type {
   FormatRegistration,
   PublicationSnapshot,
   ContentResult,
+  SearchCapabilities,
   SearchOptions,
   SearchSession,
-  SearchLocatorCollection,
+  SearchResultPage,
 } from "./types"
 
 /**
@@ -33,13 +34,15 @@ export type ReadiumModuleMethods = {
   getPublicationSnapshot: (id: string) => Promise<PublicationSnapshot>
   getContent: (id: string, fromLocator?: Locator) => Promise<ContentResult>
 
-  // Search (REP-007, reserved — Phase 2)
+  // Search (REP-007)
+  getSearchCapabilities: (publicationId: string) => Promise<SearchCapabilities>
   search: (
     publicationId: string,
     query: string,
     options?: SearchOptions,
   ) => Promise<SearchSession>
-  searchNext: (sessionId: string) => Promise<SearchLocatorCollection | null>
+  searchNext: (sessionId: string) => Promise<SearchResultPage>
+  searchCancel: (sessionId: string) => Promise<void>
 }
 
 export const ReadiumModule =

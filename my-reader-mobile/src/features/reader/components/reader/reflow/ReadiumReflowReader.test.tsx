@@ -1,7 +1,12 @@
 import React from "react"
 import { View } from "react-native"
 import { act, render } from "@testing-library/react-native"
-import type { Link, Locator, PublicationReadyEvent } from "@my-reader/readium"
+import type {
+  DecorationGroup,
+  Link,
+  Locator,
+  PublicationReadyEvent,
+} from "@my-reader/readium"
 
 import ReadiumReflowReader, {
   type ReadiumReflowReaderRef,
@@ -12,6 +17,7 @@ const mockGoTo = jest.fn()
 let mockReadiumProps: {
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onLocationChange?: (locator: Locator) => void
+  decorations?: DecorationGroup[]
 } | null = null
 
 jest.mock("@my-reader/readium", () => {
@@ -24,6 +30,7 @@ jest.mock("@my-reader/readium", () => {
       props: {
         onPublicationReady?: (event: PublicationReadyEvent) => void
         onLocationChange?: (locator: Locator) => void
+        decorations?: DecorationGroup[]
       },
       ref: React.Ref<unknown>,
     ) {
@@ -38,6 +45,9 @@ jest.mock("@my-reader/readium", () => {
     },
   }
 })
+
+const mockGetContent = jest.requireMock("@my-reader/readium").publication
+  .getContent as jest.Mock<Promise<Record<string, unknown>>, []>
 
 function locator(
   href: string,
@@ -74,7 +84,62 @@ function readerElement(
 describe("ReadiumReflowReader", () => {
   beforeEach(() => {
     mockGoTo.mockClear()
+    mockGetContent.mockReset()
+    mockGetContent.mockResolvedValue({ utterances: [] })
     mockReadiumProps = null
+  })
+
+  it("should enhance shared-resource toc items from native content locators", async () => {
+    const onTocReady = jest.fn()
+    const positions = Array.from({ length: 5 }, (_, index) =>
+      locator("OEBPS/chapter.xhtml", {
+        position: index + 1,
+        progression: index / 5,
+      }),
+    )
+    mockGetContent.mockResolvedValueOnce({
+      content: [
+        {
+          text: "第一次见面",
+          locator: locator("OEBPS/chapter.xhtml", { progression: 0.2 }),
+        },
+        {
+          text: "再次相遇",
+          locator: locator("OEBPS/chapter.xhtml", { progression: 0.6 }),
+        },
+      ],
+    })
+    readerElement({ onTocReady })
+
+    await act(async () => {
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: [], title: "Book" },
+        positions,
+        publicationId: "publication",
+        tableOfContents: [
+          {
+            href: "chapter.xhtml",
+            title: "第二章",
+            children: [
+              { href: "chapter.xhtml", title: "第一次见面" },
+              { href: "chapter.xhtml", title: "再次相遇" },
+            ],
+          },
+        ],
+      } as PublicationReadyEvent)
+    })
+
+    const enhancedToc = onTocReady.mock.calls.at(-1)?.[0]
+    expect(enhancedToc?.[1]).toMatchObject({
+      label: "第一次见面",
+      locatorSource: "content",
+      locator: { locations: { progression: 0.2 } },
+    })
+    expect(enhancedToc?.[2]).toMatchObject({
+      label: "再次相遇",
+      locatorSource: "content",
+      locator: { locations: { progression: 0.6 } },
+    })
   })
 
   it("should update state from the native location after selecting a parent toc chapter", () => {
@@ -191,5 +256,63 @@ describe("ReadiumReflowReader", () => {
         locator: positions[1],
       }),
     )
+  })
+
+  it("should forward active search decorations to ReadiumView", () => {
+    const decorations: DecorationGroup[] = [
+      {
+        name: "search",
+        decorations: [
+          {
+            id: "active-search-result",
+            locator: locator("OEBPS/chapter.xhtml", { position: 1 }),
+            style: { type: "highlight", tint: "#C4622D", isActive: false },
+          },
+        ],
+      },
+    ]
+    readerElement({ decorations })
+
+    expect(mockReadiumProps?.decorations).toEqual(decorations)
+  })
+
+  it("should expose the publication id when Readium reports readiness", () => {
+    const onPublicationReady = jest.fn()
+    readerElement({ onPublicationReady })
+
+    act(() => {
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: [], title: "Book" },
+        positions: [locator("OEBPS/chapter.xhtml", { position: 1 })],
+        publicationId: "publication",
+        tableOfContents: [],
+      } as PublicationReadyEvent)
+    })
+
+    expect(onPublicationReady).toHaveBeenCalledWith("publication")
+  })
+
+  it("should notify after user navigation follows programmatic navigation", () => {
+    const readerRef = React.createRef<ReadiumReflowReaderRef>()
+    const onUserLocationChange = jest.fn()
+    const target = locator("OEBPS/chapter.xhtml", {
+      position: 2,
+      totalProgression: 0.2,
+    })
+    const nextPage = locator("OEBPS/chapter.xhtml", {
+      position: 3,
+      progression: 0.3,
+      totalProgression: 0.3,
+    })
+    readerElement({ onUserLocationChange }, readerRef)
+
+    act(() => readerRef.current?.goTo(target))
+    act(() => mockReadiumProps?.onLocationChange?.(target))
+
+    expect(onUserLocationChange).not.toHaveBeenCalled()
+
+    act(() => mockReadiumProps?.onLocationChange?.(nextPage))
+
+    expect(onUserLocationChange).toHaveBeenCalledTimes(1)
   })
 })

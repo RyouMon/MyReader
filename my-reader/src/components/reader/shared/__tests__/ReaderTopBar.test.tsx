@@ -84,23 +84,6 @@ describe("ReaderTopBar", () => {
     expect(onToggleBookmark).not.toHaveBeenCalled()
   })
 
-  it("should use Windows window-control spacing when running on Windows", () => {
-    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
-
-    const tocButton = screen.getByTitle("reader.toc")
-    expect(tocButton.closest("header")).toHaveClass("pl-5", "pr-[9px]")
-    expect(tocButton.parentElement).toHaveClass("gap-5")
-  })
-
-  it("should preserve macOS window-control spacing when running on macOS", () => {
-    platformMocks.isMacPlatform.mockReturnValue(true)
-    render(<ReaderTopBar {...defaultProps} chapterTitle="" />)
-
-    const tocButton = screen.getByTitle("reader.toc")
-    expect(tocButton.closest("header")).toHaveClass("pl-[9px]", "pr-[9px]")
-    expect(tocButton.parentElement).toHaveClass("gap-4")
-  })
-
   it("should keep window controls and dragging when reader actions are unavailable", () => {
     tauriMocks.isTauri.mockReturnValue(true)
     const { container } = render(

@@ -6,8 +6,8 @@ import ReadiumShared
 /// Exposes the `ReadiumView` (props + events) and the open-architecture
 /// extension points (REP-003~009): view-tag-based imperative navigation,
 /// Streamer/opener configuration, custom format registration, Publication
-/// handle operations (snapshot + content iteration), and the reserved Search
-/// API. See `src/ReadiumModule.ts` for the JS contract.
+/// handle operations (snapshot + content iteration), and the Search API. See
+/// `src/ReadiumModule.ts` for the JS contract.
 public final class ReadiumModule: Module {
   public func definition() -> ModuleDefinition {
     Name("Readium")
@@ -116,13 +116,208 @@ public final class ReadiumModule: Module {
       }
     }
 
-    // MARK: - Search (REP-007, reserved — Phase 2)
+    // MARK: - Search (REP-007)
+
+    AsyncFunction("getSearchCapabilities") { (publicationId: String, promise: Promise) in
+      guard let publication = PublicationStore.shared.get(publicationId) else {
+        promise.reject(
+          "ERR_PUBLICATION_NOT_FOUND",
+          "Publication not found for id: \(publicationId)"
+        )
+        return
+      }
+
+      let searchable = isSearchableReflowableEpub(publication)
+      promise.resolve([
+        "searchable": searchable,
+        "options": searchable
+          ? searchOptionsToDict(publication.searchOptions)
+          : [:] as [String: Any],
+      ] as [String: Any])
+    }
 
     AsyncFunction("search") { (publicationId: String, query: String, options: SearchOptionsRecord?, promise: Promise) in
-      promise.reject("ERR_SEARCH_NOT_IMPLEMENTED", "Search (REP-007) is reserved for Phase 2")
+      guard let publication = PublicationStore.shared.get(publicationId) else {
+        promise.reject(
+          "ERR_PUBLICATION_NOT_FOUND",
+          "Publication not found for id: \(publicationId)"
+        )
+        return
+      }
+      guard isSearchableReflowableEpub(publication) else {
+        promise.reject(
+          "ERR_SEARCH_NOT_SEARCHABLE",
+          "Publication does not expose an EPUB search service"
+        )
+        return
+      }
+
+      let pending = SearchSessionStore.shared.begin(publicationId: publicationId)
+      let nativeOptions = readiumSearchOptions(
+        options,
+        supported: publication.searchOptions
+      )
+      let task = Task {
+        let result = await publication.search(query: query, options: nativeOptions)
+
+        if Task.isCancelled {
+          if case let .success(iterator) = result {
+            iterator.close()
+          }
+          _ = SearchSessionStore.shared.discard(pending)
+          rejectSearchCancelled(promise)
+          return
+        }
+
+        switch result {
+        case let .success(iterator):
+          guard let session = SearchSessionStore.shared.install(iterator, for: pending) else {
+            iterator.close()
+            rejectSearchCancelled(promise)
+            return
+          }
+
+          var response: [String: Any] = ["id": session.id]
+          if let resultCount = iterator.resultCount {
+            response["resultCount"] = resultCount
+          }
+          if !session.deliverIfActive({ promise.resolve(response) }) {
+            rejectSearchCancelled(promise)
+          }
+
+        case let .failure(error):
+          guard SearchSessionStore.shared.discard(pending) else {
+            rejectSearchCancelled(promise)
+            return
+          }
+          rejectSearchError(error, promise: promise)
+        }
+      }
+      pending.attach(task: task)
     }
+
     AsyncFunction("searchNext") { (sessionId: String, promise: Promise) in
-      promise.reject("ERR_SEARCH_NOT_IMPLEMENTED", "Search (REP-007) is reserved for Phase 2")
+      guard let session = SearchSessionStore.shared.session(id: sessionId) else {
+        promise.reject(
+          "ERR_SEARCH_SESSION_NOT_FOUND",
+          "Search session not found for id: \(sessionId)"
+        )
+        return
+      }
+
+      let started = session.startNext {
+        defer { session.finishNext() }
+
+        let result = await session.iterator.next()
+        guard !Task.isCancelled else {
+          rejectSearchCancelled(promise)
+          return
+        }
+
+        switch result {
+        case let .success(collection):
+          var response: [String: Any] = [
+            "locators": collection?.locators.map { locatorToDict($0) } ?? [],
+            "done": collection == nil,
+          ]
+          if let resultCount = session.iterator.resultCount {
+            response["resultCount"] = resultCount
+          }
+
+          let delivered: Bool
+          if collection == nil {
+            delivered = session.complete { promise.resolve(response) }
+            SearchSessionStore.shared.remove(session)
+          } else {
+            delivered = session.deliverIfActive { promise.resolve(response) }
+          }
+          if !delivered {
+            rejectSearchCancelled(promise)
+          }
+
+        case let .failure(error):
+          let delivered = session.complete {
+            rejectSearchError(error, promise: promise)
+          }
+          SearchSessionStore.shared.remove(session)
+          if !delivered {
+            rejectSearchCancelled(promise)
+          }
+        }
+      }
+      if !started {
+        promise.reject(
+          "ERR_SEARCH_IN_PROGRESS",
+          "A search page request is already running or the session is closed"
+        )
+      }
     }
+
+    AsyncFunction("searchCancel") { (sessionId: String) in
+      SearchSessionStore.shared.cancel(sessionId: sessionId)
+    }
+
+    OnDestroy {
+      SearchSessionStore.shared.cancelAll()
+    }
+  }
+}
+
+private func searchOptionsToDict(
+  _ options: ReadiumShared.SearchOptions
+) -> [String: Any] {
+  var result: [String: Any] = [:]
+  if let value = options.caseSensitive { result["caseSensitive"] = value }
+  if let value = options.diacriticSensitive { result["diacriticSensitive"] = value }
+  if let value = options.wholeWord { result["wholeWord"] = value }
+  if let value = options.exact { result["exact"] = value }
+  if let value = options.language { result["language"] = value.code.bcp47 }
+  if let value = options.regularExpression { result["regularExpression"] = value }
+  return result
+}
+
+private func isSearchableReflowableEpub(_ publication: Publication) -> Bool {
+  publication.conforms(to: .epub)
+    && publication.metadata.layout != .fixed
+    && publication.isSearchable
+}
+
+private func readiumSearchOptions(
+  _ requested: SearchOptionsRecord?,
+  supported: ReadiumShared.SearchOptions
+) -> ReadiumShared.SearchOptions? {
+  guard let requested else { return nil }
+
+  return ReadiumShared.SearchOptions(
+    caseSensitive: supported.caseSensitive == nil ? nil : requested.caseSensitive,
+    diacriticSensitive: supported.diacriticSensitive == nil
+      ? nil
+      : requested.diacriticSensitive,
+    wholeWord: supported.wholeWord == nil ? nil : requested.wholeWord,
+    exact: supported.exact == nil ? nil : requested.exact,
+    language: supported.language == nil
+      ? nil
+      : requested.language.map { Language(code: .bcp47($0)) },
+    regularExpression: supported.regularExpression == nil
+      ? nil
+      : requested.regularExpression
+  )
+}
+
+private func rejectSearchCancelled(_ promise: Promise) {
+  promise.reject("ERR_SEARCH_CANCELLED", "Search was cancelled")
+}
+
+private func rejectSearchError(_ error: SearchError, promise: Promise) {
+  switch error {
+  case .publicationNotSearchable:
+    promise.reject(
+      "ERR_SEARCH_NOT_SEARCHABLE",
+      "Publication does not expose a search service"
+    )
+  case let .badQuery(cause):
+    promise.reject("ERR_SEARCH_BAD_QUERY", "Invalid search query: \(cause)")
+  case let .reading(cause):
+    promise.reject("ERR_SEARCH_READING", "Failed to read publication content: \(cause)")
   }
 }

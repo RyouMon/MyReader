@@ -35,6 +35,12 @@ describe("chromeReducer", () => {
         chromeReducer(ChromeState.SettingsSheet, { type: "contentTap" }),
       ).toBe(ChromeState.Chrome)
     })
+
+    it("should return to chrome when tapping content in search sheet state", () => {
+      expect(
+        chromeReducer(ChromeState.SearchSheet, { type: "contentTap" }),
+      ).toBe(ChromeState.Chrome)
+    })
   })
 
   describe("When more button is tapped", () => {
@@ -50,6 +56,9 @@ describe("chromeReducer", () => {
       ).toBe(ChromeState.Expanded)
       expect(
         chromeReducer(ChromeState.SettingsSheet, { type: "moreButtonTap" }),
+      ).toBe(ChromeState.Expanded)
+      expect(
+        chromeReducer(ChromeState.SearchSheet, { type: "moreButtonTap" }),
       ).toBe(ChromeState.Expanded)
     })
 
@@ -93,6 +102,26 @@ describe("chromeReducer", () => {
       ).toBe(ChromeState.Reading)
       expect(
         chromeReducer(ChromeState.Chrome, { type: "settingsPillTap" }),
+      ).toBe(ChromeState.Chrome)
+    })
+  })
+
+  describe("When search pill is tapped", () => {
+    it("should open search sheet when tapping search in expanded state", () => {
+      expect(
+        chromeReducer(ChromeState.Expanded, { type: "searchPillTap" }),
+      ).toBe(ChromeState.SearchSheet)
+    })
+
+    it("should return to reading when selecting a search result", () => {
+      expect(
+        chromeReducer(ChromeState.SearchSheet, { type: "searchSelect" }),
+      ).toBe(ChromeState.Reading)
+    })
+
+    it("should return to chrome when dismissing search", () => {
+      expect(
+        chromeReducer(ChromeState.SearchSheet, { type: "searchDismiss" }),
       ).toBe(ChromeState.Chrome)
     })
   })

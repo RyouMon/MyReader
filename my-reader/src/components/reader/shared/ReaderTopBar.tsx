@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Bookmark, List, Settings } from "lucide-react"
+import { Bookmark, List, Search, Settings } from "lucide-react"
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -18,10 +18,12 @@ interface ReaderTopBarProps {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleSearch?: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
   /** 指针离开顶栏（例如移入 iframe 正文）时触发，用于延迟隐藏工具栏。 */
@@ -35,10 +37,12 @@ export function ReaderTopBar({
   bookmarked,
   bookmarkDisabled = false,
   tocOpen,
+  searchOpen,
   settingsOpen,
   showReaderActions = true,
   previewNativeMacFullscreen = false,
   onToggleToc,
+  onToggleSearch,
   onToggleBookmark,
   onToggleSettings,
   scheduleChromeHide,
@@ -295,6 +299,16 @@ export function ReaderTopBar({
       <div className="relative z-10 flex items-center justify-end gap-[9px]">
         {showReaderActions ? (
           <>
+            {onToggleSearch ? (
+              <TopBarButton
+                title={t("reader.search")}
+                onClick={onToggleSearch}
+                active={searchOpen}
+                chromeVisible={visible}
+              >
+                <Search className="size-[17px]" />
+              </TopBarButton>
+            ) : null}
             <TopBarButton
               title={t("reader.settings")}
               onClick={onToggleSettings}

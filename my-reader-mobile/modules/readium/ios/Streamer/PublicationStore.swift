@@ -16,14 +16,26 @@ final class PublicationStore {
   private init() {}
 
   func set(_ id: String, _ publication: Publication) {
-    queue.sync { publications[id] = publication }
+    queue.sync {
+      if let previous = publications[id], previous !== publication {
+        SearchSessionStore.shared.cancel(publicationId: id)
+      }
+      publications[id] = publication
+    }
   }
 
   func get(_ id: String) -> Publication? {
     queue.sync { publications[id] }
   }
 
-  func remove(_ id: String) {
-    queue.sync { publications.removeValue(forKey: id) }
+  func remove(_ id: String, ifSameAs publication: Publication? = nil) {
+    queue.sync {
+      guard publication == nil || publications[id] === publication else {
+        return
+      }
+      if publications.removeValue(forKey: id) != nil {
+        SearchSessionStore.shared.cancel(publicationId: id)
+      }
+    }
   }
 }

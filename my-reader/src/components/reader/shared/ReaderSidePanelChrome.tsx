@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import { X } from "lucide-react"
+import type { ScrollbarsAutoHideBehavior } from "overlayscrollbars"
 import { type CSSProperties, type ReactNode, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar"
@@ -99,17 +100,26 @@ export function ReaderSidePanelHeader({
 type ReaderSidePanelScrollAreaProps = {
   children: ReactNode
   className?: string
+  scrollbarAutoHide?: ScrollbarsAutoHideBehavior
 }
 
 /** 侧栏共用的 OverlayScrollbars 纵向滚动区域。 */
 export function ReaderSidePanelScrollArea({
   children,
   className,
+  scrollbarAutoHide,
 }: ReaderSidePanelScrollAreaProps) {
   const scrollHostRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const scrollContentRef = useRef<HTMLDivElement>(null)
 
-  useOverlayScrollbar(scrollHostRef, scrollViewportRef)
+  useOverlayScrollbar(
+    scrollHostRef,
+    scrollViewportRef,
+    true,
+    scrollContentRef,
+    scrollbarAutoHide,
+  )
 
   return (
     <div
@@ -121,7 +131,9 @@ export function ReaderSidePanelScrollArea({
         ref={scrollViewportRef}
         className="myreader-overlay-viewport h-full min-h-0 overflow-x-hidden overflow-y-auto"
       >
-        <div className={className}>{children}</div>
+        <div ref={scrollContentRef} className={className}>
+          {children}
+        </div>
       </div>
     </div>
   )

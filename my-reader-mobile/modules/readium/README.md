@@ -32,7 +32,7 @@ JS API (src/)
   ├─ streamer               PublicationOpener config: custom parsers, onCreatePublication (REP-005)
   ├─ format                 Custom format registration: extensions/mediaType → native parser (REP-005)
   ├─ publication            Publication handle: metadata/TOC/positions/content (REP-003/004)
-  ├─ search                 Full-text search API (REP-007, reserved)
+  ├─ search                 Stateful full-text search API (REP-007)
   ├─ tts                    TTSEngine interface + utterance foundation (reserved)
   └─ types/                 Locator / Preferences / Decoration / Publication / ... (ported from fork)
 
@@ -42,6 +42,7 @@ Native bridge (ios/ android/)
   ├─ Reader/                Ported: ReaderService + EPUB/PDF/CBZ controllers & fragments
   ├─ Streamer/              Open PublicationOpener: parser registry, onCreatePublication
   ├─ Publication/           Publication handle table (id ↔ native Publication)
+  ├─ Search/                Search iterator sessions + cancellation
   └─ Format/                FormatRegistry + custom PublicationParser registration
 ```
 
@@ -113,13 +114,20 @@ ref.current?.goBackward();
 | `format.registerFormat({ extensions, mediaType, parserModule })` — route to a native `PublicationParser` | 005 | Native `FormatRegistry` wired (parser implemented in Swift/Kotlin) |
 | `publication.getSnapshot(id)` — metadata / TOC / readingOrder / positions | 003 | ✅ |
 | `publication.getContent(id, fromLocator?)` — utterance stream (text + locator + language), the path-agnostic TTS foundation | 003 | ✅ |
-| `search.search(id, query, options?)` / `search.next(sessionId)` | 007 | **Reserved** — native rejects `ERR_SEARCH_NOT_IMPLEMENTED` (Phase 2) |
+| `search.getCapabilities(id)` / `search.search(id, query, options?)` / `search.next(sessionId)` / `search.cancel(sessionId)` | 007 | ✅ Reflowable EPUB, runtime-gated by the publication search service |
 | `tts` — `TTSEngine` / `Utterance` interfaces | — | **Interface only** — no coordinator/engine (Phase 2) |
 
 TTS is intentionally position-neutral: utterances come from `publication.getContent`,
 and reading highlight reuses the Decoration API (REP-008). Any future path — JS engine,
 iOS native `TTSEngine` via `PublicationSpeechSynthesizer`, or Android self-built engine
 (the toolkit ships no TTS) — consumes the same utterance stream.
+
+Search results are paged Locator collections. `search.next()` returns
+`{ locators, resultCount?, done }`; callers must cancel a session when dismissing the
+search UI. Starting a new query, closing its publication, or destroying the module
+also closes the previous native iterator. Capability options only contain fields the
+active iOS/Android service supports. Fixed-layout EPUB, PDF, and CBZ are deliberately
+reported as not searchable by this bridge.
 
 ## Native notes
 

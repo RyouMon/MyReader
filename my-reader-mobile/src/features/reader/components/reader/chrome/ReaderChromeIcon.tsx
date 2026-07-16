@@ -10,6 +10,7 @@ const READER_CHROME_ICON_SOURCE = {
   bookmark: { ios: "bookmark", android: "bookmark-border" },
   bookmarkActive: { ios: "bookmark.fill", android: "bookmark" },
   manage: { ios: "checklist", android: "checklist" },
+  search: { ios: "magnifyingglass", android: "search" },
   settings: { ios: "slider.horizontal.3", android: "tune" },
   toc: { ios: "list.bullet", android: "list" },
 } as const

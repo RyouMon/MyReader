@@ -20,6 +20,9 @@ export type {
   ReaderNavigationSheetProps,
 } from "./ReaderNavigationSheet"
 
+export { default as ReaderSearchSheet } from "./ReaderSearchSheet"
+export type { ReaderSearchSheetProps } from "./ReaderSearchSheet"
+
 export { default as ReaderSettingsSheet } from "./ReaderSettingsSheet"
 export type { ReaderSettingsSheetProps } from "./ReaderSettingsSheet"
 

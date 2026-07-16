@@ -16,6 +16,7 @@ import {
 } from "@my-reader/tools/reader-toc"
 import type {
   ContentResult,
+  DecorationGroup,
   FontFamilyDeclaration,
   Locator,
   PublicationReadyEvent,
@@ -55,7 +56,9 @@ export type ReadiumReflowReaderProps = {
   onStateChange: (state: ReaderState) => void
   onPositionsReady?: (positions: Locator[]) => void
   onPublicationLanguagesReady?: (languages: string[]) => void
+  onPublicationReady?: (publicationId: string) => void
   onTocReady: (items: ReaderTocItem[]) => void
+  onUserLocationChange?: () => void
   onRequestClose: () => void
   onToggleChrome?: () => void
   theme?: ReaderTheme
@@ -67,6 +70,7 @@ export type ReadiumReflowReaderProps = {
   textAlign?: TextAlignment
   columnCount?: ColumnCount
   language?: string
+  decorations?: DecorationGroup[]
 }
 
 const ReadiumReflowReader = forwardRef<
@@ -79,7 +83,9 @@ const ReadiumReflowReader = forwardRef<
     onStateChange,
     onPositionsReady,
     onPublicationLanguagesReady,
+    onPublicationReady,
     onTocReady,
+    onUserLocationChange,
     onToggleChrome,
     theme = "paper",
     fontFamily = "default",
@@ -90,6 +96,7 @@ const ReadiumReflowReader = forwardRef<
     textAlign = "auto",
     columnCount = "auto",
     language,
+    decorations,
   },
   ref,
 ) {
@@ -100,12 +107,14 @@ const ReadiumReflowReader = forwardRef<
   const currentLocatorRef = useRef<Locator | null>(null)
   const chapterTitleRef = useRef("")
   const publicationReadySeqRef = useRef(0)
+  const programmaticNavigationPendingRef = useRef(false)
 
   useImperativeHandle(
     ref,
     () => ({
       goTo: (locator: Locator, tocItem?: ReaderTocItem) => {
         selectedTocItemRef.current = tocItem ?? null
+        programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(locator)
       },
     }),
@@ -149,6 +158,7 @@ const ReadiumReflowReader = forwardRef<
     (event: PublicationReadyEvent) => {
       const publicationSeq = publicationReadySeqRef.current + 1
       publicationReadySeqRef.current = publicationSeq
+      onPublicationReady?.(event.publicationId)
 
       positionsRef.current = event.positions
       onPositionsReady?.(event.positions)
@@ -269,6 +279,7 @@ const ReadiumReflowReader = forwardRef<
       initialLocator,
       onPositionsReady,
       onPublicationLanguagesReady,
+      onPublicationReady,
       onTocReady,
       onStateChange,
     ],
@@ -317,11 +328,15 @@ const ReadiumReflowReader = forwardRef<
 
   const handleLocationChange = useCallback(
     (locator: Locator) => {
+      const programmaticNavigationPending =
+        programmaticNavigationPendingRef.current
+      programmaticNavigationPendingRef.current = false
       const selectedToc = selectedTocItemRef.current
       selectedTocItemRef.current = null
       emitLocationState(locator, selectedToc)
+      if (!programmaticNavigationPending) onUserLocationChange?.()
     },
-    [emitLocationState],
+    [emitLocationState, onUserLocationChange],
   )
 
   return (
@@ -331,6 +346,7 @@ const ReadiumReflowReader = forwardRef<
         file={file}
         preferences={preferences}
         fontFamilyDeclarations={fontFamilyDeclarations}
+        decorations={decorations}
         style={styles.reader}
         onPublicationReady={handlePublicationReady}
         onLocationChange={handleLocationChange}

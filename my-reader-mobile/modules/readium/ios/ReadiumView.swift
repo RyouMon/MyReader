@@ -364,7 +364,7 @@ final class ReadiumView: ExpoView {
   func cleanup() {
     guard let vc = readerViewController else { return }
     readerViewController = nil
-    PublicationStore.shared.remove(vc.bookId)
+    PublicationStore.shared.remove(vc.bookId, ifSameAs: vc.publication)
 
     if let visualNavigator = vc.navigator as? VisualNavigator {
       inputObserverTokens.forEach { visualNavigator.removeObserver($0) }

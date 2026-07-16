@@ -32,7 +32,9 @@ const baseProps = {
   progressPercent: 0,
   readingProgression: "ltr" as const,
   palette,
+  showSearchAction: false,
   onOpenToc: jest.fn(),
+  onOpenSearch: jest.fn(),
   onOpenSettings: jest.fn(),
   onPreviewPosition: jest.fn(() => ({ positionLabel: "1 / 10" })),
   onCommitPosition: jest.fn(),
@@ -65,5 +67,22 @@ describe("ReaderActionsExpanded", () => {
     fireEvent.press(screen.getByLabelText("reader.settings"))
 
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it("should show search only when the publication is searchable", () => {
+    const onOpenSearch = jest.fn()
+    const screen = render(
+      <ReaderActionsExpanded
+        {...baseProps}
+        showSearchAction
+        onOpenSearch={onOpenSearch}
+      />,
+    )
+
+    fireEvent.press(screen.getByLabelText("reader.search.title"))
+
+    expect(onOpenSearch).toHaveBeenCalledTimes(1)
+    screen.rerender(<ReaderActionsExpanded {...baseProps} />)
+    expect(screen.queryByLabelText("reader.search.title")).toBeNull()
   })
 })

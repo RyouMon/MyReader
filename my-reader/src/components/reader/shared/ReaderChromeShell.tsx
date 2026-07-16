@@ -22,10 +22,12 @@ export type ReaderChromeTopBarConfig = {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleSearch?: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
 }
@@ -39,6 +41,7 @@ export type ReaderChromeShellProps = {
   expandBottomForTts?: boolean
   topBar: ReaderChromeTopBarConfig
   tocPanel: ReactNode
+  searchPanel?: ReactNode
   settingsPanel: ReactNode
   /** 插在正文区域之前（如 EPUB 宿主 iframe 的全局样式）。 */
   beforeMain?: ReactNode
@@ -51,7 +54,7 @@ export type ReaderChromeShellProps = {
   edgeTurnOverlays?: ReactNode
   /** 追加在根布局 class 上。 */
   rootClassName?: string
-  /** 目录或设置展开时显示顶栏下方的点击蒙层并调用关闭。 */
+  /** 任一侧栏展开时显示顶栏下方的点击蒙层并调用关闭。 */
   panelsOpen?: boolean
   onClosePanels?: () => void
   /** 当前阅读主题，用于设置 data-reader-theme 以驱动工具栏颜色。 */
@@ -99,7 +102,7 @@ export function readerChromeThemeStyle(
 
 /**
  * EPUB / 漫画 / PDF 共用的阅读器外壳：顶栏、目录与设置侧栏、正文槽、底栏、边缘唤出条带。
- * 三种模式仅 `tocPanel` / `settingsPanel` / `main` / `bottomChrome` / `edgeTurnOverlays` 不同，工具栏显隐逻辑一致。
+ * 三种模式仅侧栏 / `main` / `bottomChrome` / `edgeTurnOverlays` 不同，工具栏显隐逻辑一致。
  */
 export function ReaderChromeShell({
   readerRootRef,
@@ -109,6 +112,7 @@ export function ReaderChromeShell({
   expandBottomForTts = false,
   topBar,
   tocPanel,
+  searchPanel,
   settingsPanel,
   beforeMain,
   main,
@@ -172,10 +176,12 @@ export function ReaderChromeShell({
           bookmarked={topBar.bookmarked}
           bookmarkDisabled={topBar.bookmarkDisabled}
           tocOpen={topBar.tocOpen}
+          searchOpen={topBar.searchOpen}
           settingsOpen={topBar.settingsOpen}
           showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}
+          onToggleSearch={topBar.onToggleSearch}
           onToggleBookmark={topBar.onToggleBookmark}
           onToggleSettings={topBar.onToggleSettings}
           scheduleChromeHide={scheduleChromeHide}
@@ -206,6 +212,7 @@ export function ReaderChromeShell({
           </div>
         ) : null}
         {tocPanel}
+        {searchPanel}
         {settingsPanel}
         <ReadingChromeEdgeZones
           passThrough={chromeVisible}

@@ -154,15 +154,39 @@ export function positionIndexForLocator(
 ): number {
   const position = locator.locations?.position
   if (typeof position === "number" && position >= 1) {
+    const matchingPosition = positions?.findIndex(
+      (candidate) => candidate.locations?.position === position,
+    )
+    if (matchingPosition != null && matchingPosition >= 0) {
+      return matchingPosition
+    }
     return clampPositionIndex(position - 1, positions?.length ?? position)
   }
 
   if (positions == null || positions.length === 0) return 0
 
-  const byHref = positions.findIndex((p) =>
-    hrefRoughlyMatches(p.href, locator.href),
-  )
-  if (byHref >= 0) return byHref
+  const matchingResource = positions
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate }) => hrefRoughlyMatches(candidate.href, locator.href))
+  const localProgression = locator.locations?.progression
+  if (
+    matchingResource.length > 0 &&
+    typeof localProgression === "number" &&
+    Number.isFinite(localProgression)
+  ) {
+    const started = matchingResource
+      .filter(
+        ({ candidate }) =>
+          (candidate.locations?.progression ?? 0) <= localProgression,
+      )
+      .sort(
+        (a, b) =>
+          (b.candidate.locations?.progression ?? 0) -
+          (a.candidate.locations?.progression ?? 0),
+      )
+    return started[0]?.index ?? matchingResource[0]!.index
+  }
+  if (matchingResource.length > 0) return matchingResource[0]!.index
 
   const progression =
     locator.locations?.totalProgression ?? locator.locations?.progression
@@ -454,6 +478,41 @@ export function resolveReaderToc({
     }
   }
 
+  const sameResourceProgressions =
+    href == null
+      ? []
+      : toc
+          .filter(
+            (item) => item.href != null && hrefRoughlyMatches(href, item.href),
+          )
+          .map((item) => locatorProgression(tocItemLocator(item, positions)))
+          .filter((value): value is number => value != null)
+  const hasEnhancedSameResourceProgression =
+    href != null &&
+    toc.some(
+      (item) =>
+        item.locatorSource === "content" &&
+        item.href != null &&
+        hrefRoughlyMatches(href, item.href),
+    ) &&
+    new Set(sameResourceProgressions).size > 1
+  if (
+    href != null &&
+    progression != null &&
+    !hasFragment(href) &&
+    hasEnhancedSameResourceProgression
+  ) {
+    const closestByProgression = closestProgressionIndex(
+      toc,
+      positions,
+      href,
+      progression,
+    )
+    if (closestByProgression >= 0) {
+      return itemResolution(toc, closestByProgression, page, "progression")
+    }
+  }
+
   if (href != null && !hasFragment(href) && page != null) {
     const exactIndex = exactHrefIndex(toc, href)
     const exactItem = exactIndex >= 0 ? toc[exactIndex] : undefined
@@ -735,32 +794,31 @@ function closestProgressionIndex(
   currentHref: string,
   currentProgression: number,
 ): number {
+  const candidates = toc
+    .map((item, index) => {
+      const locator = tocItemLocator(item, positions)
+      return {
+        item,
+        index,
+        progression: locatorProgression(locator),
+      }
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        item: ReaderTocItem
+        index: number
+        progression: number
+      } =>
+        entry.item.href != null &&
+        hrefRoughlyMatches(currentHref, entry.item.href) &&
+        entry.progression != null,
+    )
+
   return (
-    toc
-      .map((item, index) => {
-        const locator = tocItemLocator(item, positions)
-        return {
-          item,
-          index,
-          progression: locatorProgression(locator),
-        }
-      })
-      .filter(
-        (
-          entry,
-        ): entry is {
-          item: ReaderTocItem
-          index: number
-          progression: number
-        } => {
-          return (
-            entry.item.href != null &&
-            hrefRoughlyMatches(currentHref, entry.item.href) &&
-            entry.progression != null &&
-            entry.progression <= currentProgression
-          )
-        },
-      )
+    candidates
+      .filter(({ progression }) => progression <= currentProgression)
       .sort((a, b) => {
         return (
           b.progression - a.progression ||

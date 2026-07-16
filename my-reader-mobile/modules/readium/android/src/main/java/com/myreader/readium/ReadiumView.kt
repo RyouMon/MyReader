@@ -235,6 +235,7 @@ class ReadiumView(
     frameCallback = null
 
     fragment?.let { frag ->
+      file?.url?.let { PublicationStore.remove(it, ifSameAs = frag.publication) }
       try {
         findActivity()?.supportFragmentManager
           ?.beginTransaction()

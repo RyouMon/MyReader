@@ -51,7 +51,9 @@ type Props = {
   progressPercent: number
   readingProgression: ReaderProgressDirection
   palette: ReaderChromePalette
+  showSearchAction: boolean
   onOpenToc: () => void
+  onOpenSearch: () => void
   onOpenSettings: () => void
   onPreviewPosition: (positionIndex: number) => ReaderProgressPreview
   onCommitPosition: (positionIndex: number) => void
@@ -112,7 +114,9 @@ export default function ReaderActionsExpanded({
   progressPercent,
   readingProgression,
   palette,
+  showSearchAction,
   onOpenToc,
+  onOpenSearch,
   onOpenSettings,
   onPreviewPosition,
   onCommitPosition,
@@ -174,6 +178,32 @@ export default function ReaderActionsExpanded({
           onPreviewPosition={onPreviewPosition}
           onCommitPosition={onCommitPosition}
         />
+
+        {showSearchAction ? (
+          <ExpandedActionButton
+            accessibilityLabel={t("reader.search.title")}
+            actionPillWidth={actionPillWidth}
+            palette={palette}
+            onPress={onOpenSearch}
+          >
+            <RNView
+              style={[styles.pillInner, styles.pillContent]}
+              accessibilityElementsHidden={true}
+            >
+              <Text
+                className="text-lg font-semibold"
+                style={{ color: palette.actionText }}
+              >
+                {t("reader.search.title")}
+              </Text>
+              <ReaderChromeIcon
+                name="search"
+                size={READER_EXPANDED_ACTION_ICON_SIZE}
+                color={palette.actionText}
+              />
+            </RNView>
+          </ExpandedActionButton>
+        ) : null}
 
         <ExpandedActionButton
           accessibilityLabel={t("reader.settings")}

@@ -2,8 +2,9 @@ import {
   type BottomSheetModal,
   BottomSheetModalProvider,
 } from "@expo/ui/community/bottom-sheet"
-import type { Locator } from "@my-reader/readium"
+import type { DecorationGroup, Locator } from "@my-reader/readium"
 import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
+import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { router, useLocalSearchParams } from "expo-router"
 import {
   lazy,
@@ -47,6 +48,7 @@ import {
   ReaderMoreButton,
   ReaderNavigationSheet,
   ReaderPositionLabel,
+  ReaderSearchSheet,
   type ReaderProgressPreview,
 } from "@/src/features/reader/components/reader/chrome"
 import {
@@ -79,6 +81,7 @@ import type {
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
 import { useReaderBookmarks } from "@/src/features/reader/hooks/use-reader-bookmarks"
+import { useReaderSearch } from "@/src/features/reader/hooks/use-reader-search"
 import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
@@ -111,6 +114,7 @@ const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
 
 type ReaderRuntime = {
   publicationKey: string
+  publicationId: string | null
   readerState: ReaderState | null
   publicationLanguages: string[]
   positions: Locator[]
@@ -120,6 +124,7 @@ type ReaderRuntime = {
 function emptyReaderRuntime(publicationKey: string): ReaderRuntime {
   return {
     publicationKey,
+    publicationId: null,
     readerState: null,
     publicationLanguages: [],
     positions: [],
@@ -156,7 +161,7 @@ export default function ReaderScreen() {
     readerRuntime.publicationKey === publicationKey
       ? readerRuntime
       : emptyReaderRuntime(publicationKey)
-  const { readerState, publicationLanguages, positions, toc } =
+  const { publicationId, readerState, publicationLanguages, positions, toc } =
     activeReaderRuntime
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
   const settings = useAppStore((s) => s.settings)
@@ -168,9 +173,14 @@ export default function ReaderScreen() {
   )
 
   const navigationSheetRef = useRef<BottomSheetModal>(null)
+  const searchSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<ReaderSettingsSheetRef>(null)
   const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
   const fixedReaderRef = useRef<FixedReaderSurfaceRef>(null)
+  const [searchDecoration, setSearchDecoration] = useState<{
+    publicationKey: string
+    locator: ReaderLocator
+  } | null>(null)
   const readerPositionsRef = useRef<{
     publicationKey: string
     positions: Locator[]
@@ -189,6 +199,14 @@ export default function ReaderScreen() {
       ? loadState
       : null
   const isReflowReady = activeLoadState?.layoutMode === "reflowable"
+  const readerSearch = useReaderSearch(
+    isReflowReady && readerState?.ready ? publicationId : null,
+  )
+  const runReaderSearch = readerSearch.runSearch
+  const resetReaderSearch = readerSearch.reset
+  const searchAvailable = Boolean(
+    readerState?.ready && readerSearch.capabilities?.searchable,
+  )
   useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
   const {
     bookmarks,
@@ -216,6 +234,10 @@ export default function ReaderScreen() {
     [publicationKey],
   )
 
+  const handleUserLocationChange = useCallback(() => {
+    setSearchDecoration(null)
+  }, [])
+
   const handlePositionsReady = useCallback(
     (positions: Locator[]) => {
       readerPositionsRef.current = { publicationKey, positions }
@@ -240,6 +262,17 @@ export default function ReaderScreen() {
       setReaderRuntime((current) =>
         updateReaderRuntime(current, publicationKey, {
           publicationLanguages: languages,
+        }),
+      )
+    },
+    [publicationKey],
+  )
+
+  const handlePublicationReady = useCallback(
+    (nextPublicationId: string) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, {
+          publicationId: nextPublicationId,
         }),
       )
     },
@@ -348,6 +381,38 @@ export default function ReaderScreen() {
     dispatch({ type: "settingsDismiss" })
   }, [])
 
+  const handleOpenSearch = useCallback(() => {
+    if (searchAvailable) dispatch({ type: "searchPillTap" })
+  }, [searchAvailable])
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchDecoration(null)
+      void runReaderSearch(query)
+    },
+    [runReaderSearch],
+  )
+
+  const handleSearchResultSelect = useCallback(
+    (locator: ReaderLocator) => {
+      const nativeLocator: Locator = locator
+      setSearchDecoration({ publicationKey, locator })
+      navigateToLocator(nativeLocator)
+      searchSheetRef.current?.dismiss()
+      dispatch({ type: "searchSelect" })
+    },
+    [navigateToLocator, publicationKey],
+  )
+
+  const handleSearchDismiss = useCallback(() => {
+    dispatch({ type: "searchDismiss" })
+  }, [])
+
+  const handleSearchClear = useCallback(() => {
+    setSearchDecoration(null)
+    resetReaderSearch()
+  }, [resetReaderSearch])
+
   useEffect(() => {
     if (chromeState !== ChromeState.NavigationSheet) {
       navigationSheetRef.current?.dismiss()
@@ -371,6 +436,20 @@ export default function ReaderScreen() {
     )
     return () => cancelAnimationFrame(frame)
   }, [chromeState])
+
+  useEffect(() => {
+    if (chromeState !== ChromeState.SearchSheet) {
+      searchSheetRef.current?.dismiss()
+      return
+    }
+    if (!searchAvailable) {
+      handleSearchDismiss()
+      return
+    }
+
+    const frame = requestAnimationFrame(() => searchSheetRef.current?.present())
+    return () => cancelAnimationFrame(frame)
+  }, [chromeState, handleSearchDismiss, searchAvailable])
 
   const progressPercent = readerState?.progress ?? 0
   const reflowSettings = settings.reflowable
@@ -511,6 +590,33 @@ export default function ReaderScreen() {
       READER_THEME_OPTIONS[0]!
     return readerChromePalette(option.fg, option.swatch)
   }, [activeTheme])
+  const activeSearchLocator =
+    searchDecoration?.publicationKey === publicationKey &&
+    readerSearch.locators.includes(searchDecoration.locator)
+      ? searchDecoration.locator
+      : null
+  const searchDecorations = useMemo<DecorationGroup[]>(
+    () =>
+      activeSearchLocator
+        ? [
+            {
+              name: "search",
+              decorations: [
+                {
+                  id: "active-search-result",
+                  locator: activeSearchLocator,
+                  style: {
+                    type: "highlight",
+                    tint: chromePalette.accent,
+                    isActive: false,
+                  },
+                },
+              ],
+            },
+          ]
+        : [],
+    [activeSearchLocator, chromePalette.accent],
+  )
 
   const domFallback = useMemo(
     () => (
@@ -612,7 +718,8 @@ export default function ReaderScreen() {
   const moreButtonVisible =
     chromeState === ChromeState.Chrome ||
     chromeState === ChromeState.NavigationSheet ||
-    chromeState === ChromeState.SettingsSheet
+    chromeState === ChromeState.SettingsSheet ||
+    chromeState === ChromeState.SearchSheet
   const bookmarkButtonVisible = readerBookmarkButtonVisible(
     chromeState,
     isCurrentLocationBookmarked,
@@ -685,7 +792,9 @@ export default function ReaderScreen() {
                         onPublicationLanguagesReady={
                           handlePublicationLanguagesReady
                         }
+                        onPublicationReady={handlePublicationReady}
                         onTocReady={handleTocReady}
+                        onUserLocationChange={handleUserLocationChange}
                         onRequestClose={handleRequestClose}
                         onToggleChrome={toggleChrome}
                         theme={reflowSettings.theme}
@@ -697,6 +806,7 @@ export default function ReaderScreen() {
                         textAlign={reflowSettings.textAlign}
                         columnCount={reflowSettings.columnCount}
                         language={readerLanguage}
+                        decorations={searchDecorations}
                       />
                     </Animated.View>
                   ) : null
@@ -785,7 +895,9 @@ export default function ReaderScreen() {
                 isFixedSurface ? fixedSettings.readingProgression : "ltr"
               }
               palette={chromePalette}
+              showSearchAction={searchAvailable}
               onOpenToc={handleOpenToc}
+              onOpenSearch={handleOpenSearch}
               onOpenSettings={handleOpenSettings}
               onPreviewPosition={previewReaderPosition}
               onCommitPosition={handleProgressCommit}
@@ -806,6 +918,27 @@ export default function ReaderScreen() {
               onSelectBookmark={handleBookmarkSelect}
               onDeleteBookmark={handleBookmarkDelete}
               onDismiss={handleNavigationDismiss}
+            />
+
+            <ReaderSearchSheet
+              ref={searchSheetRef}
+              status={readerSearch.status}
+              query={readerSearch.query}
+              locators={readerSearch.locators}
+              toc={toc}
+              positions={positions}
+              resultCount={readerSearch.resultCount}
+              done={readerSearch.done}
+              hasMore={readerSearch.hasMore}
+              loadingMore={readerSearch.loadingMore}
+              loadMoreError={readerSearch.loadMoreError}
+              selectedLocator={activeSearchLocator}
+              palette={chromePalette}
+              onSearch={handleSearch}
+              onClear={handleSearchClear}
+              onLoadMore={readerSearch.loadMore}
+              onSelectResult={handleSearchResultSelect}
+              onDismiss={handleSearchDismiss}
             />
 
             {/* State 5: Settings bottom sheet */}

@@ -1,57 +1,131 @@
-import type { PartialOptions } from "overlayscrollbars"
-import { useOverlayScrollbars } from "overlayscrollbars-react"
-import { type RefObject, useEffect } from "react"
+import type {
+  OverlayScrollbars as OverlayScrollbarsInstance,
+  PartialOptions,
+  ScrollbarsAutoHideBehavior,
+} from "overlayscrollbars"
+import { type RefObject, useEffect, useMemo } from "react"
 
-const MYREADER_OVERLAY_SCROLLBAR_OPTIONS = {
-  overflow: {
-    x: "hidden",
-    y: "scroll",
-  },
-  scrollbars: {
-    theme: "os-theme-myreader",
-    visibility: "auto",
-    autoHide: "leave",
-    autoHideDelay: 700,
-    autoHideSuspend: false,
-    dragScroll: true,
-    clickScroll: false,
-  },
-} satisfies PartialOptions
+let overlayScrollbarsModule: Promise<
+  typeof import("overlayscrollbars")
+> | null = null
+
+function loadOverlayScrollbars() {
+  if (overlayScrollbarsModule) return overlayScrollbarsModule
+
+  const scrollTimelineDescriptor = Object.getOwnPropertyDescriptor(
+    window,
+    "ScrollTimeline",
+  )
+
+  if (scrollTimelineDescriptor) {
+    Object.defineProperty(window, "ScrollTimeline", {
+      configurable: true,
+      value: undefined,
+      writable: true,
+    })
+  }
+
+  overlayScrollbarsModule = import("overlayscrollbars").finally(() => {
+    if (scrollTimelineDescriptor) {
+      Object.defineProperty(window, "ScrollTimeline", scrollTimelineDescriptor)
+    }
+  })
+
+  return overlayScrollbarsModule
+}
+
+function getOverlayScrollbarOptions(
+  autoHide: ScrollbarsAutoHideBehavior,
+): PartialOptions {
+  return {
+    overflow: {
+      x: "hidden",
+      y: "scroll",
+    },
+    scrollbars: {
+      theme: "os-theme-myreader",
+      visibility: "auto",
+      autoHide,
+      autoHideDelay: 700,
+      autoHideSuspend: false,
+      dragScroll: true,
+      clickScroll: false,
+    },
+  }
+}
+
+function syncVerticalScrollbarPosition(
+  viewport: HTMLElement,
+  scrollbar: HTMLElement,
+) {
+  const maximum = viewport.scrollHeight - viewport.clientHeight
+  const progress =
+    maximum > 0 ? Math.min(1, Math.max(0, viewport.scrollTop / maximum)) : 0
+
+  scrollbar.style.setProperty("--os-scroll-percent", String(progress))
+}
 
 export function useOverlayScrollbar<
   TTarget extends HTMLElement,
   TViewport extends HTMLElement,
+  TContent extends HTMLElement = HTMLElement,
 >(
   targetRef: RefObject<TTarget>,
   viewportRef: RefObject<TViewport>,
   enabled = true,
+  contentRef?: RefObject<TContent>,
+  autoHide: ScrollbarsAutoHideBehavior = "leave",
 ) {
-  const [initialize, getInstance] = useOverlayScrollbars({
-    defer: true,
-    options: MYREADER_OVERLAY_SCROLLBAR_OPTIONS,
-  })
+  const options = useMemo(
+    () => getOverlayScrollbarOptions(autoHide),
+    [autoHide],
+  )
 
   useEffect(() => {
-    if (!enabled) {
-      getInstance()?.destroy()
-      return
-    }
+    if (!enabled) return
 
     const target = targetRef.current
     const viewport = viewportRef.current
-    if (!target || !viewport) return
+    const content = contentRef?.current
+    if (!target || !viewport || (contentRef && !content)) return
 
-    initialize({
-      target,
-      elements: {
-        viewport,
-        padding: false,
-        content: false,
-      },
+    let cancelled = false
+    let instance: OverlayScrollbarsInstance | null = null
+    let stopPositionSync: (() => void) | null = null
+
+    void loadOverlayScrollbars().then(({ OverlayScrollbars }) => {
+      if (cancelled) return
+
+      instance = OverlayScrollbars(
+        {
+          target,
+          elements: {
+            viewport,
+            padding: false,
+            content: content ?? false,
+          },
+        },
+        options,
+      )
+
+      const verticalScrollbar = instance.elements().scrollbarVertical.scrollbar
+      const syncPosition = () =>
+        syncVerticalScrollbarPosition(viewport, verticalScrollbar)
+      const stopUpdatedListener = instance.on("updated", syncPosition)
+
+      viewport.addEventListener("scroll", syncPosition, { passive: true })
+      syncPosition()
+
+      stopPositionSync = () => {
+        viewport.removeEventListener("scroll", syncPosition)
+        stopUpdatedListener()
+      }
     })
 
     return () => {
-      getInstance()?.destroy()
+      cancelled = true
+      stopPositionSync?.()
+      instance?.destroy()
     }
-  }, [enabled, getInstance, initialize, targetRef, viewportRef])
+  }, [contentRef, enabled, options, targetRef, viewportRef])
 }

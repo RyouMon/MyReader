@@ -148,7 +148,7 @@ data class PublicationOpenerConfigRecord(
   @Field val contentProtection: String? = null
 ) : Record
 
-// MARK: - Search (REP-007, reserved — Phase 2)
+// MARK: - Search (REP-007)
 
 @OptimizedRecord
 data class SearchOptionsRecord(

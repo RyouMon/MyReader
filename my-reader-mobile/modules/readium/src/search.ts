@@ -1,15 +1,19 @@
 import { ReadiumModule } from "./ReadiumModule"
 import type {
+  SearchCapabilities,
   SearchOptions,
   SearchSession,
-  SearchLocatorCollection,
+  SearchResultPage,
 } from "./types"
 
-/**
- * Full-text search (REP-007) — interface reserved in Phase 1, full
- * implementation in Phase 2. Backed by Readium's SearchService (a
- * PublicationService registered via `PublicationServicesBuilder`).
- */
+/** Runtime capabilities of the publication's native REP-007 search service. */
+export function getCapabilities(
+  publicationId: string,
+): Promise<SearchCapabilities> {
+  return ReadiumModule.getSearchCapabilities(publicationId)
+}
+
+/** Start a search, replacing any active search for this publication. */
 export function search(
   publicationId: string,
   query: string,
@@ -18,9 +22,12 @@ export function search(
   return ReadiumModule.search(publicationId, query, options)
 }
 
-/** Fetch the next page of results; resolves null at end of publication. */
-export function next(
-  sessionId: string,
-): Promise<SearchLocatorCollection | null> {
+/** Fetch the next result page. End of publication is represented by `done`. */
+export function next(sessionId: string): Promise<SearchResultPage> {
   return ReadiumModule.searchNext(sessionId)
+}
+
+/** Close an active search iterator. Safe to call more than once. */
+export function cancel(sessionId: string): Promise<void> {
+  return ReadiumModule.searchCancel(sessionId)
 }

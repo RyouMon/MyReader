@@ -7,6 +7,7 @@
     "./human-readable-time": "./src/human-readable-time.ts",
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
     "./reader-bookmarks": "./src/reader-bookmarks.ts",
+    "./reader-search": "./src/reader-search.ts",
     "./reader-themes": "./src/reader-themes.ts",
     "./reader-toc": "./src/reader-toc.ts",
     "./utils": "./src/utils/index.ts",

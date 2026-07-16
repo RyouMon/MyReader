@@ -5,10 +5,10 @@ import {
   linksToTocItems,
   locatorWithHrefFragments,
   positionIndexForLocator,
-  resolveReaderToc,
-  resolveReaderTocAtPosition,
   type ReaderLink,
   type ReaderLocator,
+  resolveReaderToc,
+  resolveReaderTocAtPosition,
 } from "../src/reader-toc"
 
 function locator(
@@ -56,6 +56,22 @@ describe("reader toc utilities", () => {
         locator("OPS/chapter-2.xhtml", { position: 50 }),
       ),
     ).toBe(2)
+  })
+
+  it("should resolve the nearest position when a content locator only has local progression", () => {
+    const chapterPositions = Array.from({ length: 5 }, (_, index) =>
+      locator("OPS/chapter-2.xhtml", {
+        position: index + 20,
+        progression: index / 5,
+      }),
+    )
+
+    expect(
+      positionIndexForLocator(
+        chapterPositions,
+        locator("OPS/chapter-2.xhtml", { progression: 0.65 }),
+      ),
+    ).toBe(3)
   })
 
   it("should flatten nested readium links into toc items", () => {

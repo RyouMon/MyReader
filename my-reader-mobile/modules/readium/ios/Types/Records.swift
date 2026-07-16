@@ -132,7 +132,7 @@ struct PublicationOpenerConfigRecord: Record {
   @Field var contentProtection: String? = nil
 }
 
-// MARK: - Search (REP-007, reserved — Phase 2)
+// MARK: - Search (REP-007)
 
 struct SearchOptionsRecord: Record {
   @Field var caseSensitive: Bool? = nil
