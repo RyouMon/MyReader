@@ -135,10 +135,22 @@ describe("ReadiumSearchPanel", () => {
   })
 
   it("should show the empty state component when search has no results", () => {
-    render(<ReadiumSearchPanel {...baseProps} locators={[]} status="empty" />)
+    const { container } = render(
+      <ReadiumSearchPanel {...baseProps} locators={[]} status="empty" />,
+    )
 
-    expect(screen.getByText("没有找到匹配内容")).toBeInTheDocument()
-    expect(screen.getByText("请尝试其他关键词或短语")).toBeInTheDocument()
+    expect(screen.getByText("没有找到匹配内容")).toHaveClass(
+      "text-reader-chrome-fg",
+    )
+    const description = screen.getByText("请尝试其他关键词或短语")
+    expect(description).toHaveClass("text-reader-chrome-muted")
+    expect(description).not.toHaveClass("text-muted-foreground")
+    const icon = container.querySelector('[data-slot="empty-icon"]')
+    expect(icon).toHaveClass(
+      "bg-[var(--reader-chrome-segment-idle)]",
+      "text-reader-chrome-muted",
+    )
+    expect(icon).not.toHaveClass("bg-muted", "text-foreground")
   })
 
   it("should show the empty state component and retry when search fails", () => {

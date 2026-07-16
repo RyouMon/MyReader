@@ -49,4 +49,25 @@ describe("EmptyState", () => {
       expect.objectContaining({ minHeight: 0 }),
     )
   })
+
+  it("should use supplied colors when a containing surface owns the theme", () => {
+    const screen = render(
+      <EmptyState
+        title="暂无书签"
+        detail="详情"
+        colors={{
+          icon: "#123456",
+          title: "#234567",
+          detail: "#345678",
+        }}
+      />,
+    )
+
+    expect(
+      StyleSheet.flatten(screen.getByText("暂无书签").props.style),
+    ).toEqual(expect.objectContaining({ color: "#234567" }))
+    expect(StyleSheet.flatten(screen.getByText("详情").props.style)).toEqual(
+      expect.objectContaining({ color: "#345678" }),
+    )
+  })
 })

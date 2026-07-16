@@ -297,12 +297,23 @@ describe("ReadiumTocPanel", () => {
   })
 
   it("should show empty state when bookmark tab has no rows", () => {
-    render(
+    const { container } = render(
       <ReadiumTocPanel visible activeKey={null} rows={[]} onSelect={vi.fn()} />,
     )
 
     fireEvent.click(screen.getByRole("tab", { name: "书签" }))
-    expect(screen.getByText("还没有书签")).toBeInTheDocument()
+    expect(container.querySelector('[data-slot="empty"]')).toHaveClass(
+      "text-reader-chrome-fg",
+    )
+    expect(container.querySelector('[data-slot="empty-icon"]')).toHaveClass(
+      "bg-[var(--reader-chrome-segment-idle)]",
+      "text-reader-chrome-muted",
+    )
+    expect(screen.getByText("还没有书签")).toHaveClass(
+      "text-sm",
+      "font-semibold",
+      "text-reader-chrome-fg",
+    )
   })
 
   it("should offer retry instead of empty state when bookmark loading fails", () => {

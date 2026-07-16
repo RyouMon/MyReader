@@ -261,6 +261,11 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
     const draftQuery = draft.query === query ? draft.value : query
     const canSubmit = draftQuery.trim().length > 0
     const fallbackTitle = t("reader.search.resultTitle")
+    const emptyStateColors = {
+      icon: palette.textFaint,
+      title: palette.text,
+      detail: palette.textMuted,
+    }
     const setDraftQuery = useCallback(
       (value: string) => setDraft({ query, value }),
       [query],
@@ -360,6 +365,7 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
                   detail={t("reader.search.prompt")}
                   icon={SEARCH_EMPTY_ICON}
                   layout="container"
+                  colors={emptyStateColors}
                 />
               </RNView>
             ) : status === "searching" ? (
@@ -373,6 +379,7 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
                   detail={t("reader.search.errorDetail")}
                   icon={SEARCH_ERROR_ICON}
                   layout="container"
+                  colors={emptyStateColors}
                   action={
                     <Pressable
                       accessibilityRole="button"
@@ -398,6 +405,7 @@ const ReaderSearchSheet = forwardRef<BottomSheetModal, ReaderSearchSheetProps>(
                   detail={t("reader.search.emptyDetail")}
                   icon={SEARCH_EMPTY_ICON}
                   layout="container"
+                  colors={emptyStateColors}
                 />
               </RNView>
             ) : (

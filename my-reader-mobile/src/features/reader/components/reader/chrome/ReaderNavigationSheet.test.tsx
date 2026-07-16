@@ -211,6 +211,11 @@ describe("ReaderNavigationSheet", () => {
         title: "暂无书签",
         detail: "阅读时添加的书签会显示在这里",
         layout: "container",
+        colors: {
+          icon: palette.textFaint,
+          title: palette.text,
+          detail: palette.textMuted,
+        },
       }),
     )
   })

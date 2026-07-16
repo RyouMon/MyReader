@@ -353,6 +353,11 @@ const ReaderNavigationSheet = forwardRef<
   const mutationDisabled = bookmarksPending || deletingSelection
   const selectionDeletionDisabled =
     mutationDisabled || selectedBookmarks.length === 0
+  const emptyStateColors = {
+    icon: palette.textFaint,
+    title: palette.text,
+    detail: palette.textMuted,
+  }
   const initialTocIndex =
     toc.length === 0
       ? undefined
@@ -553,6 +558,7 @@ const ReaderNavigationSheet = forwardRef<
                 detail={t("reader.bookmarks.emptyDetail")}
                 icon={BOOKMARK_EMPTY_ICON}
                 layout="container"
+                colors={emptyStateColors}
               />
             }
           />

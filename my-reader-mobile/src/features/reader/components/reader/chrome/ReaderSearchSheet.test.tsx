@@ -107,6 +107,16 @@ describe("ReaderSearchSheet", () => {
 
     expect(screen.getByText("reader.search.promptTitle")).toBeTruthy()
     expect(screen.getByText("reader.search.prompt")).toBeTruthy()
+    const { EmptyState } = jest.requireMock("@/src/components/ui")
+    expect(EmptyState.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        colors: {
+          icon: palette.textFaint,
+          title: palette.text,
+          detail: palette.textMuted,
+        },
+      }),
+    )
   })
 
   it("should use the standard empty state when a search has no results", () => {

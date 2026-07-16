@@ -15,6 +15,12 @@ export type EmptyStateIcon = {
 
 export type EmptyStateLayout = "screen" | "container"
 
+export type EmptyStateColors = {
+  icon: string
+  title: string
+  detail: string
+}
+
 const DEFAULT_ICON: EmptyStateIcon = {
   ios: "book.closed.fill",
   android: "menu-book",
@@ -29,12 +35,14 @@ export function EmptyState({
   action,
   icon = DEFAULT_ICON,
   layout = "screen",
+  colors,
 }: {
   title: string
   detail: string
   action?: ReactNode
   icon?: EmptyStateIcon
   layout?: EmptyStateLayout
+  colors?: EmptyStateColors
 }) {
   const palette = useThemePalette()
   const { height: windowHeight } = useWindowDimensions()
@@ -55,26 +63,26 @@ export function EmptyState({
         <SymbolView
           name={icon.ios as never}
           size={80}
-          tintColor={palette.border}
+          tintColor={colors?.icon ?? palette.border}
         />
       ) : (
         <MaterialIcons
           name={icon.android as never}
           size={80}
-          color={palette.border}
+          color={colors?.icon ?? palette.border}
         />
       )}
 
       <View className="items-center" style={{ gap: 8 }}>
         <Text
           className="text-center text-lg"
-          style={{ color: palette.text, fontWeight: "600" }}
+          style={{ color: colors?.title ?? palette.text, fontWeight: "600" }}
         >
           {title}
         </Text>
         <Text
           className="text-center text-base"
-          style={{ color: palette.textMuted, maxWidth: 280 }}
+          style={{ color: colors?.detail ?? palette.textMuted, maxWidth: 280 }}
         >
           {detail}
         </Text>

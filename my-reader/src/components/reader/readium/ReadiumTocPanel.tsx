@@ -16,6 +16,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 
 export type ReadiumTocRow = {
   key?: string
@@ -200,7 +206,7 @@ export function ReadiumTocPanel({
           {t("reader.bookmarks")}
         </button>
       </div>
-      <ReaderSidePanelScrollArea>
+      <ReaderSidePanelScrollArea className="flex min-h-full flex-col">
         {activeTab === "toc" ? (
           <nav className="px-4 py-3">
             <ul className="space-y-0.5">
@@ -225,7 +231,7 @@ export function ReadiumTocPanel({
             </ul>
           </nav>
         ) : (
-          <div className="px-4 py-3">
+          <div className="flex flex-1 flex-col px-4 py-3">
             {bookmarksError ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <p className="text-xs text-destructive" role="alert">
@@ -244,10 +250,19 @@ export function ReadiumTocPanel({
                 {t("common.loading")}
               </p>
             ) : bookmarks.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-10 text-center text-reader-chrome-muted">
-                <Bookmark className="size-5 opacity-60" />
-                <p className="text-sm">{t("reader.noBookmarks")}</p>
-              </div>
+              <Empty className="text-reader-chrome-fg">
+                <EmptyHeader>
+                  <EmptyMedia
+                    variant="icon"
+                    className="bg-[var(--reader-chrome-segment-idle)] text-reader-chrome-muted"
+                  >
+                    <Bookmark />
+                  </EmptyMedia>
+                  <EmptyTitle className="text-sm font-semibold text-reader-chrome-fg">
+                    {t("reader.noBookmarks")}
+                  </EmptyTitle>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <ul className="space-y-0.5">
                 {bookmarks.map((bookmark, index) => {
