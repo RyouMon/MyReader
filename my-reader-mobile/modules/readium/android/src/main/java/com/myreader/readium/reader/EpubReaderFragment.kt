@@ -6,26 +6,42 @@
 
 package com.myreader.readium.reader
 
+import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.view.*
 import android.view.accessibility.AccessibilityManager
+import android.widget.HorizontalScrollView
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commitNow
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.myreader.readium.R
+import com.myreader.readium.Converters.locatorRecordToReadium
 import com.myreader.readium.Types.FontFamilyDeclarationRecord
 import com.myreader.readium.Types.FontFaceDeclarationRecord
+import com.myreader.readium.Types.SelectionMenuRecord
 import kotlinx.coroutines.launch
 import org.readium.r2.navigator.DecorableNavigator
+import org.readium.r2.navigator.Selection
 import org.readium.r2.navigator.SelectableNavigator
 import org.readium.r2.navigator.epub.EpubNavigatorFragment
 import org.readium.r2.navigator.Navigator
+import org.readium.r2.navigator.VisualNavigator
 import org.readium.r2.navigator.epub.EpubPreferences
 import org.readium.r2.navigator.epub.EpubNavigatorFactory
 import org.readium.r2.navigator.epub.css.FontStyle
 import org.readium.r2.navigator.epub.css.FontWeight
 import org.readium.r2.navigator.preferences.FontFamily
+import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 
@@ -50,10 +66,16 @@ class EpubReaderFragment : VisualReaderFragment() {
 
     // Selection actions configuration
     private var selectionActions: List<SelectionAction> = emptyList()
+    private var selectionMenu: SelectionMenuRecord? = null
+    private var customSelectionMenu = false
+    private var selectionPopup: PopupWindow? = null
+    private var shownSelectionMenu: SelectionMenuRecord? = null
+    private var ignoringPopupDismiss = false
+    private var selectionRequestGeneration = 0L
     private var fontFamilyDeclarations: List<FontFamilyDeclarationRecord> = emptyList()
 
     // Custom selection action mode callback for adding custom action buttons
-    val customSelectionActionModeCallback: ActionMode.Callback by lazy {
+    val customSelectionActionModeCallback: ActionMode.Callback2 by lazy {
         SelectionActionModeCallback()
     }
 
@@ -93,6 +115,16 @@ class EpubReaderFragment : VisualReaderFragment() {
       selectionActions = actions
     }
 
+    fun updateSelectionMenu(menu: SelectionMenuRecord?) {
+      selectionMenu = menu
+      view?.post { syncSelectionMenu() }
+    }
+
+    fun updateCustomSelectionMenu(enabled: Boolean) {
+      customSelectionMenu = enabled
+      view?.post { syncSelectionMenu() }
+    }
+
     fun updateFontFamilyDeclarations(declarations: List<FontFamilyDeclarationRecord>) {
       fontFamilyDeclarations = declarations
     }
@@ -113,6 +145,7 @@ class EpubReaderFragment : VisualReaderFragment() {
               initialLocator = model.initialLocation,
               initialPreferences = userPreferences,
               configuration = EpubNavigatorFragment.Configuration {
+                decorationTemplates = readerDecorationTemplates()
                 val assetPatterns = fontFamilyDeclarations
                   .flatMap { it.fontFaces.orEmpty() }
                   .mapNotNull { servedAssetPattern(it.source) }
@@ -136,7 +169,7 @@ class EpubReaderFragment : VisualReaderFragment() {
                   }
                 }
 
-                if (selectionActions.isNotEmpty()) {
+                if (customSelectionMenu || selectionActions.isNotEmpty()) {
                   selectionActionModeCallback = customSelectionActionModeCallback
                 }
               }
@@ -160,6 +193,7 @@ class EpubReaderFragment : VisualReaderFragment() {
         navigatorFragment = navigator as EpubNavigatorFragment
 
         applyPendingPreferencesIfNeeded()
+        view?.post { syncSelectionMenu() }
 
         return view
     }
@@ -184,13 +218,58 @@ class EpubReaderFragment : VisualReaderFragment() {
         (navigator as? EpubNavigatorFragment)?.submitPreferences(userPreferences)
     }
 
-    private inner class SelectionActionModeCallback : ActionMode.Callback {
+    override fun onDestroyView() {
+        dismissSelectionPopup()
+        super.onDestroyView()
+    }
+
+    private fun syncSelectionMenu() {
+      if (!customSelectionMenu || !this::navigator.isInitialized) {
+        dismissSelectionPopup()
+        return
+      }
+
+      val configuredMenu = selectionMenu
+      if (configuredMenu == null) {
+        dismissSelectionPopup()
+        return
+      }
+
+      if (selectionPopup?.isShowing == true && shownSelectionMenu == configuredMenu) {
+        return
+      }
+
+      val publicationView = (navigator as? VisualNavigator)?.publicationView ?: return
+      showSelectionPopup(publicationView, configuredMenu)
+    }
+
+    private inner class SelectionActionModeCallback : ActionMode.Callback2() {
         // Store action IDs mapped to their menu item IDs for lookup
         private val actionIdMap = mutableMapOf<Int, String>()
 
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
-            // Clear previous action mappings
             actionIdMap.clear()
+
+            if (customSelectionMenu) {
+                menu.clear()
+                selectionMenu = null
+                dismissSelectionPopup()
+                val requestGeneration = ++selectionRequestGeneration
+                lifecycleScope.launch {
+                    val selection = currentSelectionWithVisibleResource()
+                    if (requestGeneration != selectionRequestGeneration) return@launch
+                    channel.send(
+                        ReaderViewModel.Event.SelectionChanged(
+                            locator = selection?.locator,
+                            selectedText = selection?.locator?.text?.highlight,
+                            rect = selection?.rect
+                        )
+                    )
+                }
+                // Keep the empty ActionMode alive so Android continues to own and display the
+                // native selection handles while the app renders its configured action menu.
+                return true
+            }
 
             // Only add menu items if navigator supports decorations
             if (navigator !is DecorableNavigator) {
@@ -224,23 +303,19 @@ class EpubReaderFragment : VisualReaderFragment() {
         override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
             val actionId = actionIdMap[item.itemId]
             if (actionId != null) {
-                // Get the current selection from the navigator
                 lifecycleScope.launch {
-                    val selectableNavigator = navigator as? SelectableNavigator
-                    val selection = selectableNavigator?.currentSelection()
-
-                    if (selection != null) {
-                        // Emit generic SelectionAction event to React Native
-                        channel.send(
-                            ReaderViewModel.Event.SelectionAction(
-                                actionId = actionId,
-                                locator = selection.locator,
-                                selectedText = selection.locator.text.highlight ?: ""
-                            )
+                    val selection = currentSelectionWithVisibleResource()
+                    if (selection == null) return@launch
+                    channel.send(
+                        ReaderViewModel.Event.SelectionAction(
+                            actionId = actionId,
+                            locator = selection.locator,
+                            selectedText = selection.locator.text.highlight ?: ""
                         )
-                    }
+                    )
                 }
 
+                (navigator as? SelectableNavigator)?.clearSelection()
                 mode.finish()
                 return true
             }
@@ -248,10 +323,271 @@ class EpubReaderFragment : VisualReaderFragment() {
         }
 
         override fun onDestroyActionMode(mode: ActionMode) {
-            // Clean up action mappings
             actionIdMap.clear()
         }
     }
+
+    @OptIn(ExperimentalReadiumApi::class)
+    private suspend fun currentSelectionWithVisibleResource(): Selection? {
+      val selection = (navigator as? SelectableNavigator)?.currentSelection() ?: return null
+      val visibleLocator = (navigator as? VisualNavigator)?.firstVisibleElementLocator()
+        ?: return selection
+
+      return selection.copy(
+        locator = selection.locator.copy(
+          href = visibleLocator.href,
+          mediaType = visibleLocator.mediaType,
+          title = visibleLocator.title ?: selection.locator.title
+        )
+      )
+    }
+
+    private fun showSelectionPopup(
+      anchor: View,
+      configuredMenu: SelectionMenuRecord,
+      colorsOnly: Boolean = false
+    ) {
+      dismissSelectionPopup()
+      if (!anchor.isAttachedToWindow) return
+
+      val content = createSelectionPopupContent(anchor, configuredMenu, colorsOnly)
+      val visibleFrame = Rect().also(anchor::getWindowVisibleDisplayFrame)
+      val margin = dp(12)
+      val maxWidth = (visibleFrame.width() - margin * 2).coerceAtLeast(dp(240))
+      content.measure(
+        View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+      )
+      val popupWidth = content.measuredWidth.coerceAtMost(maxWidth)
+      val popupHeight = content.measuredHeight
+      val popup = PopupWindow(
+        content,
+        popupWidth,
+        ViewGroup.LayoutParams.WRAP_CONTENT,
+        false
+      ).apply {
+        setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        isOutsideTouchable = true
+        isClippingEnabled = true
+        elevation = dp(8).toFloat()
+        setOnDismissListener {
+          if (selectionPopup === this) {
+            selectionPopup = null
+            shownSelectionMenu = null
+          }
+          if (ignoringPopupDismiss) return@setOnDismissListener
+          selectionMenu = null
+          (navigator as? SelectableNavigator)?.clearSelection()
+          lifecycleScope.launch {
+            channel.send(
+              ReaderViewModel.Event.SelectionChanged(
+                locator = null,
+                selectedText = null,
+                rect = null
+              )
+            )
+          }
+        }
+      }
+
+      val anchorLocation = IntArray(2).also(anchor::getLocationInWindow)
+      val sourceRect = configuredMenu.rect
+      val sourceLeft = anchorLocation[0] + (sourceRect?.x ?: anchor.width / 2.0).toInt()
+      val sourceTop = anchorLocation[1] + (sourceRect?.y ?: anchor.height / 2.0).toInt()
+      val sourceWidth = (sourceRect?.width ?: 1.0).toInt()
+      val sourceHeight = (sourceRect?.height ?: 1.0).toInt()
+      val desiredX = sourceLeft + sourceWidth / 2 - popupWidth / 2
+      val popupX = desiredX.coerceIn(
+        visibleFrame.left + margin,
+        (visibleFrame.right - popupWidth - margin).coerceAtLeast(visibleFrame.left + margin)
+      )
+      val aboveY = sourceTop - popupHeight - margin
+      val belowY = sourceTop + sourceHeight + margin
+      val popupY = if (aboveY >= visibleFrame.top + margin) {
+        aboveY
+      } else {
+        belowY.coerceAtMost(visibleFrame.bottom - popupHeight - margin)
+      }
+
+      selectionPopup = popup
+      shownSelectionMenu = configuredMenu
+      popup.showAtLocation(anchor.rootView, Gravity.TOP or Gravity.START, popupX, popupY)
+    }
+
+    private fun createSelectionPopupContent(
+      anchor: View,
+      configuredMenu: SelectionMenuRecord,
+      colorsOnly: Boolean
+    ): View {
+      val context = anchor.context
+      val onSurface = themedColor(
+        android.R.attr.textColorPrimary,
+        Color.rgb(38, 38, 38)
+      )
+      val surface = themedColor(
+        android.R.attr.colorBackground,
+        Color.WHITE
+      )
+      val error = themedColor(
+        android.R.attr.colorError,
+        Color.rgb(186, 26, 26)
+      )
+      val row = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(8), dp(4), dp(8), dp(4))
+      }
+
+      fun addTextAction(
+        label: String,
+        destructive: Boolean = false,
+        onClick: () -> Unit
+      ) {
+        row.addView(
+          TextView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+              ViewGroup.LayoutParams.WRAP_CONTENT,
+              dp(44)
+            )
+            gravity = Gravity.CENTER
+            minWidth = dp(48)
+            setPadding(dp(12), 0, dp(12), 0)
+            text = label
+            textSize = 16f
+            setTextColor(if (destructive) error else onSurface)
+            background = selectableItemBackground(android.R.attr.selectableItemBackground)
+            contentDescription = label
+            isFocusable = true
+            setOnClickListener { onClick() }
+          }
+        )
+      }
+
+      if (colorsOnly) {
+        configuredMenu.colors.forEach { color ->
+          row.addView(
+            ImageButton(context).apply {
+              layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+              setPadding(dp(10), dp(10), dp(10), dp(10))
+              setImageDrawable(
+                colorCircleDrawable(color.color, color.selected == true, onSurface)
+              )
+              imageTintList = null
+              background = selectableItemBackground(
+                android.R.attr.selectableItemBackgroundBorderless
+              )
+              contentDescription = color.label
+              isFocusable = true
+              setOnClickListener { handleConfiguredSelectionAction(color.id) }
+            }
+          )
+        }
+      } else {
+        addTextAction(configuredMenu.colorMenuLabel) {
+          showSelectionPopup(anchor, configuredMenu, colorsOnly = true)
+        }
+        configuredMenu.actions.forEach { action ->
+          addTextAction(action.label, action.destructive == true) {
+            handleConfiguredSelectionAction(action.id)
+          }
+        }
+      }
+
+      return HorizontalScrollView(context).apply {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_NEVER
+        clipToOutline = true
+        background = GradientDrawable().apply {
+          shape = GradientDrawable.RECTANGLE
+          cornerRadius = dp(26).toFloat()
+          setColor(surface)
+        }
+        addView(row)
+      }
+    }
+
+    private fun handleConfiguredSelectionAction(actionId: String) {
+      val configuredMenu = selectionMenu ?: return
+      dismissSelectionPopup()
+      selectionMenu = null
+      lifecycleScope.launch {
+        val currentSelection = currentSelectionWithVisibleResource()
+        val locator = currentSelection?.locator
+          ?: configuredMenu.locator?.let { locatorRecordToReadium(it) }
+          ?: return@launch
+        val selectedText = currentSelection?.locator?.text?.highlight
+          ?: configuredMenu.selectedText
+        (navigator as? SelectableNavigator)?.clearSelection()
+        channel.send(
+          ReaderViewModel.Event.SelectionAction(
+            actionId = actionId,
+            locator = locator,
+            selectedText = selectedText
+          )
+        )
+      }
+    }
+
+    private fun dismissSelectionPopup() {
+      val popup = selectionPopup ?: return
+      ignoringPopupDismiss = true
+      popup.dismiss()
+      ignoringPopupDismiss = false
+      selectionPopup = null
+      shownSelectionMenu = null
+    }
+
+    private fun selectableItemBackground(attribute: Int): Drawable? {
+      return requireContext()
+        .obtainStyledAttributes(intArrayOf(attribute))
+        .let { typedArray ->
+          try {
+            typedArray.getDrawable(0)
+          } finally {
+            typedArray.recycle()
+          }
+        }
+    }
+
+    private fun themedColor(attribute: Int, fallback: Int): Int {
+      return requireContext()
+        .obtainStyledAttributes(intArrayOf(attribute))
+        .let { typedArray ->
+          try {
+            typedArray.getColor(0, fallback)
+          } finally {
+            typedArray.recycle()
+          }
+        }
+    }
+
+    private fun colorCircleDrawable(
+      colorString: String,
+      selected: Boolean,
+      selectedRingColor: Int
+    ): Drawable? {
+      val color = runCatching { Color.parseColor(colorString) }.getOrNull() ?: return null
+      val size = dp(24)
+      val fill = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(color)
+        setSize(size, size)
+      }
+      if (!selected) return fill
+
+      val ring = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(selectedRingColor)
+        setSize(size, size)
+      }
+      return LayerDrawable(arrayOf(ring, fill)).apply {
+        val inset = dp(3)
+        setLayerInset(1, inset, inset, inset, inset)
+      }
+    }
+
+    private fun dp(value: Int): Int =
+      (value * resources.displayMetrics.density).toInt()
 
     private fun servedAssetPattern(source: String): String? {
       val trimmed = source.trim().trimStart('/')
@@ -288,7 +624,6 @@ class EpubReaderFragment : VisualReaderFragment() {
     }
 
     companion object {
-
         fun newInstance(): EpubReaderFragment {
             return EpubReaderFragment()
         }

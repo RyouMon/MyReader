@@ -47,6 +47,19 @@ final class ReadiumView: ExpoView {
     }
   }
 
+  var selectionMenu: SelectionMenuRecord? = nil {
+    didSet {
+      (readerViewController as? EPUBViewController)?.updateSelectionMenu(selectionMenu)
+    }
+  }
+
+  var customSelectionMenu = false {
+    didSet {
+      customSelectionMenuReceived = true
+      tryLoadBook()
+    }
+  }
+
   var fontFamilyDeclarations: [FontFamilyDeclarationRecord]? = nil {
     didSet {
       fontFamilyDeclarationsReceived = true
@@ -66,6 +79,7 @@ final class ReadiumView: ExpoView {
   private var hasLoadedBook = false
   private var preferencesReceived = false
   private var selectionActionsReceived = false
+  private var customSelectionMenuReceived = false
   private var fontFamilyDeclarationsReceived = false
   private var activeDecorationGroups = Set<String>()
 
@@ -108,6 +122,7 @@ final class ReadiumView: ExpoView {
     guard let url = pendingFileUrl,
           preferencesReceived,
           selectionActionsReceived,
+          customSelectionMenuReceived,
           fontFamilyDeclarationsReceived,
           !hasLoadedBook else {
       return
@@ -147,6 +162,18 @@ final class ReadiumView: ExpoView {
 
           if let epubVC = vc as? EPUBViewController {
             epubVC.selectionActionDelegate = self
+            epubVC.usesCustomSelectionMenu = self.customSelectionMenu
+            epubVC.updateSelectionMenu(self.selectionMenu)
+            epubVC.onSelectionChange = { [weak self] locator, selectedText, rect in
+              self?.emitSelectionChange(
+                locator: locator,
+                selectedText: selectedText,
+                rect: rect
+              )
+            }
+            epubVC.onSelectionMenuDismiss = { [weak self] in
+              self?.dispatchEvent("onSelectionChange", payload: [:])
+            }
           } else if let pdfVC = vc as? PDFViewController {
             pdfVC.selectionActionDelegate = self
             pdfVC.onSelectionChange = { [weak self] locator, selectedText in
@@ -306,12 +333,25 @@ final class ReadiumView: ExpoView {
       let toc = (try? tocResult.get()).map { flattenLinksToDicts($0) } ?? []
       let positions = (try? positionsResult.get()).map { $0.map { locatorToDict($0) } } ?? []
       let metadata = metadataToDict(vc.publication.metadata)
+      let selectable = vc.navigator is SelectableNavigator
+      let decorable = vc.navigator as? DecorableNavigator
+      let supportedDecorationStyles = [
+        Decoration.Style.Id.highlight,
+        Decoration.Style.Id.underline,
+        readerNoteMarkerStyleId,
+      ].filter { decorable?.supports(decorationStyle: $0) == true }
+        .map(\.rawValue)
 
       self.dispatchEvent("onPublicationReady", payload: [
         "publicationId": bookId,
         "tableOfContents": toc,
         "positions": positions,
         "metadata": metadata,
+        "capabilities": [
+          "canSelectText": selectable,
+          "canDecorate": decorable != nil,
+          "supportedDecorationStyles": supportedDecorationStyles,
+        ] as [String: Any],
       ] as [String: Any])
     }
   }
@@ -349,13 +389,32 @@ final class ReadiumView: ExpoView {
     }
   }
 
+  func clearSelection() {
+    Task { @MainActor [weak self] in
+      (self?.readerViewController?.navigator as? SelectableNavigator)?.clearSelection()
+    }
+  }
+
   // MARK: - Selection emission
 
-  private func emitSelectionChange(locator: RLocator, selectedText: String) {
-    dispatchEvent("onSelectionChange", payload: [
+  private func emitSelectionChange(
+    locator: RLocator,
+    selectedText: String,
+    rect: CGRect? = nil
+  ) {
+    var payload: [String: Any] = [
       "locator": locatorToDict(locator),
       "selectedText": selectedText,
-    ] as [String: Any])
+    ]
+    if let rect {
+      payload["rect"] = [
+        "x": rect.origin.x,
+        "y": rect.origin.y,
+        "width": rect.size.width,
+        "height": rect.size.height,
+      ]
+    }
+    dispatchEvent("onSelectionChange", payload: payload)
   }
 
   // MARK: - Cleanup

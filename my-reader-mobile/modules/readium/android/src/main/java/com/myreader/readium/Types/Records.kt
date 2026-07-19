@@ -119,6 +119,39 @@ data class SelectionActionRecord(
   @Field val label: String = ""
 ) : Record
 
+@OptimizedRecord
+data class SelectionMenuColorRecord(
+  @Field val id: String = "",
+  @Field val label: String = "",
+  @Field val color: String = "",
+  @Field val selected: Boolean? = null
+) : Record
+
+@OptimizedRecord
+data class SelectionMenuActionRecord(
+  @Field val id: String = "",
+  @Field val label: String = "",
+  @Field val destructive: Boolean? = null
+) : Record
+
+@OptimizedRecord
+data class SelectionMenuRectRecord(
+  @Field val x: Double = 0.0,
+  @Field val y: Double = 0.0,
+  @Field val width: Double = 0.0,
+  @Field val height: Double = 0.0
+) : Record
+
+@OptimizedRecord
+data class SelectionMenuRecord(
+  @Field val locator: LocatorRecord? = null,
+  @Field val selectedText: String = "",
+  @Field val rect: SelectionMenuRectRecord? = null,
+  @Field val colorMenuLabel: String = "",
+  @Field val colors: List<SelectionMenuColorRecord> = emptyList(),
+  @Field val actions: List<SelectionMenuActionRecord> = emptyList()
+) : Record
+
 // MARK: - File
 
 @OptimizedRecord

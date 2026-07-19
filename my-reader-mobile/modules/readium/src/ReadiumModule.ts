@@ -25,6 +25,7 @@ export type ReadiumModuleMethods = {
   goTo: (tag: number, locator: Locator) => void
   goForward: (tag: number) => void
   goBackward: (tag: number) => void
+  clearSelection: (tag: number) => void
 
   // Streamer / opener configuration (REP-005/006)
   configure: (config: PublicationOpenerConfig) => void

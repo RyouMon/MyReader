@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import ReadiumShared
+import UIKit
 
 /// Native `Readium` Expo Module.
 ///
@@ -37,6 +38,12 @@ public final class ReadiumModule: Module {
       Prop("selectionActions") { (view: ReadiumView, actions: [SelectionActionRecord]?) in
         view.selectionActions = actions
       }
+      Prop("selectionMenu") { (view: ReadiumView, menu: SelectionMenuRecord?) in
+        view.selectionMenu = menu
+      }
+      Prop("customSelectionMenu") { (view: ReadiumView, enabled: Bool) in
+        view.customSelectionMenu = enabled
+      }
     }
 
     // MARK: - Imperative navigation (view-tag based)
@@ -49,6 +56,9 @@ public final class ReadiumModule: Module {
     }
     AsyncFunction("goBackward") { (tag: Int) in
       ReadiumView.registry[tag]?.goBackward()
+    }
+    AsyncFunction("clearSelection") { (tag: Int) in
+      ReadiumView.registry[tag]?.clearSelection()
     }
 
     // MARK: - Streamer / opener configuration (REP-005/006)

@@ -25,6 +25,7 @@ import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.PreferencesRecord
 import com.myreader.readium.Types.ReadiumFileRecord
 import com.myreader.readium.Types.SelectionActionRecord
+import com.myreader.readium.Types.SelectionMenuRecord
 import com.myreader.readium.reader.BaseReaderFragment
 import com.myreader.readium.reader.EpubReaderFragment
 import com.myreader.readium.reader.ImageReaderFragment
@@ -139,6 +140,19 @@ class ReadiumView(
       updateSelectionActions()
     }
 
+  var selectionMenu: SelectionMenuRecord? = null
+    set(value) {
+      field = value
+      updateSelectionMenu()
+    }
+
+  var customSelectionMenu: Boolean = false
+    set(value) {
+      field = value
+      customSelectionMenuReceived = true
+      buildForViewIfReady()
+    }
+
   var fontFamilyDeclarations: List<FontFamilyDeclarationRecord>? = null
     set(value) {
       field = value
@@ -147,6 +161,7 @@ class ReadiumView(
     }
 
   private var fontFamilyDeclarationsReceived = false
+  private var customSelectionMenuReceived = false
 
   private fun ensureService() {
     if (svc == null) {
@@ -195,6 +210,10 @@ class ReadiumView(
     frag.updateSelectionActions(actions.map { FragmentSelectionAction(it.id, it.label) })
   }
 
+  private fun updateSelectionMenu() {
+    (fragment as? EpubReaderFragment)?.updateSelectionMenu(selectionMenu)
+  }
+
   // MARK: - Imperative navigation
 
   fun goTo(locator: LocatorRecord) {
@@ -215,6 +234,15 @@ class ReadiumView(
 
   fun goBackward() {
     fragment?.goBackward()
+  }
+
+  fun clearSelection() {
+    val action = Runnable { fragment?.clearSelection() }
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      action.run()
+    } else {
+      hostView.post(action)
+    }
   }
 
   // MARK: - Fragment management
@@ -269,6 +297,7 @@ class ReadiumView(
     if (isFragmentAdded) return
     if (isBuilding) return
     if (!fontFamilyDeclarationsReceived) return
+    if (!customSelectionMenuReceived) return
     val currentFile = file ?: return
     val fileUrl = currentFile.url
     if (fileUrl.isEmpty()) return
@@ -323,6 +352,8 @@ class ReadiumView(
 
     if (frag is EpubReaderFragment) {
       frag.updateFontFamilyDeclarations(fontFamilyDeclarations.orEmpty())
+      frag.updateCustomSelectionMenu(customSelectionMenu)
+      frag.updateSelectionMenu(selectionMenu)
     }
 
     preferences?.let { updatePreferences() }
@@ -374,7 +405,12 @@ class ReadiumView(
               "publicationId" to pubId,
               "tableOfContents" to flattenReadiumLinksToMaps(event.tableOfContents),
               "positions" to event.positions.map { readiumLocatorToMap(it) },
-              "metadata" to readiumMetadataToMap(event.metadata)
+              "metadata" to readiumMetadataToMap(event.metadata),
+              "capabilities" to mapOf(
+                "canSelectText" to event.canSelectText,
+                "canDecorate" to event.canDecorate,
+                "supportedDecorationStyles" to event.supportedDecorationStyles
+              )
             )
           )
         }
@@ -402,10 +438,19 @@ class ReadiumView(
         }
 
         is ReaderViewModel.Event.SelectionChanged -> {
+          val rect = event.rect?.let {
+            mapOf<String, Any?>(
+              "x" to it.left.toDouble(),
+              "y" to it.top.toDouble(),
+              "width" to it.width().toDouble(),
+              "height" to it.height().toDouble()
+            )
+          }
           onSelectionChange(
             mapOf<String, Any?>(
               "locator" to (event.locator?.let { readiumLocatorToMap(it) }),
-              "selectedText" to event.selectedText
+              "selectedText" to event.selectedText,
+              "rect" to rect
             )
           )
         }

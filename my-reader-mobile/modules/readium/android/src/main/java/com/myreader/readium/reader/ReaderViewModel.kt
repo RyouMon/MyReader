@@ -40,7 +40,10 @@ class ReaderViewModel(
         class PublicationReady(
             val tableOfContents: List<Link>,
             val positions: List<Locator>,
-            val metadata: Metadata
+            val metadata: Metadata,
+            val canSelectText: Boolean,
+            val canDecorate: Boolean,
+            val supportedDecorationStyles: List<String>
         ) : Event()
         class DecorationActivated(
             val decoration: Decoration,
@@ -50,7 +53,8 @@ class ReaderViewModel(
         ) : Event()
         class SelectionChanged(
             val locator: Locator?,
-            val selectedText: String?
+            val selectedText: String?,
+            val rect: RectF?
         ) : Event()
         class SelectionAction(
             val actionId: String,

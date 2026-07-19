@@ -11,7 +11,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import org.readium.r2.navigator.Decoration
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.Navigator
@@ -48,6 +47,10 @@ abstract class BaseReaderFragment : Fragment() {
   // content/snapshot lookups off the same object the navigator renders.
   val publication: org.readium.r2.shared.publication.Publication
     get() = model.publication
+
+  fun clearSelection() {
+    (navigator as? SelectableNavigator)?.clearSelection()
+  }
 
   // Track active decoration listeners to avoid duplicates
   private val activeDecorationGroups = mutableSetOf<String>()
@@ -134,7 +137,18 @@ abstract class BaseReaderFragment : Fragment() {
         ReaderViewModel.Event.PublicationReady(
           tableOfContents = model.publication.tableOfContents,
           positions = positions,
-          metadata = model.publication.metadata
+          metadata = model.publication.metadata,
+          canSelectText = navigator is SelectableNavigator,
+          canDecorate = navigator is DecorableNavigator,
+          supportedDecorationStyles = (navigator as? DecorableNavigator)?.let { decorable ->
+            buildList {
+              if (decorable.supportsDecorationStyle(Decoration.Style.Highlight::class)) add("highlight")
+              if (decorable.supportsDecorationStyle(Decoration.Style.Underline::class)) add("underline")
+              if (decorable.supportsDecorationStyle(ReaderNoteMarkerDecorationStyle::class)) {
+                add("myreader-note-marker")
+              }
+            }
+          } ?: emptyList()
         )
       )
     }
@@ -150,8 +164,6 @@ abstract class BaseReaderFragment : Fragment() {
     // Apply any pending decorations now that navigator is ready
     pendingDecorations?.let { applyDecorations(it) }
 
-    // Start monitoring text selection
-    startSelectionMonitoring()
   }
 
   override fun onDestroyView() {
@@ -324,63 +336,6 @@ abstract class BaseReaderFragment : Fragment() {
     }
 
     return selection.locator
-  }
-
-  /**
-   * Start monitoring text selection and emit selection change events.
-   *
-   * Uses 500ms polling because Readium's [SelectableNavigator] does not
-   * provide an observable API (Flow, callback, or listener) for selection
-   * changes. The only available method is the suspending
-   * [SelectableNavigator.currentSelection], which must be called on-demand.
-   * Polling is the least-invasive way to detect changes without forking the
-   * Readium toolkit.
-   */
-  private fun startSelectionMonitoring() {
-    val viewScope = viewLifecycleOwner.lifecycleScope
-
-    viewScope.launch {
-      var previousSelection: Locator? = null
-
-      while (true) {
-        delay(500) // Check every 500ms
-
-        if (!isNavigatorReady) continue
-
-        val selectableNavigator = navigator as? SelectableNavigator
-        if (selectableNavigator == null) continue
-
-        val currentSelection = try {
-          selectableNavigator.currentSelection()
-        } catch (e: Exception) {
-          android.util.Log.w("BaseReaderFragment", "Error getting selection: ${e.message}")
-          null
-        }
-
-        val currentLocator = currentSelection?.locator
-        val currentText = currentLocator?.text?.highlight
-
-        // Check if selection has changed
-        val hasChanged = when {
-          previousSelection == null && currentLocator == null -> false
-          previousSelection == null || currentLocator == null -> true
-          previousSelection.href != currentLocator.href -> true
-          previousSelection.text.highlight != currentText -> true
-          else -> false
-        }
-
-        if (hasChanged) {
-          channel.send(
-            ReaderViewModel.Event.SelectionChanged(
-              locator = currentLocator,
-              selectedText = currentText
-            )
-          )
-
-          previousSelection = currentLocator
-        }
-      }
-    }
   }
 
 }

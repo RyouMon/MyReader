@@ -17,6 +17,7 @@ import type {
   FontFamilyDeclaration,
   DecorationGroup,
   SelectionAction,
+  SelectionMenuConfig,
   PublicationReadyEvent,
   DecorationActivatedEvent,
   SelectionEvent,
@@ -36,6 +37,8 @@ type NativeReadiumViewProps = {
   fontFamilyDeclarations?: FontFamilyDeclaration[]
   decorations?: DecorationGroup[]
   selectionActions?: SelectionAction[]
+  selectionMenu?: SelectionMenuConfig
+  customSelectionMenu?: boolean
   style?: any
   onLocationChange?: (e: { nativeEvent: { locator: Locator } }) => void
   onPublicationReady?: (e: { nativeEvent: PublicationReadyEvent }) => void
@@ -67,6 +70,8 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
       fontFamilyDeclarations,
       decorations,
       selectionActions,
+      selectionMenu,
+      customSelectionMenu,
       ...props
     },
     forwardedRef,
@@ -117,6 +122,10 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
           const tag = tagOf()
           if (tag != null) ReadiumModule.goBackward(tag)
         },
+        clearSelection: () => {
+          const tag = tagOf()
+          if (tag != null) ReadiumModule.clearSelection(tag)
+        },
       }),
       [],
     )
@@ -136,6 +145,8 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
             fontFamilyDeclarations={fontFamilyDeclarations ?? []}
             decorations={decorations}
             selectionActions={selectionActions ?? []}
+            selectionMenu={selectionMenu}
+            customSelectionMenu={customSelectionMenu ?? false}
             onLocationChange={
               onLocationChange
                 ? (e) => onLocationChange(e.nativeEvent.locator)

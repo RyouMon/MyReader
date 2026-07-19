@@ -106,6 +106,35 @@ struct SelectionActionRecord: Record {
   @Field var label: String = ""
 }
 
+struct SelectionMenuColorRecord: Record {
+  @Field var id: String = ""
+  @Field var label: String = ""
+  @Field var color: String = ""
+  @Field var selected: Bool? = nil
+}
+
+struct SelectionMenuActionRecord: Record {
+  @Field var id: String = ""
+  @Field var label: String = ""
+  @Field var destructive: Bool? = nil
+}
+
+struct SelectionMenuRectRecord: Record {
+  @Field var x: Double = 0
+  @Field var y: Double = 0
+  @Field var width: Double = 0
+  @Field var height: Double = 0
+}
+
+struct SelectionMenuRecord: Record {
+  @Field var locator: LocatorRecord? = nil
+  @Field var selectedText: String = ""
+  @Field var rect: SelectionMenuRectRecord? = nil
+  @Field var colorMenuLabel: String = ""
+  @Field var colors: [SelectionMenuColorRecord] = []
+  @Field var actions: [SelectionMenuActionRecord] = []
+}
+
 // MARK: - File
 
 struct ReadiumFileRecord: Record {

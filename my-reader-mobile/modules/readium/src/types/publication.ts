@@ -79,4 +79,11 @@ export interface PublicationReadyEvent {
   tableOfContents: Link[]
   positions: Locator[]
   metadata: PublicationMetadata
+  capabilities?: ReaderCapabilities
+}
+
+export interface ReaderCapabilities {
+  canSelectText: boolean
+  canDecorate: boolean
+  supportedDecorationStyles: string[]
 }

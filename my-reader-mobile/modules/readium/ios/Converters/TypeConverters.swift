@@ -349,13 +349,14 @@ func metadataToDict(_ meta: ReadiumShared.Metadata) -> [String: Any] {
 func decorationToDict(_ dec: RDecoration, group: String) -> [String: Any] {
   let locator = locatorToDict(dec.locator)
 
-  var styleType = "highlight"
+  var styleType = dec.style.id.rawValue
   var tint: String?
   var isActive: Bool?
   if let highlightConfig = dec.style.config as? RDecoration.Style.HighlightConfig {
-    styleType = "highlight"
     tint = highlightConfig.tint.map { $0.cssHex }
     isActive = highlightConfig.isActive
+  } else if let noteMarkerConfig = dec.style.config as? ReaderNoteMarkerStyleConfig {
+    tint = noteMarkerConfig.tint.cssHex
   }
 
   var style: [String: Any] = ["type": styleType]

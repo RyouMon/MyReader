@@ -24,26 +24,65 @@ Nitro to Expo. The public TS contract (`ReadiumProps` / `ReadiumViewRef`) is kep
 identical for drop-in migration. See [NOTICE](./NOTICE) for provenance and
 [licenses/](./licenses) for third-party license texts.
 
-## Architecture
+## Architecture and ownership
+
+MyReader's reader runs as three responsibility layers. `modules/readium` is the
+application's native integration layer, not part of the third-party Toolkit. In a
+non-React-Native application, the code in this layer would simply be the native app
+code which consumes Readium Toolkit.
 
 ```
-JS API (src/)
-  ├─ ReadiumView            Expo View: reader surface + props + events + ref
-  ├─ streamer               PublicationOpener config: custom parsers, onCreatePublication (REP-005)
-  ├─ format                 Custom format registration: extensions/mediaType → native parser (REP-005)
-  ├─ publication            Publication handle: metadata/TOC/positions/content (REP-003/004)
-  ├─ search                 Stateful full-text search API (REP-007)
-  ├─ tts                    TTSEngine interface + utterance foundation (reserved)
-  └─ types/                 Locator / Preferences / Decoration / Publication / ... (ported from fork)
+React Native product layer (MyReader)
+  ├─ owns annotation state, persistence, note UI and product semantics
+  └─ supplies locators, colors, localized action labels and menu state
+                         ↓ typed props / events
+App-owned native integration layer (modules/readium)
+  ├─ src/                   Expo Module TypeScript contract
+  ├─ ios/                   UIKit host, UIEditMenuInteraction and Toolkit adapter
+  └─ android/               Fragment host, ActionMode and Toolkit adapter
+                         ↓ Toolkit public APIs
+Readium Swift / Kotlin Toolkit
+  ├─ Publication / Streamer / services
+  ├─ Navigator / Selection / Locator
+  └─ Decoration rendering and interaction primitives
+```
 
-Native bridge (ios/ android/)
-  ├─ ReadiumModule          Module definition: View + Props + Events + AsyncFunctions
-  ├─ ReadiumView            ExpoView hosting the Readium reader ViewController / Fragment
-  ├─ Reader/                Ported: ReaderService + EPUB/PDF/CBZ controllers & fragments
-  ├─ Streamer/              Open PublicationOpener: parser registry, onCreatePublication
-  ├─ Publication/           Publication handle table (id ↔ native Publication)
-  ├─ Search/                Search iterator sessions + cancellation
-  └─ Format/                FormatRegistry + custom PublicationParser registration
+The placement rule is based on runtime ownership, not on whether something is
+"UI":
+
+- Cross-platform product state and workflows belong to React Native.
+- Platform-native reader integration and system UI tied to the native navigator
+  belong to `modules/readium`. The text-selection menu is implemented here because
+  UIKit and Android own its lifecycle, anchoring and accessibility behavior.
+- Generic publication and navigation mechanisms belong to Readium Toolkit. The
+  module consumes Toolkit selection locators and the Decoration API; it does not
+  patch Toolkit to add MyReader-specific highlights, notes, colors or menus.
+
+EPUB decoration markup runs inside the Toolkit navigator's publication WebView; it
+is not React Native UI. Shared decoration HTML/CSS lives in
+`packages/tools/src/reader-note-marker/` and is generated into small Swift/Kotlin
+constants at build time. The native adapters keep only Toolkit registration, escaping
+and platform touch-target differences, so visual changes have one source without
+sending arbitrary markup across the RN bridge.
+
+For highlights, Toolkit provides the official mechanisms: selection returns a
+`Locator`, `DecorableNavigator.applyDecorations` renders the highlight, and decoration
+interaction observers report activation. MyReader owns the annotation record and
+persistence. The native integration layer translates between those two sides and
+presents the native selection menu (`UIEditMenuInteraction` on iOS,
+`ActionMode.Callback2` on Android).
+
+The rest of the bridge is organized as follows:
+
+```text
+src/                       ReadiumView props/events/ref and service APIs
+ios/ReadiumModule.swift    Expo Module definition
+android/.../ReadiumModule  Expo Module definition
+Reader/                    EPUB/PDF/CBZ controllers and fragments
+Streamer/                  Publication opener and parser registry
+Publication/               Native Publication handle table
+Search/                    Search iterator sessions and cancellation
+Format/                    Custom PublicationParser registration
 ```
 
 **Stateful-object bridging:** native keeps a `Publication` table; JS holds a
@@ -76,7 +115,8 @@ export function Reader({ url }: { url: string }) {
       file={{ url, initialLocation: lastLocator /* optional: restore position */ }}
       preferences={preferences}
       decorations={decorationGroups}
-      selectionActions={selectionActions}
+      customSelectionMenu
+      selectionMenu={selectionMenu}
       onLocationChange={(locator) => { /* persist progress */ }}
       onPublicationReady={(e) => { /* e.publicationId, e.tableOfContents, e.metadata, e.positions */ }}
       onDecorationActivated={(e) => { /* e.decoration, e.group, e.rect? */ }}
@@ -95,7 +135,9 @@ export function Reader({ url }: { url: string }) {
 | `file` | `ReadiumFile` (`{ url, initialLocation? }`) | Native filesystem path or absolute URL. `initialLocation` restores last-read position. |
 | `preferences` | `Preferences` | REP-009 full spec (font family/size, line height, letter spacing, page margins, text alignment, column count, theme, colors, type scale). |
 | `decorations` | `DecorationGroup[]` | REP-008 Decorator API. |
-| `selectionActions` | `SelectionAction[]` | Defines the text-selection action menu. |
+| `selectionActions` | `SelectionAction[]` | Generic Toolkit selection actions. Kept for consumers that use the default menu path. |
+| `customSelectionMenu` | `boolean` | Routes EPUB selection through the app-owned native menu integration. |
+| `selectionMenu` | `SelectionMenuConfig` | Current native menu model: selection locator/rect, a localized color-submenu label, color-circle actions, and text actions. RN owns the model; UIKit/Android render it. |
 | `onLocationChange` / `onPublicationReady` / `onDecorationActivated` / `onSelectionChange` / `onSelectionAction` / `onTap` | callbacks | See `src/types/events.ts`. |
 
 ### Imperative ref (`ReadiumViewRef`)
@@ -143,10 +185,15 @@ reported as not searchable by this bridge.
 From `my-reader-mobile/`:
 
 ```bash
+pnpm prepare:reader-note-marker            # regenerate native constants from packages/tools/src/reader-note-marker
 pnpm exec expo run:ios --device <UDID>     # rebuild + run iOS
 pnpm exec expo run:android --device <id>   # rebuild + run Android
 pnpm run test:ci                            # Jest (module sources mapped via moduleNameMapper)
 ```
+
+The note-marker HTML/CSS in `packages/tools/src/reader-note-marker/` is shared by
+desktop EPUB rendering and the native Readium bridges. Desktop consumes it directly;
+this module's generator compiles the same source into Swift and Kotlin constants.
 
 Reader non-regression is covered by `e2e/flows/reader/read_book.yaml` (Maestro) on both
 platforms: open EPUB, toggle chrome, TOC, settings, page navigation, locator persistence.

@@ -16,6 +16,7 @@ import com.myreader.readium.Types.PublicationOpenerConfigRecord
 import com.myreader.readium.Types.ReadiumFileRecord
 import com.myreader.readium.Types.SearchOptionsRecord
 import com.myreader.readium.Types.SelectionActionRecord
+import com.myreader.readium.Types.SelectionMenuRecord
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
@@ -78,6 +79,14 @@ class ReadiumModule : Module() {
       Prop("selectionActions") { view: ReadiumView, value: List<SelectionActionRecord>? ->
         view.selectionActions = value
       }
+
+      Prop("selectionMenu") { view: ReadiumView, value: SelectionMenuRecord? ->
+        view.selectionMenu = value
+      }
+
+      Prop("customSelectionMenu") { view: ReadiumView, value: Boolean ->
+        view.customSelectionMenu = value
+      }
     }
 
     // MARK: - Imperative navigation (view resolved from react tag)
@@ -92,6 +101,10 @@ class ReadiumModule : Module() {
 
     AsyncFunction("goBackward") { tag: Int ->
       ReadiumView.registry[tag]?.goBackward()
+    }
+
+    AsyncFunction("clearSelection") { tag: Int ->
+      ReadiumView.registry[tag]?.clearSelection()
     }
 
     // MARK: - Streamer open-architecture config (REP-005/006)

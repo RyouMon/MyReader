@@ -4,6 +4,7 @@ import android.graphics.Color
 import com.myreader.readium.Types.DecorationRecord
 import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.PreferencesRecord
+import com.myreader.readium.reader.ReaderNoteMarkerDecorationStyle
 import com.myreader.readium.utils.normalizeHref
 import org.readium.adapter.pdfium.navigator.PdfiumPreferences as ReadiumPdfPreferences
 import org.readium.r2.navigator.Decoration as ReadiumDecoration
@@ -129,6 +130,9 @@ internal fun decorationRecordToReadium(dec: DecorationRecord): ReadiumDecoration
     "underline" -> ReadiumDecoration.Style.Underline(
       tint = parseColorString(styleRec.tint),
       isActive = styleRec.isActive ?: false
+    )
+    "myreader-note-marker" -> ReaderNoteMarkerDecorationStyle(
+      tint = parseColorString(styleRec.tint)
     )
     else -> return null
   }
@@ -352,6 +356,10 @@ internal fun readiumDecorationToMap(dec: ReadiumDecoration): Map<String, Any?> {
       styleType = "underline"
       tint = colorToHex(decStyle.tint)
       isActive = decStyle.isActive
+    }
+    is ReaderNoteMarkerDecorationStyle -> {
+      styleType = "myreader-note-marker"
+      tint = colorToHex(decStyle.tint)
     }
     else -> {}
   }

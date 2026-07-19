@@ -85,7 +85,9 @@ struct StyleData: Codable {
       let color = tint.flatMap { UIColor.fromCSS($0) }
       return .underline(tint: color, isActive: isActive ?? false)
 
-    // TODO: Add support for custom styles
+    case readerNoteMarkerStyleId.rawValue:
+      return readerNoteMarkerStyle(tint: tint)
+
     default:
       return nil
     }

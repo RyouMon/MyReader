@@ -5,6 +5,7 @@ import type {
   FontFamilyDeclaration,
   DecorationGroup,
   SelectionAction,
+  SelectionMenuConfig,
   PublicationReadyEvent,
   DecorationActivatedEvent,
   SelectionEvent,
@@ -17,6 +18,7 @@ export type ReadiumViewRef = {
   goTo: (locator: Locator) => void
   goForward: () => void
   goBackward: () => void
+  clearSelection: () => void
 }
 
 /** Public props contract — kept identical to the fork for drop-in migration. */
@@ -26,6 +28,8 @@ export type ReadiumProps = {
   fontFamilyDeclarations?: FontFamilyDeclaration[]
   decorations?: DecorationGroup[]
   selectionActions?: SelectionAction[]
+  selectionMenu?: SelectionMenuConfig
+  customSelectionMenu?: boolean
   style?: any
   onLocationChange?: (locator: Locator) => void
   onPublicationReady?: (event: PublicationReadyEvent) => void
