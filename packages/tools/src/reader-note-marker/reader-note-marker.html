@@ -1,0 +1,12 @@
+<!--
+  Shared reader note marker source template.
+  After editing, run from the repository root:
+  pnpm --dir my-reader-mobile prepare:reader-note-marker
+-->
+<div class="myreader-note-marker-anchor">
+  <button type="button" class="myreader-note-marker-hit" data-activable="1" aria-label="{{accessibilityLabel}}">
+    <span class="myreader-note-marker-note" aria-hidden="true">
+      <span class="myreader-note-marker-paper" style="background-color: {{tint}} !important"></span>
+    </span>
+  </button>
+</div>

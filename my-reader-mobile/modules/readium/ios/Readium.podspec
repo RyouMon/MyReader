@@ -20,7 +20,17 @@ Pod::Spec.new do |s|
   s.swift_version  = '5.0'
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
-  s.prepare_command = "cd ../../.. && node scripts/prepare-reader-fonts.mjs"
+  s.prepare_command = "cd ../../.. && node scripts/prepare-reader-fonts.mjs && node modules/readium/scripts/generate-reader-note-marker-template.mjs --platform ios"
+  s.script_phase = {
+    :name => 'Generate reader note marker template',
+    :script => 'node "${PODS_TARGET_SRCROOT}/../scripts/generate-reader-note-marker-template.mjs" --platform ios',
+    :execution_position => :before_compile,
+    :input_files => [
+      '${PODS_TARGET_SRCROOT}/../../../../packages/tools/src/reader-note-marker/reader-note-marker.html',
+      '${PODS_TARGET_SRCROOT}/../../../../packages/tools/src/reader-note-marker/reader-note-marker.css'
+    ],
+    :output_files => ['${PODS_TARGET_SRCROOT}/Reader/EPUB/GeneratedReaderNoteMarkerTemplate.swift']
+  }
   s.resource_bundles = {
     "ReadiumReaderFonts" => ["Generated/reader-fonts/*"]
   }
