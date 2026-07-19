@@ -1,3 +1,4 @@
+pub mod annotation_repo;
 pub mod book_reading_format_repo;
 pub mod bookmark_repo;
 pub mod calibre_repo;

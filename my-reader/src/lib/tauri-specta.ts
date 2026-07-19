@@ -41,6 +41,10 @@ export const commands = {
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
+	listReaderAnnotations: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderAnnotationDto[], ErrorKind>(__TAURI_INVOKE("list_reader_annotations", { libraryId, bookId, format })),
+	addReaderAnnotation: (libraryId: string | null, bookId: number, format: string, locator: any, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("add_reader_annotation", { libraryId, bookId, format, locator, color, note })),
+	updateReaderAnnotation: (libraryId: string | null, bookId: number, format: string, id: string, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("update_reader_annotation", { libraryId, bookId, format, id, color, note })),
+	deleteReaderAnnotation: (libraryId: string | null, bookId: number, format: string, id: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_reader_annotation", { libraryId, bookId, format, id })),
 	listReaderBookmarks: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderBookmarkDto[], ErrorKind>(__TAURI_INVOKE("list_reader_bookmarks", { libraryId, bookId, format })),
 	addReaderBookmark: (libraryId: string | null, bookId: number, format: string, locatorKey: string, locator: any) => typedError<ReaderBookmarkDto, ErrorKind>(__TAURI_INVOKE("add_reader_bookmark", { libraryId, bookId, format, locatorKey, locator })),
 	deleteReaderBookmark: (libraryId: string | null, bookId: number, format: string, locatorKey: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("delete_reader_bookmark", { libraryId, bookId, format, locatorKey })),
@@ -210,6 +214,20 @@ export type PreparedBookSource = {
 	extractedDirPath: string | null,
 	extractedEntries: string[],
 	streamerUrl: string | null,
+};
+
+/**  A local reader highlight with an optional note attached to its Readium Locator. */
+export type ReaderAnnotationDto = {
+	id: string,
+	libraryId: string,
+	bookId: number,
+	format: string,
+	kind: string,
+	locator: any,
+	color: string,
+	note: string | null,
+	createdAt: number | null,
+	updatedAt: number | null,
 };
 
 /**  A durable Readium Locator saved by the reader as an explicit bookmark. */

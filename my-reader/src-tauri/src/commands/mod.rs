@@ -14,6 +14,7 @@ pub struct PreparedBookSource {
     pub streamer_url: Option<String>,
 }
 
+pub mod annotation;
 pub mod book;
 pub mod book_reading_format;
 pub mod bookmark;

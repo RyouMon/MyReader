@@ -309,6 +309,23 @@ pub struct ReaderBookmarkDto {
     pub updated_at: f64,
 }
 
+/// A local reader highlight with an optional note attached to its Readium Locator.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReaderAnnotationDto {
+    pub id: String,
+    pub library_id: String,
+    pub book_id: i64,
+    pub format: String,
+    pub kind: String,
+    #[specta(type = specta_typescript::Any)]
+    pub locator: serde_json::Value,
+    pub color: String,
+    pub note: Option<String>,
+    pub created_at: f64,
+    pub updated_at: f64,
+}
+
 /// Returned by `check_book_file_state`: describes whether a book file is cached locally.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]

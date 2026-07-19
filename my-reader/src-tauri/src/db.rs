@@ -42,6 +42,17 @@ pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, AppError>
     )
     .await
     .map_err(|e| AppError::Database(e.to_string()))?;
+    db.execute_unprepared(
+        "CREATE INDEX IF NOT EXISTS idx_annotations_book_format \
+         ON annotations (book_id, format)",
+    )
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
+    db.execute_unprepared(
+        "CREATE INDEX IF NOT EXISTS idx_annotations_updated_at ON annotations (updated_at)",
+    )
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
 
     info!(
         "Success to open reading progress database. path: \"{}\"",
