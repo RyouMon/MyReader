@@ -2,7 +2,23 @@ import {
   type BottomSheetModal,
   BottomSheetModalProvider,
 } from "@expo/ui/community/bottom-sheet"
-import type { DecorationGroup, Locator } from "@my-reader/readium"
+import type {
+  DecorationActivatedEvent,
+  DecorationGroup,
+  Locator,
+  ReaderCapabilities,
+  Rect,
+  SelectionActionEvent,
+  SelectionEvent,
+  SelectionMenuConfig,
+} from "@my-reader/readium"
+import {
+  isReaderAnnotationColor,
+  READER_ANNOTATION_COLORS,
+  type ReaderAnnotationColor,
+  readerAnnotationExcerpt,
+  readerAnnotationMatchesSelection,
+} from "@my-reader/tools/reader-annotations"
 import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { router, useLocalSearchParams } from "expo-router"
@@ -19,6 +35,7 @@ import {
 import { useTranslation } from "react-i18next"
 import {
   ActivityIndicator,
+  Alert,
   Animated as RNAnimated,
   StatusBar,
   StyleSheet,
@@ -38,18 +55,24 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import { useTheme } from "@/src/design/tokens"
+import type { ReaderAnnotation } from "@/src/features/reader/reader-annotations"
 import {
   ReaderActionsExpanded,
+  type ReaderAnnotationEditorDraft,
+  ReaderAnnotationEditorSheet,
+  type ReaderAnnotationEditorSheetRef,
+  type ReaderAnnotationItem,
+  ReaderAnnotationsSheet,
   ReaderBookmarkButton,
-  readerBookmarkButtonVisible,
   type ReaderBookmarkItem,
   ReaderChapterLabel,
   ReaderCloseButton,
   ReaderMoreButton,
   ReaderNavigationSheet,
   ReaderPositionLabel,
-  ReaderSearchSheet,
   type ReaderProgressPreview,
+  ReaderSearchSheet,
+  readerBookmarkButtonVisible,
 } from "@/src/features/reader/components/reader/chrome"
 import {
   ChromeState,
@@ -80,8 +103,13 @@ import type {
   ReaderState,
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
+import { useReaderAnnotations } from "@/src/features/reader/hooks/use-reader-annotations"
 import { useReaderBookmarks } from "@/src/features/reader/hooks/use-reader-bookmarks"
 import { useReaderSearch } from "@/src/features/reader/hooks/use-reader-search"
+import {
+  createReaderAnnotationDecorationGroups,
+  resolveReaderAnnotationActivation,
+} from "@/src/features/reader/reader-annotation-decorations"
 import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
@@ -111,6 +139,13 @@ const ReadiumReflowReader = lazy(
 const READER_CONTENT_FADE_MS = 220
 const CLOSE_ROUTE_BACK_LEAD_MS = 180
 const ERROR_BACK_BUTTON_BORDER_COLOR = READER_CHROME.border
+const SELECTION_COLOR_ACTION_PREFIX = "color:"
+const READER_ANNOTATION_COLOR_ORDER = [
+  "yellow",
+  "orange",
+  "green",
+  "blue",
+] as const satisfies readonly ReaderAnnotationColor[]
 
 type ReaderRuntime = {
   publicationKey: string
@@ -119,6 +154,14 @@ type ReaderRuntime = {
   publicationLanguages: string[]
   positions: Locator[]
   toc: ReaderTocItem[]
+  publicationLayout: string | null
+  capabilities: ReaderCapabilities
+}
+
+type ReaderSelectionMenuState = {
+  locator: Locator
+  annotation: ReaderAnnotation | null
+  rect?: Rect
 }
 
 function emptyReaderRuntime(publicationKey: string): ReaderRuntime {
@@ -129,6 +172,12 @@ function emptyReaderRuntime(publicationKey: string): ReaderRuntime {
     publicationLanguages: [],
     positions: [],
     toc: [],
+    publicationLayout: null,
+    capabilities: {
+      canSelectText: false,
+      canDecorate: false,
+      supportedDecorationStyles: [],
+    },
   }
 }
 
@@ -161,8 +210,14 @@ export default function ReaderScreen() {
     readerRuntime.publicationKey === publicationKey
       ? readerRuntime
       : emptyReaderRuntime(publicationKey)
-  const { publicationId, readerState, publicationLanguages, positions, toc } =
-    activeReaderRuntime
+  const {
+    publicationId,
+    readerState,
+    publicationLanguages,
+    positions,
+    toc,
+    capabilities: readerCapabilities,
+  } = activeReaderRuntime
   const [chromeState, dispatch] = useReducer(chromeReducer, ChromeState.Reading)
   const settings = useAppStore((s) => s.settings)
   const patchReflowableReaderSettings = useAppStore(
@@ -173,6 +228,8 @@ export default function ReaderScreen() {
   )
 
   const navigationSheetRef = useRef<BottomSheetModal>(null)
+  const annotationsSheetRef = useRef<BottomSheetModal>(null)
+  const annotationEditorSheetRef = useRef<ReaderAnnotationEditorSheetRef>(null)
   const searchSheetRef = useRef<BottomSheetModal>(null)
   const settingsSheetRef = useRef<ReaderSettingsSheetRef>(null)
   const reflowReaderRef = useRef<ReadiumReflowReaderRef>(null)
@@ -181,6 +238,13 @@ export default function ReaderScreen() {
     publicationKey: string
     locator: ReaderLocator
   } | null>(null)
+  const [annotationEditorState, setAnnotationEditorState] = useState<
+    | { mode: "create"; locator: Locator; createdAt: number }
+    | { mode: "edit"; annotation: ReaderAnnotation }
+    | null
+  >(null)
+  const [selectionMenuState, setSelectionMenuState] =
+    useState<ReaderSelectionMenuState | null>(null)
   const readerPositionsRef = useRef<{
     publicationKey: string
     positions: Locator[]
@@ -222,6 +286,11 @@ export default function ReaderScreen() {
     activeLoadState?.bookId ?? null,
     activeLoadState?.format ?? null,
     readerState?.locator,
+  )
+  const readerAnnotations = useReaderAnnotations(
+    activeLibrary,
+    activeLoadState?.bookId ?? null,
+    activeLoadState?.format ?? null,
   )
   const closeTransitionFormat = activeLoadState?.format ?? formatParam
 
@@ -274,6 +343,26 @@ export default function ReaderScreen() {
         updateReaderRuntime(current, publicationKey, {
           publicationId: nextPublicationId,
         }),
+      )
+    },
+    [publicationKey],
+  )
+
+  const handlePublicationLayoutReady = useCallback(
+    (layout: string | null) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, {
+          publicationLayout: layout,
+        }),
+      )
+    },
+    [publicationKey],
+  )
+
+  const handleCapabilitiesReady = useCallback(
+    (capabilities: ReaderCapabilities) => {
+      setReaderRuntime((current) =>
+        updateReaderRuntime(current, publicationKey, { capabilities }),
       )
     },
     [publicationKey],
@@ -357,6 +446,10 @@ export default function ReaderScreen() {
     dispatch({ type: "navigationDismiss" })
   }, [])
 
+  const handleAnnotationsDismiss = useCallback(() => {
+    dispatch({ type: "annotationsDismiss" })
+  }, [])
+
   const handleBookmarkSelect = useCallback(
     (item: ReaderBookmarkItem) => {
       navigateToLocator(
@@ -376,6 +469,252 @@ export default function ReaderScreen() {
     (item: ReaderBookmarkItem) => removeBookmark(item.locator),
     [removeBookmark],
   )
+
+  const closeAnnotationEditor = useCallback(() => {
+    annotationEditorSheetRef.current?.dismiss()
+  }, [])
+
+  const handleAnnotationEditorDismiss = useCallback(() => {
+    setAnnotationEditorState(null)
+  }, [])
+
+  const dismissSelectionMenu = useCallback(() => {
+    setSelectionMenuState(null)
+    reflowReaderRef.current?.clearSelection()
+  }, [])
+
+  const handleReaderTap = useCallback(() => {
+    dismissSelectionMenu()
+    toggleChrome()
+  }, [dismissSelectionMenu, toggleChrome])
+
+  const handleSelectionChange = useCallback(
+    (event: SelectionEvent) => {
+      const locator = event.locator
+      if (!locator || !readerAnnotationExcerpt(locator)) {
+        setSelectionMenuState(null)
+        return
+      }
+      const annotation =
+        readerAnnotations.annotations.find((item) =>
+          readerAnnotationMatchesSelection(item.locator, locator),
+        ) ?? null
+      setSelectionMenuState({ locator, annotation, rect: event.rect })
+    },
+    [readerAnnotations.annotations],
+  )
+
+  const handleDecorationActivated = useCallback(
+    (event: DecorationActivatedEvent) => {
+      const activation = resolveReaderAnnotationActivation(
+        event,
+        readerAnnotations.annotations,
+      )
+      if (!activation) return
+      if (activation.target === "note") {
+        setSelectionMenuState(null)
+        setAnnotationEditorState({
+          mode: "edit",
+          annotation: activation.annotation,
+        })
+        return
+      }
+      setSelectionMenuState({
+        locator: activation.annotation.locator,
+        annotation: activation.annotation,
+        rect: event.rect,
+      })
+    },
+    [readerAnnotations.annotations],
+  )
+
+  const handleAnnotationSelect = useCallback(
+    (item: ReaderAnnotationItem) => {
+      navigateToLocator(item.locator)
+      annotationsSheetRef.current?.dismiss()
+      dispatch({ type: "annotationSelect" })
+    },
+    [navigateToLocator],
+  )
+
+  const handleAnnotationEdit = useCallback(
+    (item: ReaderAnnotationItem) => {
+      const annotation = readerAnnotations.annotations.find(
+        (row) => row.id === item.id,
+      )
+      if (!annotation) return
+      annotationsSheetRef.current?.dismiss()
+      dispatch({ type: "annotationSelect" })
+      setAnnotationEditorState({ mode: "edit", annotation })
+    },
+    [readerAnnotations.annotations],
+  )
+
+  const removeAnnotation = useCallback(
+    async (annotation: ReaderAnnotation): Promise<boolean> => {
+      try {
+        await readerAnnotations.remove(annotation)
+        return true
+      } catch {
+        Alert.alert(t("reader.annotations.error"))
+        return false
+      }
+    },
+    [readerAnnotations, t],
+  )
+
+  const handleSelectionColorSelect = useCallback(
+    (color: ReaderAnnotationColor) => {
+      const selection = selectionMenuState
+      if (!selection) return
+      dismissSelectionMenu()
+      const mutation = selection.annotation
+        ? selection.annotation.color === color
+          ? Promise.resolve()
+          : readerAnnotations.update(
+              selection.annotation,
+              color,
+              selection.annotation.note,
+            )
+        : readerAnnotations.add(selection.locator, color)
+      void mutation.catch(() => Alert.alert(t("reader.annotations.error")))
+    },
+    [dismissSelectionMenu, readerAnnotations, selectionMenuState, t],
+  )
+
+  const handleSelectionAddNote = useCallback(() => {
+    const selection = selectionMenuState
+    if (!selection) return
+    dismissSelectionMenu()
+    setAnnotationEditorState(
+      selection.annotation
+        ? { mode: "edit", annotation: selection.annotation }
+        : {
+            mode: "create",
+            locator: selection.locator,
+            createdAt: Date.now(),
+          },
+    )
+  }, [dismissSelectionMenu, selectionMenuState])
+
+  const handleSelectionRemove = useCallback(() => {
+    const annotation = selectionMenuState?.annotation
+    if (!annotation) return
+    dismissSelectionMenu()
+    void removeAnnotation(annotation)
+  }, [dismissSelectionMenu, removeAnnotation, selectionMenuState])
+
+  const selectionMenu = useMemo<SelectionMenuConfig | undefined>(() => {
+    if (!selectionMenuState) return undefined
+
+    return {
+      locator: selectionMenuState.locator,
+      selectedText: readerAnnotationExcerpt(selectionMenuState.locator),
+      rect: selectionMenuState.rect,
+      colorMenuLabel: t("reader.annotations.highlightAction"),
+      colors: READER_ANNOTATION_COLOR_ORDER.map((color) => ({
+        id: `${SELECTION_COLOR_ACTION_PREFIX}${color}`,
+        label: t(`reader.annotations.colors.${color}`),
+        color: READER_ANNOTATION_COLORS[color],
+        selected: selectionMenuState.annotation?.color === color,
+      })),
+      actions: [
+        {
+          id: "addNote",
+          label: t(
+            selectionMenuState.annotation?.note?.trim()
+              ? "reader.annotations.editNoteAction"
+              : "reader.annotations.noteAction",
+          ),
+        },
+        ...(selectionMenuState.annotation
+          ? [
+              {
+                id: "remove",
+                label: t("reader.annotations.removeAction"),
+                destructive: true,
+              },
+            ]
+          : []),
+      ],
+    }
+  }, [selectionMenuState, t])
+
+  const handleSelectionAction = useCallback(
+    (event: SelectionActionEvent) => {
+      if (event.actionId.startsWith(SELECTION_COLOR_ACTION_PREFIX)) {
+        const color = event.actionId.slice(SELECTION_COLOR_ACTION_PREFIX.length)
+        if (isReaderAnnotationColor(color)) handleSelectionColorSelect(color)
+        return
+      }
+
+      switch (event.actionId) {
+        case "addNote":
+          handleSelectionAddNote()
+          break
+        case "remove":
+          handleSelectionRemove()
+          break
+      }
+    },
+    [handleSelectionAddNote, handleSelectionColorSelect, handleSelectionRemove],
+  )
+
+  const handleAnnotationDelete = useCallback(
+    (item: ReaderAnnotationItem) => {
+      const annotation = readerAnnotations.annotations.find(
+        (row) => row.id === item.id,
+      )
+      if (!annotation) return
+      Alert.alert(
+        t("reader.annotations.deleteTitle"),
+        t("reader.annotations.deleteMessage"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => void removeAnnotation(annotation),
+          },
+        ],
+      )
+    },
+    [readerAnnotations.annotations, removeAnnotation, t],
+  )
+
+  const handleAnnotationEditorSave = useCallback(
+    async (color: ReaderAnnotationColor, note: string): Promise<boolean> => {
+      if (!annotationEditorState) return false
+      try {
+        if (annotationEditorState.mode === "create") {
+          await readerAnnotations.add(
+            annotationEditorState.locator,
+            color,
+            note,
+          )
+        } else {
+          await readerAnnotations.update(
+            annotationEditorState.annotation,
+            color,
+            note,
+          )
+        }
+        closeAnnotationEditor()
+        return true
+      } catch {
+        Alert.alert(t("reader.annotations.error"))
+        return false
+      }
+    },
+    [annotationEditorState, closeAnnotationEditor, readerAnnotations, t],
+  )
+
+  const handleAnnotationEditorDelete = useCallback(async () => {
+    if (annotationEditorState?.mode !== "edit") return false
+    const removed = await removeAnnotation(annotationEditorState.annotation)
+    if (removed) closeAnnotationEditor()
+    return removed
+  }, [annotationEditorState, closeAnnotationEditor, removeAnnotation])
 
   const handleSettingsDismiss = useCallback(() => {
     dispatch({ type: "settingsDismiss" })
@@ -426,6 +765,18 @@ export default function ReaderScreen() {
   }, [chromeState])
 
   useEffect(() => {
+    if (chromeState !== ChromeState.AnnotationsSheet) {
+      annotationsSheetRef.current?.dismiss()
+      return
+    }
+
+    const frame = requestAnimationFrame(() =>
+      annotationsSheetRef.current?.present(),
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [chromeState])
+
+  useEffect(() => {
     if (chromeState !== ChromeState.SettingsSheet) {
       settingsSheetRef.current?.dismiss()
       return
@@ -436,6 +787,20 @@ export default function ReaderScreen() {
     )
     return () => cancelAnimationFrame(frame)
   }, [chromeState])
+
+  useEffect(() => {
+    void publicationKey
+    annotationEditorSheetRef.current?.dismiss()
+    setAnnotationEditorState(null)
+  }, [publicationKey])
+
+  useEffect(() => {
+    if (!annotationEditorState) return
+    const frame = requestAnimationFrame(() =>
+      annotationEditorSheetRef.current?.present(),
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [annotationEditorState])
 
   useEffect(() => {
     if (chromeState !== ChromeState.SearchSheet) {
@@ -507,6 +872,10 @@ export default function ReaderScreen() {
     dispatch({ type: "navigationPillTap" })
   }, [])
 
+  const handleOpenAnnotations = useCallback(() => {
+    dispatch({ type: "annotationsPillTap" })
+  }, [])
+
   const handleOpenSettings = useCallback(() => {
     dispatch({ type: "settingsPillTap" })
   }, [])
@@ -538,6 +907,46 @@ export default function ReaderScreen() {
       }
     })
   }, [bookmarks, currentReaderLocator, isReflowReady, positions, t, toc])
+  const annotationItems = useMemo<ReaderAnnotationItem[]>(
+    () =>
+      readerAnnotations.annotations.map((annotation) => ({
+        id: annotation.id,
+        locator: annotation.locator,
+        excerpt:
+          readerAnnotationExcerpt(annotation.locator) ||
+          t("reader.annotations.title"),
+        note: annotation.note,
+        color: annotation.color,
+        createdAt: annotation.createdAt,
+      })),
+    [readerAnnotations.annotations, t],
+  )
+  const annotationEditorDraft =
+    useMemo<ReaderAnnotationEditorDraft | null>(() => {
+      if (!annotationEditorState) return null
+      const annotation =
+        annotationEditorState.mode === "edit"
+          ? annotationEditorState.annotation
+          : null
+      const locator =
+        annotationEditorState.mode === "edit"
+          ? annotationEditorState.annotation.locator
+          : annotationEditorState.locator
+      return {
+        key:
+          annotation?.id ?? `${locator.href}:${locator.text?.highlight ?? ""}`,
+        excerpt:
+          readerAnnotationExcerpt(locator) || t("reader.annotations.title"),
+        color: annotation?.color ?? "yellow",
+        note: annotation?.note ?? null,
+        createdAt:
+          annotation?.createdAt ??
+          (annotationEditorState.mode === "create"
+            ? annotationEditorState.createdAt
+            : 0),
+        existing: annotation !== null,
+      }
+    }, [annotationEditorState, t])
   const isReflowFormatHint = formatParam?.toUpperCase() === "EPUB"
   const shouldUseReflowTheme =
     isReflowReady || (loadState.status === "loading" && isReflowFormatHint)
@@ -595,29 +1004,41 @@ export default function ReaderScreen() {
     readerSearch.locators.includes(searchDecoration.locator)
       ? searchDecoration.locator
       : null
-  const searchDecorations = useMemo<DecorationGroup[]>(
-    () =>
-      activeSearchLocator
-        ? [
-            {
-              name: "search",
-              decorations: [
-                {
-                  id: "active-search-result",
-                  locator: activeSearchLocator,
-                  style: {
-                    type: "highlight",
-                    tint: chromePalette.accent,
-                    isActive: false,
-                  },
+  const readerDecorations = useMemo<DecorationGroup[]>(
+    () => [
+      {
+        name: "search",
+        decorations: activeSearchLocator
+          ? [
+              {
+                id: "active-search-result",
+                locator: activeSearchLocator,
+                style: {
+                  type: "highlight",
+                  tint: chromePalette.accent,
+                  isActive: false,
                 },
-              ],
-            },
-          ]
-        : [],
-    [activeSearchLocator, chromePalette.accent],
+              },
+            ]
+          : [],
+      },
+      ...createReaderAnnotationDecorationGroups(
+        readerAnnotations.annotations,
+        t("reader.annotations.openNote"),
+      ),
+    ],
+    [
+      activeSearchLocator,
+      chromePalette.accent,
+      readerAnnotations.annotations,
+      t,
+    ],
   )
-
+  const annotationsAvailable =
+    isReflowReady &&
+    readerCapabilities.canSelectText &&
+    readerCapabilities.canDecorate &&
+    readerCapabilities.supportedDecorationStyles.includes("highlight")
   const domFallback = useMemo(
     () => (
       <DomReaderFallback
@@ -718,6 +1139,7 @@ export default function ReaderScreen() {
   const moreButtonVisible =
     chromeState === ChromeState.Chrome ||
     chromeState === ChromeState.NavigationSheet ||
+    chromeState === ChromeState.AnnotationsSheet ||
     chromeState === ChromeState.SettingsSheet ||
     chromeState === ChromeState.SearchSheet
   const bookmarkButtonVisible = readerBookmarkButtonVisible(
@@ -793,10 +1215,12 @@ export default function ReaderScreen() {
                           handlePublicationLanguagesReady
                         }
                         onPublicationReady={handlePublicationReady}
+                        onPublicationLayoutReady={handlePublicationLayoutReady}
+                        onCapabilitiesReady={handleCapabilitiesReady}
                         onTocReady={handleTocReady}
                         onUserLocationChange={handleUserLocationChange}
                         onRequestClose={handleRequestClose}
-                        onToggleChrome={toggleChrome}
+                        onToggleChrome={handleReaderTap}
                         theme={reflowSettings.theme}
                         fontFamily={activeFontFamily}
                         fontFamilyDeclarations={READER_FONT_DECLARATIONS}
@@ -806,7 +1230,12 @@ export default function ReaderScreen() {
                         textAlign={reflowSettings.textAlign}
                         columnCount={reflowSettings.columnCount}
                         language={readerLanguage}
-                        decorations={searchDecorations}
+                        decorations={readerDecorations}
+                        selectionMenu={selectionMenu}
+                        customSelectionMenu
+                        onSelectionAction={handleSelectionAction}
+                        onSelectionChange={handleSelectionChange}
+                        onDecorationActivated={handleDecorationActivated}
                       />
                     </Animated.View>
                   ) : null
@@ -896,7 +1325,9 @@ export default function ReaderScreen() {
               }
               palette={chromePalette}
               showSearchAction={searchAvailable}
+              showAnnotationsAction={annotationsAvailable}
               onOpenToc={handleOpenToc}
+              onOpenAnnotations={handleOpenAnnotations}
               onOpenSearch={handleOpenSearch}
               onOpenSettings={handleOpenSettings}
               onPreviewPosition={previewReaderPosition}
@@ -918,6 +1349,34 @@ export default function ReaderScreen() {
               onSelectBookmark={handleBookmarkSelect}
               onDeleteBookmark={handleBookmarkDelete}
               onDismiss={handleNavigationDismiss}
+            />
+
+            <ReaderAnnotationsSheet
+              ref={annotationsSheetRef}
+              annotations={annotationItems}
+              error={Boolean(readerAnnotations.error)}
+              loading={readerAnnotations.loading}
+              pending={readerAnnotations.mutating}
+              palette={chromePalette}
+              onRetry={readerAnnotations.retry}
+              onSelect={handleAnnotationSelect}
+              onEdit={handleAnnotationEdit}
+              onDelete={handleAnnotationDelete}
+              onDismiss={handleAnnotationsDismiss}
+            />
+
+            <ReaderAnnotationEditorSheet
+              ref={annotationEditorSheetRef}
+              draft={annotationEditorDraft}
+              pending={readerAnnotations.mutating}
+              palette={chromePalette}
+              onSave={handleAnnotationEditorSave}
+              onDelete={
+                annotationEditorState?.mode === "edit"
+                  ? handleAnnotationEditorDelete
+                  : undefined
+              }
+              onDismiss={handleAnnotationEditorDismiss}
             />
 
             <ReaderSearchSheet

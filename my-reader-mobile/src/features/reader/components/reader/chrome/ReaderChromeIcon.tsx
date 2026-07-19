@@ -1,3 +1,5 @@
+import EditSquareIcon from "@expo/material-symbols/edit_square.xml"
+import { Host, Icon as NativeIcon } from "@expo/ui"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { SymbolView } from "expo-symbols"
 import { Platform } from "react-native"
@@ -13,6 +15,7 @@ const READER_CHROME_ICON_SOURCE = {
   search: { ios: "magnifyingglass", android: "search" },
   settings: { ios: "slider.horizontal.3", android: "tune" },
   toc: { ios: "list.bullet", android: "list" },
+  annotations: { ios: "square.and.pencil", android: EditSquareIcon },
 } as const
 
 export type ReaderChromeIconName = keyof typeof READER_CHROME_ICON_SOURCE
@@ -30,5 +33,13 @@ export function ReaderChromeIcon({ name, size, color }: ReaderChromeIconProps) {
     return <SymbolView name={icon.ios} size={size} tintColor={color} />
   }
 
-  return <MaterialIcons name={icon.android} size={size} color={color} />
+  if (typeof icon.android === "string") {
+    return <MaterialIcons name={icon.android} size={size} color={color} />
+  }
+
+  return (
+    <Host matchContents pointerEvents="none">
+      <NativeIcon name={icon.android} size={size} color={color} />
+    </Host>
+  )
 }

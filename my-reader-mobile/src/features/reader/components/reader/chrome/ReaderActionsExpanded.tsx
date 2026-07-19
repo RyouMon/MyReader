@@ -52,7 +52,9 @@ type Props = {
   readingProgression: ReaderProgressDirection
   palette: ReaderChromePalette
   showSearchAction: boolean
+  showAnnotationsAction: boolean
   onOpenToc: () => void
+  onOpenAnnotations: () => void
   onOpenSearch: () => void
   onOpenSettings: () => void
   onPreviewPosition: (positionIndex: number) => ReaderProgressPreview
@@ -115,7 +117,9 @@ export default function ReaderActionsExpanded({
   readingProgression,
   palette,
   showSearchAction,
+  showAnnotationsAction,
   onOpenToc,
+  onOpenAnnotations,
   onOpenSearch,
   onOpenSettings,
   onPreviewPosition,
@@ -178,6 +182,32 @@ export default function ReaderActionsExpanded({
           onPreviewPosition={onPreviewPosition}
           onCommitPosition={onCommitPosition}
         />
+
+        {showAnnotationsAction ? (
+          <ExpandedActionButton
+            accessibilityLabel={t("reader.annotations.title")}
+            actionPillWidth={actionPillWidth}
+            palette={palette}
+            onPress={onOpenAnnotations}
+          >
+            <RNView
+              style={[styles.pillInner, styles.pillContent]}
+              accessibilityElementsHidden={true}
+            >
+              <Text
+                className="text-lg font-semibold"
+                style={{ color: palette.actionText }}
+              >
+                {t("reader.annotations.title")}
+              </Text>
+              <ReaderChromeIcon
+                name="annotations"
+                size={READER_EXPANDED_ACTION_ICON_SIZE}
+                color={palette.actionText}
+              />
+            </RNView>
+          </ExpandedActionButton>
+        ) : null}
 
         {showSearchAction ? (
           <ExpandedActionButton

@@ -1,9 +1,26 @@
 import { render } from "@testing-library/react-native"
-import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
+import {
+  Platform,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import { EmptyState } from "./empty-state"
 
 jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
+
+jest.mock("@expo/ui", () => {
+  const React = jest.requireActual<typeof import("react")>("react")
+  const { View } =
+    jest.requireActual<typeof import("react-native")>("react-native")
+
+  return {
+    Host: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(View, { testID: "compose-host" }, children),
+    Icon: () => React.createElement(View, { testID: "compose-icon" }),
+  }
+})
 
 jest.mock("@/tw", () => {
   const mockReact = jest.requireActual("react")
@@ -69,5 +86,34 @@ describe("EmptyState", () => {
     expect(StyleSheet.flatten(screen.getByText("详情").props.style)).toEqual(
       expect.objectContaining({ color: "#345678" }),
     )
+  })
+
+  it("should render an Android XML icon directly inside a Compose Host", () => {
+    const initialPlatform = Platform.OS
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    })
+
+    try {
+      const screen = render(
+        <EmptyState
+          title="暂无高亮和笔记"
+          detail="详情"
+          layout="container"
+          icon={{ ios: "square.and.pencil", android: { uri: "edit-square" } }}
+        />,
+      )
+
+      const host = screen.getByTestId("compose-host")
+      const { Icon } = jest.requireMock("@expo/ui")
+      const icon = screen.UNSAFE_getByType(Icon)
+      expect(host.children).toContain(icon)
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: initialPlatform,
+      })
+    }
   })
 })

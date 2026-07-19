@@ -1,4 +1,4 @@
-import { ChromeState, chromeReducer, type ChromeAction } from "./chrome-state"
+import { type ChromeAction, ChromeState, chromeReducer } from "./chrome-state"
 
 describe("chromeReducer", () => {
   function reduceFrom(initial: ChromeState, ...actions: ChromeAction[]) {
@@ -27,6 +27,12 @@ describe("chromeReducer", () => {
     it("should return to chrome when tapping content in navigation sheet state", () => {
       expect(
         chromeReducer(ChromeState.NavigationSheet, { type: "contentTap" }),
+      ).toBe(ChromeState.Chrome)
+    })
+
+    it("should return to chrome when tapping content in annotations sheet state", () => {
+      expect(
+        chromeReducer(ChromeState.AnnotationsSheet, { type: "contentTap" }),
       ).toBe(ChromeState.Chrome)
     })
 
@@ -102,6 +108,30 @@ describe("chromeReducer", () => {
       ).toBe(ChromeState.Reading)
       expect(
         chromeReducer(ChromeState.Chrome, { type: "settingsPillTap" }),
+      ).toBe(ChromeState.Chrome)
+    })
+  })
+
+  describe("When highlights and notes pill is tapped", () => {
+    it("should open the annotations sheet from expanded state", () => {
+      expect(
+        chromeReducer(ChromeState.Expanded, { type: "annotationsPillTap" }),
+      ).toBe(ChromeState.AnnotationsSheet)
+    })
+
+    it("should return to reading after selecting an annotation", () => {
+      expect(
+        chromeReducer(ChromeState.AnnotationsSheet, {
+          type: "annotationSelect",
+        }),
+      ).toBe(ChromeState.Reading)
+    })
+
+    it("should return to chrome after dismissing the annotations sheet", () => {
+      expect(
+        chromeReducer(ChromeState.AnnotationsSheet, {
+          type: "annotationsDismiss",
+        }),
       ).toBe(ChromeState.Chrome)
     })
   })

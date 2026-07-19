@@ -33,7 +33,9 @@ const baseProps = {
   readingProgression: "ltr" as const,
   palette,
   showSearchAction: false,
+  showAnnotationsAction: false,
   onOpenToc: jest.fn(),
+  onOpenAnnotations: jest.fn(),
   onOpenSearch: jest.fn(),
   onOpenSettings: jest.fn(),
   onPreviewPosition: jest.fn(() => ({ positionLabel: "1 / 10" })),
@@ -56,6 +58,23 @@ describe("ReaderActionsExpanded", () => {
 
     expect(screen.queryByLabelText("reader.bookmarks.addCurrent")).toBeNull()
     expect(screen.queryByLabelText("reader.bookmarks.removeCurrent")).toBeNull()
+  })
+
+  it("should open highlights and notes from a separate action when supported", () => {
+    const onOpenAnnotations = jest.fn()
+    const screen = render(
+      <ReaderActionsExpanded
+        {...baseProps}
+        showAnnotationsAction
+        onOpenAnnotations={onOpenAnnotations}
+      />,
+    )
+
+    fireEvent.press(screen.getByLabelText("reader.annotations.title"))
+    expect(onOpenAnnotations).toHaveBeenCalledTimes(1)
+
+    screen.rerender(<ReaderActionsExpanded {...baseProps} />)
+    expect(screen.queryByLabelText("reader.annotations.title")).toBeNull()
   })
 
   it("should open settings from the remaining long action", () => {

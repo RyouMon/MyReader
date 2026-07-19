@@ -1,3 +1,26 @@
+import type {
+  ContentResult,
+  DecorationActivatedEvent,
+  DecorationGroup,
+  FontFamilyDeclaration,
+  Locator,
+  PublicationReadyEvent,
+  ReaderCapabilities,
+  ReadiumFile,
+  ReadiumViewRef,
+  SelectionAction,
+  SelectionActionEvent,
+  SelectionMenuConfig,
+  SelectionEvent,
+} from "@my-reader/readium"
+import {
+  ReadiumView,
+  publication as readiumPublication,
+} from "@my-reader/readium"
+import {
+  positionIndexForLocator,
+  resolveReaderToc,
+} from "@my-reader/tools/reader-toc"
 import {
   forwardRef,
   useCallback,
@@ -6,33 +29,16 @@ import {
   useRef,
 } from "react"
 import { StyleSheet, View } from "react-native"
-import {
-  publication as readiumPublication,
-  ReadiumView,
-} from "@my-reader/readium"
-import {
-  positionIndexForLocator,
-  resolveReaderToc,
-} from "@my-reader/tools/reader-toc"
-import type {
-  ContentResult,
-  DecorationGroup,
-  FontFamilyDeclaration,
-  Locator,
-  PublicationReadyEvent,
-  ReadiumFile,
-  ReadiumViewRef,
-} from "@my-reader/readium"
 
 import type {
   ReaderState,
   ReaderTocItem,
 } from "@/src/features/reader/components/reader/types"
 import type {
-  ReaderTheme,
-  TextAlignment,
   ColumnCount,
   FontFamilyKey,
+  ReaderTheme,
+  TextAlignment,
 } from "@/src/store/app-store.types"
 import {
   enhanceTocItemsWithContentLocators,
@@ -43,9 +49,15 @@ import {
 import { buildPreferences } from "./reader-reflow-preferences"
 
 const PROGRESS_PERCENT_MULTIPLIER = 100
+const NO_READER_CAPABILITIES: ReaderCapabilities = {
+  canSelectText: false,
+  canDecorate: false,
+  supportedDecorationStyles: [],
+}
 
 export type ReadiumReflowReaderRef = {
   goTo: (locator: Locator, tocItem?: ReaderTocItem) => void
+  clearSelection: () => void
 }
 
 export type ReadiumReflowReaderProps = {
@@ -57,6 +69,11 @@ export type ReadiumReflowReaderProps = {
   onPositionsReady?: (positions: Locator[]) => void
   onPublicationLanguagesReady?: (languages: string[]) => void
   onPublicationReady?: (publicationId: string) => void
+  onPublicationLayoutReady?: (layout: string | null) => void
+  onCapabilitiesReady?: (capabilities: ReaderCapabilities) => void
+  onDecorationActivated?: (event: DecorationActivatedEvent) => void
+  onSelectionAction?: (event: SelectionActionEvent) => void
+  onSelectionChange?: (event: SelectionEvent) => void
   onTocReady: (items: ReaderTocItem[]) => void
   onUserLocationChange?: () => void
   onRequestClose: () => void
@@ -71,6 +88,9 @@ export type ReadiumReflowReaderProps = {
   columnCount?: ColumnCount
   language?: string
   decorations?: DecorationGroup[]
+  selectionActions?: SelectionAction[]
+  selectionMenu?: SelectionMenuConfig
+  customSelectionMenu?: boolean
 }
 
 const ReadiumReflowReader = forwardRef<
@@ -84,6 +104,11 @@ const ReadiumReflowReader = forwardRef<
     onPositionsReady,
     onPublicationLanguagesReady,
     onPublicationReady,
+    onPublicationLayoutReady,
+    onCapabilitiesReady,
+    onDecorationActivated,
+    onSelectionAction,
+    onSelectionChange,
     onTocReady,
     onUserLocationChange,
     onToggleChrome,
@@ -97,6 +122,9 @@ const ReadiumReflowReader = forwardRef<
     columnCount = "auto",
     language,
     decorations,
+    selectionActions,
+    selectionMenu,
+    customSelectionMenu,
   },
   ref,
 ) {
@@ -117,6 +145,7 @@ const ReadiumReflowReader = forwardRef<
         programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(locator)
       },
+      clearSelection: () => readiumRef.current?.clearSelection(),
     }),
     [],
   )
@@ -159,6 +188,8 @@ const ReadiumReflowReader = forwardRef<
       const publicationSeq = publicationReadySeqRef.current + 1
       publicationReadySeqRef.current = publicationSeq
       onPublicationReady?.(event.publicationId)
+      onPublicationLayoutReady?.(event.metadata.layout ?? null)
+      onCapabilitiesReady?.(event.capabilities ?? NO_READER_CAPABILITIES)
 
       positionsRef.current = event.positions
       onPositionsReady?.(event.positions)
@@ -280,6 +311,8 @@ const ReadiumReflowReader = forwardRef<
       onPositionsReady,
       onPublicationLanguagesReady,
       onPublicationReady,
+      onPublicationLayoutReady,
+      onCapabilitiesReady,
       onTocReady,
       onStateChange,
     ],
@@ -347,9 +380,15 @@ const ReadiumReflowReader = forwardRef<
         preferences={preferences}
         fontFamilyDeclarations={fontFamilyDeclarations}
         decorations={decorations}
+        selectionActions={selectionActions}
+        selectionMenu={selectionMenu}
+        customSelectionMenu={customSelectionMenu}
         style={styles.reader}
         onPublicationReady={handlePublicationReady}
         onLocationChange={handleLocationChange}
+        onDecorationActivated={onDecorationActivated}
+        onSelectionAction={onSelectionAction}
+        onSelectionChange={onSelectionChange}
         // onTap is emitted by the native navigator; the wrapping View's
         // touch handlers don't receive events on Android because the native
         // reader view consumes them.

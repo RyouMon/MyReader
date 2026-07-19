@@ -1,8 +1,13 @@
+import { Host, Icon as NativeIcon } from "@expo/ui"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
 import { useHeaderHeight } from "expo-router/react-navigation"
 import { SymbolView } from "expo-symbols"
 import { type ReactNode } from "react"
-import { Platform, useWindowDimensions } from "react-native"
+import {
+  type ImageSourcePropType,
+  Platform,
+  useWindowDimensions,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useThemePalette } from "@/src/design/tokens"
@@ -10,7 +15,7 @@ import { Text, View } from "@/tw"
 
 export type EmptyStateIcon = {
   ios: string
-  android: string
+  android: string | ImageSourcePropType
 }
 
 export type EmptyStateLayout = "screen" | "container"
@@ -65,12 +70,20 @@ export function EmptyState({
           size={80}
           tintColor={colors?.icon ?? palette.border}
         />
-      ) : (
+      ) : typeof icon.android === "string" ? (
         <MaterialIcons
           name={icon.android as never}
           size={80}
           color={colors?.icon ?? palette.border}
         />
+      ) : (
+        <Host matchContents pointerEvents="none">
+          <NativeIcon
+            name={icon.android}
+            size={80}
+            color={colors?.icon ?? palette.border}
+          />
+        </Host>
       )}
 
       <View className="items-center" style={{ gap: 8 }}>

@@ -6,6 +6,7 @@ import type {
   Link,
   Locator,
   PublicationReadyEvent,
+  SelectionMenuConfig,
 } from "@my-reader/readium"
 
 import ReadiumReflowReader, {
@@ -14,10 +15,13 @@ import ReadiumReflowReader, {
 } from "./ReadiumReflowReader"
 
 const mockGoTo = jest.fn()
+const mockClearSelection = jest.fn()
 let mockReadiumProps: {
   onPublicationReady?: (event: PublicationReadyEvent) => void
   onLocationChange?: (locator: Locator) => void
   decorations?: DecorationGroup[]
+  selectionMenu?: SelectionMenuConfig
+  customSelectionMenu?: boolean
 } | null = null
 
 jest.mock("@my-reader/readium", () => {
@@ -31,12 +35,15 @@ jest.mock("@my-reader/readium", () => {
         onPublicationReady?: (event: PublicationReadyEvent) => void
         onLocationChange?: (locator: Locator) => void
         decorations?: DecorationGroup[]
+        selectionMenu?: SelectionMenuConfig
+        customSelectionMenu?: boolean
       },
       ref: React.Ref<unknown>,
     ) {
       mockReadiumProps = props
       mockReact.useImperativeHandle(ref, () => ({
         goTo: mockGoTo,
+        clearSelection: mockClearSelection,
       }))
       return mockReact.createElement(MockView, { testID: "readium-view-mock" })
     }),
@@ -84,6 +91,7 @@ function readerElement(
 describe("ReadiumReflowReader", () => {
   beforeEach(() => {
     mockGoTo.mockClear()
+    mockClearSelection.mockClear()
     mockGetContent.mockReset()
     mockGetContent.mockResolvedValue({ utterances: [] })
     mockReadiumProps = null
@@ -274,6 +282,31 @@ describe("ReadiumReflowReader", () => {
     readerElement({ decorations })
 
     expect(mockReadiumProps?.decorations).toEqual(decorations)
+  })
+
+  it("should expose custom selection handling through the reader ref", () => {
+    const readerRef = React.createRef<ReadiumReflowReaderRef>()
+    const selectionMenu: SelectionMenuConfig = {
+      locator: locator("OEBPS/chapter.xhtml", { position: 1 }),
+      selectedText: "selected text",
+      colorMenuLabel: "Highlight",
+      colors: [
+        {
+          id: "color:yellow",
+          label: "Amber",
+          color: "#D9A928",
+          selected: true,
+        },
+      ],
+      actions: [{ id: "addNote", label: "Add note" }],
+    }
+    readerElement({ customSelectionMenu: true, selectionMenu }, readerRef)
+
+    act(() => readerRef.current?.clearSelection())
+
+    expect(mockReadiumProps?.customSelectionMenu).toBe(true)
+    expect(mockReadiumProps?.selectionMenu).toEqual(selectionMenu)
+    expect(mockClearSelection).toHaveBeenCalledTimes(1)
   })
 
   it("should expose the publication id when Readium reports readiness", () => {
