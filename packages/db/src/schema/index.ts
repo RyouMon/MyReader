@@ -1,3 +1,4 @@
+export { annotations } from "./annotations"
 export { bookCoverThumbnailCache } from "./book-cover-thumbnail-cache"
 export { bookReadingFormat } from "./book-reading-format"
 export { bookmarks } from "./bookmarks"

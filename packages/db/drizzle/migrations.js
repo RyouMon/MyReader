@@ -6,6 +6,7 @@ import m0001 from './0001_add_book_reading_format.sql';
 import m0002 from './0002_add_favorite_books.sql';
 import m0003 from './0003_add_book_cover_thumbnail_cache.sql';
 import m0004 from './0004_add_bookmarks.sql';
+import m0005 from './0005_add_annotations.sql';
 
   export default {
     journal,
@@ -15,6 +16,6 @@ import m0004 from './0004_add_bookmarks.sql';
       m0002,
       m0003,
       m0004,
+      m0005,
     }
   }
-  

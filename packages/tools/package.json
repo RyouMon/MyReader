@@ -6,6 +6,7 @@
   "exports": {
     "./human-readable-time": "./src/human-readable-time.ts",
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
+    "./reader-annotations": "./src/reader-annotations.ts",
     "./reader-bookmarks": "./src/reader-bookmarks.ts",
     "./reader-search": "./src/reader-search.ts",
     "./reader-themes": "./src/reader-themes.ts",

@@ -1,5 +1,6 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm"
 import type {
+  annotations,
   bookCoverThumbnailCache,
   bookmarks,
   bookReadingFormat,
@@ -9,6 +10,8 @@ import type {
   syncMeta,
 } from "./schema"
 
+export type Annotation = InferSelectModel<typeof annotations>
+export type NewAnnotation = InferInsertModel<typeof annotations>
 export type BookCoverThumbnailCache = InferSelectModel<
   typeof bookCoverThumbnailCache
 >
