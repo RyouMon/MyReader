@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Bookmark, List, Search, Settings } from "lucide-react"
+import { Bookmark, List, Search, Settings, SquarePen } from "lucide-react"
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -18,11 +18,13 @@ interface ReaderTopBarProps {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleAnnotations?: () => void
   onToggleSearch?: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
@@ -37,11 +39,13 @@ export function ReaderTopBar({
   bookmarked,
   bookmarkDisabled = false,
   tocOpen,
+  annotationsOpen,
   searchOpen,
   settingsOpen,
   showReaderActions = true,
   previewNativeMacFullscreen = false,
   onToggleToc,
+  onToggleAnnotations,
   onToggleSearch,
   onToggleBookmark,
   onToggleSettings,
@@ -269,20 +273,32 @@ export function ReaderTopBar({
           />
         ) : null}
         {showReaderActions ? (
-          <TopBarButton
-            title={t("reader.toc")}
-            onClick={onToggleToc}
-            active={tocOpen}
-            chromeVisible={visible}
-          >
-            <List className="size-[17px]" />
-          </TopBarButton>
+          <div className="flex items-center gap-[9px]">
+            <TopBarButton
+              title={t("reader.navigation")}
+              onClick={onToggleToc}
+              active={tocOpen}
+              chromeVisible={visible}
+            >
+              <List className="size-[17px]" />
+            </TopBarButton>
+            {onToggleAnnotations ? (
+              <TopBarButton
+                title={t("reader.annotations")}
+                onClick={onToggleAnnotations}
+                active={annotationsOpen}
+                chromeVisible={visible}
+              >
+                <SquarePen className="size-[17px]" />
+              </TopBarButton>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
       <div
         className={cn(
-          "relative z-10 h-full w-[min(42rem,calc(100vw-20rem))] min-w-0 overflow-hidden text-center",
+          "relative z-10 h-full w-[min(42rem,calc(100vw-24rem))] min-w-0 overflow-hidden text-center",
           chromeVisibilityClass,
         )}
       >

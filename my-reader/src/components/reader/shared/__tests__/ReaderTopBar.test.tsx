@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react"
+import type { ComponentProps } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ReaderTopBar } from "../ReaderTopBar"
 
@@ -19,6 +20,16 @@ vi.mock("@tauri-apps/api/window", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
+
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>()
+  return {
+    ...actual,
+    SquarePen: (props: ComponentProps<"svg">) => (
+      <svg data-reader-icon="square-pen" {...props} />
+    ),
+  }
+})
 
 const defaultProps = {
   visible: true,
@@ -65,6 +76,38 @@ describe("ReaderTopBar", () => {
     expect(onToggleSettings).toHaveBeenCalledOnce()
   })
 
+  it("should expose highlights and notes as a separate reader action", () => {
+    const onToggleAnnotations = vi.fn()
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        annotationsOpen
+        onToggleAnnotations={onToggleAnnotations}
+      />,
+    )
+
+    const annotationsButton = screen.getByTitle("reader.annotations")
+    expect(annotationsButton).toHaveAttribute("data-active", "true")
+    fireEvent.click(annotationsButton)
+    expect(onToggleAnnotations).toHaveBeenCalledOnce()
+  })
+
+  it("should use the square pen icon for highlights and notes", () => {
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        onToggleAnnotations={vi.fn()}
+      />,
+    )
+
+    const annotationsButton = screen.getByTitle("reader.annotations")
+    expect(
+      annotationsButton.querySelector('[data-reader-icon="square-pen"]'),
+    ).not.toBeNull()
+  })
+
   it("should expose pressed and disabled state when bookmark mutation is unavailable", () => {
     const onToggleBookmark = vi.fn()
     render(
@@ -95,7 +138,7 @@ describe("ReaderTopBar", () => {
     )
 
     expect(screen.getByTitle("reader.close")).toBeInTheDocument()
-    expect(screen.queryByTitle("reader.toc")).not.toBeInTheDocument()
+    expect(screen.queryByTitle("reader.navigation")).not.toBeInTheDocument()
     expect(screen.queryByTitle("reader.settings")).not.toBeInTheDocument()
     expect(screen.queryByTitle("reader.bookmark")).not.toBeInTheDocument()
 

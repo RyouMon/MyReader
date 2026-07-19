@@ -1,3 +1,7 @@
+import {
+  type ReaderAnnotationColor,
+  readerAnnotationExcerpt,
+} from "@my-reader/tools/reader-annotations"
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
 import {
   READER_THEME_PRESETS,
@@ -14,6 +18,7 @@ import {
   resolveReaderTocAtPosition,
 } from "@my-reader/tools/reader-toc"
 import { EpubNavigator } from "@readium/navigator"
+import type { BasicTextSelection } from "@readium/navigator-html-injectables"
 import {
   Layout,
   type Links,
@@ -45,6 +50,15 @@ import {
   useState,
 } from "react"
 import { useTranslation } from "react-i18next"
+import {
+  ReaderAnnotationEditorDialog,
+  type ReaderAnnotationEditorDraft,
+} from "@/components/reader/readium/ReaderAnnotationEditorDialog"
+import { ReaderSelectionMenu } from "@/components/reader/readium/ReaderSelectionMenu"
+import {
+  ReadiumAnnotationPanel,
+  type ReadiumAnnotationRow,
+} from "@/components/reader/readium/ReadiumAnnotationPanel"
 import { ReadiumSearchPanel } from "@/components/reader/readium/ReadiumSearchPanel"
 import {
   type ReadiumBookmarkRow,
@@ -72,6 +86,10 @@ import type {
 } from "@/components/reader/types"
 import { Label } from "@/components/ui/label"
 import { useLocatorProgressSync } from "@/hooks/reader/useLocatorProgressSync"
+import {
+  type ReaderAnnotation,
+  useReaderAnnotations,
+} from "@/hooks/reader/useReaderAnnotations"
 import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderIframePointerBridge } from "@/hooks/reader/useReaderIframePointerBridge"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
@@ -79,6 +97,15 @@ import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderSearch } from "@/hooks/reader/useReaderSearch"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import { deserializeReaderBookmarkLocator } from "@/lib/readium/bookmarks"
+import {
+  applyEpubAnnotations,
+  clearEpubTextSelection,
+  connectEpubAnnotationClickBridge,
+  createEpubAnnotationSelection,
+  type EpubAnnotationSelection,
+  epubAnnotationMatchesSelection,
+  suppressEpubTextSelectionContextMenu,
+} from "@/lib/readium/epubAnnotations"
 import {
   type EpubTextResource,
   extractEpubContentLocators,
@@ -542,6 +569,15 @@ function getIframeDocs(): Document[] {
     .filter(Boolean) as Document[]
 }
 
+function hasReaderTextSelection(): boolean {
+  return getIframeDocs().some((doc) => {
+    const selection = doc.getSelection()
+    return Boolean(
+      selection && !selection.isCollapsed && selection.toString().trim(),
+    )
+  })
+}
+
 function setReaderScrollbarVisible(visible: boolean): void {
   getIframeDocs().forEach((doc) => {
     doc.documentElement.classList.toggle("reader-scrollbar-visible", visible)
@@ -571,10 +607,16 @@ function injectReaderScrollbarStyles(): void {
 function setupIframeWindow(
   wnd: Window,
   opts: {
+    iframe: HTMLIFrameElement
+    container: HTMLElement
     isScrollMode: boolean
     paddingX: number
     getChromeVisible: () => boolean
     getCurrentFontFamily: () => string | null | undefined
+    getAnnotations: () => readonly ReaderAnnotation[]
+    onAnnotationClick: (selection: EpubAnnotationSelection) => void
+    onAnnotationNoteClick: (annotationId: string) => void
+    noteMarkerAccessibilityLabel: string
   },
 ): (() => void) | undefined {
   const doc = wnd.document
@@ -611,6 +653,16 @@ function setupIframeWindow(
   }
 
   if (!alreadySetup) {
+    const stopSelectedTextContextMenu =
+      suppressEpubTextSelectionContextMenu(wnd)
+    const stopAnnotationClickBridge = connectEpubAnnotationClickBridge(wnd, {
+      iframe: opts.iframe,
+      container: opts.container,
+      getAnnotations: opts.getAnnotations,
+      onAnnotationClick: opts.onAnnotationClick,
+      onAnnotationNoteClick: opts.onAnnotationNoteClick,
+      noteMarkerAccessibilityLabel: opts.noteMarkerAccessibilityLabel,
+    })
     const onMove = (e: PointerEvent) => {
       const nearRight = wnd.innerWidth - e.clientX < 20
       doc.documentElement.classList.toggle(
@@ -619,7 +671,12 @@ function setupIframeWindow(
       )
     }
     wnd.addEventListener("pointermove", onMove)
-    return () => wnd.removeEventListener("pointermove", onMove)
+    return () => {
+      stopSelectedTextContextMenu()
+      stopAnnotationClickBridge()
+      wnd.removeEventListener("pointermove", onMove)
+      setupIframeDocuments.delete(doc)
+    }
   }
   return undefined
 }
@@ -1078,13 +1135,16 @@ export function ReadiumEpubReader({
   progressSyncEnabled,
 }: ReadiumEpubReaderProps) {
   const { t } = useTranslation()
+  const noteMarkerAccessibilityLabel = t("reader.openNote")
   const containerRef = useRef<HTMLDivElement>(null)
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const {
     tocOpen,
+    annotationsOpen,
     searchOpen,
     settingsOpen,
     toggleToc,
+    toggleAnnotations,
     toggleSearch,
     toggleSettings,
     closePanels,
@@ -1095,7 +1155,10 @@ export function ReadiumEpubReader({
     showChrome,
     scheduleChromeHide,
     handlePointerPosition,
-  } = useReadingChrome(false, tocOpen || searchOpen || settingsOpen)
+  } = useReadingChrome(
+    false,
+    tocOpen || annotationsOpen || searchOpen || settingsOpen,
+  )
   useReaderIframePointerBridge(containerRef, handlePointerPosition)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -1107,6 +1170,21 @@ export function ReadiumEpubReader({
     format,
     currentLocator,
   })
+  const readerAnnotations = useReaderAnnotations({
+    libraryId,
+    bookId,
+    format,
+    enabled: true,
+  })
+  const annotationsRef = useRef(readerAnnotations.annotations)
+  const [annotationsAvailable, setAnnotationsAvailable] = useState(false)
+  const [annotationSelection, setAnnotationSelection] =
+    useState<EpubAnnotationSelection | null>(null)
+  const [annotationEditor, setAnnotationEditor] = useState<
+    | { mode: "create"; selection: EpubAnnotationSelection }
+    | { mode: "edit"; annotation: ReaderAnnotation }
+    | null
+  >(null)
   const [contentSettling, setContentSettling] = useState(true)
   const chromeVisibleRef = useRef(chromeVisible)
   const reflowablePreferenceApplyRef = useRef(0)
@@ -1126,6 +1204,26 @@ export function ReadiumEpubReader({
   useEffect(() => {
     chromeVisibleRef.current = chromeVisible
   }, [chromeVisible])
+
+  useEffect(() => {
+    annotationsRef.current = readerAnnotations.annotations
+    const navigator = navigatorRef.current
+    if (navigator)
+      applyEpubAnnotations(
+        navigator,
+        readerAnnotations.annotations,
+        noteMarkerAccessibilityLabel,
+      )
+  }, [noteMarkerAccessibilityLabel, readerAnnotations.annotations])
+
+  useEffect(() => {
+    void bookId
+    void format
+    void libraryId
+    setAnnotationSelection(null)
+    setAnnotationEditor(null)
+    setAnnotationsAvailable(false)
+  }, [bookId, format, libraryId])
 
   const readerPreferencesHydrated = useAppUiStore(
     (s) => s.readerPreferencesHydrated,
@@ -1263,6 +1361,49 @@ export function ReadiumEpubReader({
       })),
     [readerBookmarks.bookmarks, readerPositions, tocItems],
   )
+
+  const annotationRows = useMemo<ReadiumAnnotationRow[]>(
+    () =>
+      readerAnnotations.annotations.map((annotation) => ({
+        id: annotation.id,
+        locator: annotation.locator,
+        excerpt: readerAnnotationExcerpt(annotation.locator),
+        note: annotation.note,
+        color: annotation.color,
+        createdAt: annotation.createdAt,
+      })),
+    [readerAnnotations.annotations],
+  )
+
+  const annotationEditorDraft =
+    useMemo<ReaderAnnotationEditorDraft | null>(() => {
+      if (!annotationEditor) return null
+      if (annotationEditor.mode === "create") {
+        return {
+          excerpt: readerAnnotationExcerpt(annotationEditor.selection.locator),
+          color: "yellow",
+          note: "",
+          createdAt: Date.now(),
+        }
+      }
+      return {
+        id: annotationEditor.annotation.id,
+        excerpt: readerAnnotationExcerpt(annotationEditor.annotation.locator),
+        color: annotationEditor.annotation.color,
+        note: annotationEditor.annotation.note ?? "",
+        createdAt: annotationEditor.annotation.createdAt,
+      }
+    }, [annotationEditor])
+
+  const selectedAnnotation = useMemo(() => {
+    if (!annotationSelection) return undefined
+    return readerAnnotations.annotations.find((annotation) =>
+      epubAnnotationMatchesSelection(
+        annotation.locator,
+        annotationSelection.locator,
+      ),
+    )
+  }, [annotationSelection, readerAnnotations.annotations])
 
   const resolveChapterTitle = useCallback(
     (
@@ -1501,6 +1642,157 @@ export function ReadiumEpubReader({
     ],
   )
 
+  const onAnnotationSelect = useCallback(
+    async (annotation: ReadiumAnnotationRow) => {
+      const navigator = navigatorRef.current
+      if (!navigator) return
+      const locator = readerLocatorToReadiumLocator(annotation.locator)
+      const sequence = beginContentNavigation(locator)
+      const position = locator.locations.position
+      if (
+        isFixedLayout &&
+        typeof position === "number" &&
+        Number.isFinite(position) &&
+        position >= 1
+      ) {
+        await goToReadingOrderPositionBySteps(
+          navigator,
+          Math.min(publication.readingOrder.items.length, Math.floor(position)),
+        )
+        finishContentNavigation(sequence)
+      } else {
+        navigator.go(locator, false, () => finishContentNavigation(sequence))
+      }
+      closePanels()
+    },
+    [
+      beginContentNavigation,
+      closePanels,
+      finishContentNavigation,
+      isFixedLayout,
+      publication.readingOrder.items.length,
+    ],
+  )
+
+  const onAnnotationEdit = useCallback(
+    (row: ReadiumAnnotationRow) => {
+      const annotation = readerAnnotations.annotations.find(
+        (item) => item.id === row.id,
+      )
+      if (!annotation) return
+      closePanels()
+      setAnnotationEditor({ mode: "edit", annotation })
+    },
+    [closePanels, readerAnnotations.annotations],
+  )
+
+  const onTextSelected = useCallback((selection: BasicTextSelection) => {
+    const navigator = navigatorRef.current
+    const container = containerRef.current
+    if (!navigator || !container) return
+    const annotationSelection = createEpubAnnotationSelection(
+      navigator,
+      selection,
+      container,
+    )
+    if (!annotationSelection) return
+    setAnnotationSelection(annotationSelection)
+  }, [])
+
+  const onAnnotationClick = useCallback(
+    (selection: EpubAnnotationSelection) => {
+      setAnnotationSelection(selection)
+    },
+    [],
+  )
+
+  const onAnnotationNoteClick = useCallback((annotationId: string) => {
+    const annotation = annotationsRef.current.find(
+      (item) => item.id === annotationId && item.note?.trim(),
+    )
+    if (!annotation) return
+    setAnnotationSelection(null)
+    setAnnotationEditor({ mode: "edit", annotation })
+  }, [])
+
+  const setSelectionHighlightColor = useCallback(
+    async (color: ReaderAnnotationColor) => {
+      const selection = annotationSelection
+      if (!selection) return
+      const saved = selectedAnnotation
+        ? selectedAnnotation.color === color
+          ? selectedAnnotation
+          : await readerAnnotations.updateAnnotation(selectedAnnotation, {
+              color,
+              note: selectedAnnotation.note,
+            })
+        : await readerAnnotations.addAnnotation({
+            locator: selection.locator,
+            color,
+          })
+      if (!saved) return
+      clearEpubTextSelection(selection)
+      setAnnotationSelection(null)
+    },
+    [annotationSelection, readerAnnotations, selectedAnnotation],
+  )
+
+  const openSelectionNoteEditor = useCallback(() => {
+    if (!annotationSelection) return
+    clearEpubTextSelection(annotationSelection)
+    setAnnotationEditor(
+      selectedAnnotation
+        ? { mode: "edit", annotation: selectedAnnotation }
+        : { mode: "create", selection: annotationSelection },
+    )
+    setAnnotationSelection(null)
+  }, [annotationSelection, selectedAnnotation])
+
+  const removeSelectionAnnotation = useCallback(async () => {
+    const selection = annotationSelection
+    const annotation = selectedAnnotation
+    if (!selection || !annotation) return
+    const deleted = await readerAnnotations.deleteAnnotation(annotation)
+    if (deleted === undefined) return
+    clearEpubTextSelection(selection)
+    setAnnotationSelection(null)
+  }, [annotationSelection, readerAnnotations, selectedAnnotation])
+
+  const handleSelectionMenuOpenChange = useCallback((open: boolean) => {
+    if (open) return
+    setAnnotationSelection((selection) => {
+      if (selection) clearEpubTextSelection(selection)
+      return null
+    })
+  }, [])
+
+  const saveAnnotationEditor = useCallback(
+    async (value: { color: ReaderAnnotationColor; note: string }) => {
+      if (!annotationEditor) return
+      const saved =
+        annotationEditor.mode === "create"
+          ? await readerAnnotations.addAnnotation({
+              locator: annotationEditor.selection.locator,
+              color: value.color,
+              note: value.note,
+            })
+          : await readerAnnotations.updateAnnotation(
+              annotationEditor.annotation,
+              value,
+            )
+      if (saved) setAnnotationEditor(null)
+    },
+    [annotationEditor, readerAnnotations],
+  )
+
+  const deleteAnnotationEditor = useCallback(async () => {
+    if (annotationEditor?.mode !== "edit") return
+    const deleted = await readerAnnotations.deleteAnnotation(
+      annotationEditor.annotation,
+    )
+    if (deleted !== undefined) setAnnotationEditor(null)
+  }, [annotationEditor, readerAnnotations])
+
   const onSearchSubmit = useCallback(() => {
     const navigator = navigatorRef.current
     if (navigator) clearEpubSearchHighlight(navigator)
@@ -1692,10 +1984,16 @@ export function ReadiumEpubReader({
           const wnd = iframe.contentWindow
           if (!wnd) return
           const cleanup = setupIframeWindow(wnd, {
+            iframe,
+            container,
             isScrollMode,
             paddingX: readerSettings.paddingX,
             getChromeVisible: () => chromeVisibleRef.current,
             getCurrentFontFamily: getCurrentReflowableFontFamily,
+            getAnnotations: () => annotationsRef.current,
+            onAnnotationClick,
+            onAnnotationNoteClick,
+            noteMarkerAccessibilityLabel,
           })
           if (cleanup) cleanups.push(cleanup)
         } catch {
@@ -1743,6 +2041,9 @@ export function ReadiumEpubReader({
     isFixedLayout,
     readerSettings.paddingX,
     getCurrentReflowableFontFamily,
+    onAnnotationClick,
+    onAnnotationNoteClick,
+    noteMarkerAccessibilityLabel,
   ])
 
   useLocatorProgressSync({
@@ -1818,14 +2119,37 @@ export function ReadiumEpubReader({
           {
             frameLoaded: (wnd) => {
               const ui = useAppUiStore.getState()
-              setupIframeWindow(wnd, {
-                isScrollMode:
-                  ui.reflowable.settings.readingLayout === "scroll" &&
-                  !isFixedLayout,
-                paddingX: ui.reflowable.settings.paddingX,
-                getChromeVisible: () => chromeVisibleRef.current,
-                getCurrentFontFamily: getCurrentReflowableFontFamily,
+              const frameWindows = new Set<Window>([wnd])
+              nav?._cframes.forEach((frame) => {
+                const frameWindow = frame?.iframe.contentWindow
+                if (frameWindow) frameWindows.add(frameWindow)
               })
+              frameWindows.forEach((frameWindow) => {
+                const frameElement = frameWindow.frameElement
+                if (!(frameElement instanceof HTMLIFrameElement)) return
+                setupIframeWindow(frameWindow, {
+                  iframe: frameElement,
+                  container,
+                  isScrollMode:
+                    ui.reflowable.settings.readingLayout === "scroll" &&
+                    !isFixedLayout,
+                  paddingX: ui.reflowable.settings.paddingX,
+                  getChromeVisible: () => chromeVisibleRef.current,
+                  getCurrentFontFamily: getCurrentReflowableFontFamily,
+                  getAnnotations: () => annotationsRef.current,
+                  onAnnotationClick,
+                  onAnnotationNoteClick,
+                  noteMarkerAccessibilityLabel,
+                })
+              })
+              if (nav) {
+                applyEpubAnnotations(
+                  nav,
+                  annotationsRef.current,
+                  noteMarkerAccessibilityLabel,
+                )
+              }
+              setAnnotationsAvailable(true)
             },
             positionChanged: (locator) => {
               const selected = selectedTocItemRef.current
@@ -1847,6 +2171,7 @@ export function ReadiumEpubReader({
               finishContentNavigationForLocator(stableLocator)
             },
             tap: () => {
+              if (!hasReaderTextSelection()) setAnnotationSelection(null)
               showChrome()
               return (
                 useAppUiStore.getState().reflowable.settings.readingLayout ===
@@ -1866,7 +2191,7 @@ export function ReadiumEpubReader({
             scroll: () => {},
             customEvent: () => {},
             handleLocator: () => false,
-            textSelected: () => {},
+            textSelected: onTextSelected,
             contentProtection: () => {},
             contextMenu: () => {},
             peripheral: (ev) => {
@@ -1919,6 +2244,7 @@ export function ReadiumEpubReader({
           patchEpubNavigatorFixedLayoutGoNav(nav)
         }
         const activeNav = nav
+        navigatorRef.current = activeNav
         const initialSequence = beginContentNavigation(initialPosition)
         await activeNav.load()
         if (cancelled) return
@@ -1929,6 +2255,12 @@ export function ReadiumEpubReader({
           })
         })
         navigatorRef.current = activeNav
+        applyEpubAnnotations(
+          activeNav,
+          annotationsRef.current,
+          noteMarkerAccessibilityLabel,
+        )
+        setAnnotationsAvailable(true)
         setReadiumNavReady(true)
         const store = useAppUiStore.getState()
         if (store.readerPreferencesHydrated && isFixedLayout) {
@@ -1940,6 +2272,8 @@ export function ReadiumEpubReader({
         finishContentNavigation(initialSequence)
       } catch (e) {
         if (cancelled) return
+        if (navigatorRef.current === nav) navigatorRef.current = null
+        void nav?.destroy()
         console.error("[Readium] Failed to initialize navigator:", e)
         setInitError(String(e))
       }
@@ -1954,6 +2288,8 @@ export function ReadiumEpubReader({
       clearPendingProgressSeek()
       clearContentNavigationTimers()
       setReadiumNavReady(false)
+      setAnnotationsAvailable(false)
+      setAnnotationSelection(null)
       const activeNavigator = navigatorRef.current ?? nav
       navigatorRef.current = null
       void activeNavigator?.destroy()
@@ -1974,6 +2310,10 @@ export function ReadiumEpubReader({
     finishContentNavigation,
     finishContentNavigationForLocator,
     getCurrentReflowableFontFamily,
+    onAnnotationClick,
+    onAnnotationNoteClick,
+    onTextSelected,
+    noteMarkerAccessibilityLabel,
     revealFailedContentNavigation,
     resolveChapterTitle,
   ])
@@ -2073,7 +2413,7 @@ export function ReadiumEpubReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || searchOpen || settingsOpen}
+      panelsOpen={tocOpen || annotationsOpen || searchOpen || settingsOpen}
       onClosePanels={closePanels}
       theme={readerSettings.theme}
       readerMode={isFixedLayout ? "fixed-layout" : undefined}
@@ -2083,9 +2423,13 @@ export function ReadiumEpubReader({
         bookmarked: readerBookmarks.bookmarked,
         bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
+        annotationsOpen,
         searchOpen,
         settingsOpen,
         onToggleToc: toggleToc,
+        onToggleAnnotations: annotationsAvailable
+          ? toggleAnnotations
+          : undefined,
         onToggleSearch: searchCapabilities.searchable
           ? toggleSearch
           : undefined,
@@ -2108,6 +2452,21 @@ export function ReadiumEpubReader({
           onBookmarkDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
+      }
+      annotationsPanel={
+        annotationsAvailable ? (
+          <ReadiumAnnotationPanel
+            visible={annotationsOpen}
+            annotations={annotationRows}
+            loading={readerAnnotations.loading}
+            mutating={readerAnnotations.mutating}
+            error={readerAnnotations.loadError}
+            onRetry={readerAnnotations.retry}
+            onSelect={onAnnotationSelect}
+            onEdit={onAnnotationEdit}
+            onClose={closePanels}
+          />
+        ) : null
       }
       searchPanel={
         searchCapabilities.searchable ? (
@@ -2209,24 +2568,54 @@ export function ReadiumEpubReader({
         />
       }
       main={
-        <div className="relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden">
-          <div
-            ref={containerRef}
-            className={cn(
-              "readium-epub-host absolute inset-0 overflow-hidden",
-              contentSettling && "is-content-settling",
-            )}
+        <>
+          <ReaderSelectionMenu
+            key={
+              annotationSelection
+                ? `${annotationSelection.locator.href}:${annotationSelection.locator.locations?.cssSelector ?? ""}:${annotationSelection.locator.text?.highlight ?? ""}`
+                : "closed"
+            }
+            anchor={annotationSelection?.contextMenu ?? null}
+            currentColor={selectedAnnotation?.color}
+            disabled={readerAnnotations.mutating}
+            existing={Boolean(selectedAnnotation)}
+            hasNote={Boolean(selectedAnnotation?.note?.trim())}
+            onColorSelect={(color) => void setSelectionHighlightColor(color)}
+            onEditNote={openSelectionNoteEditor}
+            onRemove={() => void removeSelectionAnnotation()}
+            onOpenChange={handleSelectionMenuOpenChange}
           />
-          {contentSettling ? (
+          <div className="relative min-h-0 min-w-0 w-full flex-1 basis-0 overflow-hidden">
             <div
-              className="pointer-events-none absolute inset-0 z-10 grid place-items-center text-reader-chrome-fg/70"
-              role="status"
-              aria-label={t("reader.loadingBook")}
-            >
-              <Loader2 className="size-7 animate-spin" aria-hidden />
-            </div>
-          ) : null}
-        </div>
+              ref={containerRef}
+              className={cn(
+                "readium-epub-host absolute inset-0 overflow-hidden",
+                contentSettling && "is-content-settling",
+              )}
+            />
+            {contentSettling ? (
+              <div
+                className="pointer-events-none absolute inset-0 z-10 grid place-items-center text-reader-chrome-fg/70"
+                role="status"
+                aria-label={t("reader.loadingBook")}
+              >
+                <Loader2 className="size-7 animate-spin" aria-hidden />
+              </div>
+            ) : null}
+          </div>
+          <ReaderAnnotationEditorDialog
+            draft={annotationEditorDraft}
+            theme={readerSettings.theme}
+            mutating={readerAnnotations.mutating}
+            onClose={() => setAnnotationEditor(null)}
+            onSave={saveAnnotationEditor}
+            onDelete={
+              annotationEditor?.mode === "edit"
+                ? deleteAnnotationEditor
+                : undefined
+            }
+          />
+        </>
       }
     />
   )

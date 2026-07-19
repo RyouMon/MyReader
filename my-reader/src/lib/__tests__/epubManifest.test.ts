@@ -9,6 +9,7 @@ type ManifestTocEntry = {
 
 type ManifestWithToc = {
   toc?: ManifestTocEntry[]
+  metadata?: { layout?: string }
 }
 
 function stubEpubFetch(files: Record<string, string>): void {
@@ -91,5 +92,33 @@ describe("buildReadiumManifest", () => {
         },
       ],
     })
+  })
+
+  it("should expose fixed layout when the EPUB declares pre-paginated content", async () => {
+    stubEpubFetch({
+      "/book/META-INF/container.xml": `<?xml version="1.0"?>
+        <container xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+          <rootfiles>
+            <rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>
+          </rootfiles>
+        </container>`,
+      "/book/content.opf": `<?xml version="1.0"?>
+        <package xmlns:dc="http://purl.org/dc/elements/1.1/">
+          <metadata>
+            <dc:title>Fixed Book</dc:title>
+            <dc:language>en</dc:language>
+            <meta property="rendition:layout">pre-paginated</meta>
+          </metadata>
+          <manifest>
+            <item id="page" href="page.xhtml" media-type="application/xhtml+xml"/>
+          </manifest>
+          <spine><itemref idref="page"/></spine>
+        </package>`,
+    })
+
+    const result = await buildReadiumManifest("/book")
+    const manifest = result?.manifest as ManifestWithToc
+
+    expect(manifest.metadata?.layout).toBe("fixed")
   })
 })

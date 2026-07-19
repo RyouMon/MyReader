@@ -335,4 +335,15 @@ describe("ReadiumTocPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "重试" }))
     expect(onBookmarksRetry).toHaveBeenCalledTimes(1)
   })
+
+  it("should keep highlights and notes out of reading navigation", () => {
+    render(
+      <ReadiumTocPanel visible activeKey={null} rows={[]} onSelect={vi.fn()} />,
+    )
+
+    expect(screen.getAllByRole("tab")).toHaveLength(2)
+    expect(
+      screen.queryByRole("tab", { name: "高亮和笔记" }),
+    ).not.toBeInTheDocument()
+  })
 })

@@ -105,6 +105,25 @@ function childElements(parent: Element | null, localName: string): Element[] {
   return Array.from(parent.children).filter((c) => c.localName === localName)
 }
 
+function epubLayout(metadata: Element): "fixed" | "reflowable" | undefined {
+  const renditionLayout = Array.from(metadata.querySelectorAll("meta")).find(
+    (meta) => meta.getAttribute("property") === "rendition:layout",
+  )
+  const renditionValue =
+    renditionLayout?.textContent?.trim() ||
+    renditionLayout?.getAttribute("content")?.trim()
+  if (renditionValue === "pre-paginated") return "fixed"
+  if (renditionValue === "reflowable") return "reflowable"
+
+  const legacyFixedLayout = Array.from(metadata.querySelectorAll("meta")).find(
+    (meta) => meta.getAttribute("name") === "fixed-layout",
+  )
+  if (legacyFixedLayout?.getAttribute("content")?.toLowerCase() === "true") {
+    return "fixed"
+  }
+  return undefined
+}
+
 /**
  * Parse EPUB container.xml to find the OPF package path.
  */
@@ -277,6 +296,7 @@ export async function buildReadiumManifest(
     const publisher = getDc("publisher")
     const description = getDc("description")
     const published = getDc("date")
+    const layout = epubLayout(metadataEl)
 
     // --- Parse creators ---
     const authorEls = childElements(metadataEl, "dc:creator").concat(
@@ -328,6 +348,7 @@ export async function buildReadiumManifest(
         ...(publisher && { publisher }),
         ...(description && { description }),
         ...(published && { published }),
+        ...(layout && { layout }),
         ...(authors.length > 0 && {
           author: authors.length === 1 ? authors[0] : authors,
         }),

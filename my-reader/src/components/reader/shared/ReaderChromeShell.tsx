@@ -22,11 +22,13 @@ export type ReaderChromeTopBarConfig = {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleAnnotations?: () => void
   onToggleSearch?: () => void
   onToggleBookmark: () => void
   onToggleSettings: () => void
@@ -41,6 +43,7 @@ export type ReaderChromeShellProps = {
   expandBottomForTts?: boolean
   topBar: ReaderChromeTopBarConfig
   tocPanel: ReactNode
+  annotationsPanel?: ReactNode
   searchPanel?: ReactNode
   settingsPanel: ReactNode
   /** 插在正文区域之前（如 EPUB 宿主 iframe 的全局样式）。 */
@@ -112,6 +115,7 @@ export function ReaderChromeShell({
   expandBottomForTts = false,
   topBar,
   tocPanel,
+  annotationsPanel,
   searchPanel,
   settingsPanel,
   beforeMain,
@@ -176,11 +180,13 @@ export function ReaderChromeShell({
           bookmarked={topBar.bookmarked}
           bookmarkDisabled={topBar.bookmarkDisabled}
           tocOpen={topBar.tocOpen}
+          annotationsOpen={topBar.annotationsOpen}
           searchOpen={topBar.searchOpen}
           settingsOpen={topBar.settingsOpen}
           showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}
+          onToggleAnnotations={topBar.onToggleAnnotations}
           onToggleSearch={topBar.onToggleSearch}
           onToggleBookmark={topBar.onToggleBookmark}
           onToggleSettings={topBar.onToggleSettings}
@@ -212,6 +218,7 @@ export function ReaderChromeShell({
           </div>
         ) : null}
         {tocPanel}
+        {annotationsPanel}
         {searchPanel}
         {settingsPanel}
         <ReadingChromeEdgeZones
