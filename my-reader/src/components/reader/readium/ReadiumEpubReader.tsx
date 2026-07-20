@@ -2481,6 +2481,7 @@ export function ReadiumEpubReader({
             onRetry={readerAnnotations.retry}
             onSelect={onAnnotationSelect}
             onEdit={onAnnotationEdit}
+            onDelete={readerAnnotations.deleteAnnotation}
             onClose={closePanels}
           />
         ) : null

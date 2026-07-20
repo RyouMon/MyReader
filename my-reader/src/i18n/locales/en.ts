@@ -391,6 +391,12 @@ export const en = {
       note: "Note",
       notePlaceholder: "Write a thought about this passage…",
       selectionActions: "Text actions",
+      selectAnnotation: "Select",
+      deselectAnnotation: "Deselect",
+      selectedAnnotations: "{{count}} annotations selected",
+      selectedAnnotations_one: "{{count}} annotation selected",
+      selectedAnnotations_other: "{{count}} annotations selected",
+      deleteSelectedAnnotations: "Delete selected annotations",
       editAnnotation: "Edit highlight and note",
       annotationEditorDescription:
         "Change the highlight color or add a note to the selected text.",
