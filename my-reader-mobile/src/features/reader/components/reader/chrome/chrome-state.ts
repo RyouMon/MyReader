@@ -3,8 +3,8 @@
  *   Reading        — Chapter/page labels + active bookmark affordance
  *   Chrome         — + Close button (top-right) + More button (bottom-right)
  *   Expanded       — + navigation/settings pills and bookmark button
- *   NavigationSheet — TOC/bookmarks bottom sheet open
- *   AnnotationsSheet — Highlights and notes bottom sheet open
+ *   NavigationSheet — Table of contents bottom sheet open
+ *   AnnotationsSheet — Bookmarks, highlights, and notes bottom sheet open
  *   SettingsSheet  — Settings bottom sheet open
  *   SearchSheet    — In-book search bottom sheet open
  */

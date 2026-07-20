@@ -8,8 +8,9 @@ export {
   type ReaderAnnotationItem,
   ReaderAnnotationList,
 } from "./ReaderAnnotationList"
-export type { ReaderAnnotationsSheetProps } from "./ReaderAnnotationsSheet"
-export { default as ReaderAnnotationsSheet } from "./ReaderAnnotationsSheet"
+export type { ReaderBookmarkItem } from "./ReaderBookmarkList"
+export type { ReaderBookmarksAndNotesSheetProps } from "./ReaderBookmarksAndNotesSheet"
+export { default as ReaderBookmarksAndNotesSheet } from "./ReaderBookmarksAndNotesSheet"
 export {
   default as ReaderBookmarkButton,
   readerBookmarkButtonVisible,
@@ -18,10 +19,7 @@ export type { ReaderChapterLabelProps } from "./ReaderChapterLabel"
 export { ReaderChapterLabel } from "./ReaderChapterLabel"
 export { default as ReaderCloseButton } from "./ReaderCloseButton"
 export { default as ReaderMoreButton } from "./ReaderMoreButton"
-export type {
-  ReaderBookmarkItem,
-  ReaderNavigationSheetProps,
-} from "./ReaderNavigationSheet"
+export type { ReaderNavigationSheetProps } from "./ReaderNavigationSheet"
 
 export { default as ReaderNavigationSheet } from "./ReaderNavigationSheet"
 export type { ReaderPositionLabelProps } from "./ReaderPositionLabel"

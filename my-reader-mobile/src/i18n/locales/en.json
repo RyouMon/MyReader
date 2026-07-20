@@ -194,8 +194,8 @@
       "moreActions": "More Actions"
     },
     "toc": "Table of Contents",
-    "navigation": "Contents and Bookmarks",
-    "navigationSheet": "Reading navigation panel",
+    "navigation": "Contents",
+    "navigationSheet": "Contents panel",
     "noToc": "This book has no table of contents",
     "search": {
       "title": "Search book",
@@ -243,7 +243,8 @@
       "longPressHint": "Long press to select or delete this bookmark"
     },
     "annotations": {
-      "title": "Highlights and notes",
+      "title": "Bookmarks, highlights, and notes",
+      "notesTab": "Notes",
       "highlightAction": "Highlight",
       "noteAction": "Add note",
       "editNoteAction": "Edit note",
@@ -251,7 +252,7 @@
       "removeAction": "Remove",
       "copyAction": "Copy",
       "selectionActions": "Text actions",
-      "empty": "No highlights or notes yet",
+      "empty": "No notes yet",
       "emptyDetail": "Select text to highlight it or add a note.",
       "loading": "Loading notes…",
       "error": "Couldn't load or update notes",

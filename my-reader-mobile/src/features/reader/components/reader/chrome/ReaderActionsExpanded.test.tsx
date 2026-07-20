@@ -33,9 +33,9 @@ const baseProps = {
   readingProgression: "ltr" as const,
   palette,
   showSearchAction: false,
-  showAnnotationsAction: false,
+  showBookmarksAndNotesAction: false,
   onOpenToc: jest.fn(),
-  onOpenAnnotations: jest.fn(),
+  onOpenBookmarksAndNotes: jest.fn(),
   onOpenSearch: jest.fn(),
   onOpenSettings: jest.fn(),
   onPreviewPosition: jest.fn(() => ({ positionLabel: "1 / 10" })),
@@ -47,7 +47,7 @@ describe("ReaderActionsExpanded", () => {
     jest.clearAllMocks()
   })
 
-  it("should label the navigation action as contents and bookmarks", () => {
+  it("should label the standalone navigation action as contents", () => {
     const screen = render(<ReaderActionsExpanded {...baseProps} />)
 
     expect(screen.getByLabelText("reader.navigation")).toBeTruthy()
@@ -60,18 +60,18 @@ describe("ReaderActionsExpanded", () => {
     expect(screen.queryByLabelText("reader.bookmarks.removeCurrent")).toBeNull()
   })
 
-  it("should open highlights and notes from a separate action when supported", () => {
-    const onOpenAnnotations = jest.fn()
+  it("should open bookmarks and notes from a separate action", () => {
+    const onOpenBookmarksAndNotes = jest.fn()
     const screen = render(
       <ReaderActionsExpanded
         {...baseProps}
-        showAnnotationsAction
-        onOpenAnnotations={onOpenAnnotations}
+        showBookmarksAndNotesAction
+        onOpenBookmarksAndNotes={onOpenBookmarksAndNotes}
       />,
     )
 
     fireEvent.press(screen.getByLabelText("reader.annotations.title"))
-    expect(onOpenAnnotations).toHaveBeenCalledTimes(1)
+    expect(onOpenBookmarksAndNotes).toHaveBeenCalledTimes(1)
 
     screen.rerender(<ReaderActionsExpanded {...baseProps} />)
     expect(screen.queryByLabelText("reader.annotations.title")).toBeNull()

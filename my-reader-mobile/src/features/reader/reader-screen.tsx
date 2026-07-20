@@ -62,9 +62,9 @@ import {
   ReaderAnnotationEditorSheet,
   type ReaderAnnotationEditorSheetRef,
   type ReaderAnnotationItem,
-  ReaderAnnotationsSheet,
   ReaderBookmarkButton,
   type ReaderBookmarkItem,
+  ReaderBookmarksAndNotesSheet,
   ReaderChapterLabel,
   ReaderCloseButton,
   ReaderMoreButton,
@@ -459,8 +459,8 @@ export default function ReaderScreen() {
           isReflowReady ? "reflowable" : "fixed",
         ),
       )
-      navigationSheetRef.current?.dismiss()
-      dispatch({ type: "navigationSelect" })
+      annotationsSheetRef.current?.dismiss()
+      dispatch({ type: "annotationSelect" })
     },
     [isReflowReady, navigateToLocator, positions],
   )
@@ -872,7 +872,7 @@ export default function ReaderScreen() {
     dispatch({ type: "navigationPillTap" })
   }, [])
 
-  const handleOpenAnnotations = useCallback(() => {
+  const handleOpenBookmarksAndNotes = useCallback(() => {
     dispatch({ type: "annotationsPillTap" })
   }, [])
 
@@ -1325,43 +1325,44 @@ export default function ReaderScreen() {
               }
               palette={chromePalette}
               showSearchAction={searchAvailable}
-              showAnnotationsAction={annotationsAvailable}
+              showBookmarksAndNotesAction
               onOpenToc={handleOpenToc}
-              onOpenAnnotations={handleOpenAnnotations}
+              onOpenBookmarksAndNotes={handleOpenBookmarksAndNotes}
               onOpenSearch={handleOpenSearch}
               onOpenSettings={handleOpenSettings}
               onPreviewPosition={previewReaderPosition}
               onCommitPosition={handleProgressCommit}
             />
 
-            {/* State 4: TOC/bookmarks navigation sheet */}
+            {/* State 4: table of contents sheet */}
             <ReaderNavigationSheet
               ref={navigationSheetRef}
               toc={toc}
               activeTocIndex={activeTocIndex}
+              palette={chromePalette}
+              onSelectTocItem={handleTocSelect}
+              onDismiss={handleNavigationDismiss}
+            />
+
+            <ReaderBookmarksAndNotesSheet
+              ref={annotationsSheetRef}
+              annotations={annotationItems}
+              annotationsAvailable={annotationsAvailable}
+              annotationsError={Boolean(readerAnnotations.error)}
+              annotationsLoading={readerAnnotations.loading}
+              annotationsPending={readerAnnotations.mutating}
               bookmarks={bookmarkItems}
               bookmarksError={Boolean(bookmarkError)}
               bookmarksLoading={bookmarksLoading}
               bookmarksPending={bookmarkPending}
               palette={chromePalette}
+              onRetryAnnotations={readerAnnotations.retry}
+              onSelectAnnotation={handleAnnotationSelect}
+              onEditAnnotation={handleAnnotationEdit}
+              onDeleteAnnotation={handleAnnotationDelete}
               onRetryBookmarks={retryBookmarks}
-              onSelectTocItem={handleTocSelect}
               onSelectBookmark={handleBookmarkSelect}
               onDeleteBookmark={handleBookmarkDelete}
-              onDismiss={handleNavigationDismiss}
-            />
-
-            <ReaderAnnotationsSheet
-              ref={annotationsSheetRef}
-              annotations={annotationItems}
-              error={Boolean(readerAnnotations.error)}
-              loading={readerAnnotations.loading}
-              pending={readerAnnotations.mutating}
-              palette={chromePalette}
-              onRetry={readerAnnotations.retry}
-              onSelect={handleAnnotationSelect}
-              onEdit={handleAnnotationEdit}
-              onDelete={handleAnnotationDelete}
               onDismiss={handleAnnotationsDismiss}
             />
 
