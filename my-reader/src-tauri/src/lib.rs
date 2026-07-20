@@ -8,6 +8,7 @@ mod constants;
 mod db;
 pub mod entities;
 mod error;
+mod migration;
 pub mod models;
 mod protocols;
 mod reader_ui_prefs;

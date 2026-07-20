@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate SeaORM entity files from the Drizzle-generated SQL migrations.
+# Generate SeaORM query entities from the Drizzle-generated SQL migrations.
 #
 # Prerequisites:
 #   - sea-orm-cli installed: cargo install sea-orm-cli
