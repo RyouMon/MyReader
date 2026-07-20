@@ -243,8 +243,8 @@
       "longPressHint": "Long press to select or delete this bookmark"
     },
     "annotations": {
-      "title": "Bookmarks, highlights, and notes",
-      "notesTab": "Notes",
+      "title": "Bookmarks & Annotations",
+      "notesTab": "Annotations",
       "highlightAction": "Highlight",
       "noteAction": "Add note",
       "editNoteAction": "Edit note",

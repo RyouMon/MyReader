@@ -4,7 +4,7 @@
  *   Chrome         — + Close button (top-right) + More button (bottom-right)
  *   Expanded       — + navigation/settings pills and bookmark button
  *   NavigationSheet — Table of contents bottom sheet open
- *   AnnotationsSheet — Bookmarks, highlights, and notes bottom sheet open
+ *   AnnotationsSheet — Bookmarks and annotations bottom sheet open
  *   SettingsSheet  — Settings bottom sheet open
  *   SearchSheet    — In-book search bottom sheet open
  */
