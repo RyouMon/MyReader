@@ -27,6 +27,7 @@ import { LibrarySyncPill } from "@/src/features/library/components/library-sync-
 import { setReaderTransitionRootNode } from "@/src/features/reader/reader-open-transition"
 import { ReaderOpenTransitionHost } from "@/src/features/reader/reader-open-transition-overlay"
 import { useDataSourceActions } from "@/src/hooks/use-data-source-actions"
+import { AppLanguageProvider } from "@/src/i18n/app-language-provider"
 import { queryClient } from "@/src/services/query/query-client"
 import * as Sentry from "@sentry/react-native"
 import { QueryClientProvider } from "@tanstack/react-query"
@@ -169,17 +170,19 @@ export default Sentry.wrap(function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <ErrorBoundary>
-            <NotifierWithSafeArea>
-              <RNView
-                ref={transitionRootRef}
-                collapsable={false}
-                style={{ flex: 1 }}
-              >
-                <RootNavigator />
-              </RNView>
-            </NotifierWithSafeArea>
-          </ErrorBoundary>
+          <AppLanguageProvider>
+            <ErrorBoundary>
+              <NotifierWithSafeArea>
+                <RNView
+                  ref={transitionRootRef}
+                  collapsable={false}
+                  style={{ flex: 1 }}
+                >
+                  <RootNavigator />
+                </RNView>
+              </NotifierWithSafeArea>
+            </ErrorBoundary>
+          </AppLanguageProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

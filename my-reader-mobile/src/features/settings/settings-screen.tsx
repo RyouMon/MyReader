@@ -235,7 +235,7 @@ export default function SettingsScreen() {
               onPressAction={({ nativeEvent }) => {
                 const lang = nativeEvent.event.replace("lang:", "")
                 setLanguage(lang === "system" ? "" : lang)
-                changeLanguage(
+                void changeLanguage(
                   lang === "system"
                     ? (getLocales()[0]?.languageCode ?? "zh")
                     : lang,
