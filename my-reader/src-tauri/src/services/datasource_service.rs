@@ -1,7 +1,7 @@
 use tracing::info;
 
 use crate::auth::credentials;
-use crate::auth::onedrive::OnedriveTokenManager;
+use crate::auth::onedrive::onedrive_token_manager;
 use crate::clients::graph::{GraphClient, ReqwestGraphClient};
 use crate::error::AppError;
 use crate::models::{
@@ -329,7 +329,7 @@ impl DataSourceService {
 
         if let Some(rt) = refresh_token {
             let account = credentials::onedrive_refresh_token_account(&source.id);
-            credentials::save_onedrive_refresh_token(&account, rt)?;
+            credentials::save_onedrive_refresh_token(&source.id, rt)?;
             if let DataSourceDetail::Onedrive {
                 credential_account, ..
             } = &mut source.detail
@@ -350,8 +350,7 @@ impl DataSourceService {
     ) -> Result<Vec<OnedriveFolderEntry>, AppError> {
         let (client_id, tenant_id) = resolve_onedrive_source(config, data_source_id)?;
 
-        let manager = OnedriveTokenManager::new();
-        let access_token = manager
+        let access_token = onedrive_token_manager()
             .get_access_token(data_source_id, Some(&client_id), Some(&tenant_id))
             .await?;
 

@@ -130,6 +130,10 @@ impl LibraryService {
                 AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
             })?;
 
+        if remote_library_exists(config, "webdav", data_source_id, remote_path) {
+            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
+        }
+
         let id = uuid::Uuid::new_v4().to_string();
         let cache_dir = library_container_dir(app_data_dir, &id);
         std::fs::create_dir_all(&cache_dir)?;
@@ -148,10 +152,6 @@ impl LibraryService {
                 .unwrap_or("WebDAV Library")
                 .to_string()
         });
-
-        if config.libraries.iter().any(|l| l.path == cache_str) {
-            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
-        }
 
         db::ensure_library_data_dir(&cache_str)?;
 
@@ -219,6 +219,10 @@ impl LibraryService {
                 AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {}", data_source_id))
             })?;
 
+        if remote_library_exists(config, "onedrive", data_source_id, remote_path) {
+            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
+        }
+
         let id = uuid::Uuid::new_v4().to_string();
         let cache_dir = library_container_dir(app_data_dir, &id);
         std::fs::create_dir_all(&cache_dir)?;
@@ -237,10 +241,6 @@ impl LibraryService {
                 .unwrap_or("OneDrive Library")
                 .to_string()
         });
-
-        if config.libraries.iter().any(|l| l.path == cache_str) {
-            return Err(AppError::Config("LIBRARY_ALREADY_EXISTS".into()));
-        }
 
         db::ensure_library_data_dir(&cache_str)?;
 
@@ -523,4 +523,21 @@ impl LibraryService {
             .cloned()
             .ok_or_else(|| AppError::NotFound(format!("LIBRARY_NOT_FOUND: {}", lib_id)))
     }
+}
+
+fn remote_library_exists(
+    config: &AppConfig,
+    source_type: &str,
+    data_source_id: &str,
+    remote_path: &str,
+) -> bool {
+    let normalized_remote_path = remote_path.trim().trim_matches('/');
+    config.libraries.iter().any(|library| {
+        library.source_type.as_deref() == Some(source_type)
+            && library.data_source_id.as_deref() == Some(data_source_id)
+            && library
+                .source_path
+                .as_deref()
+                .is_some_and(|path| path.trim().trim_matches('/') == normalized_remote_path)
+    })
 }

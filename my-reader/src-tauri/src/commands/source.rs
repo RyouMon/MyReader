@@ -1,7 +1,7 @@
 use tauri::{AppHandle, State};
 use tracing::{error, info};
 
-use crate::auth::onedrive::OnedriveTokenManager;
+use crate::auth::onedrive::onedrive_token_manager;
 use crate::commands::common;
 use crate::commands::AppState;
 use crate::error::AppError;
@@ -169,8 +169,7 @@ pub async fn onedrive_start_auth(
     input: OnedriveStartAuthInput,
 ) -> Result<OnedriveAuthResultDto, AppError> {
     info!("Start OneDrive OAuth2 flow.");
-    let manager = OnedriveTokenManager::new();
-    let result = manager
+    let result = onedrive_token_manager()
         .start_auth_flow(input.client_id.as_deref(), input.tenant_id.as_deref())
         .await;
     match result {

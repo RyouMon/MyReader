@@ -8,7 +8,7 @@ mod onedrive;
 mod webdav;
 
 use crate::auth::credentials;
-use crate::auth::onedrive::OnedriveTokenManager;
+use crate::auth::onedrive::onedrive_token_manager;
 use crate::error::AppError;
 use crate::models::{DataSourceConfig, DataSourceDetail};
 
@@ -92,8 +92,7 @@ pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Oper
             tenant_id,
             ..
         } => {
-            let manager = OnedriveTokenManager::new();
-            let token = manager
+            let token = onedrive_token_manager()
                 .get_access_token(data_source_id, Some(client_id), Some(tenant_id))
                 .await?;
             *inline_access_token = Some(token);

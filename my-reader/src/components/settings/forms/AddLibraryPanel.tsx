@@ -58,6 +58,7 @@ export function AddLibraryPanel({
   const [selectedType, setSelectedType] = useState<DataSourceType>("local")
   const [webdavBrowserOpen, setWebdavBrowserOpen] = useState(false)
   const [onedriveBrowserOpen, setOnedriveBrowserOpen] = useState(false)
+  const submitInFlightRef = useRef(false)
   const pathInputRef = useRef<HTMLInputElement>(null)
   const availableWebdavSources = dataSources.filter(
     (row) => row.enabled && row.type === "webdav",
@@ -90,6 +91,8 @@ export function AddLibraryPanel({
       onSubmit: addLibrarySchema,
     },
     onSubmit: async ({ value }) => {
+      if (submitInFlightRef.current) return
+      submitInFlightRef.current = true
       setAdding(true)
       setSubmitError(null)
       try {
@@ -104,6 +107,7 @@ export function AddLibraryPanel({
       } catch (error) {
         setSubmitError(String(error))
       } finally {
+        submitInFlightRef.current = false
         setAdding(false)
       }
     },

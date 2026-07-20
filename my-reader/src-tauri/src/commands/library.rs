@@ -7,6 +7,8 @@ use crate::error::AppError;
 use crate::models::LibraryInfo;
 use crate::services::library_service::LibraryService;
 
+static LIBRARY_ADD_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 #[tauri::command]
 #[specta::specta]
 pub async fn list_libraries(state: State<'_, AppState>) -> Result<Vec<LibraryInfo>, AppError> {
@@ -29,6 +31,7 @@ pub async fn add_library<R: tauri::Runtime>(
     name: Option<String>,
 ) -> Result<LibraryInfo, AppError> {
     info!("Start to add library. path: \"{path}\", requested name: {name:?}");
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
     let app_data_dir = common::app_data_dir(&app)?;
 
     let mut config = common::config_snapshot(&state);
@@ -64,6 +67,7 @@ pub async fn add_webdav_library<R: tauri::Runtime>(
     info!(
         "Start to add WebDAV library. data_source_id: \"{data_source_id}\", remote_path: \"{remote_path}\", name: {name:?}"
     );
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
     let app_data_dir = common::app_data_dir(&app)?;
 
     let mut config = common::config_snapshot(&state);
@@ -101,6 +105,7 @@ pub async fn add_onedrive_library<R: tauri::Runtime>(
     info!(
         "Start to add OneDrive library. data_source_id: \"{data_source_id}\", remote_path: \"{remote_path}\", name: {name:?}"
     );
+    let _add_guard = LIBRARY_ADD_LOCK.lock().await;
     let app_data_dir = common::app_data_dir(&app)?;
 
     let mut config = common::config_snapshot(&state);

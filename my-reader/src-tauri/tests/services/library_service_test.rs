@@ -226,6 +226,35 @@ async fn add_remote_libraries_should_download_metadata_from_data_source_and_set_
 }
 
 #[tokio::test]
+async fn add_remote_library_should_reject_same_source_path_when_library_already_exists() {
+    let app_data = tempfile::tempdir().unwrap();
+    let remote_root = tempfile::tempdir().unwrap();
+    let mut config = AppConfig {
+        libraries: vec![remote_library(
+            "lib-onedrive",
+            "onedrive",
+            Some("ds-remote"),
+            Some("/RemoteLibrary/"),
+        )],
+        data_sources: vec![local_data_source("ds-remote", remote_root.path())],
+        ..Default::default()
+    };
+
+    let err = LibraryService::add_onedrive_library(
+        app_data.path(),
+        "ds-remote",
+        "RemoteLibrary",
+        None,
+        &mut config,
+    )
+    .await
+    .expect_err("duplicate remote library should fail before download");
+
+    assert!(format!("{err}").contains("LIBRARY_ALREADY_EXISTS"));
+    assert_eq!(config.libraries.len(), 1);
+}
+
+#[tokio::test]
 async fn add_remote_library_with_scope_sync_should_delegate_to_remote_add() {
     let test_app = TestApp::new();
     let app_data = tempfile::tempdir().unwrap();

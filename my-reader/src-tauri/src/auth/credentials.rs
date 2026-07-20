@@ -140,11 +140,12 @@ pub fn delete_webdav_password(account: &str) -> Result<(), AppError> {
 }
 
 pub fn onedrive_refresh_token_account(data_source_id: &str) -> String {
-    format!("onedriveres-{data_source_id}")
+    format!("onedrive-refresh-token-{data_source_id}")
 }
 
-pub fn save_onedrive_refresh_token(account: &str, token: &str) -> Result<(), AppError> {
-    store().save(Service::Onedrive, account, token)
+pub fn save_onedrive_refresh_token(data_source_id: &str, token: &str) -> Result<(), AppError> {
+    let account = onedrive_refresh_token_account(data_source_id);
+    store().save(Service::Onedrive, &account, token)
 }
 
 pub fn read_onedrive_refresh_token(data_source_id: &str) -> Result<Option<String>, AppError> {
@@ -277,7 +278,7 @@ mod tests {
     fn onedrive_refresh_token_account_should_include_data_source_id_when_data_source_id_is_given() {
         assert_eq!(
             onedrive_refresh_token_account("eb859db9"),
-            "onedriveres-eb859db9"
+            "onedrive-refresh-token-eb859db9"
         );
     }
 
@@ -362,8 +363,7 @@ mod tests {
 
         assert_eq!(read_onedrive_refresh_token(data_source_id).unwrap(), None);
 
-        let account = onedrive_refresh_token_account(data_source_id);
-        save_onedrive_refresh_token(&account, "refresh").unwrap();
+        save_onedrive_refresh_token(data_source_id, "refresh").unwrap();
         assert_eq!(
             read_onedrive_refresh_token(data_source_id).unwrap(),
             Some("refresh".to_string())

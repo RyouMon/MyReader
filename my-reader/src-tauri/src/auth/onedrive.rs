@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use oauth2::basic::{
     BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse,
@@ -15,7 +15,7 @@ use oauth2::{
     TokenUrl,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use tracing::{info, warn};
 
@@ -63,12 +63,14 @@ struct CachedToken {
 
 pub struct OnedriveTokenManager {
     cache: Arc<RwLock<HashMap<String, CachedToken>>>,
+    refresh_lock: Mutex<()>,
 }
 
 impl OnedriveTokenManager {
     pub fn new() -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
+            refresh_lock: Mutex::new(()),
         }
     }
 
@@ -204,19 +206,48 @@ impl OnedriveTokenManager {
         client_id: Option<&str>,
         tenant_id: Option<&str>,
     ) -> Result<String, AppError> {
-        // Check cache first
-        {
-            let cache = self.cache.read().await;
-            if let Some(cached) = cache.get(data_source_id) {
-                if cached.expires_at > std::time::Instant::now() {
-                    return Ok(cached.access_token.clone());
-                }
-            }
+        let tid = tenant_id
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(DEFAULT_TENANT_ID);
+        let auth_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/authorize");
+        let token_url = format!("https://login.microsoftonline.com/{tid}/oauth2/v2.0/token");
+
+        self.get_access_token_internal(data_source_id, client_id, tenant_id, &auth_url, &token_url)
+            .await
+    }
+
+    async fn get_access_token_internal(
+        &self,
+        data_source_id: &str,
+        client_id: Option<&str>,
+        tenant_id: Option<&str>,
+        auth_url: &str,
+        token_url: &str,
+    ) -> Result<String, AppError> {
+        if let Some(token) = self.cached_access_token(data_source_id).await {
+            return Ok(token);
         }
 
-        // Need to refresh
-        self.refresh_access_token(data_source_id, client_id, tenant_id)
-            .await
+        let _refresh_guard = self.refresh_lock.lock().await;
+        if let Some(token) = self.cached_access_token(data_source_id).await {
+            return Ok(token);
+        }
+
+        self.refresh_access_token_internal(
+            data_source_id,
+            client_id,
+            tenant_id,
+            auth_url,
+            token_url,
+        )
+        .await
+    }
+
+    async fn cached_access_token(&self, data_source_id: &str) -> Option<String> {
+        let cache = self.cache.read().await;
+        cache.get(data_source_id).and_then(|cached| {
+            (cached.expires_at > std::time::Instant::now()).then(|| cached.access_token.clone())
+        })
     }
 
     /// Refresh the access token using the stored refresh token.
@@ -292,6 +323,11 @@ impl OnedriveTokenManager {
 
         Ok(access_token)
     }
+}
+
+pub fn onedrive_token_manager() -> &'static OnedriveTokenManager {
+    static MANAGER: OnceLock<OnedriveTokenManager> = OnceLock::new();
+    MANAGER.get_or_init(OnedriveTokenManager::new)
 }
 
 async fn exchange_code_for_tokens(
@@ -538,14 +574,12 @@ mod tests {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
     use std::io::Read;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
 
     use warp::Filter;
 
-    use crate::auth::credentials::{
-        onedrive_refresh_token_account, save_onedrive_refresh_token, use_test_backend,
-        MemoryBackend,
-    };
+    use crate::auth::credentials::{save_onedrive_refresh_token, use_test_backend, MemoryBackend};
 
     fn encode_id_token_payload(claims: serde_json::Value) -> String {
         let payload = URL_SAFE_NO_PAD.encode(claims.to_string().as_bytes());
@@ -756,6 +790,14 @@ mod tests {
         assert_eq!(token, "cached-token");
     }
 
+    #[test]
+    fn onedrive_token_manager_should_return_same_instance_when_requested_repeatedly() {
+        assert!(std::ptr::eq(
+            onedrive_token_manager(),
+            onedrive_token_manager()
+        ));
+    }
+
     #[tokio::test]
     async fn get_access_token_should_refresh_when_cached_token_is_expired() {
         let manager = OnedriveTokenManager::new();
@@ -886,6 +928,41 @@ mod tests {
         let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
         tokio::spawn(server);
         addr
+    }
+
+    fn start_counting_token_server() -> (std::net::SocketAddr, Arc<AtomicUsize>) {
+        let request_count = Arc::new(AtomicUsize::new(0));
+        let route_count = Arc::clone(&request_count);
+        let response_body = serde_json::json!({
+            "access_token": "access",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "refresh_token": "rotated-refresh",
+        })
+        .to_string();
+
+        let route =
+            warp::path("token")
+                .and(warp::method())
+                .and_then(move |_method: warp::http::Method| {
+                    let route_count = Arc::clone(&route_count);
+                    let response_body = response_body.clone();
+                    async move {
+                        route_count.fetch_add(1, Ordering::SeqCst);
+                        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                        Ok::<_, std::convert::Infallible>(
+                            warp::http::Response::builder()
+                                .status(200)
+                                .header("content-type", "application/json")
+                                .body(response_body)
+                                .unwrap(),
+                        )
+                    }
+                });
+
+        let (addr, server) = warp::serve(route).bind_ephemeral(([127, 0, 0, 1], 0));
+        tokio::spawn(server);
+        (addr, request_count)
     }
 
     #[tokio::test]
@@ -1032,8 +1109,7 @@ mod tests {
         let _guard = use_test_backend(MemoryBackend::default());
         let manager = OnedriveTokenManager::new();
         let data_source_id = "ds-refresh-ok";
-        let account = onedrive_refresh_token_account(data_source_id);
-        save_onedrive_refresh_token(&account, "stored-refresh").unwrap();
+        save_onedrive_refresh_token(data_source_id, "stored-refresh").unwrap();
 
         let addr = start_token_server(true);
         let token = manager
@@ -1054,6 +1130,38 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(cached, "access");
+    }
+
+    #[tokio::test]
+    async fn get_access_token_should_refresh_once_when_concurrent_requests_miss_cache() {
+        let _guard = use_test_backend(MemoryBackend::default());
+        let manager = OnedriveTokenManager::new();
+        let data_source_id = "ds-concurrent-refresh";
+        save_onedrive_refresh_token(data_source_id, "stored-refresh").unwrap();
+        let (addr, request_count) = start_counting_token_server();
+        let auth_url = format!("http://{addr}/auth");
+        let token_url = format!("http://{addr}/token");
+
+        let (first, second) = tokio::join!(
+            manager.get_access_token_internal(
+                data_source_id,
+                Some("client-id"),
+                None,
+                &auth_url,
+                &token_url,
+            ),
+            manager.get_access_token_internal(
+                data_source_id,
+                Some("client-id"),
+                None,
+                &auth_url,
+                &token_url,
+            )
+        );
+
+        assert_eq!(first.unwrap(), "access");
+        assert_eq!(second.unwrap(), "access");
+        assert_eq!(request_count.load(Ordering::SeqCst), 1);
     }
 
     #[tokio::test]
