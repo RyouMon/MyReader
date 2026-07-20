@@ -60,6 +60,87 @@ describe("reader annotations", () => {
     ])
   })
 
+  it("should use publication positions when annotations only have local progression", () => {
+    const positions = [
+      {
+        href: "z-first.xhtml",
+        type: "application/xhtml+xml",
+        locations: { progression: 0, position: 1, totalProgression: 0 },
+      },
+      {
+        href: "a-second.xhtml",
+        type: "application/xhtml+xml",
+        locations: { progression: 0, position: 2, totalProgression: 1 },
+      },
+    ]
+    const annotations = sortReaderAnnotations(
+      [
+        {
+          id: "second",
+          createdAt: 1,
+          locator: {
+            href: "a-second.xhtml",
+            type: "application/xhtml+xml",
+            locations: { progression: 0.1 },
+          },
+        },
+        {
+          id: "first",
+          createdAt: 2,
+          locator: {
+            href: "z-first.xhtml",
+            type: "application/xhtml+xml",
+            locations: { progression: 0.9 },
+          },
+        },
+      ],
+      positions,
+    )
+
+    expect(annotations.map((annotation) => annotation.id)).toEqual([
+      "first",
+      "second",
+    ])
+  })
+
+  it("should use local progression when highlights share one resource", () => {
+    const positions = [
+      {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+        locations: { progression: 0, position: 1, totalProgression: 0 },
+      },
+    ]
+    const annotations = sortReaderAnnotations(
+      [
+        {
+          id: "later",
+          createdAt: 1,
+          locator: {
+            href: "chapter.xhtml",
+            type: "application/xhtml+xml",
+            locations: { progression: 0.75, totalProgression: 0.2 },
+          },
+        },
+        {
+          id: "earlier",
+          createdAt: 2,
+          locator: {
+            href: "chapter.xhtml",
+            type: "application/xhtml+xml",
+            locations: { progression: 0.25, totalProgression: 0.8 },
+          },
+        },
+      ],
+      positions,
+    )
+
+    expect(annotations.map((annotation) => annotation.id)).toEqual([
+      "earlier",
+      "later",
+    ])
+  })
+
   it("should match the same selected passage after locator canonicalization", () => {
     const saved = {
       href: "OEBPS/chapter.xhtml",

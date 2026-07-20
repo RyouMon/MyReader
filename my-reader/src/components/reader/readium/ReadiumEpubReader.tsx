@@ -1,6 +1,7 @@
 import {
   type ReaderAnnotationColor,
   readerAnnotationExcerpt,
+  sortReaderAnnotations,
 } from "@my-reader/tools/reader-annotations"
 import { readerChromePalette } from "@my-reader/tools/reader-chrome-palette"
 import {
@@ -1367,15 +1368,17 @@ export function ReadiumEpubReader({
 
   const annotationRows = useMemo<ReadiumAnnotationRow[]>(
     () =>
-      readerAnnotations.annotations.map((annotation) => ({
-        id: annotation.id,
-        locator: annotation.locator,
-        excerpt: readerAnnotationExcerpt(annotation.locator),
-        note: annotation.note,
-        color: annotation.color,
-        createdAt: annotation.createdAt,
-      })),
-    [readerAnnotations.annotations],
+      sortReaderAnnotations(readerAnnotations.annotations, readerPositions).map(
+        (annotation) => ({
+          id: annotation.id,
+          locator: annotation.locator,
+          excerpt: readerAnnotationExcerpt(annotation.locator),
+          note: annotation.note,
+          color: annotation.color,
+          createdAt: annotation.createdAt,
+        }),
+      ),
+    [readerAnnotations.annotations, readerPositions],
   )
 
   const annotationEditorDraft =
@@ -1689,18 +1692,24 @@ export function ReadiumEpubReader({
     [closePanels, readerAnnotations.annotations],
   )
 
-  const onTextSelected = useCallback((selection: BasicTextSelection) => {
-    const navigator = navigatorRef.current
-    const container = containerRef.current
-    if (!navigator || !container) return
-    const annotationSelection = createEpubAnnotationSelection(
-      navigator,
-      selection,
-      container,
-    )
-    if (!annotationSelection) return
-    setAnnotationSelection(annotationSelection)
-  }, [])
+  const onTextSelected = useCallback(
+    (selection: BasicTextSelection) => {
+      const navigator = navigatorRef.current
+      const container = containerRef.current
+      if (!navigator || !container) return
+      const annotationSelection = createEpubAnnotationSelection(
+        navigator,
+        selection,
+        container,
+        undefined,
+        undefined,
+        readerPositions,
+      )
+      if (!annotationSelection) return
+      setAnnotationSelection(annotationSelection)
+    },
+    [readerPositions],
+  )
 
   const onAnnotationClick = useCallback(
     (selection: EpubAnnotationSelection) => {

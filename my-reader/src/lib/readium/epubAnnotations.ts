@@ -564,6 +564,31 @@ function selectionContext(
   }
 }
 
+function selectionProgression(range: Range, doc: Document): number | undefined {
+  const body = doc.body
+  if (!body?.contains(range.startContainer)) return undefined
+  const content = doc.createRange()
+  content.selectNodeContents(body)
+  const length = content.toString().length
+  if (length === 0) return undefined
+  content.setEnd(range.startContainer, range.startOffset)
+  return Math.min(1, Math.max(0, content.toString().length / length))
+}
+
+function positionForSelection(
+  positions: readonly ReaderLocator[],
+  href: string,
+  progression: number,
+): ReaderLocator | undefined {
+  const matching = positions.filter((position) =>
+    resourceMatches(position.href, href),
+  )
+  const started = matching.filter(
+    (position) => (position.locations?.progression ?? 0) <= progression,
+  )
+  return started[started.length - 1] ?? matching[0]
+}
+
 export function createEpubAnnotationSelection(
   navigator: EpubNavigator,
   selection: BasicTextSelection,
@@ -573,6 +598,7 @@ export function createEpubAnnotationSelection(
     y: selection.y,
   },
   selectionWindow?: Window,
+  positions: readonly ReaderLocator[] = [],
 ): EpubAnnotationSelection | null {
   const frame =
     navigator._cframes.find(
@@ -613,19 +639,26 @@ export function createEpubAnnotationSelection(
   const current = navigator.currentLocator
   const sameAsCurrent = resourceMatches(current.href, resource.href)
   const context = selectionContext(range, anchor)
+  const progression = selectionProgression(range, wnd.document) ?? 0
+  const selectionPosition = positionForSelection(
+    positions,
+    resource.href,
+    progression,
+  )
   const locator: ReaderLocator = {
     href: resource.href,
     type: resource.type ?? "application/xhtml+xml",
     title: current.title ?? resource.title,
     locations: {
-      progression: sameAsCurrent ? (current.locations.progression ?? 0) : 0,
+      progression,
       position:
-        sameAsCurrent && current.locations.position
+        selectionPosition?.locations?.position ??
+        (sameAsCurrent && current.locations.position
           ? current.locations.position
-          : resourceIndex + 1,
-      totalProgression: sameAsCurrent
-        ? current.locations.totalProgression
-        : undefined,
+          : undefined),
+      totalProgression:
+        selectionPosition?.locations?.totalProgression ??
+        (sameAsCurrent ? current.locations.totalProgression : undefined),
       cssSelector,
     },
     text: {

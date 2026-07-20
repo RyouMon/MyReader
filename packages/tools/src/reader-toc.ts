@@ -149,7 +149,7 @@ export function locatorWithHrefFragments(
 }
 
 export function positionIndexForLocator(
-  positions: ReaderLocator[] | undefined,
+  positions: readonly ReaderLocator[] | undefined,
   locator: ReaderLocator,
 ): number {
   const position = locator.locations?.position

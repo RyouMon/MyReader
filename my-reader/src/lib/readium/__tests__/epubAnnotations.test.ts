@@ -216,14 +216,33 @@ describe("EPUB annotation selections", () => {
       container,
       undefined,
       wnd,
+      [
+        {
+          href: "OEBPS/Text/chapter.xhtml",
+          type: "application/xhtml+xml",
+          locations: {
+            progression: 0,
+            position: 3,
+            totalProgression: 0.4,
+          },
+        },
+        {
+          href: "OEBPS/Text/chapter.xhtml",
+          type: "application/xhtml+xml",
+          locations: {
+            progression: 0.5,
+            position: 4,
+            totalProgression: 0.6,
+          },
+        },
+      ],
     )
 
     expect(result?.locator).toMatchObject({
       href: "OEBPS/Text/chapter.xhtml",
       locations: {
-        progression: 0.25,
         position: 3,
-        totalProgression: 0.5,
+        totalProgression: 0.4,
         cssSelector: "#chapter",
       },
       text: {
@@ -232,6 +251,7 @@ describe("EPUB annotation selections", () => {
         after: "after",
       },
     })
+    expect(result?.locator.locations?.progression).toBeCloseTo(7 / 21)
     expect(result?.window).toBe(wnd)
     expect(result?.contextMenu.x).toBeCloseTo(100 + (52 * 400) / wnd.innerWidth)
     expect(result?.contextMenu.y).toBeCloseTo(50 + (30 * 600) / wnd.innerHeight)

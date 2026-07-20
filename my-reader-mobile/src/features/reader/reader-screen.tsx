@@ -18,6 +18,7 @@ import {
   type ReaderAnnotationColor,
   readerAnnotationExcerpt,
   readerAnnotationMatchesSelection,
+  sortReaderAnnotations,
 } from "@my-reader/tools/reader-annotations"
 import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
@@ -55,7 +56,6 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import { useTheme } from "@/src/design/tokens"
-import type { ReaderAnnotation } from "@/src/features/reader/reader-annotations"
 import {
   ReaderActionsExpanded,
   type ReaderAnnotationEditorDraft,
@@ -110,6 +110,7 @@ import {
   createReaderAnnotationDecorationGroups,
   resolveReaderAnnotationActivation,
 } from "@/src/features/reader/reader-annotation-decorations"
+import type { ReaderAnnotation } from "@/src/features/reader/reader-annotations"
 import {
   READER_BOOK_TRANSITION_MS,
   setReaderCloseTransition,
@@ -898,17 +899,19 @@ export default function ReaderScreen() {
   }, [bookmarks, currentReaderLocator, isReflowReady, positions, t, toc])
   const annotationItems = useMemo<ReaderAnnotationItem[]>(
     () =>
-      readerAnnotations.annotations.map((annotation) => ({
-        id: annotation.id,
-        locator: annotation.locator,
-        excerpt:
-          readerAnnotationExcerpt(annotation.locator) ||
-          t("reader.annotations.title"),
-        note: annotation.note,
-        color: annotation.color,
-        createdAt: annotation.createdAt,
-      })),
-    [readerAnnotations.annotations, t],
+      sortReaderAnnotations(readerAnnotations.annotations, positions).map(
+        (annotation) => ({
+          id: annotation.id,
+          locator: annotation.locator,
+          excerpt:
+            readerAnnotationExcerpt(annotation.locator) ||
+            t("reader.annotations.title"),
+          note: annotation.note,
+          color: annotation.color,
+          createdAt: annotation.createdAt,
+        }),
+      ),
+    [positions, readerAnnotations.annotations, t],
   )
   const annotationEditorDraft =
     useMemo<ReaderAnnotationEditorDraft | null>(() => {

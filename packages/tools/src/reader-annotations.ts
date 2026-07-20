@@ -1,5 +1,9 @@
 import { canonicalizeReaderLocatorForStorage } from "./reader-bookmarks"
-import type { ReaderLocator } from "./reader-toc"
+import {
+  hrefRoughlyMatches,
+  positionIndexForLocator,
+  type ReaderLocator,
+} from "./reader-toc"
 
 export const READER_ANNOTATION_COLORS = {
   yellow: "#D9A928",
@@ -69,36 +73,89 @@ export function readerAnnotationMatchesSelection(
   )
 }
 
+function finiteNumber(value: number | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function publicationPositionIndex(
+  positions: readonly ReaderLocator[],
+  locator: ReaderLocator,
+): number | undefined {
+  if (positions.length === 0) return undefined
+  const locations = locator.locations
+  const canResolve =
+    finiteNumber(locations?.position) !== undefined ||
+    finiteNumber(locations?.totalProgression) !== undefined ||
+    positions.some((position) =>
+      hrefRoughlyMatches(position.href, locator.href),
+    )
+  return canResolve ? positionIndexForLocator(positions, locator) : undefined
+}
+
 export function sortReaderAnnotations<T extends ReaderAnnotationLike>(
   annotations: readonly T[],
+  positions: readonly ReaderLocator[] = [],
 ): T[] {
-  return [...annotations].sort((left, right) => {
-    const leftPosition = left.locator.locations?.position
-    const rightPosition = right.locator.locations?.position
-    if (leftPosition !== rightPosition) {
-      if (leftPosition == null) return 1
-      if (rightPosition == null) return -1
-      return leftPosition - rightPosition
-    }
+  return annotations
+    .map((annotation) => ({
+      annotation,
+      positionIndex: publicationPositionIndex(positions, annotation.locator),
+    }))
+    .sort((leftEntry, rightEntry) => {
+      const left = leftEntry.annotation
+      const right = rightEntry.annotation
+      const leftPositionIndex = leftEntry.positionIndex
+      const rightPositionIndex = rightEntry.positionIndex
+      if (leftPositionIndex !== rightPositionIndex) {
+        if (leftPositionIndex == null) return 1
+        if (rightPositionIndex == null) return -1
+        return leftPositionIndex - rightPositionIndex
+      }
 
-    const leftProgression =
-      left.locator.locations?.totalProgression ??
-      left.locator.locations?.progression
-    const rightProgression =
-      right.locator.locations?.totalProgression ??
-      right.locator.locations?.progression
-    if (leftProgression !== rightProgression) {
-      if (leftProgression == null) return 1
-      if (rightProgression == null) return -1
-      return leftProgression - rightProgression
-    }
+      if (hrefRoughlyMatches(left.locator.href, right.locator.href)) {
+        const leftProgression = finiteNumber(
+          left.locator.locations?.progression,
+        )
+        const rightProgression = finiteNumber(
+          right.locator.locations?.progression,
+        )
+        if (
+          leftProgression != null &&
+          rightProgression != null &&
+          leftProgression !== rightProgression
+        ) {
+          return leftProgression - rightProgression
+        }
+      }
 
-    if (left.locator.href !== right.locator.href) {
-      return left.locator.href < right.locator.href ? -1 : 1
-    }
-    if (left.createdAt !== right.createdAt) {
-      return left.createdAt - right.createdAt
-    }
-    return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
-  })
+      const leftTotalProgression = finiteNumber(
+        left.locator.locations?.totalProgression,
+      )
+      const rightTotalProgression = finiteNumber(
+        right.locator.locations?.totalProgression,
+      )
+      if (
+        leftTotalProgression != null &&
+        rightTotalProgression != null &&
+        leftTotalProgression !== rightTotalProgression
+      ) {
+        return leftTotalProgression - rightTotalProgression
+      }
+
+      const leftPosition = finiteNumber(left.locator.locations?.position)
+      const rightPosition = finiteNumber(right.locator.locations?.position)
+      if (
+        leftPosition != null &&
+        rightPosition != null &&
+        leftPosition !== rightPosition
+      ) {
+        return leftPosition - rightPosition
+      }
+
+      if (left.createdAt !== right.createdAt) {
+        return left.createdAt - right.createdAt
+      }
+      return left.id < right.id ? -1 : left.id > right.id ? 1 : 0
+    })
+    .map(({ annotation }) => annotation)
 }
