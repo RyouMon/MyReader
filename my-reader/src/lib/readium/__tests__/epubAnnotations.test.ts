@@ -1,4 +1,5 @@
 import { readerAnnotationTint } from "@my-reader/tools/reader-annotations"
+import readerNoteMarkerElementTemplate from "@my-reader/tools/reader-note-marker/reader-note-marker.html?raw"
 import type { EpubNavigator } from "@readium/navigator"
 import { Locator, LocatorLocations } from "@readium/shared"
 import { describe, expect, it, vi } from "vitest"
@@ -84,6 +85,15 @@ function createNoteMarkerFixture() {
 }
 
 describe("EPUB annotation selections", () => {
+  it("should parse the note marker template as XHTML", () => {
+    const parsed = new DOMParser().parseFromString(
+      readerNoteMarkerElementTemplate,
+      "application/xhtml+xml",
+    )
+
+    expect(parsed.querySelector("parsererror")).toBeNull()
+  })
+
   it("should suppress the browser context menu when iframe text is selected", () => {
     const iframe = document.createElement("iframe")
     document.body.appendChild(iframe)
