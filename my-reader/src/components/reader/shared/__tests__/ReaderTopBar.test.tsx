@@ -93,6 +93,38 @@ describe("ReaderTopBar", () => {
     expect(onToggleAnnotations).toHaveBeenCalledOnce()
   })
 
+  it("should expose bookmarks between contents and highlights", () => {
+    const onToggleBookmarks = vi.fn()
+    render(
+      <ReaderTopBar
+        {...defaultProps}
+        chapterTitle=""
+        bookmarksOpen
+        onToggleBookmarks={onToggleBookmarks}
+        onToggleAnnotations={vi.fn()}
+      />,
+    )
+
+    const contentsButton = screen.getByTitle("reader.navigation")
+    const bookmarksButton = screen.getByTitle("reader.bookmarks")
+    const annotationsButton = screen.getByTitle("reader.annotations")
+
+    expect(bookmarksButton).toHaveAttribute("data-active", "true")
+    expect(
+      bookmarksButton.querySelector(".lucide-folder-bookmark"),
+    ).not.toBeNull()
+    expect(
+      contentsButton.compareDocumentPosition(bookmarksButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      bookmarksButton.compareDocumentPosition(annotationsButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    fireEvent.click(bookmarksButton)
+    expect(onToggleBookmarks).toHaveBeenCalledOnce()
+  })
+
   it("should use the square pen icon for highlights and notes", () => {
     render(
       <ReaderTopBar

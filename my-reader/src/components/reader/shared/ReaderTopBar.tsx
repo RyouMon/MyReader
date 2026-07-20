@@ -1,15 +1,22 @@
-import { isTauri } from "@tauri-apps/api/core"
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Bookmark, List, Search, Settings, SquarePen } from "lucide-react"
-import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
 import { isMacPlatform } from "@/lib/platform"
 import {
   releaseReaderTrafficLightsToSystemChrome,
   setReaderTrafficLightsVisible,
 } from "@/lib/readerTrafficLights"
 import { cn } from "@/lib/utils"
+import { isTauri } from "@tauri-apps/api/core"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import {
+  Bookmark,
+  FolderBookmark,
+  List,
+  Search,
+  Settings,
+  SquarePen,
+} from "lucide-react"
+import type { ReactNode, PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 interface ReaderTopBarProps {
   visible: boolean
@@ -18,12 +25,14 @@ interface ReaderTopBarProps {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  bookmarksOpen?: boolean
   annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleBookmarks?: () => void
   onToggleAnnotations?: () => void
   onToggleSearch?: () => void
   onToggleBookmark: () => void
@@ -39,12 +48,14 @@ export function ReaderTopBar({
   bookmarked,
   bookmarkDisabled = false,
   tocOpen,
+  bookmarksOpen,
   annotationsOpen,
   searchOpen,
   settingsOpen,
   showReaderActions = true,
   previewNativeMacFullscreen = false,
   onToggleToc,
+  onToggleBookmarks,
   onToggleAnnotations,
   onToggleSearch,
   onToggleBookmark,
@@ -282,6 +293,16 @@ export function ReaderTopBar({
             >
               <List className="size-[17px]" />
             </TopBarButton>
+            {onToggleBookmarks ? (
+              <TopBarButton
+                title={t("reader.bookmarks")}
+                onClick={onToggleBookmarks}
+                active={bookmarksOpen}
+                chromeVisible={visible}
+              >
+                <FolderBookmark className="size-[17px]" />
+              </TopBarButton>
+            ) : null}
             {onToggleAnnotations ? (
               <TopBarButton
                 title={t("reader.annotations")}
@@ -298,7 +319,7 @@ export function ReaderTopBar({
 
       <div
         className={cn(
-          "relative z-10 h-full w-[min(42rem,calc(100vw-24rem))] min-w-0 overflow-hidden text-center",
+          "relative z-10 h-full w-[min(42rem,calc(100vw-35rem))] min-w-0 overflow-hidden text-center",
           chromeVisibilityClass,
         )}
       >

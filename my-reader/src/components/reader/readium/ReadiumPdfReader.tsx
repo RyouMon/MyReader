@@ -3,8 +3,9 @@ import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
+import type { ReadiumBookmarkRow } from "@/components/reader/readium/ReadiumBookmarkList"
+import { ReadiumBookmarkPanel } from "@/components/reader/readium/ReadiumBookmarkPanel"
 import {
-  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -71,10 +72,17 @@ export function ReadiumPdfReader({
   const verticalScaleRef = useRef(1)
   const wheelTurnRef = useRef(createWheelPageTurnState())
   const navRef = useRef<PdfNavigator | null>(null)
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
-    useReaderPanels()
+  const {
+    tocOpen,
+    bookmarksOpen,
+    settingsOpen,
+    toggleToc,
+    toggleBookmarks,
+    toggleSettings,
+    closePanels,
+  } = useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
-    useReadingChrome(false, tocOpen || settingsOpen)
+    useReadingChrome(false, tocOpen || bookmarksOpen || settingsOpen)
   const [initError, setInitError] = useState<string | null>(null)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
@@ -537,6 +545,7 @@ export function ReadiumPdfReader({
     navigationMode === "horizontal" &&
     readiumNavReady &&
     !tocOpen &&
+    !bookmarksOpen &&
     !settingsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
@@ -562,7 +571,7 @@ export function ReadiumPdfReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || settingsOpen}
+      panelsOpen={tocOpen || bookmarksOpen || settingsOpen}
       onClosePanels={closePanels}
       readerMode="fixed-layout"
       readerBackgroundColor={backgroundColor}
@@ -572,8 +581,10 @@ export function ReadiumPdfReader({
         bookmarked: readerBookmarks.bookmarked,
         bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
+        bookmarksOpen,
         settingsOpen,
         onToggleToc: toggleToc,
+        onToggleBookmarks: toggleBookmarks,
         onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
@@ -583,14 +594,20 @@ export function ReadiumPdfReader({
           rows={tocRows}
           activeKey={`page-${pageNum}`}
           onSelect={onTocSelect}
+          onClose={closePanels}
+        />
+      }
+      bookmarkPanel={
+        <ReadiumBookmarkPanel
+          visible={bookmarksOpen}
           bookmarks={readerBookmarks.bookmarks}
           activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
-          bookmarksLoading={readerBookmarks.loading}
-          bookmarksMutating={readerBookmarks.mutating}
-          bookmarksError={readerBookmarks.loadError}
-          onBookmarksRetry={readerBookmarks.retry}
-          onBookmarkSelect={onBookmarkSelect}
-          onBookmarkDelete={readerBookmarks.deleteBookmark}
+          loading={readerBookmarks.loading}
+          mutating={readerBookmarks.mutating}
+          error={readerBookmarks.loadError}
+          onRetry={readerBookmarks.retry}
+          onSelect={onBookmarkSelect}
+          onDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }

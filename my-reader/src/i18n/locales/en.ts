@@ -335,7 +335,7 @@ export const en = {
       loadFailed: "Failed to load",
       loadTimeout: "Book loading timed out, check library connection and retry",
       toc: "Contents",
-      navigation: "Contents and Bookmarks",
+      navigation: "Contents",
       close: "Close",
       minimize: "Minimize",
       maximize: "Maximize",

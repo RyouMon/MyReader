@@ -1,10 +1,11 @@
 import { useCallback, useState } from "react"
 
 /**
- * 阅读器目录、高亮与笔记、搜索及设置侧栏的开关状态；互斥打开，并提供统一关闭。
+ * 阅读器目录、书签、高亮笔记、搜索及设置侧栏的开关状态；互斥打开，并提供统一关闭。
  */
 export function useReaderPanels() {
   const [tocOpen, setTocOpen] = useState(false)
+  const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [annotationsOpen, setAnnotationsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -12,6 +13,19 @@ export function useReaderPanels() {
   const toggleToc = useCallback(() => {
     setTocOpen((prev) => {
       if (!prev) {
+        setBookmarksOpen(false)
+        setAnnotationsOpen(false)
+        setSearchOpen(false)
+        setSettingsOpen(false)
+      }
+      return !prev
+    })
+  }, [])
+
+  const toggleBookmarks = useCallback(() => {
+    setBookmarksOpen((prev) => {
+      if (!prev) {
+        setTocOpen(false)
         setAnnotationsOpen(false)
         setSearchOpen(false)
         setSettingsOpen(false)
@@ -24,6 +38,7 @@ export function useReaderPanels() {
     setAnnotationsOpen((prev) => {
       if (!prev) {
         setTocOpen(false)
+        setBookmarksOpen(false)
         setSearchOpen(false)
         setSettingsOpen(false)
       }
@@ -35,6 +50,7 @@ export function useReaderPanels() {
     setSearchOpen((prev) => {
       if (!prev) {
         setTocOpen(false)
+        setBookmarksOpen(false)
         setAnnotationsOpen(false)
         setSettingsOpen(false)
       }
@@ -46,6 +62,7 @@ export function useReaderPanels() {
     setSettingsOpen((prev) => {
       if (!prev) {
         setTocOpen(false)
+        setBookmarksOpen(false)
         setAnnotationsOpen(false)
         setSearchOpen(false)
       }
@@ -55,6 +72,7 @@ export function useReaderPanels() {
 
   const closePanels = useCallback(() => {
     setTocOpen(false)
+    setBookmarksOpen(false)
     setAnnotationsOpen(false)
     setSearchOpen(false)
     setSettingsOpen(false)
@@ -62,10 +80,12 @@ export function useReaderPanels() {
 
   return {
     tocOpen,
+    bookmarksOpen,
     annotationsOpen,
     searchOpen,
     settingsOpen,
     toggleToc,
+    toggleBookmarks,
     toggleAnnotations,
     toggleSearch,
     toggleSettings,

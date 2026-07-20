@@ -326,7 +326,7 @@ export const zhCN = {
       loadFailed: "加载失败",
       loadTimeout: "书籍加载超时，请检查书库连接后重试",
       toc: "目录",
-      navigation: "目录与书签",
+      navigation: "目录",
       close: "关闭",
       minimize: "最小化",
       maximize: "最大化",

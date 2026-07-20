@@ -59,9 +59,10 @@ import {
   ReadiumAnnotationPanel,
   type ReadiumAnnotationRow,
 } from "@/components/reader/readium/ReadiumAnnotationPanel"
+import type { ReadiumBookmarkRow } from "@/components/reader/readium/ReadiumBookmarkList"
+import { ReadiumBookmarkPanel } from "@/components/reader/readium/ReadiumBookmarkPanel"
 import { ReadiumSearchPanel } from "@/components/reader/readium/ReadiumSearchPanel"
 import {
-  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -1140,10 +1141,12 @@ export function ReadiumEpubReader({
   const navigatorRef = useRef<EpubNavigator | null>(null)
   const {
     tocOpen,
+    bookmarksOpen,
     annotationsOpen,
     searchOpen,
     settingsOpen,
     toggleToc,
+    toggleBookmarks,
     toggleAnnotations,
     toggleSearch,
     toggleSettings,
@@ -1157,7 +1160,7 @@ export function ReadiumEpubReader({
     handlePointerPosition,
   } = useReadingChrome(
     false,
-    tocOpen || annotationsOpen || searchOpen || settingsOpen,
+    tocOpen || bookmarksOpen || annotationsOpen || searchOpen || settingsOpen,
   )
   useReaderIframePointerBridge(containerRef, handlePointerPosition)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
@@ -2413,7 +2416,13 @@ export function ReadiumEpubReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || annotationsOpen || searchOpen || settingsOpen}
+      panelsOpen={
+        tocOpen ||
+        bookmarksOpen ||
+        annotationsOpen ||
+        searchOpen ||
+        settingsOpen
+      }
       onClosePanels={closePanels}
       theme={readerSettings.theme}
       readerMode={isFixedLayout ? "fixed-layout" : undefined}
@@ -2423,10 +2432,12 @@ export function ReadiumEpubReader({
         bookmarked: readerBookmarks.bookmarked,
         bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
+        bookmarksOpen,
         annotationsOpen,
         searchOpen,
         settingsOpen,
         onToggleToc: toggleToc,
+        onToggleBookmarks: toggleBookmarks,
         onToggleAnnotations: annotationsAvailable
           ? toggleAnnotations
           : undefined,
@@ -2442,14 +2453,20 @@ export function ReadiumEpubReader({
           rows={tocRows}
           activeKey={activeTocKey}
           onSelect={onTocSelect}
+          onClose={closePanels}
+        />
+      }
+      bookmarkPanel={
+        <ReadiumBookmarkPanel
+          visible={bookmarksOpen}
           bookmarks={bookmarkRows}
           activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
-          bookmarksLoading={readerBookmarks.loading}
-          bookmarksMutating={readerBookmarks.mutating}
-          bookmarksError={readerBookmarks.loadError}
-          onBookmarksRetry={readerBookmarks.retry}
-          onBookmarkSelect={onBookmarkSelect}
-          onBookmarkDelete={readerBookmarks.deleteBookmark}
+          loading={readerBookmarks.loading}
+          mutating={readerBookmarks.mutating}
+          error={readerBookmarks.loadError}
+          onRetry={readerBookmarks.retry}
+          onSelect={onBookmarkSelect}
+          onDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }

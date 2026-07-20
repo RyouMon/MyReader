@@ -22,12 +22,14 @@ export type ReaderChromeTopBarConfig = {
   bookmarked: boolean
   bookmarkDisabled?: boolean
   tocOpen?: boolean
+  bookmarksOpen?: boolean
   annotationsOpen?: boolean
   searchOpen?: boolean
   settingsOpen?: boolean
   showReaderActions?: boolean
   previewNativeMacFullscreen?: boolean
   onToggleToc: () => void
+  onToggleBookmarks?: () => void
   onToggleAnnotations?: () => void
   onToggleSearch?: () => void
   onToggleBookmark: () => void
@@ -43,6 +45,7 @@ export type ReaderChromeShellProps = {
   expandBottomForTts?: boolean
   topBar: ReaderChromeTopBarConfig
   tocPanel: ReactNode
+  bookmarkPanel?: ReactNode
   annotationsPanel?: ReactNode
   searchPanel?: ReactNode
   settingsPanel: ReactNode
@@ -115,6 +118,7 @@ export function ReaderChromeShell({
   expandBottomForTts = false,
   topBar,
   tocPanel,
+  bookmarkPanel,
   annotationsPanel,
   searchPanel,
   settingsPanel,
@@ -180,12 +184,14 @@ export function ReaderChromeShell({
           bookmarked={topBar.bookmarked}
           bookmarkDisabled={topBar.bookmarkDisabled}
           tocOpen={topBar.tocOpen}
+          bookmarksOpen={topBar.bookmarksOpen}
           annotationsOpen={topBar.annotationsOpen}
           searchOpen={topBar.searchOpen}
           settingsOpen={topBar.settingsOpen}
           showReaderActions={topBar.showReaderActions}
           previewNativeMacFullscreen={topBar.previewNativeMacFullscreen}
           onToggleToc={topBar.onToggleToc}
+          onToggleBookmarks={topBar.onToggleBookmarks}
           onToggleAnnotations={topBar.onToggleAnnotations}
           onToggleSearch={topBar.onToggleSearch}
           onToggleBookmark={topBar.onToggleBookmark}
@@ -218,6 +224,7 @@ export function ReaderChromeShell({
           </div>
         ) : null}
         {tocPanel}
+        {bookmarkPanel}
         {annotationsPanel}
         {searchPanel}
         {settingsPanel}

@@ -3,8 +3,9 @@ import { Settings } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useTheme } from "@/components/AppThemeProvider"
+import type { ReadiumBookmarkRow } from "@/components/reader/readium/ReadiumBookmarkList"
+import { ReadiumBookmarkPanel } from "@/components/reader/readium/ReadiumBookmarkPanel"
 import {
-  type ReadiumBookmarkRow,
   ReadiumTocPanel,
   type ReadiumTocRow,
 } from "@/components/reader/readium/ReadiumTocPanel"
@@ -80,10 +81,17 @@ export function ReadiumDivinaReader({
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const wheelTurnRef = useRef(createWheelPageTurnState())
-  const { tocOpen, settingsOpen, toggleToc, toggleSettings, closePanels } =
-    useReaderPanels()
+  const {
+    tocOpen,
+    bookmarksOpen,
+    settingsOpen,
+    toggleToc,
+    toggleBookmarks,
+    toggleSettings,
+    closePanels,
+  } = useReaderPanels()
   const { readerRootRef, chromeVisible, showChrome, scheduleChromeHide } =
-    useReadingChrome(false, tocOpen || settingsOpen)
+    useReadingChrome(false, tocOpen || bookmarksOpen || settingsOpen)
   const [landscape, setLandscape] = useState(true)
   const background = useAppUiStore((state) => state.fixedLayout.background)
   const direction = useAppUiStore((state) => state.fixedLayout.direction)
@@ -290,7 +298,8 @@ export function ReadiumDivinaReader({
   }, [direction, onNext, onPrevious])
 
   const isRtl = direction === "rtl"
-  const edgeTurnActive = positions.length > 0 && !tocOpen && !settingsOpen
+  const edgeTurnActive =
+    positions.length > 0 && !tocOpen && !bookmarksOpen && !settingsOpen
   const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
     edgeTurnActive,
     readerRootRef,
@@ -302,7 +311,7 @@ export function ReadiumDivinaReader({
       chromeVisible={chromeVisible}
       showChrome={showChrome}
       scheduleChromeHide={scheduleChromeHide}
-      panelsOpen={tocOpen || settingsOpen}
+      panelsOpen={tocOpen || bookmarksOpen || settingsOpen}
       onClosePanels={closePanels}
       readerMode="fixed-layout"
       readerBackgroundColor={backgroundColor}
@@ -312,8 +321,10 @@ export function ReadiumDivinaReader({
         bookmarked: readerBookmarks.bookmarked,
         bookmarkDisabled: !readerBookmarks.canToggle,
         tocOpen,
+        bookmarksOpen,
         settingsOpen,
         onToggleToc: toggleToc,
+        onToggleBookmarks: toggleBookmarks,
         onToggleBookmark: () => void readerBookmarks.toggleCurrentBookmark(),
         onToggleSettings: toggleSettings,
       }}
@@ -323,14 +334,20 @@ export function ReadiumDivinaReader({
           rows={tocRows}
           activeKey={currentLocator?.href ?? null}
           onSelect={onTocSelect}
+          onClose={closePanels}
+        />
+      }
+      bookmarkPanel={
+        <ReadiumBookmarkPanel
+          visible={bookmarksOpen}
           bookmarks={readerBookmarks.bookmarks}
           activeBookmarkLocatorKey={readerBookmarks.currentBookmarkLocatorKey}
-          bookmarksLoading={readerBookmarks.loading}
-          bookmarksMutating={readerBookmarks.mutating}
-          bookmarksError={readerBookmarks.loadError}
-          onBookmarksRetry={readerBookmarks.retry}
-          onBookmarkSelect={onBookmarkSelect}
-          onBookmarkDelete={readerBookmarks.deleteBookmark}
+          loading={readerBookmarks.loading}
+          mutating={readerBookmarks.mutating}
+          error={readerBookmarks.loadError}
+          onRetry={readerBookmarks.retry}
+          onSelect={onBookmarkSelect}
+          onDelete={readerBookmarks.deleteBookmark}
           onClose={closePanels}
         />
       }
