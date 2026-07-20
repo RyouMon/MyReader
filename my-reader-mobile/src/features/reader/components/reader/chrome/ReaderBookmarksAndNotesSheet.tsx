@@ -32,7 +32,9 @@ export type ReaderBookmarksAndNotesSheetProps = {
   onRetryAnnotations: () => void
   onSelectAnnotation: (item: ReaderAnnotationItem) => void
   onEditAnnotation: (item: ReaderAnnotationItem) => void
-  onDeleteAnnotation: (item: ReaderAnnotationItem) => void
+  onDeleteAnnotation: (
+    item: ReaderAnnotationItem,
+  ) => boolean | void | Promise<boolean | void>
   onRetryBookmarks: () => void
   onSelectBookmark: (item: ReaderBookmarkItem) => void
   onDeleteBookmark: (

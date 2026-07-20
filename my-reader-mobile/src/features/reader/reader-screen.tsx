@@ -665,21 +665,10 @@ export default function ReaderScreen() {
       const annotation = readerAnnotations.annotations.find(
         (row) => row.id === item.id,
       )
-      if (!annotation) return
-      Alert.alert(
-        t("reader.annotations.deleteTitle"),
-        t("reader.annotations.deleteMessage"),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("common.delete"),
-            style: "destructive",
-            onPress: () => void removeAnnotation(annotation),
-          },
-        ],
-      )
+      if (!annotation) return false
+      return removeAnnotation(annotation)
     },
-    [readerAnnotations.annotations, removeAnnotation, t],
+    [readerAnnotations.annotations, removeAnnotation],
   )
 
   const handleAnnotationEditorSave = useCallback(
