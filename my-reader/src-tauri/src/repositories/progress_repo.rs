@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryFilter,
-    Statement,
+    sea_query::{Alias, Condition, Expr, ExprTrait, Func, OnConflict},
+    ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
 
 use crate::entities::app::reading_progress;
@@ -10,6 +10,14 @@ use crate::error::AppError;
 use crate::models::ReadingProgressDto;
 
 pub struct SqliteProgressRepository;
+
+fn excluded(column: reading_progress::Column) -> Expr {
+    Expr::col((Alias::new("excluded"), column))
+}
+
+fn current(column: reading_progress::Column) -> Expr {
+    Expr::col((reading_progress::Entity, column))
+}
 
 impl SqliteProgressRepository {
     pub async fn open(library_path: &str) -> Result<DatabaseConnection, AppError> {
@@ -76,25 +84,31 @@ impl SqliteProgressRepository {
         locator_json: &str,
         updated_at: f64,
     ) -> Result<(), AppError> {
-        db.execute_raw(Statement::from_sql_and_values(
-            DbBackend::Sqlite,
-            r#"
-INSERT INTO reading_progress (id, book_id, format, locator_json, updated_at)
-VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(book_id, format) DO UPDATE SET
-    locator_json = excluded.locator_json,
-    updated_at = MAX(excluded.updated_at, reading_progress.updated_at + 1.0)
-"#,
-            vec![
-                uuid::Uuid::new_v4().as_simple().to_string().into(),
-                book_id.into(),
-                format.to_string().into(),
-                locator_json.to_string().into(),
-                updated_at.into(),
-            ],
-        ))
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let next_updated_at: Expr = Func::greatest([
+            excluded(reading_progress::Column::UpdatedAt),
+            current(reading_progress::Column::UpdatedAt).add(1.0),
+        ])
+        .into();
+        let active = reading_progress::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            book_id: Set(book_id),
+            format: Set(format.to_string()),
+            locator_json: Set(locator_json.to_string()),
+            updated_at: Set(updated_at),
+        };
+        reading_progress::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    reading_progress::Column::BookId,
+                    reading_progress::Column::Format,
+                ])
+                .update_column(reading_progress::Column::LocatorJson)
+                .value(reading_progress::Column::UpdatedAt, next_updated_at)
+                .to_owned(),
+            )
+            .exec_without_returning(db)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
         Ok(())
     }
 
@@ -105,35 +119,43 @@ ON CONFLICT(book_id, format) DO UPDATE SET
         locator_json: &str,
         updated_at: f64,
     ) -> Result<bool, AppError> {
-        let result = db
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Sqlite,
-                r#"
-INSERT INTO reading_progress (id, book_id, format, locator_json, updated_at)
-VALUES (?, ?, ?, ?, ?)
-ON CONFLICT(book_id, format) DO UPDATE SET
-    locator_json = excluded.locator_json,
-    updated_at = excluded.updated_at
-WHERE
-    excluded.updated_at > reading_progress.updated_at
-    OR (
-        excluded.updated_at = reading_progress.updated_at
-        AND excluded.locator_json COLLATE BINARY
-            > reading_progress.locator_json COLLATE BINARY
-    )
-"#,
-                vec![
-                    uuid::Uuid::new_v4().as_simple().to_string().into(),
-                    book_id.into(),
-                    format.to_string().into(),
-                    locator_json.to_string().into(),
-                    updated_at.into(),
-                ],
-            ))
+        let excluded_updated_at = excluded(reading_progress::Column::UpdatedAt);
+        let current_updated_at = current(reading_progress::Column::UpdatedAt);
+        let revision_wins = Condition::any()
+            .add(excluded_updated_at.clone().gt(current_updated_at.clone()))
+            .add(
+                Condition::all()
+                    .add(excluded_updated_at.eq(current_updated_at))
+                    .add(
+                        excluded(reading_progress::Column::LocatorJson)
+                            .gt(current(reading_progress::Column::LocatorJson)),
+                    ),
+            );
+        let active = reading_progress::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            book_id: Set(book_id),
+            format: Set(format.to_string()),
+            locator_json: Set(locator_json.to_string()),
+            updated_at: Set(updated_at),
+        };
+        let rows_affected = reading_progress::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    reading_progress::Column::BookId,
+                    reading_progress::Column::Format,
+                ])
+                .update_columns([
+                    reading_progress::Column::LocatorJson,
+                    reading_progress::Column::UpdatedAt,
+                ])
+                .action_cond_where(revision_wins)
+                .to_owned(),
+            )
+            .exec_without_returning(db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(result.rows_affected() > 0)
+        Ok(rows_affected > 0)
     }
 
     pub async fn list_latest_book_updates(

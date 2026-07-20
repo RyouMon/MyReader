@@ -1,12 +1,24 @@
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult,
-    QueryFilter, QueryOrder, Statement,
+    sea_query::{Alias, Condition, Expr, ExprTrait, Func, OnConflict},
+    ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
 };
 
 use crate::entities::app::bookmarks;
 use crate::error::AppError;
 
 pub struct SqliteBookmarkRepository;
+
+fn excluded(column: bookmarks::Column) -> Expr {
+    Expr::col((Alias::new("excluded"), column))
+}
+
+fn current(column: bookmarks::Column) -> Expr {
+    Expr::col((bookmarks::Entity, column))
+}
+
+fn next_updated_at(candidate: Expr) -> Expr {
+    Func::greatest([candidate, current(bookmarks::Column::UpdatedAt).add(1.0)]).into()
+}
 
 impl SqliteBookmarkRepository {
     pub async fn open(library_path: &str) -> Result<DatabaseConnection, AppError> {
@@ -36,36 +48,37 @@ impl SqliteBookmarkRepository {
         locator_json: &str,
         now: f64,
     ) -> Result<bookmarks::Model, AppError> {
-        let id = uuid::Uuid::new_v4().as_simple().to_string();
-        let row = db
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Sqlite,
-                r#"
-INSERT INTO bookmarks (
-    id, book_id, format, locator_key, locator_json, created_at, updated_at, deleted_at
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-ON CONFLICT(book_id, format, locator_key) DO UPDATE SET
-    locator_json = excluded.locator_json,
-    updated_at = MAX(excluded.updated_at, bookmarks.updated_at + 1.0),
-    deleted_at = NULL
-RETURNING id, book_id, format, locator_key, locator_json, created_at, updated_at, deleted_at
-"#,
-                vec![
-                    id.into(),
-                    book_id.into(),
-                    format.to_string().into(),
-                    locator_key.to_string().into(),
-                    locator_json.to_string().into(),
-                    now.into(),
-                    now.into(),
-                ],
-            ))
+        let active = bookmarks::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            book_id: Set(book_id),
+            format: Set(format.to_string()),
+            locator_key: Set(locator_key.to_string()),
+            locator_json: Set(locator_json.to_string()),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(None),
+        };
+        bookmarks::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    bookmarks::Column::BookId,
+                    bookmarks::Column::Format,
+                    bookmarks::Column::LocatorKey,
+                ])
+                .update_column(bookmarks::Column::LocatorJson)
+                .value(
+                    bookmarks::Column::UpdatedAt,
+                    next_updated_at(excluded(bookmarks::Column::UpdatedAt)),
+                )
+                .value(
+                    bookmarks::Column::DeletedAt,
+                    Expr::value(Option::<f64>::None),
+                )
+                .to_owned(),
+            )
+            .exec_with_returning(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-        let row =
-            row.ok_or_else(|| AppError::Database("Bookmark upsert returned no row".into()))?;
-        bookmarks::Model::from_query_result(&row, "").map_err(|e| AppError::Database(e.to_string()))
+            .map_err(|e| AppError::Database(e.to_string()))
     }
 
     pub async fn tombstone(
@@ -75,34 +88,28 @@ RETURNING id, book_id, format, locator_key, locator_json, created_at, updated_at
         locator_key: &str,
         now: f64,
     ) -> Result<bool, AppError> {
-        let row = db
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Sqlite,
-                r#"
-UPDATE bookmarks
-SET
-    updated_at = CASE
-        WHEN deleted_at IS NULL THEN MAX(?, updated_at + 1.0)
-        ELSE updated_at
-    END,
-    deleted_at = CASE
-        WHEN deleted_at IS NULL THEN MAX(?, updated_at + 1.0)
-        ELSE deleted_at
-    END
-WHERE book_id = ? AND format = ? AND locator_key = ?
-RETURNING id
-"#,
-                vec![
-                    now.into(),
-                    now.into(),
-                    book_id.into(),
-                    format.to_string().into(),
-                    locator_key.to_string().into(),
-                ],
-            ))
+        let next_updated_at = next_updated_at(Expr::value(now));
+        let is_active = current(bookmarks::Column::DeletedAt).is_null();
+        let rows = bookmarks::Entity::update_many()
+            .col_expr(
+                bookmarks::Column::UpdatedAt,
+                Expr::case(is_active.clone(), next_updated_at.clone())
+                    .finally(current(bookmarks::Column::UpdatedAt))
+                    .into(),
+            )
+            .col_expr(
+                bookmarks::Column::DeletedAt,
+                Expr::case(is_active, next_updated_at)
+                    .finally(current(bookmarks::Column::DeletedAt))
+                    .into(),
+            )
+            .filter(bookmarks::Column::BookId.eq(book_id))
+            .filter(bookmarks::Column::Format.eq(format))
+            .filter(bookmarks::Column::LocatorKey.eq(locator_key))
+            .exec_with_returning(db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
-        Ok(row.is_some())
+        Ok(!rows.is_empty())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -117,70 +124,105 @@ RETURNING id
         updated_at: f64,
         deleted_at: Option<f64>,
     ) -> Result<bool, AppError> {
+        let excluded_updated_at = excluded(bookmarks::Column::UpdatedAt);
+        let current_updated_at = current(bookmarks::Column::UpdatedAt);
+        let excluded_deleted_at = excluded(bookmarks::Column::DeletedAt);
+        let current_deleted_at = current(bookmarks::Column::DeletedAt);
+        let excluded_id = excluded(bookmarks::Column::Id);
+        let current_id = current(bookmarks::Column::Id);
+        let excluded_locator = excluded(bookmarks::Column::LocatorJson);
+        let current_locator = current(bookmarks::Column::LocatorJson);
+        let excluded_created_at = excluded(bookmarks::Column::CreatedAt);
+        let current_created_at = current(bookmarks::Column::CreatedAt);
+
+        let same_deletion_state = Condition::any()
+            .add(
+                Condition::all()
+                    .add(excluded_deleted_at.clone().is_null())
+                    .add(current_deleted_at.clone().is_null()),
+            )
+            .add(
+                Condition::all()
+                    .add(excluded_deleted_at.clone().is_not_null())
+                    .add(current_deleted_at.clone().is_not_null()),
+            );
+        let excluded_deleted_value: Expr =
+            Func::coalesce([excluded_deleted_at.clone(), Expr::value(-1.0)]).into();
+        let current_deleted_value: Expr =
+            Func::coalesce([current_deleted_at.clone(), Expr::value(-1.0)]).into();
+        let tuple_is_greater = Condition::any()
+            .add(excluded_id.clone().gt(current_id.clone()))
+            .add(
+                Condition::all()
+                    .add(excluded_id.clone().eq(current_id.clone()))
+                    .add(excluded_locator.clone().gt(current_locator.clone())),
+            )
+            .add(
+                Condition::all()
+                    .add(excluded_id.clone().eq(current_id.clone()))
+                    .add(excluded_locator.clone().eq(current_locator.clone()))
+                    .add(excluded_created_at.clone().gt(current_created_at.clone())),
+            )
+            .add(
+                Condition::all()
+                    .add(excluded_id.eq(current_id))
+                    .add(excluded_locator.eq(current_locator))
+                    .add(excluded_created_at.eq(current_created_at))
+                    .add(excluded_deleted_value.gt(current_deleted_value)),
+            );
         // Equal timestamps converge on the greatest tuple:
         // [is_deleted, id, locator_json, created_at, deleted_at_or_-1].
-        // Explicit BINARY collation keeps string ordering byte-stable across SQLite clients.
-        let result = db
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Sqlite,
-                r#"
-INSERT INTO bookmarks (
-    id, book_id, format, locator_key, locator_json, created_at, updated_at, deleted_at
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(book_id, format, locator_key) DO UPDATE SET
-    id = excluded.id,
-    locator_json = excluded.locator_json,
-    created_at = excluded.created_at,
-    updated_at = excluded.updated_at,
-    deleted_at = excluded.deleted_at
-WHERE
-    excluded.updated_at > bookmarks.updated_at
-    OR (
-        excluded.updated_at = bookmarks.updated_at
-        AND (
-            (excluded.deleted_at IS NOT NULL AND bookmarks.deleted_at IS NULL)
-            OR (
-                (excluded.deleted_at IS NULL) = (bookmarks.deleted_at IS NULL)
-                AND (
-                    excluded.id COLLATE BINARY > bookmarks.id COLLATE BINARY
-                    OR (
-                        excluded.id = bookmarks.id
-                        AND excluded.locator_json COLLATE BINARY
-                            > bookmarks.locator_json COLLATE BINARY
-                    )
-                    OR (
-                        excluded.id = bookmarks.id
-                        AND excluded.locator_json = bookmarks.locator_json
-                        AND excluded.created_at > bookmarks.created_at
-                    )
-                    OR (
-                        excluded.id = bookmarks.id
-                        AND excluded.locator_json = bookmarks.locator_json
-                        AND excluded.created_at = bookmarks.created_at
-                        AND COALESCE(excluded.deleted_at, -1.0)
-                            > COALESCE(bookmarks.deleted_at, -1.0)
-                    )
-                )
+        let revision_wins = Condition::any()
+            .add(excluded_updated_at.clone().gt(current_updated_at.clone()))
+            .add(
+                Condition::all()
+                    .add(excluded_updated_at.eq(current_updated_at))
+                    .add(
+                        Condition::any()
+                            .add(
+                                Condition::all()
+                                    .add(excluded_deleted_at.is_not_null())
+                                    .add(current_deleted_at.is_null()),
+                            )
+                            .add(
+                                Condition::all()
+                                    .add(same_deletion_state)
+                                    .add(tuple_is_greater),
+                            ),
+                    ),
+            );
+        let active = bookmarks::ActiveModel {
+            id: Set(id.to_string()),
+            book_id: Set(book_id),
+            format: Set(format.to_string()),
+            locator_key: Set(locator_key.to_string()),
+            locator_json: Set(locator_json.to_string()),
+            created_at: Set(created_at),
+            updated_at: Set(updated_at),
+            deleted_at: Set(deleted_at),
+        };
+        let rows_affected = bookmarks::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    bookmarks::Column::BookId,
+                    bookmarks::Column::Format,
+                    bookmarks::Column::LocatorKey,
+                ])
+                .update_columns([
+                    bookmarks::Column::Id,
+                    bookmarks::Column::LocatorJson,
+                    bookmarks::Column::CreatedAt,
+                    bookmarks::Column::UpdatedAt,
+                    bookmarks::Column::DeletedAt,
+                ])
+                .action_cond_where(revision_wins)
+                .to_owned(),
             )
-        )
-    )
-"#,
-                vec![
-                    id.to_string().into(),
-                    book_id.into(),
-                    format.to_string().into(),
-                    locator_key.to_string().into(),
-                    locator_json.to_string().into(),
-                    created_at.into(),
-                    updated_at.into(),
-                    deleted_at.into(),
-                ],
-            ))
+            .exec_without_returning(db)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(result.rows_affected() > 0)
+        Ok(rows_affected > 0)
     }
 }
 
