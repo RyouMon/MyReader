@@ -136,7 +136,7 @@ export function ReadiumSearchPanel({
   }, [locators.length, status, t])
 
   return (
-    <ReaderSidePanelFrame visible={visible} side="left">
+    <ReaderSidePanelFrame visible={visible} side="right">
       <ReaderSidePanelHeader
         title={t("reader.search")}
         icon={Search}
