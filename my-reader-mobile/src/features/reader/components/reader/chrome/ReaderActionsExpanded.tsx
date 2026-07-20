@@ -39,6 +39,7 @@ import {
   READER_EXPANDED_ACTION_SHEET_SHADOW_OPACITY,
   READER_EXPANDED_ACTION_SHEET_SHADOW_RADIUS,
   READER_EXPANDED_ACTION_STACK_GAP,
+  READER_EXPANDED_ACTION_TEXT_GAP,
   readerExpandedActionWidth,
 } from "./readerChromeConstants"
 import { useReaderChromePressFeedback } from "./useReaderChromePressFeedback"
@@ -195,16 +196,20 @@ export default function ReaderActionsExpanded({
               accessibilityElementsHidden={true}
             >
               <Text
-                className="text-lg font-semibold"
+                className="min-w-0 flex-1 text-lg font-semibold"
                 style={{ color: palette.actionText }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {t("reader.annotations.title")}
               </Text>
-              <ReaderChromeIcon
-                name="annotations"
-                size={READER_EXPANDED_ACTION_ICON_SIZE}
-                color={palette.actionText}
-              />
+              <RNView style={styles.pillIcon}>
+                <ReaderChromeIcon
+                  name="annotations"
+                  size={READER_EXPANDED_ACTION_ICON_SIZE}
+                  color={palette.actionText}
+                />
+              </RNView>
             </RNView>
           </ExpandedActionButton>
         ) : null}
@@ -221,16 +226,20 @@ export default function ReaderActionsExpanded({
               accessibilityElementsHidden={true}
             >
               <Text
-                className="text-lg font-semibold"
+                className="min-w-0 flex-1 text-lg font-semibold"
                 style={{ color: palette.actionText }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {t("reader.search.title")}
               </Text>
-              <ReaderChromeIcon
-                name="search"
-                size={READER_EXPANDED_ACTION_ICON_SIZE}
-                color={palette.actionText}
-              />
+              <RNView style={styles.pillIcon}>
+                <ReaderChromeIcon
+                  name="search"
+                  size={READER_EXPANDED_ACTION_ICON_SIZE}
+                  color={palette.actionText}
+                />
+              </RNView>
             </RNView>
           </ExpandedActionButton>
         ) : null}
@@ -246,16 +255,20 @@ export default function ReaderActionsExpanded({
             accessibilityElementsHidden={true}
           >
             <Text
-              className="text-lg font-semibold"
+              className="min-w-0 flex-1 text-lg font-semibold"
               style={{ color: palette.actionText }}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {t("reader.settings")}
             </Text>
-            <ReaderChromeIcon
-              name="settings"
-              size={READER_EXPANDED_ACTION_ICON_SIZE}
-              color={palette.actionText}
-            />
+            <RNView style={styles.pillIcon}>
+              <ReaderChromeIcon
+                name="settings"
+                size={READER_EXPANDED_ACTION_ICON_SIZE}
+                color={palette.actionText}
+              />
+            </RNView>
           </RNView>
         </ExpandedActionButton>
       </RNView>
@@ -290,6 +303,13 @@ const styles = StyleSheet.create({
   pillContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: READER_EXPANDED_ACTION_TEXT_GAP,
+  },
+  pillIcon: {
+    width: READER_EXPANDED_ACTION_ICON_SIZE,
+    height: READER_EXPANDED_ACTION_ICON_SIZE,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
 })
