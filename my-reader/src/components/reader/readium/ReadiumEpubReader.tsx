@@ -103,6 +103,7 @@ import {
   applyEpubAnnotations,
   clearEpubTextSelection,
   connectEpubAnnotationClickBridge,
+  connectEpubTextSelectionChangeBridge,
   createEpubAnnotationSelection,
   type EpubAnnotationSelection,
   epubAnnotationMatchesSelection,
@@ -622,6 +623,7 @@ function setupIframeWindow(
     getAnnotations: () => readonly ReaderAnnotation[]
     onAnnotationClick: (selection: EpubAnnotationSelection) => void
     onAnnotationNoteClick: (annotationId: string) => void
+    onSelectionCleared: () => void
     noteMarkerAccessibilityLabel: string
   },
 ): (() => void) | undefined {
@@ -667,8 +669,13 @@ function setupIframeWindow(
       getAnnotations: opts.getAnnotations,
       onAnnotationClick: opts.onAnnotationClick,
       onAnnotationNoteClick: opts.onAnnotationNoteClick,
+      onOutsideClick: opts.onSelectionCleared,
       noteMarkerAccessibilityLabel: opts.noteMarkerAccessibilityLabel,
     })
+    const stopTextSelectionChangeBridge = connectEpubTextSelectionChangeBridge(
+      wnd,
+      opts.onSelectionCleared,
+    )
     const onMove = (e: PointerEvent) => {
       const nearRight = wnd.innerWidth - e.clientX < 20
       doc.documentElement.classList.toggle(
@@ -680,6 +687,7 @@ function setupIframeWindow(
     return () => {
       stopSelectedTextContextMenu()
       stopAnnotationClickBridge()
+      stopTextSelectionChangeBridge()
       wnd.removeEventListener("pointermove", onMove)
       setupIframeDocuments.delete(doc)
     }
@@ -2035,6 +2043,7 @@ export function ReadiumEpubReader({
             getAnnotations: () => annotationsRef.current,
             onAnnotationClick,
             onAnnotationNoteClick,
+            onSelectionCleared: () => setAnnotationSelection(null),
             noteMarkerAccessibilityLabel,
           })
           if (cleanup) cleanups.push(cleanup)
@@ -2181,6 +2190,7 @@ export function ReadiumEpubReader({
                   getAnnotations: () => annotationsRef.current,
                   onAnnotationClick,
                   onAnnotationNoteClick,
+                  onSelectionCleared: () => setAnnotationSelection(null),
                   noteMarkerAccessibilityLabel,
                 })
               })

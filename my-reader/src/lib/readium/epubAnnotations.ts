@@ -77,6 +77,19 @@ function currentTextSelection(wnd: Window): Selection | null {
   return selection
 }
 
+export function connectEpubTextSelectionChangeBridge(
+  wnd: Window,
+  onSelectionCleared: () => void,
+): () => void {
+  const handleSelectionChange = () => {
+    if (!currentTextSelection(wnd)) onSelectionCleared()
+  }
+  wnd.document.addEventListener("selectionchange", handleSelectionChange)
+  return () => {
+    wnd.document.removeEventListener("selectionchange", handleSelectionChange)
+  }
+}
+
 export type EpubAnnotationDecoration = {
   id: string
   locator: ReaderLocator
@@ -90,6 +103,7 @@ type EpubAnnotationClickBridgeOptions = {
   getAnnotations: () => readonly EpubAnnotationDecoration[]
   onAnnotationClick: (selection: EpubAnnotationSelection) => void
   onAnnotationNoteClick: (annotationId: string) => void
+  onOutsideClick?: () => void
   noteMarkerAccessibilityLabel: string
 }
 
@@ -392,6 +406,7 @@ export function connectEpubAnnotationClickBridge(
     getAnnotations,
     onAnnotationClick,
     onAnnotationNoteClick,
+    onOutsideClick,
     noteMarkerAccessibilityLabel,
   }: EpubAnnotationClickBridgeOptions,
 ): () => void {
@@ -437,7 +452,10 @@ export function connectEpubAnnotationClickBridge(
       activated = { annotation: candidate, rect }
       break
     }
-    if (!activated) return
+    if (!activated) {
+      onOutsideClick?.()
+      return
+    }
 
     event.preventDefault()
     event.stopImmediatePropagation()

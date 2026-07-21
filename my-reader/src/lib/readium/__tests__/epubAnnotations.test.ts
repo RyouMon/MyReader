@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   applyEpubAnnotations,
   connectEpubAnnotationClickBridge,
+  connectEpubTextSelectionChangeBridge,
   createEpubAnnotationSelection,
   epubAnnotationMatchesSelection,
   suppressEpubTextSelectionContextMenu,
@@ -136,6 +137,37 @@ describe("EPUB annotation selections", () => {
     doc.dispatchEvent(event)
 
     expect(event.defaultPrevented).toBe(false)
+    iframe.remove()
+  })
+
+  it("should notify when the iframe text selection is cleared", () => {
+    const iframe = document.createElement("iframe")
+    document.body.appendChild(iframe)
+    const wnd = iframe.contentWindow!
+    let selection = {
+      isCollapsed: false,
+      toString: () => "Selected text",
+    } as unknown as Selection
+    vi.spyOn(wnd, "getSelection").mockImplementation(() => selection)
+    const onSelectionCleared = vi.fn()
+    const disconnect = connectEpubTextSelectionChangeBridge(
+      wnd,
+      onSelectionCleared,
+    )
+
+    wnd.document.dispatchEvent(new Event("selectionchange"))
+    expect(onSelectionCleared).not.toHaveBeenCalled()
+
+    selection = {
+      isCollapsed: true,
+      toString: () => "",
+    } as unknown as Selection
+    wnd.document.dispatchEvent(new Event("selectionchange"))
+    expect(onSelectionCleared).toHaveBeenCalledOnce()
+
+    disconnect()
+    wnd.document.dispatchEvent(new Event("selectionchange"))
+    expect(onSelectionCleared).toHaveBeenCalledOnce()
     iframe.remove()
   })
 
@@ -376,6 +408,39 @@ describe("EPUB annotation selections", () => {
       Reflect.deleteProperty(frameWindow.Range.prototype, "getClientRects")
     }
     iframe.remove()
+  })
+
+  it("should dismiss the selection menu when content outside an annotation is clicked", () => {
+    const fixture = createNoteMarkerFixture()
+    const onAnnotationClick = vi.fn()
+    const onOutsideClick = vi.fn()
+    const disconnect = connectEpubAnnotationClickBridge(fixture.wnd, {
+      iframe: fixture.iframe,
+      container: fixture.container,
+      getAnnotations: () => [fixture.annotation],
+      onAnnotationClick,
+      onAnnotationNoteClick: vi.fn(),
+      onOutsideClick,
+      noteMarkerAccessibilityLabel: "Open note",
+    })
+
+    try {
+      fixture.paragraph.dispatchEvent(
+        new fixture.frameWindow.MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          clientX: 5,
+          clientY: 5,
+        }),
+      )
+
+      expect(onOutsideClick).toHaveBeenCalledOnce()
+      expect(onAnnotationClick).not.toHaveBeenCalled()
+    } finally {
+      disconnect()
+      fixture.cleanup()
+    }
   })
 
   it("should anchor the note marker to the upper right of the highlighted passage end", () => {
