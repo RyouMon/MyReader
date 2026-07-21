@@ -186,6 +186,7 @@ From `my-reader-mobile/`:
 
 ```bash
 pnpm prepare:reader-note-marker            # regenerate native constants from packages/tools/src/reader-note-marker
+pnpm prepare:reader-viewport-anchor        # regenerate desktop, iOS, and Android viewport-anchor code
 pnpm exec expo run:ios --device <UDID>     # rebuild + run iOS
 pnpm exec expo run:android --device <id>   # rebuild + run Android
 pnpm run test:ci                            # Jest (module sources mapped via moduleNameMapper)
@@ -194,6 +195,11 @@ pnpm run test:ci                            # Jest (module sources mapped via mo
 The note-marker HTML/CSS in `packages/tools/src/reader-note-marker/` is shared by
 desktop EPUB rendering and the native Readium bridges. Desktop consumes it directly;
 this module's generator compiles the same source into Swift and Kotlin constants.
+
+The viewport-anchor DOM implementation in
+`packages/tools/src/reader-viewport-anchor.ts` is the only hand-written source.
+Its generator emits the desktop TypeScript implementation and the Swift/Kotlin
+JavaScript constants used inside Readium's EPUB web views.
 
 Reader non-regression is covered by `e2e/flows/reader/read_book.yaml` (Maestro) on both
 platforms: open EPUB, toggle chrome, TOC, settings, page navigation, locator persistence.

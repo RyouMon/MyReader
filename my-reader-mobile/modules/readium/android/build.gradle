@@ -37,9 +37,15 @@ def generateReaderNoteMarkerTemplate = tasks.register("generateReaderNoteMarkerT
   commandLine "node", "modules/readium/scripts/generate-reader-note-marker-template.mjs", "--platform", "android"
 }
 
+def generateReaderViewportAnchor = tasks.register("generateReaderViewportAnchor", Exec) {
+  workingDir file("../../../..")
+  commandLine "node", "scripts/generate-reader-viewport-anchor.mjs", "--platform", "android"
+}
+
 tasks.named("preBuild").configure {
   dependsOn(prepareReaderFonts)
   dependsOn(generateReaderNoteMarkerTemplate)
+  dependsOn(generateReaderViewportAnchor)
 }
 
 repositories {
