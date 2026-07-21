@@ -44,4 +44,21 @@ describe("ReaderPaginateEdgeTurnStrips", () => {
     expect(onPrev).toHaveBeenCalledOnce()
     expect(onNext).not.toHaveBeenCalled()
   })
+
+  it("should let content receive pointer events outside the buttons", () => {
+    render(
+      <ReaderPaginateEdgeTurnStrips
+        showPrev
+        showNext={false}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        prevLabel="Previous page"
+        nextLabel="Next page"
+      />,
+    )
+
+    const button = screen.getByRole("button", { name: "Previous page" })
+    expect(button.parentElement).toHaveClass("pointer-events-none")
+    expect(button).toHaveClass("pointer-events-auto")
+  })
 })

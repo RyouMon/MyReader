@@ -1175,7 +1175,6 @@ export function ReadiumEpubReader({
     false,
     tocOpen || bookmarksOpen || annotationsOpen || searchOpen || settingsOpen,
   )
-  useReaderIframePointerBridge(containerRef, handlePointerPosition)
   const [readiumNavReady, setReadiumNavReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
@@ -1948,10 +1947,19 @@ export function ReadiumEpubReader({
     !settingsOpen &&
     !initError &&
     readerSettings.readingLayout !== "scroll"
-  const { nearLeft, nearRight } = useReaderPaginateEdgeHover(
-    edgeTurnActive,
-    readerRootRef,
+  const {
+    nearLeft,
+    nearRight,
+    handlePointerPosition: handleEdgePointerPosition,
+  } = useReaderPaginateEdgeHover(edgeTurnActive, readerRootRef)
+  const handleIframePointerPosition = useCallback(
+    (clientX: number, clientY: number) => {
+      handlePointerPosition(clientX, clientY)
+      handleEdgePointerPosition(clientX, clientY)
+    },
+    [handleEdgePointerPosition, handlePointerPosition],
   )
+  useReaderIframePointerBridge(containerRef, handleIframePointerPosition)
 
   const onReadiumEdgePrev = useCallback(() => {
     const sequence = beginContentSettlingForPageTurn("backward")
@@ -2222,19 +2230,12 @@ export function ReadiumEpubReader({
               setChapterTitle(resolveChapterTitle(stableLocator, selected))
               finishContentNavigationForLocator(stableLocator)
             },
+            // Consume page-area input so only explicit controls paginate.
             tap: () => {
               if (!hasReaderTextSelection()) setAnnotationSelection(null)
-              return (
-                useAppUiStore.getState().reflowable.settings.readingLayout ===
-                "scroll"
-              )
+              return true
             },
-            click: () => {
-              return (
-                useAppUiStore.getState().reflowable.settings.readingLayout ===
-                "scroll"
-              )
-            },
+            click: () => true,
             zoom: () => {},
             miscPointer: () => {
               // Center taps stay content-only; chrome is revealed by edge zones.

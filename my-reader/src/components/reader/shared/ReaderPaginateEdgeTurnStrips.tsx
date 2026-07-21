@@ -1,5 +1,4 @@
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 export type ReaderPaginateEdgeTurnStripsProps = {
@@ -27,11 +26,9 @@ export function ReaderPaginateEdgeTurnStrips({
   nextLabel,
   buttonZClass = "z-[50]",
 }: ReaderPaginateEdgeTurnStripsProps) {
-  const [hoverLeft, setHoverLeft] = useState(false)
-  const [hoverRight, setHoverRight] = useState(false)
   const isRtl = direction === "rtl"
-  const leftVisible = (isRtl ? showNext : showPrev) || hoverLeft
-  const rightVisible = (isRtl ? showPrev : showNext) || hoverRight
+  const leftVisible = isRtl ? showNext : showPrev
+  const rightVisible = isRtl ? showPrev : showNext
   const onLeft = isRtl ? onNext : onPrev
   const onRight = isRtl ? onPrev : onNext
   const leftLabel = isRtl ? nextLabel : prevLabel
@@ -39,18 +36,7 @@ export function ReaderPaginateEdgeTurnStrips({
 
   return (
     <>
-      <div
-        className="absolute inset-y-0 start-0 z-[49] w-16"
-        onPointerEnter={() => {
-          setHoverLeft(true)
-          setHoverRight(false)
-        }}
-        onPointerMove={() => {
-          setHoverLeft(true)
-          setHoverRight(false)
-        }}
-        onPointerLeave={() => setHoverLeft(false)}
-      >
+      <div className="pointer-events-none absolute inset-y-0 start-0 z-[49] w-16">
         <button
           type="button"
           aria-label={leftLabel}
@@ -68,18 +54,7 @@ export function ReaderPaginateEdgeTurnStrips({
           <ChevronLeft className="size-[18px]" aria-hidden />
         </button>
       </div>
-      <div
-        className="absolute inset-y-0 end-0 z-[49] w-16"
-        onPointerEnter={() => {
-          setHoverRight(true)
-          setHoverLeft(false)
-        }}
-        onPointerMove={() => {
-          setHoverRight(true)
-          setHoverLeft(false)
-        }}
-        onPointerLeave={() => setHoverRight(false)}
-      >
+      <div className="pointer-events-none absolute inset-y-0 end-0 z-[49] w-16">
         <button
           type="button"
           aria-label={rightLabel}

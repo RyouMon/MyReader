@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from "react"
+import { type RefObject, useCallback, useEffect, useState } from "react"
 
 /** 阅读根容器 ref，仅读取 `getBoundingClientRect` 与 `current`。 */
 export type ReaderPaginateRootRef = RefObject<HTMLElement | null>
@@ -14,9 +14,38 @@ export function useReaderPaginateEdgeHover(
   enabled: boolean,
   readerRootRef: ReaderPaginateRootRef,
   edgePx: number = READER_PAGINATE_EDGE_HOVER_PX,
-): { nearLeft: boolean; nearRight: boolean } {
+): {
+  nearLeft: boolean
+  nearRight: boolean
+  handlePointerPosition: (clientX: number, clientY: number) => void
+} {
   const [nearLeft, setNearLeft] = useState(false)
   const [nearRight, setNearRight] = useState(false)
+
+  const handlePointerPosition = useCallback(
+    (clientX: number, clientY: number) => {
+      const root = readerRootRef.current
+      if (!enabled || !root) {
+        setNearLeft(false)
+        setNearRight(false)
+        return
+      }
+      const rect = root.getBoundingClientRect()
+      const inside =
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      if (!inside) {
+        setNearLeft(false)
+        setNearRight(false)
+        return
+      }
+      setNearLeft(clientX - rect.left <= edgePx)
+      setNearRight(rect.right - clientX <= edgePx)
+    },
+    [edgePx, enabled, readerRootRef],
+  )
 
   useEffect(() => {
     if (!enabled) {
@@ -25,18 +54,7 @@ export function useReaderPaginateEdgeHover(
       return
     }
     const onMove = (e: PointerEvent) => {
-      const root = readerRootRef.current
-      if (!root) return
-      const r = root.getBoundingClientRect()
-      const { clientX: x, clientY: y } = e
-      const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
-      if (!inside) {
-        setNearLeft(false)
-        setNearRight(false)
-        return
-      }
-      setNearLeft(x - r.left <= edgePx)
-      setNearRight(r.right - x <= edgePx)
+      handlePointerPosition(e.clientX, e.clientY)
     }
     document.addEventListener("pointermove", onMove, {
       passive: true,
@@ -44,7 +62,7 @@ export function useReaderPaginateEdgeHover(
     })
     return () =>
       document.removeEventListener("pointermove", onMove, { capture: true })
-  }, [enabled, readerRootRef, edgePx])
+  }, [enabled, handlePointerPosition])
 
-  return { nearLeft, nearRight }
+  return { nearLeft, nearRight, handlePointerPosition }
 }
