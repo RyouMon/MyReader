@@ -2214,7 +2214,6 @@ export function ReadiumEpubReader({
             },
             tap: () => {
               if (!hasReaderTextSelection()) setAnnotationSelection(null)
-              showChrome()
               return (
                 useAppUiStore.getState().reflowable.settings.readingLayout ===
                 "scroll"
@@ -2228,7 +2227,7 @@ export function ReadiumEpubReader({
             },
             zoom: () => {},
             miscPointer: () => {
-              showChrome()
+              // Center taps stay content-only; chrome is revealed by edge zones.
             },
             scroll: () => {},
             customEvent: () => {},
@@ -2340,7 +2339,6 @@ export function ReadiumEpubReader({
     publication,
     initialSavedLocator,
     epubPositions,
-    showChrome,
     epubNavigatorDefaults,
     isFixedLayout,
     readerLanguage,

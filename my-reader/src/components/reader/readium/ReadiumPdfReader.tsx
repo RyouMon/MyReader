@@ -143,11 +143,6 @@ export function ReadiumPdfReader({
       positionChanged: (locator) => {
         if (!cancelled) setCurrentLocator(locator)
       },
-      tap: () => {
-        showChrome()
-        return false
-      },
-      click: () => false,
     })
 
     void (async () => {
@@ -172,7 +167,7 @@ export function ReadiumPdfReader({
       navRef.current = null
       void nav.destroy()
     }
-  }, [fileUrl, initialSavedLocator, showChrome])
+  }, [fileUrl, initialSavedLocator])
 
   const renderPdfPages = useCallback(() => {
     const nav = navRef.current
