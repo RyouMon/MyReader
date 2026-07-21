@@ -60,6 +60,17 @@ public final class ReadiumModule: Module {
     AsyncFunction("clearSelection") { (tag: Int) in
       ReadiumView.registry[tag]?.clearSelection()
     }
+    AsyncFunction("getBookmarkLocator") { (tag: Int, promise: Promise) in
+      Task { @MainActor in
+        promise.resolve(await ReadiumView.registry[tag]?.getBookmarkLocator())
+      }
+    }
+    AsyncFunction("isBookmarkVisible") { (tag: Int, locator: LocatorRecord, promise: Promise) in
+      Task { @MainActor in
+        let visible = await ReadiumView.registry[tag]?.isBookmarkVisible(locator: locator) ?? false
+        promise.resolve(visible)
+      }
+    }
 
     // MARK: - Streamer / opener configuration (REP-005/006)
 

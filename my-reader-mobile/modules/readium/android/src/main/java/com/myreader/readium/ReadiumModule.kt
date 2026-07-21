@@ -107,6 +107,14 @@ class ReadiumModule : Module() {
       ReadiumView.registry[tag]?.clearSelection()
     }
 
+    AsyncFunction("getBookmarkLocator") Coroutine { tag: Int ->
+      ReadiumView.registry[tag]?.getBookmarkLocator()
+    }
+
+    AsyncFunction("isBookmarkVisible") Coroutine { tag: Int, locator: LocatorRecord ->
+      ReadiumView.registry[tag]?.isBookmarkVisible(locator) ?: false
+    }
+
     // MARK: - Streamer open-architecture config (REP-005/006)
 
     AsyncFunction("configure") { config: PublicationOpenerConfigRecord ->

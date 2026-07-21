@@ -34,12 +34,26 @@ type UseReaderBookmarksOptions = {
   bookId: number
   format: string
   currentLocator: Locator | null
+  captureCurrentLocator?: () => Promise<ReaderLocator | null>
+  isLocatorVisible?: (locator: ReaderLocator) => Promise<boolean>
+  visibilityRevision?: string
 }
 
 type BookmarkScope = {
   libraryId: string | null
   bookId: number
   format: string
+}
+
+type BookmarkVisibilityRequest = {
+  candidates: ReaderBookmark[]
+  isLocatorVisible: NonNullable<UseReaderBookmarksOptions["isLocatorVisible"]>
+  key: string
+}
+
+type BookmarkVisibilityResult = {
+  requestKey: string
+  locatorKey: string | null
 }
 
 function readerBookmarkFromDto(row: ReaderBookmarkDto): ReaderBookmark {
@@ -60,6 +74,9 @@ export function useReaderBookmarks({
   bookId,
   format,
   currentLocator,
+  captureCurrentLocator,
+  isLocatorVisible,
+  visibilityRevision,
 }: UseReaderBookmarksOptions) {
   const [bookmarks, setBookmarks] = useState<ReaderBookmark[]>([])
   const [loading, setLoading] = useState(false)
@@ -145,14 +162,89 @@ export function useReaderBookmarks({
     [bookId, bookmarks, libraryId, normalizedFormat],
   )
 
+  const [visibleBookmarkResult, setVisibleBookmarkResult] =
+    useState<BookmarkVisibilityResult | null>(null)
+  const visibilityRequest = useMemo<BookmarkVisibilityRequest | null>(() => {
+    if (!storedCurrentLocator || !isLocatorVisible) return null
+    const candidates = scopedBookmarks.filter(
+      (bookmark) =>
+        bookmark.locator.href === storedCurrentLocator.href &&
+        bookmark.locator.type === storedCurrentLocator.type &&
+        bookmark.locator.locations?.domRange,
+    )
+    return {
+      candidates,
+      isLocatorVisible,
+      key: JSON.stringify([
+        storedCurrentLocator.href,
+        storedCurrentLocator.locations,
+        candidates.map((bookmark) => bookmark.locatorKey),
+        visibilityRevision,
+      ]),
+    }
+  }, [
+    isLocatorVisible,
+    scopedBookmarks,
+    storedCurrentLocator,
+    visibilityRevision,
+  ])
+
+  useEffect(() => {
+    if (!visibilityRequest) return
+
+    let cancelled = false
+    void (async () => {
+      let locatorKey: string | null = null
+      try {
+        for (const bookmark of visibilityRequest.candidates) {
+          if (await visibilityRequest.isLocatorVisible(bookmark.locator)) {
+            locatorKey = bookmark.locatorKey
+            break
+          }
+        }
+      } catch {
+        locatorKey = null
+      }
+      if (!cancelled) {
+        setVisibleBookmarkResult((current) =>
+          current?.requestKey === visibilityRequest.key &&
+          current.locatorKey === locatorKey
+            ? current
+            : { requestKey: visibilityRequest.key, locatorKey },
+        )
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [visibilityRequest])
+
   const currentBookmark = useMemo(() => {
     if (!storedCurrentLocator) return null
+    if (isLocatorVisible) {
+      const visibleBookmarkLocatorKey =
+        visibleBookmarkResult?.requestKey === visibilityRequest?.key
+          ? visibleBookmarkResult.locatorKey
+          : null
+      return (
+        scopedBookmarks.find(
+          (bookmark) => bookmark.locatorKey === visibleBookmarkLocatorKey,
+        ) ?? null
+      )
+    }
     return (
       scopedBookmarks.find((bookmark) =>
         sameReaderBookmarkLocation(bookmark.locator, storedCurrentLocator),
       ) ?? null
     )
-  }, [scopedBookmarks, storedCurrentLocator])
+  }, [
+    isLocatorVisible,
+    scopedBookmarks,
+    storedCurrentLocator,
+    visibilityRequest,
+    visibleBookmarkResult,
+  ])
 
   const isCurrentScope = useCallback(
     (scope: BookmarkScope) => mountedRef.current && scopeRef.current === scope,
@@ -223,18 +315,22 @@ export function useReaderBookmarks({
       return
     }
 
-    const locatorKey = readerBookmarkLocatorKey(storedCurrentLocator)
     const mutationScope = scope
     mutatingRef.current = true
     setMutationScope(mutationScope)
     setMutationError(null)
     try {
+      const locator = captureCurrentLocator
+        ? await captureCurrentLocator()
+        : storedCurrentLocator
+      if (!locator) return
+      const locatorKey = readerBookmarkLocatorKey(locator)
       const row = await api.addReaderBookmark(
         libraryId,
         bookId,
         normalizedFormat,
         locatorKey,
-        storedCurrentLocator,
+        locator,
       )
       if (isCurrentScope(mutationScope)) {
         setBookmarks((rows) =>
@@ -254,6 +350,7 @@ export function useReaderBookmarks({
     }
   }, [
     bookId,
+    captureCurrentLocator,
     currentBookmark,
     deleteBookmark,
     isCurrentScope,

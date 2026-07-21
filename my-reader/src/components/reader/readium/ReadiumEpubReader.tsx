@@ -109,6 +109,10 @@ import {
   suppressEpubTextSelectionContextMenu,
 } from "@/lib/readium/epubAnnotations"
 import {
+  captureEpubBookmarkLocator,
+  isEpubBookmarkVisible,
+} from "@/lib/readium/epubBookmarkAnchor"
+import {
   type EpubTextResource,
   extractEpubContentLocators,
 } from "@/lib/readium/epubContentLocators"
@@ -1168,11 +1172,42 @@ export function ReadiumEpubReader({
   const [initError, setInitError] = useState<string | null>(null)
   const [chapterTitle, setChapterTitle] = useState("")
   const [currentLocator, setCurrentLocator] = useState<Locator | null>(null)
+  const readerSettings = useAppUiStore((s) => s.reflowable.settings)
+  const isFixedLayout = useMemo(
+    () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
+    [publication],
+  )
+  const captureCurrentBookmarkLocator = useCallback(async () => {
+    const navigator = navigatorRef.current
+    if (!navigator || isFixedLayout) return null
+    return captureEpubBookmarkLocator(
+      navigator,
+      readiumLocatorToReaderLocator(navigator.currentLocator),
+    )
+  }, [isFixedLayout])
+  const isBookmarkLocatorVisible = useCallback(
+    async (locator: ReaderLocator) => {
+      const navigator = navigatorRef.current
+      return Boolean(
+        navigator &&
+          !isFixedLayout &&
+          isEpubBookmarkVisible(navigator, locator),
+      )
+    },
+    [isFixedLayout],
+  )
   const readerBookmarks = useReaderBookmarks({
     libraryId,
     bookId,
     format,
     currentLocator,
+    ...(isFixedLayout
+      ? {}
+      : {
+          captureCurrentLocator: captureCurrentBookmarkLocator,
+          isLocatorVisible: isBookmarkLocatorVisible,
+          visibilityRevision: JSON.stringify(readerSettings),
+        }),
   })
   const readerAnnotations = useReaderAnnotations({
     libraryId,
@@ -1233,7 +1268,6 @@ export function ReadiumEpubReader({
     (s) => s.readerPreferencesHydrated,
   )
   const spreadMode = useAppUiStore((s) => s.fixedLayout.spreadMode)
-  const readerSettings = useAppUiStore((s) => s.reflowable.settings)
   const patchReflowableSettings = useAppUiStore(
     (s) => s.patchReflowableSettings,
   )
@@ -1243,10 +1277,6 @@ export function ReadiumEpubReader({
       .accent
   }, [readerSettings.theme])
 
-  const isFixedLayout = useMemo(
-    () => EpubNavigator.determineLayout(publication, false) === Layout.fixed,
-    [publication],
-  )
   const readerLanguage = useMemo(
     () => resolveReaderLanguage(publication.metadata.languages),
     [publication.metadata.languages],

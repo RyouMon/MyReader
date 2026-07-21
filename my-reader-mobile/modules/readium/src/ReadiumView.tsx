@@ -126,6 +126,18 @@ export const ReadiumView = forwardRef<ReadiumViewRef, ReadiumProps>(
           const tag = tagOf()
           if (tag != null) ReadiumModule.clearSelection(tag)
         },
+        getBookmarkLocator: () => {
+          const tag = tagOf()
+          return tag == null
+            ? Promise.resolve(null)
+            : ReadiumModule.getBookmarkLocator(tag)
+        },
+        isBookmarkVisible: (locator) => {
+          const tag = tagOf()
+          return tag == null
+            ? Promise.resolve(false)
+            : ReadiumModule.isBookmarkVisible(tag, locator)
+        },
       }),
       [],
     )

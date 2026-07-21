@@ -47,7 +47,7 @@ const { DatabaseSync } = jest.requireActual<{
 }>("node:sqlite")
 
 const library = { id: "library-1" } as Library
-const bookmarkKey = "v2:00000000000000000000000000000001"
+const bookmarkKey = "v3:00000000000000000000000000000001"
 const locatorJson = '{"href":"chapter.xhtml","type":"application/xhtml+xml"}'
 const databases: TestDatabase[] = []
 

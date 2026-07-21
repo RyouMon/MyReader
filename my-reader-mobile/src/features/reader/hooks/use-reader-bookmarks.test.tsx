@@ -1,4 +1,5 @@
 import type { Locator } from "@my-reader/readium"
+import { readerBookmarkLocatorKey } from "@my-reader/tools/reader-bookmarks"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react-native"
 import type { PropsWithChildren } from "react"
@@ -44,7 +45,7 @@ function bookmark(position: number): ReaderBookmark {
     id: `bookmark-${position}`,
     bookId: 7,
     format: "EPUB",
-    locatorKey: `v1:position:${position}`,
+    locatorKey: readerBookmarkLocatorKey(itemLocator),
     locator: itemLocator,
     createdAt: position,
     updatedAt: position,
@@ -257,7 +258,7 @@ describe("useReaderBookmarks", () => {
       secondMutation.resolve(bookmark(3))
       await secondMutation.promise
     })
-    await waitFor(() => expect(result.current.isPending).toBe(false))
+    expect(result.current.isPending).toBe(false)
   })
 
   it("should ignore a previous scope error when its mutation rejects after the scope changes", async () => {
@@ -360,6 +361,112 @@ describe("useReaderBookmarks", () => {
     await waitFor(() =>
       expect(result.current.isCurrentLocationBookmarked).toBe(false),
     )
+  })
+
+  it("should use viewport visibility instead of a coarse EPUB position", async () => {
+    const anchoredLocator: Locator = {
+      ...locator(2),
+      locations: {
+        ...locator(2).locations!,
+        domRange: {
+          start: {
+            cssSelector: "#paragraph",
+            textNodeIndex: 0,
+            charOffset: 18,
+          },
+        },
+      },
+    }
+    rows = [
+      {
+        ...bookmark(2),
+        locator: anchoredLocator,
+        locatorKey: readerBookmarkLocatorKey(anchoredLocator),
+      },
+    ]
+    const isLocatorVisible = jest.fn().mockResolvedValue(true)
+    const currentLocator = locator(9)
+    const locationResolver = {
+      captureCurrentLocator: jest.fn().mockResolvedValue(null),
+      isLocatorVisible,
+      visibilityRevision: "large-text",
+    }
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () =>
+        useReaderBookmarks(
+          library,
+          7,
+          "EPUB",
+          currentLocator,
+          locationResolver,
+        ),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => expect(isLocatorVisible).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(result.current.isCurrentLocationBookmarked).toBe(true),
+    )
+
+    act(() => result.current.toggleCurrentBookmark())
+    await waitFor(() =>
+      expect(mockRemoveReaderBookmark).toHaveBeenCalledWith(
+        library,
+        7,
+        "EPUB",
+        anchoredLocator,
+      ),
+    )
+  })
+
+  it("should persist the captured center locator when adding an EPUB bookmark", async () => {
+    const centerLocator: Locator = {
+      ...locator(4),
+      locations: {
+        ...locator(4).locations!,
+        domRange: {
+          start: {
+            cssSelector: "#center",
+            textNodeIndex: 0,
+            charOffset: 12,
+          },
+        },
+      },
+      text: { highlight: "中" },
+    }
+    const currentLocator = locator(3)
+    const locationResolver = {
+      captureCurrentLocator: jest.fn().mockResolvedValue(centerLocator),
+      isLocatorVisible: jest.fn().mockResolvedValue(false),
+    }
+    const { Wrapper } = createWrapper()
+    const { result } = renderHook(
+      () =>
+        useReaderBookmarks(
+          library,
+          7,
+          "EPUB",
+          currentLocator,
+          locationResolver,
+        ),
+      { wrapper: Wrapper },
+    )
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.toggleCurrentBookmark()
+    })
+
+    await waitFor(() =>
+      expect(mockAddReaderBookmark).toHaveBeenCalledWith(
+        library,
+        7,
+        "EPUB",
+        centerLocator,
+      ),
+    )
+    expect(result.current.isPending).toBe(false)
   })
 
   it("should remove a selected bookmark independently of the current locator", async () => {

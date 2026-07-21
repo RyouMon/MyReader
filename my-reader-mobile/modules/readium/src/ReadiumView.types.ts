@@ -19,6 +19,8 @@ export type ReadiumViewRef = {
   goForward: () => void
   goBackward: () => void
   clearSelection: () => void
+  getBookmarkLocator: () => Promise<Locator | null>
+  isBookmarkVisible: (locator: Locator) => Promise<boolean>
 }
 
 /** Public props contract — kept identical to the fork for drop-in migration. */

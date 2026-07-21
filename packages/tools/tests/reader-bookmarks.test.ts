@@ -141,7 +141,7 @@ describe("reader bookmark locator utilities", () => {
       progression: 0.5,
     })
 
-    expect(readerBookmarkLocatorKey(desktop)).toMatch(/^v2:[0-9a-f]{32}$/)
+    expect(readerBookmarkLocatorKey(desktop)).toMatch(/^v3:[0-9a-f]{32}$/)
     expect(sameReaderBookmarkLocation(desktop, mobile)).toBe(true)
   })
 
@@ -181,15 +181,21 @@ describe("reader bookmark locator utilities", () => {
     )
   })
 
-  it("should prefer partial CFI when lower-priority anchors differ", () => {
+  it("should prefer the center DOM range when other anchors differ", () => {
     const first = locator("OPS/chapter.xhtml", {
       partialCfi: "/4/2/6",
       cssSelector: "#first",
+      domRange: {
+        start: { cssSelector: "#center", textNodeIndex: 0, charOffset: 12 },
+      },
       progression: 0.4,
     })
     const second = locator("OPS/chapter.xhtml", {
-      partialCfi: "/4/2/6",
+      partialCfi: "/4/2/8",
       cssSelector: "#second",
+      domRange: {
+        start: { cssSelector: "#center", textNodeIndex: 0, charOffset: 12 },
+      },
       progression: 0.6,
     })
 

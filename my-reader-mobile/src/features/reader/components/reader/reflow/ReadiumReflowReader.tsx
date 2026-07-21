@@ -58,6 +58,8 @@ const NO_READER_CAPABILITIES: ReaderCapabilities = {
 export type ReadiumReflowReaderRef = {
   goTo: (locator: Locator, tocItem?: ReaderTocItem) => void
   clearSelection: () => void
+  getBookmarkLocator: () => Promise<Locator | null>
+  isBookmarkVisible: (locator: Locator) => Promise<boolean>
 }
 
 export type ReadiumReflowReaderProps = {
@@ -146,6 +148,11 @@ const ReadiumReflowReader = forwardRef<
         readiumRef.current?.goTo(locator)
       },
       clearSelection: () => readiumRef.current?.clearSelection(),
+      getBookmarkLocator: () =>
+        readiumRef.current?.getBookmarkLocator() ?? Promise.resolve(null),
+      isBookmarkVisible: (locator: Locator) =>
+        readiumRef.current?.isBookmarkVisible(locator) ??
+        Promise.resolve(false),
     }),
     [],
   )

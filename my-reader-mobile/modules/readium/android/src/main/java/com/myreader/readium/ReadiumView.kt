@@ -43,6 +43,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.readium.r2.navigator.Decoration as ReadiumDecoration
 
 class ReadiumView(
@@ -244,6 +245,16 @@ class ReadiumView(
       hostView.post(action)
     }
   }
+
+  suspend fun getBookmarkLocator(): Map<String, Any?>? =
+    withContext(Dispatchers.Main.immediate) {
+      (fragment as? EpubReaderFragment)?.getBookmarkLocator()
+    }
+
+  suspend fun isBookmarkVisible(locator: LocatorRecord): Boolean =
+    withContext(Dispatchers.Main.immediate) {
+      (fragment as? EpubReaderFragment)?.isBookmarkVisible(locator) ?: false
+    }
 
   // MARK: - Fragment management
 

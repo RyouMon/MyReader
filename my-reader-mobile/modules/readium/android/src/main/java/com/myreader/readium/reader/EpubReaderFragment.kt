@@ -26,8 +26,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.myreader.readium.R
 import com.myreader.readium.Converters.locatorRecordToReadium
+import com.myreader.readium.Converters.readiumLocatorToMap
 import com.myreader.readium.Types.FontFamilyDeclarationRecord
 import com.myreader.readium.Types.FontFaceDeclarationRecord
+import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.SelectionMenuRecord
 import kotlinx.coroutines.launch
 import org.readium.r2.navigator.DecorableNavigator
@@ -44,6 +46,9 @@ import org.readium.r2.navigator.preferences.FontFamily
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
 
 data class SelectionAction(
     val id: String,
@@ -73,6 +78,57 @@ class EpubReaderFragment : VisualReaderFragment() {
     private var ignoringPopupDismiss = false
     private var selectionRequestGeneration = 0L
     private var fontFamilyDeclarations: List<FontFamilyDeclarationRecord> = emptyList()
+
+    suspend fun getBookmarkLocator(): Map<String, Any?>? {
+      if (!this::navigatorFragment.isInitialized) return null
+      val anchor = decodeJavascriptValue(
+        navigatorFragment.evaluateJavascript(captureReaderBookmarkAnchorScript)
+      ) as? JSONObject ?: return null
+      val cssSelector = anchor.optString("cssSelector").takeIf { it.isNotEmpty() }
+        ?: return null
+      val domRange = anchor.optJSONObject("domRange")?.toMap() ?: return null
+      val text = anchor.optJSONObject("text")?.toMap() ?: return null
+      val locator = readiumLocatorToMap(navigatorFragment.currentLocator.value).toMutableMap()
+      val locations = (locator["locations"] as? Map<*, *>)
+        ?.entries
+        ?.associate { it.key.toString() to it.value }
+        ?.toMutableMap()
+        ?: mutableMapOf()
+      locations["cssSelector"] = cssSelector
+      locations["domRange"] = domRange
+      locator["locations"] = locations
+      locator["text"] = text
+      return locator
+    }
+
+    suspend fun isBookmarkVisible(locator: LocatorRecord): Boolean {
+      if (!this::navigatorFragment.isInitialized) return false
+      val domRange = locator.locations?.domRange ?: return false
+      val raw = navigatorFragment.evaluateJavascript(
+        readerBookmarkVisibilityScript(JSONObject(domRange).toString())
+      )
+      return decodeJavascriptValue(raw) == true
+    }
+
+    private fun decodeJavascriptValue(raw: String?): Any? {
+      if (raw == null) return null
+      val value = runCatching { JSONTokener(raw).nextValue() }.getOrNull()
+      return if (value is String) {
+        runCatching { JSONTokener(value).nextValue() }.getOrDefault(value)
+      } else {
+        value
+      }
+    }
+
+    private fun JSONObject.toMap(): Map<String, Any?> = keys().asSequence()
+      .associateWith { key -> jsonValueToKotlin(get(key)) }
+
+    private fun jsonValueToKotlin(value: Any?): Any? = when (value) {
+      JSONObject.NULL -> null
+      is JSONObject -> value.toMap()
+      is JSONArray -> (0 until value.length()).map { jsonValueToKotlin(value.get(it)) }
+      else -> value
+    }
 
     // Custom selection action mode callback for adding custom action buttons
     val customSelectionActionModeCallback: ActionMode.Callback2 by lazy {

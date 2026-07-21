@@ -16,7 +16,7 @@ import {
   serializeDbPushCursor,
 } from "./db-sync-changes"
 
-const BOOKMARK_KEY = "v2:00000000000000000000000000000003"
+const BOOKMARK_KEY = "v3:00000000000000000000000000000003"
 const VALID_LOCATOR_JSON =
   '{"href":"chapter.xhtml","type":"application/xhtml+xml"}'
 
@@ -229,16 +229,16 @@ describe("db sync changes", () => {
     expect(parseReaderBookmarkChange(blankKey)).toBeNull()
   })
 
-  it("should use v2 cursors when bookmark-aware sync starts", () => {
-    expect(dbSyncLastPushCursorKey("local")).toBe("last_push_cursor_v2::local")
+  it("should use v3 cursors when bookmark-aware sync starts", () => {
+    expect(dbSyncLastPushCursorKey("local")).toBe("last_push_cursor_v3::local")
     expect(dbSyncLastExternalMirrorSeqKey("local")).toBe(
-      "last_external_mirror_seq_v2::local",
+      "last_external_mirror_seq_v3::local",
     )
     expect(dbSyncLastPullCursorKey("local", "remote")).toBe(
-      "last_pull_cursor_v2::local::remote",
+      "last_pull_cursor_v3::local::remote",
     )
     expect(dbSyncLastLocalSequenceKey("local")).toBe(
-      "last_local_change_seq_v2::local",
+      "last_local_change_seq_v3::local",
     )
   })
 

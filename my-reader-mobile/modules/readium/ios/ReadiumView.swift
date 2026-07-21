@@ -395,6 +395,45 @@ final class ReadiumView: ExpoView {
     }
   }
 
+  @MainActor
+  func getBookmarkLocator() async -> [String: Any]? {
+    guard let navigator = readerViewController?.navigator as? EPUBNavigatorViewController,
+          let currentLocation = navigator.currentLocation else { return nil }
+    guard case let .success(value) = await navigator.evaluateJavaScript(
+      captureReaderBookmarkAnchorScript
+    ),
+      let json = value as? String,
+      let data = json.data(using: .utf8),
+      let anchor = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      let cssSelector = anchor["cssSelector"] as? String,
+      let domRange = anchor["domRange"] as? [String: Any],
+      let text = anchor["text"] as? [String: Any]
+    else { return nil }
+
+    var locator = locatorToDict(currentLocation)
+    var locations = locator["locations"] as? [String: Any] ?? [:]
+    locations["cssSelector"] = cssSelector
+    locations["domRange"] = domRange
+    locator["locations"] = locations
+    locator["text"] = text
+    return locator
+  }
+
+  @MainActor
+  func isBookmarkVisible(locator: LocatorRecord) async -> Bool {
+    guard let navigator = readerViewController?.navigator as? EPUBNavigatorViewController,
+          let domRange = locator.locations?.domRange,
+          JSONSerialization.isValidJSONObject(domRange),
+          let data = try? JSONSerialization.data(withJSONObject: domRange),
+          let json = String(data: data, encoding: .utf8),
+          case let .success(value) = await navigator.evaluateJavaScript(
+            readerBookmarkVisibilityScript(domRangeJSON: json)
+          ),
+          let result = value as? String
+    else { return false }
+    return result == "true"
+  }
+
   // MARK: - Selection emission
 
   private func emitSelectionChange(

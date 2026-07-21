@@ -1,5 +1,6 @@
 import type { ReaderBookmarkChangeRow } from "../../repos/bookmarks"
 import type { ReadingProgressChangeRow } from "../../repos/reading-progress"
+import { isCurrentReaderBookmarkLocatorKey } from "@my-reader/tools/reader-bookmarks"
 
 export type DbChangeRow = {
   t: string
@@ -18,22 +19,22 @@ const UINT128_MASK = (1n << 128n) - 1n
 let lastAllocatedChangeSequence = 0
 
 export function dbSyncLastPushCursorKey(deviceId: string): string {
-  return `last_push_cursor_v2::${deviceId}`
+  return `last_push_cursor_v3::${deviceId}`
 }
 
 export function dbSyncLastExternalMirrorSeqKey(deviceId: string): string {
-  return `last_external_mirror_seq_v2::${deviceId}`
+  return `last_external_mirror_seq_v3::${deviceId}`
 }
 
 export function dbSyncLastPullCursorKey(
   deviceId: string,
   remoteDeviceId: string,
 ): string {
-  return `last_pull_cursor_v2::${deviceId}::${remoteDeviceId}`
+  return `last_pull_cursor_v3::${deviceId}::${remoteDeviceId}`
 }
 
 export function dbSyncLastLocalSequenceKey(deviceId: string): string {
-  return `last_local_change_seq_v2::${deviceId}`
+  return `last_local_change_seq_v3::${deviceId}`
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -309,6 +310,7 @@ export function parseReaderBookmarkChange(
     format === null ||
     locatorKey === null ||
     locatorKey.length > 2048 ||
+    !isCurrentReaderBookmarkLocatorKey(locatorKey) ||
     locatorJson === null ||
     !isValidReaderLocatorJson(locatorJson) ||
     createdAt === null ||

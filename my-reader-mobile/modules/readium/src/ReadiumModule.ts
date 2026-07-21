@@ -26,6 +26,8 @@ export type ReadiumModuleMethods = {
   goForward: (tag: number) => void
   goBackward: (tag: number) => void
   clearSelection: (tag: number) => void
+  getBookmarkLocator: (tag: number) => Promise<Locator | null>
+  isBookmarkVisible: (tag: number, locator: Locator) => Promise<boolean>
 
   // Streamer / opener configuration (REP-005/006)
   configure: (config: PublicationOpenerConfig) => void

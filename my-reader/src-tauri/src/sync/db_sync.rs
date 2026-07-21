@@ -216,15 +216,15 @@ impl LwwProvider {
     }
 
     fn last_push_cursor_key(device: &str) -> String {
-        format!("last_push_cursor_v2::{device}")
+        format!("last_push_cursor_v3::{device}")
     }
 
     fn last_pull_cursor_key(device: &str, remote: &str) -> String {
-        format!("last_pull_cursor_v2::{device}::{remote}")
+        format!("last_pull_cursor_v3::{device}::{remote}")
     }
 
     fn last_local_sequence_key(device: &str) -> String {
-        format!("last_local_change_seq_v2::{device}")
+        format!("last_local_change_seq_v3::{device}")
     }
 
     async fn read_meta(db: &DatabaseConnection, key: &str) -> Result<Option<String>, AppError> {
@@ -437,7 +437,7 @@ impl LwwProvider {
             .get("locator_key")
             .and_then(serde_json::Value::as_str)
             .map(str::trim)
-            .filter(|locator_key| !locator_key.is_empty() && locator_key.len() <= 2048)
+            .filter(|locator_key| locator_key.starts_with("v3:") && locator_key.len() <= 2048)
             .ok_or_else(|| AppError::Sync("Invalid bookmark sync locator_key".into()))?;
 
         let id = change
@@ -706,6 +706,8 @@ mod tests {
     use opendal::services::Fs;
     use std::path::Path;
 
+    const TEST_BOOKMARK_LOCATOR_KEY: &str = "v3:00000000000000000000000000000000";
+
     fn create_temp_operator(root: &Path) -> Operator {
         let builder = Fs::default().root(root.to_string_lossy().as_ref());
         Operator::new(builder).unwrap().finish()
@@ -723,7 +725,10 @@ mod tests {
             key: serde_json::Map::from_iter([
                 ("book_id".into(), serde_json::json!(5)),
                 ("format".into(), serde_json::json!("epub")),
-                ("locator_key".into(), serde_json::json!("chapter@0.5")),
+                (
+                    "locator_key".into(),
+                    serde_json::json!(TEST_BOOKMARK_LOCATOR_KEY),
+                ),
             ]),
             value: serde_json::Map::from_iter([
                 ("id".into(), serde_json::json!(id)),
@@ -808,18 +813,18 @@ mod tests {
     }
 
     #[test]
-    fn cursor_keys_should_use_v2_when_bookmark_table_is_enabled() {
+    fn cursor_keys_should_use_v3_when_bookmark_table_is_enabled() {
         assert_eq!(
             LwwProvider::last_push_cursor_key("device-a"),
-            "last_push_cursor_v2::device-a"
+            "last_push_cursor_v3::device-a"
         );
         assert_eq!(
             LwwProvider::last_pull_cursor_key("device-a", "device-b"),
-            "last_pull_cursor_v2::device-a::device-b"
+            "last_pull_cursor_v3::device-a::device-b"
         );
         assert_eq!(
             LwwProvider::last_local_sequence_key("device-a"),
-            "last_local_change_seq_v2::device-a"
+            "last_local_change_seq_v3::device-a"
         );
         assert_eq!(
             LwwProvider::default_for_myreader()
@@ -933,7 +938,10 @@ mod tests {
             key: serde_json::Map::from_iter([
                 ("book_id".into(), serde_json::json!(5)),
                 ("format".into(), serde_json::json!("epub")),
-                ("locator_key".into(), serde_json::json!("chapter@0.5")),
+                (
+                    "locator_key".into(),
+                    serde_json::json!(TEST_BOOKMARK_LOCATOR_KEY),
+                ),
             ]),
             value: serde_json::Map::from_iter([
                 ("id".into(), serde_json::json!("remote-id")),

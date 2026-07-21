@@ -52,6 +52,40 @@ function bookmark(position = 3, bookId = 7): ReaderBookmarkDto {
   }
 }
 
+function epubLocator(position: number, progression: number) {
+  return new Locator({
+    href: "chapter.xhtml",
+    type: "application/xhtml+xml",
+    locations: new LocatorLocations({ position, progression }),
+  })
+}
+
+function epubBookmark(charOffset: number): ReaderBookmarkDto {
+  const locator = {
+    href: "chapter.xhtml",
+    type: "application/xhtml+xml",
+    locations: {
+      progression: 0.2,
+      position: 2,
+      cssSelector: "#paragraph",
+      domRange: {
+        start: { cssSelector: "#paragraph", textNodeIndex: 0, charOffset },
+      },
+    },
+    text: { highlight: "中" },
+  }
+  return {
+    id: `epub-bookmark-${charOffset}`,
+    libraryId: "library-1",
+    bookId: 7,
+    format: "EPUB",
+    locatorKey: readerBookmarkLocatorKey(locator),
+    locator,
+    createdAt: charOffset,
+    updatedAt: charOffset,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.listReaderBookmarks).mockResolvedValue([])
@@ -104,6 +138,65 @@ describe("useReaderBookmarks", () => {
     )
     expect(result.current.bookmarked).toBe(false)
     expect(result.current.currentBookmarkLocatorKey).toBeNull()
+  })
+
+  it("should resolve the active EPUB bookmark from its visible content anchor", async () => {
+    const saved = epubBookmark(18)
+    const current = epubLocator(9, 0.8)
+    vi.mocked(api.listReaderBookmarks).mockResolvedValueOnce([saved])
+    const isLocatorVisible = vi.fn().mockResolvedValue(true)
+    const { result } = renderHook(() =>
+      useReaderBookmarks({
+        libraryId: "library-1",
+        bookId: 7,
+        format: "EPUB",
+        currentLocator: current,
+        captureCurrentLocator: vi.fn().mockResolvedValue(null),
+        isLocatorVisible,
+        visibilityRevision: "large-text",
+      }),
+    )
+
+    await waitFor(() => expect(isLocatorVisible).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.bookmarked).toBe(true))
+
+    await act(async () => {
+      await result.current.toggleCurrentBookmark()
+    })
+    expect(api.deleteReaderBookmark).toHaveBeenCalledWith(
+      "library-1",
+      7,
+      "EPUB",
+      saved.locatorKey,
+    )
+  })
+
+  it("should save the captured center locator for an EPUB bookmark", async () => {
+    const center = epubBookmark(12).locator
+    const current = epubLocator(2, 0.1)
+    const { result } = renderHook(() =>
+      useReaderBookmarks({
+        libraryId: "library-1",
+        bookId: 7,
+        format: "EPUB",
+        currentLocator: current,
+        captureCurrentLocator: vi.fn().mockResolvedValue(center),
+        isLocatorVisible: vi.fn().mockResolvedValue(false),
+      }),
+    )
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await result.current.toggleCurrentBookmark()
+    })
+
+    expect(api.addReaderBookmark).toHaveBeenCalledWith(
+      "library-1",
+      7,
+      "EPUB",
+      readerBookmarkLocatorKey(center),
+      center,
+    )
   })
 
   it("should ignore rapid toggle when bookmark mutation is already pending", async () => {

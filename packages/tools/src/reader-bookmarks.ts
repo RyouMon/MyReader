@@ -1,6 +1,6 @@
 import type { ReaderLocator } from "./reader-toc"
 
-const LOCATOR_KEY_VERSION = "v2"
+export const READER_BOOKMARK_LOCATOR_KEY_VERSION = "v3"
 const PROGRESSION_KEY_SCALE = 1_000_000
 const FNV1A_128_OFFSET = 0x6c62272e07bb014262b821756295c58dn
 const FNV1A_128_PRIME = 0x0000000001000000000000000000013bn
@@ -192,16 +192,16 @@ function bookmarkIdentityPayload(
 ): Record<string, unknown> {
   const locations = locator.locations
   const base = { href: locator.href, type: locator.type }
-  if (locations?.partialCfi) {
-    return {
-      ...base,
-      anchor: { kind: "partialCfi", value: locations.partialCfi },
-    }
-  }
   if (locations?.domRange != null) {
     return {
       ...base,
       anchor: { kind: "domRange", value: locations.domRange },
+    }
+  }
+  if (locations?.partialCfi) {
+    return {
+      ...base,
+      anchor: { kind: "partialCfi", value: locations.partialCfi },
     }
   }
   if (locations?.cssSelector) {
@@ -241,14 +241,18 @@ function bookmarkIdentityPayload(
 }
 
 /**
- * Returns the v2 natural key for one location within a caller-scoped book and
+ * Returns the v3 natural key for one location within a caller-scoped book and
  * format. Precise Readium anchors take priority over layout-dependent
  * progressions; position/progression are deterministic fallbacks.
  */
 export function readerBookmarkLocatorKey(locator: ReaderLocator): string {
   const canonical = canonicalizeReaderLocatorForStorage(locator)
   const identity = canonicalJsonValue(bookmarkIdentityPayload(canonical))
-  return `${LOCATOR_KEY_VERSION}:${shortStableHash(identity ?? "null")}`
+  return `${READER_BOOKMARK_LOCATOR_KEY_VERSION}:${shortStableHash(identity ?? "null")}`
+}
+
+export function isCurrentReaderBookmarkLocatorKey(value: string): boolean {
+  return value.startsWith(`${READER_BOOKMARK_LOCATOR_KEY_VERSION}:`)
 }
 
 export function sameReaderBookmarkLocation(

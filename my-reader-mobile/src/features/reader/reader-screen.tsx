@@ -20,7 +20,6 @@ import {
   readerAnnotationMatchesSelection,
   sortReaderAnnotations,
 } from "@my-reader/tools/reader-annotations"
-import { sameReaderBookmarkLocation } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { router, useLocalSearchParams } from "expo-router"
 import {
@@ -273,9 +272,37 @@ export default function ReaderScreen() {
     readerState?.ready && readerSearch.capabilities?.searchable,
   )
   useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
+  const captureCurrentBookmarkLocator = useCallback(
+    () =>
+      reflowReaderRef.current?.getBookmarkLocator() ?? Promise.resolve(null),
+    [],
+  )
+  const isBookmarkLocatorVisible = useCallback(
+    (locator: Locator) =>
+      reflowReaderRef.current?.isBookmarkVisible(locator) ??
+      Promise.resolve(false),
+    [],
+  )
+  const bookmarkLocationResolver = useMemo(
+    () =>
+      isReflowReady
+        ? {
+            captureCurrentLocator: captureCurrentBookmarkLocator,
+            isLocatorVisible: isBookmarkLocatorVisible,
+            visibilityRevision: JSON.stringify(settings.reflowable),
+          }
+        : undefined,
+    [
+      captureCurrentBookmarkLocator,
+      isBookmarkLocatorVisible,
+      isReflowReady,
+      settings.reflowable,
+    ],
+  )
   const {
     bookmarks,
     isCurrentLocationBookmarked,
+    currentBookmarkLocatorKey,
     isLoading: bookmarksLoading,
     isPending: bookmarkPending,
     error: bookmarkError,
@@ -287,6 +314,7 @@ export default function ReaderScreen() {
     activeLoadState?.bookId ?? null,
     activeLoadState?.format ?? null,
     readerState?.locator,
+    bookmarkLocationResolver,
   )
   const readerAnnotations = useReaderAnnotations(
     activeLibrary,
@@ -869,7 +897,6 @@ export default function ReaderScreen() {
   const handleOpenSettings = useCallback(() => {
     dispatch({ type: "settingsPillTap" })
   }, [])
-  const currentReaderLocator = readerState?.locator
   const bookmarkItems = useMemo<ReaderBookmarkItem[]>(() => {
     return bookmarks.map((bookmark) => {
       const positionIndex = positionIndexForLocator(positions, bookmark.locator)
@@ -890,13 +917,10 @@ export default function ReaderScreen() {
         title,
         positionLabel: isReflowReady && chapterTitle ? String(position) : "",
         createdAt: bookmark.createdAt,
-        active: Boolean(
-          currentReaderLocator &&
-            sameReaderBookmarkLocation(bookmark.locator, currentReaderLocator),
-        ),
+        active: bookmark.locatorKey === currentBookmarkLocatorKey,
       }
     })
-  }, [bookmarks, currentReaderLocator, isReflowReady, positions, t, toc])
+  }, [bookmarks, currentBookmarkLocatorKey, isReflowReady, positions, t, toc])
   const annotationItems = useMemo<ReaderAnnotationItem[]>(
     () =>
       sortReaderAnnotations(readerAnnotations.annotations, positions).map(
