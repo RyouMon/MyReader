@@ -247,12 +247,19 @@ private let readerViewportAnchorRuntimeScript = #"""
           first.scrollHeight === second.scrollHeight &&
           first.scrollWidth === second.scrollWidth);
   }
-  return {
-    captureReaderViewportAnchor: captureReaderViewportAnchor,
-    isReaderViewportAnchorVisible: isReaderViewportAnchorVisible,
-    readerViewportLayoutState: readerViewportLayoutState,
-    restoreReaderViewportAnchorOffset: restoreReaderViewportAnchorOffset
-  };
+  /**
+   * Binds the shared helpers to the EPUB web view's window for native bridges.
+   * Swift and Kotlin call these methods without passing the window explicitly.
+   */
+  function createReaderViewportAnchorRuntime(window) {
+      return {
+          captureReaderViewportAnchor: () => captureReaderViewportAnchor(window),
+          isReaderViewportAnchorVisible: (domRange) => isReaderViewportAnchorVisible(window, domRange),
+          readerViewportLayoutState: () => readerViewportLayoutState(window),
+          restoreReaderViewportAnchorOffset: (domRange, yRatio) => restoreReaderViewportAnchorOffset(window, domRange, yRatio),
+      };
+  }
+  return createReaderViewportAnchorRuntime(window);
 })
 """#
 

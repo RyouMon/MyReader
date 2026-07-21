@@ -108,12 +108,7 @@ function renderRuntime(typeScriptSource) {
 
   return `(function (window) {
 ${indent(result.outputText.trim(), 2)}
-  return {
-    captureReaderViewportAnchor: captureReaderViewportAnchor,
-    isReaderViewportAnchorVisible: isReaderViewportAnchorVisible,
-    readerViewportLayoutState: readerViewportLayoutState,
-    restoreReaderViewportAnchorOffset: restoreReaderViewportAnchorOffset
-  };
+  return createReaderViewportAnchorRuntime(window);
 })`
 }
 

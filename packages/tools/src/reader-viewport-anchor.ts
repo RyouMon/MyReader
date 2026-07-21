@@ -341,3 +341,20 @@ export function sameReaderViewportLayout(
       first.scrollWidth === second.scrollWidth,
   )
 }
+
+/**
+ * Binds the shared helpers to the EPUB web view's window for native bridges.
+ * Swift and Kotlin call these methods without passing the window explicitly.
+ */
+export function createReaderViewportAnchorRuntime(window: Window) {
+  return {
+    captureReaderViewportAnchor: () => captureReaderViewportAnchor(window),
+    isReaderViewportAnchorVisible: (domRange: ReaderViewportDomRange) =>
+      isReaderViewportAnchorVisible(window, domRange),
+    readerViewportLayoutState: () => readerViewportLayoutState(window),
+    restoreReaderViewportAnchorOffset: (
+      domRange: ReaderViewportDomRange,
+      yRatio: number,
+    ) => restoreReaderViewportAnchorOffset(window, domRange, yRatio),
+  }
+}
