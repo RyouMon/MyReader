@@ -129,6 +129,7 @@ import {
 import { patchEpubNavigatorFixedLayoutGoNav } from "@/lib/readium/epubFixedLayoutNavPatch"
 import {
   applySpreadPreference,
+  epubNavigatorDefaultsForLayout,
   epubPreferencesForSpread,
   type ReflowThemePreset,
   type SpreadPreference,
@@ -1295,7 +1296,7 @@ export function ReadiumEpubReader({
   )
 
   const epubNavigatorDefaults = useMemo(
-    () => (isFixedLayout ? {} : {}),
+    () => epubNavigatorDefaultsForLayout(isFixedLayout),
     [isFixedLayout],
   )
 

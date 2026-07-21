@@ -1,13 +1,24 @@
-import { type EpubNavigator, EpubPreferences } from "@readium/navigator"
 import {
   READER_THEME_PRESET_BY_KEY,
   type ReaderThemeKey,
 } from "@my-reader/tools/reader-themes"
+import {
+  type EpubNavigator,
+  EpubPreferences,
+  type IEpubDefaults,
+} from "@readium/navigator"
 
 /** FXL / Divina：与 Readium `setPerPage` 对应的列数偏好（null = 自动横屏双页）。 */
 export type SpreadPreference = "auto" | "single" | "double"
 
 const SPREAD_VALUES: readonly SpreadPreference[] = ["auto", "single", "double"]
+
+/** Enable Readium's media-aware font zoom only for reflowable publications. */
+export function epubNavigatorDefaultsForLayout(
+  isFixedLayout: boolean,
+): IEpubDefaults {
+  return isFixedLayout ? {} : { experiments: ["experimentalZoom"] }
+}
 
 /** 与 `config.json` 等外部数据对齐时的安全归一化。 */
 export function normalizeSpreadPreference(value: unknown): SpreadPreference {
