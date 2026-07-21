@@ -68,4 +68,32 @@ describe("useReadingChrome", () => {
 
     expect(result.current.chromeVisible).toBe(true)
   })
+
+  it("should keep chrome visible when a side panel is open", () => {
+    const { result, rerender } = renderHook(
+      ({ sidePanelsOpen }) => useReadingChrome(false, sidePanelsOpen),
+      { initialProps: { sidePanelsOpen: false } },
+    )
+    const root = document.createElement("div")
+    root.getBoundingClientRect = readerRootRect
+    Object.defineProperty(result.current.readerRootRef, "current", {
+      configurable: true,
+      value: root,
+    })
+
+    act(() => {
+      result.current.handlePointerPosition(50, 500)
+      vi.advanceTimersByTime(200)
+    })
+
+    rerender({ sidePanelsOpen: true })
+
+    act(() => {
+      result.current.handlePointerPosition(-1, -1)
+      result.current.scheduleChromeHide()
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(result.current.chromeVisible).toBe(true)
+  })
 })

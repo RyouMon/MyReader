@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-/** 顶栏唤出带高度（与 `ReadingChromeEdgeZones` 对齐）。 */
+/** Height of the top reveal zone, kept in sync with `ReadingChromeEdgeZones`. */
 export const READING_CHROME_TOP_BAND_PX = 48
 const BOTTOM_BAR_PX = 72
 const TTS_EXTRA_BOTTOM_PX = 176
@@ -11,18 +11,21 @@ export function readingChromeBottomBandPx(expandBottomForTts: boolean): number {
 }
 
 /**
- * 阅读器根节点 ref + 顶底工具栏指针感应：指针在顶/底感应区内时显示工具栏；离开顶/底带或顶栏后在正文区移动则延迟隐藏（见 `scheduleChromeHide`）。
- * 侧栏打开时保持顶栏可见，避免在目录/设置内移动被误判为「非边缘」而收起。
- * 朗读开启时可加大底部感应区，避免从底栏移到 TTS 条时误关。
+ * Manages the reader root ref and pointer-aware top and bottom chrome.
+ * Entering either edge zone reveals the chrome. Moving through the content or
+ * leaving the reader schedules it to hide after a short delay.
+ * While a side panel is open, the chrome remains visible and pending hide
+ * timers are cleared.
  */
 export function useReadingChrome(
   expandBottomForTts: boolean,
-  /** 目录或设置展开时为 true，暂停按正文区逻辑自动隐藏顶栏。 */
+  /** Whether any reader side panel is open, suspending automatic chrome hiding. */
   sidePanelsOpen = false,
 ) {
   const readerRootRef = useRef<HTMLDivElement>(null)
-  const [chromeVisible, setChromeVisible] = useState(false)
+  const [autoChromeVisible, setChromeVisible] = useState(false)
   const hideTimerRef = useRef<number | null>(null)
+  const chromeVisible = sidePanelsOpen || autoChromeVisible
 
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current !== null) {
@@ -31,14 +34,23 @@ export function useReadingChrome(
     }
   }, [])
 
-  /** 正文区移动或离开顶栏后：延迟收起，避免手抖立刻关掉。 */
+  /** Hides after a short delay to avoid abrupt dismissal during pointer movement. */
   const scheduleChromeHide = useCallback(() => {
+    if (sidePanelsOpen) {
+      clearHideTimer()
+      return
+    }
     if (hideTimerRef.current !== null) return
     hideTimerRef.current = window.setTimeout(() => {
       setChromeVisible(false)
       hideTimerRef.current = null
     }, CHROME_HIDE_DELAY_MS)
-  }, [])
+  }, [clearHideTimer, sidePanelsOpen])
+
+  useEffect(() => {
+    if (!sidePanelsOpen) return
+    clearHideTimer()
+  }, [clearHideTimer, sidePanelsOpen])
 
   const handlePointerPosition = useCallback(
     (clientX: number, clientY: number) => {
@@ -82,7 +94,7 @@ export function useReadingChrome(
       handlePointerPosition(e.clientX, e.clientY)
     }
 
-    /** 宿主文档路径；Readium iframe 由 `useReaderIframePointerBridge` 转发到同一控制器。 */
+    /** Handles the host document; `useReaderIframePointerBridge` forwards Readium iframe events here. */
     document.addEventListener("pointermove", onMove, {
       passive: true,
       capture: true,
