@@ -26,6 +26,10 @@ import { useReaderBookmarks } from "@/hooks/reader/useReaderBookmarks"
 import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdgeHover"
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import {
+  displayProgressionForPosition,
+  positionForDisplayProgressPercent,
+} from "@/lib/readingProgress"
 import { divinaPageForBookmark } from "@/lib/readium/bookmarks"
 import {
   consumeWheelPageTurn,
@@ -245,29 +249,24 @@ export function ReadiumDivinaReader({
   const onProgressSeek = useCallback(
     (progress: number) => {
       if (positions.length === 0) return
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      goToPage(Math.round(normalized * (positions.length - 1)) + 1)
+      const page = positionForDisplayProgressPercent(progress, positions.length)
+      if (page != null) goToPage(page)
     },
     [goToPage, positions.length],
   )
   const resolveProgressCommit = useCallback(
     (progress: number) => {
-      if (positions.length <= 1) return 0
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const page = Math.round(normalized * (positions.length - 1)) + 1
-      return ((page - 1) / (positions.length - 1)) * 100
+      const page = positionForDisplayProgressPercent(progress, positions.length)
+      return page == null
+        ? 0
+        : (displayProgressionForPosition(page, positions.length) ?? 0) * 100
     },
     [positions.length],
   )
   const getProgressPreview = useCallback(
     (nextProgress: number) => {
       const total = Math.max(1, positions.length)
-      const page =
-        total > 1
-          ? Math.round(
-              (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
-            ) + 1
-          : 1
+      const page = positionForDisplayProgressPercent(nextProgress, total) ?? 1
       const label = t("reader.pageCount", { current: page, total })
       return {
         chapterTitle: tocRows[page - 1]?.title ?? label,
@@ -283,6 +282,8 @@ export function ReadiumDivinaReader({
     bookId,
     format,
     currentLocator,
+    displayProgression:
+      displayProgressionForPosition(currentPage, positions.length) ?? null,
   })
 
   useEffect(() => {
@@ -388,9 +389,8 @@ export function ReadiumDivinaReader({
               : undefined
           }
           progress={
-            positions.length > 1
-              ? ((currentPage - 1) / (positions.length - 1)) * 100
-              : 0
+            (displayProgressionForPosition(currentPage, positions.length) ??
+              0) * 100
           }
           getProgressPreview={getProgressPreview}
           resolveProgressCommit={resolveProgressCommit}

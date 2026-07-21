@@ -16,6 +16,8 @@ pub struct Model {
     pub locator_json: String,
     #[sea_orm(column_type = "Double")]
     pub updated_at: f64,
+    #[sea_orm(column_type = "Double", nullable)]
+    pub display_progression: Option<f64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

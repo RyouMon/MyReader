@@ -26,6 +26,7 @@ struct ProgressView {
     book_id: i64,
     format: String,
     locator: Value,
+    display_progression: Option<f64>,
     updated_at: f64,
 }
 
@@ -100,6 +101,7 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
             "bookId": 7,
             "format": "EPUB",
             "locator": locator,
+            "displayProgression": 1.0 / 3.0,
         }),
     );
 
@@ -114,6 +116,7 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
     assert_eq!(progress.book_id, 7);
     assert_eq!(progress.format, "EPUB");
     assert_eq!(progress.locator, locator);
+    assert_eq!(progress.display_progression, Some(1.0 / 3.0));
     assert!(progress.updated_at > 0.0);
 }
 

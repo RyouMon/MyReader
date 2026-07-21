@@ -49,7 +49,6 @@ type Props = {
   visible: boolean
   currentPositionIndex: number
   positionCount: number
-  progressPercent: number
   readingProgression: ReaderProgressDirection
   palette: ReaderChromePalette
   showSearchAction: boolean
@@ -114,7 +113,6 @@ export default function ReaderActionsExpanded({
   visible,
   currentPositionIndex,
   positionCount,
-  progressPercent,
   readingProgression,
   palette,
   showSearchAction,
@@ -176,7 +174,6 @@ export default function ReaderActionsExpanded({
           actionPillWidth={actionPillWidth}
           currentPositionIndex={currentPositionIndex}
           positionCount={positionCount}
-          progressPercent={progressPercent}
           readingProgression={readingProgression}
           palette={palette}
           onOpenToc={onOpenToc}

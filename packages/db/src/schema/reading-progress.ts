@@ -13,6 +13,7 @@ export const readingProgress = sqliteTable(
     bookId: integer("book_id").notNull(),
     format: text("format").notNull(),
     locatorJson: text("locator_json").notNull(),
+    displayProgression: real("display_progression"),
     updatedAt: real("updated_at").notNull(),
   },
   (t) => [

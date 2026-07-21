@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 
+import { displayProgressionForPosition } from "@/src/domain/library/display-progression"
 import { setReadingProgress } from "@/src/domain/library/reading-progress"
 import type { Library } from "@/src/domain/types"
 import type { ReaderState } from "@/src/features/reader/components/reader/types"
@@ -55,7 +56,13 @@ export function useReaderProgressSaver(
             ctx.bookId,
             ctx.format,
             readerState.locator!,
-            { invalidate: false },
+            {
+              displayProgression: displayProgressionForPosition(
+                readerState.currentPage,
+                readerState.totalPages,
+              ),
+              invalidate: false,
+            },
           )
           console.info("[mobile-reader] Saved progress to library.")
         } catch (e) {
@@ -65,7 +72,12 @@ export function useReaderProgressSaver(
     }, SAVE_DEBOUNCE_MS)
 
     return () => clearTimeout(t)
-  }, [readerState?.ready, readerState?.locator])
+  }, [
+    readerState?.currentPage,
+    readerState?.locator,
+    readerState?.ready,
+    readerState?.totalPages,
+  ])
 
   useEffect(() => {
     return () => {

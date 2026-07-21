@@ -46,6 +46,7 @@ impl SqliteProgressRepository {
                     book_id: m.book_id,
                     format: m.format,
                     locator,
+                    display_progression: m.display_progression,
                     updated_at: m.updated_at,
                 }))
             }
@@ -71,6 +72,7 @@ impl SqliteProgressRepository {
                     book_id: m.book_id,
                     format: m.format,
                     locator,
+                    display_progression: m.display_progression,
                     updated_at: m.updated_at,
                 })
             })
@@ -82,6 +84,7 @@ impl SqliteProgressRepository {
         book_id: i64,
         format: &str,
         locator_json: &str,
+        display_progression: Option<f64>,
         updated_at: f64,
     ) -> Result<(), AppError> {
         let next_updated_at: Expr = Func::greatest([
@@ -95,6 +98,7 @@ impl SqliteProgressRepository {
             format: Set(format.to_string()),
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
+            display_progression: Set(display_progression),
         };
         reading_progress::Entity::insert(active)
             .on_conflict(
@@ -103,6 +107,7 @@ impl SqliteProgressRepository {
                     reading_progress::Column::Format,
                 ])
                 .update_column(reading_progress::Column::LocatorJson)
+                .update_column(reading_progress::Column::DisplayProgression)
                 .value(reading_progress::Column::UpdatedAt, next_updated_at)
                 .to_owned(),
             )
@@ -117,18 +122,39 @@ impl SqliteProgressRepository {
         book_id: i64,
         format: &str,
         locator_json: &str,
+        display_progression: Option<f64>,
         updated_at: f64,
     ) -> Result<bool, AppError> {
         let excluded_updated_at = excluded(reading_progress::Column::UpdatedAt);
         let current_updated_at = current(reading_progress::Column::UpdatedAt);
+        let excluded_locator = excluded(reading_progress::Column::LocatorJson);
+        let current_locator = current(reading_progress::Column::LocatorJson);
+        let excluded_display_progression: Expr = Func::coalesce([
+            excluded(reading_progress::Column::DisplayProgression),
+            Expr::value(-1.0),
+        ])
+        .into();
+        let current_display_progression: Expr = Func::coalesce([
+            current(reading_progress::Column::DisplayProgression),
+            Expr::value(-1.0),
+        ])
+        .into();
         let revision_wins = Condition::any()
             .add(excluded_updated_at.clone().gt(current_updated_at.clone()))
             .add(
                 Condition::all()
                     .add(excluded_updated_at.eq(current_updated_at))
                     .add(
-                        excluded(reading_progress::Column::LocatorJson)
-                            .gt(current(reading_progress::Column::LocatorJson)),
+                        Condition::any()
+                            .add(excluded_locator.clone().gt(current_locator.clone()))
+                            .add(
+                                Condition::all()
+                                    .add(excluded_locator.eq(current_locator))
+                                    .add(
+                                        excluded_display_progression
+                                            .gt(current_display_progression),
+                                    ),
+                            ),
                     ),
             );
         let active = reading_progress::ActiveModel {
@@ -137,6 +163,7 @@ impl SqliteProgressRepository {
             format: Set(format.to_string()),
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
+            display_progression: Set(display_progression),
         };
         let rows_affected = reading_progress::Entity::insert(active)
             .on_conflict(
@@ -146,6 +173,7 @@ impl SqliteProgressRepository {
                 ])
                 .update_columns([
                     reading_progress::Column::LocatorJson,
+                    reading_progress::Column::DisplayProgression,
                     reading_progress::Column::UpdatedAt,
                 ])
                 .action_cond_where(revision_wins)
@@ -199,11 +227,11 @@ mod tests {
     #[tokio::test]
     async fn local_set_should_advance_from_current_row_when_remote_revision_is_newer() {
         let (_temp, db) = open_temp().await;
-        SqliteProgressRepository::apply_sync_revision(&db, 1, "EPUB", REMOTE_LOCATOR, 300.0)
+        SqliteProgressRepository::apply_sync_revision(&db, 1, "EPUB", REMOTE_LOCATOR, None, 300.0)
             .await
             .unwrap();
 
-        SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, 200.0)
+        SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, None, 200.0)
             .await
             .unwrap();
 
@@ -220,9 +248,16 @@ mod tests {
     #[tokio::test]
     async fn local_and_remote_sets_should_linearize_without_timestamp_regression() {
         let (_temp, db) = open_temp().await;
-        let local = SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, 200.0);
-        let remote =
-            SqliteProgressRepository::apply_sync_revision(&db, 1, "EPUB", REMOTE_LOCATOR, 300.0);
+        let local =
+            SqliteProgressRepository::set_progress(&db, 1, "EPUB", LOCAL_LOCATOR, None, 200.0);
+        let remote = SqliteProgressRepository::apply_sync_revision(
+            &db,
+            1,
+            "EPUB",
+            REMOTE_LOCATOR,
+            None,
+            300.0,
+        );
 
         let (local_result, remote_result) = tokio::join!(local, remote);
         local_result.unwrap();

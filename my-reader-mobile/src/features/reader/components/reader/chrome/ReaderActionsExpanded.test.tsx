@@ -29,7 +29,6 @@ const baseProps = {
   visible: true,
   currentPositionIndex: 0,
   positionCount: 10,
-  progressPercent: 0,
   readingProgression: "ltr" as const,
   palette,
   showSearchAction: false,

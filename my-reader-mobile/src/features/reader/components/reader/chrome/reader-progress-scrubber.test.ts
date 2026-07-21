@@ -19,6 +19,11 @@ describe("reader progress scrubber", () => {
     )
   })
 
+  it("should move through the same equal slots used by displayed progress", () => {
+    expect(readerPositionIndexForScrubberTranslation(0, 80, 240, 3)).toBe(1)
+    expect(readerPositionIndexForScrubberTranslation(0, 160, 240, 3)).toBe(2)
+  })
+
   it("should reverse horizontal dragging when reading from right to left", () => {
     expect(
       readerPositionIndexForScrubberTranslation(40, 40, 200, 101, "rtl"),
@@ -37,9 +42,11 @@ describe("reader progress scrubber", () => {
     )
   })
 
-  it("should derive preview progress from the target position", () => {
-    expect(readerProgressPercentForPosition(50, 101)).toBe(50)
-    expect(readerProgressPercentForPosition(100, 101)).toBe(100)
+  it("should derive user-facing progress from the covered position count", () => {
+    expect(readerProgressPercentForPosition(0, 3)).toBeCloseTo(33.33)
+    expect(readerProgressPercentForPosition(1, 3)).toBeCloseTo(66.67)
+    expect(readerProgressPercentForPosition(2, 3)).toBe(100)
+    expect(readerProgressPercentForPosition(0, 1)).toBe(100)
   })
 
   it("should use the full pill width when positioning progress visuals", () => {

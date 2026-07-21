@@ -27,6 +27,10 @@ import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdge
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
 import {
+  displayProgressionForPosition,
+  positionForDisplayProgressPercent,
+} from "@/lib/readingProgress"
+import {
   deserializeReaderBookmarkLocator,
   pdfPageForBookmark,
 } from "@/lib/readium/bookmarks"
@@ -135,6 +139,8 @@ export function ReadiumPdfReader({
     bookId,
     format,
     currentLocator,
+    displayProgression:
+      displayProgressionForPosition(pageNum, totalPages) ?? null,
   })
 
   useEffect(() => {
@@ -483,17 +489,17 @@ export function ReadiumPdfReader({
     (progress: number) => {
       const nav = navRef.current
       if (!nav || nav.totalPages < 1) return
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      goToPdfPage(Math.round(normalized * (nav.totalPages - 1)) + 1)
+      const page = positionForDisplayProgressPercent(progress, nav.totalPages)
+      if (page != null) goToPdfPage(page)
     },
     [goToPdfPage],
   )
   const resolveProgressCommit = useCallback(
     (progress: number) => {
-      if (totalPages <= 1) return 0
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const page = Math.round(normalized * (totalPages - 1)) + 1
-      return ((page - 1) / (totalPages - 1)) * 100
+      const page = positionForDisplayProgressPercent(progress, totalPages)
+      return page == null
+        ? 0
+        : (displayProgressionForPosition(page, totalPages) ?? 0) * 100
     },
     [totalPages],
   )
@@ -501,11 +507,7 @@ export function ReadiumPdfReader({
     (nextProgress: number) => {
       const total = Math.max(1, totalPages)
       const current =
-        total > 1
-          ? Math.round(
-              (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
-            ) + 1
-          : 1
+        positionForDisplayProgressPercent(nextProgress, total) ?? 1
       const label = t("reader.pageCount", { current, total })
       return {
         chapterTitle: tocRows[current - 1]?.title ?? label,
@@ -642,7 +644,7 @@ export function ReadiumPdfReader({
               : undefined
           }
           progress={
-            totalPages > 1 ? ((pageNum - 1) / (totalPages - 1)) * 100 : 0
+            (displayProgressionForPosition(pageNum, totalPages) ?? 0) * 100
           }
           getProgressPreview={getProgressPreview}
           resolveProgressCommit={resolveProgressCommit}

@@ -177,6 +177,7 @@ const demoProgressRows: ReadingProgressDto[] = [
     bookId: 1,
     format: "EPUB",
     locator: { locations: { progression: 0.42 } },
+    displayProgression: 0.42,
     updatedAt: Date.now(),
   },
   {
@@ -184,6 +185,7 @@ const demoProgressRows: ReadingProgressDto[] = [
     bookId: 3,
     format: "EPUB",
     locator: { locations: { progression: 0.18 } },
+    displayProgression: 0.18,
     updatedAt: Date.now(),
   },
 ]

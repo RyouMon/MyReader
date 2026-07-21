@@ -421,6 +421,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
         1,
         "EPUB",
         r#"{"href":"alpha.xhtml"}"#,
+        None,
         1000.0,
     )
     .await
@@ -430,6 +431,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
         2,
         "EPUB",
         r#"{"href":"beta.xhtml"}"#,
+        None,
         2000.0,
     )
     .await

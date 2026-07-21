@@ -34,7 +34,6 @@ type Props = {
   readingProgression: ReaderProgressDirection
   currentPositionIndex: number
   positionCount: number
-  progressPercent: number
   palette: ReaderChromePalette
   onOpenToc: () => void
   onPreviewPosition: (positionIndex: number) => ReaderProgressPreview
@@ -47,7 +46,6 @@ export function ReaderTocProgressAction({
   readingProgression,
   currentPositionIndex,
   positionCount,
-  progressPercent,
   palette,
   onOpenToc,
   onPreviewPosition,
@@ -103,9 +101,13 @@ export function ReaderTocProgressAction({
   const visibleDragPreview = readerReachedCommittedPosition ? null : dragPreview
   const isDragging = visibleDragPreview?.committed === false
   const isRtl = readingProgression === "rtl"
+  const currentProgress = readerProgressPercentForPosition(
+    currentPositionIndex,
+    positionCount,
+  )
   const originalProgressOffset = readerProgressOffset(
     actionPillWidth,
-    progressPercent,
+    currentProgress,
     readingProgression,
   )
   const displayProgress = visibleDragPreview
@@ -113,7 +115,7 @@ export function ReaderTocProgressAction({
         visibleDragPreview.positionIndex,
         positionCount,
       )
-    : progressPercent
+    : currentProgress
 
   const { gesture, pressFeedbackStyle, progressFillStyle } =
     useReaderProgressScrubGesture({

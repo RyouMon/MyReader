@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest"
 import {
+  displayProgressionForPosition,
   getProgressDisplay,
   locatorToPercent,
+  positionForDisplayProgressPercent,
   readingProgressRowsToMap,
 } from "@/lib/readingProgress"
 
 const t = (key: string) => key
+
+describe("displayProgressionForPosition", () => {
+  it("should count the current position as covered for user-facing progress", () => {
+    expect(displayProgressionForPosition(1, 3)).toBeCloseTo(1 / 3)
+    expect(displayProgressionForPosition(2, 3)).toBeCloseTo(2 / 3)
+    expect(displayProgressionForPosition(3, 3)).toBe(1)
+  })
+
+  it("should map displayed slots back to their positions", () => {
+    expect(positionForDisplayProgressPercent(100 / 3, 3)).toBe(1)
+    expect(positionForDisplayProgressPercent(200 / 3, 3)).toBe(2)
+    expect(positionForDisplayProgressPercent(100, 3)).toBe(3)
+  })
+})
 
 describe("locatorToPercent", () => {
   it("should prefer total progression when resource progression is also available", () => {
@@ -46,6 +62,7 @@ describe("readingProgressRowsToMap", () => {
           bookId: 7,
           format: "epub",
           locator: { locations: { totalProgression: 0.42 } },
+          displayProgression: 1,
         },
         {
           bookId: 8,
@@ -59,7 +76,7 @@ describe("readingProgressRowsToMap", () => {
         },
       ]),
     ).toEqual({
-      "7": { EPUB: 42 },
+      "7": { EPUB: 100 },
       "8": { PDF: 80 },
     })
   })

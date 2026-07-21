@@ -20,7 +20,7 @@ async fn direct_progress_operations_should_round_trip_locator() {
     let sidecar_root = temp.path().to_string_lossy().to_string();
     let locator = json!({"href": "chapter.xhtml", "locations": {"progression": 0.25}});
 
-    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &locator)
+    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &locator, Some(1.0 / 3.0))
         .await
         .expect("set should succeed");
 
@@ -32,6 +32,7 @@ async fn direct_progress_operations_should_round_trip_locator() {
     assert_eq!(dto.book_id, 7);
     assert_eq!(dto.format, "EPUB");
     assert_eq!(dto.locator, locator);
+    assert_eq!(dto.display_progression, Some(1.0 / 3.0));
 }
 
 #[tokio::test]
@@ -53,10 +54,10 @@ async fn list_reading_progress_should_return_all_rows_for_library() {
     let first = json!({"href": "chapter.xhtml", "locations": {"progression": 0.25}});
     let second = json!({"href": "page-2", "locations": {"position": 2}});
 
-    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &first)
+    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &first, None)
         .await
         .expect("first set should succeed");
-    ProgressService::set_reading_progress(&sidecar_root, 8, "PDF", &second)
+    ProgressService::set_reading_progress(&sidecar_root, 8, "PDF", &second, None)
         .await
         .expect("second set should succeed");
 
@@ -98,6 +99,7 @@ async fn progress_for_library_should_return_saved_progress() {
         7,
         "EPUB",
         &locator,
+        Some(0.5),
     )
     .await
     .expect("set should succeed");
@@ -137,6 +139,7 @@ async fn progress_for_library_should_resolve_active_library_when_id_is_none() {
         8,
         "PDF",
         &locator,
+        None,
     )
     .await
     .expect("set should succeed");
@@ -175,6 +178,7 @@ async fn progress_for_library_should_return_not_found_for_missing_active_or_unkn
         1,
         "EPUB",
         &locator,
+        None,
     )
     .await
     .expect_err("should fail without active library");

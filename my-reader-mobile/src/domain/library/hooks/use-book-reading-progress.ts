@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import type { Library } from "@/src/domain/types"
 import { queryKeys } from "@/src/services/query/query-keys"
+import { displayProgressionToPercent } from "../display-progression"
 
 export function useBookReadingProgress(library: Library | null) {
   return useQuery({
@@ -22,7 +23,9 @@ export function useBookReadingProgress(library: Library | null) {
 
       for (const row of rows) {
         const locator = parseStoredLocator(JSON.parse(row.locatorJson))
-        const percent = locatorToPercent(locator)
+        const percent =
+          displayProgressionToPercent(row.displayProgression) ??
+          locatorToPercent(locator)
         if (percent === undefined) continue
 
         const bookId = String(row.bookId)

@@ -272,6 +272,7 @@ pub struct ReadingProgressDto {
     pub format: String,
     #[specta(type = specta_typescript::Any)]
     pub locator: serde_json::Value,
+    pub display_progression: Option<f64>,
     pub updated_at: f64,
 }
 

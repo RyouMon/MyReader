@@ -1,3 +1,5 @@
+import { displayProgressionForPosition } from "@/src/domain/library/display-progression"
+
 export type ReaderProgressPreview = {
   chapterTitle?: string
   positionLabel: string
@@ -24,7 +26,7 @@ export function readerPositionIndexForScrubberTranslation(
   "worklet"
   if (width <= 0 || positionCount <= 1) return 0
   const logicalTranslation = direction === "rtl" ? -translationX : translationX
-  const translatedPositions = (logicalTranslation / width) * (positionCount - 1)
+  const translatedPositions = (logicalTranslation / width) * positionCount
   return clampReaderPositionIndex(
     startPositionIndex + translatedPositions,
     positionCount,
@@ -36,12 +38,7 @@ export function readerProgressPercentForPosition(
   positionCount: number,
 ): number {
   "worklet"
-  if (positionCount <= 1) return 0
-  return (
-    (clampReaderPositionIndex(positionIndex, positionCount) /
-      (positionCount - 1)) *
-    100
-  )
+  return displayProgressionForPosition(positionIndex, positionCount) * 100
 }
 
 export function readerProgressOffset(

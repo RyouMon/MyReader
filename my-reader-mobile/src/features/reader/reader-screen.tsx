@@ -834,7 +834,6 @@ export default function ReaderScreen() {
     return () => cancelAnimationFrame(frame)
   }, [chromeState, handleSearchDismiss, searchAvailable])
 
-  const progressPercent = readerState?.progress ?? 0
   const reflowSettings = settings.reflowable
   const fixedSettings = settings.fixed
   const fallbackLanguages = activeLoadState?.languages ?? []
@@ -1335,7 +1334,6 @@ export default function ReaderScreen() {
               visible={chromeState === ChromeState.Expanded}
               currentPositionIndex={readerState?.currentPage ?? 0}
               positionCount={readerState?.totalPages ?? 1}
-              progressPercent={progressPercent}
               readingProgression={
                 isFixedSurface ? fixedSettings.readingProgression : "ltr"
               }

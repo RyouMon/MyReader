@@ -60,35 +60,56 @@ describe("ReaderTocProgressAction", () => {
     })
   })
 
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it("should show one-third progress when the reader is on page one of three", () => {
+    render(
+      <ReaderTocProgressAction
+        accessibilityLabel="目录"
+        actionPillWidth={240}
+        readingProgression="ltr"
+        currentPositionIndex={0}
+        positionCount={3}
+        palette={palette}
+        onOpenToc={jest.fn()}
+        onPreviewPosition={(positionIndex) => ({
+          positionLabel: `位置 ${positionIndex + 1} / 3`,
+        })}
+        onCommitPosition={jest.fn()}
+      />,
+    )
+
+    expect(scrubOptions.progressPercent).toBeCloseTo(33.33)
+  })
+
   it("should preserve drag feedback when committing before the reader reaches the target", () => {
+    jest.useFakeTimers()
     const commonProps = {
       accessibilityLabel: "目录",
       actionPillWidth: 240,
       readingProgression: "ltr" as const,
-      positionCount: 10,
+      positionCount: 3,
       palette,
       onOpenToc: jest.fn(),
       onPreviewPosition: (positionIndex: number) => ({
         chapterTitle: "第三章",
-        positionLabel: `位置 ${positionIndex + 1} / 10`,
+        positionLabel: `位置 ${positionIndex + 1} / 3`,
       }),
       onCommitPosition: jest.fn(),
     }
     const { rerender } = render(
-      <ReaderTocProgressAction
-        {...commonProps}
-        currentPositionIndex={0}
-        progressPercent={25}
-      />,
+      <ReaderTocProgressAction {...commonProps} currentPositionIndex={1} />,
     )
 
-    act(() => scrubOptions.onPreviewPosition(5))
+    act(() => scrubOptions.onPreviewPosition(2))
     const originMarker = screen.getByTestId("reader-progress-origin-marker", {
       includeHiddenElements: true,
     })
-    expect(StyleSheet.flatten(originMarker.props.style).left).toBe(60)
+    expect(StyleSheet.flatten(originMarker.props.style).left).toBeCloseTo(160)
 
-    act(() => scrubOptions.onCommitPosition(5))
+    act(() => scrubOptions.onCommitPosition(2))
     expect(
       screen.queryByTestId("reader-progress-origin-marker", {
         includeHiddenElements: true,
@@ -96,27 +117,20 @@ describe("ReaderTocProgressAction", () => {
     ).toBeNull()
 
     rerender(
-      <ReaderTocProgressAction
-        {...commonProps}
-        currentPositionIndex={0}
-        progressPercent={25}
-      />,
+      <ReaderTocProgressAction {...commonProps} currentPositionIndex={1} />,
     )
     expect(
       mockUseReaderProgressScrubGesture.mock.calls.at(-1)?.[0].progressPercent,
-    ).toBeCloseTo(55.56)
+    ).toBe(100)
 
     rerender(
-      <ReaderTocProgressAction
-        {...commonProps}
-        currentPositionIndex={5}
-        progressPercent={55.56}
-      />,
+      <ReaderTocProgressAction {...commonProps} currentPositionIndex={2} />,
     )
     expect(
       mockUseReaderProgressScrubGesture.mock.calls.at(-1)?.[0].progressPercent,
-    ).toBeCloseTo(55.56)
-    expect(screen.queryByText("位置 6 / 10")).toBeNull()
+    ).toBe(100)
+    expect(screen.queryByText("位置 3 / 3")).toBeNull()
+    act(() => jest.runOnlyPendingTimers())
   })
 
   it("should anchor progress feedback to the right when reading right to left", () => {
@@ -125,24 +139,23 @@ describe("ReaderTocProgressAction", () => {
         accessibilityLabel="目录"
         actionPillWidth={240}
         readingProgression="rtl"
-        currentPositionIndex={2}
-        positionCount={10}
-        progressPercent={25}
+        currentPositionIndex={1}
+        positionCount={3}
         palette={palette}
         onOpenToc={jest.fn()}
         onPreviewPosition={(positionIndex) => ({
-          positionLabel: `位置 ${positionIndex + 1} / 10`,
+          positionLabel: `位置 ${positionIndex + 1} / 3`,
         })}
         onCommitPosition={jest.fn()}
       />,
     )
 
-    act(() => scrubOptions.onPreviewPosition(5))
+    act(() => scrubOptions.onPreviewPosition(2))
 
     expect(scrubOptions.direction).toBe("rtl")
     const originMarker = screen.getByTestId("reader-progress-origin-marker", {
       includeHiddenElements: true,
     })
-    expect(StyleSheet.flatten(originMarker.props.style).left).toBe(180)
+    expect(StyleSheet.flatten(originMarker.props.style).left).toBeCloseTo(80)
   })
 })

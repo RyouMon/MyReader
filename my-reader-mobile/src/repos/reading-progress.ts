@@ -29,6 +29,7 @@ export type ReadingProgressUpsert = {
   bookId: number
   format: string
   locatorJson: string
+  displayProgression: number | null
   updatedAt: number
 }
 
@@ -56,12 +57,14 @@ export async function upsertReadingProgress(
       bookId: patch.bookId,
       format: fmt,
       locatorJson: patch.locatorJson,
+      displayProgression: patch.displayProgression,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [readingProgress.bookId, readingProgress.format],
       set: {
         locatorJson: patch.locatorJson,
+        displayProgression: patch.displayProgression,
         updatedAt: sql<number>`max(excluded.updated_at, ${readingProgress.updatedAt} + 1)`,
       },
     })
@@ -86,19 +89,27 @@ export async function upsertReadingProgressIfNewer(
       bookId: patch.bookId,
       format: fmt,
       locatorJson: patch.locatorJson,
+      displayProgression: patch.displayProgression,
       updatedAt: patch.updatedAt,
     })
     .onConflictDoUpdate({
       target: [readingProgress.bookId, readingProgress.format],
       set: {
         locatorJson: patch.locatorJson,
+        displayProgression: patch.displayProgression,
         updatedAt: patch.updatedAt,
       },
       setWhere: sql`
         excluded.updated_at > ${readingProgress.updatedAt}
         OR (
           excluded.updated_at = ${readingProgress.updatedAt}
-          AND excluded.locator_json COLLATE BINARY > ${readingProgress.locatorJson} COLLATE BINARY
+          AND (
+            excluded.locator_json COLLATE BINARY > ${readingProgress.locatorJson} COLLATE BINARY
+            OR (
+              excluded.locator_json = ${readingProgress.locatorJson}
+              AND coalesce(excluded.display_progression, -1) > coalesce(${readingProgress.displayProgression}, -1)
+            )
+          )
         )
       `,
     })
@@ -110,6 +121,7 @@ export type ReadingProgressChangeRow = {
   bookId: number
   format: string
   locatorJson: string
+  displayProgression: number | null
   updatedAt: number
 }
 
@@ -122,6 +134,7 @@ export async function listAllReadingProgress(
       bookId: readingProgress.bookId,
       format: readingProgress.format,
       locatorJson: readingProgress.locatorJson,
+      displayProgression: readingProgress.displayProgression,
       updatedAt: readingProgress.updatedAt,
     })
     .from(readingProgress)
@@ -138,6 +151,7 @@ export async function listReadingProgressAtOrAfter(
       bookId: readingProgress.bookId,
       format: readingProgress.format,
       locatorJson: readingProgress.locatorJson,
+      displayProgression: readingProgress.displayProgression,
       updatedAt: readingProgress.updatedAt,
     })
     .from(readingProgress)

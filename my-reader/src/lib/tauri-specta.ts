@@ -37,10 +37,11 @@ export const commands = {
 	bookId: number,
 	format: string,
 	locator: any,
+	displayProgression: number | null,
 	updatedAt: number | null,
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
-	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator })),
+	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any, displayProgression: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator, displayProgression })),
 	listReaderAnnotations: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderAnnotationDto[], ErrorKind>(__TAURI_INVOKE("list_reader_annotations", { libraryId, bookId, format })),
 	addReaderAnnotation: (libraryId: string | null, bookId: number, format: string, locator: any, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("add_reader_annotation", { libraryId, bookId, format, locator, color, note })),
 	updateReaderAnnotation: (libraryId: string | null, bookId: number, format: string, id: string, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("update_reader_annotation", { libraryId, bookId, format, id, color, note })),
@@ -285,6 +286,7 @@ export type ReadingProgressDto = {
 	bookId: number,
 	format: string,
 	locator: any,
+	displayProgression: number | null,
 	updatedAt: number | null,
 };
 

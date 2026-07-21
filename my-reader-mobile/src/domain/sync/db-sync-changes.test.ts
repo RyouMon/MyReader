@@ -46,6 +46,7 @@ describe("db sync changes", () => {
           bookId: 1,
           format: "epub",
           locatorJson: '{"href":"chapter.xhtml"}',
+          displayProgression: 0.5,
           updatedAt: 20,
         },
       ],
@@ -69,6 +70,7 @@ describe("db sync changes", () => {
         k: { book_id: 1, format: "EPUB" },
         v: {
           locator_json: '{"href":"chapter.xhtml"}',
+          display_progression: 0.5,
           updated_at: 20,
         },
       },
@@ -148,15 +150,46 @@ describe("db sync changes", () => {
     const change = parseDbChangeRow({
       t: "reading_progress",
       k: { book_id: 2, format: "pdf" },
-      v: { locator_json: '{"href":"book.pdf"}', updated_at: 20 },
+      v: {
+        locator_json: '{"href":"book.pdf"}',
+        display_progression: 1,
+        updated_at: 20,
+      },
     })
 
     expect(change && parseReadingProgressChange(change)).toEqual({
       bookId: 2,
       format: "PDF",
       locatorJson: '{"href":"book.pdf"}',
+      displayProgression: 1,
       updatedAt: 20,
     })
+  })
+
+  it("should accept progress from an older change without display progression", () => {
+    const change = parseDbChangeRow({
+      t: "reading_progress",
+      k: { book_id: 2, format: "pdf" },
+      v: { locator_json: '{"href":"book.pdf"}', updated_at: 20 },
+    })
+
+    expect(change && parseReadingProgressChange(change)).toMatchObject({
+      displayProgression: null,
+    })
+  })
+
+  it("should reject progress when display progression is outside its range", () => {
+    const change = parseDbChangeRow({
+      t: "reading_progress",
+      k: { book_id: 2, format: "pdf" },
+      v: {
+        locator_json: '{"href":"book.pdf"}',
+        display_progression: 1.1,
+        updated_at: 20,
+      },
+    })
+
+    expect(change && parseReadingProgressChange(change)).toBeNull()
   })
 
   it("should ignore an unknown table when parsing known providers", () => {

@@ -11,6 +11,7 @@ export interface ReadingProgressDto {
   bookId: number
   format: string
   locator: Record<string, unknown>
+  displayProgression: number | null
   updatedAt: number | null
 }
 
@@ -20,8 +21,16 @@ export function useLocatorProgressSync(params: {
   bookId: number
   format: string
   currentLocator: Locator | null
+  displayProgression: number | null
 }): void {
-  const { enabled, libraryId, bookId, format, currentLocator } = params
+  const {
+    enabled,
+    libraryId,
+    bookId,
+    format,
+    currentLocator,
+    displayProgression,
+  } = params
   const saveSeqRef = useRef(0)
   const locatorRef = useRef(currentLocator)
   locatorRef.current = currentLocator
@@ -39,12 +48,18 @@ export function useLocatorProgressSync(params: {
       const loc = locatorRef.current
       if (!loc) return
       api
-        .setReadingProgress(libraryId, bookId, format, locatorToJson(loc))
+        .setReadingProgress(
+          libraryId,
+          bookId,
+          format,
+          locatorToJson(loc),
+          displayProgression,
+        )
         .catch((e: unknown) => {
           console.error("[useLocatorProgressSync] save failed:", e)
         })
     }, SAVE_DEBOUNCE_MS)
 
     return () => window.clearTimeout(t)
-  }, [enabled, libraryId, bookId, format, locatorKey])
+  }, [enabled, libraryId, bookId, format, locatorKey, displayProgression])
 }

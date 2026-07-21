@@ -16,6 +16,7 @@ struct ReadingProgressChangedPayload {
     book_id: i64,
     format: String,
     locator: serde_json::Value,
+    display_progression: Option<f64>,
 }
 
 fn emit_reading_progress_changed<R: tauri::Runtime>(
@@ -24,12 +25,14 @@ fn emit_reading_progress_changed<R: tauri::Runtime>(
     book_id: i64,
     format: &str,
     locator: &serde_json::Value,
+    display_progression: Option<f64>,
 ) {
     let payload = ReadingProgressChangedPayload {
         library_id: library_id.to_string(),
         book_id,
         format: format.to_string(),
         locator: locator.clone(),
+        display_progression,
     };
     if let Err(e) = app.emit("reading_progress", payload) {
         debug!("Failed to emit reading progress event. error: {e}");
@@ -111,6 +114,7 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
     book_id: i64,
     format: String,
     locator: JsonAny,
+    display_progression: Option<f64>,
 ) -> Result<(), AppError> {
     info!(
         "Start to set reading progress. library id: {library_id:?}, book id: {book_id}, format: \"{}\"",
@@ -127,6 +131,7 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
         book_id,
         &format,
         &locator.0,
+        display_progression,
     )
     .await;
 
@@ -139,7 +144,14 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
     }
 
     if result.is_ok() {
-        emit_reading_progress_changed(&app, &resolved_library.id, book_id, &format, &locator.0);
+        emit_reading_progress_changed(
+            &app,
+            &resolved_library.id,
+            book_id,
+            &format,
+            &locator.0,
+            display_progression,
+        );
     }
 
     result

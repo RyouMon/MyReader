@@ -98,6 +98,10 @@ import { useReaderPaginateEdgeHover } from "@/hooks/reader/useReaderPaginateEdge
 import { useReaderPanels } from "@/hooks/reader/useReaderPanels"
 import { useReaderSearch } from "@/hooks/reader/useReaderSearch"
 import { useReadingChrome } from "@/hooks/reader/useReadingChrome"
+import {
+  displayProgressionForPosition,
+  positionForDisplayProgressPercent,
+} from "@/lib/readingProgress"
 import { deserializeReaderBookmarkLocator } from "@/lib/readium/bookmarks"
 import {
   applyEpubAnnotations,
@@ -1979,8 +1983,12 @@ export function ReadiumEpubReader({
     (progress: number) => {
       const nav = navigatorRef.current
       if (!nav || epubPositions.length === 0) return
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const targetIndex = Math.round(normalized * (epubPositions.length - 1))
+      const targetPosition = positionForDisplayProgressPercent(
+        progress,
+        epubPositions.length,
+      )
+      if (targetPosition == null) return
+      const targetIndex = targetPosition - 1
       const targetLocator = isFixedLayout
         ? epubPositions[targetIndex]
         : createEpubProgressSeekLocator(epubPositions, targetIndex)
@@ -2005,10 +2013,16 @@ export function ReadiumEpubReader({
   )
   const resolveProgressCommit = useCallback(
     (progress: number) => {
-      if (epubPositions.length <= 1) return 0
-      const normalized = Math.max(0, Math.min(100, progress)) / 100
-      const targetIndex = Math.round(normalized * (epubPositions.length - 1))
-      return (targetIndex / (epubPositions.length - 1)) * 100
+      const targetPosition = positionForDisplayProgressPercent(
+        progress,
+        epubPositions.length,
+      )
+      return targetPosition == null
+        ? 0
+        : (displayProgressionForPosition(
+            targetPosition,
+            epubPositions.length,
+          ) ?? 0) * 100
     },
     [epubPositions.length],
   )
@@ -2105,12 +2119,30 @@ export function ReadiumEpubReader({
     noteMarkerAccessibilityLabel,
   ])
 
+  const savedProgressPositionCount = isFixedLayout
+    ? publication.readingOrder.items.length
+    : epubPositions.length
+  const savedProgressPosition =
+    currentLocator?.locations?.position ??
+    (currentLocator?.locations?.totalProgression != null &&
+    savedProgressPositionCount > 1
+      ? Math.round(
+          currentLocator.locations.totalProgression *
+            (savedProgressPositionCount - 1),
+        ) + 1
+      : 1)
+
   useLocatorProgressSync({
     enabled: progressSyncEnabled && Boolean(libraryId) && format.length > 0,
     libraryId,
     bookId,
     format,
     currentLocator,
+    displayProgression:
+      displayProgressionForPosition(
+        savedProgressPosition,
+        savedProgressPositionCount,
+      ) ?? null,
   })
 
   useEffect(() => {
@@ -2385,16 +2417,9 @@ export function ReadiumEpubReader({
     (nextProgress: number) => {
       const total = bottomPositionTotal
       if (total <= 0) return { label: "" }
-      const targetIndex = Math.max(
-        0,
-        Math.min(
-          total - 1,
-          Math.round(
-            (Math.max(0, Math.min(100, nextProgress)) / 100) * (total - 1),
-          ),
-        ),
-      )
-      const current = targetIndex + 1
+      const current =
+        positionForDisplayProgressPercent(nextProgress, total) ?? 1
+      const targetIndex = current - 1
 
       if (isFixedLayout) {
         const row = tocRows.find(
@@ -2618,13 +2643,12 @@ export function ReadiumEpubReader({
                 : undefined
           }
           progress={
-            currentLocator?.locations?.totalProgression != null
-              ? (currentLocator.locations.totalProgression ?? 0) * 100
-              : isFixedLayout && publication.readingOrder.items.length > 1
-                ? (((currentLocator?.locations?.position ?? 1) - 1) /
-                    (publication.readingOrder.items.length - 1)) *
-                  100
-                : undefined
+            bottomPositionTotal > 0
+              ? (displayProgressionForPosition(
+                  bottomPositionCurrent,
+                  bottomPositionTotal,
+                ) ?? 0) * 100
+              : undefined
           }
           getProgressPreview={getProgressPreview}
           resolveProgressCommit={resolveProgressCommit}

@@ -91,7 +91,7 @@ export async function setReadingProgress(
   bookId: number,
   format: string,
   locator: Locator,
-  options?: { invalidate?: boolean },
+  options?: { displayProgression?: number; invalidate?: boolean },
 ): Promise<void> {
   const fmt = format.toUpperCase()
   const normalized: Locator = {
@@ -107,6 +107,7 @@ export async function setReadingProgress(
         bookId,
         format: fmt,
         locatorJson,
+        displayProgression: options?.displayProgression ?? null,
       },
       options,
     )

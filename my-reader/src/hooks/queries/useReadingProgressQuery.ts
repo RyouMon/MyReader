@@ -6,6 +6,7 @@ import {
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useEffect } from "react"
 import {
+  displayProgressionToPercent,
   locatorToPercent,
   type ReadingProgressByBook,
   readingProgressRowsToMap,
@@ -18,6 +19,7 @@ export type ReadingProgressChangedEvent = {
   bookId: number
   format: string
   locator: unknown
+  displayProgression: number | null
 }
 
 export const readingProgressKeys = {
@@ -34,7 +36,9 @@ export function applyReadingProgressEvent(
   event: ReadingProgressChangedEvent,
   client: QueryClient = defaultQueryClient,
 ) {
-  const percent = locatorToPercent(event.locator)
+  const percent =
+    displayProgressionToPercent(event.displayProgression) ??
+    locatorToPercent(event.locator)
   if (percent === undefined) return
 
   const bookId = String(event.bookId)

@@ -47,7 +47,7 @@ pub struct TableSpec {
 pub const READING_PROGRESS_SPEC: TableSpec = TableSpec {
     name: "reading_progress",
     key_columns: &["book_id", "format"],
-    value_columns: &["locator_json", "updated_at"],
+    value_columns: &["locator_json", "display_progression", "updated_at"],
 };
 
 /// `bookmarks` table sync spec. Deletions are retained as tombstones so they
@@ -304,6 +304,10 @@ impl LwwProvider {
                         "locator_json".to_string(),
                         serde_json::json!(row.locator_json),
                     ),
+                    (
+                        "display_progression".to_string(),
+                        serde_json::json!(row.display_progression),
+                    ),
                     ("updated_at".to_string(), serde_json::json!(row.updated_at)),
                 ]),
             })
@@ -397,12 +401,26 @@ impl LwwProvider {
             .and_then(serde_json::Value::as_str)
             .filter(|locator| !locator.is_empty())
             .ok_or_else(|| AppError::Sync("Invalid reading progress locator".into()))?;
+        let display_progression = match change.value.get("display_progression") {
+            None | Some(serde_json::Value::Null) => None,
+            Some(value) => Some(
+                value
+                    .as_f64()
+                    .filter(|progression| {
+                        progression.is_finite() && (0.0..=1.0).contains(progression)
+                    })
+                    .ok_or_else(|| {
+                        AppError::Sync("Invalid reading progress display_progression".into())
+                    })?,
+            ),
+        };
 
         SqliteProgressRepository::apply_sync_revision(
             db,
             book_id,
             &format,
             locator_json,
+            display_progression,
             incoming_ts,
         )
         .await
@@ -740,7 +758,11 @@ mod tests {
         }
     }
 
-    fn progress_change(locator_json: &str, updated_at: f64) -> ChangeRow {
+    fn progress_change(
+        locator_json: &str,
+        display_progression: Option<f64>,
+        updated_at: f64,
+    ) -> ChangeRow {
         ChangeRow {
             table: "reading_progress".into(),
             key: serde_json::Map::from_iter([
@@ -749,6 +771,10 @@ mod tests {
             ]),
             value: serde_json::Map::from_iter([
                 ("locator_json".into(), serde_json::json!(locator_json)),
+                (
+                    "display_progression".into(),
+                    serde_json::json!(display_progression),
+                ),
                 ("updated_at".into(), serde_json::json!(updated_at)),
             ]),
         }
@@ -917,6 +943,7 @@ mod tests {
             4,
             "pdf",
             r#"{"href":"publication.pdf","type":"application/pdf"}"#,
+            Some(1.0),
             300.0,
         )
         .await
@@ -926,6 +953,10 @@ mod tests {
             .unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].key.get("format"), Some(&serde_json::json!("PDF")));
+        assert_eq!(
+            rows[0].value.get("display_progression"),
+            Some(&serde_json::json!(1.0))
+        );
     }
 
     #[tokio::test]
@@ -1073,8 +1104,8 @@ mod tests {
 
     #[tokio::test]
     async fn equal_timestamp_progress_should_converge_by_binary_locator_in_either_order() {
-        let lower = progress_change("{\"href\":\"\u{e000}\"}", 100.0);
-        let higher = progress_change("{\"href\":\"\u{10000}\"}", 100.0);
+        let lower = progress_change("{\"href\":\"\u{e000}\"}", None, 100.0);
+        let higher = progress_change("{\"href\":\"\u{10000}\"}", Some(1.0), 100.0);
 
         let forward = resolve_progress(&lower, &higher).await;
         let reverse = resolve_progress(&higher, &lower).await;
@@ -1088,6 +1119,19 @@ mod tests {
         assert_eq!(forward.locator_json, reverse.locator_json);
         assert_eq!(forward.updated_at, reverse.updated_at);
         assert_eq!(forward.format, "EPUB");
+    }
+
+    #[tokio::test]
+    async fn equal_timestamp_and_locator_progress_should_converge_by_display_progression() {
+        let locator = "{\"href\":\"chapter.xhtml\"}";
+        let legacy = progress_change(locator, None, 100.0);
+        let current = progress_change(locator, Some(1.0), 100.0);
+
+        let forward = resolve_progress(&legacy, &current).await;
+        let reverse = resolve_progress(&current, &legacy).await;
+
+        assert_eq!(forward.display_progression, Some(1.0));
+        assert_eq!(forward.display_progression, reverse.display_progression);
     }
 
     #[tokio::test]

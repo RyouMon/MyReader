@@ -72,6 +72,7 @@ function setupEmptyDatabase(): void {
       book_id INTEGER NOT NULL,
       format TEXT NOT NULL,
       locator_json TEXT NOT NULL,
+      display_progression REAL,
       updated_at REAL NOT NULL
     );
     CREATE UNIQUE INDEX idx_reading_progress_book_format
@@ -122,6 +123,7 @@ function progress(
     bookId: 1,
     format: "EPUB",
     locatorJson,
+    displayProgression: null,
     updatedAt: 100,
     ...overrides,
   }
@@ -277,12 +279,21 @@ describe("sync repository LWW", () => {
 
     await upsertReadingProgress(
       library,
-      { bookId: 1, format: "EPUB", locatorJson: "local" },
+      {
+        bookId: 1,
+        format: "EPUB",
+        locatorJson: "local",
+        displayProgression: 1,
+      },
       { invalidate: false },
     )
 
     const actual = await getReadingProgressRow(library, 1, "EPUB")
-    expect(actual).toMatchObject({ locatorJson: "local", updatedAt: 301 })
+    expect(actual).toMatchObject({
+      locatorJson: "local",
+      displayProgression: 1,
+      updatedAt: 301,
+    })
   })
 
   it("should keep newer local bookmark state when an older remote tombstone arrives", async () => {
@@ -381,5 +392,18 @@ describe("sync repository LWW", () => {
     expect(higherThenLower.applied).toBe(false)
     expect(lowerThenHigher.row?.locatorJson).toBe("中")
     expect(higherThenLower.row?.locatorJson).toBe("中")
+  })
+
+  it("should converge on display progression when time and locator match", async () => {
+    const legacy = progress({ displayProgression: null, updatedAt: 200 })
+    const current = progress({ displayProgression: 1, updatedAt: 200 })
+
+    const legacyThenCurrent = await resolveProgress(legacy, current)
+    const currentThenLegacy = await resolveProgress(current, legacy)
+
+    expect(legacyThenCurrent.applied).toBe(true)
+    expect(currentThenLegacy.applied).toBe(false)
+    expect(legacyThenCurrent.row?.displayProgression).toBe(1)
+    expect(currentThenLegacy.row?.displayProgression).toBe(1)
   })
 })

@@ -8,6 +8,7 @@ export type ReadingProgressRowLike = {
   bookId: number
   format: string
   locator: unknown
+  displayProgression?: number | null
 }
 
 export type ReadingProgressByBook = Record<string, Record<string, number>>
@@ -18,6 +19,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function clampProgression(value: number): number {
   return Math.max(0, Math.min(1, value))
+}
+
+export function displayProgressionForPosition(
+  position: number,
+  positionCount: number,
+): number | undefined {
+  if (positionCount <= 0) return undefined
+  const count = Math.max(1, Math.round(positionCount))
+  const current = Math.max(1, Math.min(count, Math.round(position)))
+  return current / count
+}
+
+export function positionForDisplayProgressPercent(
+  progressPercent: number,
+  positionCount: number,
+): number | undefined {
+  if (positionCount <= 0) return undefined
+  const count = Math.max(1, Math.round(positionCount))
+  const normalized = Math.max(0, Math.min(100, progressPercent)) / 100
+  return Math.max(1, Math.min(count, Math.ceil(normalized * count)))
+}
+
+export function displayProgressionToPercent(
+  displayProgression: number | null | undefined,
+): number | undefined {
+  if (typeof displayProgression !== "number") return undefined
+  return clampProgression(displayProgression) * 100
 }
 
 export function locatorToPercent(locator: unknown): number | undefined {
@@ -44,7 +72,9 @@ export function readingProgressRowsToMap(
   const byBook: ReadingProgressByBook = {}
 
   for (const row of rows) {
-    const percent = locatorToPercent(row.locator)
+    const percent =
+      displayProgressionToPercent(row.displayProgression) ??
+      locatorToPercent(row.locator)
     if (percent === undefined) continue
 
     const bookId = String(row.bookId)

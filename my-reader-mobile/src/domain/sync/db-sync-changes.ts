@@ -1,6 +1,6 @@
+import { isCurrentReaderBookmarkLocatorKey } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderBookmarkChangeRow } from "../../repos/bookmarks"
 import type { ReadingProgressChangeRow } from "../../repos/reading-progress"
-import { isCurrentReaderBookmarkLocatorKey } from "@my-reader/tools/reader-bookmarks"
 
 export type DbChangeRow = {
   t: string
@@ -229,7 +229,11 @@ export function buildDbChangeRows(
       (row): DbChangeRow => ({
         t: "reading_progress",
         k: { book_id: row.bookId, format: row.format.toUpperCase() },
-        v: { locator_json: row.locatorJson, updated_at: row.updatedAt },
+        v: {
+          locator_json: row.locatorJson,
+          display_progression: row.displayProgression,
+          updated_at: row.updatedAt,
+        },
       }),
     ),
     ...bookmarkRows.map(
@@ -269,11 +273,18 @@ export function parseReadingProgressChange(
   const bookId = positiveSafeInteger(change.k.book_id)
   const format = trimmedNonEmptyString(change.k.format)
   const locatorJson = nonEmptyString(change.v.locator_json)
+  const rawDisplayProgression = change.v.display_progression
+  const displayProgression =
+    rawDisplayProgression == null ? null : finiteNumber(rawDisplayProgression)
   const updatedAt = finiteNumber(change.v.updated_at)
   if (
     bookId === null ||
     format === null ||
     locatorJson === null ||
+    (rawDisplayProgression != null &&
+      (displayProgression === null ||
+        displayProgression < 0 ||
+        displayProgression > 1)) ||
     updatedAt === null ||
     updatedAt <= 0
   ) {
@@ -284,6 +295,7 @@ export function parseReadingProgressChange(
     bookId,
     format: format.toUpperCase(),
     locatorJson,
+    displayProgression,
     updatedAt,
   }
 }

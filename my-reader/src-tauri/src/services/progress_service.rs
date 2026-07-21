@@ -32,12 +32,21 @@ impl ProgressService {
         book_id: i64,
         format: &str,
         locator: &serde_json::Value,
+        display_progression: Option<f64>,
     ) -> Result<(), AppError> {
         let db = SqliteProgressRepository::open(sidecar_root).await?;
         let json =
             serde_json::to_string(locator).map_err(|e| AppError::Serialize(e.to_string()))?;
         let now = unix_epoch_millis();
-        SqliteProgressRepository::set_progress(&db, book_id, format, &json, now).await
+        SqliteProgressRepository::set_progress(
+            &db,
+            book_id,
+            format,
+            &json,
+            display_progression,
+            now,
+        )
+        .await
     }
 
     pub async fn list_reading_progress(
@@ -83,11 +92,13 @@ impl ProgressService {
         book_id: i64,
         format: &str,
         locator: &serde_json::Value,
+        display_progression: Option<f64>,
     ) -> Result<(), AppError> {
         let lib = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&lib, app_data_dir)
             .to_string_lossy()
             .to_string();
-        Self::set_reading_progress(&sidecar_root, book_id, format, locator).await
+        Self::set_reading_progress(&sidecar_root, book_id, format, locator, display_progression)
+            .await
     }
 }
