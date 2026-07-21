@@ -53,7 +53,7 @@ private val readerViewportAnchorRuntimeScript = """
               }
               current = parent;
           }
-          return parts.length > 0 ? parts.join(" > ") : null;
+          return parts.join(" > ");
       }
       function firstTextDescendant(node) {
           var _a, _b;
@@ -87,19 +87,16 @@ private val readerViewportAnchorRuntimeScript = """
        * Keeps anchors on visible text and prevents splitting a UTF-16 surrogate pair.
        */
       function anchorCharacterOffset(text, requestedOffset) {
-          var _a, _b, _c;
-          if (text.length === 0)
-              return 0;
           let offset = Math.min(Math.max(0, requestedOffset), text.length - 1);
-          if (/\s/.test((_a = text[offset]) !== null && _a !== void 0 ? _a : "")) {
+          if (/\s/.test(text[offset])) {
               for (let distance = 1; distance < text.length; distance += 1) {
                   const after = offset + distance;
-                  if (after < text.length && !/\s/.test((_b = text[after]) !== null && _b !== void 0 ? _b : "")) {
+                  if (after < text.length && !/\s/.test(text[after])) {
                       offset = after;
                       break;
                   }
                   const before = offset - distance;
-                  if (before >= 0 && !/\s/.test((_c = text[before]) !== null && _c !== void 0 ? _c : "")) {
+                  if (before >= 0 && !/\s/.test(text[before])) {
                       offset = before;
                       break;
                   }
@@ -111,20 +108,20 @@ private val readerViewportAnchorRuntimeScript = """
           return offset;
       }
       function pointRect(document, point) {
-          var _a, _b;
+          var _a;
           const text = point.node.data;
           if (!text.trim())
               return null;
           const offset = anchorCharacterOffset(text, point.offset);
-          const length = String.fromCodePoint((_a = text.codePointAt(offset)) !== null && _a !== void 0 ? _a : 0).length;
+          const length = String.fromCodePoint(text.codePointAt(offset)).length;
           const range = document.createRange();
           range.setStart(point.node, offset);
           range.setEnd(point.node, Math.min(text.length, offset + length));
-          return (_b = range.getClientRects()[0]) !== null && _b !== void 0 ? _b : range.getBoundingClientRect();
+          return (_a = range.getClientRects()[0]) !== null && _a !== void 0 ? _a : range.getBoundingClientRect();
       }
       /** Resolves a persisted DOM point to the single character used as its anchor. */
       function rangeForReaderViewportDomRange(window, domRange) {
-          var _a, _b;
+          var _a;
           const point = domRange.start;
           const element = window.document.querySelector(point.cssSelector);
           if (!element)
@@ -134,7 +131,7 @@ private val readerViewportAnchorRuntimeScript = """
           if (!node || node.data.length === 0)
               return null;
           const offset = anchorCharacterOffset(node.data, Math.min((_a = point.charOffset) !== null && _a !== void 0 ? _a : 0, node.data.length - 1));
-          const length = String.fromCodePoint((_b = node.data.codePointAt(offset)) !== null && _b !== void 0 ? _b : 0).length;
+          const length = String.fromCodePoint(node.data.codePointAt(offset)).length;
           const range = window.document.createRange();
           range.setStart(node, offset);
           range.setEnd(node, Math.min(node.data.length, offset + length));
@@ -145,7 +142,6 @@ private val readerViewportAnchorRuntimeScript = """
        * Nearby samples handle centers that land in whitespace or between columns.
        */
       function captureReaderViewportAnchor(window) {
-          var _a;
           const { document } = window;
           const centerX = window.innerWidth / 2;
           const centerY = window.innerHeight / 2;
@@ -170,15 +166,13 @@ private val readerViewportAnchorRuntimeScript = """
           if (!parent)
               return null;
           const cssSelector = stableCssSelector(window, parent);
-          if (!cssSelector)
-              return null;
           const textNodes = [...parent.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE);
           const textNodeIndex = textNodes.indexOf(best.point.node);
           if (textNodeIndex < 0)
               return null;
           const content = best.point.node.data;
           const charOffset = anchorCharacterOffset(content, best.point.offset);
-          const highlight = String.fromCodePoint((_a = content.codePointAt(charOffset)) !== null && _a !== void 0 ? _a : 0);
+          const highlight = String.fromCodePoint(content.codePointAt(charOffset));
           const before = content.slice(Math.max(0, charOffset - 32), charOffset);
           const after = content.slice(charOffset + highlight.length, charOffset + 33);
           return {

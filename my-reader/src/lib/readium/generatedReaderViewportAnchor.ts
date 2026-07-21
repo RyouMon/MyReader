@@ -74,7 +74,7 @@ function cssEscape(window: Window, value: string): string {
 }
 
 /** Prefers a unique ID, then falls back to a deterministic element path. */
-function stableCssSelector(window: Window, element: Element): string | null {
+function stableCssSelector(window: Window, element: Element): string {
   const document = element.ownerDocument
   if (element.id) {
     const selector = `#${cssEscape(window, element.id)}`
@@ -105,7 +105,7 @@ function stableCssSelector(window: Window, element: Element): string | null {
     }
     current = parent
   }
-  return parts.length > 0 ? parts.join(" > ") : null
+  return parts.join(" > ")
 }
 
 function firstTextDescendant(node: Node | undefined): Text | null {
@@ -148,17 +148,16 @@ function textPointAt(window: Window, x: number, y: number): TextPoint | null {
  * Keeps anchors on visible text and prevents splitting a UTF-16 surrogate pair.
  */
 function anchorCharacterOffset(text: string, requestedOffset: number): number {
-  if (text.length === 0) return 0
   let offset = Math.min(Math.max(0, requestedOffset), text.length - 1)
-  if (/\s/.test(text[offset] ?? "")) {
+  if (/\s/.test(text[offset])) {
     for (let distance = 1; distance < text.length; distance += 1) {
       const after = offset + distance
-      if (after < text.length && !/\s/.test(text[after] ?? "")) {
+      if (after < text.length && !/\s/.test(text[after])) {
         offset = after
         break
       }
       const before = offset - distance
-      if (before >= 0 && !/\s/.test(text[before] ?? "")) {
+      if (before >= 0 && !/\s/.test(text[before])) {
         offset = before
         break
       }
@@ -173,7 +172,7 @@ function pointRect(document: Document, point: TextPoint): DOMRect | null {
   const text = point.node.data
   if (!text.trim()) return null
   const offset = anchorCharacterOffset(text, point.offset)
-  const length = String.fromCodePoint(text.codePointAt(offset) ?? 0).length
+  const length = String.fromCodePoint(text.codePointAt(offset)!).length
   const range = document.createRange()
   range.setStart(point.node, offset)
   range.setEnd(point.node, Math.min(text.length, offset + length))
@@ -197,7 +196,7 @@ function rangeForReaderViewportDomRange(
     node.data,
     Math.min(point.charOffset ?? 0, node.data.length - 1),
   )
-  const length = String.fromCodePoint(node.data.codePointAt(offset) ?? 0).length
+  const length = String.fromCodePoint(node.data.codePointAt(offset)!).length
   const range = window.document.createRange()
   range.setStart(node, offset)
   range.setEnd(node, Math.min(node.data.length, offset + length))
@@ -239,7 +238,6 @@ export function captureReaderViewportAnchor(
   const parent = best.point.node.parentElement
   if (!parent) return null
   const cssSelector = stableCssSelector(window, parent)
-  if (!cssSelector) return null
   const textNodes = [...parent.childNodes].filter(
     (node): node is Text => node.nodeType === Node.TEXT_NODE,
   )
@@ -248,7 +246,7 @@ export function captureReaderViewportAnchor(
 
   const content = best.point.node.data
   const charOffset = anchorCharacterOffset(content, best.point.offset)
-  const highlight = String.fromCodePoint(content.codePointAt(charOffset) ?? 0)
+  const highlight = String.fromCodePoint(content.codePointAt(charOffset)!)
   const before = content.slice(Math.max(0, charOffset - 32), charOffset)
   const after = content.slice(charOffset + highlight.length, charOffset + 33)
 
