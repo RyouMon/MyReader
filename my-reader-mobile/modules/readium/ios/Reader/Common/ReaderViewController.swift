@@ -19,7 +19,6 @@ class ReaderViewController: UIViewController, Loggable {
   private var subscriptions = Set<AnyCancellable>()
   private var subject = PassthroughSubject<ReadiumShared.Locator, Never>()
   lazy var publisher = subject.eraseToAnyPublisher()
-  private var navigatorInputObserverTokens = Set<InputObservableToken>()
 
   /// This regex matches any string with at least 2 consecutive letters (not limited to ASCII).
   /// It's used when evaluating whether to display the body of a noteref referrer as the note's title.
@@ -54,7 +53,6 @@ class ReaderViewController: UIViewController, Loggable {
 
   deinit {
     NotificationCenter.default.removeObserver(self)
-    removeNavigatorInputObservers()
   }
 
   override func viewDidLoad() {
@@ -101,10 +99,6 @@ class ReaderViewController: UIViewController, Loggable {
     didSet {
       updateNavigationBar()
     }
-  }
-
-  func toggleNavigationBar() {
-    navigationBarHidden = !navigationBarHidden
   }
 
   func updateNavigationBar(animated: Bool = true) {
@@ -175,39 +169,12 @@ class ReaderViewController: UIViewController, Loggable {
       return
     }
 
-    guard navigatorInputObserverTokens.isEmpty else {
-      return
-    }
-
+    // React Native owns reader chrome; ReadiumView forwards center taps to JS.
+    // Keep only native edge navigation here so it cannot consume those taps.
     DirectionalNavigationAdapter(
       pointerPolicy: .init(edges: .all),
       animatedTransition: true
     ).bind(to: visualNavigator)
-
-    let toggleToken = visualNavigator.addObserver(.tap { [weak self] event in
-      guard
-        let self,
-        event.phase != .cancel
-      else {
-        return false
-      }
-
-      self.toggleNavigationBar()
-      return true
-    })
-    toggleToken.store(in: &navigatorInputObserverTokens)
-  }
-
-  private func removeNavigatorInputObservers() {
-    guard
-      let visualNavigator = navigator as? VisualNavigator
-    else {
-      navigatorInputObserverTokens.removeAll()
-      return
-    }
-
-    navigatorInputObserverTokens.forEach { visualNavigator.removeObserver($0) }
-    navigatorInputObserverTokens.removeAll()
   }
 
   @objc private func goBackward() {

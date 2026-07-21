@@ -70,6 +70,7 @@ import {
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
+import { ReaderSettingsRangeControl } from "@/components/reader/shared/ReaderSettingsRangeControl"
 import {
   READER_SETTINGS_CONTENT_CLASS,
   READER_SETTINGS_LABEL_CLASS,
@@ -116,6 +117,10 @@ import {
 import {
   captureEpubBookmarkLocator,
   isEpubBookmarkVisible,
+  type ReaderViewportAnchorOffset,
+  readerViewportAnchorOffset,
+  restoreReaderViewportAnchorOffset,
+  waitForEpubViewportLayout,
 } from "@/lib/readium/epubBookmarkAnchor"
 import {
   type EpubTextResource,
@@ -181,6 +186,35 @@ const COMMON_READER_FONT_FAMILIES_TO_PRELOAD = [
   "MyReaderNotoSerifSC",
   "MyReaderAlimamaFangYuanTi",
 ] as const
+
+type ReflowableViewportAnchor = {
+  locator: ReaderLocator
+  offset: ReaderViewportAnchorOffset | null
+}
+
+function reflowableLayoutPreferenceKey(
+  settings: ReaderSettings,
+  language: string,
+): string {
+  return JSON.stringify({
+    columnCount: settings.colCount,
+    fontFamily: resolveReaderFont(language, settings),
+    fontSize: settings.fontSize,
+    lineHeight: settings.lineHeight,
+    paddingX: settings.paddingX,
+    readingLayout: settings.readingLayout,
+    textAlign: settings.textAlign,
+  })
+}
+
+function goToEpubLocator(
+  navigator: EpubNavigator,
+  locator: Locator,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    navigator.go(locator, false, resolve)
+  })
+}
 
 async function refreshReaderPreferencesBeforeNavigatorInit(): Promise<void> {
   if (!isTauri()) return
@@ -917,73 +951,35 @@ function EpubSettingsPanel({
               </div>
             </section>
 
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label
-                  htmlFor="readium-font-size"
-                  className={READER_SETTINGS_LABEL_CLASS}
-                >
-                  {t("reader.fontSize")}
-                </Label>
-                <Label
-                  htmlFor="readium-font-size"
-                  className={READER_SETTINGS_VALUE_CLASS}
-                >
-                  {readerSettings.fontSize} px
-                </Label>
-              </div>
-              <input
-                id="readium-font-size"
-                type="range"
-                min={14}
-                max={26}
-                step={1}
-                value={readerSettings.fontSize}
-                onChange={(e) =>
-                  patchReflowableSettings({
-                    fontSize: Number(e.target.value) || 18,
-                  })
-                }
-                className={RANGE_INPUT_CLASS}
-                style={readerSettingsRangeStyle(
-                  readerSettings.fontSize,
-                  14,
-                  26,
-                )}
-              />
-            </section>
+            <ReaderSettingsRangeControl
+              id="readium-font-size"
+              label={t("reader.fontSize")}
+              value={readerSettings.fontSize}
+              min={14}
+              max={26}
+              step={1}
+              className={RANGE_INPUT_CLASS}
+              labelClassName={READER_SETTINGS_LABEL_CLASS}
+              valueClassName={READER_SETTINGS_VALUE_CLASS}
+              formatValue={(value) => `${value} px`}
+              rangeStyle={readerSettingsRangeStyle}
+              onCommit={(fontSize) => patchReflowableSettings({ fontSize })}
+            />
 
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label
-                  htmlFor="readium-page-margin"
-                  className={READER_SETTINGS_LABEL_CLASS}
-                >
-                  {t("reader.margin")}
-                </Label>
-                <Label
-                  htmlFor="readium-page-margin"
-                  className={READER_SETTINGS_VALUE_CLASS}
-                >
-                  {readerSettings.paddingX.toFixed(1)}
-                </Label>
-              </div>
-              <input
-                id="readium-page-margin"
-                type="range"
-                min={0}
-                max={4}
-                step={0.25}
-                value={readerSettings.paddingX}
-                onChange={(e) =>
-                  patchReflowableSettings({
-                    paddingX: Number(e.target.value) || 0,
-                  })
-                }
-                className={RANGE_INPUT_CLASS}
-                style={readerSettingsRangeStyle(readerSettings.paddingX, 0, 4)}
-              />
-            </section>
+            <ReaderSettingsRangeControl
+              id="readium-page-margin"
+              label={t("reader.margin")}
+              value={readerSettings.paddingX}
+              min={0}
+              max={4}
+              step={0.25}
+              className={RANGE_INPUT_CLASS}
+              labelClassName={READER_SETTINGS_LABEL_CLASS}
+              valueClassName={READER_SETTINGS_VALUE_CLASS}
+              formatValue={(value) => value.toFixed(1)}
+              rangeStyle={readerSettingsRangeStyle}
+              onCommit={(paddingX) => patchReflowableSettings({ paddingX })}
+            />
 
             <section className="space-y-2">
               <Label className={READER_SETTINGS_LABEL_CLASS}>
@@ -1238,6 +1234,11 @@ export function ReadiumEpubReader({
   const [contentSettling, setContentSettling] = useState(true)
   const chromeVisibleRef = useRef(chromeVisible)
   const reflowablePreferenceApplyRef = useRef(0)
+  const reflowableViewportAnchorRef = useRef<ReflowableViewportAnchor | null>(
+    null,
+  )
+  const pendingReflowableLocatorRef = useRef<Locator | null>(null)
+  const appliedReflowableLayoutKeyRef = useRef<string | null>(null)
   const contentSettlingTimerRef = useRef<number | null>(null)
   const contentRevealRafRef = useRef<number | null>(null)
   const progressSeekClearTimerRef = useRef<number | null>(null)
@@ -1315,6 +1316,10 @@ export function ReadiumEpubReader({
     setContentSettling(true)
     setCurrentLocator(null)
     setChapterTitle("")
+    reflowablePreferenceApplyRef.current += 1
+    reflowableViewportAnchorRef.current = null
+    pendingReflowableLocatorRef.current = null
+    appliedReflowableLayoutKeyRef.current = null
     selectedTocItemRef.current = null
     setSelectedTocItem(null)
 
@@ -1894,23 +1899,81 @@ export function ReadiumEpubReader({
       if (isFixedLayout) return
       const applyId = ++reflowablePreferenceApplyRef.current
       const nav = navigatorRef.current
+      if (!nav) return
+      const isCurrent = () =>
+        applyId === reflowablePreferenceApplyRef.current &&
+        navigatorRef.current === nav
+      const layoutKey = reflowableLayoutPreferenceKey(settings, readerLanguage)
+      const preserveViewport =
+        reflowableViewportAnchorRef.current !== null ||
+        (appliedReflowableLayoutKeyRef.current !== null &&
+          layoutKey !== appliedReflowableLayoutKeyRef.current)
       const preferences = readerSettingsToEpubPreferences(
         settings,
         readerLanguage,
       )
       const fontFamily = preferences.fontFamily
 
-      setReaderFontInIframeDocs(fontFamily)
-      await loadReaderFontInIframeDocs(fontFamily)
-      if (applyId !== reflowablePreferenceApplyRef.current) return
+      if (preserveViewport && !reflowableViewportAnchorRef.current) {
+        const current = readiumLocatorToReaderLocator(nav.currentLocator)
+        const locator = captureEpubBookmarkLocator(nav, current) ?? current
+        reflowableViewportAnchorRef.current = {
+          locator,
+          offset: readerViewportAnchorOffset(nav, locator),
+        }
+        pendingReflowableLocatorRef.current = null
+      }
+      if (preserveViewport) {
+        containerRef.current?.classList.add("is-layout-settling")
+      }
 
-      await nav?.submitPreferences(preferences)
-      if (applyId !== reflowablePreferenceApplyRef.current) return
+      let applied = false
+      try {
+        setReaderFontInIframeDocs(fontFamily)
+        await loadReaderFontInIframeDocs(fontFamily)
+        if (!isCurrent()) return
 
-      setReaderFontInIframeDocs(fontFamily)
-      await nav?.resizeHandler()
+        await nav.submitPreferences(preferences)
+        if (!isCurrent()) return
+
+        setReaderFontInIframeDocs(fontFamily)
+        await nav.resizeHandler()
+        if (!(await waitForEpubViewportLayout(nav, isCurrent))) return
+
+        const anchor = reflowableViewportAnchorRef.current
+        if (anchor) {
+          await goToEpubLocator(
+            nav,
+            readerLocatorToReadiumLocator(anchor.locator),
+          )
+          if (!(await waitForEpubViewportLayout(nav, isCurrent))) return
+          if (settings.readingLayout === "scroll" && anchor.offset) {
+            restoreReaderViewportAnchorOffset(
+              nav,
+              anchor.locator,
+              anchor.offset,
+            )
+            if (!(await waitForEpubViewportLayout(nav, isCurrent))) return
+          }
+        }
+        applied = true
+      } finally {
+        if (isCurrent()) {
+          if (applied) appliedReflowableLayoutKeyRef.current = layoutKey
+
+          const finalLocator =
+            nav.currentLocator ?? pendingReflowableLocatorRef.current
+          reflowableViewportAnchorRef.current = null
+          pendingReflowableLocatorRef.current = null
+          containerRef.current?.classList.remove("is-layout-settling")
+          if (finalLocator) {
+            setCurrentLocator(finalLocator)
+            setChapterTitle(resolveChapterTitle(finalLocator))
+          }
+        }
+      }
     },
-    [isFixedLayout, readerLanguage],
+    [isFixedLayout, readerLanguage, resolveChapterTitle],
   )
 
   const onReaderFontFamilyChange = useCallback(
@@ -1928,12 +1991,8 @@ export function ReadiumEpubReader({
             }
       patchReflowableSettings(patch)
       void useAppUiStore.getState().persistReaderPreferencesNow()
-      const nextSettings = { ...currentSettings, ...patch }
-      void applyReflowablePreferences(nextSettings).catch((error: unknown) => {
-        console.error("Failed to apply reader font preference.", error)
-      })
     },
-    [applyReflowablePreferences, patchReflowableSettings, readerLanguage],
+    [patchReflowableSettings, readerLanguage],
   )
 
   const getCurrentReflowableFontFamily = useCallback(() => {
@@ -2244,6 +2303,13 @@ export function ReadiumEpubReader({
               setAnnotationsAvailable(true)
             },
             positionChanged: (locator) => {
+              if (
+                !isFixedLayout &&
+                reflowableViewportAnchorRef.current !== null
+              ) {
+                pendingReflowableLocatorRef.current = locator
+                return
+              }
               const selected = selectedTocItemRef.current
               selectedTocItemRef.current = null
               setSelectedTocItem(selected)
@@ -2347,6 +2413,12 @@ export function ReadiumEpubReader({
         setAnnotationsAvailable(true)
         setReadiumNavReady(true)
         const store = useAppUiStore.getState()
+        if (!isFixedLayout) {
+          appliedReflowableLayoutKeyRef.current = reflowableLayoutPreferenceKey(
+            store.reflowable.settings,
+            readerLanguage,
+          )
+        }
         if (store.readerPreferencesHydrated && isFixedLayout) {
           await applySpreadPreference(activeNav, store.fixedLayout.spreadMode)
         }
@@ -2367,6 +2439,10 @@ export function ReadiumEpubReader({
 
     return () => {
       cancelled = true
+      reflowablePreferenceApplyRef.current += 1
+      reflowableViewportAnchorRef.current = null
+      pendingReflowableLocatorRef.current = null
+      appliedReflowableLayoutKeyRef.current = null
       navigationSequenceRef.current += 1
       pendingNavigationHrefRef.current = null
       clearPendingProgressSeek()
@@ -2605,7 +2681,8 @@ export function ReadiumEpubReader({
           height: 100% !important;
           box-sizing: border-box !important;
         }
-        .readium-epub-host.is-content-settling > .readium-navigator-iframe {
+        .readium-epub-host.is-content-settling > .readium-navigator-iframe,
+        .readium-epub-host.is-layout-settling > .readium-navigator-iframe {
           opacity: 0 !important;
           pointer-events: none !important;
           visibility: hidden !important;

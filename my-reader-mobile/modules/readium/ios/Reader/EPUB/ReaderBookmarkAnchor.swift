@@ -98,7 +98,11 @@ JSON.stringify((function () {
         rect.left + rect.width / 2 - centerX,
         rect.top + rect.height / 2 - centerY
       );
-      if (!best || distance < best.distance) best = { point: point, distance: distance };
+      if (!best || distance < best.distance) best = {
+        point: point,
+        distance: distance,
+        yRatio: (rect.top + rect.height / 2) / window.innerHeight
+      };
     });
   });
   if (!best || !best.point.node.parentElement) return null;
@@ -120,12 +124,55 @@ JSON.stringify((function () {
   if (after) text.after = after;
   return {
     cssSelector: cssSelector,
+    yRatio: best.yRatio,
     domRange: { start: {
       cssSelector: cssSelector,
       textNodeIndex: textNodeIndex,
       charOffset: charOffset
     } },
     text: text
+  };
+})())
+"""#
+
+func readerViewportAnchorOffsetRestoreScript(
+  domRangeJSON: String,
+  yRatio: Double
+) -> String {
+  return #"""
+JSON.stringify((function (point, yRatio) {
+  if (!point || !point.start) return false;
+  var element = document.querySelector(point.start.cssSelector);
+  if (!element) return false;
+  var textNodes = Array.prototype.filter.call(element.childNodes, function (node) {
+    return node.nodeType === Node.TEXT_NODE;
+  });
+  var node = textNodes[point.start.textNodeIndex];
+  if (!node || !node.data.length) return false;
+  var offset = Math.min(Math.max(0, point.start.charOffset || 0), node.data.length - 1);
+  var code = node.data.charCodeAt(offset);
+  if (code >= 0xDC00 && code <= 0xDFFF && offset > 0) offset -= 1;
+  var length = String.fromCodePoint(node.data.codePointAt(offset)).length;
+  var range = document.createRange();
+  range.setStart(node, offset);
+  range.setEnd(node, Math.min(node.data.length, offset + length));
+  var rect = range.getClientRects()[0] || range.getBoundingClientRect();
+  if (!rect) return false;
+  window.scrollBy(0, rect.top + rect.height / 2 - yRatio * window.innerHeight);
+  return true;
+})(\#(domRangeJSON), \#(yRatio)))
+"""#
+}
+
+let readerViewportLayoutStateScript = #"""
+JSON.stringify((function () {
+  var root = document.scrollingElement || document.documentElement;
+  return {
+    fontsLoaded: !document.fonts || document.fonts.status === "loaded",
+    clientWidth: root.clientWidth,
+    clientHeight: root.clientHeight,
+    scrollWidth: root.scrollWidth,
+    scrollHeight: root.scrollHeight
   };
 })())
 """#

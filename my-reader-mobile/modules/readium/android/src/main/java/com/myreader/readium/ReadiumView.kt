@@ -33,6 +33,7 @@ import com.myreader.readium.reader.PdfReaderFragment
 import com.myreader.readium.reader.ReaderService
 import com.myreader.readium.reader.ReaderViewModel
 import com.myreader.readium.reader.SelectionAction as FragmentSelectionAction
+import com.myreader.readium.reader.ViewportAnchor
 import com.myreader.readium.utils.LinkOrLocator
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.exception.Exceptions
@@ -40,11 +41,13 @@ import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.readium.r2.navigator.Decoration as ReadiumDecoration
+import org.readium.r2.shared.publication.Locator
 
 class ReadiumView(
   context: Context,
@@ -71,6 +74,12 @@ class ReadiumView(
   private var isDestroyed = false
   private var frameCallback: Choreographer.FrameCallback? = null
   private var pendingTeardownRunnable: Runnable? = null
+  private var preferenceApplyJob: Job? = null
+  private var preferenceApplyGeneration = 0L
+  private var viewportAnchor: ViewportAnchor? = null
+  private var suppressLocationEvents = false
+  private var pendingLocation: Locator? = null
+  private var viewportPresentationFrozen = false
 
   // MARK: - Events
 
@@ -125,8 +134,9 @@ class ReadiumView(
 
   var preferences: PreferencesRecord? = null
     set(value) {
+      val previous = field
       field = value
-      updatePreferences()
+      updatePreferences(preferencesRequireViewportPreservation(previous, value))
     }
 
   var decorations: List<DecorationGroupRecord>? = null
@@ -172,9 +182,47 @@ class ReadiumView(
 
   // MARK: - Preferences
 
-  private fun updatePreferences() {
+  private fun preferencesRequireViewportPreservation(
+    previous: PreferencesRecord?,
+    next: PreferencesRecord?
+  ): Boolean {
+    if (previous == null || next == null) return false
+    return previous.columnCount != next.columnCount ||
+      previous.fontFamily != next.fontFamily ||
+      previous.fontSize != next.fontSize ||
+      previous.fontWeight != next.fontWeight ||
+      previous.hyphens != next.hyphens ||
+      previous.language != next.language ||
+      previous.letterSpacing != next.letterSpacing ||
+      previous.ligatures != next.ligatures ||
+      previous.lineHeight != next.lineHeight ||
+      previous.pageMargins != next.pageMargins ||
+      previous.paragraphIndent != next.paragraphIndent ||
+      previous.paragraphSpacing != next.paragraphSpacing ||
+      previous.publisherStyles != next.publisherStyles ||
+      previous.readingProgression != next.readingProgression ||
+      previous.scroll != next.scroll ||
+      previous.textAlign != next.textAlign ||
+      previous.textNormalization != next.textNormalization ||
+      previous.typeScale != next.typeScale ||
+      previous.verticalText != next.verticalText ||
+      previous.wordSpacing != next.wordSpacing
+  }
+
+  private fun updatePreferences(preserveViewport: Boolean) {
     val prefs = preferences ?: return
     val frag = fragment ?: return
+    if (frag is EpubReaderFragment && (preserveViewport || viewportAnchor != null)) {
+      applyEpubPreferencesPreservingViewport(frag, prefs)
+      return
+    }
+    applyPreferencesDirectly(frag, prefs)
+  }
+
+  private fun applyPreferencesDirectly(
+    frag: BaseReaderFragment,
+    prefs: PreferencesRecord
+  ) {
     when (frag) {
       is EpubReaderFragment -> frag.updatePreferences(preferencesRecordToEpub(prefs))
       is PdfReaderFragment -> frag.updatePreferences(preferencesRecordToPdf(prefs))
@@ -186,6 +234,61 @@ class ReadiumView(
     // Apply background color through the bridge for all navigators, since Android
     // pdfium and image navigators don't expose backgroundColor in their preferences.
     frag.setReaderBackgroundColor(prefs.backgroundColor)
+  }
+
+  private fun applyEpubPreferencesPreservingViewport(
+    frag: EpubReaderFragment,
+    prefs: PreferencesRecord
+  ) {
+    val generation = ++preferenceApplyGeneration
+    preferenceApplyJob?.cancel()
+    preferenceApplyJob = scope.launch {
+      val anchor = viewportAnchor ?: frag.captureViewportAnchor()
+      if (anchor == null) {
+        applyPreferencesDirectly(frag, prefs)
+        return@launch
+      }
+
+      viewportAnchor = anchor
+      suppressLocationEvents = true
+      setViewportPresentationFrozen(true)
+      try {
+        applyPreferencesDirectly(frag, prefs)
+        frag.awaitViewportLayoutStable()
+        if (generation != preferenceApplyGeneration) return@launch
+
+        frag.go(LinkOrLocator.Locator(anchor.locator), false)
+        frag.awaitViewportLayoutStable()
+        if (prefs.scroll == true) {
+          frag.restoreViewportAnchorOffset(anchor)
+          frag.awaitViewportLayoutStable()
+        }
+      } finally {
+        if (generation == preferenceApplyGeneration) {
+          finishViewportPreferenceTransaction(frag)
+        }
+      }
+    }
+  }
+
+  private fun finishViewportPreferenceTransaction(frag: EpubReaderFragment) {
+    val finalLocation = frag.currentViewportLocator() ?: pendingLocation
+    viewportAnchor = null
+    pendingLocation = null
+    suppressLocationEvents = false
+    setViewportPresentationFrozen(false)
+    finalLocation?.let { dispatchLocation(it) }
+  }
+
+  private fun setViewportPresentationFrozen(frozen: Boolean) {
+    viewportPresentationFrozen = frozen
+    fragment?.view?.alpha = if (frozen) 0f else 1f
+  }
+
+  private fun dispatchLocation(locator: Locator) {
+    onLocationChange(
+      mapOf<String, Any?>("locator" to readiumLocatorToMap(locator))
+    )
   }
 
   // MARK: - Decorations
@@ -272,6 +375,13 @@ class ReadiumView(
       }
     }
     frameCallback = null
+    preferenceApplyGeneration += 1
+    preferenceApplyJob?.cancel()
+    preferenceApplyJob = null
+    viewportAnchor = null
+    suppressLocationEvents = false
+    pendingLocation = null
+    viewportPresentationFrozen = false
 
     fragment?.let { frag ->
       file?.url?.let { PublicationStore.remove(it, ifSameAs = frag.publication) }
@@ -367,7 +477,7 @@ class ReadiumView(
       frag.updateSelectionMenu(selectionMenu)
     }
 
-    preferences?.let { updatePreferences() }
+    preferences?.let { applyPreferencesDirectly(frag, it) }
     decorations?.let { updateDecorations() }
 
     activity.supportFragmentManager
@@ -379,6 +489,7 @@ class ReadiumView(
     // in React Native's view tree. Manually add the fragment's view to
     // hostView if needed.
     frag.view?.let { fragView ->
+      fragView.alpha = if (viewportPresentationFrozen) 0f else 1f
       if (fragView.parent !== hostView) {
         (fragView.parent as? ViewGroup)?.removeView(fragView)
         hostView.addView(
@@ -403,7 +514,11 @@ class ReadiumView(
     frag.channel.receive(frag) { event ->
       when (event) {
         is ReaderViewModel.Event.LocatorUpdate -> {
-          onLocationChange(mapOf<String, Any?>("locator" to readiumLocatorToMap(event.locator)))
+          if (suppressLocationEvents) {
+            pendingLocation = event.locator
+          } else {
+            dispatchLocation(event.locator)
+          }
         }
 
         is ReaderViewModel.Event.PublicationReady -> {

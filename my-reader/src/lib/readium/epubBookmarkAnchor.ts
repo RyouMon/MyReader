@@ -22,6 +22,11 @@ type TextPoint = {
   offset: number
 }
 
+export type ReaderViewportAnchorOffset = {
+  xRatio: number
+  yRatio: number
+}
+
 type CaretPositionDocument = Document & {
   caretPositionFromPoint?: (
     x: number,
@@ -202,25 +207,9 @@ export function isReaderBookmarkAnchorVisible(
   window: Window,
   locator: ReaderLocator,
 ): boolean {
-  const point = locator.locations?.domRange?.start
-  if (!point) return false
-  const element = window.document.querySelector(point.cssSelector)
-  if (!element) return false
-  const textNodes = [...element.childNodes].filter(
-    (node): node is Text => node.nodeType === Node.TEXT_NODE,
-  )
-  const node = textNodes[point.textNodeIndex]
-  if (!node || node.data.length === 0) return false
-  const offset = anchorCharacterOffset(
-    node.data,
-    Math.min(point.charOffset ?? 0, node.data.length - 1),
-  )
-  const length = String.fromCodePoint(node.data.codePointAt(offset) ?? 0).length
-  const range = window.document.createRange()
-  range.setStart(node, offset)
-  range.setEnd(node, Math.min(node.data.length, offset + length))
-
-  return [...range.getClientRects()].some(
+  return [
+    ...(rangeForReaderLocator(window, locator)?.getClientRects() ?? []),
+  ].some(
     (rect) =>
       rect.right > 0 &&
       rect.bottom > 0 &&
@@ -231,6 +220,30 @@ export function isReaderBookmarkAnchorVisible(
 
 function currentFrameWindow(navigator: EpubNavigator): Window | null {
   return navigator._cframes[0]?.iframe.contentWindow ?? null
+}
+
+function rangeForReaderLocator(
+  window: Window,
+  locator: ReaderLocator,
+): Range | null {
+  const point = locator.locations?.domRange?.start
+  if (!point) return null
+  const element = window.document.querySelector(point.cssSelector)
+  if (!element) return null
+  const textNodes = [...element.childNodes].filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE,
+  )
+  const node = textNodes[point.textNodeIndex]
+  if (!node || node.data.length === 0) return null
+  const offset = anchorCharacterOffset(
+    node.data,
+    Math.min(point.charOffset ?? 0, node.data.length - 1),
+  )
+  const length = String.fromCodePoint(node.data.codePointAt(offset) ?? 0).length
+  const range = window.document.createRange()
+  range.setStart(node, offset)
+  range.setEnd(node, Math.min(node.data.length, offset + length))
+  return range
 }
 
 export function captureEpubBookmarkLocator(
@@ -251,6 +264,94 @@ export function captureEpubBookmarkLocator(
     },
     text: anchor.text,
   }
+}
+
+export function readerViewportAnchorOffset(
+  navigator: EpubNavigator,
+  locator: ReaderLocator,
+): ReaderViewportAnchorOffset | null {
+  const window = currentFrameWindow(navigator)
+  if (!window) return null
+  const rect = rangeForReaderLocator(window, locator)?.getClientRects()[0]
+  if (!rect || window.innerWidth <= 0 || window.innerHeight <= 0) return null
+  return {
+    xRatio: (rect.left + rect.width / 2) / window.innerWidth,
+    yRatio: (rect.top + rect.height / 2) / window.innerHeight,
+  }
+}
+
+export function restoreReaderViewportAnchorOffset(
+  navigator: EpubNavigator,
+  locator: ReaderLocator,
+  offset: ReaderViewportAnchorOffset,
+): boolean {
+  const window = currentFrameWindow(navigator)
+  if (!window) return false
+  const rect = rangeForReaderLocator(window, locator)?.getClientRects()[0]
+  if (!rect) return false
+  const targetY = offset.yRatio * window.innerHeight
+  const currentY = rect.top + rect.height / 2
+  window.scrollBy(0, currentY - targetY)
+  return true
+}
+
+type ViewportLayoutMetrics = {
+  clientHeight: number
+  clientWidth: number
+  scrollHeight: number
+  scrollWidth: number
+}
+
+function viewportLayoutMetrics(window: Window): ViewportLayoutMetrics {
+  const scrollingElement = window.document.scrollingElement
+  return {
+    clientHeight: scrollingElement?.clientHeight ?? window.innerHeight,
+    clientWidth: scrollingElement?.clientWidth ?? window.innerWidth,
+    scrollHeight: scrollingElement?.scrollHeight ?? 0,
+    scrollWidth: scrollingElement?.scrollWidth ?? 0,
+  }
+}
+
+function sameViewportLayout(
+  first: ViewportLayoutMetrics | null,
+  second: ViewportLayoutMetrics,
+): boolean {
+  return Boolean(
+    first &&
+      first.clientHeight === second.clientHeight &&
+      first.clientWidth === second.clientWidth &&
+      first.scrollHeight === second.scrollHeight &&
+      first.scrollWidth === second.scrollWidth,
+  )
+}
+
+export async function waitForEpubViewportLayout(
+  navigator: EpubNavigator,
+  isCurrent: () => boolean,
+): Promise<boolean> {
+  const window = currentFrameWindow(navigator)
+  if (!window) return false
+
+  try {
+    await window.document.fonts?.ready
+  } catch {
+    // Layout metrics below remain the source of truth when FontFaceSet fails.
+  }
+
+  let previous: ViewportLayoutMetrics | null = null
+  let stableFrames = 0
+  for (let frame = 0; frame < 12; frame += 1) {
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve())
+    })
+    if (!isCurrent()) return false
+
+    const next = viewportLayoutMetrics(window)
+    stableFrames = sameViewportLayout(previous, next) ? stableFrames + 1 : 0
+    if (stableFrames >= 2) return true
+    previous = next
+  }
+  return isCurrent()
 }
 
 export function isEpubBookmarkVisible(

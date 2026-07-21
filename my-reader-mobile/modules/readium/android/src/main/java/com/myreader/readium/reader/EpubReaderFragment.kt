@@ -32,6 +32,7 @@ import com.myreader.readium.Types.FontFaceDeclarationRecord
 import com.myreader.readium.Types.LocatorRecord
 import com.myreader.readium.Types.SelectionMenuRecord
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.Selection
 import org.readium.r2.navigator.SelectableNavigator
@@ -49,10 +50,16 @@ import org.readium.r2.shared.publication.Publication
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
+import kotlin.coroutines.resume
 
 data class SelectionAction(
     val id: String,
     val label: String
+)
+
+data class ViewportAnchor(
+    val locator: Locator,
+    val yRatio: Double?
 )
 
 class EpubReaderFragment : VisualReaderFragment() {
@@ -79,7 +86,7 @@ class EpubReaderFragment : VisualReaderFragment() {
     private var selectionRequestGeneration = 0L
     private var fontFamilyDeclarations: List<FontFamilyDeclarationRecord> = emptyList()
 
-    suspend fun getBookmarkLocator(): Map<String, Any?>? {
+    suspend fun captureViewportAnchor(): ViewportAnchor? {
       if (!this::navigatorFragment.isInitialized) return null
       val anchor = decodeJavascriptValue(
         navigatorFragment.evaluateJavascript(captureReaderBookmarkAnchorScript)
@@ -87,18 +94,84 @@ class EpubReaderFragment : VisualReaderFragment() {
       val cssSelector = anchor.optString("cssSelector").takeIf { it.isNotEmpty() }
         ?: return null
       val domRange = anchor.optJSONObject("domRange")?.toMap() ?: return null
-      val text = anchor.optJSONObject("text")?.toMap() ?: return null
-      val locator = readiumLocatorToMap(navigatorFragment.currentLocator.value).toMutableMap()
-      val locations = (locator["locations"] as? Map<*, *>)
-        ?.entries
-        ?.associate { it.key.toString() to it.value }
-        ?.toMutableMap()
-        ?: mutableMapOf()
-      locations["cssSelector"] = cssSelector
-      locations["domRange"] = domRange
-      locator["locations"] = locations
-      locator["text"] = text
-      return locator
+      val text = anchor.optJSONObject("text") ?: return null
+      val current = navigatorFragment.currentLocator.value
+      return ViewportAnchor(
+        locator = current.copy(
+          locations = current.locations.copy(
+            otherLocations = current.locations.otherLocations + mapOf(
+              "cssSelector" to cssSelector,
+              "domRange" to domRange
+            )
+          ),
+          text = Locator.Text(
+            before = text.optString("before").takeIf { it.isNotEmpty() },
+            highlight = text.optString("highlight").takeIf { it.isNotEmpty() },
+            after = text.optString("after").takeIf { it.isNotEmpty() }
+          )
+        ),
+        yRatio = anchor.optDouble("yRatio", Double.NaN)
+          .takeUnless { it.isNaN() }
+      )
+    }
+
+    suspend fun restoreViewportAnchorOffset(anchor: ViewportAnchor): Boolean {
+      if (!this::navigatorFragment.isInitialized) return false
+      val domRange = anchor.locator.locations.otherLocations["domRange"]
+        ?.let { JSONObject(it as Map<*, *>) }
+        ?: return false
+      val yRatio = anchor.yRatio ?: return false
+      return decodeJavascriptValue(
+        navigatorFragment.evaluateJavascript(
+          readerViewportAnchorOffsetRestoreScript(domRange.toString(), yRatio)
+        )
+      ) == true
+    }
+
+    suspend fun getBookmarkLocator(): Map<String, Any?>? =
+      captureViewportAnchor()?.let { readiumLocatorToMap(it.locator) }
+
+    fun currentViewportLocator(): Locator? =
+      if (this::navigatorFragment.isInitialized) navigatorFragment.currentLocator.value else null
+
+    suspend fun awaitViewportLayoutStable(): Boolean {
+      if (!this::navigatorFragment.isInitialized) return false
+      var previousSignature: String? = null
+      var stableFrames = 0
+
+      repeat(12) {
+        awaitNextFrame()
+        val state = decodeJavascriptValue(
+          navigatorFragment.evaluateJavascript(readerViewportLayoutStateScript)
+        ) as? JSONObject ?: return@repeat
+        val signature = listOf(
+          state.optInt("clientWidth"),
+          state.optInt("clientHeight"),
+          state.optInt("scrollWidth"),
+          state.optInt("scrollHeight")
+        ).joinToString(":")
+        stableFrames = if (
+          state.optBoolean("fontsLoaded") && signature == previousSignature
+        ) {
+          stableFrames + 1
+        } else {
+          0
+        }
+        if (stableFrames >= 2) return true
+        previousSignature = signature
+      }
+      return false
+    }
+
+    private suspend fun awaitNextFrame() {
+      val target = navigatorFragment.view ?: view ?: return
+      suspendCancellableCoroutine { continuation ->
+        val callback = Runnable {
+          if (continuation.isActive) continuation.resume(Unit)
+        }
+        target.postOnAnimation(callback)
+        continuation.invokeOnCancellation { target.removeCallbacks(callback) }
+      }
     }
 
     suspend fun isBookmarkVisible(locator: LocatorRecord): Boolean {
