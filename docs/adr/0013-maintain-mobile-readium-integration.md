@@ -1,10 +1,10 @@
-# ADR-0009：在 MyReader 仓库维护移动端 Readium 集成层
+# ADR-0013：在 MyReader 仓库维护移动端 Readium 集成层
 
 - 状态：已接受
 - 决策日期：2026-06-18
 - 记录日期：2026-07-22
 - 记录方式：根据 Git 历史回溯补录
-- 上层决策：[ADR-0004](./0004-adopt-readium-reader-architecture.md)
+- 上层决策：[ADR-0005](./0005-adopt-readium-reader-architecture.md)
 - 取代：`@ryoumon/react-native-readium` 私有 fork、Git submodule 和 Nitro Modules bridge
 
 ## 说明
@@ -17,7 +17,7 @@
 
 ## 背景
 
-[ADR-0004](./0004-adopt-readium-reader-architecture.md) 决定使用 Readium 的 Publication、
+[ADR-0005](./0005-adopt-readium-reader-architecture.md) 决定使用 Readium 的 Publication、
 Navigator 和 Locator 取代自研 Reader V2。移动端还需要一个 React Native 与 Readium
 Swift/Kotlin Toolkit 之间的原生集成层。
 

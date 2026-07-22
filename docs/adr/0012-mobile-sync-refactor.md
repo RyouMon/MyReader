@@ -1,5 +1,5 @@
 ---
-adr: ADR-0008
+adr: ADR-0012
 proposal_date: 2026-05-31
 status: 已实施
 name: Mobile Sync Refactor

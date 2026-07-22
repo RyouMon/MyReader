@@ -2,7 +2,7 @@
 adr: ADR-0002
 proposal_date: 2026-04-10
 status: 已取代
-superseded_by: ADR-0004
+superseded_by: ADR-0005
 ---
 
 # READER-ARCHITECTURE-V2

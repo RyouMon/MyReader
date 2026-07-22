@@ -25,7 +25,7 @@ identical for drop-in migration. See [NOTICE](./NOTICE) for provenance and
 [licenses/](./licenses) for third-party license texts.
 
 The ownership and repository-boundary decision is recorded in
-[ADR-0009](../../../docs/adr/0009-maintain-mobile-readium-integration.md).
+[ADR-0013](../../../docs/adr/0013-maintain-mobile-readium-integration.md).
 
 ## Architecture and ownership
 

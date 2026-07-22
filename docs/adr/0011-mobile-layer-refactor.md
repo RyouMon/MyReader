@@ -1,5 +1,5 @@
 ---
-adr: ADR-0007
+adr: ADR-0011
 proposal_date: 2026-05-28
 status: 已实施
 name: 移动端分层重构

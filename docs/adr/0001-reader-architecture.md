@@ -2,7 +2,7 @@
 adr: ADR-0001
 proposal_date: 2026-04-01
 status: 已取代
-superseded_by: ADR-0002、ADR-0004
+superseded_by: ADR-0002、ADR-0005
 ---
 
 # 接口设计

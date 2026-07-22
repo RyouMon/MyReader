@@ -2,6 +2,7 @@
 adr: ADR-0003
 proposal_date: 2026-04-23
 status: 部分实施，部分已取代
+superseded_by: ADR-0004（数据库同步与 Manifest/CAS 部分）
 name: MyReader 同步技术选型
 overview: 为 MyReader 桌面端 (Tauri + React) 与移动端 (Expo + React Native) 设计跨端同步方案。本期实现仅聚焦两类数据源——**本地直读（LocalDirect）** 与 **WebDAV**；基于 OpenDAL + cr-sqlite + Manifest/CAS，支持用户主动触发下载与本地释放。S3/OneDrive/Calibre 远端镜像等延后。
 todos:

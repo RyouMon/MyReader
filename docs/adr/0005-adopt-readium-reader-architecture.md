@@ -1,4 +1,4 @@
-# ADR-0004：使用 Readium 取代自研 Reader V2 架构
+# ADR-0005：使用 Readium 取代自研 Reader V2 架构
 
 - 状态：已接受
 - 决策日期：2026-05-07
@@ -6,7 +6,7 @@
 - 记录日期：2026-07-22
 - 记录方式：根据 Git 历史回溯补录
 - 取代：[ADR-0001](./0001-reader-architecture.md)、[ADR-0002](./0002-reader-architecture-v2.md)
-- 后续决策：[ADR-0009](./0009-maintain-mobile-readium-integration.md)
+- 后续决策：[ADR-0013](./0013-maintain-mobile-readium-integration.md)
 
 ## 说明
 

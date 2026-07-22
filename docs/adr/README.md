@@ -29,10 +29,14 @@
 | [ADR-0001](./0001-reader-architecture.md) | Reader Architecture V1 | 已取代 | 2026-04-01 |
 | [ADR-0002](./0002-reader-architecture-v2.md) | Reader Architecture V2 | 已取代 | 2026-04-10 |
 | [ADR-0003](./0003-myreader-sync-technology-selection.md) | MyReader 同步技术选型 | 部分实施、部分已取代 | 2026-04-23 |
-| [ADR-0004](./0004-adopt-readium-reader-architecture.md) | 使用 Readium 取代自研 Reader V2 架构 | 已接受（回溯） | 2026-05-07 |
-| [ADR-0005](./0005-store-refactor.md) | Store Refactor | 部分实施，需重新基线 | 2026-05-27 |
-| [ADR-0006](./0006-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
-| [ADR-0007](./0007-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
-| [ADR-0008](./0008-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
-| [ADR-0009](./0009-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
-| [ADR-0010](./0010-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |
+| [ADR-0004](./0004-library-sidecar-jsonl-sync.md) | 使用书库 sidecar JSONL 变更流同步应用数据 | 已接受（回溯） | 2026-05-03 |
+| [ADR-0005](./0005-adopt-readium-reader-architecture.md) | 使用 Readium 取代自研 Reader V2 架构 | 已接受（回溯） | 2026-05-07 |
+| [ADR-0006](./0006-desktop-typed-ipc-and-layered-backend.md) | 桌面端使用生成式类型 IPC 和分层 Rust 后端 | 已接受（回溯） | 2026-05-11 |
+| [ADR-0007](./0007-pnpm-monorepo-and-shared-code-ownership.md) | 采用 pnpm monorepo 并按语义共享跨端代码 | 已接受（回溯） | 2026-05-17 |
+| [ADR-0008](./0008-shared-database-schema-authority.md) | 以 Drizzle schema 和 SQL migrations 作为跨端数据库权威 | 已接受（回溯） | 2026-05-18 |
+| [ADR-0009](./0009-store-refactor.md) | Store Refactor | 部分实施，需重新基线 | 2026-05-27 |
+| [ADR-0010](./0010-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
+| [ADR-0011](./0011-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
+| [ADR-0012](./0012-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
+| [ADR-0013](./0013-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
+| [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |
