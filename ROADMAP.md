@@ -192,4 +192,23 @@
 
 ## 其他功能域 / Other Domains
 
-> 待后续补充：书库管理、同步、TTS、ComfyUI 创意生成等。
+### 数据存储与同步
+
+架构方向已经由
+[ADR-0008](./docs/adr/0008-data-ownership-and-sync-storage.md) 确定；具体用户域协议见
+[Profile Sync v1 草案](./docs/sync/profile-v1.md)。
+
+| 阶段 | 状态 | 目标 |
+|---|---|---|
+| 书库 sidecar 数据库 | ✅ | 进度、书签等书库域数据随书库保存 |
+| 书库 v3 增量同步 | ⚠️ | 已同步进度和书签，其他书库域尚未全部接入 |
+| 稳定跨设备身份 | ❌ | 引入 `profile_id`、应用级 `device_id`、`library_uuid`、`book_uuid` |
+| Profile 数据库 | ❌ | 集中保存跨书库阅读事件、完成历史和全局设置 |
+| 旧阅读统计迁移 | ❌ | 将本地 `book_id` 幂等映射为稳定 `book_ref` |
+| `profile-v1` 同步 | ❌ | 同步不可约事件，不同步派生统计 |
+| 统一同步协调器 | ❌ | 一个产品入口协调 Profile 与全部已连接书库 |
+| 多端兼容与恢复验证 | ❌ | 覆盖重复应用、中断恢复、未知协议和删除语义 |
+
+### 其他待补充领域
+
+> 书库管理、TTS、ComfyUI 创意生成等。

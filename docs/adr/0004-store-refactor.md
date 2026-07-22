@@ -1,4 +1,7 @@
 ---
+adr: ADR-0004
+proposal_date: 2026-05-27
+status: 部分实施，后续需重新基线
 name: store-refactor
 overview: 分四阶段重构数据源/书库的状态管理：拆掉伪共享的 Store 接口；桌面端用 React Query 替代 Zustand 镜像；移动端把业务编排从 slice 抽出、用 React Query 接管 books 缓存；最后从内存模型移除明文密码。
 todos:

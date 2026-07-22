@@ -7,7 +7,7 @@ paths:
 
 - **Routing**: Expo Router file-based (`app/` directory)
 - **State**: Zustand (app-store, data-source-store, library-store, settings-store)
-- **Database**: op-sqlite with CR-SQLite enabled
+- **Database**: op-sqlite；书库 sidecar 使用应用自有 JSONL/LWW 变更流同步，CR-SQLite 当前禁用
 - **Patches**: 4 patches in `patches/` (react-native, react-native-css, react-native-zip-archive, gradle-plugin). Applied automatically via `postinstall`.
 
 ### Layer Model

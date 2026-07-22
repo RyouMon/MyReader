@@ -130,5 +130,6 @@ pnpm test:e2e:ui
 ## 项目文档
 
 - [架构文档](./ARCHITECTURE.md) — 系统架构、模块设计与技术决策
+- [架构决策与历史架构提案](./docs/adr/README.md) — 按提案时间编号的完整原始文档
+- [Profile Sync v1 草案](./docs/sync/profile-v1.md) — 用户域数据同步边界与合并规则
 - [项目 Roadmap](./ROADMAP.md) — 跨平台功能规划与支持矩阵（含阅读设置等）
-

@@ -1,4 +1,7 @@
 ---
+adr: ADR-0006
+proposal_date: 2026-05-28
+status: 已实施
 name: 移动端分层重构
 overview: 将 `my-reader-mobile/src/` 整改为 3 层严格单向依赖结构：`services → repos → domain`。UI（hooks/features/app/stores）只调 domain。删除 `data/`、合并 `remote/` 进 `services/remote/`、`catalog`+`sync` 合并为 `domain/{library,sync,download}` 子目录。
 todos:

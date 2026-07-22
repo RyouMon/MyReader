@@ -1,4 +1,7 @@
 ---
+adr: ADR-0003
+proposal_date: 2026-04-23
+status: 部分实施，部分已取代
 name: MyReader 同步技术选型
 overview: 为 MyReader 桌面端 (Tauri + React) 与移动端 (Expo + React Native) 设计跨端同步方案。本期实现仅聚焦两类数据源——**本地直读（LocalDirect）** 与 **WebDAV**；基于 OpenDAL + cr-sqlite + Manifest/CAS，支持用户主动触发下载与本地释放。S3/OneDrive/Calibre 远端镜像等延后。
 todos:
@@ -396,4 +399,3 @@ iOS 沙盒限制，应用本体只能读 app 私有目录与用户通过 Files a
 - "彻底删除"后所有已同步端下次同步确认文件消失
 - 离线修改 → 联网后自动 push，且与远端并发修改走 CRDT 合并不丢数据
 - **Local 直读**：选本地 Calibre 库路径后，无网络访问、无 manifest 生成；书列表与封面直出，下载按钮隐藏，仅"删除"可用；禁用 evictLocal
-

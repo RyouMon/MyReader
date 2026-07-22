@@ -1,4 +1,7 @@
 ---
+adr: ADR-0007
+proposal_date: 2026-05-31
+status: 已实施
 name: Mobile Sync Refactor
 overview: 在 my-reader-mobile 内以接口优先重构同步体系：统一「同步书库」入口（Calibre + MyReader 两阶段，本地/远程同一 SyncBackend 编排），移除 manifest，桌面端暂不改动。分四阶段：定义模块与接口 → 实现并单测 → 替换调用方 → 删除旧代码。
 todos:

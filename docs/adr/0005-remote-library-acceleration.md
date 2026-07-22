@@ -1,4 +1,7 @@
 ---
+adr: ADR-0005
+proposal_date: 2026-05-28
+status: 已实施
 name: 远程书库通用加速层
 overview: 把当前分散的 RemoteLibraryOps / RemoteBackendAdapter / RemoteFileOps 三套抽象收敛成统一的 RemoteBackend 接口；在其上实现通用的 token 内存缓存、metadata.db 增量探测、封面镜像、书单磁盘持久化，让 OneDrive 和 WebDAV 共同受益，未来 Google Drive 等新 backend 零成本接入。
 todos:
