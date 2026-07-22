@@ -15,6 +15,25 @@
     "recentReading": "最近阅读",
     "recentAdded": "最近添加",
     "bookCount": "{{count}} 本",
+    "readingStats": {
+      "title": "阅读统计",
+      "streak": "连续阅读",
+      "totalDuration": "累计时长",
+      "completed": "已读完",
+      "dayUnit": "天",
+      "hourUnit": "小时",
+      "bookUnit": "本",
+      "year": "{{year}}年",
+      "previousYear": "上一年",
+      "nextYear": "下一年",
+      "noRecord": "无记录",
+      "readingMinutes": "阅读 {{count}} 分钟",
+      "weekdays": {
+        "mon": "一",
+        "wed": "三",
+        "fri": "五"
+      }
+    },
     "noLibrary": {
       "title": "还没有添加书库",
       "detail": "在设置里添加本地 Calibre 书库后，这里会显示继续阅读和最近添加的图书。"

@@ -31,6 +31,10 @@ export const queryKeys = {
     ["book-formats", libraryId, booksLength] as const,
   readingProgress: (libraryId?: string) =>
     ["reading-progress", libraryId] as const,
+  readingStatisticsRoot: (libraryId?: string) =>
+    ["reading-statistics", libraryId] as const,
+  readingStatistics: (libraryId?: string, year?: number) =>
+    ["reading-statistics", libraryId, year] as const,
   readerBookmarksRoot: (libraryId?: string) =>
     ["reader-bookmarks", libraryId] as const,
   readerBookmarks: (libraryId?: string, bookId?: number, format?: string) =>

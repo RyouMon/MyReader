@@ -55,6 +55,7 @@ import {
 } from "@/src/design/reader-chrome-palette"
 import { READER_CHROME, READER_THEMES } from "@/src/design/reader-tokens"
 import { useTheme } from "@/src/design/tokens"
+import { useReadingSessionTracker } from "@/src/domain/reading-statistics/hooks/use-reading-session-tracker"
 import {
   ReaderActionsExpanded,
   type ReaderAnnotationEditorDraft,
@@ -271,7 +272,19 @@ export default function ReaderScreen() {
   const searchAvailable = Boolean(
     readerState?.ready && readerSearch.capabilities?.searchable,
   )
+  const readingLocationKey = readerState?.locator
+    ? JSON.stringify([
+        readerState.locator.href,
+        readerState.locator.locations ?? null,
+      ])
+    : (readerState?.currentPage ?? null)
   useReaderProgressSaver(activeLibraryId, activeLoadState, readerState)
+  useReadingSessionTracker(
+    activeLibrary,
+    activeLoadState,
+    readerState,
+    readingLocationKey,
+  )
   const captureCurrentBookmarkLocator = useCallback(
     () =>
       reflowReaderRef.current?.getBookmarkLocator() ?? Promise.resolve(null),

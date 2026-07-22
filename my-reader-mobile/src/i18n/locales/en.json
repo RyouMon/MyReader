@@ -15,6 +15,25 @@
     "recentReading": "Recent Reading",
     "recentAdded": "Recently Added",
     "bookCount": "{{count}} books",
+    "readingStats": {
+      "title": "Reading Statistics",
+      "streak": "Reading Streak",
+      "totalDuration": "Total Time",
+      "completed": "Finished",
+      "dayUnit": "d",
+      "hourUnit": "h",
+      "bookUnit": " books",
+      "year": "{{year}}",
+      "previousYear": "Previous year",
+      "nextYear": "Next year",
+      "noRecord": "No record",
+      "readingMinutes": "Read {{count}} min",
+      "weekdays": {
+        "mon": "Mon",
+        "wed": "Wed",
+        "fri": "Fri"
+      }
+    },
     "noLibrary": {
       "title": "No library added yet",
       "detail": "Add a local Calibre library in Settings, then your reading progress and recently added books will appear here."

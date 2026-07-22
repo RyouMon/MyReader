@@ -15,6 +15,15 @@ describe("queryKeys", () => {
       "reading-progress",
       "lib-1",
     ])
+    expect(queryKeys.readingStatistics("lib-1", 2026)).toEqual([
+      "reading-statistics",
+      "lib-1",
+      2026,
+    ])
+    expect(queryKeys.readingStatisticsRoot("lib-1")).toEqual([
+      "reading-statistics",
+      "lib-1",
+    ])
     expect(queryKeys.readerBookmarksRoot("lib-1")).toEqual([
       "reader-bookmarks",
       "lib-1",

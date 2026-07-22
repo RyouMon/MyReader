@@ -18,6 +18,7 @@ import { isRemoteSourceType } from "@/src/domain/types"
 import {
   ContinueReadingCard,
   ReadingShelf,
+  ReadingStatisticsCard,
 } from "@/src/features/home/components"
 import { useBookActions } from "@/src/features/library/hooks/use-book-actions"
 import { useBookReadingProgress } from "@/src/domain/library/hooks/use-book-reading-progress"
@@ -67,6 +68,7 @@ export default function HomeScreen() {
   const currentBook = readingBooksWithMeta[0]
 
   const [openMenuBookId, setOpenMenuBookId] = useState<string | null>(null)
+  const [isInspectingReadingDay, setIsInspectingReadingDay] = useState(false)
 
   const isRemote = isRemoteSourceType(activeLibrary?.sourceType)
   const isMenuOpen = openMenuBookId !== null
@@ -126,7 +128,7 @@ export default function HomeScreen() {
   )
 
   return (
-    <Screen>
+    <Screen scrollEnabled={!isInspectingReadingDay}>
       <View testID="home-screen" className="flex-1 gap-5">
         {!activeLibrary ? (
           <EmptyState
@@ -174,6 +176,14 @@ export default function HomeScreen() {
                 isAnyMenuOpen={isMenuOpen}
                 homeCardStyle={homeCardStyle}
                 favoriteBookIds={favoriteSet}
+              />
+            </View>
+
+            <View className="gap-3">
+              <SectionLabel>{t("home.readingStats.title")}</SectionLabel>
+              <ReadingStatisticsCard
+                library={activeLibrary}
+                onInspectingChange={setIsInspectingReadingDay}
               />
             </View>
           </>

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobile Reading Stats — MyReader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5efe6;
+      --bg-secondary: #f0e8db;
+      --ink-1: #3b2f2f;
+      --ink-2: #7a6b5d;
+      --ink-inverse: #faf5ef;
+      --primary: #b5651d;
+      --border: #ddd2c0;
+      --border-strong: #d9cebb;
+      --muted: #ebe3d5;
+
+      /* Heatmap ramp: terracotta family */
+      --heat-0: #ebe3d5;
+      --heat-1: #f0d4bf;
+      --heat-2: #e2b088;
+      --heat-3: #c96f28;
+      --heat-4: #8f4a15;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1f1b17;
+      --bg-secondary: #2a2520;
+      --ink-1: #f5efe6;
+      --ink-2: #b8afa6;
+      --ink-inverse: #3b2f2f;
+      --primary: #d4803a;
+      --border: rgba(245, 239, 230, 0.12);
+      --border-strong: rgba(245, 239, 230, 0.22);
+      --muted: #36302a;
+
+      --heat-0: #2a2520;
+      --heat-1: #4a3525;
+      --heat-2: #7a4f24;
+      --heat-3: #c96f28;
+      --heat-4: #e99b5c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink-1);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    .phone-frame {
+      width: 100%;
+      max-width: 390px;
+      background: var(--bg);
+      border-radius: 32px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.18);
+      overflow: hidden;
+      border: 8px solid #1a1714;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      position: relative;
+    }
+
+    .stat-value {
+      font-size: inherit;
+      font-weight: 600;
+      color: var(--ink-1);
+      line-height: 1.5;
+    }
+
+    .stat-label {
+      font-size: inherit;
+      color: var(--ink-2);
+      line-height: 1.5;
+    }
+
+    .year-switcher {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .year-button {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease;
+    }
+
+    .year-button:hover {
+      background: var(--muted);
+      color: var(--ink-1);
+    }
+
+    .year-button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .year-button:disabled {
+      opacity: 0.35;
+      cursor: default;
+      background: transparent;
+    }
+
+    .year-button svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .year-value {
+      min-width: 72px;
+      color: var(--ink-1);
+      font-size: inherit;
+      font-weight: 600;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .heatmap-component {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+    }
+
+    .day-labels,
+    .heatmap-grid {
+      display: grid;
+      grid-template-rows: 24px repeat(7, 14px);
+      row-gap: 4px;
+    }
+
+    .day-label {
+      height: 14px;
+      color: var(--ink-2);
+      font-size: inherit;
+      line-height: 14px;
+    }
+
+    .heatmap-scroll {
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .heatmap-scroll::-webkit-scrollbar { display: none; }
+
+    .heatmap-grid {
+      grid-template-columns: repeat(var(--week-count), 14px);
+      column-gap: 4px;
+      width: max-content;
+    }
+
+    .month-label {
+      color: var(--ink-2);
+      font-size: inherit;
+      line-height: 20px;
+      white-space: nowrap;
+    }
+
+    .day-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background: var(--heat-0);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      position: relative;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .day-cell.is-outside {
+      background: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .day-cell:hover,
+    .day-cell.is-pressing {
+      transform: scale(1.5);
+      box-shadow: 0 0 0 1.5px var(--primary);
+      z-index: 2;
+    }
+
+    .day-cell.l1 { background: var(--heat-1); }
+    .day-cell.l2 { background: var(--heat-2); }
+    .day-cell.l3 { background: var(--heat-3); }
+    .day-cell.l4 { background: var(--heat-4); }
+
+    .touch-tooltip {
+      position: absolute;
+      z-index: 20;
+      max-width: calc(100% - 16px);
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: var(--ink-1);
+      color: var(--ink-inverse);
+      font-size: inherit;
+      line-height: 1.5;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .touch-tooltip[hidden] { display: none; }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 20px;
+      color: var(--ink-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-frame">
+    <!-- Status bar placeholder -->
+    <div class="h-6 w-full" style="background: var(--bg);"></div>
+
+    <!-- Demo content area -->
+    <div class="px-4 pt-4 pb-8" style="background: var(--bg);">
+      <div class="card p-4 text-base" id="statsCard">
+        <!-- Key metrics -->
+        <div class="grid grid-cols-3 gap-2 mb-5">
+          <div class="text-center p-2 rounded-xl" style="background: var(--muted);">
+            <div class="stat-value" id="streakValue">0天</div>
+            <div class="stat-label">连续阅读</div>
+          </div>
+          <div class="text-center p-2 rounded-xl" style="background: var(--muted);">
+            <div class="stat-value" id="timeValue">0</div>
+            <div class="stat-label">累计时长</div>
+          </div>
+          <div class="text-center p-2 rounded-xl" style="background: var(--muted);">
+            <div class="stat-value" id="booksValue">0本</div>
+            <div class="stat-label">已读完</div>
+          </div>
+        </div>
+
+        <!-- Year switcher -->
+        <div class="year-switcher" aria-label="年份">
+          <button class="year-button" id="previousYearButton" type="button" aria-label="上一年">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+          </button>
+          <div class="year-value" id="yearValue" aria-live="polite"></div>
+          <button class="year-button" id="nextYearButton" type="button" aria-label="下一年">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="heatmap-component">
+          <div class="day-labels" aria-hidden="true">
+            <div></div>
+            <div></div>
+            <div class="day-label">一</div>
+            <div></div>
+            <div class="day-label">三</div>
+            <div></div>
+            <div class="day-label">五</div>
+            <div></div>
+          </div>
+          <div class="heatmap-scroll" id="heatmapContainer">
+            <div id="heatmap" class="heatmap-grid"></div>
+          </div>
+        </div>
+        <div class="touch-tooltip" id="touchTooltip" role="status" aria-live="polite" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const monthLabels = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    const currentYear = new Date().getFullYear();
+    const heatmapDataByYear = new Map();
+    const pressMoveTolerance = 10;
+
+    let selectedYear = currentYear;
+    let heatmapData = new Map();
+    let pressedCell = null;
+    let pressStart = null;
+
+    function generateMockData(year) {
+      const today = new Date();
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = year === currentYear ? today : new Date(year, 11, 31);
+      const data = new Map();
+
+      for (let d = new Date(yearStart); d <= yearEnd; d.setDate(d.getDate() + 1)) {
+        const key = formatDate(d);
+        // Skew toward more reading on weekends
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        const base = isWeekend ? 0.45 : 0.18;
+        const roll = Math.random();
+        let minutes = 0;
+        if (roll < base) {
+          minutes = Math.floor(10 + Math.random() * 120);
+          if (Math.random() > 0.85) minutes += 60;
+        }
+        data.set(key, minutes);
+      }
+      return data;
+    }
+
+    function getYearData(year) {
+      if (!heatmapDataByYear.has(year)) {
+        heatmapDataByYear.set(year, generateMockData(year));
+      }
+      return heatmapDataByYear.get(year);
+    }
+
+    function formatDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function getLevel(minutes) {
+      if (minutes === 0) return 0;
+      if (minutes < 20) return 1;
+      if (minutes < 45) return 2;
+      if (minutes < 90) return 3;
+      return 4;
+    }
+
+    function getWeekStart(d) {
+      const date = new Date(d);
+      const day = date.getDay();
+      date.setDate(date.getDate() - day);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+
+    function hideTouchTooltip() {
+      document.getElementById("touchTooltip").hidden = true;
+    }
+
+    function clearPressFeedback() {
+      pressedCell?.classList.remove("is-pressing");
+      pressedCell = null;
+      pressStart = null;
+      hideTouchTooltip();
+    }
+
+    function showTouchTooltip(cell, description) {
+      const card = document.getElementById("statsCard");
+      const tooltip = document.getElementById("touchTooltip");
+      tooltip.textContent = description;
+      tooltip.hidden = false;
+
+      requestAnimationFrame(() => {
+        const cardRect = card.getBoundingClientRect();
+        const cellRect = cell.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const center = cellRect.left - cardRect.left + cellRect.width / 2;
+        const maxLeft = cardRect.width - tooltipRect.width - 8;
+        const left = Math.min(Math.max(center - tooltipRect.width / 2, 8), maxLeft);
+        const top = cellRect.top - cardRect.top - tooltipRect.height - 8;
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${Math.max(top, 8)}px`;
+      });
+    }
+
+    function bindPressFeedback(cell, description) {
+      cell.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch") return;
+
+        clearPressFeedback();
+        pressedCell = cell;
+        pressStart = { x: event.clientX, y: event.clientY };
+        cell.classList.add("is-pressing");
+        showTouchTooltip(cell, description);
+      });
+
+      cell.addEventListener("pointermove", (event) => {
+        if (cell !== pressedCell || !pressStart) return;
+        const distance = Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y);
+        if (distance > pressMoveTolerance) clearPressFeedback();
+      });
+
+      cell.addEventListener("pointerup", clearPressFeedback);
+      cell.addEventListener("pointercancel", clearPressFeedback);
+      cell.addEventListener("contextmenu", (event) => event.preventDefault());
+    }
+
+    function buildYearHeatmap() {
+      const container = document.getElementById("heatmap");
+      container.innerHTML = "";
+
+      const today = new Date();
+      const year = selectedYear;
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31);
+      const weeks = [];
+
+      for (let cursor = getWeekStart(yearStart); cursor <= yearEnd; cursor.setDate(cursor.getDate() + 7)) {
+        weeks.push(new Date(cursor));
+      }
+
+      container.style.setProperty("--week-count", weeks.length);
+
+      weeks.forEach((weekStart, weekIndex) => {
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+          const dayDate = new Date(weekStart);
+          dayDate.setDate(weekStart.getDate() + dayIndex);
+
+          if (dayDate.getFullYear() === year && dayDate.getDate() === 1) {
+            const monthLabel = document.createElement("div");
+            monthLabel.className = "month-label";
+            monthLabel.textContent = monthLabels[dayDate.getMonth()];
+            monthLabel.style.gridColumn = `${weekIndex + 1} / span 3`;
+            monthLabel.style.gridRow = "1";
+            container.appendChild(monthLabel);
+          }
+
+          const cell = document.createElement("div");
+          cell.style.gridColumn = String(weekIndex + 1);
+          cell.style.gridRow = String(dayIndex + 2);
+
+          if (dayDate.getFullYear() !== year) {
+            cell.className = "day-cell is-outside";
+            cell.setAttribute("aria-hidden", "true");
+            container.appendChild(cell);
+            continue;
+          }
+
+          const key = formatDate(dayDate);
+          const minutes = heatmapData.get(key) || 0;
+          const level = getLevel(minutes);
+
+          cell.className = `day-cell l${level}`;
+          if (year === currentYear && dayDate > today) {
+            cell.style.opacity = "0.35";
+          }
+
+          const dateText = `${year}年${dayDate.getMonth() + 1}月${dayDate.getDate()}日`;
+          const timeText = minutes > 0 ? `阅读 ${minutes} 分钟` : "无记录";
+          const description = `${dateText} · ${timeText}`;
+          cell.title = description;
+          cell.setAttribute("aria-label", description);
+          bindPressFeedback(cell, description);
+
+          container.appendChild(cell);
+        }
+      });
+    }
+
+    function computeMetrics() {
+      let totalMinutes = 0;
+      let activeDays = 0;
+      let currentStreak = 0;
+      let maxStreak = 0;
+      let streak = 0;
+
+      const today = new Date();
+      const yearStart = new Date(selectedYear, 0, 1);
+      const yearEnd = selectedYear === currentYear ? today : new Date(selectedYear, 11, 31);
+
+      // Iterate from year start to today
+      const sortedKeys = Array.from(heatmapData.keys()).sort();
+      for (const key of sortedKeys) {
+        const minutes = heatmapData.get(key);
+        if (minutes > 0) {
+          totalMinutes += minutes;
+          activeDays++;
+          streak++;
+          maxStreak = Math.max(maxStreak, streak);
+        } else {
+          streak = 0;
+        }
+      }
+
+      // Current streak from today backward
+      const keys = [];
+      for (let d = new Date(yearEnd); d >= yearStart; d.setDate(d.getDate() - 1)) {
+        keys.push(formatDate(d));
+      }
+      for (const key of keys) {
+        if ((heatmapData.get(key) || 0) > 0) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+
+      return { totalMinutes, activeDays, currentStreak };
+    }
+
+    function formatHours(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      if (h === 0) return `${m}分`;
+      if (m === 0) return `${h}小时`;
+      return `${h}.${Math.round(m / 6)}小时`;
+    }
+
+    function animateValue(id, target, formatter = (v) => v) {
+      const el = document.getElementById(id);
+      const start = 0;
+      const duration = 600;
+      const startTime = performance.now();
+
+      function update(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const value = Math.round(start + (target - start) * eased);
+        el.textContent = formatter(value);
+        if (t < 1) requestAnimationFrame(update);
+      }
+      requestAnimationFrame(update);
+    }
+
+    function updateMetrics() {
+      const { totalMinutes, activeDays, currentStreak } = computeMetrics();
+      animateValue("streakValue", currentStreak, (value) => `${value}天`);
+      animateValue("timeValue", totalMinutes, formatHours);
+      animateValue("booksValue", Math.floor(totalMinutes / 480), (value) => `${value}本`); // mock: ~8h per book
+    }
+
+    function updateYearControls() {
+      document.getElementById("yearValue").textContent = `${selectedYear}年`;
+      document.getElementById("nextYearButton").disabled = selectedYear >= currentYear;
+    }
+
+    function setYear(year) {
+      if (year > currentYear) return;
+
+      clearPressFeedback();
+      selectedYear = year;
+      heatmapData = getYearData(year);
+      updateYearControls();
+      updateMetrics();
+      buildYearHeatmap();
+      document.getElementById("heatmapContainer").scrollLeft = 0;
+    }
+
+    function init() {
+      document.getElementById("previousYearButton").addEventListener("click", () => setYear(selectedYear - 1));
+      document.getElementById("nextYearButton").addEventListener("click", () => setYear(selectedYear + 1));
+      document.getElementById("heatmapContainer").addEventListener("scroll", clearPressFeedback, { passive: true });
+      setYear(currentYear);
+    }
+
+    // Theme sync with parent overview page
+    window.addEventListener("message", (e) => {
+      if (e.data?.type === "theme-change") {
+        if (e.data.dark) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+        }
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
