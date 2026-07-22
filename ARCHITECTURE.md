@@ -121,7 +121,8 @@ graph TB
 
 EPUB、PDF、CBZ 的当前阅读架构以 Readium 的 Publication、Navigator 和 Locator 为共同语义；
 桌面与移动保留各自的平台适配和渲染实现。迁移原因与边界见
-[ADR-0004](./docs/adr/0004-adopt-readium-reader-architecture.md)。
+[ADR-0004](./docs/adr/0004-adopt-readium-reader-architecture.md)，移动原生集成层的所有权见
+[ADR-0009](./docs/adr/0009-maintain-mobile-readium-integration.md)。
 
 | 类别 | 技术 | 说明 |
 |------|------|------|
@@ -737,7 +738,7 @@ MyReader 已接受按数据所有权拆分的目标架构：
 
 当前实现仍以书库数据库和单书库同步入口为主，Profile 数据库、应用级稳定身份与统一同步
 协调器尚未完成。完整取舍、删除语义、身份模型和迁移顺序见
-[ADR-0009](./docs/adr/0009-data-ownership-and-sync-storage.md)，用户域线协议见
+[ADR-0010](./docs/adr/0010-data-ownership-and-sync-storage.md)，用户域线协议见
 [Profile Sync v1 草案](./docs/sync/profile-v1.md)。
 
 历史提案和实施计划的完整正文统一保存在 [ADR 目录](./docs/adr/README.md)。

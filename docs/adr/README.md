@@ -34,4 +34,5 @@
 | [ADR-0006](./0006-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
 | [ADR-0007](./0007-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
 | [ADR-0008](./0008-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
-| [ADR-0009](./0009-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |
+| [ADR-0009](./0009-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
+| [ADR-0010](./0010-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |

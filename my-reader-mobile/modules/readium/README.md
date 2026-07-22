@@ -24,6 +24,9 @@ Nitro to Expo. The public TS contract (`ReadiumProps` / `ReadiumViewRef`) is kep
 identical for drop-in migration. See [NOTICE](./NOTICE) for provenance and
 [licenses/](./licenses) for third-party license texts.
 
+The ownership and repository-boundary decision is recorded in
+[ADR-0009](../../../docs/adr/0009-maintain-mobile-readium-integration.md).
+
 ## Architecture and ownership
 
 MyReader's reader runs as three responsibility layers. `modules/readium` is the
