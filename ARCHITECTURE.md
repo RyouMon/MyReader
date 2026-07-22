@@ -111,7 +111,7 @@ graph TB
 | 类别 | 技术 | 说明 |
 |------|------|------|
 | 移动框架 | React Native + Expo | 跨 Android / iOS |
-| 阅读器渲染 | WebView | 注入 MyReader Engine (UMD) |
+| 阅读器渲染 | Readium Swift/Kotlin Toolkit | 通过应用自有 Expo Module bridge 承载原生 Navigator |
 | 本地数据库 | expo-sqlite | SQLite 本地持久化 |
 | 手势处理 | react-native-gesture-handler | 高性能原生手势 |
 | 动画 | react-native-reanimated | 60fps 翻页动画 |
@@ -119,16 +119,17 @@ graph TB
 
 ### 3.4 阅读引擎
 
+EPUB、PDF、CBZ 的当前阅读架构以 Readium 的 Publication、Navigator 和 Locator 为共同语义；
+桌面与移动保留各自的平台适配和渲染实现。迁移原因与边界见
+[ADR-0004](./docs/adr/0004-adopt-readium-reader-architecture.md)。
+
 | 类别 | 技术 | 说明 |
 |------|------|------|
-| EPUB 解析 | Readium (r2-shared-js) + JSZip/fflate | OPF spine 解析，CFI 定位 |
-| MOBI/AZW 解析 | mobi.js | Kindle 格式支持 |
-| PDF 渲染 | PDF.js | 按需渲染可见页 |
-| DOCX 转换 | Mammoth | DOCX → HTML |
-| Markdown 转换 | Marked | MD → HTML |
-| 漫画解析 | JSZip / js-untar / 7z-wasm | CBZ/CBR/CBT/CB7 |
-| 文本编码检测 | chardet | TXT 自动编码识别 |
-| 文本选区 | Rangy | 跨浏览器高亮批注 |
+| EPUB | 桌面 `@readium/navigator`；移动 Readium Swift/Kotlin Toolkit | reflowable/fixed-layout Navigator 与 Locator |
+| PDF | 桌面 PDF.js 适配；移动 Readium PDF Navigator | page/position Locator 与按需渲染 |
+| CBZ | 桌面 Divina 适配；移动 Readium fixed-layout Navigator | 阅读顺序、页位置、缩放与 RTL |
+| 跨端位置 | Readium Locator | 进度、书签、批注和同步的可恢复内容位置 |
+| 应用集成层 | Tauri adapter + Expo Module bridge | 资源打开、产品 UI、持久化和平台交互 |
 
 ### 3.5 外部服务集成
 
@@ -736,7 +737,7 @@ MyReader 已接受按数据所有权拆分的目标架构：
 
 当前实现仍以书库数据库和单书库同步入口为主，Profile 数据库、应用级稳定身份与统一同步
 协调器尚未完成。完整取舍、删除语义、身份模型和迁移顺序见
-[ADR-0008](./docs/adr/0008-data-ownership-and-sync-storage.md)，用户域线协议见
+[ADR-0009](./docs/adr/0009-data-ownership-and-sync-storage.md)，用户域线协议见
 [Profile Sync v1 草案](./docs/sync/profile-v1.md)。
 
 历史提案和实施计划的完整正文统一保存在 [ADR 目录](./docs/adr/README.md)。

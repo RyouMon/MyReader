@@ -29,8 +29,9 @@
 | [ADR-0001](./0001-reader-architecture.md) | Reader Architecture V1 | 已取代 | 2026-04-01 |
 | [ADR-0002](./0002-reader-architecture-v2.md) | Reader Architecture V2 | 已取代 | 2026-04-10 |
 | [ADR-0003](./0003-myreader-sync-technology-selection.md) | MyReader 同步技术选型 | 部分实施、部分已取代 | 2026-04-23 |
-| [ADR-0004](./0004-store-refactor.md) | Store Refactor | 部分实施，需重新基线 | 2026-05-27 |
-| [ADR-0005](./0005-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
-| [ADR-0006](./0006-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
-| [ADR-0007](./0007-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
-| [ADR-0008](./0008-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |
+| [ADR-0004](./0004-adopt-readium-reader-architecture.md) | 使用 Readium 取代自研 Reader V2 架构 | 已接受（回溯） | 2026-05-07 |
+| [ADR-0005](./0005-store-refactor.md) | Store Refactor | 部分实施，需重新基线 | 2026-05-27 |
+| [ADR-0006](./0006-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
+| [ADR-0007](./0007-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
+| [ADR-0008](./0008-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
+| [ADR-0009](./0009-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |

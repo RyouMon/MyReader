@@ -1,5 +1,5 @@
 ---
-adr: ADR-0004
+adr: ADR-0005
 proposal_date: 2026-05-27
 status: 部分实施，后续需重新基线
 name: store-refactor

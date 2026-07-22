@@ -195,7 +195,7 @@
 ### 数据存储与同步
 
 架构方向已经由
-[ADR-0008](./docs/adr/0008-data-ownership-and-sync-storage.md) 确定；具体用户域协议见
+[ADR-0009](./docs/adr/0009-data-ownership-and-sync-storage.md) 确定；具体用户域协议见
 [Profile Sync v1 草案](./docs/sync/profile-v1.md)。
 
 | 阶段 | 状态 | 目标 |

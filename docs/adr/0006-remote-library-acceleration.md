@@ -1,5 +1,5 @@
 ---
-adr: ADR-0005
+adr: ADR-0006
 proposal_date: 2026-05-28
 status: 已实施
 name: 远程书库通用加速层

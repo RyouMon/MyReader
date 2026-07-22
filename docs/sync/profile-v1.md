@@ -2,7 +2,7 @@
 
 - 状态：草案
 - 协议标识：`profile-v1`
-- 所属决策：[ADR-0008](../adr/0008-data-ownership-and-sync-storage.md)
+- 所属决策：[ADR-0009](../adr/0009-data-ownership-and-sync-storage.md)
 
 本文定义用户域数据的第一版同步边界。它是实现和测试的输入，但在首个兼容客户端发布前
 仍允许通过评审修改。发布后，破坏兼容性的变化必须使用新的协议版本。
