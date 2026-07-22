@@ -7,5 +7,7 @@ pub mod book_reading_format;
 pub mod bookmarks;
 pub mod favorite_books;
 pub mod file_state;
+pub mod reading_completions;
 pub mod reading_progress;
+pub mod reading_sessions;
 pub mod sync_meta;

@@ -8,6 +8,7 @@ import m0003 from './0003_add_book_cover_thumbnail_cache.sql';
 import m0004 from './0004_add_bookmarks.sql';
 import m0005 from './0005_add_annotations.sql';
 import m0006 from './0006_add_reading_progress_display_progression.sql';
+import m0007 from './0007_add_reading_statistics.sql';
 
   export default {
     journal,
@@ -19,5 +20,6 @@ import m0006 from './0006_add_reading_progress_display_progression.sql';
       m0004,
       m0005,
       m0006,
+      m0007,
     }
   }

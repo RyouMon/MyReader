@@ -5,5 +5,7 @@ pub use super::book_reading_format::Entity as BookReadingFormat;
 pub use super::bookmarks::Entity as Bookmarks;
 pub use super::favorite_books::Entity as FavoriteBooks;
 pub use super::file_state::Entity as FileState;
+pub use super::reading_completions::Entity as ReadingCompletions;
 pub use super::reading_progress::Entity as ReadingProgress;
+pub use super::reading_sessions::Entity as ReadingSessions;
 pub use super::sync_meta::Entity as SyncMeta;
