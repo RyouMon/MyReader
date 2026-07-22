@@ -29,7 +29,8 @@ todos:
     status: completed
   - id: p3-conflict-resume
     content: 阶段 3：冲突文件保留 UI、HTTP Range 断点续传、队列指数退避
-    status: pending
+    status: cancelled
+    note: 原 CR-SQLite、Manifest/CAS 同步管线已被 ADR-0004 和 ADR-0012 取代，本阶段未按原方案继续实施
   - id: p1-local-direct
     content: 阶段 1：支持"本地直读"数据源模式——OpenDAL fs backend 直通、跳过 Manifest 上传、下载即 no-op、cr-sqlite 可选关闭，Calibre 本地库沿用现有直读路径
     status: completed

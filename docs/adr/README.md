@@ -34,7 +34,7 @@
 | [ADR-0006](./0006-desktop-typed-ipc-and-layered-backend.md) | 桌面端使用生成式类型 IPC 和分层 Rust 后端 | 已接受（回溯） | 2026-05-11 |
 | [ADR-0007](./0007-pnpm-monorepo-and-shared-code-ownership.md) | 采用 pnpm monorepo 并按语义共享跨端代码 | 已接受（回溯） | 2026-05-17 |
 | [ADR-0008](./0008-shared-database-schema-authority.md) | 以 Drizzle schema 和 SQL migrations 作为跨端数据库权威 | 已接受（回溯） | 2026-05-18 |
-| [ADR-0009](./0009-store-refactor.md) | Store Refactor | 部分实施，需重新基线 | 2026-05-27 |
+| [ADR-0009](./0009-store-refactor.md) | Store Refactor | 已实施 | 2026-05-27 |
 | [ADR-0010](./0010-remote-library-acceleration.md) | 远程书库通用加速层 | 已实施 | 2026-05-28 18:21 |
 | [ADR-0011](./0011-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
 | [ADR-0012](./0012-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |

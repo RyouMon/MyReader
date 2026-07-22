@@ -1,22 +1,26 @@
 ---
 adr: ADR-0009
 proposal_date: 2026-05-27
-status: 部分实施，后续需重新基线
+status: 已实施
 name: store-refactor
 overview: 分四阶段重构数据源/书库的状态管理：拆掉伪共享的 Store 接口；桌面端用 React Query 替代 Zustand 镜像；移动端把业务编排从 slice 抽出、用 React Query 接管 books 缓存；最后从内存模型移除明文密码。
 todos:
   - id: phase0
     content: "Phase 0: 拆掉 packages/tools 的 Store 接口，迁移到纯领域类型"
-    status: pending
+    status: completed
+    evidence: ac78e85e
   - id: phase1
     content: "Phase 1: 桌面端引入 React Query，删除 useLibraryStore/useDataSourceStore"
-    status: pending
+    status: completed
+    evidence: 2f812d9a
   - id: phase2
     content: "Phase 2: 移动端 slice 解耦，业务编排上移到 hooks，books 统一走 React Query"
-    status: pending
+    status: completed
+    evidence: 17ba4b6f
   - id: phase3
     content: "Phase 3: 从 DataSource 类型与内存模型移除 password 字段"
-    status: pending
+    status: completed
+    evidence: ac78e85e、67abfa54、185715dd
 isProject: false
 ---
 

@@ -31,7 +31,8 @@ todos:
     status: done
   - id: lint-boundary
     content: "step 9(可选): 加 ESLint 层级边界规则锁 services/repos/domain 三层方向"
-    status: pending
+    status: done
+    evidence: ea5ba3ea
 isProject: false
 ---
 

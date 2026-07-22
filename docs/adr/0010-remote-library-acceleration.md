@@ -64,7 +64,8 @@ todos:
     status: done
   - id: verify
     content: "验证：冷启动计时、飞行模式浏览、远端加书后下次启动可见、WebDAV 同样生效"
-    status: pending
+    status: cancelled
+    note: 原 CoverMirror 和同步后补齐队列已由远端 URL、expo-image 缓存及后续缩略图缓存方案取代，未保留这组人工验收为可复跑门禁
 isProject: false
 ---
 
