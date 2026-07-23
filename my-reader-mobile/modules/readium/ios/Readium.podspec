@@ -13,13 +13,14 @@ Pod::Spec.new do |s|
   s.license        = 'MIT'
   s.author         = 'RyouMon'
 
-  s.platforms      = { :ios => '15.1' }
-  s.ios.deployment_target = '15.1'
+  s.platforms      = { :ios => '16.4' }
+  s.ios.deployment_target = '16.4'
   s.source         = { git: '' }
   s.static_framework = true
   s.swift_version  = '5.0'
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
+  s.exclude_files = "Tests/**/*"
   s.prepare_command = "cd ../../.. && node scripts/prepare-reader-fonts.mjs && node modules/readium/scripts/generate-reader-note-marker-template.mjs --platform ios && node ../scripts/generate-reader-viewport-anchor.mjs --platform ios"
   s.script_phases = [
     {
@@ -51,4 +52,8 @@ Pod::Spec.new do |s|
   s.dependency 'ReadiumInternal'
   # Used by ReaderViewController to sanitize noteref referrer/title markup.
   s.dependency 'SwiftSoup'
+
+  s.test_spec 'Tests' do |test_spec|
+    test_spec.source_files = 'Tests/**/*.swift'
+  end
 end

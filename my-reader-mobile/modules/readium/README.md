@@ -207,6 +207,46 @@ JavaScript constants used inside Readium's EPUB web views.
 Reader non-regression is covered by `e2e/flows/reader/read_book.yaml` (Maestro) on both
 platforms: open EPUB, toggle chrome, TOC, settings, page navigation, locator persistence.
 
+### Native tests
+
+Run the native test commands from the repository root.
+
+Android tests live under `android/src/test/`. Run the complete Android unit-test target:
+
+```bash
+cd my-reader-mobile/android
+./gradlew :my-reader-readium:testDebugUnitTest --console=plain
+```
+
+To run one Android test class:
+
+```bash
+cd my-reader-mobile/android
+./gradlew :my-reader-readium:testDebugUnitTest \
+  --tests 'fully.qualified.TestClass' \
+  --console=plain
+```
+
+iOS tests live under `ios/Tests/` and run through the CocoaPods
+`Readium-Unit-Tests` scheme. Run `pod install` after adding or removing test files, or
+after changing `Readium.podspec`. Choose an available simulator UDID, boot it if
+necessary, then run the complete iOS test scheme:
+
+```bash
+cd my-reader-mobile/ios
+pod install
+xcrun simctl list devices available
+READIUM_SIMULATOR_UDID="paste-simulator-udid-here"
+xcrun simctl boot "$READIUM_SIMULATOR_UDID"
+xcodebuild test -quiet \
+  -workspace myreadermobile.xcworkspace \
+  -scheme Readium-Unit-Tests \
+  -destination "platform=iOS Simulator,id=$READIUM_SIMULATOR_UDID" \
+  -only-testing:Readium-Unit-Tests
+```
+
+If the selected simulator is already booted, omit the `simctl boot` command.
+
 ## License
 
 This module's own source is MIT-licensed under the project's top-level

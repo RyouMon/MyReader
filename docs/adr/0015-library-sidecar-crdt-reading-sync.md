@@ -8,7 +8,7 @@ overview: 保留每个 Calibre 书库自己的 sidecar 作为阅读数据同步�
 todos:
   - id: phase0-contract
     content: "Phase 0：冻结书库内身份、六个业务 domain、HLC、普通 JSON segment schema 和跨语言语义 fixtures"
-    status: pending
+    status: completed
   - id: phase1-sidecar-kernel
     content: "Phase 1：在每书库 sidecar DB 中实现事务 outbox、prepared segment 和连续 cursor"
     status: pending
@@ -216,10 +216,14 @@ segment 目录或 CRDT 决胜身份。未来如果产品需要展示或管理设
 | 身份 | 规则 |
 |---|---|
 | `library_uuid` | Calibre `library_id.uuid`；用于校验 segment 属于当前书库 |
-| `replica_id` | 当前安装针对该书库生成的 UUID，保存在设备本地 sidecar 元数据中 |
+| `replica_id` | 当前安装针对该书库生成的 UUIDv4，保存在设备本地 sidecar 元数据中 |
 | `book_id` | 当前 Calibre 书库内的书籍 ID；由 sidecar 路径限定作用域 |
 | `entity_id` | 新书签、批注和阅读会话使用项目现有 UUIDv4 |
 | `change_id` | 一次本地业务 mutation 的 UUIDv4，只用于追踪和 outbox |
+
+线路中 `library_uuid` 使用小写、带连字符的 UUID 文本，`replica_id` 使用小写、带连字符的
+UUIDv4；现有业务表中的 `entity_id` 以及新生成的 `change_id` 沿用项目当前的小写 32 位
+compact UUIDv4。HLC 的第三段同样使用去掉连字符的 `replica_id`，以保持固定宽度。
 
 路径、文件名、可变内容哈希和本机 `library_id` 不得作为跨设备身份。复制完整 Calibre 书库及其
 sidecar 时，仍表示同一个书库副本；同时运行的恢复设备必须生成新的 `replica_id`。
@@ -248,8 +252,8 @@ HLC 值为 `(physical_ms: u64, counter: u64, replica_id)`，依次比较三个�
 
 本地业务写时，若墙钟大于已持久化的 physical，则使用 `(now, 0)`；否则保持 physical 并增加
 counter。接收远端 HLC 后按标准 HLC 规则推进本地状态。HLC 更新、业务 projection 与
-outbox/cursor 必须在对应 SQLite 事务中提交。远端 HLC 超过冻结的 future-skew 上限时隔离该
-segment，避免错误设备时钟长期压制其他写入。
+outbox/cursor 必须在对应 SQLite 事务中提交。future-skew 上限固定为 5 分钟；任一远端 HLC
+比接收端当前墙钟快超过 5 分钟时隔离该 segment，避免错误设备时钟长期压制其他写入。
 
 #### Domain registry
 
@@ -288,7 +292,8 @@ v4 不定义批注恢复操作；再次创建相同高亮必须使用新的 UUID
 
 线路只使用当前 MyReader `ReaderLocator` JSON 类型：
 
-1. 拒绝未知 locator version/type。
+1. Locator schema 由引用它的 domain `.v1` 共同版本化，不增加第二个 `locatorVersion` 字段；
+   缺少 `href`、`type` 等当前必填字段的 Locator 属于 `invalid_change`。
 2. 规范化当前已有的 href、fragments、progression、position、totalProgression 和 text fields。
 3. 使用 `readerBookmarkLocatorKey(locator)` 生成书签自然键。
 4. 通过 TypeScript、Rust、Swift 和 Kotlin 语义 round-trip fixtures。
@@ -314,6 +319,8 @@ v4 不增加新的格式锚点变体。Readium Annotation 只作为导入/导出
 - `sessionId`、`originReplicaId`、`bookId`、`format`、`localDay` 和 `startedAtMs` 创建后不可变。
 - 阅读时长使用平台 monotonic clock 累积，并按当前行为跨本地午夜切成不同 session。
 - Change 携带 session 当前累计总秒数，不携带增量；同一 session 合并取 origin 发布的最大合法值。
+- `durationSeconds` 是非负整数；单个 local-day session 的线路上限为 90,000 秒，以覆盖夏令时
+  回拨形成的 25 小时自然日，超过上限属于 `invalid_change`。
 - v4 不定义 session 删除、替换或手工修正。
 
 `reading_completion.v1` 映射当前书库 `reading_completions` 的每书最早完成记录。两个合法记录按
@@ -429,13 +436,21 @@ cursor。
 ```json
 {
   "changeId": "019...",
-  "domain": "annotation.v1",
-  "entityId": "019...",
   "clock": "0000019c...",
-  "bookId": 42,
-  "delta": {}
+  "state": {
+    "domain": "annotation.v1",
+    "id": "019...",
+    "header": {},
+    "color": {},
+    "note": {},
+    "tombstone": null
+  }
 }
 ```
+
+`state` 是该 entity 可直接参与 join 的完整当前 CRDT state，不是依赖历史操作才能解释的命令。
+`clock` 是产生本 change 的 HLC；对于 LWW 字段，各 register 还保存自己的 HLC，使 annotation
+的颜色、笔记和 tombstone 可以独立收敛。接收端同时校验 change clock 与 state 内所有 HLC。
 
 Segment envelope：
 
@@ -461,6 +476,18 @@ Segment 文件名为：
 `sequence` 是不补零的十进制正整数。SHA-256 计算首次生成的完整 JSON bytes；本地 prepared row
 保存完整 256 位摘要，文件名只使用前 128 位，即前 32 个小写十六进制字符。接收端先重新计算完整
 SHA-256 并比较文件名前缀，再解析 JSON。
+
+其余整数边界固定如下：
+
+- `bookId` 使用 JSON number，必须是 `1..Number.MAX_SAFE_INTEGER` 的整数。
+- 毫秒时间戳和秒数使用非负 JSON safe integer；只有可能超过 JavaScript safe integer 的
+  `sequence` 使用十进制字符串。
+- format 在线路写入前转为非空大写 Calibre format 标识；同一 entity key 的 format 必须完全一致。
+
+session 采集沿用当前移动端语义：reader ready 且应用处于前台时开始；进入后台、reader 卸载或
+切书时立即 pause；心跳为 30 秒，小于 5 秒的片段不计入；同一阅读位置最多连续计入 120 秒，
+位置变化后重新获得 120 秒额度；跨本地午夜拆成两个 local-day session。有效时长由 monotonic
+clock 计算，墙钟仅用于 `startedAtMs` 和 local-day 切分。
 
 ### 本地 sidecar 数据库与发布
 
@@ -562,6 +589,12 @@ desktop 和 mobile 必须对相同协议错误给出一致分类。错误不得�
 ## 实施阶段
 
 ### Phase 0：冻结协议与合并语义
+
+状态：已于 2026-07-23 完成。TypeScript 可执行合同位于
+`my-reader-mobile/src/domain/sync/library-sidecar/`，Rust 可执行合同位于
+`my-reader/src-tauri/src/sync/{contract,hlc,merge}.rs`。共享 fixture 的唯一实体位于
+`fixtures/library-sidecar-v4/contract.json`；移动端与桌面端各自在合同目录中通过相对软链接读取
+该文件。Swift/Kotlin 使用 Readium 模块的共享 Locator fixture 做 round-trip。
 
 - 冻结 `library_uuid` 校验、书库内 `book_id`、format、六个业务 domain 的 state/schema/merge/delete
   语义、HLC 编码、future skew 和事务边界。
