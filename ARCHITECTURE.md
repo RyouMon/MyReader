@@ -1,787 +1,430 @@
-# MyReader 架构文档
+# MyReader 架构现状
 
-> 版本：0.1.0 | 更新日期：2026-03-26
+> 文档日期：2026-07-23
+>
+> 适用范围：当前主仓库已经落地的实现。已接受但尚未实施的目标架构会单独标注，历史方案见 `docs/adr/`。
 
-## 一、项目概述
+## 1. 架构摘要
 
-MyReader 是一款 Local-First 的跨平台电子书阅读器，基于 Calibre 书库直接浏览管理藏书，内置多格式阅读引擎与 TTS 语音朗读，并集成 ComfyUI 实现图像/视频创意生成。
+MyReader 是一个 pnpm monorepo，包含 Tauri 桌面端、Expo 移动端和三个共享包。产品围绕 Calibre 书库组织：
 
-桌面端基于 Tauri 2（Rust + WebView），移动端基于 React Native / Expo，核心阅读引擎与 UI 组件在多端共享，确保一致的阅读体验。
-
----
-
-## 二、整体架构
-
-```mermaid
-graph TB
-    subgraph 用户界面层["用户界面层 (React + Zustand)"]
-        Pages["Pages<br/>Library / Reader / Settings"]
-        Components["Components<br/>BookGrid / BookList / Shelf / ReaderView / TTSPanel"]
-        MobileShell["Mobile Shell<br/>React Native + WebView"]
-    end
-
-    subgraph 状态管理层["状态管理层 (Zustand)"]
-        LibraryStore["LibraryStore<br/>书库列表 · 筛选 · 排序"]
-        ReaderStore["ReaderStore<br/>当前书籍 · 阅读状态 · 笔记"]
-        TTSStore["TTSStore<br/>朗读状态 · 进度 · 语音配置"]
-        SettingsStore["SettingsStore<br/>全局配置 · 主题 · TTS/ComfyUI 端点"]
-    end
-
-    subgraph 业务逻辑层["业务逻辑层"]
-        CalibreService["CalibreService<br/>Calibre metadata.db 读取 · 多书库"]
-        BookService["BookService<br/>图书文件读取 · 格式检测"]
-        TTSService["TTSService<br/>TTS API 调用 · 音频流 · 进度同步"]
-        SyncService["SyncService<br/>云同步抽象层"]
-        ComfyService["ComfyService<br/>ComfyUI API 调用 · 工作流管理"]
-    end
-
-    subgraph 渲染引擎层["渲染引擎层 (MyReader Engine)"]
-        BookHelper["BookHelper<br/>格式工厂 · 元数据提取"]
-        GeneralRender["GeneralRender<br/>基类：翻页 · 导航 · 搜索 · 高亮"]
-        FormatRenders["FormatRenders<br/>Epub · Mobi · Pdf · Txt · Docx · Md · Fb2 · Comic · Html"]
-        StyleHelper["StyleHelper<br/>阅读样式 CSS 生成"]
-        AnimationUtil["AnimationUtil<br/>翻页动画 · 手势响应"]
-        TouchUtil["TouchUtil<br/>触摸事件 · 手势识别"]
-    end
-
-    subgraph 数据持久层["数据持久层 (Local-First)"]
-        AppSQLite["App SQLite<br/>阅读进度 · 笔记 · 书签 · 配置"]
-        CalibreSQLite["Calibre SQLite<br/>metadata.db (只读)"]
-        FileSystem["本地文件系统<br/>书籍文件 · 生成产物"]
-    end
-
-    subgraph 外部服务层["外部服务层"]
-        TTSAPI["TTS 引擎 API<br/>Azure / OpenAI / Edge TTS / 自建"]
-        ComfyUI["ComfyUI Server<br/>图像生成 · 视频生成"]
-        CloudSync["云存储<br/>WebDAV / S3 / OneDrive / Google Drive / Dropbox"]
-    end
-
-    Pages --> LibraryStore & ReaderStore & TTSStore & SettingsStore
-    Components --> LibraryStore & ReaderStore & TTSStore
-    MobileShell --> Pages
-
-    LibraryStore --> CalibreService
-    ReaderStore --> BookService
-    TTSStore --> TTSService
-    SettingsStore --> SyncService
-
-    CalibreService --> CalibreSQLite
-    BookService --> FileSystem
-    BookService --> BookHelper
-    BookHelper --> FormatRenders
-    GeneralRender --> FormatRenders
-    FormatRenders --> StyleHelper & AnimationUtil & TouchUtil
-
-    TTSService --> TTSAPI
-    ComfyService --> ComfyUI
-    SyncService --> CloudSync
-
-    AppSQLite --> SyncService
-```
-
----
-
-## 三、技术栈
-
-### 3.1 前端 (共享层)
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| UI 框架 | React 19 | 函数组件 + Hooks |
-| 语言 | TypeScript 5.x | 严格模式 |
-| UI 组件库 | shadcn/ui | 基于 Radix UI 的可定制组件集 |
-| 样式方案 | Tailwind CSS 4 | 实用优先，shadcn/ui 默认集成 |
-| 状态管理 | Zustand | 轻量级，支持 persist 中间件 |
-| 构建工具 | Vite 6 | 快速 HMR |
-| E2E 测试 | Playwright | 跨浏览器端到端测试 |
-| 国际化 | i18next | 多语言支持 |
-
-### 3.2 桌面端
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| 桌面框架 | Tauri 2 | Rust 后端，系统 WebView 渲染 |
-| 后端语言 | Rust | 文件系统访问、SQLite 操作、性能关键路径 |
-| 本地数据库 | SQLite (sqlx) | Rust 侧直接操作 |
-| Calibre 集成 | SQLite 只读连接 | 读取 metadata.db |
-| 打包 | tauri-bundler | NSIS (Win) / DMG (Mac) / AppImage (Linux) |
-
-### 3.3 移动端
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| 移动框架 | React Native + Expo | 跨 Android / iOS |
-| 阅读器渲染 | Readium Swift/Kotlin Toolkit | 通过应用自有 Expo Module bridge 承载原生 Navigator |
-| 本地数据库 | expo-sqlite | SQLite 本地持久化 |
-| 手势处理 | react-native-gesture-handler | 高性能原生手势 |
-| 动画 | react-native-reanimated | 60fps 翻页动画 |
-| 文件访问 | expo-file-system | 本地书库读取 |
-
-### 3.4 阅读引擎
-
-EPUB、PDF、CBZ 的当前阅读架构以 Readium 的 Publication、Navigator 和 Locator 为共同语义；
-桌面与移动保留各自的平台适配和渲染实现。迁移原因与边界见
-[ADR-0005](./docs/adr/0005-adopt-readium-reader-architecture.md)，移动原生集成层的所有权见
-[ADR-0013](./docs/adr/0013-maintain-mobile-readium-integration.md)。
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| EPUB | 桌面 `@readium/navigator`；移动 Readium Swift/Kotlin Toolkit | reflowable/fixed-layout Navigator 与 Locator |
-| PDF | 桌面 PDF.js 适配；移动 Readium PDF Navigator | page/position Locator 与按需渲染 |
-| CBZ | 桌面 Divina 适配；移动 Readium fixed-layout Navigator | 阅读顺序、页位置、缩放与 RTL |
-| 跨端位置 | Readium Locator | 进度、书签、批注和同步的可恢复内容位置 |
-| 应用集成层 | Tauri adapter + Expo Module bridge | 资源打开、产品 UI、持久化和平台交互 |
-
-### 3.5 外部服务集成
-
-| 类别 | 技术 | 说明 |
-|------|------|------|
-| TTS | REST API 客户端 | 可配置多种 TTS 后端 |
-| 图像/视频生成 | ComfyUI WebSocket + REST | 工作流执行与结果拉取 |
-| 云同步 | webdav / @aws-sdk/client-s3 / OAuth | 多云存储驱动 |
-
----
-
-## 四、目录结构
-
-```
-MyReader/
-├── apps/
-│   ├── desktop/                    # Tauri 2 桌面端应用
-│   │   ├── src-tauri/              # Rust 后端
-│   │   │   ├── src/
-│   │   │   │   ├── main.rs         # Tauri 入口
-│   │   │   │   ├── calibre/        # Calibre metadata.db 读取
-│   │   │   │   ├── database/       # 应用数据 SQLite 操作
-│   │   │   │   ├── tts/            # TTS API 调用代理
-│   │   │   │   ├── comfy/          # ComfyUI API 代理
-│   │   │   │   ├── sync/           # 云同步后端逻辑
-│   │   │   │   └── commands/       # Tauri IPC 命令定义
-│   │   │   ├── Cargo.toml
-│   │   │   └── tauri.conf.json
-│   │   └── src/                    # 桌面端前端入口
-│   │       └── main.tsx
-│   │
-│   └── mobile/                     # React Native / Expo 移动端应用
-│       ├── app/                    # Expo Router 页面
-│       ├── components/             # 移动端专属组件
-│       ├── native/                 # 原生模块桥接
-│       ├── app.json
-│       └── package.json
-│
-├── packages/
-│   ├── ui/                         # 共享 UI 组件库 (shadcn/ui + Tailwind CSS)
-│   │   ├── components/
-│   │   │   ├── ui/                 # shadcn/ui 基础组件
-│   │   │   │   ├── button.tsx
-│   │   │   │   ├── dialog.tsx
-│   │   │   │   ├── dropdown-menu.tsx
-│   │   │   │   ├── input.tsx
-│   │   │   │   ├── slider.tsx
-│   │   │   │   ├── sheet.tsx
-│   │   │   │   ├── tabs.tsx
-│   │   │   │   └── ...
-│   │   │   ├── library/            # 书库浏览组件
-│   │   │   │   ├── BookGrid/       # 封面网格视图
-│   │   │   │   ├── BookList/       # 列表视图
-│   │   │   │   ├── BookShelf/      # 书架视图
-│   │   │   │   ├── FilterBar/      # 筛选栏
-│   │   │   │   └── SearchBar/      # 搜索栏
-│   │   │   ├── reader/             # 阅读器 UI 组件
-│   │   │   │   ├── ReaderView/     # 阅读主区域
-│   │   │   │   ├── TOCPanel/       # 目录面板
-│   │   │   │   ├── NotePanel/      # 笔记面板
-│   │   │   │   ├── ProgressBar/    # 阅读进度条
-│   │   │   │   └── SettingsPanel/  # 阅读器设置面板
-│   │   │   ├── tts/                # TTS 控制组件
-│   │   │   │   ├── TTSPlayer/      # 播放控制栏
-│   │   │   │   ├── TTSHighlight/   # 朗读文本高亮
-│   │   │   │   └── TTSSettings/    # 语音设置
-│   │   │   └── comfy/              # ComfyUI 相关组件
-│   │   │       ├── GeneratePanel/  # 生成面板
-│   │   │       ├── WorkflowPicker/ # 工作流选择器
-│   │   │       └── Gallery/        # 生成结果画廊
-│   │   ├── lib/
-│   │   │   └── utils.ts            # shadcn/ui cn() 工具函数
-│   │   ├── styles/
-│   │   │   └── globals.css         # Tailwind 指令 + CSS 变量主题
-│   │   ├── components.json         # shadcn/ui 配置
-│   │   └── tailwind.config.ts      # Tailwind CSS 配置
-│   │
-│   ├── engine/                     # MyReader 阅读引擎
-│   │   ├── src/
-│   │   │   ├── index.ts            # 桌面端入口
-│   │   │   ├── mobile.ts           # 移动端入口
-│   │   │   ├── renders/            # 格式渲染器
-│   │   │   │   ├── GeneralRender.ts
-│   │   │   │   ├── EpubRender.ts
-│   │   │   │   ├── MobiRender.ts
-│   │   │   │   ├── PdfRender.ts
-│   │   │   │   ├── TxtRender.ts
-│   │   │   │   ├── DocxRender.ts
-│   │   │   │   ├── MdRender.ts
-│   │   │   │   ├── Fb2Render.ts
-│   │   │   │   ├── ComicRender.ts
-│   │   │   │   └── HtmlRender.ts
-│   │   │   ├── helpers/
-│   │   │   │   ├── bookHelper.ts   # 渲染器工厂
-│   │   │   │   └── styleHelper.ts  # 样式生成
-│   │   │   ├── utils/
-│   │   │   │   ├── layoutUtil.ts   # iframe 布局
-│   │   │   │   ├── navigationUtil.ts # 翻页导航
-│   │   │   │   ├── touchUtil.ts    # 触摸事件
-│   │   │   │   ├── animationUtil.ts # 翻页动画
-│   │   │   │   ├── noteUtil.ts     # 高亮批注
-│   │   │   │   └── EventEmitter.ts # 事件总线
-│   │   │   ├── model/
-│   │   │   │   ├── Book.ts
-│   │   │   │   ├── Chapter.ts
-│   │   │   │   └── ChapterDoc.ts
-│   │   │   └── libs/               # 底层格式解析库
-│   │   ├── rollup.config.js
-│   │   └── package.json
-│   │
-│   ├── store/                      # 共享状态管理
-│   │   ├── libraryStore.ts
-│   │   ├── readerStore.ts
-│   │   ├── ttsStore.ts
-│   │   └── settingsStore.ts
-│   │
-│   └── services/                   # 共享业务逻辑
-│       ├── calibreService.ts       # Calibre 书库读取
-│       ├── bookService.ts          # 图书文件操作
-│       ├── ttsService.ts           # TTS 引擎调用
-│       ├── comfyService.ts         # ComfyUI API
-│       ├── syncService.ts          # 云同步抽象
-│       └── drivers/                # 云存储驱动
-│           ├── webdav.ts
-│           ├── s3.ts
-│           ├── onedrive.ts
-│           ├── googledrive.ts
-│           └── dropbox.ts
-│
-├── e2e/                            # Playwright E2E 测试
-│   ├── tests/
-│   │   ├── library.spec.ts         # 书库浏览测试
-│   │   ├── reader.spec.ts          # 阅读器测试
-│   │   ├── tts.spec.ts             # TTS 朗读测试
-│   │   └── settings.spec.ts        # 设置页测试
-│   └── playwright.config.ts        # Playwright 配置
-│
-├── pnpm-workspace.yaml
-├── package.json
-├── tsconfig.json
-├── ARCHITECTURE.md
-└── README.md
-```
-
----
-
-## 五、核心架构详解
-
-### 5.1 Calibre 书库集成
-
-```mermaid
-flowchart LR
-    subgraph 用户配置
-        Config["书库配置<br/>[路径1, 路径2, ...]"]
-    end
-
-    subgraph CalibreService
-        MetaReader["metadata.db Reader<br/>(SQLite 只读)"]
-        CoverLoader["封面加载器<br/>读取 cover.jpg"]
-        BookLocator["书籍定位器<br/>解析文件路径"]
-    end
-
-    subgraph CalibreDB["Calibre metadata.db"]
-        Books["books 表"]
-        Authors["authors 表"]
-        Tags["tags 表"]
-        Series["series 表"]
-        Data["data 表<br/>(文件格式 + 路径)"]
-    end
-
-    Config --> MetaReader
-    MetaReader --> Books & Authors & Tags & Series & Data
-    MetaReader --> CoverLoader
-    MetaReader --> BookLocator
-    BookLocator --> FileSystem["本地文件系统<br/>Calibre Library/Author/Book/"]
-```
-
-**设计要点：**
-- 以**只读方式**连接 Calibre 的 `metadata.db`，不修改用户的 Calibre 数据
-- 支持配置多个书库路径，通过 `CalibreService` 统一管理
-- 书籍封面从 Calibre 目录结构 (`Author Name/Book Title/cover.jpg`) 中直接读取
-- 桌面端由 Rust 侧（Tauri 命令）执行 SQLite 查询，高性能且无阻塞
-
-### 5.2 阅读引擎架构
-
-```mermaid
-classDiagram
-    class EventEmitter {
-        +on(event, callback)
-        +off(event)
-        +trigger(event, args)
-    }
-
-    class GeneralRender {
-        +readerMode: "single" | "double" | "scroll"
-        +animation: "sliding" | "mimical" | "none"
-        +book: any
-        +chapterList: Chapter[]
-        +next()
-        +prev()
-        +goToChapter(index)
-        +goToPercentage(pct)
-        +doSearch(keyword)
-        +record()
-        +getProgress()
-        +visibleText()
-        +renderHighlighters(notes)
-        +addTouchEvent()
-        +setStyle(options)
-    }
-
-    class EpubRender { +renderTo(el) +parse() +getMetadata() }
-    class MobiRender { +renderTo(el) +parse() +getMetadata() }
-    class PdfRender  { +renderTo(el) +parse() +renderPdfPage() }
-    class TxtRender  { +renderTo(el) +parse() +getMetadata() }
-    class DocxRender { +renderTo(el) +parse() }
-    class MdRender   { +renderTo(el) +parse() }
-    class Fb2Render  { +renderTo(el) +parse() }
-    class ComicRender{ +renderTo(el) +parse() }
-    class HtmlRender { +renderTo(el) +parse() }
-
-    EventEmitter <|-- GeneralRender
-    GeneralRender <|-- EpubRender
-    GeneralRender <|-- MobiRender
-    GeneralRender <|-- PdfRender
-    GeneralRender <|-- TxtRender
-    GeneralRender <|-- DocxRender
-    GeneralRender <|-- MdRender
-    GeneralRender <|-- Fb2Render
-    GeneralRender <|-- ComicRender
-    GeneralRender <|-- HtmlRender
-```
-
-渲染器通过 `BookHelper.getRendition()` 工厂方法，根据文件格式动态创建对应实例。所有渲染器共享 `GeneralRender` 定义的统一接口。
-
-### 5.3 TTS 语音朗读架构
-
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant TTSPanel as TTS 控制面板
-    participant TTSStore as TTSStore
-    participant TTSService as TTSService
-    participant Engine as 阅读引擎
-    participant API as TTS 引擎 API
-
-    User->>TTSPanel: 点击播放
-    TTSPanel->>TTSStore: setPlaying(true)
-    TTSStore->>Engine: visibleText() 获取当前页文本
-    Engine-->>TTSStore: 文本 + 段落位置信息
-
-    loop 逐段朗读
-        TTSStore->>TTSService: synthesize(text, voiceConfig)
-        TTSService->>API: POST /tts {text, voice, speed}
-        API-->>TTSService: 音频流 (PCM/MP3)
-        TTSService-->>TTSStore: 音频数据 + 时间戳映射
-        TTSStore->>TTSPanel: 更新播放进度
-        TTSStore->>Engine: highlightRange(start, end)
-        Engine->>Engine: 高亮当前朗读文本
-    end
-
-    User->>TTSPanel: 拖动进度条
-    TTSPanel->>TTSStore: seekTo(position)
-    TTSStore->>Engine: goToPercentage(pct)
-    TTSStore->>TTSService: 从新位置继续合成
-```
-
-**设计要点：**
-- TTS 引擎作为**可配置的外部 API**，通过 `SettingsStore` 存储端点与认证信息
-- 支持多种 TTS 后端：Azure Cognitive Services、OpenAI TTS、Edge TTS、本地 TTS 服务
-- 音频播放与文本高亮通过时间戳映射实现**精确同步**
-- 进度条拖动时，先调整阅读引擎位置，再从新位置获取文本重新合成
-
-### 5.4 数据流架构
+- Calibre 拥有 `metadata.db`、封面和书籍文件，MyReader 只读查询 Calibre 元数据。
+- 每个书库拥有独立的 MyReader sidecar 数据域，用于阅读进度、收藏、书签、批注等应用数据。
+- 本地目录、WebDAV 和 OneDrive 是当前已经接入的数据源。
+- EPUB、PDF、CBZ 是当前两端可打开的阅读格式。
+- 桌面端和移动端不共享渲染内核或 UI；两端共享 Readium `Locator` 等领域语义、数据库 schema、字体目录和纯算法。
 
 ```mermaid
 flowchart TB
-    UI["UI 组件"]
-    Zustand["Zustand Stores"]
-    Services["Service 层"]
-    TauriCmd["Tauri Commands<br/>(桌面端)"]
-    RNBridge["RN Bridge<br/>(移动端)"]
+    Calibre["Calibre 书库<br/>metadata.db · 封面 · 书籍文件 · .myreader"]
+    Local["本地目录"]
+    WebDAV["WebDAV"]
+    OneDrive["OneDrive"]
 
-    UI -->|"useStore(selector)"| Zustand
-    UI -->|"store.action()"| Zustand
-    Zustand -->|"调用服务"| Services
-
-    Services -->|"invoke()"| TauriCmd
-    Services -->|"NativeModule"| RNBridge
-
-    subgraph 桌面端后端
-        TauriCmd -->|"sqlx 查询"| AppDB["App SQLite"]
-        TauriCmd -->|"只读查询"| CalibreDB["Calibre SQLite"]
-        TauriCmd -->|"fs 操作"| FS["文件系统"]
-        TauriCmd -->|"HTTP 请求"| ExtAPI["外部 API"]
+    subgraph Desktop["桌面端 my-reader"]
+        DesktopUI["React 18<br/>Routes · Components · Hooks · Stores"]
+        IPC["tauri-specta 类型 IPC"]
+        Rust["Tauri/Rust<br/>Commands · Services · Repositories"]
+        DesktopReader["Web Readium 适配<br/>EPUB · PDF · CBZ"]
+        DesktopDB["SeaORM + SQLite"]
     end
 
-    subgraph 移动端后端
-        RNBridge -->|"expo-sqlite"| MobileDB["App SQLite"]
-        RNBridge -->|"expo-file-system"| MobileFS["文件系统"]
+    subgraph Mobile["移动端 my-reader-mobile"]
+        MobileUI["Expo/React Native<br/>App · Features · Domain"]
+        MobileData["Repos · Services<br/>Drizzle + op-sqlite"]
+        Bridge["应用自有 Expo Module<br/>@my-reader/readium"]
+        NativeReader["Readium Swift/Kotlin Toolkit"]
     end
+
+    subgraph Shared["共享包"]
+        DB["@my-reader/db<br/>schema · migrations"]
+        Tools["@my-reader/tools<br/>类型 · Locator/目录/书签/批注算法"]
+        Fonts["@my-reader/fonts<br/>字体目录与资产"]
+    end
+
+    Local --> Calibre
+    WebDAV --> Calibre
+    OneDrive --> Calibre
+
+    DesktopUI --> IPC --> Rust
+    DesktopUI --> DesktopReader
+    Rust --> DesktopDB
+    Rust --> Calibre
+
+    MobileUI --> MobileData
+    MobileUI --> Bridge --> NativeReader
+    MobileData --> Calibre
+
+    DB --> DesktopDB
+    DB --> MobileData
+    Tools --> DesktopUI
+    Tools --> MobileUI
+    Fonts --> DesktopReader
+    Fonts --> NativeReader
 ```
 
-### 5.5 云同步架构
+## 2. Monorepo 与所有权
 
-```mermaid
-flowchart LR
-    subgraph 客户端
-        AppDB["App SQLite<br/>进度 / 笔记 / 书签"]
-        SyncService["SyncService<br/>同步调度"]
-        SyncEngine["Sync Engine<br/>冲突检测 · 增量合并"]
-    end
+根目录 `pnpm-workspace.yaml` 当前注册五个 workspace：
 
-    SyncEngine --> Drivers["云存储驱动"]
+| Workspace | 所有权 |
+|---|---|
+| `my-reader` | 桌面产品 UI、Tauri IPC、Rust 业务逻辑、桌面 Readium 适配 |
+| `my-reader-mobile` | 移动产品 UI、移动业务分层、设备数据访问、iOS/Android Readium 集成 |
+| `packages/db` | MyReader 表和 Calibre 查询表的 Drizzle schema、跨端 SQL migrations、共享类型 |
+| `packages/fonts` | 跨端阅读字体目录、字体包来源和准备脚本 |
+| `packages/tools` | 可跨平台复用的类型、Reader 纯算法和产品语义 |
 
-    Drivers --> WebDAV["WebDAV"]
-    Drivers --> S3["S3 兼容"]
-    Drivers --> OneDrive["OneDrive"]
-    Drivers --> GoogleDrive["Google Drive"]
-    Drivers --> Dropbox["Dropbox"]
+移动端另有两个应用内本地模块：
 
-    AppDB -->|"导出变更集"| SyncEngine
-    SyncEngine -->|"上传"| Drivers
-    Drivers -->|"下载"| SyncEngine
-    SyncEngine -->|"合并写入"| AppDB
+- `my-reader-mobile/modules/readium`：`@my-reader/readium`，应用自有的 Expo Module，不是第三方 Toolkit 的 fork。
+- `my-reader-mobile/modules/book-transition`：阅读器转场原生模块。
+
+当前没有 `apps/desktop`、`apps/mobile`、`packages/ui`、`packages/engine`、`packages/store` 或 `packages/services` 这些运行包。跨端共享边界按语义决定，不为了代码复用强行共享 React/React Native UI 或 Navigator Surface。
+
+## 3. 桌面端
+
+### 3.1 运行时边界
+
+桌面端是两个主要运行层：
+
+```text
+React/WebView
+  ├─ TanStack Router 页面与产品组件
+  ├─ React Query 后端状态
+  ├─ Zustand UI 状态
+  └─ 桌面 Readium/PDF/Divina 适配
+          │
+          │ tauri-specta 生成的类型 IPC
+          ▼
+Tauri/Rust
+  ├─ 配置与凭据
+  ├─ Calibre 查询
+  ├─ 本地/远程存储
+  ├─ sidecar SQLite
+  ├─ 下载与缓存
+  └─ sidecar 同步
 ```
 
-**设计要点：**
-- 同步基于**变更集**（changeset）而非全量覆盖，减少传输量
-- 冲突解决策略：last-write-wins + 用户可选手动合并
-- 同步文件为加密的 SQLite 快照或 JSON 增量包
-- 用户可自由选择同步目标，数据不经过任何第三方服务器
+前端不直接维护另一套数据库连接。需要 Rust 能力的调用统一经过 `src/lib/tauri-api.ts`；它包装由 Rust 命令生成的 `tauri-specta.ts`，对前端暴露类型化 Promise API。
 
-### 5.6 ComfyUI 集成架构
+### 3.2 React 前端
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant Panel as 生成面板
-    participant ComfyService as ComfyService
-    participant ComfyUI as ComfyUI Server
-
-    User->>Panel: 选中文本 → "生成插图"
-    Panel->>ComfyService: generate({prompt, workflow, params})
-    ComfyService->>ComfyUI: POST /prompt (工作流 JSON)
-    ComfyUI-->>ComfyService: prompt_id
-
-    loop 轮询进度
-        ComfyService->>ComfyUI: GET /history/{prompt_id}
-        ComfyUI-->>ComfyService: 进度 / 完成状态
-        ComfyService-->>Panel: 更新进度条
-    end
-
-    ComfyUI-->>ComfyService: 生成完成，返回图像/视频 URL
-    ComfyService->>ComfyService: 下载并保存到本地
-    ComfyService-->>Panel: 显示生成结果
-    User->>Panel: 保存到笔记 / 画廊
+```text
+my-reader/src/
+├── routes/                   TanStack Router 文件路由
+├── components/
+│   ├── library/              书库、图书列表与详情
+│   ├── reader/
+│   │   ├── readium/          EPUB、PDF、Divina/CBZ 适配和面板
+│   │   └── shared/           Reader chrome 与格式间共享 UI
+│   ├── settings/             数据源、书库、外观设置
+│   ├── common/               通用产品组件
+│   └── ui/                   桌面 UI primitives
+├── hooks/
+│   ├── queries/              React Query hooks
+│   └── reader/               Reader 生命周期与产品行为
+├── lib/
+│   ├── readium/              Locator、manifest、搜索、导航、设置适配
+│   ├── tauri-api.ts          IPC 门面
+│   └── tauri-specta.ts       Rust 生成文件
+├── stores/                   Zustand UI stores
+├── i18n/                     英文与简体中文
+└── main.tsx                  前端入口
 ```
 
-**设计要点：**
-- ComfyUI 作为可选外部服务，通过 `SettingsStore` 配置 API 地址
-- 内置常用工作流模板（文生图、图生图、文生视频），同时支持导入自定义工作流 JSON
-- 生成结果存储在本地文件系统，关联到对应书籍或章节
-- 支持 WebSocket 实时进度推送（可选）和 REST 轮询两种模式
+主要状态分工：
 
----
+- React Query：书库、图书、文件状态、收藏、阅读进度等后端状态和失效策略。
+- Zustand：主题、阅读器 UI 偏好、当前书库和列表视图等客户端状态。
+- Reader hooks：把 Navigator 事件、Locator 持久化、搜索、书签、批注和 chrome 行为连接到产品 UI。
 
-## 六、移动端阅读体验设计
+### 3.3 Rust 后端
 
-### 6.1 手势系统
+```text
+commands/       Tauri IPC 入口
+    ↓
+services/       书库、图书、阅读、下载、同步等业务编排
+    ↓
+repositories/   SeaORM 表访问
+    ↓
+entities/ + db.rs + migration.rs
 
-```mermaid
-flowchart LR
-    subgraph 手势识别["react-native-gesture-handler"]
-        Pan["PanGesture<br/>平移滑动"]
-        Tap["TapGesture<br/>点击"]
-        Pinch["PinchGesture<br/>双指缩放"]
-        LongPress["LongPressGesture<br/>长按选词"]
-    end
-
-    subgraph 响应动作
-        PrevPage["上一页"]
-        NextPage["下一页"]
-        ToggleUI["显示/隐藏工具栏"]
-        ZoomText["调整字号"]
-        SelectText["选中文本 → 菜单"]
-    end
-
-    Pan -->|"左滑"| NextPage
-    Pan -->|"右滑"| PrevPage
-    Tap -->|"左侧点击"| PrevPage
-    Tap -->|"中央点击"| ToggleUI
-    Tap -->|"右侧点击"| NextPage
-    Pinch --> ZoomText
-    LongPress --> SelectText
+storage/        Local/WebDAV/OneDrive 的 OpenDAL 基础设施
+auth/clients/   凭据与 OneDrive/Microsoft Graph 集成
+sync/           当前 sidecar v3 JSONL/LWW 同步实现
+protocols.rs    bookcover:// 与 bookfile:// 资源协议
+streamer.rs     阅读资源 HTTP streamer
 ```
 
-### 6.2 翻页动画
+配置保存在桌面应用数据目录的 `config.json`，包括书库注册、活动书库、数据源描述和阅读器 UI 偏好。WebDAV 密码与 OneDrive token 通过系统凭据存储管理，不写回前端 DTO。
 
-```mermaid
-flowchart TD
-    GestureStart["触摸开始"] --> TrackFinger["跟踪手指位置"]
-    TrackFinger --> CalcProgress["计算翻页进度 (0~1)"]
-    CalcProgress --> RenderFrame["react-native-reanimated<br/>worklet 渲染帧"]
+## 4. 移动端
 
-    RenderFrame --> AnimType{"动画类型"}
-    AnimType -->|"sliding"| SlideAnim["滑动：页面跟随手指平移"]
-    AnimType -->|"mimical"| CurlAnim["仿真：Canvas 绘制卷页效果"]
-    AnimType -->|"fade"| FadeAnim["淡入淡出"]
+### 4.1 产品分层
 
-    SlideAnim & CurlAnim & FadeAnim --> Release["手指释放"]
-    Release --> Threshold{"滑动距离 > 阈值?"}
-    Threshold -->|"是"| CompleteFlip["弹性动画完成翻页"]
-    Threshold -->|"否"| CancelFlip["弹性动画回弹"]
+移动端入口位于 `my-reader-mobile/src/app`，使用 Expo Router。当前依赖方向是：
+
+```text
+app/ + components/ + store/ + design/
+                    ↓
+features/           产品页面与流程
+domain/             可被多个 feature 复用的业务域
+                    ↓
+repos/              SQLite/Calibre 表访问
+services/           文件、数据库、网络、凭据、下载、远程后端
 ```
 
-**设计要点：**
-- 动画逻辑运行在 UI 线程（reanimated worklet），不阻塞 JS 线程
-- 翻页动画与手势实时联动，手指移动时页面实时跟随
-- 支持三种动画模式用户可选，默认根据设备性能自动选择
-- 平板设备支持双页模式，横屏自动切换
+`features/` 和 `domain/` 都可以包含本域的 hooks、components 和纯工具；两者差别是复用范围。`domain/` 不依赖 `features/`，`repos/` 不编排业务，`services/` 不反向依赖产品层。
 
----
-
-## 七、数据模型
-
-```mermaid
-erDiagram
-    Library {
-        string id PK
-        string name
-        string path
-        string type "calibre | local"
-        boolean active
-    }
-
-    Book {
-        string id PK
-        string libraryId FK
-        string title
-        string author
-        string format
-        string path
-        string cover
-        string publisher
-        string series
-        string tags
-        string description
-        string md5
-        number size
-    }
-
-    ReadingProgress {
-        string bookId PK
-        string chapter
-        number percentage
-        string cfi
-        number page
-        datetime updatedAt
-    }
-
-    Note {
-        string id PK
-        string bookId FK
-        string chapter
-        string selectedText
-        string annotation
-        string color
-        string cfi
-        number percentage
-        datetime createdAt
-    }
-
-    Bookmark {
-        string id PK
-        string bookId FK
-        string chapter
-        string cfi
-        number percentage
-        string label
-        datetime createdAt
-    }
-
-    TTSConfig {
-        string id PK
-        string name
-        string apiEndpoint
-        string apiKey
-        string voice
-        number speed
-        string provider "azure | openai | edge | custom"
-    }
-
-    ComfyWorkflow {
-        string id PK
-        string name
-        string description
-        string workflowJson
-        string type "image | video"
-        datetime createdAt
-    }
-
-    GeneratedAsset {
-        string id PK
-        string bookId FK
-        string workflowId FK
-        string prompt
-        string filePath
-        string type "image | video"
-        datetime createdAt
-    }
-
-    Library ||--o{ Book : contains
-    Book ||--|| ReadingProgress : tracks
-    Book ||--o{ Note : has
-    Book ||--o{ Bookmark : has
-    Book ||--o{ GeneratedAsset : has
-    ComfyWorkflow ||--o{ GeneratedAsset : produces
+```text
+my-reader-mobile/src/
+├── app/                      Expo Router 路由
+├── features/
+│   ├── home/
+│   ├── library/
+│   ├── onedrive/
+│   ├── reader/
+│   ├── settings/
+│   └── webdav/
+├── domain/
+│   ├── library/              书库、Calibre、路径与远程书库
+│   ├── sync/                 Calibre 与 MyReader sidecar 同步
+│   ├── download/             下载状态与编排
+│   └── reading-statistics/   阅读会话和完成记录
+├── repos/                    Drizzle/Calibre 表访问
+├── services/
+│   ├── db/                   op-sqlite 与迁移
+│   ├── fs/                   文件、路径、security-scoped bookmark
+│   ├── remote/               RemoteBackend、WebDAV、OneDrive
+│   ├── storage/              JSON storage 与安全凭据
+│   ├── download/             原生下载
+│   └── query/                React Query 基础设施
+├── store/                    Zustand slices 与持久化
+├── components/ui/            移动共享 UI
+├── design/                   移动设计 token
+├── i18n/                     英文与简体中文
+└── tw/                       NativeWind primitives
 ```
 
----
+React Query 管理可重新获取的书库/图书/阅读数据；Zustand store 通过应用文档目录中的 JSON 文件保存设置、数据源描述、书库注册和活动书库。WebDAV 密码及 OneDrive access/refresh token 使用 `expo-secure-store`。
 
-## 八、多平台架构
+### 4.2 原生 Readium 集成
 
-```mermaid
-graph TB
-    subgraph Shared["共享代码 (packages/)"]
-        UI["@myreader/ui<br/>React 组件库"]
-        Engine["@myreader/engine<br/>阅读引擎"]
-        Store["@myreader/store<br/>状态管理"]
-        Services["@myreader/services<br/>业务逻辑"]
-    end
+`my-reader-mobile/modules/readium` 是移动端的应用集成层：
 
-    subgraph Desktop["桌面端 (apps/desktop/)"]
-        Tauri["Tauri 2"]
-        RustBackend["Rust 后端<br/>SQLite · FS · HTTP"]
-        WebView["系统 WebView"]
-    end
-
-    subgraph Mobile["移动端 (apps/mobile/)"]
-        Expo["Expo / React Native"]
-        NativeModules["原生模块<br/>SQLite · FS · Audio"]
-        RNWebView["WebView<br/>(阅读引擎)"]
-    end
-
-    Shared --> Desktop
-    Shared --> Mobile
-    Tauri --> RustBackend
-    Tauri --> WebView
-    WebView -->|"加载"| UI
-    Expo --> NativeModules
-    Expo --> RNWebView
-    RNWebView -->|"注入"| Engine
+```text
+React Native 产品层
+  ├─ Reader chrome、设置、状态、数据库、同步
+  └─ typed props / events / async API
+              ↓
+@my-reader/readium
+  ├─ Expo Module 与原生 View
+  ├─ Publication handle、Streamer、Search bridge
+  ├─ Locator/Selection/Decoration 类型转换
+  └─ iOS UIKit / Android Fragment 系统交互
+              ↓
+Readium Swift/Kotlin Toolkit
+  └─ Publication、Navigator、Locator、Search、Decoration
 ```
 
-**平台差异处理：**
+模块源码直接随主仓库演进，通过 Expo autolinking 接入。iOS 使用 Readium Swift Toolkit，Android 使用 Readium Kotlin Toolkit；该模块不服务桌面端或 Web。
 
-| 能力 | 桌面端 (Tauri) | 移动端 (React Native) |
-|------|----------------|----------------------|
-| SQLite 访问 | Rust sqlx (主进程) | expo-sqlite |
-| 文件系统 | Rust std::fs | expo-file-system |
-| 阅读引擎加载 | `<script>` 标签引入 | WebView 注入 UMD |
-| TTS API 调用 | Rust HTTP 客户端 | fetch / RN networking |
-| ComfyUI 通信 | Rust WebSocket 客户端 | JS WebSocket |
-| 翻页动画 | CSS Transition / Canvas | reanimated worklet |
-| 触摸手势 | DOM 事件 | gesture-handler 原生驱动 |
+## 5. 阅读器架构
 
----
+### 5.1 当前格式与平台实现
 
-## 九、关键设计决策
+| 格式 | 桌面端 | 移动端 |
+|---|---|---|
+| EPUB | `@readium/navigator`，支持 reflowable/fixed-layout | Readium Swift/Kotlin EPUB Navigator |
+| PDF | `pdfjs-dist` + MyReader 的 Readium Locator/Navigator 适配 | Readium PDF Navigator |
+| CBZ | MyReader Divina manifest 与 fixed-layout 适配 | Readium fixed-layout/CBZ Navigator |
 
-### 9.1 Local-First 优先
+MOBI、AZW3、TXT、DOCX、Markdown、FB2、HTML、CBR、CBT、CB7 当前不是应用内可读格式。原生模块保留自定义 parser 扩展点不等于这些格式已经实现。
 
-选择 SQLite 作为单一数据源（而非远程数据库），保证离线完全可用。云同步作为可选的辅助功能，采用增量变更集方式同步，避免全量传输。用户数据永远本地持有，云端只是备份副本。
+### 5.2 跨端共同语义
 
-### 9.2 Calibre 只读集成
+跨端统一的是：
 
-直接读取 Calibre 的 `metadata.db` 而非重建索引，保持与 Calibre 桌面端的完全兼容。只读模式避免意外修改用户的 Calibre 数据。多书库支持通过配置多个路径实现。
+- `Publication`、`Link`、`Locator` 等 Readium 领域契约。
+- 阅读进度、书签和批注使用的可序列化 Locator。
+- 书签位置键、批注排序、目录定位、搜索结果整理、主题和字体目录等纯产品规则。
+- EPUB 重排前后的可见内容锚点策略。
 
-### 9.3 Tauri 而非 Electron
+跨端不统一的是：
 
-选择 Tauri 2 替代 Electron：安装包体积缩小约 90%（~10MB vs ~100MB+），内存占用更低，Rust 后端保证文件系统操作和 SQLite 查询的高性能。系统 WebView 保证与操作系统的一致集成。
+- Navigator 和渲染 Surface。
+- React 与 React Native 组件。
+- PDF/CBZ/EPUB 的格式能力。
+- 平台原生选择菜单、WebView 生命周期、文件访问和系统交互。
 
-### 9.4 阅读引擎解耦
+Locator 是可恢复的内容位置，不是视觉页码。持久化时保留 `href`、`type`、`locations` 和必要的文本/DOM 锚点；百分比和页码只作为展示或导航派生值。
 
-阅读引擎作为独立 package 开发，通过 Rollup 分别构建桌面端（ES Module）和移动端（UMD）产物。桌面端直接加载，移动端注入 WebView。引擎只关注渲染与交互，不耦合任何平台 API。
+### 5.3 能力边界
 
-### 9.5 TTS 可插拔设计
+- 书签围绕 Locator 实现，可用于 EPUB、PDF、CBZ。
+- 高亮和笔记依赖 Selection 与 Decoration，仅在当前 Navigator 确实提供这些能力时启用，不能从 EPUB 推断 PDF/CBZ 同样可用。
+- 搜索同样按 Publication service 和格式能力运行；移动 bridge 当前明确支持 reflowable EPUB 搜索，并对 fixed-layout EPUB、PDF、CBZ 报告不可用。
+- EPUB 的字体、字号、行距、主题和重排设置与 PDF/CBZ 的分页、缩放设置是不同配置面。
 
-TTS 不绑定任何特定服务商，通过统一的 `TTSService` 接口抽象，用户自行配置 API 端点与密钥。内置对 Azure、OpenAI、Edge TTS 的协议适配，同时支持自定义 HTTP 接口。
+## 6. 数据与持久化
 
-### 9.6 ComfyUI 松耦合
+### 6.1 Calibre 数据
 
-ComfyUI 集成为完全可选的扩展功能，不安装不影响核心阅读体验。通过标准的 ComfyUI REST/WebSocket API 通信，支持用户自建或远程 ComfyUI 实例。
+Calibre 的 `metadata.db` 是外部只读数据库：
 
-### 9.7 数据归属与同步存储
+- 本地书库直接查询。
+- 远程书库将 `metadata.db` 同步到设备缓存后查询。
+- MyReader 不迁移或写入 Calibre 表。
+- `packages/db/src/schema/calibre` 只为 TypeScript、Drizzle 查询和 SeaORM 实体生成提供类型权威。
 
-MyReader 已接受按数据所有权拆分的目标架构：
+### 6.2 每书库 sidecar
 
-- 进度、书签、批注和每本书设置属于书库域，继续保存在书库 `.myreader` sidecar。
-- 阅读事件、完成历史、目标和全局设置属于用户域，迁移到设备本地 Profile 数据库。
-- 缓存、索引和临时状态属于设备本地域，不参与同步。
-- 累计时长、连续阅读、热力图等派生统计从原始事件计算，不作为同步源。
-- 每台设备使用自己的本地 SQLite；远端保存可幂等合并的逻辑变更，不直接共享活动 SQLite。
+MyReader 不使用一个全局业务数据库。每个书库拥有逻辑独立的 SQLite sidecar；根据平台和数据源，物理文件可以位于书库 `.myreader/myreader.db`、设备容器或远程书库的本地镜像中。
 
-当前实现仍以书库数据库和单书库同步入口为主，Profile 数据库、应用级稳定身份与统一同步
-协调器尚未完成。完整取舍、删除语义、身份模型和迁移顺序见
-[ADR-0014](./docs/adr/0014-data-ownership-and-sync-storage.md)，用户域线协议见
-[Profile Sync v1 草案](./docs/sync/profile-v1.md)。
+当前 schema 包含：
 
-历史提案和实施计划的完整正文统一保存在 [ADR 目录](./docs/adr/README.md)。
+| 表 | 用途 |
+|---|---|
+| `reading_progress` | Readium Locator、展示进度和更新时间 |
+| `bookmarks` | 书签 Locator、稳定位置键和 tombstone |
+| `annotations` | 高亮、颜色、可选笔记和 tombstone |
+| `favorite_books` | 收藏 |
+| `book_reading_format` | 设备选择的默认阅读格式 |
+| `reading_sessions` | 阅读会话和时长 |
+| `reading_completions` | 每本书的完成记录 |
+| `file_state` | 本地文件缓存/同步状态 |
+| `book_cover_thumbnail_cache` | 移动封面缩略图缓存元数据 |
+| `sync_meta` | 设备 ID、cursor 和同步元数据 |
 
----
+设备本地设置与凭据不属于 sidecar 业务表，也不随当前 sidecar 协议同步。
 
-## 十、构建与开发流程
+### 6.3 Schema 权威与生成链
 
-```mermaid
-flowchart LR
-    subgraph Dev["开发模式"]
-        DevDesktop["pnpm dev:desktop<br/>Vite HMR + Tauri Dev"]
-        DevMobile["pnpm dev:mobile<br/>Expo Dev Server"]
-        DevEngine["pnpm dev:engine<br/>Rollup Watch"]
-    end
+```text
+packages/db/src/schema
+        │
+        ├─ drizzle-kit
+        ▼
+packages/db/drizzle/*.sql
+        │
+        ├─ 移动端：Drizzle + op-sqlite 执行
+        └─ 桌面端：build.rs 嵌入 SQL，SeaORM migrator 执行
 
-    subgraph Build["生产构建"]
-        BuildDesktop["pnpm build:desktop<br/>Vite Build + Tauri Bundle"]
-        BuildMobile["pnpm build:mobile<br/>EAS Build"]
-        BuildEngine["pnpm build:engine<br/>Rollup 全量构建"]
-    end
-
-    subgraph Artifacts["构建产物"]
-        Win["Windows .msi / .exe"]
-        Mac["macOS .dmg"]
-        Linux["Linux .AppImage / .deb"]
-        Android["Android .apk / .aab"]
-        iOS["iOS .ipa"]
-    end
-
-    BuildDesktop --> Win & Mac & Linux
-    BuildMobile --> Android & iOS
+packages/db schema/migrations
+        │
+        └─ scripts/generate-seaorm-entities.sh
+                ▼
+my-reader/src-tauri/src/entities
 ```
 
-| 命令 | 用途 |
-|------|------|
-| `pnpm dev:desktop` | 桌面端开发模式 (Vite HMR + Tauri) |
-| `pnpm dev:mobile` | 移动端开发模式 (Expo) |
-| `pnpm dev:engine` | 阅读引擎开发模式 (Rollup Watch) |
-| `pnpm build:desktop` | 桌面端生产构建 |
-| `pnpm build:mobile` | 移动端生产构建 |
-| `pnpm build:engine` | 阅读引擎全量构建 |
-| `pnpm test` | 运行全部测试 |
-| `pnpm test:e2e` | 运行 Playwright E2E 测试 |
-| `pnpm test:e2e:ui` | Playwright UI 模式（可视化调试） |
-| `pnpm lint` | 代码检查 |
+修改 MyReader 表时必须修改 Drizzle schema、生成 migration，再生成桌面 SeaORM 实体；生成文件不是手工 schema 权威。
+
+## 7. 数据源、缓存与同步
+
+### 7.1 数据源
+
+当前数据源只有：
+
+- Local：本地目录或移动平台授权的目录。
+- WebDAV：用户名/密码访问。
+- OneDrive：OAuth 和 Microsoft Graph。
+
+桌面存储基础设施基于 OpenDAL；移动端通过 `services/remote` 的 `RemoteBackend` 接口和 provider 实现。S3、Google Drive、Dropbox 当前没有实现。
+
+### 7.2 远程书库数据流
+
+远程书库不是直接对远端 SQLite 做随机查询。设备侧先获取并缓存 Calibre `metadata.db`，随后：
+
+1. 从本地缓存查询书目。
+2. 远程封面按需解析和缓存。
+3. 阅读文件按格式下载到设备缓存。
+4. `file_state` 记录文件的本地状态。
+5. 刷新/同步后让 React Query 和产品 store 更新可见状态。
+
+### 7.3 当前 sidecar v3
+
+当前已经运行的 MyReader 数据同步协议是 `.myreader/changes/<device_id>/<sequence>.jsonl`：
+
+- desktop 和 mobile 各自枚举本地 sidecar 变化并追加 JSONL segment。
+- 远端只交换普通文件，不共享打开远端 SQLite。
+- 当前注册的业务表只有 `reading_progress` 和 `bookmarks`。
+- 合并使用基于 `updated_at` 的 row-level LWW，并为书签保留 tombstone。
+- `sync_meta` 保存本设备 sequence、push cursor 和各远端设备 pull cursor。
+
+因此收藏、批注、阅读会话和完成记录虽然已经存在于本地 schema，但当前尚未进入跨设备同步流。
+
+### 7.4 已接受但未实施的 sidecar v4
+
+[ADR-0015](./docs/adr/0015-library-sidecar-crdt-reading-sync.md) 已接受以下目标，但其 Phase 0 至 Phase 4 仍为 pending，不能当作当前实现：
+
+- `changes-v4` 普通 JSON segment。
+- transaction outbox、连续 cursor、replica ID 和 HLC。
+- 类型化 CRDT merge，而不是通用文档 CRDT。
+- 同步收藏、阅读位置、书签、批注/笔记、阅读会话和最早完成记录六个 domain。
+- 继续保持每书库 sidecar，不引入中央 Profile。
+
+在 v4 落地前，代码和兼容性判断必须以 7.3 的 v3 行为为准。
+
+## 8. 关键架构约束
+
+1. **Calibre 只读**：不把 MyReader 业务字段写入 `metadata.db`。
+2. **每书库数据域**：阅读数据随书库隔离，不存在中央账户数据库。
+3. **共享语义，不共享渲染**：跨端共享 Locator、schema 和纯算法；Navigator 与 UI 归平台所有。
+4. **格式能力显式区分**：EPUB、PDF、CBZ 不伪装成完全相同的 Reader API。
+5. **生成链单向**：Drizzle schema/migrations 是 MyReader 表权威，SeaORM entities 和平台注入脚本是生成产物。
+6. **凭据设备本地化**：WebDAV/OneDrive secret 不进入 sidecar 或前端可持久 DTO。
+7. **远端交换文件而非 SQLite**：远程数据源不承载多设备同时打开的活动数据库。
+8. **规划不冒充现状**：Roadmap、已接受的后续 ADR 和 bridge 扩展点都不表示功能已经可用。
+
+## 9. 当前未实现的早期设想
+
+以下内容曾出现在旧架构或 README 中，但不属于当前已落地能力：
+
+- 跨平台共享的 `MyReader Engine`、`GeneralRender` 和格式 renderer 继承树。
+- 共享的 React/React Native UI 组件包。
+- MOBI、AZW3、TXT、DOCX、Markdown、FB2、HTML、CBR、CBT、CB7 阅读。
+- 完整 TTS coordinator、语音引擎、后台朗读和逐句高亮产品流程；移动 Readium 模块目前只有内容/接口基础。
+- ComfyUI 图像/视频生成。
+- S3、Google Drive、Dropbox 同步驱动。
+- 所有格式统一的单页、双页、滚动、仿真翻页和相同批注能力。
+
+这些能力若进入实现，应以新的代码和 ADR/feature 文档更新本文件，不能直接恢复旧文档中的描述。
+
+## 10. 开发与验证入口
+
+```bash
+# 开发
+pnpm dev:desktop
+pnpm dev:mobile
+
+# 共享包
+pnpm --filter @my-reader/fonts test
+pnpm --filter @my-reader/tools test
+
+# 桌面
+pnpm --filter my-reader run test:unit
+(cd my-reader/src-tauri && cargo test)
+
+# 移动
+pnpm --filter my-reader-mobile exec jest --runInBand
+
+# 数据库 schema / SeaORM entities
+pnpm db:generate
+```
+
+更完整的本机构建、E2E 和生成流程见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
+
+## 11. 相关架构决策
+
+| ADR | 与当前架构的关系 |
+|---|---|
+| [ADR-0005](./docs/adr/0005-adopt-readium-reader-architecture.md) | 使用 Readium 取代自研 Reader V2 |
+| [ADR-0006](./docs/adr/0006-desktop-typed-ipc-and-layered-backend.md) | 桌面类型 IPC 与 Rust 分层 |
+| [ADR-0007](./docs/adr/0007-pnpm-monorepo-and-shared-code-ownership.md) | monorepo 与语义共享边界 |
+| [ADR-0008](./docs/adr/0008-shared-database-schema-authority.md) | Drizzle schema/migrations 作为跨端权威 |
+| [ADR-0010](./docs/adr/0010-remote-library-acceleration.md) | 远程书库的元数据、封面和文件缓存 |
+| [ADR-0011](./docs/adr/0011-mobile-layer-refactor.md) | 移动产品分层 |
+| [ADR-0012](./docs/adr/0012-mobile-sync-refactor.md) | 移动同步编排 |
+| [ADR-0013](./docs/adr/0013-maintain-mobile-readium-integration.md) | 主仓库内维护 Expo Readium 集成层 |
+| [ADR-0015](./docs/adr/0015-library-sidecar-crdt-reading-sync.md) | 已接受但尚未实施的 sidecar v4 目标 |

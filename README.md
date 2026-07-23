@@ -1,135 +1,106 @@
 # MyReader
 
-> 一款 Local-First 的跨平台电子书阅读器，基于 Calibre 书库浏览，内置多格式阅读器与 TTS 朗读，并集成 ComfyUI 创意生成能力。
+> 一款面向 Calibre 书库的 Local-First 跨平台阅读器。桌面端与移动端分别使用适合各自平台的 Readium 实现，并共享数据契约、阅读位置语义和纯工具。
 
----
+## 当前能力
 
-## 特性一览
+- 添加并切换多个 Calibre 书库，始终以只读方式访问 Calibre 的 `metadata.db`。
+- 支持本地目录、WebDAV 和 OneDrive 数据源；远程书库在设备侧缓存元数据、封面和按需下载的书籍文件。
+- 桌面端与移动端当前可阅读 EPUB、PDF、CBZ。
+- 使用 Readium `Locator` 保存阅读进度、书签和批注位置，不把重排后的视觉页码当作持久化主键。
+- 支持收藏、阅读进度、书签、高亮与笔记；具体阅读能力按格式和平台分别实现。
+- 每个书库拥有独立的 MyReader SQLite sidecar，应用设置和凭据保留在设备本地。
+- 当前 sidecar v3 同步阅读进度与书签；已接受但尚未实施的 v4 CRDT 目标见 [ADR-0015](./docs/adr/0015-library-sidecar-crdt-reading-sync.md)。
 
-### 📚 Calibre 书库浏览
+MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使用 Web/JS 阅读适配，移动端通过应用自有 Expo Module 接入 Readium Swift/Kotlin Toolkit；两端共享的是 Publication、Link、Locator 等语义和产品规则，而不是渲染 UI。
 
-- 直接读取 Calibre 的 `metadata.db`，无需额外导入即可浏览完整书库
-- 支持配置**多个书库路径**，在同一界面切换浏览不同藏书
-- 保留 Calibre 元数据体系：作者、标签、系列、评分、出版社等维度筛选与搜索
-- 书籍封面网格 / 列表 / 书架多种视图模式
+## 仓库结构
 
-### 📖 内置多格式阅读器
+```text
+MyReader/
+├── my-reader/             桌面端：Tauri 2 + React 18
+├── my-reader-mobile/      移动端：Expo 56 + React Native 0.85
+├── packages/
+│   ├── db/                跨端数据库 schema 与 SQL migrations
+│   ├── fonts/             阅读字体目录与资产来源
+│   └── tools/             跨端类型、Locator/书签/批注/目录等纯工具
+├── docs/                  ADR 与同步协议文档
+└── scripts/               schema、生成代码和设计 token 脚本
+```
 
-- 支持主流电子书格式：EPUB、PDF、MOBI、AZW3、TXT、DOCX、Markdown、FB2、HTML、CBZ/CBR/CBT/CB7
-- 三种阅读模式：单页、双页、滚动
-- 可自定义字体、字号、行距、边距、主题配色
-- 高亮批注、书签、阅读进度自动记录
-- 全文搜索与章节目录导航
-
-### 🔊 TTS 语音朗读
-
-- 支持配置外部 TTS 引擎 API 接口（Azure、OpenAI TTS、Edge TTS、自建服务等）
-- 朗读时**实时高亮当前阅读文本**，视觉跟踪朗读位置
-- 进度条拖动，精确调整朗读进度
-- 可调语速、音色、语言，支持多角色语音切换
-- 后台朗读模式，锁屏继续播放
-
-### 💾 Local First
-
-- 数据优先存储在本地，离线状态下完全可用
-- 阅读进度、笔记、书签等数据使用本地 SQLite 持久化
-- 支持将数据同步至用户网盘（WebDAV、S3、OneDrive、Google Drive、Dropbox）
-- 无需注册账号，数据完全由用户掌控
-- 支持数据导出与备份还原
-
-### 🖥️ 跨平台
-
-- **桌面端**：Windows、macOS、Linux（基于 Tauri 2）
-- **移动端**：Android、iOS（基于 React Native / Expo）
-- 共享核心阅读引擎与 UI 组件，多端体验一致
-
-### 📱 移动端优质阅读体验
-
-- 流畅手势交互：左右滑动翻页、上下滑动滚动、双指缩放
-- 仿真翻页动画，模拟纸质书翻页效果
-- 自适应屏幕尺寸，针对手机与平板分别优化布局
-- 触控区域可自定义（点击翻页区域划分）
-- 全屏沉浸式阅读模式
-
-### 🎨 ComfyUI 创意生成
-
-- 可配置 ComfyUI API 接入地址
-- 支持根据书籍内容或选中文本生成插图（图像生成）
-- 支持生成视频片段（视频生成），用于可视化场景描写
-- 内置工作流模板，支持自定义 ComfyUI 工作流
-- 生成结果可保存至书籍笔记或独立画廊
-
----
+完整的运行边界、分层和数据流见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ## 快速开始
 
 ### 环境要求
 
-- Node.js >= 20
-- Rust >= 1.75（桌面端构建）
-- pnpm >= 9
+- Node.js 22 或更高版本
+- pnpm 11.7.0（仓库 `packageManager` 锁定版本）
+- Rust stable 1.85 或更高版本（桌面端）
+- Xcode 16+（iOS）或 Android Studio / Android SDK（Android）
 
-### 开发
+### 安装与开发
 
 ```bash
-# 克隆项目
-git clone https://github.com/your-username/MyReader.git
+git clone https://github.com/RyouMon/MyReader.git
 cd MyReader
-
-# 安装依赖
+corepack enable
 pnpm install
 
-# 启动桌面端开发模式
+# 启动 Tauri 桌面端
 pnpm dev:desktop
 
-# 启动移动端开发模式
+# 启动 Expo Metro
 pnpm dev:mobile
+
+# 构建并运行移动开发客户端
+pnpm --filter my-reader-mobile ios
+pnpm --filter my-reader-mobile android
 ```
 
 ### 构建
 
 ```bash
-# 桌面端构建
-pnpm build:desktop
+# 桌面前端
+pnpm --filter my-reader build
 
-# 移动端构建
-pnpm build:mobile
+# Tauri 安装包
+pnpm --filter my-reader tauri build
+
+# 本地 EAS development build
+pnpm --filter my-reader-mobile build:dev:ios
+pnpm --filter my-reader-mobile build:dev:android
 ```
 
-### 测试
+### 单元测试
 
 ```bash
-# 运行 Playwright E2E 测试
-pnpm test:e2e
-
-# Playwright UI 模式（可视化调试）
-pnpm test:e2e:ui
+pnpm --filter @my-reader/fonts test
+pnpm --filter @my-reader/tools test
+pnpm --filter my-reader run test:unit
+pnpm --filter my-reader-mobile exec jest --runInBand
+(cd my-reader/src-tauri && cargo test)
 ```
 
----
+桌面 Playwright/WebdriverIO 与移动 Maestro 的运行方式见 [DEVELOPMENT.md](./DEVELOPMENT.md)。
 
 ## 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| UI 框架 | React 19 + TypeScript (Hooks) |
-| UI 组件 | shadcn/ui + Tailwind CSS 4 |
-| 桌面端 | Tauri 2 (Rust) |
-| 移动端 | React Native / Expo |
-| 状态管理 | Zustand |
-| 本地数据库 | SQLite (sqlx / better-sqlite3) |
-| 阅读引擎 | 自研渲染引擎 (MyReader Engine) |
-| TTS 集成 | 可配置 REST API 客户端 |
-| 创意生成 | ComfyUI WebSocket/REST API |
-| 云同步 | WebDAV / S3 / OneDrive / Google Drive / Dropbox |
-| 构建工具 | Vite 6 |
-| E2E 测试 | Playwright |
-
----
+| 范围 | 当前实现 |
+|---|---|
+| Monorepo | pnpm workspace |
+| 桌面 UI | React 18、TypeScript、Vite 6、Tailwind CSS 4、TanStack Router/Query、Zustand |
+| 桌面后端 | Tauri 2、Rust、SeaORM、SQLite、tauri-specta、OpenDAL |
+| 移动端 | Expo 56、React Native 0.85、Expo Router、NativeWind 5、TanStack Query、Zustand |
+| 移动数据 | op-sqlite、Drizzle ORM |
+| 阅读器 | 桌面 `@readium/*` + PDF.js 适配；移动 Readium Swift/Kotlin Toolkit + 应用自有 Expo Module |
+| 远程数据源 | WebDAV、OneDrive |
+| 测试 | Vitest、Jest、Playwright BDD、WebdriverIO、Maestro、Cargo test |
 
 ## 项目文档
 
-- [架构文档](./ARCHITECTURE.md) — 系统架构、模块设计与技术决策
-- [架构决策与历史架构提案](./docs/adr/README.md) — 按提案时间编号的完整原始文档
-- [Profile Sync v1 草案](./docs/sync/profile-v1.md) — 用户域数据同步边界与合并规则
-- [项目 Roadmap](./ROADMAP.md) — 跨平台功能规划与支持矩阵（含阅读设置等）
+- [架构现状](./ARCHITECTURE.md) — 当前系统边界、分层、数据与同步路径
+- [开发指南](./DEVELOPMENT.md) — 环境、命令、生成流程和测试入口
+- [架构决策](./docs/adr/README.md) — 已接受、已实施、已撤回和已取代的 ADR
+- [设计系统](./DESIGN.md) — 跨端视觉原则与颜色 token
+- [Roadmap](./ROADMAP.md) — 尚未落地的规划，不作为当前能力说明
