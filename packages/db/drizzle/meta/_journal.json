@@ -57,6 +57,13 @@
       "when": 1784658006413,
       "tag": "0007_add_reading_statistics",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784815521994,
+      "tag": "0008_add_library_sidecar_sync_kernel",
+      "breakpoints": true
     }
   ]
 }

@@ -241,11 +241,18 @@ mod tests {
         );
         assert_eq!(fixture.segment.protocol, PROTOCOL);
         assert_eq!(fixture.segment.sequence, "42");
-        for id in [&fixture.segment.library_uuid, &fixture.segment.replica_id] {
-            let uuid = Uuid::parse_str(id).unwrap();
-            assert_eq!(uuid.get_version_num(), 4);
-            assert_eq!(uuid.hyphenated().to_string(), *id);
-        }
+        let library_uuid = Uuid::parse_str(&fixture.segment.library_uuid).unwrap();
+        assert!((1..=8).contains(&library_uuid.get_version_num()));
+        assert_eq!(
+            library_uuid.hyphenated().to_string(),
+            fixture.segment.library_uuid
+        );
+        let replica_id = Uuid::parse_str(&fixture.segment.replica_id).unwrap();
+        assert_eq!(replica_id.get_version_num(), 4);
+        assert_eq!(
+            replica_id.hyphenated().to_string(),
+            fixture.segment.replica_id
+        );
         let change_id = &fixture.segment.changes[0].change_id;
         let change_uuid = Uuid::parse_str(change_id).unwrap();
         assert_eq!(change_uuid.get_version_num(), 4);

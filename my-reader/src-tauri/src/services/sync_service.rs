@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use opendal::Operator;
 use sea_orm::DatabaseConnection;
 use serde::Serialize;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::cache;
 use crate::db;
@@ -49,13 +49,7 @@ impl SyncService {
             root: sidecar_path.to_string_lossy().to_string(),
         })?;
 
-        let pushed = provider
-            .push_async(&db, &container_op, &device)
-            .await
-            .unwrap_or_else(|e| {
-                warn!("db sync: push error: {e}");
-                0
-            });
+        let pushed = provider.push_async(&db, &container_op, &device).await?;
 
         let pulled = if kind == LibraryPathKind::Local {
             Self::mirror_changes_to_external(
@@ -65,30 +59,14 @@ impl SyncService {
                 })?,
                 &device,
             )
-            .await
-            .unwrap_or_else(|e| {
-                warn!("db sync: mirror to external error: {e}");
-                0
-            });
+            .await?;
 
             let original_op = storage::build_operator(&StorageBackend::LocalDirect {
                 root: lib_path.to_string_lossy().to_string(),
             })?;
-            provider
-                .pull_async(&db, &original_op, &device)
-                .await
-                .unwrap_or_else(|e| {
-                    warn!("db sync: pull error: {e}");
-                    0
-                })
+            provider.pull_async(&db, &original_op, &device).await?
         } else {
-            provider
-                .pull_async(&db, &container_op, &device)
-                .await
-                .unwrap_or_else(|e| {
-                    warn!("db sync: pull error: {e}");
-                    0
-                })
+            provider.pull_async(&db, &container_op, &device).await?
         };
 
         info!("Success to sync db for library. pushed={pushed}, pulled={pulled}");
@@ -224,6 +202,7 @@ impl SyncService {
 mod tests {
     use super::*;
     use crate::models::{AppConfig, LibraryConfig};
+    use crate::repositories::progress_repo::SqliteProgressRepository;
     use opendal::Operator;
     use std::path::Path;
 
@@ -340,5 +319,40 @@ mod tests {
             .unwrap();
         assert!(files.contains(&"1.jsonl".to_string()));
         assert!(files.contains(&"2.jsonl".to_string()));
+    }
+
+    #[tokio::test]
+    async fn sync_db_for_library_should_return_error_when_push_fails() {
+        let app_data = tempfile::tempdir().unwrap();
+        let original = tempfile::tempdir().unwrap();
+        let mut config = AppConfig {
+            device_id: Some("device-1".into()),
+            libraries: vec![local_library(
+                "lib-local",
+                original.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+        let sidecar = app_data.path().join("libraries").join("lib-local");
+        let db = SyncService::open_library_db(&sidecar).await.unwrap();
+        SqliteProgressRepository::set_progress(
+            &db,
+            1,
+            "EPUB",
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#,
+            Some(0.5),
+            1_000.0,
+        )
+        .await
+        .unwrap();
+        let changes = sidecar.join(".myreader").join("changes");
+        std::fs::create_dir_all(&changes).unwrap();
+        std::fs::write(changes.join("device-1"), b"not a directory").unwrap();
+
+        let error = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
+            .await
+            .unwrap_err();
+
+        assert!(error.to_string().contains("failed"));
     }
 }

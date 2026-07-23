@@ -9,4 +9,7 @@
 pub mod contract;
 pub mod db_sync;
 pub mod hlc;
+pub mod kernel;
 pub mod merge;
+pub mod metadata;
+pub mod segment;

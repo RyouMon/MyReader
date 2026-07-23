@@ -11,7 +11,7 @@ todos:
     status: completed
   - id: phase1-sidecar-kernel
     content: "Phase 1：在每书库 sidecar DB 中实现事务 outbox、prepared segment 和连续 cursor"
-    status: pending
+    status: completed
   - id: phase2-progress-slice
     content: "Phase 2：以阅读进度为首个 desktop、iOS、Android 纵向切片，跑通 WebDAV 与 OneDrive 三设备收敛"
     status: pending
@@ -495,13 +495,17 @@ clock 计算，墙钟仅用于 `startedAtMs` 和 local-day 切分。
 
 | 表/表组 | 职责 |
 |---|---|
-| `sync_local_meta` | 当前书库 schema、replica 和后端 binding |
+| `sync_local_meta` | 当前协议、`library_uuid`、replica 和 next sequence |
 | `sync_hlc_state` | 当前 replica 已持久化的最大 HLC |
 | `sync_outbox` | 与业务 mutation 同事务写入、尚未装入 segment 的 change |
 | `sync_prepared_segments` | sequence、原始 JSON bytes、文件 hash、路径和发布状态 |
 | `sync_cursors` | 每个远端 replica 已连续应用的 sequence 与文件 hash |
 | `sync_errors` | 损坏、版本、身份、时钟和同步错误 |
 | domain state tables | 六个 domain 的业务 projection 与必要 HLC metadata |
+
+同步表沿用现有共享 schema 的主键约定：所有表均使用 32 字符 compact UUIDv4 `id` 作为代理
+主键，单例表也不复用 `id` 表达 `local` 等业务语义；protocol identity 继续由独立 `UNIQUE`
+约束保护。代理主键不进入 segment，也不参与 CRDT identity 或 merge。
 
 CRDT merge 本身必须幂等，不永久保存完整的 `change_id -> digest` 审计表。共享表结构继续以
 `packages/db` Drizzle schema 和有序 migration 为权威，再生成移动端模型和桌面 SeaORM entity。
@@ -608,11 +612,19 @@ desktop 和 mobile 必须对相同协议错误给出一致分类。错误不得�
 
 ### Phase 1：每书库同步内核
 
+状态：已于 2026-07-23 完成。共享 sidecar schema 通过 migration
+`0008_add_library_sidecar_sync_kernel.sql` 增加本地 identity、HLC state、事务 outbox、prepared
+segment、per-replica cursor 和协议错误表；移动端与桌面端分别在
+`library-sidecar/kernel.ts` 和 `sync/kernel.rs` 实现相同的崩溃恢复及连续 sequence 规则。
+
 - 在共享 sidecar schema 中增加事务 `sync_outbox`、`sync_prepared_segments`、per-replica cursor 和
   HLC state；继续使用 `packages/db` schema 和 migration 生成链。
 - 在移动 TypeScript 与桌面 Rust 中实现相同的 segment codec、验证器和 CRDT join。
 - 复用现有书库传输能力；本提案不新增或冻结数据源适配器接口。
 - desktop 不得再吞掉阅读数据同步错误并返回成功。
+
+本阶段只建立可由业务 repository 在同一事务中调用的内核，不把任何现有业务表接入 v4，也不产生
+v3/v4 双写。Phase 2 接入首个 `reading_position.v1` 纵向切片时再切换产品同步入口。
 
 ### Phase 2：阅读进度纵向切片
 

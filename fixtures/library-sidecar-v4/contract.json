@@ -42,6 +42,10 @@
       }
     ]
   },
+  "segmentEncoding": {
+    "sha256": "1016eb9770b1bf6dbbd1e11ae7b8a0968f55e4e76fb500a9ca182b6558dfb0fb",
+    "fileName": "42-1016eb9770b1bf6dbbd1e11ae7b8a096.json"
+  },
   "replicaMetadata": {
     "schemaVersion": 1,
     "replicaId": "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",

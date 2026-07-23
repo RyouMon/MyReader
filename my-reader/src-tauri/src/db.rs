@@ -203,4 +203,99 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(updated_at_columns, vec!["updated_at"]);
     }
+
+    #[tokio::test]
+    async fn sync_kernel_schema_should_exist_when_library_database_is_created() {
+        let temp = tempfile::tempdir().unwrap();
+        let sidecar_root = temp.path().to_string_lossy().to_string();
+        let db = open_db(&sidecar_root).await.expect("database should open");
+
+        let rows = db
+            .query_all_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT name FROM sqlite_master \
+                 WHERE type = 'table' AND name LIKE 'sync_%' ORDER BY name",
+            ))
+            .await
+            .expect("sync tables should be readable");
+        let names: Vec<String> = rows
+            .into_iter()
+            .map(|row| row.try_get("", "name").unwrap())
+            .collect();
+
+        assert!(names.contains(&"sync_cursors".to_owned()));
+        assert!(names.contains(&"sync_errors".to_owned()));
+        assert!(names.contains(&"sync_hlc_state".to_owned()));
+        assert!(names.contains(&"sync_local_meta".to_owned()));
+        assert!(names.contains(&"sync_outbox".to_owned()));
+        assert!(names.contains(&"sync_prepared_segments".to_owned()));
+    }
+
+    #[tokio::test]
+    async fn sync_tables_should_use_text_surrogate_primary_keys_when_database_is_created() {
+        let temp = tempfile::tempdir().unwrap();
+        let sidecar_root = temp.path().to_string_lossy().to_string();
+        let db = open_db(&sidecar_root).await.expect("database should open");
+
+        for table in [
+            "sync_cursors",
+            "sync_errors",
+            "sync_hlc_state",
+            "sync_local_meta",
+            "sync_meta",
+            "sync_outbox",
+            "sync_prepared_segments",
+        ] {
+            let columns = db
+                .query_all_raw(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("PRAGMA table_info('{table}')"),
+                ))
+                .await
+                .expect("sync table columns should be readable");
+            let id = columns
+                .into_iter()
+                .find(|row| row.try_get::<String>("", "name").unwrap() == "id")
+                .expect("sync table should have an id column");
+
+            assert_eq!(id.try_get::<String>("", "type").unwrap(), "TEXT");
+            assert_eq!(id.try_get::<i64>("", "pk").unwrap(), 1);
+        }
+
+        for (table, index, expected_column) in [
+            ("sync_cursors", "idx_sync_cursors_replica_id", "replica_id"),
+            ("sync_outbox", "idx_sync_outbox_change_id", "change_id"),
+            (
+                "sync_prepared_segments",
+                "idx_sync_prepared_segments_sequence",
+                "sequence",
+            ),
+        ] {
+            let unique = db
+                .query_all_raw(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("PRAGMA index_list('{table}')"),
+                ))
+                .await
+                .expect("sync indexes should be readable")
+                .into_iter()
+                .find(|row| row.try_get::<String>("", "name").unwrap() == index)
+                .expect("sync identity index should exist")
+                .try_get::<i64>("", "unique")
+                .unwrap();
+            let columns = db
+                .query_all_raw(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("PRAGMA index_info('{index}')"),
+                ))
+                .await
+                .expect("sync identity index should be readable")
+                .into_iter()
+                .map(|row| row.try_get::<String>("", "name").unwrap())
+                .collect::<Vec<_>>();
+
+            assert_eq!(unique, 1);
+            assert_eq!(columns, vec![expected_column]);
+        }
+    }
 }

@@ -67,7 +67,18 @@ jest.mock("react-native-worklets", () => ({
 }))
 
 jest.mock("expo-crypto", () => ({
-  randomUUID: () => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  CryptoDigestAlgorithm: {
+    SHA256: "SHA-256",
+  },
+  digest: async (_algorithm, data) => {
+    const { createHash } = require("node:crypto")
+    const input = ArrayBuffer.isView(data)
+      ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
+      : Buffer.from(data)
+    const hash = createHash("sha256").update(input).digest()
+    return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength)
+  },
+  randomUUID: () => "a1b2c3d4-e5f6-4890-abcd-ef1234567890",
 }))
 
 const originalConsoleWarn = console.warn.bind(console)
