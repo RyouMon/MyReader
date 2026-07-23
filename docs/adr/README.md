@@ -9,6 +9,7 @@
 - `已接受`：已经成为当前实现约束。
 - `已实施`：计划的主体已经落地，正文保留实施时的原始上下文。
 - `部分实施`：只有部分阶段落地，继续执行前需要以当前代码重新核对。
+- `已撤回`：提案未被接受或实施，保留用于说明被否决的方案及后续演进。
 - `已取代`：方案已经不再代表当前实现，保留用于追溯决策演进。
 
 ## 管理规则
@@ -39,4 +40,5 @@
 | [ADR-0011](./0011-mobile-layer-refactor.md) | 移动端分层重构 | 已实施 | 2026-05-28 23:37 |
 | [ADR-0012](./0012-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
 | [ADR-0013](./0013-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
-| [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已接受 | 2026-07-22 |
+| [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已撤回（未实施） | 2026-07-22 |
+| [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 已接受 | 2026-07-22 |

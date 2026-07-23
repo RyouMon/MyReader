@@ -5,15 +5,17 @@
 - 记录日期：2026-07-22
 - 记录方式：根据 Git 历史和现存实现回溯补录
 - 部分取代：[ADR-0003](./0003-myreader-sync-technology-selection.md) 的 CR-SQLite、Manifest/CAS 数据库同步方案
-- 后续决策：[ADR-0012](./0012-mobile-sync-refactor.md)、[ADR-0014](./0014-data-ownership-and-sync-storage.md)
+- 后续决策：[ADR-0012](./0012-mobile-sync-refactor.md)、[ADR-0015](./0015-library-sidecar-crdt-reading-sync.md)
+- 已撤回提案：[ADR-0014](./0014-data-ownership-and-sync-storage.md)
 
 ## 说明
 
 这项决策在实施时没有单独的 ADR。本文根据 2026-05-03 起的提交、桌面和移动端现存同步
 实现，以及后续书库路径和同步入口重构回溯补录。
 
-本文记录的是**书库域现行同步协议的架构边界**，不是未来用户域 `profile-v1` 协议。两者可以
-使用相似的按设备变更段布局，但必须独立版本化。
+本文记录的是**书库域现行 v3 同步协议**。[ADR-0015](./0015-library-sidecar-crdt-reading-sync.md)
+继续使用同一书库 sidecar 边界，并决定以类型化 CRDT change 和事务 outbox 升级线路格式与
+合并语义。该决策将 v4 定义为 breaking replacement，不兼容或迁移本文的 v3 变更流。
 
 ## 背景
 
@@ -100,8 +102,8 @@
 当前默认实现使用记录级 `updated_at` LWW，适合单用户多设备下的阅读位置和实体状态。书签、
 批注等可删除实体必须保存 tombstone，并将删除时间纳入合并。
 
-LWW 不是所有未来数据的默认答案。阅读事件、完成历史等不可约事实应使用稳定事件 ID 求并集，
-并由 [ADR-0014](./0014-data-ownership-and-sync-storage.md) 所定义的用户域协议负责。
+LWW 不是所有未来数据的默认答案。阅读会话和完成记录必须使用稳定实体身份与各自的幂等合并
+规则，由 [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) 中已接受的 sidecar v4 协议负责。
 
 ### 传输与业务分离
 
