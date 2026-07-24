@@ -41,4 +41,5 @@
 | [ADR-0012](./0012-mobile-sync-refactor.md) | Mobile Sync Refactor | 已实施 | 2026-05-31 |
 | [ADR-0013](./0013-maintain-mobile-readium-integration.md) | 在 MyReader 仓库维护移动端 Readium 集成层 | 已接受（回溯） | 2026-06-18 |
 | [ADR-0014](./0014-data-ownership-and-sync-storage.md) | 将应用数据拆分为书库域和用户域 | 已撤回（未实施） | 2026-07-22 |
-| [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 已接受 | 2026-07-22 |
+| [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 部分实施，已取代 | 2026-07-22 |
+| [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已接受 | 2026-07-25 |

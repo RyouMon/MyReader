@@ -2,7 +2,8 @@
 adr: ADR-0015
 proposal_date: 2026-07-22
 decision_date: 2026-07-23
-status: 已接受
+status: 部分实施，已取代
+superseded_by: ADR-0016
 name: 将书库 sidecar 升级为类型化 CRDT 阅读数据同步
 overview: 保留每个 Calibre 书库自己的 sidecar 作为阅读数据同步边界，通过类型化 CRDT change、事务 outbox 和普通 JSON segment，让收藏、进度、书签、高亮和笔记、阅读会话及最早完成记录在 desktop、iOS 和 Android 之间自动收敛。
 todos:
@@ -14,13 +15,16 @@ todos:
     status: completed
   - id: phase2-progress-slice
     content: "Phase 2：以阅读进度为首个 desktop、iOS、Android 纵向切片，跑通 WebDAV 与 OneDrive 三设备收敛"
-    status: pending
+    status: cancelled
+    note: 自动化纵向切片已实现，真实设备与数据源验收改由 ADR-0016 的 Automerge 路径完成
   - id: phase3-existing-data
     content: "Phase 3：接入收藏、书签、高亮和笔记"
-    status: pending
+    status: cancelled
+    note: 收藏和书签已实现；高亮、笔记及已落地实体的内核替换改由 ADR-0016 接管
   - id: phase4-reading-records
     content: "Phase 4：接入阅读会话与最早完成记录，并保持当前书库统计口径"
-    status: pending
+    status: cancelled
+    note: 未按本 ADR 的 HLC/JSON 线路实施，改由 ADR-0016 接管
 isProject: true
 ---
 
