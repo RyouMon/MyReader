@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import type { CalibreBook } from "@my-reader/tools/types/book"
 import { api } from "@/lib/tauri-api"
 
@@ -6,6 +11,15 @@ export const favoriteBookKeys = {
   all: ["favoriteBooks"] as const,
   list: (libraryId: string | null) =>
     [...favoriteBookKeys.all, libraryId] as const,
+}
+
+export function invalidateFavoriteBookQueries(
+  queryClient: QueryClient,
+  libraryId: string,
+) {
+  return queryClient.invalidateQueries({
+    queryKey: favoriteBookKeys.list(libraryId),
+  })
 }
 
 function normalizeSearch(value: string) {

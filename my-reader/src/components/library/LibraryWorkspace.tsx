@@ -20,7 +20,10 @@ import {
   useBookFileStates,
 } from "@/hooks/queries/useBookFileState"
 import { useBookReadingFormats } from "@/hooks/queries/useBookReadingFormatsQuery"
-import { useFavoriteBooks } from "@/hooks/queries/useFavoriteBooksQuery"
+import {
+  invalidateFavoriteBookQueries,
+  useFavoriteBooks,
+} from "@/hooks/queries/useFavoriteBooksQuery"
 import {
   useLibrariesQuery,
   useLibraryMutations,
@@ -152,11 +155,13 @@ export default function LibraryWorkspace({
     try {
       await api.syncDbForLibrary(activeLibraryId)
       resetBrokenCovers()
-      await queryClient.invalidateQueries({
-        queryKey: readingProgressKeys.list(activeLibraryId),
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: readingProgressKeys.list(activeLibraryId),
+        }),
+        invalidateFavoriteBookQueries(queryClient, activeLibraryId),
+      ])
       refresh()
-      void favoriteBooksQuery.refetch()
     } catch (e) {
       console.error(
         `Failed to sync db. library id: "${activeLibraryId}", error: ${formatApiError(e)}`,
