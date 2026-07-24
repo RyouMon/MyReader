@@ -46,7 +46,7 @@ async fn sync_db_for_library_should_return_not_found_when_library_id_is_unknown(
 
 #[tokio::test]
 async fn sync_db_for_library_should_return_report_when_local_library_has_no_remote_state() {
-    // Local library, sidecar opens an empty sqlite DB, push/pull no-ops → report with 0/0.
+    // A fresh sidecar publishes its canonical library identity before pulling.
     let calibre_dir = tempfile::tempdir().expect("tempdir");
     create_calibre_db(calibre_dir.path()).await;
     let path_str = calibre_dir.path().to_string_lossy().to_string();
@@ -59,6 +59,6 @@ async fn sync_db_for_library_should_return_report_when_local_library_has_no_remo
     let report: DbSyncReportView =
         invoke_ok(&app, "sync_db_for_library", json!({ "libraryId": "lib-a" }));
 
-    assert_eq!(report.pushed, 0);
+    assert_eq!(report.pushed, 1);
     assert_eq!(report.pulled, 0);
 }

@@ -11,8 +11,8 @@ use crate::repositories::{
 use crate::services::library_service::LibraryService;
 use crate::sync::{
     bookmark::{add_local_bookmark, remove_local_bookmark},
-    contract::ReaderLocator,
-    kernel::read_replica_identity,
+    reader_locator::ReaderLocator,
+    replica_identity::read_replica_identity,
 };
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 

@@ -99,7 +99,7 @@ impl SqliteProgressRepository {
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
             display_progression: Set(display_progression),
-            sync_clock: Set(None),
+            sync_conflict_count: Set(0),
         };
         reading_progress::Entity::insert(active)
             .on_conflict(
@@ -165,7 +165,7 @@ impl SqliteProgressRepository {
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
             display_progression: Set(display_progression),
-            sync_clock: Set(None),
+            sync_conflict_count: Set(0),
         };
         let rows_affected = reading_progress::Entity::insert(active)
             .on_conflict(
@@ -204,14 +204,14 @@ impl SqliteProgressRepository {
             .map_err(|error| AppError::Database(error.to_string()))
     }
 
-    pub async fn write_position_state<C>(
+    pub async fn write_automerge_projection<C>(
         db: &C,
         book_id: i64,
         format: &str,
         locator_json: &str,
         display_progression: Option<f64>,
         updated_at: f64,
-        sync_clock: &str,
+        conflict_count: i64,
     ) -> Result<(), AppError>
     where
         C: ConnectionTrait,
@@ -223,7 +223,7 @@ impl SqliteProgressRepository {
             locator_json: Set(locator_json.to_owned()),
             updated_at: Set(updated_at),
             display_progression: Set(display_progression),
-            sync_clock: Set(Some(sync_clock.to_owned())),
+            sync_conflict_count: Set(conflict_count),
         };
         reading_progress::Entity::insert(active)
             .on_conflict(
@@ -235,7 +235,7 @@ impl SqliteProgressRepository {
                     reading_progress::Column::LocatorJson,
                     reading_progress::Column::DisplayProgression,
                     reading_progress::Column::UpdatedAt,
-                    reading_progress::Column::SyncClock,
+                    reading_progress::Column::SyncConflictCount,
                 ])
                 .to_owned(),
             )

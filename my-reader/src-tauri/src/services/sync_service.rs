@@ -11,8 +11,9 @@ use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
 use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::storage::{self, StorageBackend};
-use crate::sync::kernel::{ensure_replica_identity, publish_segments, pull_segments};
-use crate::sync::projection::LibrarySidecarProjection;
+use crate::sync::automerge_projection::LibrarySidecarAutomergeProjection;
+use crate::sync::automerge_store::sync_library_sidecar_automerge;
+use crate::sync::replica_identity::ensure_replica_identity;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct SyncService;
@@ -69,14 +70,18 @@ impl SyncService {
             "Resolved library sidecar identity"
         );
 
-        let pushed = publish_segments(&db, &operator, now_ms)
-            .await
-            .map_err(|err| Self::log_stage_error(library_id, "publish_segments", err))?;
-        let projection = LibrarySidecarProjection::new(&identity.replica_id, now_ms)
-            .map_err(|err| Self::log_stage_error(library_id, "create_projection", err))?;
-        let pulled = pull_segments(&db, &operator, &identity, &projection, now_ms)
-            .await
-            .map_err(|err| Self::log_stage_error(library_id, "pull_segments", err))?;
+        let automerge_projection = LibrarySidecarAutomergeProjection;
+        let (automerge_pushed, automerge_pulled) = sync_library_sidecar_automerge(
+            &db,
+            &operator,
+            &identity,
+            now_ms,
+            Some(&automerge_projection),
+        )
+        .await
+        .map_err(|err| Self::log_stage_error(library_id, "sync_automerge", err))?;
+        let pushed = automerge_pushed;
+        let pulled = automerge_pulled;
 
         cache::clear_library_missing_cover_markers(app_data_dir, library_id)
             .map_err(|err| Self::log_stage_error(library_id, "clear_cover_cache", err))?;
@@ -210,7 +215,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_publish_reading_position_v4_when_local_progress_exists() {
+    async fn should_publish_automerge_changes_when_local_progress_exists() {
         let app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();
         create_calibre_metadata(library_root.path()).await;
@@ -240,16 +245,22 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(report.pushed, 1);
-        let replicas = std::fs::read_dir(library_root.path().join(".myreader").join("changes-v4"))
-            .unwrap()
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
+        assert_eq!(report.pushed, 2);
+        let replicas = std::fs::read_dir(
+            library_root
+                .path()
+                .join(".myreader")
+                .join("automerge")
+                .join("changes"),
+        )
+        .unwrap()
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
         assert_eq!(replicas.len(), 1);
         assert!(std::fs::read_dir(replicas[0].path())
             .unwrap()
             .filter_map(Result::ok)
-            .any(|entry| entry.file_name().to_string_lossy().ends_with(".json")));
+            .any(|entry| entry.file_name().to_string_lossy().ends_with(".am")));
     }
 
     #[tokio::test]
@@ -305,7 +316,7 @@ mod tests {
         .unwrap()
         .unwrap();
 
-        assert_eq!(report.pulled, 1);
+        assert_eq!(report.pulled, 2);
         assert_eq!(progress.display_progression, Some(0.4));
         assert_eq!(progress.locator["href"], "chapter.xhtml");
     }
@@ -365,8 +376,8 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(first_report.pushed, 1);
-        assert_eq!(second_report.pulled, 1);
+        assert_eq!(first_report.pushed, 2);
+        assert_eq!(second_report.pulled, 2);
         assert_eq!(bookmarks.len(), 1);
         assert_eq!(bookmarks[0].locator_key, "chapter.xhtml@0.4");
         assert_eq!(bookmarks[0].locator, locator);
@@ -431,7 +442,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_apply_mixed_domains_and_tombstone_when_two_replicas_exchange_segments() {
+    async fn should_apply_mixed_domains_and_tombstone_when_two_replicas_exchange_changes() {
         let first_app_data = tempfile::tempdir().unwrap();
         let second_app_data = tempfile::tempdir().unwrap();
         let library_root = tempfile::tempdir().unwrap();

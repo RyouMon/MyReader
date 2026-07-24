@@ -8,6 +8,7 @@
     "./reader-chrome-palette": "./src/reader-chrome-palette.ts",
     "./reader-annotations": "./src/reader-annotations.ts",
     "./reader-bookmarks": "./src/reader-bookmarks.ts",
+    "./reading-time-accumulator": "./src/reading-time-accumulator.ts",
     "./reader-note-marker/*": "./src/reader-note-marker/*",
     "./reader-search": "./src/reader-search.ts",
     "./reader-themes": "./src/reader-themes.ts",

@@ -4,8 +4,13 @@ use crate::entities::app::annotations;
 use crate::error::AppError;
 use crate::models::{is_valid_reader_locator, AppConfig, ReaderAnnotationDto};
 use crate::repositories::annotation_repo::SqliteAnnotationRepository;
+use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::services::library_service::LibraryService;
-use crate::utils::paths::library_sidecar_path;
+use crate::sync::annotation::{
+    add_local_annotation, delete_local_annotation, update_local_annotation,
+};
+use crate::sync::replica_identity::read_replica_identity;
+use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 const HIGHLIGHT_KIND: &str = "highlight";
 const ANNOTATION_COLORS: [&str; 4] = ["yellow", "orange", "green", "blue"];
@@ -79,6 +84,38 @@ fn annotation_dto(
 }
 
 impl AnnotationService {
+    async fn sync_context(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: Option<&str>,
+    ) -> Result<
+        (
+            crate::models::LibraryConfig,
+            sea_orm::DatabaseConnection,
+            String,
+        ),
+        AppError,
+    > {
+        let library = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&library, app_data_dir)
+            .to_string_lossy()
+            .to_string();
+        let db = SqliteAnnotationRepository::open(&sidecar_root).await?;
+        let library_uuid = match read_replica_identity(&db).await? {
+            Some(identity) => identity.library_uuid,
+            None => {
+                let library_root = library_root_path(&library, app_data_dir)
+                    .to_string_lossy()
+                    .to_string();
+                CalibreBookRepository::open(&library_root)
+                    .await?
+                    .get_library_uuid()
+                    .await?
+            }
+        };
+        Ok((library, db, library_uuid))
+    }
+
     pub async fn list(
         sidecar_root: &str,
         library_id: &str,
@@ -196,20 +233,26 @@ impl AnnotationService {
         color: &str,
         note: Option<&str>,
     ) -> Result<ReaderAnnotationDto, AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::add(
-            &sidecar_root,
-            &library.id,
+        let format = normalize_format(format)?;
+        validate_locator(locator)?;
+        let color = validate_color(color)?;
+        let note = normalize_note(note)?;
+        let locator_json = serde_json::to_string(locator)
+            .map_err(|error| AppError::Serialize(error.to_string()))?;
+        let (library, db, library_uuid) =
+            Self::sync_context(app_data_dir, config, library_id).await?;
+        let model = add_local_annotation(
+            &db,
+            &library_uuid,
             book_id,
-            format,
-            locator,
+            &format,
+            &locator_json,
             color,
-            note,
+            note.as_deref(),
+            unix_epoch_millis() as u64,
         )
-        .await
+        .await?;
+        annotation_dto(&library.id, model)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -223,11 +266,24 @@ impl AnnotationService {
         color: &str,
         note: Option<&str>,
     ) -> Result<ReaderAnnotationDto, AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::update(&sidecar_root, &library.id, book_id, format, id, color, note).await
+        let format = normalize_format(format)?;
+        let color = validate_color(color)?;
+        let note = normalize_note(note)?;
+        let (library, db, library_uuid) =
+            Self::sync_context(app_data_dir, config, library_id).await?;
+        let model = update_local_annotation(
+            &db,
+            &library_uuid,
+            id,
+            book_id,
+            &format,
+            color,
+            note.as_deref(),
+            unix_epoch_millis() as u64,
+        )
+        .await?
+        .ok_or_else(|| AppError::NotFound("ANNOTATION_NOT_FOUND".into()))?;
+        annotation_dto(&library.id, model)
     }
 
     pub async fn delete_for_library(
@@ -238,10 +294,22 @@ impl AnnotationService {
         format: &str,
         id: &str,
     ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::delete(&sidecar_root, book_id, format, id).await
+        let format = normalize_format(format)?;
+        let (_library, db, library_uuid) =
+            Self::sync_context(app_data_dir, config, library_id).await?;
+        if delete_local_annotation(
+            &db,
+            &library_uuid,
+            id,
+            book_id,
+            &format,
+            unix_epoch_millis() as u64,
+        )
+        .await?
+        {
+            Ok(())
+        } else {
+            Err(AppError::NotFound("ANNOTATION_NOT_FOUND".into()))
+        }
     }
 }

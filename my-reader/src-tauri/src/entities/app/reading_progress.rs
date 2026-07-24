@@ -18,8 +18,7 @@ pub struct Model {
     pub updated_at: f64,
     #[sea_orm(column_type = "Double", nullable)]
     pub display_progression: Option<f64>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub sync_clock: Option<String>,
+    pub sync_conflict_count: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

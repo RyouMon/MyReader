@@ -6,7 +6,7 @@ use crate::repositories::{
     calibre_repo::CalibreBookRepository, favorite_book_repo::SqliteFavoriteBookRepository,
 };
 use crate::services::library_service::LibraryService;
-use crate::sync::{favorite::write_local_favorite, kernel::read_replica_identity};
+use crate::sync::{favorite::write_local_favorite, replica_identity::read_replica_identity};
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct FavoriteBookService;

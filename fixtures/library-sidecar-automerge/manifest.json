@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "genesisActor": "00000000000000000000000000000000",
+  "genesisHeads": [
+    "ac137b1318ef97f275852452df5c683406ec657e68e1b51d3656ac5f684ce1f2"
+  ],
+  "roots": [
+    "favorites",
+    "positions",
+    "bookmarks",
+    "annotations",
+    "sessions",
+    "completions"
+  ],
+  "libraryUuid": "11111111-2222-4333-8444-555555555555",
+  "typescriptPosition": {
+    "replicaId": "a1b2c3d4-e5f6-4890-abcd-ef1234567890",
+    "heads": [
+      "7812928191c0199b52ce80dc524a540ea3b4428c3c009b15636668a5e9c730d7"
+    ],
+    "bookId": 7,
+    "format": "PDF",
+    "displayProgressionPpm": 700000
+  },
+  "typescriptDomains": {
+    "favoriteBookId": 7,
+    "bookmarkKey": "7:PDF:page-7",
+    "annotationId": "22222222222242228222222222222222",
+    "sessionId": "33333333333343338333333333333333",
+    "completionId": "44444444444444448444444444444444"
+  }
+}

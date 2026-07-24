@@ -9,7 +9,6 @@ import type {
   readingCompletions,
   readingProgress,
   readingSessions,
-  syncMeta,
 } from "./schema"
 
 export type Annotation = InferSelectModel<typeof annotations>
@@ -34,5 +33,3 @@ export type ReadingCompletion = InferSelectModel<typeof readingCompletions>
 export type NewReadingCompletion = InferInsertModel<typeof readingCompletions>
 export type FileState = InferSelectModel<typeof fileState>
 export type NewFileState = InferInsertModel<typeof fileState>
-export type SyncMeta = InferSelectModel<typeof syncMeta>
-export type NewSyncMeta = InferInsertModel<typeof syncMeta>

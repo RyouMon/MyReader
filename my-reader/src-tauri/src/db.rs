@@ -152,7 +152,6 @@ mod tests {
                 ("created_at".into(), "REAL".into(), 1),
                 ("updated_at".into(), "REAL".into(), 1),
                 ("deleted_at".into(), "REAL".into(), 0),
-                ("sync_clock".into(), "TEXT".into(), 0),
             ]
         );
 
@@ -206,7 +205,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn sync_kernel_schema_should_exist_when_library_database_is_created() {
+    async fn should_replace_legacy_tables_when_automerge_sync_database_is_created() {
         let temp = tempfile::tempdir().unwrap();
         let sidecar_root = temp.path().to_string_lossy().to_string();
         let db = open_db(&sidecar_root).await.expect("database should open");
@@ -224,28 +223,42 @@ mod tests {
             .map(|row| row.try_get("", "name").unwrap())
             .collect();
 
-        assert!(names.contains(&"sync_cursors".to_owned()));
-        assert!(names.contains(&"sync_errors".to_owned()));
-        assert!(names.contains(&"sync_hlc_state".to_owned()));
-        assert!(names.contains(&"sync_local_meta".to_owned()));
-        assert!(names.contains(&"sync_outbox".to_owned()));
-        assert!(names.contains(&"sync_prepared_segments".to_owned()));
+        for table in [
+            "sync_automerge_changes",
+            "sync_automerge_outbox",
+            "sync_automerge_projection_meta",
+            "sync_automerge_receipts",
+            "sync_automerge_state",
+            "sync_errors",
+            "sync_local_meta",
+        ] {
+            assert!(names.contains(&table.to_owned()));
+        }
+        for table in [
+            "sync_cursors",
+            "sync_hlc_state",
+            "sync_meta",
+            "sync_outbox",
+            "sync_prepared_segments",
+        ] {
+            assert!(!names.contains(&table.to_owned()));
+        }
     }
 
     #[tokio::test]
-    async fn sync_tables_should_use_text_surrogate_primary_keys_when_database_is_created() {
+    async fn should_use_text_surrogate_primary_keys_when_sync_database_is_created() {
         let temp = tempfile::tempdir().unwrap();
         let sidecar_root = temp.path().to_string_lossy().to_string();
         let db = open_db(&sidecar_root).await.expect("database should open");
 
         for table in [
-            "sync_cursors",
+            "sync_automerge_changes",
+            "sync_automerge_outbox",
+            "sync_automerge_projection_meta",
+            "sync_automerge_receipts",
+            "sync_automerge_state",
             "sync_errors",
-            "sync_hlc_state",
             "sync_local_meta",
-            "sync_meta",
-            "sync_outbox",
-            "sync_prepared_segments",
         ] {
             let columns = db
                 .query_all_raw(Statement::from_string(
@@ -264,12 +277,20 @@ mod tests {
         }
 
         for (table, index, expected_column) in [
-            ("sync_cursors", "idx_sync_cursors_replica_id", "replica_id"),
-            ("sync_outbox", "idx_sync_outbox_change_id", "change_id"),
             (
-                "sync_prepared_segments",
-                "idx_sync_prepared_segments_sequence",
-                "sequence",
+                "sync_automerge_changes",
+                "idx_sync_automerge_changes_hash",
+                "change_hash",
+            ),
+            (
+                "sync_automerge_outbox",
+                "idx_sync_automerge_outbox_path",
+                "object_path",
+            ),
+            (
+                "sync_automerge_receipts",
+                "idx_sync_automerge_receipts_path",
+                "object_path",
             ),
         ] {
             let unique = db

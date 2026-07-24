@@ -8,7 +8,7 @@ use tauri::Manager;
 
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
-use my_reader_lib::sync::kernel::ensure_replica_identity;
+use my_reader_lib::sync::replica_identity::ensure_replica_identity;
 
 use crate::common::app::TestApp;
 use crate::common::ipc::{invoke_err, invoke_ok};

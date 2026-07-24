@@ -14,8 +14,6 @@ pub struct Model {
     pub library_uuid: String,
     #[sea_orm(column_type = "Text")]
     pub replica_id: String,
-    #[sea_orm(column_type = "Text")]
-    pub next_sequence: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -121,7 +121,7 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
     assert_eq!(progress.book_id, 7);
     assert_eq!(progress.format, "EPUB");
     assert_eq!(progress.locator, locator);
-    assert_eq!(progress.display_progression, Some(1.0 / 3.0));
+    assert_eq!(progress.display_progression, Some(0.333_333));
     assert!(progress.updated_at > 0.0);
 }
 

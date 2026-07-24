@@ -4,16 +4,16 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "sync_cursors")]
+#[sea_orm(table_name = "sync_automerge_state")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
-    #[sea_orm(column_type = "Text", unique)]
-    pub replica_id: String,
+    pub schema_version: i64,
+    #[sea_orm(column_type = "Blob")]
+    pub snapshot_bytes: Vec<u8>,
     #[sea_orm(column_type = "Text")]
-    pub sequence: String,
-    #[sea_orm(column_type = "Text")]
-    pub file_hash: String,
+    pub heads_json: String,
+    pub updated_at: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

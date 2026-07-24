@@ -28,7 +28,7 @@ fn remote_library(id: &str) -> LibraryConfig {
 }
 
 #[tokio::test]
-async fn should_initialize_v4_replica_when_local_library_syncs() {
+async fn should_initialize_automerge_replica_when_local_library_syncs() {
     let app_data = tempfile::tempdir().unwrap();
     let original = tempfile::tempdir().unwrap();
     create_calibre_db(original.path()).await;
@@ -56,9 +56,9 @@ async fn should_initialize_v4_replica_when_local_library_syncs() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(report.pushed, 0);
+    assert_eq!(report.pushed, 1);
     assert_eq!(report.pulled, 0);
-    assert_eq!(identity.protocol, "library-sidecar-v4");
+    assert_eq!(identity.protocol, "library-sidecar-automerge");
     assert_eq!(
         identity.library_uuid,
         "018f2f8d-980b-40ef-b72e-c6e86cb7cc28"

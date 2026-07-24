@@ -4,20 +4,18 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "sync_prepared_segments")]
+#[sea_orm(table_name = "sync_automerge_outbox")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text", unique)]
-    pub sequence: String,
-    #[sea_orm(column_type = "Text", unique)]
-    pub path: String,
+    pub object_path: String,
     #[sea_orm(column_type = "Blob")]
     pub bytes: Vec<u8>,
     #[sea_orm(column_type = "Text")]
     pub sha256: String,
     #[sea_orm(column_type = "Text")]
-    pub change_ids_json: String,
+    pub change_hashes_json: String,
     pub published_at: Option<i64>,
 }
 

@@ -9,4 +9,5 @@ pub mod library_service;
 pub mod progress_service;
 pub mod reader_service;
 pub mod reader_window_service;
+pub mod reading_statistics_service;
 pub mod sync_service;

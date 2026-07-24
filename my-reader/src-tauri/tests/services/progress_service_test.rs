@@ -62,7 +62,7 @@ async fn direct_progress_operations_should_round_trip_locator() {
     assert_eq!(dto.book_id, 7);
     assert_eq!(dto.format, "EPUB");
     assert_eq!(dto.locator, locator);
-    assert_eq!(dto.display_progression, Some(1.0 / 3.0));
+    assert_eq!(dto.display_progression, Some(0.333_333));
 }
 
 #[tokio::test]

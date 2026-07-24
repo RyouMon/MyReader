@@ -84,4 +84,35 @@ mod tests {
 
         assert_eq!(applied_versions(&db).await, migration_names());
     }
+
+    #[tokio::test]
+    async fn up_should_discard_legacy_sync_state_when_automerge_protocol_replaces_v4() {
+        let db = Database::connect("sqlite::memory:").await.unwrap();
+        LibraryMigrator::up(&db, Some(16)).await.unwrap();
+        db.execute_unprepared(
+            "INSERT INTO sync_local_meta (id, protocol, library_uuid, replica_id)
+             VALUES ('legacy', 'library-sidecar-v4', 'library', 'replica');
+             INSERT INTO sync_automerge_changes
+               (id, change_hash, actor_id, actor_sequence, bytes, origin, created_at)
+             VALUES ('change', 'hash', 'actor', '1', X'00', 'local', 1);",
+        )
+        .await
+        .unwrap();
+
+        LibraryMigrator::up(&db, None).await.unwrap();
+
+        for table in ["sync_local_meta", "sync_automerge_changes"] {
+            let count = db
+                .query_one_raw(Statement::from_string(
+                    DbBackend::Sqlite,
+                    format!("SELECT COUNT(*) AS count FROM {table}"),
+                ))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get::<i64>("", "count")
+                .unwrap();
+            assert_eq!(count, 0, "{table} should discard legacy sync state");
+        }
+    }
 }

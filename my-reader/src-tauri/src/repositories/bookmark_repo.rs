@@ -57,7 +57,6 @@ impl SqliteBookmarkRepository {
             created_at: Set(now),
             updated_at: Set(now),
             deleted_at: Set(None),
-            sync_clock: Set(None),
         };
         bookmarks::Entity::insert(active)
             .on_conflict(
@@ -201,7 +200,6 @@ impl SqliteBookmarkRepository {
             created_at: Set(created_at),
             updated_at: Set(updated_at),
             deleted_at: Set(deleted_at),
-            sync_clock: Set(None),
         };
         let rows_affected = bookmarks::Entity::insert(active)
             .on_conflict(
@@ -246,7 +244,7 @@ impl SqliteBookmarkRepository {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn write_state<C>(
+    pub async fn write_automerge_projection<C>(
         db: &C,
         id: &str,
         book_id: i64,
@@ -256,8 +254,7 @@ impl SqliteBookmarkRepository {
         created_at: f64,
         updated_at: f64,
         deleted_at: Option<f64>,
-        sync_clock: &str,
-    ) -> Result<bookmarks::Model, AppError>
+    ) -> Result<(), AppError>
     where
         C: ConnectionTrait,
     {
@@ -270,7 +267,6 @@ impl SqliteBookmarkRepository {
             created_at: Set(created_at),
             updated_at: Set(updated_at),
             deleted_at: Set(deleted_at),
-            sync_clock: Set(Some(sync_clock.to_owned())),
         };
         bookmarks::Entity::insert(active)
             .on_conflict(
@@ -285,16 +281,13 @@ impl SqliteBookmarkRepository {
                     bookmarks::Column::CreatedAt,
                     bookmarks::Column::UpdatedAt,
                     bookmarks::Column::DeletedAt,
-                    bookmarks::Column::SyncClock,
                 ])
                 .to_owned(),
             )
             .exec_without_returning(db)
             .await
             .map_err(|error| AppError::Database(error.to_string()))?;
-        Self::find_state(db, book_id, format, locator_key)
-            .await?
-            .ok_or_else(|| AppError::Database("Bookmark state write returned no row".into()))
+        Ok(())
     }
 }
 

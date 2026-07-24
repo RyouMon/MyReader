@@ -4,20 +4,27 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "sync_outbox")]
+#[sea_orm(table_name = "sync_automerge_changes")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
     #[sea_orm(column_type = "Text", unique)]
-    pub change_id: String,
+    pub change_hash: String,
+    #[sea_orm(
+        column_type = "Text",
+        unique_key = "idx_sync_automerge_changes_actor_sequence"
+    )]
+    pub actor_id: String,
+    #[sea_orm(
+        column_type = "Text",
+        unique_key = "idx_sync_automerge_changes_actor_sequence"
+    )]
+    pub actor_sequence: String,
+    #[sea_orm(column_type = "Blob")]
+    pub bytes: Vec<u8>,
     #[sea_orm(column_type = "Text")]
-    pub clock: String,
-    #[sea_orm(column_type = "Text")]
-    pub domain: String,
-    #[sea_orm(column_type = "Text")]
-    pub state_json: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub segment_sequence: Option<String>,
+    pub origin: String,
+    pub created_at: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

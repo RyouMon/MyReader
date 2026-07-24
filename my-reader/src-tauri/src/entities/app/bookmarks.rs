@@ -22,8 +22,6 @@ pub struct Model {
     pub updated_at: f64,
     #[sea_orm(column_type = "Double", nullable)]
     pub deleted_at: Option<f64>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub sync_clock: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

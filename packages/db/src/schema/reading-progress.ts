@@ -15,8 +15,8 @@ export const readingProgress = sqliteTable(
     locatorJson: text("locator_json").notNull(),
     displayProgression: real("display_progression"),
     updatedAt: real("updated_at").notNull(),
-    /** HLC of the projected reading_position.v1 register; null for pre-v4 local rows. */
-    syncClock: text("sync_clock"),
+    /** Number of concurrent Automerge values for this projected position. */
+    syncConflictCount: integer("sync_conflict_count").notNull().default(0),
   },
   (t) => [
     uniqueIndex("idx_reading_progress_book_format").on(t.bookId, t.format),

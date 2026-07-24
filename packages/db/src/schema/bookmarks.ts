@@ -18,8 +18,6 @@ export const bookmarks = sqliteTable(
     createdAt: real("created_at").notNull(),
     updatedAt: real("updated_at").notNull(),
     deletedAt: real("deleted_at"),
-    /** HLC of the projected bookmark.v1 register; null for pre-v4 local rows. */
-    syncClock: text("sync_clock"),
   },
   (t) => [
     uniqueIndex("idx_bookmarks_book_format_locator").on(

@@ -7,7 +7,7 @@ use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::{JsonAny, ReadingProgressDto};
 use crate::services::library_service::LibraryService;
-use crate::services::progress_service::ProgressService;
+use crate::services::progress_service::{ProgressService, ReadingPositionCandidateDto};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -155,4 +155,68 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
     }
 
     result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn list_reading_position_candidates<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+    format: String,
+) -> Result<Vec<ReadingPositionCandidateDto>, AppError> {
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
+    ProgressService::list_reading_position_candidates_for_library(
+        &app_data_dir,
+        &config,
+        library_id.as_deref(),
+        book_id,
+        &format,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn select_reading_position_candidate<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, AppState>,
+    library_id: Option<String>,
+    book_id: i64,
+    format: String,
+    operation_id: String,
+) -> Result<(), AppError> {
+    let app_data_dir = common::app_data_dir(&app)?;
+    let config = common::config_snapshot(&state);
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+    ProgressService::select_reading_position_candidate_for_library(
+        &app_data_dir,
+        &config,
+        Some(&library.id),
+        book_id,
+        &format,
+        &operation_id,
+    )
+    .await?;
+    if let Some(progress) = ProgressService::get_reading_progress_for_library(
+        &app_data_dir,
+        &config,
+        Some(&library.id),
+        book_id,
+        &format,
+    )
+    .await?
+    {
+        emit_reading_progress_changed(
+            &app,
+            &library.id,
+            book_id,
+            &format,
+            &progress.locator,
+            progress.display_progression,
+        );
+    }
+    Ok(())
 }

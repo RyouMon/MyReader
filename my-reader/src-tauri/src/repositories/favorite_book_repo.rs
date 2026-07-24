@@ -38,12 +38,11 @@ impl SqliteFavoriteBookRepository {
             .map_err(|error| AppError::Database(error.to_string()))
     }
 
-    pub async fn write_state<C>(
+    pub async fn write_automerge_projection<C>(
         db: &C,
         book_id: i64,
         added_at: f64,
         is_favorite: bool,
-        sync_clock: &str,
     ) -> Result<(), AppError>
     where
         C: ConnectionTrait,
@@ -52,7 +51,6 @@ impl SqliteFavoriteBookRepository {
             let mut active: favorite_books::ActiveModel = model.into();
             active.added_at = Set(added_at);
             active.is_favorite = Set(i64::from(is_favorite));
-            active.sync_clock = Set(Some(sync_clock.to_owned()));
             active
                 .update(db)
                 .await
@@ -63,7 +61,6 @@ impl SqliteFavoriteBookRepository {
                 book_id: Set(book_id),
                 added_at: Set(added_at),
                 is_favorite: Set(i64::from(is_favorite)),
-                sync_clock: Set(Some(sync_clock.to_owned())),
             }
             .insert(db)
             .await

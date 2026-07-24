@@ -1,7 +1,7 @@
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
 use my_reader_lib::services::favorite_book_service::FavoriteBookService;
-use my_reader_lib::sync::kernel::ensure_replica_identity;
+use my_reader_lib::sync::replica_identity::ensure_replica_identity;
 
 const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 

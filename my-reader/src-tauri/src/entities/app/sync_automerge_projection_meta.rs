@@ -4,14 +4,14 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "sync_hlc_state")]
+#[sea_orm(table_name = "sync_automerge_projection_meta")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
+    pub projection_version: i64,
     #[sea_orm(column_type = "Text")]
-    pub physical_ms: String,
-    #[sea_orm(column_type = "Text")]
-    pub counter: String,
+    pub heads_json: String,
+    pub rebuilt_at: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

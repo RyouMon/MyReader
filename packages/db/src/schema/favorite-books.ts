@@ -16,8 +16,6 @@ export const favoriteBooks = sqliteTable(
     isFavorite: integer("is_favorite", { mode: "boolean" })
       .notNull()
       .default(true),
-    /** HLC of the projected book_favorite.v1 register; null for pre-v4 local rows. */
-    syncClock: text("sync_clock"),
   },
   (t) => [uniqueIndex("idx_favorite_books_book_id").on(t.bookId)],
 )

@@ -98,6 +98,12 @@ impl TestApp {
                 my_reader_lib::commands::progress::get_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::progress::list_reading_progress::<MockRuntime>,
                 my_reader_lib::commands::progress::set_reading_progress::<MockRuntime>,
+                my_reader_lib::commands::progress::list_reading_position_candidates::<MockRuntime>,
+                my_reader_lib::commands::progress::select_reading_position_candidate::<MockRuntime>,
+                my_reader_lib::commands::reading_statistics::add_reading_session_interval::<
+                    MockRuntime,
+                >,
+                my_reader_lib::commands::reading_statistics::add_reading_completion::<MockRuntime>,
                 my_reader_lib::commands::annotation::list_reader_annotations::<MockRuntime>,
                 my_reader_lib::commands::annotation::add_reader_annotation::<MockRuntime>,
                 my_reader_lib::commands::annotation::update_reader_annotation::<MockRuntime>,
