@@ -1,5 +1,6 @@
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter,
+    QueryOrder, Set,
 };
 
 use crate::entities::app::favorite_books;
@@ -14,6 +15,7 @@ impl SqliteFavoriteBookRepository {
 
     pub async fn list_book_ids(db: &DatabaseConnection) -> Result<Vec<i64>, AppError> {
         let rows = favorite_books::Entity::find()
+            .filter(favorite_books::Column::IsFavorite.eq(1))
             .order_by_asc(favorite_books::Column::AddedAt)
             .all(db)
             .await
@@ -22,38 +24,51 @@ impl SqliteFavoriteBookRepository {
         Ok(rows.into_iter().map(|row| row.book_id).collect())
     }
 
-    pub async fn add(db: &DatabaseConnection, book_id: i64) -> Result<(), AppError> {
-        let existing = favorite_books::Entity::find()
+    pub async fn find_by_book_id<C>(
+        db: &C,
+        book_id: i64,
+    ) -> Result<Option<favorite_books::Model>, AppError>
+    where
+        C: ConnectionTrait,
+    {
+        favorite_books::Entity::find()
             .filter(favorite_books::Column::BookId.eq(book_id))
             .one(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        if existing.is_some() {
-            return Ok(());
-        }
-
-        let added_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0.0, |d| d.as_millis() as f64);
-        let active = favorite_books::ActiveModel {
-            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
-            book_id: Set(book_id),
-            added_at: Set(added_at),
-        };
-        active
-            .insert(db)
-            .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
-        Ok(())
+            .map_err(|error| AppError::Database(error.to_string()))
     }
 
-    pub async fn remove(db: &DatabaseConnection, book_id: i64) -> Result<(), AppError> {
-        favorite_books::Entity::delete_many()
-            .filter(favorite_books::Column::BookId.eq(book_id))
-            .exec(db)
+    pub async fn write_state<C>(
+        db: &C,
+        book_id: i64,
+        added_at: f64,
+        is_favorite: bool,
+        sync_clock: &str,
+    ) -> Result<(), AppError>
+    where
+        C: ConnectionTrait,
+    {
+        if let Some(model) = Self::find_by_book_id(db, book_id).await? {
+            let mut active: favorite_books::ActiveModel = model.into();
+            active.added_at = Set(added_at);
+            active.is_favorite = Set(i64::from(is_favorite));
+            active.sync_clock = Set(Some(sync_clock.to_owned()));
+            active
+                .update(db)
+                .await
+                .map_err(|error| AppError::Database(error.to_string()))?;
+        } else {
+            favorite_books::ActiveModel {
+                id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+                book_id: Set(book_id),
+                added_at: Set(added_at),
+                is_favorite: Set(i64::from(is_favorite)),
+                sync_clock: Set(Some(sync_clock.to_owned())),
+            }
+            .insert(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|error| AppError::Database(error.to_string()))?;
+        }
         Ok(())
     }
 }

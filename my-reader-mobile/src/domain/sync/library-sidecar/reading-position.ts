@@ -1,38 +1,27 @@
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
-import { getCalibreLibraryUuid } from "@/src/repos/calibre/library"
 import {
   insertLibrarySidecarOutboxChange,
   readLibrarySidecarHlcState,
-  readLibrarySidecarLocalMeta,
   readLibrarySidecarReadingPosition,
   withLibrarySidecarSyncTransaction,
   writeLibrarySidecarHlcState,
   writeLibrarySidecarReadingPosition,
   type LibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
-import {
-  libraryMetadataUri,
-  METADATA_DB_RELATIVE,
-} from "@/src/services/fs/library-paths"
-import { fileUriFor } from "@/src/services/fs/path"
 import { uuid } from "@/src/utils/common"
-import { withLocalLibraryCalibreRoot } from "../../library/local-library-content"
 import {
+  type LibrarySidecarChange,
   type LibrarySidecarPositionState,
   type LibrarySidecarSegment,
 } from "./contract"
 import {
   formatLibrarySidecarHlc,
   nextLibrarySidecarHlc,
-  observeLibrarySidecarHlc,
   parseLibrarySidecarHlc,
 } from "./hlc"
-import {
-  ensureLibrarySidecarReplicaIdentity,
-  type LibrarySidecarReplicaIdentity,
-} from "./kernel"
+import { ensureLibrarySidecarIdentity } from "./identity"
 import { mergeLibrarySidecarState } from "./merge"
 
 export type ReadingPositionInput = {
@@ -108,34 +97,12 @@ async function writePositionProjection(
   })
 }
 
-export async function ensureReadingPositionReplicaIdentity(
-  library: Library,
-): Promise<LibrarySidecarReplicaIdentity> {
-  const existing = await withLibrarySidecarSyncTransaction(
-    library,
-    readLibrarySidecarLocalMeta,
-  )
-  if (existing) {
-    return ensureLibrarySidecarReplicaIdentity(library, existing.libraryUuid)
-  }
-  const libraryUuid = library.securityScopedBookmark
-    ? await withLocalLibraryCalibreRoot(library, (rootUri) =>
-        getCalibreLibraryUuid(
-          library.metadataUri ?? fileUriFor(rootUri, METADATA_DB_RELATIVE),
-        ),
-      )
-    : await getCalibreLibraryUuid(
-        library.metadataUri ?? libraryMetadataUri(library),
-      )
-  return ensureLibrarySidecarReplicaIdentity(library, libraryUuid)
-}
-
 export async function writeLocalReadingPosition(
   library: Library,
   input: ReadingPositionInput,
   nowMs = Date.now(),
 ): Promise<void> {
-  const identity = await ensureReadingPositionReplicaIdentity(library)
+  const identity = await ensureLibrarySidecarIdentity(library)
   const format = validateReadingPositionInput(input)
   const clock = await withLibrarySidecarSyncTransaction(library, async (tx) => {
     const persisted = persistedHlcState(await readLibrarySidecarHlcState(tx))
@@ -184,69 +151,45 @@ export async function writeLocalReadingPosition(
   })
 }
 
-export async function applyReadingPositionSegment(
+export async function applyReadingPositionChange(
   tx: LibrarySidecarSyncTransaction,
   segment: LibrarySidecarSegment,
-  localReplicaId: string,
-  nowMs: number,
+  change: LibrarySidecarChange,
 ): Promise<void> {
-  let localHlc = persistedHlcState(await readLibrarySidecarHlcState(tx))
-
-  for (const change of segment.changes) {
-    if (change.state.domain !== "reading_position.v1") {
-      throw new Error(`Unsupported projection domain: ${change.state.domain}`)
-    }
-    const incoming = change.state
-    const currentRow = await readLibrarySidecarReadingPosition(
-      tx,
-      incoming.bookId,
-      incoming.format,
+  if (change.state.domain !== "reading_position.v1") {
+    throw new Error(
+      `Unsupported reading position domain: ${change.state.domain}`,
     )
-    const current = currentRow ? positionStateFromRow(currentRow) : null
-    const merged = current
-      ? (mergeLibrarySidecarState(
-          current,
-          incoming,
-        ) as LibrarySidecarPositionState)
-      : incoming
-    console.info("[reading-sync] projection:merge", {
-      sourceReplicaId: segment.replicaId,
-      sequence: segment.sequence,
-      changeId: change.changeId,
-      bookId: incoming.bookId,
-      format: incoming.format,
-      currentClock: current?.register.clock ?? null,
-      incomingClock: incoming.register.clock,
-      selectedClock: merged.register.clock,
-      selectedSource:
-        merged.register.clock === incoming.register.clock ? "remote" : "local",
-      href: merged.register.value.locator.href,
-      position: merged.register.value.locator.locations?.position ?? null,
-      totalProgression:
-        merged.register.value.locator.locations?.totalProgression ?? null,
-      displayProgression: merged.register.value.displayProgression,
-    })
-    await writePositionProjection(tx, merged)
-
-    for (const remoteClock of new Set([
-      change.clock,
-      incoming.register.clock,
-    ])) {
-      const observed = observeLibrarySidecarHlc(
-        localHlc,
-        parseLibrarySidecarHlc(remoteClock),
-        BigInt(nowMs),
-        localReplicaId,
-      )
-      localHlc = {
-        physicalMs: observed.physicalMs,
-        counter: observed.counter,
-      }
-    }
   }
-
-  await writeLibrarySidecarHlcState(tx, {
-    physicalMs: localHlc.physicalMs.toString(),
-    counter: localHlc.counter.toString(),
+  const incoming = change.state
+  const currentRow = await readLibrarySidecarReadingPosition(
+    tx,
+    incoming.bookId,
+    incoming.format,
+  )
+  const current = currentRow ? positionStateFromRow(currentRow) : null
+  const merged = current
+    ? (mergeLibrarySidecarState(
+        current,
+        incoming,
+      ) as LibrarySidecarPositionState)
+    : incoming
+  console.info("[reading-sync] projection:merge", {
+    sourceReplicaId: segment.replicaId,
+    sequence: segment.sequence,
+    changeId: change.changeId,
+    bookId: incoming.bookId,
+    format: incoming.format,
+    currentClock: current?.register.clock ?? null,
+    incomingClock: incoming.register.clock,
+    selectedClock: merged.register.clock,
+    selectedSource:
+      merged.register.clock === incoming.register.clock ? "remote" : "local",
+    href: merged.register.value.locator.href,
+    position: merged.register.value.locator.locations?.position ?? null,
+    totalProgression:
+      merged.register.value.locator.locations?.totalProgression ?? null,
+    displayProgression: merged.register.value.displayProgression,
   })
+  await writePositionProjection(tx, merged)
 }

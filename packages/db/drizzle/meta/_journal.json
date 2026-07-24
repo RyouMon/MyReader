@@ -71,6 +71,13 @@
       "when": 1784828886707,
       "tag": "0009_add_reading_progress_sync_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784903303909,
+      "tag": "0010_add_favorite_sync_projection",
+      "breakpoints": true
     }
   ]
 }

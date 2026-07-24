@@ -3,11 +3,8 @@ import { act, renderHook, waitFor } from "@testing-library/react-native"
 import type { ComponentProps } from "react"
 
 import type { BookItem, Library } from "@/src/domain/types"
-import {
-  addFavoriteBook,
-  listFavoriteBooks,
-  removeFavoriteBook,
-} from "@/src/repos/favorite-books"
+import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
+import { listFavoriteBooks } from "@/src/repos/favorite-books"
 import { queryClient } from "@/src/services/query/query-client"
 import { queryKeys } from "@/src/services/query/query-keys"
 
@@ -25,12 +22,14 @@ jest.mock("@/src/services/query/query-client", () => {
   }
 })
 
-jest.mock("@/src/repos/favorite-books", () => ({
+jest.mock("../favorite-books", () => ({
   addFavoriteBook: jest.fn(),
-  listFavoriteBooks: jest.fn(),
   removeFavoriteBook: jest.fn(),
 }))
 
+jest.mock("@/src/repos/favorite-books", () => ({
+  listFavoriteBooks: jest.fn(),
+}))
 const mockLibrary: Library = {
   id: "lib-1",
   name: "Test Library",

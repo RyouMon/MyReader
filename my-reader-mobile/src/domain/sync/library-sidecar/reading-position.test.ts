@@ -1,7 +1,3 @@
-jest.mock("@/src/repos/calibre/library", () => ({
-  getCalibreLibraryUuid: jest.fn(),
-}))
-
 jest.mock("@/src/repos/library-sidecar-sync", () => ({
   insertLibrarySidecarOutboxChange: jest.fn(),
   readLibrarySidecarHlcState: jest.fn(),
@@ -12,8 +8,8 @@ jest.mock("@/src/repos/library-sidecar-sync", () => ({
   writeLibrarySidecarReadingPosition: jest.fn(),
 }))
 
-jest.mock("./kernel", () => ({
-  ensureLibrarySidecarReplicaIdentity: jest.fn(),
+jest.mock("./identity", () => ({
+  ensureLibrarySidecarIdentity: jest.fn(),
 }))
 
 jest.mock("@/src/utils/common", () => ({
@@ -29,11 +25,9 @@ import {
   writeLibrarySidecarHlcState,
   writeLibrarySidecarReadingPosition,
 } from "@/src/repos/library-sidecar-sync"
-import { ensureLibrarySidecarReplicaIdentity } from "./kernel"
-import {
-  applyReadingPositionSegment,
-  writeLocalReadingPosition,
-} from "./reading-position"
+import { ensureLibrarySidecarIdentity } from "./identity"
+import { applyLibrarySidecarSegment } from "./projection"
+import { writeLocalReadingPosition } from "./reading-position"
 
 const library = {
   id: "library-1",
@@ -58,7 +52,7 @@ describe("reading_position.v1 projection", () => {
     jest
       .mocked(withLibrarySidecarSyncTransaction)
       .mockImplementation(async (_library, operation) => operation(tx))
-    jest.mocked(ensureLibrarySidecarReplicaIdentity).mockResolvedValue({
+    jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue({
       libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
       replicaId: localReplicaId,
     })
@@ -135,7 +129,7 @@ describe("reading_position.v1 projection", () => {
       syncClock: localClock,
     })
 
-    await applyReadingPositionSegment(
+    await applyLibrarySidecarSegment(
       tx,
       {
         protocol: "library-sidecar-v4",

@@ -3,11 +3,8 @@ import { useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import type { BookItem, Library } from "@/src/domain/types"
-import {
-  addFavoriteBook,
-  listFavoriteBooks,
-  removeFavoriteBook,
-} from "@/src/repos/favorite-books"
+import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
+import { listFavoriteBooks } from "@/src/repos/favorite-books"
 import { queryClient } from "@/src/services/query/query-client"
 import { queryKeys } from "@/src/services/query/query-keys"
 

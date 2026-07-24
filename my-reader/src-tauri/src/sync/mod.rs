@@ -9,9 +9,11 @@
 
 pub mod contract;
 pub mod db_sync;
+pub mod favorite;
 pub mod hlc;
 pub mod kernel;
 pub mod merge;
 pub mod metadata;
+pub mod projection;
 pub mod reading_position;
 pub mod segment;

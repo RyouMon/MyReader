@@ -3,9 +3,10 @@ import {
   publishLibrarySidecarSegments,
   pullLibrarySidecarSegments,
 } from "./library-sidecar/kernel"
-import { ensureReadingPositionReplicaIdentity } from "./library-sidecar/reading-position"
+import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
 import { syncMyReader } from "./myreader-sync"
 import {
+  invalidateFavoriteBooks,
   invalidateReadingProgress,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
@@ -15,12 +16,16 @@ jest.mock("./library-sidecar/kernel", () => ({
   pullLibrarySidecarSegments: jest.fn(),
 }))
 
-jest.mock("./library-sidecar/reading-position", () => ({
-  applyReadingPositionSegment: jest.fn(),
-  ensureReadingPositionReplicaIdentity: jest.fn(),
+jest.mock("./library-sidecar/identity", () => ({
+  ensureLibrarySidecarIdentity: jest.fn(),
+}))
+
+jest.mock("./library-sidecar/projection", () => ({
+  applyLibrarySidecarSegment: jest.fn(),
 }))
 
 jest.mock("@/src/services/query/invalidate-table", () => ({
+  invalidateFavoriteBooks: jest.fn(),
   invalidateReadingProgress: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
 }))
@@ -44,7 +49,7 @@ const context = {
 describe("syncMyReader", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(ensureReadingPositionReplicaIdentity).mockResolvedValue({
+    jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue({
       libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
       replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
     })
@@ -52,9 +57,10 @@ describe("syncMyReader", () => {
     jest.mocked(pullLibrarySidecarSegments).mockResolvedValue(3)
     jest.mocked(invalidateReadingProgress).mockResolvedValue(undefined)
     jest.mocked(invalidateRecentlyReadBooks).mockResolvedValue(undefined)
+    jest.mocked(invalidateFavoriteBooks).mockResolvedValue(undefined)
   })
 
-  it("should use reading_position v4 provider when full sync runs", async () => {
+  it("should use the library sidecar provider when full sync runs", async () => {
     const result = await syncMyReader(context)
 
     expect(publishLibrarySidecarSegments).toHaveBeenCalledWith(
@@ -63,8 +69,9 @@ describe("syncMyReader", () => {
       expect.any(Number),
     )
     expect(pullLibrarySidecarSegments).toHaveBeenCalled()
+    expect(invalidateFavoriteBooks).toHaveBeenCalledWith(context.library.id)
     expect(result.providers).toEqual({
-      "reading_position.v1": { pushed: 2, pulled: 3 },
+      "library-sidecar.v4": { pushed: 2, pulled: 3 },
     })
   })
 
@@ -76,7 +83,7 @@ describe("syncMyReader", () => {
     expect(publishLibrarySidecarSegments).toHaveBeenCalled()
     expect(pullLibrarySidecarSegments).not.toHaveBeenCalled()
     expect(result.providers).toEqual({
-      "reading_position.v1": { pushed: 2, pulled: 0 },
+      "library-sidecar.v4": { pushed: 2, pulled: 0 },
     })
   })
 

@@ -12,7 +12,7 @@ use crate::models::{AppConfig, LibraryConfig};
 use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::storage::{self, StorageBackend};
 use crate::sync::kernel::{ensure_replica_identity, publish_segments, pull_segments};
-use crate::sync::reading_position::ReadingPositionProjection;
+use crate::sync::projection::LibrarySidecarProjection;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct SyncService;
@@ -72,7 +72,7 @@ impl SyncService {
         let pushed = publish_segments(&db, &operator, now_ms)
             .await
             .map_err(|err| Self::log_stage_error(library_id, "publish_segments", err))?;
-        let projection = ReadingPositionProjection::new(&identity.replica_id, now_ms)
+        let projection = LibrarySidecarProjection::new(&identity.replica_id, now_ms)
             .map_err(|err| Self::log_stage_error(library_id, "create_projection", err))?;
         let pulled = pull_segments(&db, &operator, &identity, &projection, now_ms)
             .await
@@ -160,6 +160,7 @@ mod tests {
 
     use super::*;
     use crate::models::{AppConfig, LibraryConfig};
+    use crate::services::favorite_book_service::FavoriteBookService;
     use crate::services::progress_service::ProgressService;
 
     const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
@@ -306,5 +307,105 @@ mod tests {
         assert_eq!(report.pulled, 1);
         assert_eq!(progress.display_progression, Some(0.4));
         assert_eq!(progress.locator["href"], "chapter.xhtml");
+    }
+
+    #[tokio::test]
+    async fn should_apply_mixed_domains_and_tombstone_when_two_replicas_exchange_segments() {
+        let first_app_data = tempfile::tempdir().unwrap();
+        let second_app_data = tempfile::tempdir().unwrap();
+        let library_root = tempfile::tempdir().unwrap();
+        create_calibre_metadata(library_root.path()).await;
+        let mut first_config = AppConfig {
+            libraries: vec![local_library(
+                "first",
+                library_root.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+        let mut second_config = AppConfig {
+            libraries: vec![local_library(
+                "second",
+                library_root.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+
+        ProgressService::set_reading_progress_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+            42,
+            "EPUB",
+            &serde_json::json!({
+                "href": "chapter.xhtml",
+                "type": "application/xhtml+xml"
+            }),
+            Some(0.4),
+        )
+        .await
+        .unwrap();
+        FavoriteBookService::add_favorite_book_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+            42,
+        )
+        .await
+        .unwrap();
+        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+            .await
+            .unwrap();
+        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            .await
+            .unwrap();
+
+        assert_eq!(
+            FavoriteBookService::list_favorite_book_ids_for_library(
+                second_app_data.path(),
+                &second_config,
+                Some("second"),
+            )
+            .await
+            .unwrap(),
+            vec![42]
+        );
+        assert_eq!(
+            ProgressService::get_reading_progress_for_library(
+                second_app_data.path(),
+                &second_config,
+                Some("second"),
+                42,
+                "EPUB",
+            )
+            .await
+            .unwrap()
+            .unwrap()
+            .display_progression,
+            Some(0.4)
+        );
+
+        FavoriteBookService::remove_favorite_book_for_library(
+            second_app_data.path(),
+            &second_config,
+            Some("second"),
+            42,
+        )
+        .await
+        .unwrap();
+        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            .await
+            .unwrap();
+        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+            .await
+            .unwrap();
+
+        assert!(FavoriteBookService::list_favorite_book_ids_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+        )
+        .await
+        .unwrap()
+        .is_empty());
     }
 }

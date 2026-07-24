@@ -9,9 +9,7 @@ use super::contract::{
     Change, DomainState, Lww, PositionState, PositionValue, ReaderLocator, Segment,
 };
 use super::hlc::Hlc;
-use super::kernel::{
-    enqueue_change, ensure_replica_identity, read_hlc_state, write_hlc_state, SegmentProjection,
-};
+use super::kernel::{enqueue_change, ensure_replica_identity, read_hlc_state, write_hlc_state};
 
 fn sync_error(message: impl Into<String>) -> AppError {
     AppError::Sync(message.into())
@@ -139,110 +137,67 @@ pub async fn write_local_position(
     Ok(())
 }
 
-pub struct ReadingPositionProjection {
-    local_replica_id: Uuid,
-    now_ms: u64,
-}
-
-impl ReadingPositionProjection {
-    pub fn new(local_replica_id: &str, now_ms: u64) -> Result<Self, AppError> {
-        Ok(Self {
-            local_replica_id: Uuid::parse_str(local_replica_id)
-                .map_err(|_| sync_error("Invalid replica ID"))?,
-            now_ms,
-        })
-    }
-}
-
-#[async_trait::async_trait]
-impl SegmentProjection for ReadingPositionProjection {
-    async fn apply(&self, txn: &DatabaseTransaction, segment: &Segment) -> Result<(), AppError> {
-        let (mut physical_ms, mut counter) = read_hlc_state(txn).await?.unwrap_or((0, 0));
-
-        for change in &segment.changes {
-            let DomainState::Position(incoming) = &change.state else {
-                return Err(sync_error("Unsupported projection domain"));
-            };
-            let book_id = i64::try_from(incoming.book_id)
-                .map_err(|_| sync_error("Reading position book ID is invalid"))?;
-            let current =
-                SqliteProgressRepository::find_position_state(txn, book_id, &incoming.format)
-                    .await?;
-            let current_clock = current
-                .as_ref()
-                .and_then(|row| row.sync_clock.as_deref())
-                .map(str::to_owned);
-            let merged = if let Some(current) = current.filter(|row| row.sync_clock.is_some()) {
-                let locator = serde_json::from_str(&current.locator_json)
-                    .map_err(|error| AppError::Serialize(error.to_string()))?;
-                let current_state = DomainState::Position(PositionState {
-                    book_id: incoming.book_id,
-                    format: current.format,
-                    register: Lww {
-                        clock: current.sync_clock.expect("filtered sync clock"),
-                        value: PositionValue {
-                            locator,
-                            display_progression: current.display_progression,
-                        },
-                    },
-                });
-                match current_state
-                    .merge(&DomainState::Position(incoming.clone()))
-                    .map_err(|error| sync_error(error.to_string()))?
-                {
-                    DomainState::Position(state) => state,
-                    _ => unreachable!("position merge returns a position"),
-                }
-            } else {
-                incoming.clone()
-            };
-            info!(
-                target: "myreader_sync",
-                event = "reading_position.merge",
-                source_replica_id = %segment.replica_id,
-                sequence = %segment.sequence,
-                change_id = %change.change_id,
-                book_id = incoming.book_id,
-                format = %incoming.format,
-                current_clock = ?current_clock,
-                incoming_clock = %incoming.register.clock,
-                selected_clock = %merged.register.clock,
-                selected_source = if merged.register.clock == incoming.register.clock {
-                    "remote"
-                } else {
-                    "local"
+pub(super) async fn apply_position_change(
+    txn: &DatabaseTransaction,
+    segment: &Segment,
+    change: &Change,
+    incoming: &PositionState,
+) -> Result<(), AppError> {
+    let book_id = i64::try_from(incoming.book_id)
+        .map_err(|_| sync_error("Reading position book ID is invalid"))?;
+    let current =
+        SqliteProgressRepository::find_position_state(txn, book_id, &incoming.format).await?;
+    let current_clock = current
+        .as_ref()
+        .and_then(|row| row.sync_clock.as_deref())
+        .map(str::to_owned);
+    let merged = if let Some(current) = current.filter(|row| row.sync_clock.is_some()) {
+        let locator = serde_json::from_str(&current.locator_json)
+            .map_err(|error| AppError::Serialize(error.to_string()))?;
+        let current_state = DomainState::Position(PositionState {
+            book_id: incoming.book_id,
+            format: current.format,
+            register: Lww {
+                clock: current.sync_clock.expect("filtered sync clock"),
+                value: PositionValue {
+                    locator,
+                    display_progression: current.display_progression,
                 },
-                locator_href = %merged.register.value.locator.href,
-                locator_position = ?locator_position(&merged.register.value.locator),
-                locator_total_progression =
-                    ?locator_total_progression(&merged.register.value.locator),
-                display_progression = ?merged.register.value.display_progression,
-                "Merged remote reading position"
-            );
-            project_position(txn, &merged).await?;
-
-            let mut remote_clocks = vec![change.clock.as_str()];
-            if incoming.register.clock != change.clock {
-                remote_clocks.push(incoming.register.clock.as_str());
-            }
-            for remote_clock in remote_clocks {
-                let remote =
-                    Hlc::parse(remote_clock).map_err(|error| sync_error(error.to_string()))?;
-                let observed = Hlc::observe(
-                    physical_ms,
-                    counter,
-                    &remote,
-                    self.now_ms,
-                    self.local_replica_id,
-                )
-                .map_err(|error| sync_error(error.to_string()))?;
-                physical_ms = observed.physical_ms;
-                counter = observed.counter;
-            }
+            },
+        });
+        match current_state
+            .merge(&DomainState::Position(incoming.clone()))
+            .map_err(|error| sync_error(error.to_string()))?
+        {
+            DomainState::Position(state) => state,
+            _ => unreachable!("position merge returns a position"),
         }
-
-        write_hlc_state(txn, physical_ms, counter).await
-    }
+    } else {
+        incoming.clone()
+    };
+    info!(
+        target: "myreader_sync",
+        event = "reading_position.merge",
+        source_replica_id = %segment.replica_id,
+        sequence = %segment.sequence,
+        change_id = %change.change_id,
+        book_id = incoming.book_id,
+        format = %incoming.format,
+        current_clock = ?current_clock,
+        incoming_clock = %incoming.register.clock,
+        selected_clock = %merged.register.clock,
+        selected_source = if merged.register.clock == incoming.register.clock {
+            "remote"
+        } else {
+            "local"
+        },
+        locator_href = %merged.register.value.locator.href,
+        locator_position = ?locator_position(&merged.register.value.locator),
+        locator_total_progression = ?locator_total_progression(&merged.register.value.locator),
+        display_progression = ?merged.register.value.display_progression,
+        "Merged remote reading position"
+    );
+    project_position(txn, &merged).await
 }
 
 #[cfg(test)]
@@ -251,6 +206,8 @@ mod tests {
     use sea_orm_migration::MigratorTrait;
 
     use crate::entities::app::{reading_progress, sync_outbox};
+    use crate::sync::kernel::SegmentProjection;
+    use crate::sync::projection::LibrarySidecarProjection;
 
     use super::*;
 
@@ -357,7 +314,7 @@ mod tests {
                 }),
             }],
         };
-        let projection = ReadingPositionProjection::new(&identity.replica_id, 2_200).unwrap();
+        let projection = LibrarySidecarProjection::new(&identity.replica_id, 2_200).unwrap();
         let txn = db.begin().await.unwrap();
         projection.apply(&txn, &segment).await.unwrap();
         txn.commit().await.unwrap();

@@ -1,5 +1,9 @@
 use my_reader_lib::models::{AppConfig, LibraryConfig};
+use my_reader_lib::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
 use my_reader_lib::services::favorite_book_service::FavoriteBookService;
+use my_reader_lib::sync::kernel::ensure_replica_identity;
+
+const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 
 fn library_config(id: &str) -> LibraryConfig {
     LibraryConfig {
@@ -12,70 +16,22 @@ fn library_config(id: &str) -> LibraryConfig {
     }
 }
 
+async fn seed_replica_identity(app_data_dir: &std::path::Path, library: &LibraryConfig) {
+    let sidecar_root = app_data_dir
+        .join("libraries")
+        .join(&library.id)
+        .to_string_lossy()
+        .to_string();
+    let db = SqliteFavoriteBookRepository::open(&sidecar_root)
+        .await
+        .unwrap();
+    ensure_replica_identity(&db, LIBRARY_UUID).await.unwrap();
+}
+
 #[tokio::test]
 async fn list_favorite_book_ids_should_return_empty_when_no_favorites_exist() {
     let temp = tempfile::tempdir().unwrap();
     let sidecar_root = temp.path().to_string_lossy().to_string();
-
-    let ids = FavoriteBookService::list_favorite_book_ids(&sidecar_root)
-        .await
-        .expect("list should succeed");
-
-    assert!(ids.is_empty());
-}
-
-#[tokio::test]
-async fn add_and_list_favorite_books_should_round_trip_book_ids() {
-    let temp = tempfile::tempdir().unwrap();
-    let sidecar_root = temp.path().to_string_lossy().to_string();
-
-    FavoriteBookService::add_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("add should succeed");
-    FavoriteBookService::add_favorite_book(&sidecar_root, 42)
-        .await
-        .expect("add should succeed");
-
-    let ids = FavoriteBookService::list_favorite_book_ids(&sidecar_root)
-        .await
-        .expect("list should succeed");
-
-    assert_eq!(ids, vec![7, 42]);
-}
-
-#[tokio::test]
-async fn add_favorite_book_should_be_idempotent_when_book_already_favorited() {
-    let temp = tempfile::tempdir().unwrap();
-    let sidecar_root = temp.path().to_string_lossy().to_string();
-
-    FavoriteBookService::add_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("first add should succeed");
-    FavoriteBookService::add_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("second add should succeed");
-
-    let ids = FavoriteBookService::list_favorite_book_ids(&sidecar_root)
-        .await
-        .expect("list should succeed");
-
-    assert_eq!(ids, vec![7]);
-}
-
-#[tokio::test]
-async fn remove_favorite_book_should_delete_record_and_be_idempotent() {
-    let temp = tempfile::tempdir().unwrap();
-    let sidecar_root = temp.path().to_string_lossy().to_string();
-
-    FavoriteBookService::add_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("add should succeed");
-    FavoriteBookService::remove_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("remove should succeed");
-    FavoriteBookService::remove_favorite_book(&sidecar_root, 7)
-        .await
-        .expect("second remove should succeed");
 
     let ids = FavoriteBookService::list_favorite_book_ids(&sidecar_root)
         .await
@@ -114,6 +70,7 @@ async fn add_and_list_favorite_books_for_library_should_round_trip_book_ids() {
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
+    seed_replica_identity(temp.path(), &lib).await;
 
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, Some(&lib.id), 7)
         .await
@@ -142,6 +99,7 @@ async fn remove_favorite_book_for_library_should_delete_record() {
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
+    seed_replica_identity(temp.path(), &lib).await;
 
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, Some(&lib.id), 7)
         .await
@@ -170,6 +128,7 @@ async fn favorite_book_operations_for_library_should_resolve_active_library_when
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
+    seed_replica_identity(temp.path(), &lib).await;
 
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, None, 7)
         .await

@@ -46,6 +46,14 @@ export type LibrarySidecarReadingPositionRow = {
   syncClock: string | null
 }
 
+export type LibrarySidecarFavoriteRow = {
+  id: string
+  bookId: number
+  addedAt: number
+  isFavorite: boolean
+  syncClock: string | null
+}
+
 type DbRow = Record<string, Scalar>
 
 function requiredString(row: DbRow, key: string): string {
@@ -186,6 +194,51 @@ export async function insertLibrarySidecarOutboxChange(
       (id, change_id, clock, domain, state_json, segment_sequence)
       VALUES (?, ?, ?, ?, ?, NULL)`,
     [uuid(), row.changeId, row.clock, row.domain, row.stateJson],
+  )
+}
+
+export async function readLibrarySidecarFavorite(
+  tx: LibrarySidecarSyncTransaction,
+  bookId: number,
+): Promise<LibrarySidecarFavoriteRow | null> {
+  const result = await tx.execute(
+    `SELECT id, book_id, added_at, is_favorite, sync_clock
+      FROM favorite_books
+      WHERE book_id = ?`,
+    [bookId],
+  )
+  const row = result.rows[0]
+  if (!row) return null
+  const addedAt = row.added_at
+  const isFavorite = row.is_favorite
+  if (typeof addedAt !== "number") {
+    throw new Error("Expected added_at to be numeric")
+  }
+  if (isFavorite !== 0 && isFavorite !== 1) {
+    throw new Error("Expected is_favorite to be boolean")
+  }
+  return {
+    id: requiredString(row, "id"),
+    bookId: Number(row.book_id),
+    addedAt,
+    isFavorite: isFavorite === 1,
+    syncClock: optionalString(row, "sync_clock"),
+  }
+}
+
+export async function writeLibrarySidecarFavorite(
+  tx: LibrarySidecarSyncTransaction,
+  row: Omit<LibrarySidecarFavoriteRow, "id">,
+): Promise<void> {
+  await tx.execute(
+    `INSERT INTO favorite_books
+      (id, book_id, added_at, is_favorite, sync_clock)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(book_id) DO UPDATE SET
+        added_at = excluded.added_at,
+        is_favorite = excluded.is_favorite,
+        sync_clock = excluded.sync_clock`,
+    [uuid(), row.bookId, row.addedAt, row.isFavorite ? 1 : 0, row.syncClock],
   )
 }
 

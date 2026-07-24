@@ -10,35 +10,35 @@ import {
   pullLibrarySidecarSegments,
   publishLibrarySidecarSegments,
 } from "./library-sidecar/kernel"
+import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
+import { applyLibrarySidecarSegment } from "./library-sidecar/projection"
 import {
-  applyReadingPositionSegment,
-  ensureReadingPositionReplicaIdentity,
-} from "./library-sidecar/reading-position"
-import {
+  invalidateFavoriteBooks,
   invalidateReadingProgress,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 
-const readingProgressProvider: MyReaderSyncProvider = {
-  id: "reading_position.v1",
+const librarySidecarProvider: MyReaderSyncProvider = {
+  id: "library-sidecar.v4",
   async push(ctx) {
-    await ensureReadingPositionReplicaIdentity(ctx.library)
+    await ensureLibrarySidecarIdentity(ctx.library)
     return publishLibrarySidecarSegments(ctx.library, ctx.backend, Date.now())
   },
   async pull(ctx) {
     const nowMs = Date.now()
-    const identity = await ensureReadingPositionReplicaIdentity(ctx.library)
+    const identity = await ensureLibrarySidecarIdentity(ctx.library)
     const pulled = await pullLibrarySidecarSegments(
       ctx.library,
       ctx.backend,
       identity,
       (tx, segment) =>
-        applyReadingPositionSegment(tx, segment, identity.replicaId, nowMs),
+        applyLibrarySidecarSegment(tx, segment, identity.replicaId, nowMs),
       nowMs,
     )
     if (pulled > 0) {
       await Promise.all([
+        invalidateFavoriteBooks(ctx.library.id),
         invalidateReadingProgress(ctx.library.id),
         invalidateRecentlyReadBooks(ctx.library.id),
       ])
@@ -47,7 +47,7 @@ const readingProgressProvider: MyReaderSyncProvider = {
   },
 }
 
-const PROVIDERS: MyReaderSyncProvider[] = [readingProgressProvider]
+const PROVIDERS: MyReaderSyncProvider[] = [librarySidecarProvider]
 
 async function syncProviders(
   ctx: SyncTargetContext,
@@ -75,7 +75,7 @@ async function syncProviders(
   return { skipped: false, mode, providers }
 }
 
-/** Syncs the v4 reading-position stream for the current library. */
+/** Syncs the v4 sidecar stream for the current library. */
 export async function syncMyReader(
   ctx: SyncTargetContext,
   options?: Pick<SyncLibraryOptions, "myreaderMode">,
