@@ -9,6 +9,7 @@ overrides:
 
 patchedDependencies:
   '@react-native-menu/menu@2.0.0': d895ba2671db65cd7d9afff53df442f931c5b05ec9e69ef1a1d7cf09270d9b81
+  drizzle-orm@0.40.1: f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e
   react-native-css@3.0.7: 84b0a43e5b79ecff96a437135adc90aaac139f76b9da3220162ed6a7e19203b5
 
 importers:
@@ -309,7 +310,7 @@ importers:
         version: 2.1.1
       drizzle-orm:
         specifier: ^0.40.0
-        version: 0.40.1(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(gel@2.2.0)
+        version: 0.40.1(patch_hash=f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e)(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(gel@2.2.0)
       expo:
         specifier: ^56.0.0
         version: 56.0.8(499b165cd6ed5fccb412109914389210)
@@ -511,7 +512,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.40.0
-        version: 0.40.1(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(gel@2.2.0)
+        version: 0.40.1(patch_hash=f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e)(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(gel@2.2.0)
     devDependencies:
       drizzle-kit:
         specifier: ^0.30.0
@@ -15581,12 +15582,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.40.1(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(gel@2.2.0):
+  drizzle-orm@0.40.1(patch_hash=f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e)(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3))(gel@2.2.0):
     optionalDependencies:
       '@op-engineering/op-sqlite': 15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       gel: 2.2.0
 
-  drizzle-orm@0.40.1(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(gel@2.2.0):
+  drizzle-orm@0.40.1(patch_hash=f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e)(@op-engineering/op-sqlite@15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3))(gel@2.2.0):
     optionalDependencies:
       '@op-engineering/op-sqlite': 15.2.14(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3))(react@19.2.3)
       gel: 2.2.0

@@ -65,20 +65,38 @@ export async function getLibraryDatabase(
   if (inFlight) return inFlight
 
   const promise = (async () => {
-    const nativePath = uriToNativePath(dbUri)
-    const lastSlash = nativePath.lastIndexOf("/")
-    const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : "."
-    const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath
+    let raw: DB | undefined
 
-    const raw = open({ name, location })
-    const db = drizzle(raw, { schema })
+    try {
+      const nativePath = uriToNativePath(dbUri)
+      const lastSlash = nativePath.lastIndexOf("/")
+      const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : "."
+      const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath
 
-    await migrate(db, migrations)
+      raw = open({ name, location })
+      const db = drizzle(raw, { schema })
 
-    const handle = { raw, db }
-    dbCache.set(cacheKey, handle)
-    dbInitPromise.delete(cacheKey)
-    return handle
+      await migrate(db, migrations)
+
+      const handle = { raw, db }
+      dbCache.set(cacheKey, handle)
+      return handle
+    } catch (error) {
+      if (raw) {
+        try {
+          await raw.closeAsync()
+        } catch (closeError) {
+          console.warn(
+            "[library-db] close failed after initialization:",
+            dbUri,
+            closeError,
+          )
+        }
+      }
+      throw error
+    } finally {
+      dbInitPromise.delete(cacheKey)
+    }
   })()
 
   dbInitPromise.set(cacheKey, promise)

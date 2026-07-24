@@ -136,6 +136,7 @@
     "moduleNameMapper": {
       "^@/tw$": "<rootDir>/__mocks__/tw.tsx",
       "^@/(.*)$": "<rootDir>/$1",
+      "^@my-reader/db/drizzle/migrations$": "<rootDir>/../packages/db/drizzle/migrations.js",
       "^@my-reader/db/(.*)$": "<rootDir>/../packages/db/src/$1",
       "^@my-reader/fonts$": "<rootDir>/../packages/fonts/src/index.ts",
       "^@my-reader/fonts/(.*)$": "<rootDir>/../packages/fonts/src/$1",
