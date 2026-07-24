@@ -17,10 +17,11 @@ type RecordedRequest = {
 }
 
 const libraryRootPath = "/Library/CalibreLibrary"
-const replicaId = "018f2f8d-980b-40ef-b72e-c6e86cb7cc30"
-const changesPrefix = ".myreader/changes-v4"
-const replicaPrefix = `${changesPrefix}/${replicaId}`
-const remotePath = `${replicaPrefix}/1-hash.json`
+const actorId = "018f2f8d980b40efb72ec6e86cb7cc30"
+const changeHash = "a".repeat(64)
+const changesPrefix = ".myreader/automerge/changes"
+const replicaPrefix = `${changesPrefix}/${actorId}`
+const remotePath = `${replicaPrefix}/00000000000000000001-${changeHash}.am`
 
 function recordRequest(
   requests: RecordedRequest[],
@@ -96,20 +97,20 @@ describe("OneDriveRemoteBackend", () => {
       const request = recordRequest(requests, input, init)
       if (
         request.url.endsWith(
-          "/Library/CalibreLibrary/.myreader/changes-v4:/children",
+          "/Library/CalibreLibrary/.myreader/automerge/changes:/children",
         )
       ) {
         return Response.json({
-          value: [{ name: replicaId, folder: {} }],
+          value: [{ name: actorId, folder: {} }],
         })
       }
       if (
         request.url.endsWith(
-          `/Library/CalibreLibrary/.myreader/changes-v4/${replicaId}:/children`,
+          `/Library/CalibreLibrary/.myreader/automerge/changes/${actorId}:/children`,
         )
       ) {
         return Response.json({
-          value: [{ name: "1-hash.json" }],
+          value: [{ name: `00000000000000000001-${changeHash}.am` }],
         })
       }
       if (
@@ -125,10 +126,10 @@ describe("OneDriveRemoteBackend", () => {
     )
 
     await expect(backend.listRemote(changesPrefix)).resolves.toEqual([
-      `${replicaId}/`,
+      `${actorId}/`,
     ])
     await expect(backend.listRemote(replicaPrefix)).resolves.toEqual([
-      "1-hash.json",
+      `00000000000000000001-${changeHash}.am`,
     ])
     await expect(backend.readBytes(remotePath)).resolves.toEqual(
       new TextEncoder().encode("segment"),
@@ -136,12 +137,12 @@ describe("OneDriveRemoteBackend", () => {
 
     expect(requests).toEqual([
       {
-        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/changes-v4:/children`,
+        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/automerge/changes:/children`,
         method: "GET",
         body: undefined,
       },
       {
-        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/changes-v4/${replicaId}:/children`,
+        url: `${GRAPH_API_BASE}/me/drive/root:/Library/CalibreLibrary/.myreader/automerge/changes/${actorId}:/children`,
         method: "GET",
         body: undefined,
       },

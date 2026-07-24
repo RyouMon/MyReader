@@ -257,7 +257,11 @@ export default function ReaderScreen() {
     (s) =>
       s.libraries.find((library) => library.id === s.activeLibraryId) ?? null,
   )
-  const { loadState } = useBookLoader(id, formatParam, activeLibraryId)
+  const { loadState, resolveReadingPositionConflict } = useBookLoader(
+    id,
+    formatParam,
+    activeLibraryId,
+  )
   const activeLoadState =
     loadState.status === "ready" &&
     isReadyBookLoadForRequest(loadState, activeLibraryId, id, formatParam)
@@ -1092,6 +1096,80 @@ export default function ReaderScreen() {
     ),
     [themeBgColor, themeFgColor],
   )
+  if (loadState.status === "position-conflict") {
+    return (
+      <View
+        className="flex-1 justify-center px-5"
+        style={{ backgroundColor: palette.background }}
+      >
+        <StatusBar hidden={false} barStyle={statusBarStyle} />
+        <View
+          className="rounded-2xl border p-5"
+          style={{
+            backgroundColor: palette.surface,
+            borderColor: palette.border,
+          }}
+        >
+          <Text
+            className="text-lg font-semibold"
+            style={{ color: palette.text }}
+          >
+            {t("reader.positionConflictTitle")}
+          </Text>
+          <Text className="mt-2 text-sm" style={{ color: palette.textMuted }}>
+            {t("reader.positionConflictDescription")}
+          </Text>
+          <View className="mt-4 gap-2">
+            {loadState.candidates.map((candidate) => {
+              const progression = candidate.value.displayProgressionPpm
+              return (
+                <Pressable
+                  key={candidate.operationId}
+                  accessibilityRole="button"
+                  className="rounded-xl border px-4 py-3"
+                  style={{ borderColor: palette.border }}
+                  onPress={() => {
+                    void resolveReadingPositionConflict(candidate.operationId)
+                  }}
+                >
+                  <Text
+                    className="text-base font-medium"
+                    style={{ color: palette.text }}
+                  >
+                    {progression === null
+                      ? t("reader.positionConflictUnknownProgress")
+                      : `${Math.round(progression / 10_000)}%`}
+                  </Text>
+                  <Text
+                    className="mt-1 text-sm"
+                    style={{ color: palette.textMuted }}
+                  >
+                    {new Date(candidate.value.recordedAt).toLocaleString()}
+                    {" · "}
+                    {candidate.value.replicaId.slice(0, 8)}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            className="mt-3 items-center py-3"
+            onPress={() => {
+              void resolveReadingPositionConflict(null)
+            }}
+          >
+            <Text
+              className="text-sm font-medium"
+              style={{ color: palette.textMuted }}
+            >
+              {t("reader.positionConflictLater")}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
   if (
     loadState.status === "loading" ||
     (loadState.status === "ready" && !activeLoadState)

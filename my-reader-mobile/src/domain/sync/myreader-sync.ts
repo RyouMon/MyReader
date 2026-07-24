@@ -6,41 +6,53 @@ import type {
   SyncLibraryOptions,
 } from "./types"
 import { describeError } from "../../utils/common"
-import {
-  pullLibrarySidecarSegments,
-  publishLibrarySidecarSegments,
-} from "./library-sidecar/kernel"
 import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import { applyLibrarySidecarSegment } from "./library-sidecar/projection"
+import {
+  ensureLibrarySidecarAutomergeState,
+  publishLibrarySidecarAutomergeChanges,
+  pullLibrarySidecarAutomergeChanges,
+} from "./library-sidecar/automerge-store"
+import { projectLibrarySidecarAutomergeDocument } from "./library-sidecar/automerge-projection"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
+  invalidateReadingStatistics,
+  invalidateReaderAnnotations,
   invalidateReaderBookmarks,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 
 const librarySidecarProvider: MyReaderSyncProvider = {
-  id: "library-sidecar.v4",
+  id: "library-sidecar",
   async push(ctx) {
-    await ensureLibrarySidecarIdentity(ctx.library)
-    return publishLibrarySidecarSegments(ctx.library, ctx.backend, Date.now())
+    const identity = await ensureLibrarySidecarIdentity(ctx.library)
+    const nowMs = Date.now()
+    await ensureLibrarySidecarAutomergeState(ctx.library, identity, nowMs)
+    const automergePushed = await publishLibrarySidecarAutomergeChanges(
+      ctx.library,
+      ctx.backend,
+      nowMs,
+    )
+    return automergePushed
   },
   async pull(ctx) {
     const nowMs = Date.now()
     const identity = await ensureLibrarySidecarIdentity(ctx.library)
-    const pulled = await pullLibrarySidecarSegments(
+    const automergePulled = await pullLibrarySidecarAutomergeChanges(
       ctx.library,
       ctx.backend,
       identity,
-      (tx, segment) =>
-        applyLibrarySidecarSegment(tx, segment, identity.replicaId, nowMs),
       nowMs,
+      projectLibrarySidecarAutomergeDocument,
     )
+    const pulled = automergePulled
     if (pulled > 0) {
       await Promise.all([
         invalidateFavoriteBooks(ctx.library.id),
         invalidateReadingProgress(ctx.library.id),
+        invalidateReadingStatistics(ctx.library.id),
+        invalidateReaderAnnotations(ctx.library.id),
         invalidateReaderBookmarks(ctx.library.id),
         invalidateRecentlyReadBooks(ctx.library.id),
       ])
@@ -77,7 +89,7 @@ async function syncProviders(
   return { skipped: false, mode, providers }
 }
 
-/** Syncs the v4 sidecar stream for the current library. */
+/** Syncs the Automerge sidecar stream for the current library. */
 export async function syncMyReader(
   ctx: SyncTargetContext,
   options?: Pick<SyncLibraryOptions, "myreaderMode">,

@@ -9,6 +9,11 @@ import {
   resolveBookFileForRead,
 } from "@/src/domain/library/calibre"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
+import {
+  getReadingPositionCandidates,
+  selectReadingPositionCandidate,
+} from "@/src/domain/sync/library-sidecar/reading-position"
+import type { LibrarySidecarReadingPositionCandidate } from "@/src/domain/sync/library-sidecar/automerge-document"
 import { createRemoteOps } from "@/src/domain/library/remote-library"
 import { getFileState } from "@/src/domain/sync/actions"
 import type {
@@ -98,26 +103,32 @@ async function resolveDownloadedWebDavBookFile(input: {
   return null
 }
 
+type ReadyBookLoad = {
+  libraryId: string
+  /** EPUB 容器 `file://` URI，供 Readium 转原生路径打开。 */
+  epubFileUri: string | null
+  /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
+  pdfLocalUri: string | null
+  bookArchiveUri: string | null
+  bookArchiveFingerprint: string | null
+  bookArchiveOwned: boolean
+  bookId: number
+  format: string
+  title: string
+  languages: string[]
+  initialPage: number
+  initialLocator: Locator | null
+  layoutMode: "fixedLayout" | "reflowable" | "unknown"
+}
+
 export type LoadState =
   | { status: "loading"; message: string }
   | { status: "error"; message: string }
+  | ({ status: "ready" } & ReadyBookLoad)
   | {
-      status: "ready"
-      libraryId: string
-      /** EPUB 容器 `file://` URI，供 Readium 转原生路径打开。 */
-      epubFileUri: string | null
-      /** PDF：原生阅读器使用的稳定本地 `file://`（不经由 base64） */
-      pdfLocalUri: string | null
-      bookArchiveUri: string | null
-      bookArchiveFingerprint: string | null
-      bookArchiveOwned: boolean
-      bookId: number
-      format: string
-      title: string
-      languages: string[]
-      initialPage: number
-      initialLocator: Locator | null
-      layoutMode: "fixedLayout" | "reflowable" | "unknown"
+      status: "position-conflict"
+      ready: ReadyBookLoad
+      candidates: LibrarySidecarReadingPositionCandidate[]
     }
 
 export function useBookLoader(
@@ -339,8 +350,7 @@ export function useBookLoader(
             ? pageIndexFromFixedLocator(initialLocator, INITIAL_READER_PAGE)
             : INITIAL_READER_PAGE
 
-        setLoadState({
-          status: "ready",
+        const ready: ReadyBookLoad = {
           libraryId: lib.id,
           epubFileUri:
             needsEpubExtract && epubArchiveFile ? epubArchiveFile.uri : null,
@@ -356,7 +366,18 @@ export function useBookLoader(
           initialPage,
           initialLocator,
           layoutMode: detailLayoutMode,
-        })
+        }
+        const candidates = await getReadingPositionCandidates(
+          lib,
+          calibreId,
+          fmt,
+        )
+        if (cancelled) return
+        setLoadState(
+          candidates.length > 1
+            ? { status: "position-conflict", ready, candidates }
+            : { status: "ready", ...ready },
+        )
       } catch (e) {
         if (cancelled) return
         setLoadState({
@@ -372,5 +393,42 @@ export function useBookLoader(
     }
   }, [id, activeLibraryId, formatParam])
 
-  return { loadState, coverUri, bookTitle }
+  const resolveReadingPositionConflict = async (operationId: string | null) => {
+    const current = loadStateRef.current
+    if (current.status !== "position-conflict") return
+    let initialLocator = current.ready.initialLocator
+    if (operationId) {
+      const candidate = current.candidates.find(
+        (item) => item.operationId === operationId,
+      )
+      if (!candidate) throw new Error("Reading position candidate not found")
+      const conflictLibrary = useAppStore
+        .getState()
+        .libraries.find((library) => library.id === current.ready.libraryId)
+      if (!conflictLibrary) throw new Error("Library not found")
+      await selectReadingPositionCandidate(
+        conflictLibrary,
+        current.ready.bookId,
+        current.ready.format,
+        operationId,
+      )
+      initialLocator = JSON.parse(candidate.value.locatorJson) as Locator
+    }
+    setLoadState({
+      status: "ready",
+      ...current.ready,
+      initialLocator,
+      initialPage:
+        current.ready.layoutMode === "fixedLayout"
+          ? pageIndexFromFixedLocator(initialLocator, INITIAL_READER_PAGE)
+          : INITIAL_READER_PAGE,
+    })
+  }
+
+  return {
+    loadState,
+    coverUri,
+    bookTitle,
+    resolveReadingPositionConflict,
+  }
 }

@@ -209,6 +209,10 @@
     "mountingReader": "Mounting reader…",
     "loadFailed": "Reader load failed",
     "loadFailedMessage": "The reader encountered an unexpected error. Please go back and retry.",
+    "positionConflictTitle": "Choose where to continue",
+    "positionConflictDescription": "Another device saved a different position while offline. Choose one to continue; the choice will sync to your other devices.",
+    "positionConflictUnknownProgress": "Unknown progress",
+    "positionConflictLater": "Decide later and use the default position",
     "chrome": {
       "moreActions": "More Actions"
     },

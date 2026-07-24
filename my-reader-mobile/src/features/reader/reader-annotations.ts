@@ -6,14 +6,14 @@ import {
 } from "@my-reader/tools/reader-annotations"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 
+import { listActiveReaderAnnotationRows } from "@/src/repos/annotations"
 import {
-  createReaderAnnotationRow,
-  listActiveReaderAnnotationRows,
-  tombstoneReaderAnnotationRow,
-  updateReaderAnnotationRow,
-} from "@/src/repos/annotations"
+  createLocalAnnotation,
+  deleteLocalAnnotation,
+  updateLocalAnnotation,
+} from "@/src/domain/sync/library-sidecar/annotation"
 import { uuid } from "@/src/utils/common"
-import type { Library } from "@/src/domain/library/types"
+import type { Library } from "@/src/domain/types"
 
 export type ReaderAnnotation = {
   id: string
@@ -105,14 +105,17 @@ export async function addReaderAnnotation(
   note?: string | null,
 ): Promise<ReaderAnnotation> {
   const normalizedFormat = format.toUpperCase()
+  if (!["EPUB", "PDF", "CBZ"].includes(normalizedFormat)) {
+    throw new Error("Unsupported annotation format")
+  }
   const canonicalLocator = canonicalizeReaderAnnotationLocator(locator)
   if (!canonicalLocator.text?.highlight?.trim()) {
     throw new Error("Annotation locator must include selected text")
   }
-  const row = await createReaderAnnotationRow(library, {
+  const row = await createLocalAnnotation(library, {
     id: uuid(),
     bookId,
-    format: normalizedFormat,
+    format: normalizedFormat as "EPUB" | "PDF" | "CBZ",
     kind: "highlight",
     locatorJson: JSON.stringify(canonicalLocator),
     color,
@@ -129,10 +132,12 @@ export async function updateReaderAnnotation(
   color: ReaderAnnotationColor,
   note?: string | null,
 ): Promise<ReaderAnnotation> {
-  const row = await updateReaderAnnotationRow(library, annotation.id, {
+  const row = await updateLocalAnnotation(
+    library,
+    annotation.id,
     color,
-    note: normalizedNote(note),
-  })
+    normalizedNote(note),
+  )
   if (!row) throw new Error("Annotation not found")
   const updated = toReaderAnnotation(row)
   if (!updated) throw new Error("Invalid annotation returned from storage")
@@ -143,6 +148,6 @@ export async function removeReaderAnnotation(
   library: Library,
   annotationId: string,
 ): Promise<void> {
-  const removed = await tombstoneReaderAnnotationRow(library, annotationId)
+  const removed = await deleteLocalAnnotation(library, annotationId)
   if (!removed) throw new Error("Annotation not found")
 }

@@ -1,12 +1,12 @@
 import type { Locator } from "@my-reader/readium"
 
+import { listActiveReaderAnnotationRows } from "@/src/repos/annotations"
 import {
-  createReaderAnnotationRow,
-  listActiveReaderAnnotationRows,
-  tombstoneReaderAnnotationRow,
-  updateReaderAnnotationRow,
-} from "@/src/repos/annotations"
-import type { Library } from "@/src/domain/library/types"
+  createLocalAnnotation,
+  deleteLocalAnnotation,
+  updateLocalAnnotation,
+} from "@/src/domain/sync/library-sidecar/annotation"
+import type { Library } from "@/src/domain/types"
 import {
   addReaderAnnotation,
   listReaderAnnotations,
@@ -15,10 +15,13 @@ import {
 } from "./reader-annotations"
 
 jest.mock("@/src/repos/annotations", () => ({
-  createReaderAnnotationRow: jest.fn(),
   listActiveReaderAnnotationRows: jest.fn(),
-  tombstoneReaderAnnotationRow: jest.fn(),
-  updateReaderAnnotationRow: jest.fn(),
+}))
+
+jest.mock("@/src/domain/sync/library-sidecar/annotation", () => ({
+  createLocalAnnotation: jest.fn(),
+  deleteLocalAnnotation: jest.fn(),
+  updateLocalAnnotation: jest.fn(),
 }))
 
 jest.mock("@/src/utils/common", () => ({
@@ -56,7 +59,7 @@ describe("reader annotations", () => {
 
   it("should persist selected EPUB text as a canonical local annotation", async () => {
     jest
-      .mocked(createReaderAnnotationRow)
+      .mocked(createLocalAnnotation)
       .mockImplementation(async (_library, patch) => ({
         ...patch,
         createdAt: 10,
@@ -79,7 +82,7 @@ describe("reader annotations", () => {
       note: "A note",
       locator: { href: "OPS/chapter.xhtml" },
     })
-    expect(createReaderAnnotationRow).toHaveBeenCalledWith(
+    expect(createLocalAnnotation).toHaveBeenCalledWith(
       library,
       expect.objectContaining({
         id: "annotation-id",
@@ -99,11 +102,11 @@ describe("reader annotations", () => {
         "yellow",
       ),
     ).rejects.toThrow("selected text")
-    expect(createReaderAnnotationRow).not.toHaveBeenCalled()
+    expect(createLocalAnnotation).not.toHaveBeenCalled()
   })
 
   it("should preserve the locator while updating color and note", async () => {
-    jest.mocked(updateReaderAnnotationRow).mockResolvedValue(
+    jest.mocked(updateLocalAnnotation).mockResolvedValue(
       row({
         color: "green",
         note: "Updated",
@@ -125,13 +128,10 @@ describe("reader annotations", () => {
   })
 
   it("should tombstone an annotation when removing it", async () => {
-    jest.mocked(tombstoneReaderAnnotationRow).mockResolvedValue(true)
+    jest.mocked(deleteLocalAnnotation).mockResolvedValue(true)
 
     await removeReaderAnnotation(library, "annotation-id")
 
-    expect(tombstoneReaderAnnotationRow).toHaveBeenCalledWith(
-      library,
-      "annotation-id",
-    )
+    expect(deleteLocalAnnotation).toHaveBeenCalledWith(library, "annotation-id")
   })
 })

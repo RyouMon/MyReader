@@ -37,6 +37,12 @@ export function invalidateReaderBookmarks(libraryId?: string) {
   })
 }
 
+export function invalidateReaderAnnotations(libraryId?: string) {
+  return queryClient.invalidateQueries({
+    queryKey: queryKeys.readerAnnotationsRoot(libraryId),
+  })
+}
+
 export function invalidateRecentlyReadBooks(libraryId?: string) {
   return queryClient.invalidateQueries({
     queryKey: queryKeys.recentlyReadBooks(libraryId),

@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
+    "@automerge/automerge": "3.3.2",
     "@expo/dom-webview": "~56.0.5",
     "@expo/material-symbols": "^0.1.1",
     "@expo/metro-runtime": "~56.0.13",

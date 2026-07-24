@@ -209,6 +209,10 @@
     "mountingReader": "正在挂载阅读器…",
     "loadFailed": "阅读器加载失败",
     "loadFailedMessage": "阅读器遇到了意外错误，请返回重试。",
+    "positionConflictTitle": "选择继续阅读的位置",
+    "positionConflictDescription": "其他设备在离线时保存了不同位置。请选择一个位置继续，选择会同步到其他设备。",
+    "positionConflictUnknownProgress": "未知进度",
+    "positionConflictLater": "暂不处理，使用默认位置",
     "chrome": {
       "moreActions": "更多操作"
     },

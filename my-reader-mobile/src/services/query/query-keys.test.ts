@@ -34,6 +34,10 @@ describe("queryKeys", () => {
       7,
       "EPUB",
     ])
+    expect(queryKeys.readerAnnotationsRoot("lib-1")).toEqual([
+      "reader-annotations",
+      "lib-1",
+    ])
     expect(queryKeys.recentlyReadBooks("lib-1")).toEqual([
       "recently-read-books",
       "lib-1",
@@ -78,6 +82,10 @@ describe("queryKeys", () => {
       "reader-bookmarks",
       undefined,
       undefined,
+      undefined,
+    ])
+    expect(queryKeys.readerAnnotationsRoot()).toEqual([
+      "reader-annotations",
       undefined,
     ])
     expect(queryKeys.bookCoverThumbnailCache()).toEqual([

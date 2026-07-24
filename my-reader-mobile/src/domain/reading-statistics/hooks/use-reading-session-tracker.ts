@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef } from "react"
 import { AppState } from "react-native"
-
-import type { Library } from "@/src/domain/types"
 import {
   READING_HEARTBEAT_MS,
   ReadingTimeAccumulator,
   splitReadingIntervalByLocalDay,
   type TimedReadingInterval,
-} from "@/src/domain/reading-statistics/reading-time-accumulator"
+} from "@my-reader/tools/reading-time-accumulator"
+
+import type { Library } from "@/src/domain/types"
 import { localDayKey } from "@/src/domain/reading-statistics/statistics"
 import {
-  addReadingSessionInterval,
-  upsertEarliestReadingCompletion,
-} from "@/src/repos/reading-statistics"
+  addLocalReadingCompletion,
+  addLocalReadingSessionInterval,
+} from "@/src/domain/sync/library-sidecar/reading-statistics"
 import { invalidateReadingStatistics } from "@/src/services/query/invalidate-table"
 import { uuid } from "@/src/utils/common"
 
@@ -20,7 +20,7 @@ type ReadingContext = {
   library: Library
   bookId: number
   format: string
-  sessionIds: Map<string, string>
+  sessions: Map<string, { id: string; startedAt: number }>
 }
 
 type ReadingTrackerState = {
@@ -63,17 +63,17 @@ export function useReadingSessionTracker(
         .catch(() => undefined)
         .then(async () => {
           for (const piece of pieces) {
-            let sessionId = context.sessionIds.get(piece.localDay)
-            if (!sessionId) {
-              sessionId = uuid()
-              context.sessionIds.set(piece.localDay, sessionId)
+            let session = context.sessions.get(piece.localDay)
+            if (!session) {
+              session = { id: uuid(), startedAt: piece.startedAt }
+              context.sessions.set(piece.localDay, session)
             }
-            await addReadingSessionInterval(context.library, {
-              id: sessionId,
+            await addLocalReadingSessionInterval(context.library, {
+              id: session.id,
               bookId: context.bookId,
               format: context.format,
               localDay: piece.localDay,
-              startedAt: piece.startedAt,
+              startedAt: session.startedAt,
               durationSeconds: piece.durationSeconds,
               updatedAt: Date.now(),
             })
@@ -96,7 +96,7 @@ export function useReadingSessionTracker(
       library,
       bookId,
       format: format.toUpperCase(),
-      sessionIds: new Map(),
+      sessions: new Map(),
     }
     const counter = new ReadingTimeAccumulator()
     contextRef.current = context
@@ -148,7 +148,7 @@ export function useReadingSessionTracker(
 
     completionAttemptRef.current = trackingKey
     const completedAt = Date.now()
-    void upsertEarliestReadingCompletion(library, {
+    void addLocalReadingCompletion(library, {
       id: uuid(),
       bookId,
       format,

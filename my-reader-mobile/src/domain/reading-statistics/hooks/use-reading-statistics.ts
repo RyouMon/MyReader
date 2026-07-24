@@ -10,15 +10,15 @@ import {
   listLegacyFinishedProgress,
   listReadingCompletionsByDayRange,
   listReadingSessionsByDayRange,
-  upsertEarliestReadingCompletion,
 } from "@/src/repos/reading-statistics"
+import { addLocalReadingCompletion } from "@/src/domain/sync/library-sidecar/reading-statistics"
 import { queryKeys } from "@/src/services/query/query-keys"
 import { uuid } from "@/src/utils/common"
 
 async function backfillLegacyReadingCompletions(library: Library) {
   const legacyRows = await listLegacyFinishedProgress(library)
   for (const row of legacyRows) {
-    await upsertEarliestReadingCompletion(library, {
+    await addLocalReadingCompletion(library, {
       id: uuid(),
       bookId: row.bookId,
       format: row.format,

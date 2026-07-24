@@ -39,6 +39,8 @@ export const queryKeys = {
     ["reader-bookmarks", libraryId] as const,
   readerBookmarks: (libraryId?: string, bookId?: number, format?: string) =>
     ["reader-bookmarks", libraryId, bookId, format?.toUpperCase()] as const,
+  readerAnnotationsRoot: (libraryId?: string) =>
+    ["reader-annotations", libraryId] as const,
   readerAnnotations: (libraryId?: string, bookId?: number, format?: string) =>
     ["reader-annotations", libraryId, bookId, format?.toUpperCase()] as const,
   recentlyReadBooks: (libraryId?: string) =>

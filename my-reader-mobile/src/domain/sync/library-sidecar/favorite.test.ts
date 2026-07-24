@@ -1,197 +1,81 @@
-jest.mock("@/src/repos/library-sidecar-sync", () => ({
-  insertLibrarySidecarOutboxChange: jest.fn(),
-  readLibrarySidecarFavorite: jest.fn(),
-  readLibrarySidecarHlcState: jest.fn(),
-  withLibrarySidecarSyncTransaction: jest.fn(),
-  writeLibrarySidecarFavorite: jest.fn(),
-  writeLibrarySidecarHlcState: jest.fn(),
+jest.mock("./automerge-store", () => ({
+  commitLibrarySidecarAutomergeMutation: jest.fn(),
 }))
-
+jest.mock("./automerge-document", () => ({
+  librarySidecarFavoriteProjections: jest.fn(),
+  setLibrarySidecarFavorite: jest.fn(),
+}))
 jest.mock("./identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
 }))
-
-jest.mock("@/src/utils/common", () => ({
-  uuid: jest.fn(() => "018f2f8d980b40efb72ec6e86cb70001"),
+jest.mock("./automerge-projection", () => ({
+  projectLibrarySidecarAutomergeDocument: jest.fn(),
 }))
 
 import type { Library } from "@my-reader/tools/types/library"
+
 import {
-  insertLibrarySidecarOutboxChange,
-  readLibrarySidecarFavorite,
-  readLibrarySidecarHlcState,
-  withLibrarySidecarSyncTransaction,
-  writeLibrarySidecarFavorite,
-  writeLibrarySidecarHlcState,
-} from "@/src/repos/library-sidecar-sync"
+  librarySidecarFavoriteProjections,
+  setLibrarySidecarFavorite,
+} from "./automerge-document"
+import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { writeLocalFavorite } from "./favorite"
 import { ensureLibrarySidecarIdentity } from "./identity"
-import { applyLibrarySidecarSegment } from "./projection"
 
-const library = {
-  id: "library-1",
-  name: "Library",
-  path: "file:///library",
-  addedAt: 0,
-  bookCount: 1,
-  sourceType: "local",
-} as Library
-
-const localReplicaId = "018f2f8d-980b-40ef-b72e-c6e86cb7cc29"
-const tx = { execute: jest.fn() } as never
-
-function clock(physicalHex: string, counterHex: string, replica: string) {
-  return `${physicalHex}-${counterHex}-${replica.replace(/-/g, "")}`
+const library = { id: "library-1" } as Library
+const document = {} as never
+const identity = {
+  libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
+  replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
 }
 
-describe("book_favorite.v1 projection", () => {
+describe("Automerge favorite", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
-      .mocked(withLibrarySidecarSyncTransaction)
-      .mockImplementation(async (_library, operation) => operation(tx))
-    jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue({
-      libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
-      replicaId: localReplicaId,
-    })
-    jest.mocked(readLibrarySidecarFavorite).mockResolvedValue(null)
-    jest.mocked(readLibrarySidecarHlcState).mockResolvedValue({
-      physicalMs: "1000",
-      counter: "2",
-    })
+      .mocked(commitLibrarySidecarAutomergeMutation)
+      .mockImplementation(async (_library, _identity, _now, mutate) => {
+        mutate(document)
+        return document
+      })
+    jest.mocked(setLibrarySidecarFavorite).mockReturnValue(document)
+    jest.mocked(librarySidecarFavoriteProjections).mockReturnValue([])
   })
 
-  it("should persist projection HLC and outbox in one transaction when a book is favorited", async () => {
+  it("should commit favorite and projection together when a book is favorited", async () => {
     await writeLocalFavorite(library, 42, true, 900)
 
-    const expectedClock = clock(
-      "00000000000003e8",
-      "0000000000000003",
-      localReplicaId,
-    )
-    expect(writeLibrarySidecarFavorite).toHaveBeenCalledWith(tx, {
-      bookId: 42,
+    expect(setLibrarySidecarFavorite).toHaveBeenCalledWith(document, 42, {
       isFavorite: true,
       addedAt: 900,
-      syncClock: expectedClock,
+      recordedAt: 900,
+      replicaId: identity.replicaId,
     })
-    expect(writeLibrarySidecarHlcState).toHaveBeenCalledWith(tx, {
-      physicalMs: "1000",
-      counter: "3",
-    })
-    expect(insertLibrarySidecarOutboxChange).toHaveBeenCalledWith(
-      tx,
-      expect.objectContaining({
-        clock: expectedClock,
-        domain: "book_favorite.v1",
-        stateJson: JSON.stringify({
-          domain: "book_favorite.v1",
-          bookId: 42,
-          register: {
-            clock: expectedClock,
-            value: {
-              isFavorite: true,
-              addedAtMs: 900,
-            },
-          },
-        }),
-      }),
+    expect(commitLibrarySidecarAutomergeMutation).toHaveBeenCalledWith(
+      library,
+      identity,
+      900,
+      expect.any(Function),
+      expect.any(Function),
     )
   })
 
-  it("should retain a newer tombstone when a book is unfavorited", async () => {
-    jest.mocked(readLibrarySidecarFavorite).mockResolvedValue({
-      id: "favorite-1",
-      bookId: 42,
-      addedAt: 700,
-      isFavorite: true,
-      syncClock: clock("00000000000002bc", "0000000000000000", localReplicaId),
-    })
-
-    await writeLocalFavorite(library, 42, false, 1100)
-
-    const expectedClock = clock(
-      "000000000000044c",
-      "0000000000000000",
-      localReplicaId,
-    )
-    expect(writeLibrarySidecarFavorite).toHaveBeenCalledWith(tx, {
-      bookId: 42,
-      isFavorite: false,
-      addedAt: 700,
-      syncClock: expectedClock,
-    })
-    expect(insertLibrarySidecarOutboxChange).toHaveBeenCalledWith(
-      tx,
-      expect.objectContaining({
-        stateJson: JSON.stringify({
-          domain: "book_favorite.v1",
-          bookId: 42,
-          register: {
-            clock: expectedClock,
-            value: {
-              isFavorite: false,
-              addedAtMs: null,
-            },
-          },
-        }),
-      }),
-    )
-  })
-
-  it("should keep a newer local tombstone when an older remote favorite is replayed", async () => {
-    const localClock = clock(
-      "00000000000007d0",
-      "0000000000000000",
-      localReplicaId,
-    )
-    const remoteClock = clock(
-      "00000000000005dc",
-      "0000000000000000",
-      "018f2f8d-980b-40ef-b72e-c6e86cb7cc30",
-    )
-    jest.mocked(readLibrarySidecarFavorite).mockResolvedValue({
-      id: "favorite-1",
-      bookId: 42,
-      addedAt: 700,
-      isFavorite: false,
-      syncClock: localClock,
-    })
-
-    await applyLibrarySidecarSegment(
-      tx,
+  it("should avoid a duplicate change when favorite state is unchanged", async () => {
+    jest.mocked(librarySidecarFavoriteProjections).mockReturnValue([
       {
-        protocol: "library-sidecar-v4",
-        libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
-        replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc30",
-        sequence: "1",
-        changes: [
-          {
-            changeId: "018f2f8d980b40efb72ec6e86cb70002",
-            clock: remoteClock,
-            state: {
-              domain: "book_favorite.v1",
-              bookId: 42,
-              register: {
-                clock: remoteClock,
-                value: {
-                  isFavorite: true,
-                  addedAtMs: 1500,
-                },
-              },
-            },
-          },
-        ],
+        bookId: 42,
+        value: {
+          isFavorite: true,
+          addedAt: 700,
+          recordedAt: 700,
+          replicaId: identity.replicaId,
+        },
       },
-      localReplicaId,
-      1600,
-    )
+    ])
 
-    expect(writeLibrarySidecarFavorite).toHaveBeenCalledWith(tx, {
-      bookId: 42,
-      isFavorite: false,
-      addedAt: 700,
-      syncClock: localClock,
-    })
+    await writeLocalFavorite(library, 42, true, 900)
+
+    expect(setLibrarySidecarFavorite).not.toHaveBeenCalled()
   })
 })

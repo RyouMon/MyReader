@@ -89,7 +89,6 @@ export async function getReadingProgress(
       format: fmt,
       found: true,
       valid: locator !== null,
-      syncClock: row.syncClock,
       href: locator?.href ?? null,
       position: locator?.locations?.position ?? null,
       totalProgression: locator?.locations?.totalProgression ?? null,

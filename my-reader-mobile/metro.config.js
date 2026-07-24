@@ -10,6 +10,7 @@ const config = getSentryExpoConfig(projectRoot)
 
 // Support .sql file imports for Drizzle migrations
 config.resolver.sourceExts.push("sql")
+config.resolver.unstable_enablePackageExports = true
 
 module.exports = withNativewind(config, {
   inlineVariables: false,

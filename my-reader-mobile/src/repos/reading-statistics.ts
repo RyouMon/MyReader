@@ -4,7 +4,7 @@ import {
   readingSessions,
 } from "@my-reader/db/schema"
 import type { Library } from "@my-reader/tools/types/library"
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm"
+import { and, asc, eq, gte, lte } from "drizzle-orm"
 
 import { getLibraryDatabase } from "@/src/services/db/library-db"
 
@@ -18,23 +18,6 @@ export type ReadingSessionInterval = {
   updatedAt: number
 }
 
-export async function addReadingSessionInterval(
-  library: Library,
-  interval: ReadingSessionInterval,
-): Promise<void> {
-  const { db } = await getLibraryDatabase(library)
-  await db
-    .insert(readingSessions)
-    .values({ ...interval, format: interval.format.toUpperCase() })
-    .onConflictDoUpdate({
-      target: readingSessions.id,
-      set: {
-        durationSeconds: sql<number>`${readingSessions.durationSeconds} + excluded.duration_seconds`,
-        updatedAt: interval.updatedAt,
-      },
-    })
-}
-
 export type ReadingCompletionInsert = {
   id: string
   bookId: number
@@ -42,28 +25,6 @@ export type ReadingCompletionInsert = {
   localDay: string
   completedAt: number
   updatedAt: number
-}
-
-export async function upsertEarliestReadingCompletion(
-  library: Library,
-  completion: ReadingCompletionInsert,
-): Promise<boolean> {
-  const { db } = await getLibraryDatabase(library)
-  const rows = await db
-    .insert(readingCompletions)
-    .values({ ...completion, format: completion.format.toUpperCase() })
-    .onConflictDoUpdate({
-      target: readingCompletions.bookId,
-      set: {
-        format: completion.format.toUpperCase(),
-        localDay: completion.localDay,
-        completedAt: completion.completedAt,
-        updatedAt: completion.updatedAt,
-      },
-      setWhere: sql`excluded.completed_at < ${readingCompletions.completedAt}`,
-    })
-    .returning({ id: readingCompletions.id })
-  return rows.length > 0
 }
 
 export async function listReadingSessionsByDayRange(

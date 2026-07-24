@@ -1,33 +1,39 @@
 import type { SyncTargetContext } from "./context"
-import {
-  publishLibrarySidecarSegments,
-  pullLibrarySidecarSegments,
-} from "./library-sidecar/kernel"
 import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
+import {
+  ensureLibrarySidecarAutomergeState,
+  publishLibrarySidecarAutomergeChanges,
+  pullLibrarySidecarAutomergeChanges,
+} from "./library-sidecar/automerge-store"
 import { syncMyReader } from "./myreader-sync"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
+  invalidateReadingStatistics,
+  invalidateReaderAnnotations,
   invalidateReaderBookmarks,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
-
-jest.mock("./library-sidecar/kernel", () => ({
-  publishLibrarySidecarSegments: jest.fn(),
-  pullLibrarySidecarSegments: jest.fn(),
-}))
 
 jest.mock("./library-sidecar/identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
 }))
 
-jest.mock("./library-sidecar/projection", () => ({
-  applyLibrarySidecarSegment: jest.fn(),
+jest.mock("./library-sidecar/automerge-store", () => ({
+  ensureLibrarySidecarAutomergeState: jest.fn(),
+  publishLibrarySidecarAutomergeChanges: jest.fn(),
+  pullLibrarySidecarAutomergeChanges: jest.fn(),
+}))
+
+jest.mock("./library-sidecar/automerge-projection", () => ({
+  projectLibrarySidecarAutomergeDocument: jest.fn(),
 }))
 
 jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateFavoriteBooks: jest.fn(),
   invalidateReadingProgress: jest.fn(),
+  invalidateReadingStatistics: jest.fn(),
+  invalidateReaderAnnotations: jest.fn(),
   invalidateReaderBookmarks: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
 }))
@@ -55,9 +61,14 @@ describe("syncMyReader", () => {
       libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
       replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
     })
-    jest.mocked(publishLibrarySidecarSegments).mockResolvedValue(2)
-    jest.mocked(pullLibrarySidecarSegments).mockResolvedValue(3)
+    jest
+      .mocked(ensureLibrarySidecarAutomergeState)
+      .mockResolvedValue({} as never)
+    jest.mocked(publishLibrarySidecarAutomergeChanges).mockResolvedValue(1)
+    jest.mocked(pullLibrarySidecarAutomergeChanges).mockResolvedValue(1)
     jest.mocked(invalidateReadingProgress).mockResolvedValue(undefined)
+    jest.mocked(invalidateReadingStatistics).mockResolvedValue(undefined)
+    jest.mocked(invalidateReaderAnnotations).mockResolvedValue(undefined)
     jest.mocked(invalidateReaderBookmarks).mockResolvedValue(undefined)
     jest.mocked(invalidateRecentlyReadBooks).mockResolvedValue(undefined)
     jest.mocked(invalidateFavoriteBooks).mockResolvedValue(undefined)
@@ -66,28 +77,31 @@ describe("syncMyReader", () => {
   it("should use the library sidecar provider when full sync runs", async () => {
     const result = await syncMyReader(context)
 
-    expect(publishLibrarySidecarSegments).toHaveBeenCalledWith(
+    expect(ensureLibrarySidecarAutomergeState).toHaveBeenCalledWith(
       context.library,
-      context.backend,
+      {
+        libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
+        replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
+      },
       expect.any(Number),
     )
-    expect(pullLibrarySidecarSegments).toHaveBeenCalled()
     expect(invalidateFavoriteBooks).toHaveBeenCalledWith(context.library.id)
+    expect(invalidateReadingStatistics).toHaveBeenCalledWith(context.library.id)
+    expect(invalidateReaderAnnotations).toHaveBeenCalledWith(context.library.id)
     expect(invalidateReaderBookmarks).toHaveBeenCalledWith(context.library.id)
     expect(result.providers).toEqual({
-      "library-sidecar.v4": { pushed: 2, pulled: 3 },
+      "library-sidecar": { pushed: 1, pulled: 1 },
     })
   })
 
-  it("should not pull remote segments when push-only sync runs", async () => {
+  it("should not pull remote changes when push-only sync runs", async () => {
     const result = await syncMyReader(context, {
       myreaderMode: "push_only",
     })
 
-    expect(publishLibrarySidecarSegments).toHaveBeenCalled()
-    expect(pullLibrarySidecarSegments).not.toHaveBeenCalled()
+    expect(pullLibrarySidecarAutomergeChanges).not.toHaveBeenCalled()
     expect(result.providers).toEqual({
-      "library-sidecar.v4": { pushed: 2, pulled: 0 },
+      "library-sidecar": { pushed: 1, pulled: 0 },
     })
   })
 

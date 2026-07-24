@@ -46,7 +46,6 @@ function row(overrides: Record<string, unknown> = {}) {
     createdAt: 10,
     updatedAt: 20,
     deletedAt: null,
-    syncClock: null,
     ...overrides,
   }
 }
@@ -63,7 +62,6 @@ describe("reader bookmarks domain", () => {
           format,
           locatorKey,
           locatorJson: JSON.stringify(value),
-          syncClock: "clock",
           createdAt: 100,
           updatedAt: 100,
           deletedAt: null,
@@ -106,7 +104,7 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should reuse an active bookmark when the natural key exists", async () => {
-    jest.mocked(addLocalBookmark).mockResolvedValue(row({ syncClock: "clock" }))
+    jest.mocked(addLocalBookmark).mockResolvedValue(row())
 
     const bookmark = await addReaderBookmark(library, 7, "EPUB", locator(2))
 
@@ -114,9 +112,7 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should revive bookmark identity when the natural key is tombstoned", async () => {
-    jest
-      .mocked(addLocalBookmark)
-      .mockResolvedValue(row({ updatedAt: 31, syncClock: "clock" }))
+    jest.mocked(addLocalBookmark).mockResolvedValue(row({ updatedAt: 31 }))
 
     const bookmark = await addReaderBookmark(library, 7, "EPUB", locator(2))
 

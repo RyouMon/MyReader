@@ -14,7 +14,7 @@ import { withLocalLibraryCalibreRoot } from "../../library/local-library-content
 import {
   ensureLibrarySidecarReplicaIdentity,
   type LibrarySidecarReplicaIdentity,
-} from "./kernel"
+} from "./replica-identity"
 
 export async function ensureLibrarySidecarIdentity(
   library: Library,
