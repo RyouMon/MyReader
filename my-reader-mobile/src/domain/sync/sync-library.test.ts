@@ -66,7 +66,6 @@ const dataSources: DataSource[] = []
 
 const localCtx = {
   library,
-  deviceId: "device-1",
   libraryRootUri: "file:///cache/lib-1",
   dataSourceId: "local",
   libraryId: library.id,
@@ -124,6 +123,25 @@ describe("syncLibrary", () => {
     expect(mockSkippedMyreader).not.toHaveBeenCalled()
     expect(report.calibre.changed).toBe(true)
     expect(report.myreader.skipped).toBe(false)
+  })
+
+  it("should pass refreshed library metadata when MyReader sync follows Calibre", async () => {
+    const refreshed = {
+      ...library,
+      metadataUri: "file:///tmp/lib/refreshed-metadata.db",
+    }
+    mockSyncCalibre.mockResolvedValue({
+      skipped: false,
+      changed: true,
+      library: refreshed,
+    })
+
+    await syncLibrary(library, dataSources, { scope: "all" })
+
+    expect(mockSyncMyReader).toHaveBeenCalledWith(
+      { ...localCtx, library: refreshed },
+      expect.any(Object),
+    )
   })
 
   test("should skip myreader when scope is calibre", async () => {

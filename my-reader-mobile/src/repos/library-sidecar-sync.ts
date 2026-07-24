@@ -36,6 +36,16 @@ export type LibrarySidecarCursorRow = {
   fileHash: string
 }
 
+export type LibrarySidecarReadingPositionRow = {
+  id: string
+  bookId: number
+  format: string
+  locatorJson: string
+  displayProgression: number | null
+  updatedAt: number
+  syncClock: string | null
+}
+
 type DbRow = Record<string, Scalar>
 
 function requiredString(row: DbRow, key: string): string {
@@ -176,6 +186,63 @@ export async function insertLibrarySidecarOutboxChange(
       (id, change_id, clock, domain, state_json, segment_sequence)
       VALUES (?, ?, ?, ?, ?, NULL)`,
     [uuid(), row.changeId, row.clock, row.domain, row.stateJson],
+  )
+}
+
+export async function readLibrarySidecarReadingPosition(
+  tx: LibrarySidecarSyncTransaction,
+  bookId: number,
+  format: string,
+): Promise<LibrarySidecarReadingPositionRow | null> {
+  const result = await tx.execute(
+    `SELECT id, book_id, format, locator_json, display_progression, updated_at, sync_clock
+      FROM reading_progress
+      WHERE book_id = ? AND format = ?`,
+    [bookId, format],
+  )
+  const row = result.rows[0]
+  if (!row) return null
+  const displayProgression = row.display_progression
+  const updatedAt = row.updated_at
+  if (displayProgression !== null && typeof displayProgression !== "number") {
+    throw new Error("Expected display_progression to be numeric")
+  }
+  if (typeof updatedAt !== "number") {
+    throw new Error("Expected updated_at to be numeric")
+  }
+  return {
+    id: requiredString(row, "id"),
+    bookId: Number(row.book_id),
+    format: requiredString(row, "format"),
+    locatorJson: requiredString(row, "locator_json"),
+    displayProgression,
+    updatedAt,
+    syncClock: optionalString(row, "sync_clock"),
+  }
+}
+
+export async function writeLibrarySidecarReadingPosition(
+  tx: LibrarySidecarSyncTransaction,
+  row: Omit<LibrarySidecarReadingPositionRow, "id">,
+): Promise<void> {
+  await tx.execute(
+    `INSERT INTO reading_progress
+      (id, book_id, format, locator_json, display_progression, updated_at, sync_clock)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(book_id, format) DO UPDATE SET
+        locator_json = excluded.locator_json,
+        display_progression = excluded.display_progression,
+        updated_at = excluded.updated_at,
+        sync_clock = excluded.sync_clock`,
+    [
+      uuid(),
+      row.bookId,
+      row.format,
+      row.locatorJson,
+      row.displayProgression,
+      row.updatedAt,
+      row.syncClock,
+    ],
   )
 }
 

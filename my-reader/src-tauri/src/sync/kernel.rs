@@ -5,6 +5,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
     QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait,
 };
+use tracing::{info, warn};
 use uuid::{Uuid, Variant};
 
 use crate::entities::app::{
@@ -101,6 +102,15 @@ where
         .one(db)
         .await
         .map_err(database_error)
+}
+
+pub async fn read_replica_identity(
+    db: &DatabaseConnection,
+) -> Result<Option<ReplicaIdentity>, AppError> {
+    Ok(read_local_meta(db).await?.map(|model| ReplicaIdentity {
+        library_uuid: model.library_uuid,
+        replica_id: model.replica_id,
+    }))
 }
 
 async fn read_pending_prepared<C>(db: &C) -> Result<Option<sync_prepared_segments::Model>, AppError>
@@ -341,6 +351,15 @@ pub async fn publish_segments(
         let Some(prepared) = prepare_next_segment(db, now_ms).await? else {
             return Ok(pushed);
         };
+        info!(
+            target: "myreader_sync",
+            event = "segment.publish_start",
+            sequence = %prepared.sequence,
+            path = %prepared.path,
+            changes = prepared.change_ids.len(),
+            sha256 = %prepared.sha256,
+            "Publishing sidecar segment"
+        );
         operator
             .write(&prepared.path, prepared.bytes.clone())
             .await
@@ -352,6 +371,14 @@ pub async fn publish_segments(
         )
         .await?;
         pushed += prepared.change_ids.len();
+        info!(
+            target: "myreader_sync",
+            event = "segment.published",
+            sequence = %prepared.sequence,
+            path = %prepared.path,
+            changes = prepared.change_ids.len(),
+            "Published sidecar segment"
+        );
     }
 }
 
@@ -541,10 +568,32 @@ async fn pull_replica(
     let planned = match plan_replica_files(&names, cursor_sequence) {
         Ok(planned) => planned,
         Err(error) => {
+            warn!(
+                target: "myreader_sync",
+                event = "replica.plan_rejected",
+                replica_id,
+                cursor_sequence,
+                code = protocol_error_code(error.code),
+                error = %error,
+                "Rejected remote replica plan"
+            );
             record_protocol_error(db, error.code, Some(replica_id), None, None, now_ms).await?;
             return Ok(0);
         }
     };
+    let planned_sequences = planned
+        .iter()
+        .map(|file| file.sequence.as_str())
+        .collect::<Vec<_>>();
+    info!(
+        target: "myreader_sync",
+        event = "replica.planned",
+        replica_id,
+        cursor_sequence,
+        remote_files = names.len(),
+        planned_sequences = ?planned_sequences,
+        "Planned remote replica segments"
+    );
     let mut pulled = 0;
 
     for file in planned {
@@ -563,6 +612,15 @@ async fn pull_replica(
         ) {
             Ok(segment) => segment,
             Err(error) => {
+                warn!(
+                    target: "myreader_sync",
+                    event = "segment.decode_rejected",
+                    replica_id,
+                    sequence = %file.sequence,
+                    code = protocol_error_code(error.code),
+                    error = %error,
+                    "Rejected remote sidecar segment"
+                );
                 record_protocol_error(
                     db,
                     error.code,
@@ -577,8 +635,17 @@ async fn pull_replica(
         };
         let file_hash = sha256_hex(&bytes);
         let txn = db.begin().await.map_err(database_error)?;
-        if projection.apply(&txn, &segment).await.is_err() {
+        if let Err(error) = projection.apply(&txn, &segment).await {
             txn.rollback().await.map_err(database_error)?;
+            warn!(
+                target: "myreader_sync",
+                event = "segment.projection_rejected",
+                replica_id,
+                sequence = %file.sequence,
+                file_hash,
+                error = %error,
+                "Rejected remote sidecar projection"
+            );
             record_protocol_error(
                 db,
                 SegmentErrorCode::ProjectionFailed,
@@ -593,6 +660,21 @@ async fn pull_replica(
         write_cursor(&txn, replica_id, &file.sequence, &file_hash).await?;
         txn.commit().await.map_err(database_error)?;
         pulled += segment.changes.len();
+        let domains = segment
+            .changes
+            .iter()
+            .map(|change| domain_name(&change.state))
+            .collect::<HashSet<_>>();
+        info!(
+            target: "myreader_sync",
+            event = "segment.applied",
+            replica_id,
+            sequence = %file.sequence,
+            changes = segment.changes.len(),
+            domains = ?domains,
+            file_hash,
+            "Applied remote sidecar segment"
+        );
     }
     Ok(pulled)
 }
@@ -605,7 +687,15 @@ pub async fn pull_segments(
     now_ms: u64,
 ) -> Result<usize, AppError> {
     let mut pulled = 0;
-    for replica_id in list_replica_ids(operator).await? {
+    let replica_ids = list_replica_ids(operator).await?;
+    info!(
+        target: "myreader_sync",
+        event = "remote.replicas_discovered",
+        local_replica_id = %identity.replica_id,
+        replicas = ?replica_ids,
+        "Discovered sidecar replicas"
+    );
+    for replica_id in replica_ids {
         if replica_id == identity.replica_id {
             continue;
         }
@@ -615,6 +705,12 @@ pub async fn pull_segments(
             .filter(|uuid| uuid.hyphenated().to_string() == replica_id)
             .is_some();
         if !valid_replica {
+            warn!(
+                target: "myreader_sync",
+                event = "replica.invalid",
+                replica_id,
+                "Rejected invalid remote replica ID"
+            );
             record_protocol_error(
                 db,
                 SegmentErrorCode::InvalidChange,

@@ -68,7 +68,7 @@ function bytesToHex(bytes: Uint8Array): string {
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return bytesToHex(
     new Uint8Array(
-      await digest(CryptoDigestAlgorithm.SHA256, Uint8Array.from(bytes).buffer),
+      await digest(CryptoDigestAlgorithm.SHA256, Uint8Array.from(bytes)),
     ),
   )
 }

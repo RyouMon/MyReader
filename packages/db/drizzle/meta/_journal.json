@@ -64,6 +64,13 @@
       "when": 1784815521994,
       "tag": "0008_add_library_sidecar_sync_kernel",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784828886707,
+      "tag": "0009_add_reading_progress_sync_clock",
+      "breakpoints": true
     }
   ]
 }

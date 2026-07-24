@@ -312,9 +312,11 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   // -- Private helpers --
 
   private fullPath(relativePath: string): string {
-    return this.libraryRootPath
-      ? `${this.libraryRootPath}/${relativePath}`
-      : relativePath
+    const segments = [
+      ...canonicalRelativePathSegments(this.libraryRootPath),
+      ...canonicalRelativePathSegments(relativePath),
+    ]
+    return segments.length ? `/${segments.join("/")}` : ""
   }
 
   private itemUrl(relativePath: string): string {
@@ -322,7 +324,10 @@ export class OneDriveRemoteBackend implements RemoteBackend {
   }
 
   private childrenUrl(prefix: string): string {
-    return `${GRAPH_API_BASE}/me/drive/root:${this.encodedPath(prefix)}:/children`
+    const encodedPath = this.encodedPath(prefix)
+    return encodedPath
+      ? `${GRAPH_API_BASE}/me/drive/root:${encodedPath}:/children`
+      : `${GRAPH_API_BASE}/me/drive/root/children`
   }
 
   private async fetchWithAuth(
@@ -383,30 +388,54 @@ export class OneDriveRemoteBackend implements RemoteBackend {
         method: "GET",
       })
       if (statRes.ok) continue
+      if (statRes.status !== 404) {
+        throw new NetworkError(
+          i18n.t("sync.onedriveGetFailed", {
+            status: statRes.status,
+            path: cursor,
+          }),
+          statRes.status,
+        )
+      }
 
       const parentParts = cursor.split("/")
       const folderName = parentParts.pop()!
       const parentPath = parentParts.join("/")
 
-      const createUrl = parentPath
-        ? this.childrenUrl(parentPath)
-        : `${GRAPH_API_BASE}/me/drive/root/children`
-
-      const createRes = await this.fetchWithAuth(createUrl, {
+      const createRes = await this.fetchWithAuth(this.childrenUrl(parentPath), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: folderName, folder: {} }),
+        body: JSON.stringify({
+          name: folderName,
+          folder: {},
+          "@microsoft.graph.conflictBehavior": "fail",
+        }),
       })
 
-      if (!createRes.ok && createRes.status !== 409) {
-        throw new NetworkError(
-          i18n.t("sync.onedriveMkdirFailed", {
-            status: createRes.status,
-            path: cursor,
-          }),
-          createRes.status,
-        )
+      if (createRes.ok) continue
+      if (createRes.status === 409) {
+        const conflictStatRes = await this.fetchWithAuth(this.itemUrl(cursor), {
+          method: "GET",
+        })
+        if (conflictStatRes.ok) continue
+        if (conflictStatRes.status !== 404) {
+          throw new NetworkError(
+            i18n.t("sync.onedriveGetFailed", {
+              status: conflictStatRes.status,
+              path: cursor,
+            }),
+            conflictStatRes.status,
+          )
+        }
       }
+
+      throw new NetworkError(
+        i18n.t("sync.onedriveMkdirFailed", {
+          status: createRes.status,
+          path: cursor,
+        }),
+        createRes.status,
+      )
     }
   }
 }

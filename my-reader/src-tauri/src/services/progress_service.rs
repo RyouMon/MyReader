@@ -2,9 +2,14 @@ use std::path::Path;
 
 use crate::error::AppError;
 use crate::models::{AppConfig, ReadingProgressDto};
-use crate::repositories::progress_repo::SqliteProgressRepository;
+use crate::repositories::{
+    calibre_repo::CalibreBookRepository, progress_repo::SqliteProgressRepository,
+};
 use crate::services::library_service::LibraryService;
-use crate::utils::paths::library_sidecar_path;
+use crate::sync::{
+    contract::ReaderLocator, kernel::read_replica_identity, reading_position::write_local_position,
+};
+use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct ProgressService;
 
@@ -27,24 +32,44 @@ impl ProgressService {
         SqliteProgressRepository::get_progress(&db, lib_id, book_id, format).await
     }
 
+    async fn set_reading_progress_in_db(
+        db: &sea_orm::DatabaseConnection,
+        library_uuid: &str,
+        book_id: i64,
+        format: &str,
+        locator: &serde_json::Value,
+        display_progression: Option<f64>,
+    ) -> Result<(), AppError> {
+        let locator: ReaderLocator = serde_json::from_value(locator.clone())
+            .map_err(|error| AppError::Serialize(error.to_string()))?;
+        write_local_position(
+            db,
+            library_uuid,
+            book_id,
+            format,
+            locator,
+            display_progression,
+            unix_epoch_millis() as u64,
+        )
+        .await
+    }
+
     pub async fn set_reading_progress(
         sidecar_root: &str,
+        library_uuid: &str,
         book_id: i64,
         format: &str,
         locator: &serde_json::Value,
         display_progression: Option<f64>,
     ) -> Result<(), AppError> {
         let db = SqliteProgressRepository::open(sidecar_root).await?;
-        let json =
-            serde_json::to_string(locator).map_err(|e| AppError::Serialize(e.to_string()))?;
-        let now = unix_epoch_millis();
-        SqliteProgressRepository::set_progress(
+        Self::set_reading_progress_in_db(
             &db,
+            library_uuid,
             book_id,
             format,
-            &json,
+            locator,
             display_progression,
-            now,
         )
         .await
     }
@@ -98,7 +123,27 @@ impl ProgressService {
         let sidecar_root = library_sidecar_path(&lib, app_data_dir)
             .to_string_lossy()
             .to_string();
-        Self::set_reading_progress(&sidecar_root, book_id, format, locator, display_progression)
-            .await
+        let db = SqliteProgressRepository::open(&sidecar_root).await?;
+        let library_uuid = match read_replica_identity(&db).await? {
+            Some(identity) => identity.library_uuid,
+            None => {
+                let library_root = library_root_path(&lib, app_data_dir)
+                    .to_string_lossy()
+                    .to_string();
+                CalibreBookRepository::open(&library_root)
+                    .await?
+                    .get_library_uuid()
+                    .await?
+            }
+        };
+        Self::set_reading_progress_in_db(
+            &db,
+            &library_uuid,
+            book_id,
+            format,
+            locator,
+            display_progression,
+        )
+        .await
     }
 }

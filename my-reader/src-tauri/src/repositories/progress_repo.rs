@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use sea_orm::{
     sea_query::{Alias, Condition, Expr, ExprTrait, Func, OnConflict},
-    ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
 
 use crate::entities::app::reading_progress;
@@ -99,6 +99,7 @@ impl SqliteProgressRepository {
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
             display_progression: Set(display_progression),
+            sync_clock: Set(None),
         };
         reading_progress::Entity::insert(active)
             .on_conflict(
@@ -164,6 +165,7 @@ impl SqliteProgressRepository {
             locator_json: Set(locator_json.to_string()),
             updated_at: Set(updated_at),
             display_progression: Set(display_progression),
+            sync_clock: Set(None),
         };
         let rows_affected = reading_progress::Entity::insert(active)
             .on_conflict(
@@ -184,6 +186,63 @@ impl SqliteProgressRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(rows_affected > 0)
+    }
+
+    pub async fn find_position_state<C>(
+        db: &C,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Option<reading_progress::Model>, AppError>
+    where
+        C: ConnectionTrait,
+    {
+        reading_progress::Entity::find()
+            .filter(reading_progress::Column::BookId.eq(book_id))
+            .filter(reading_progress::Column::Format.eq(format))
+            .one(db)
+            .await
+            .map_err(|error| AppError::Database(error.to_string()))
+    }
+
+    pub async fn write_position_state<C>(
+        db: &C,
+        book_id: i64,
+        format: &str,
+        locator_json: &str,
+        display_progression: Option<f64>,
+        updated_at: f64,
+        sync_clock: &str,
+    ) -> Result<(), AppError>
+    where
+        C: ConnectionTrait,
+    {
+        let active = reading_progress::ActiveModel {
+            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
+            book_id: Set(book_id),
+            format: Set(format.to_owned()),
+            locator_json: Set(locator_json.to_owned()),
+            updated_at: Set(updated_at),
+            display_progression: Set(display_progression),
+            sync_clock: Set(Some(sync_clock.to_owned())),
+        };
+        reading_progress::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    reading_progress::Column::BookId,
+                    reading_progress::Column::Format,
+                ])
+                .update_columns([
+                    reading_progress::Column::LocatorJson,
+                    reading_progress::Column::DisplayProgression,
+                    reading_progress::Column::UpdatedAt,
+                    reading_progress::Column::SyncClock,
+                ])
+                .to_owned(),
+            )
+            .exec_without_returning(db)
+            .await
+            .map_err(|error| AppError::Database(error.to_string()))?;
+        Ok(())
     }
 
     pub async fn list_latest_book_updates(

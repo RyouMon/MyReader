@@ -55,11 +55,18 @@ export type LibrarySidecarKernelReport = {
 }
 
 function validateReplicaId(replicaId: string): void {
-  formatLibrarySidecarHlc({
-    physicalMs: 0n,
-    counter: 0n,
-    replicaId,
-  })
+  try {
+    formatLibrarySidecarHlc({
+      physicalMs: 0n,
+      counter: 0n,
+      replicaId,
+    })
+  } catch {
+    throw new LibrarySidecarSegmentError(
+      "invalid_change",
+      "replica ID must be a lowercase UUIDv4",
+    )
+  }
 }
 
 function nextSequence(sequence: string): string {
@@ -113,10 +120,11 @@ async function recordSyncError(
   },
   nowMs: number,
 ): Promise<void> {
+  const code = errorCode(error)
   await withLibrarySidecarSyncTransaction(library, (tx) =>
     insertLibrarySidecarSyncError(tx, {
       id: randomUUID().replace(/-/g, ""),
-      code: errorCode(error),
+      code,
       replicaId: context.replicaId,
       sequence: context.sequence,
       domain: null,
@@ -124,6 +132,12 @@ async function recordSyncError(
       createdAt: nowMs,
     }),
   )
+  console.warn("[reading-sync] segment:rejected", {
+    libraryId: library.id,
+    code,
+    ...context,
+    error: error instanceof Error ? error.message : String(error),
+  })
 }
 
 export async function ensureLibrarySidecarReplicaIdentity(
@@ -144,6 +158,12 @@ export async function ensureLibrarySidecarReplicaIdentity(
         )
       }
       validateReplicaId(existing.replicaId)
+      console.info("[reading-sync] replica:ready", {
+        libraryId: library.id,
+        libraryUuid: existing.libraryUuid,
+        replicaId: existing.replicaId,
+        created: false,
+      })
       return {
         libraryUuid: existing.libraryUuid,
         replicaId: existing.replicaId,
@@ -162,6 +182,12 @@ export async function ensureLibrarySidecarReplicaIdentity(
     if (!inserted) {
       throw new Error("Failed to initialize local sidecar identity")
     }
+    console.info("[reading-sync] replica:ready", {
+      libraryId: library.id,
+      libraryUuid: inserted.libraryUuid,
+      replicaId: inserted.replicaId,
+      created: true,
+    })
     return {
       libraryUuid: inserted.libraryUuid,
       replicaId: inserted.replicaId,
@@ -231,13 +257,27 @@ export async function publishLibrarySidecarSegments(
     const prepared = await prepareNextLibrarySidecarSegment(library, nowMs)
     if (!prepared) return pushed
 
+    const changeIds = parseChangeIds(prepared)
+    console.info("[reading-sync] segment:publish-start", {
+      libraryId: library.id,
+      sequence: prepared.sequence,
+      path: prepared.path,
+      changes: changeIds.length,
+      sha256: prepared.sha256,
+    })
     await backend.writeBytes(prepared.path, prepared.bytes)
     await markLibrarySidecarPreparedSegmentPublished(
       library,
       prepared.sequence,
       nowMs,
     )
-    pushed += parseChangeIds(prepared).length
+    pushed += changeIds.length
+    console.info("[reading-sync] segment:published", {
+      libraryId: library.id,
+      sequence: prepared.sequence,
+      path: prepared.path,
+      changes: changeIds.length,
+    })
   }
 }
 
@@ -325,6 +365,13 @@ async function pullReplica(
     )
     return 0
   }
+  console.info("[reading-sync] replica:planned", {
+    libraryId: library.id,
+    replicaId,
+    cursorSequence,
+    remoteFiles: names.length,
+    plannedSequences: planned.map((file) => file.sequence),
+  })
   let pulled = 0
 
   for (const file of planned) {
@@ -353,6 +400,16 @@ async function pullReplica(
         })
       })
       pulled += segment.changes.length
+      console.info("[reading-sync] segment:applied", {
+        libraryId: library.id,
+        replicaId,
+        sequence: file.sequence,
+        changes: segment.changes.length,
+        domains: [
+          ...new Set(segment.changes.map((change) => change.state.domain)),
+        ],
+        fileHash,
+      })
     } catch (error) {
       if (!(error instanceof LibrarySidecarSegmentError)) throw error
       await recordSyncError(
@@ -379,6 +436,11 @@ export async function pullLibrarySidecarSegments(
   nowMs: number,
 ): Promise<number> {
   const entries = await backend.listRemote(".myreader/changes-v4/")
+  console.info("[reading-sync] remote:replicas-discovered", {
+    libraryId: library.id,
+    localReplicaId: identity.replicaId,
+    entries,
+  })
   let pulled = 0
   for (const entry of entries) {
     const replicaId = entry.replace(/\/$/, "")

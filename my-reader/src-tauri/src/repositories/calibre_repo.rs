@@ -10,7 +10,7 @@ use tracing::{debug, info};
 use crate::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
-    publishers, ratings, series, tags,
+    library_id, publishers, ratings, series, tags,
 };
 use crate::error::AppError;
 use crate::models::BookEntry;
@@ -88,6 +88,15 @@ impl CalibreBookRepository {
 
     pub fn validate_library(library_path: &str) -> bool {
         Path::new(library_path).join("metadata.db").is_file()
+    }
+
+    pub async fn get_library_uuid(&self) -> Result<String, AppError> {
+        let row = library_id::Entity::find()
+            .one(&self.db)
+            .await
+            .map_err(|error| AppError::Database(error.to_string()))?
+            .ok_or_else(|| AppError::Database("Calibre library UUID is missing".into()))?;
+        Ok(row.uuid.to_lowercase())
     }
 
     /// Return lightweight (id, path, has_cover) for every book — used by bulk cover download.

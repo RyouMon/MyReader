@@ -125,8 +125,10 @@ export async function syncLibrary(
     ? await syncCalibre(ctx, dataSources, options)
     : skippedCalibre(library)
 
+  const myreaderContext =
+    calibre.library === ctx.library ? ctx : { ...ctx, library: calibre.library }
   let myreader = scopeHasMyreader(options)
-    ? await syncMyReader(ctx, options)
+    ? await syncMyReader(myreaderContext, options)
     : skippedMyreader(options.myreaderMode ?? "full")
 
   if (calibre.error && throwOnFailure) {

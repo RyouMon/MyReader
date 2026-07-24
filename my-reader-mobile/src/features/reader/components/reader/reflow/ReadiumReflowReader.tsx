@@ -210,17 +210,38 @@ const ReadiumReflowReader = forwardRef<
       // Resolve initial position using position/progression from stored locator,
       // then find the matching native locator from positions list.
       let startLocator: Locator | undefined = event.positions[0]
-      if (currentLocatorRef.current) {
+      let startSource = "publication-start"
+      if (publicationSeq === 1 && initialLocator) {
+        const resolved = resolveNativeLocator(event.positions, initialLocator)
+        if (resolved) {
+          startLocator = resolved
+          startSource = "stored-progress"
+        }
+      } else if (currentLocatorRef.current) {
         const resolved = resolveNativeLocator(
           event.positions,
           currentLocatorRef.current,
         )
-        if (resolved) startLocator = resolved
-      } else if (initialLocator) {
-        const resolved = resolveNativeLocator(event.positions, initialLocator)
-        if (resolved) startLocator = resolved
+        if (resolved) {
+          startLocator = resolved
+          startSource = "current-location"
+        }
       }
       currentLocatorRef.current = startLocator ?? null
+      console.info("[reading-sync] reader:position-resolved", {
+        format: "EPUB",
+        publicationSeq,
+        source: startSource,
+        positions: event.positions.length,
+        storedHref: initialLocator?.href ?? null,
+        storedPosition: initialLocator?.locations?.position ?? null,
+        storedTotalProgression:
+          initialLocator?.locations?.totalProgression ?? null,
+        resolvedHref: startLocator?.href ?? null,
+        resolvedPosition: startLocator?.locations?.position ?? null,
+        resolvedTotalProgression:
+          startLocator?.locations?.totalProgression ?? null,
+      })
 
       const currentPage = startLocator
         ? positionIndexForLocator(event.positions, startLocator)
@@ -256,6 +277,7 @@ const ReadiumReflowReader = forwardRef<
 
       // Navigate to the resolved position after the view is ready
       if (startLocator && startLocator !== event.positions[0]) {
+        programmaticNavigationPendingRef.current = true
         readiumRef.current?.goTo(startLocator)
       }
 

@@ -4,6 +4,7 @@ const { DatabaseSync } = require("node:sqlite")
 const { drizzle } = require("drizzle-orm/op-sqlite")
 const { migrate } = require("drizzle-orm/op-sqlite/migrator")
 const { sql } = require("drizzle-orm")
+const migrationConfig = require("@my-reader/db/drizzle/migrations").default
 
 function createClient() {
   const sqlite = new DatabaseSync(":memory:")

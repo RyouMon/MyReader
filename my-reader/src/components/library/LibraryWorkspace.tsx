@@ -35,7 +35,7 @@ import { useWindowSizeClass } from "@/hooks/use-window-size-class"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { resetBrokenCovers } from "@/lib/coverFailureCache"
 import { pickReadableFormat } from "@/lib/readFormats"
-import { api } from "@/lib/tauri-api"
+import { api, formatApiError } from "@/lib/tauri-api"
 import { cn } from "@/lib/utils"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
@@ -158,7 +158,9 @@ export default function LibraryWorkspace({
       refresh()
       void favoriteBooksQuery.refetch()
     } catch (e) {
-      console.error("Failed to sync db:", e)
+      console.error(
+        `Failed to sync db. library id: "${activeLibraryId}", error: ${formatApiError(e)}`,
+      )
     }
   }
 

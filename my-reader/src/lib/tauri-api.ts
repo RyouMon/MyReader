@@ -26,6 +26,13 @@ function wrap<T, A extends unknown[]>(
   return (...args: A) => unwrap(fn(...args))
 }
 
+export function formatApiError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error)
+
+  const kind = (error as Error & { kind?: unknown }).kind
+  return typeof kind === "string" ? `${kind}: ${error.message}` : error.message
+}
+
 const commands = isDemoApiEnabled()
   ? (demoCommands as unknown as typeof raw)
   : raw

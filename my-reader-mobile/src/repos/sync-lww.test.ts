@@ -73,7 +73,8 @@ function setupEmptyDatabase(): void {
       format TEXT NOT NULL,
       locator_json TEXT NOT NULL,
       display_progression REAL,
-      updated_at REAL NOT NULL
+      updated_at REAL NOT NULL,
+      sync_clock TEXT
     );
     CREATE UNIQUE INDEX idx_reading_progress_book_format
       ON reading_progress (book_id, format);

@@ -10,6 +10,7 @@ import m0005 from './0005_add_annotations.sql';
 import m0006 from './0006_add_reading_progress_display_progression.sql';
 import m0007 from './0007_add_reading_statistics.sql';
 import m0008 from './0008_add_library_sidecar_sync_kernel.sql';
+import m0009 from './0009_add_reading_progress_sync_clock.sql';
 
 export default {
   journal,
@@ -23,5 +24,6 @@ export default {
     m0006,
     m0007,
     m0008,
+    m0009,
   },
 };

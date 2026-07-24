@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 
 use crate::common::app::TestApp;
+use crate::common::calibre::create_calibre_db;
 use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str) -> LibraryConfig {
@@ -85,8 +86,12 @@ async fn get_reading_progress_should_return_none_when_no_progress_recorded_for_b
 
 #[tokio::test]
 async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() {
+    let calibre = tempfile::tempdir().unwrap();
+    create_calibre_db(calibre.path()).await;
+    let mut library = library_fixture("lib-a");
+    library.path = calibre.path().to_string_lossy().to_string();
     let app = TestApp::with_config(AppConfig {
-        libraries: vec![library_fixture("lib-a")],
+        libraries: vec![library],
         active_library_id: Some("lib-a".into()),
         ..Default::default()
     });
@@ -122,8 +127,12 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
 
 #[tokio::test]
 async fn list_reading_progress_should_return_saved_rows() {
+    let calibre = tempfile::tempdir().unwrap();
+    create_calibre_db(calibre.path()).await;
+    let mut library = library_fixture("lib-a");
+    library.path = calibre.path().to_string_lossy().to_string();
     let app = TestApp::with_config(AppConfig {
-        libraries: vec![library_fixture("lib-a")],
+        libraries: vec![library],
         active_library_id: Some("lib-a".into()),
         ..Default::default()
     });

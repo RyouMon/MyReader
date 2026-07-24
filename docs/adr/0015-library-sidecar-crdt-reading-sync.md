@@ -628,10 +628,18 @@ v3/v4 双写。Phase 2 接入首个 `reading_position.v1` 纵向切片时再切�
 
 ### Phase 2：阅读进度纵向切片
 
+状态：自动化实现已于 2026-07-24 完成，真实设备与真实数据源矩阵仍待验收。共享 migration
+`0009_add_reading_progress_sync_clock.sql` 为现有 `reading_progress` projection 增加可空 HLC；
+移动端和桌面端的本地进度写入现已在同一事务提交 projection、HLC 与 outbox，产品同步入口也已
+从 v3 切换到 `reading_position.v1` segment。旧业务行保持 `sync_clock = null`，不 backfill、
+不发布，符合 v4 不迁移 v3/旧行的边界。
+
 - 先接入 `reading_position.v1`，以 `book_id + format` 为作用域，将 canonical `ReaderLocator` 与
   display progression 作为原子 register 合并。
-- 跑通 desktop、iOS、Android 三设备及 WebDAV、OneDrive。
-- 验证回读、离线并发、时钟回拨、重复 segment、乱序和崩溃恢复。
+- 自动化测试已覆盖 desktop 两 replica 发布/拉取、回读、时钟回拨、重复 segment、乱序、prepared
+  segment 崩溃恢复及移动端 v4 产品入口。
+- 待使用真实 desktop、iOS、Android 设备和真实 WebDAV、OneDrive 数据源完成最终矩阵验收；完成
+  前不得将 Phase 2 标记为完成。
 
 ### Phase 3：其他现有实体
 

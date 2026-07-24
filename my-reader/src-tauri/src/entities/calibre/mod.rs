@@ -14,6 +14,7 @@ pub mod comments;
 pub mod data;
 pub mod identifiers;
 pub mod languages;
+pub mod library_id;
 pub mod publishers;
 pub mod ratings;
 pub mod series;

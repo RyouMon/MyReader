@@ -44,6 +44,11 @@ type KernelFixture = {
   segmentEncoding: {
     fileName: string
   }
+  readingPositionSegment: LibrarySidecarSegment
+  readingPositionSegmentEncoding: {
+    fileName: string
+    sha256: string
+  }
 }
 
 const fixture = contractFixture as KernelFixture
@@ -173,6 +178,42 @@ describe("library sidecar sync kernel", () => {
     expect(markLibrarySidecarPreparedSegmentPublished).toHaveBeenCalledTimes(1)
   })
 
+  it("should pull desktop reading positions when reading the shared contract segment", async () => {
+    const segment = fixture.readingPositionSegment
+    const encoding = fixture.readingPositionSegmentEncoding
+    const readBytes = jest
+      .fn()
+      .mockResolvedValue(new TextEncoder().encode(JSON.stringify(segment)))
+    const listRemote = jest
+      .fn()
+      .mockResolvedValueOnce([`${segment.replicaId}/`])
+      .mockResolvedValueOnce([encoding.fileName])
+    const applySegment = jest.fn(async () => {})
+    jest.mocked(readLibrarySidecarCursor).mockResolvedValue(null)
+    const target = backend({ listRemote, readBytes })
+
+    await expect(
+      pullLibrarySidecarSegments(
+        library,
+        target,
+        identity,
+        applySegment,
+        nowMs,
+      ),
+    ).resolves.toBe(segment.changes.length)
+
+    expect(readBytes).toHaveBeenCalledWith(
+      `.myreader/changes-v4/${segment.replicaId}/${encoding.fileName}`,
+    )
+    expect(applySegment).toHaveBeenCalledWith(expect.anything(), segment)
+    expect(writeLibrarySidecarCursor).toHaveBeenCalledWith(expect.anything(), {
+      replicaId: segment.replicaId,
+      sequence: segment.sequence,
+      fileHash: encoding.sha256,
+    })
+    expect(insertLibrarySidecarSyncError).not.toHaveBeenCalled()
+  })
+
   it("should stop a replica stream when a sequence is missing", () => {
     expect(() =>
       planLibrarySidecarReplicaFiles(
@@ -264,5 +305,42 @@ describe("library sidecar sync kernel", () => {
     ).rejects.toThrow("network unavailable")
 
     expect(insertLibrarySidecarSyncError).not.toHaveBeenCalled()
+  })
+
+  it("should continue valid replicas when an invalid remote entry exists", async () => {
+    const prepared = await prepareLibrarySidecarSegment(fixture.segment, nowMs)
+    jest.mocked(readLibrarySidecarCursor).mockResolvedValue({
+      replicaId: fixture.segment.replicaId,
+      sequence: "41",
+      fileHash: "0".repeat(64),
+    })
+    const listRemote = jest
+      .fn()
+      .mockResolvedValueOnce([".DS_Store", `${fixture.segment.replicaId}/`])
+      .mockResolvedValueOnce([fixture.segmentEncoding.fileName])
+    const applySegment = jest.fn(async () => {})
+    const target = backend({
+      listRemote,
+      readBytes: jest.fn().mockResolvedValue(prepared.bytes),
+    })
+
+    await expect(
+      pullLibrarySidecarSegments(
+        library,
+        target,
+        identity,
+        applySegment,
+        nowMs,
+      ),
+    ).resolves.toBe(1)
+
+    expect(insertLibrarySidecarSyncError).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        code: "invalid_change",
+        replicaId: ".DS_Store",
+      }),
+    )
+    expect(applySegment).toHaveBeenCalledTimes(1)
   })
 })

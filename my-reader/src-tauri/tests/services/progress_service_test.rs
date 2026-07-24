@@ -1,7 +1,10 @@
+use sea_orm::{ConnectionTrait, Database};
 use serde_json::json;
 
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::progress_service::ProgressService;
+
+const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 
 fn library_config(id: &str) -> LibraryConfig {
     LibraryConfig {
@@ -14,15 +17,42 @@ fn library_config(id: &str) -> LibraryConfig {
     }
 }
 
+async fn create_calibre_metadata(root: &std::path::Path) {
+    let url = format!(
+        "sqlite://{}?mode=rwc",
+        root.join("metadata.db").to_string_lossy()
+    );
+    let db = Database::connect(&url).await.unwrap();
+    db.execute_unprepared(&format!(
+        "CREATE TABLE library_id (\
+           id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\
+         );\
+         INSERT INTO library_id (id, uuid) VALUES (1, '{LIBRARY_UUID}');"
+    ))
+    .await
+    .unwrap();
+}
+
 #[tokio::test]
 async fn direct_progress_operations_should_round_trip_locator() {
     let temp = tempfile::tempdir().unwrap();
     let sidecar_root = temp.path().to_string_lossy().to_string();
-    let locator = json!({"href": "chapter.xhtml", "locations": {"progression": 0.25}});
+    let locator = json!({
+        "href": "chapter.xhtml",
+        "type": "application/xhtml+xml",
+        "locations": {"progression": 0.25}
+    });
 
-    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &locator, Some(1.0 / 3.0))
-        .await
-        .expect("set should succeed");
+    ProgressService::set_reading_progress(
+        &sidecar_root,
+        LIBRARY_UUID,
+        7,
+        "EPUB",
+        &locator,
+        Some(1.0 / 3.0),
+    )
+    .await
+    .expect("set should succeed");
 
     let dto = ProgressService::get_reading_progress(&sidecar_root, "ignored", 7, "EPUB")
         .await
@@ -51,13 +81,21 @@ async fn get_reading_progress_should_return_none_when_row_is_missing() {
 async fn list_reading_progress_should_return_all_rows_for_library() {
     let temp = tempfile::tempdir().unwrap();
     let sidecar_root = temp.path().to_string_lossy().to_string();
-    let first = json!({"href": "chapter.xhtml", "locations": {"progression": 0.25}});
-    let second = json!({"href": "page-2", "locations": {"position": 2}});
+    let first = json!({
+        "href": "chapter.xhtml",
+        "type": "application/xhtml+xml",
+        "locations": {"progression": 0.25}
+    });
+    let second = json!({
+        "href": "page-2",
+        "type": "application/pdf",
+        "locations": {"position": 2}
+    });
 
-    ProgressService::set_reading_progress(&sidecar_root, 7, "EPUB", &first, None)
+    ProgressService::set_reading_progress(&sidecar_root, LIBRARY_UUID, 7, "EPUB", &first, None)
         .await
         .expect("first set should succeed");
-    ProgressService::set_reading_progress(&sidecar_root, 8, "PDF", &second, None)
+    ProgressService::set_reading_progress(&sidecar_root, LIBRARY_UUID, 8, "PDF", &second, None)
         .await
         .expect("second set should succeed");
 
@@ -84,13 +122,20 @@ async fn list_reading_progress_should_return_all_rows_for_library() {
 async fn progress_for_library_should_return_saved_progress() {
     let temp_dir = tempfile::tempdir().unwrap();
     let app_data_dir = temp_dir.path();
-    let lib = library_config("lib-progress-1");
+    let library_root = tempfile::tempdir().unwrap();
+    create_calibre_metadata(library_root.path()).await;
+    let mut lib = library_config("lib-progress-1");
+    lib.path = library_root.path().to_string_lossy().to_string();
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
-    let locator = json!({"href": "OEBPS/chapter1.xhtml", "locations": {"progression": 0.5}});
+    let locator = json!({
+        "href": "OEBPS/chapter1.xhtml",
+        "type": "application/xhtml+xml",
+        "locations": {"progression": 0.5}
+    });
 
     ProgressService::set_reading_progress_for_library(
         app_data_dir,
@@ -124,13 +169,16 @@ async fn progress_for_library_should_return_saved_progress() {
 #[tokio::test]
 async fn progress_for_library_should_resolve_active_library_when_id_is_none() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-progress-active");
+    let library_root = tempfile::tempdir().unwrap();
+    create_calibre_metadata(library_root.path()).await;
+    let mut lib = library_config("lib-progress-active");
+    lib.path = library_root.path().to_string_lossy().to_string();
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
-    let locator = json!({"href": "chapter.xhtml"});
+    let locator = json!({"href": "chapter.xhtml", "type": "application/pdf"});
 
     ProgressService::set_reading_progress_for_library(
         temp.path(),

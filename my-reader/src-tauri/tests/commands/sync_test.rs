@@ -5,6 +5,7 @@ use serde_json::json;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 
 use crate::common::app::TestApp;
+use crate::common::calibre::create_calibre_db;
 use crate::common::ipc::{invoke_err, invoke_ok};
 
 fn library_fixture(id: &str, path: &str) -> LibraryConfig {
@@ -47,6 +48,7 @@ async fn sync_db_for_library_should_return_not_found_when_library_id_is_unknown(
 async fn sync_db_for_library_should_return_report_when_local_library_has_no_remote_state() {
     // Local library, sidecar opens an empty sqlite DB, push/pull no-ops → report with 0/0.
     let calibre_dir = tempfile::tempdir().expect("tempdir");
+    create_calibre_db(calibre_dir.path()).await;
     let path_str = calibre_dir.path().to_string_lossy().to_string();
     let app = TestApp::with_config(AppConfig {
         libraries: vec![library_fixture("lib-a", &path_str)],

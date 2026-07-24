@@ -46,6 +46,15 @@ pub async fn create_calibre_db(root: &Path) -> DatabaseConnection {
     create_table(&db, &schema, ratings::Entity).await;
     create_table(&db, &schema, series::Entity).await;
     create_table(&db, &schema, tags::Entity).await;
+    db.execute_unprepared(
+        "CREATE TABLE IF NOT EXISTS library_id (\
+           id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\
+         );\
+         INSERT OR IGNORE INTO library_id (id, uuid) \
+         VALUES (1, '018f2f8d-980b-40ef-b72e-c6e86cb7cc28');",
+    )
+    .await
+    .expect("create Calibre library identity");
 
     db
 }

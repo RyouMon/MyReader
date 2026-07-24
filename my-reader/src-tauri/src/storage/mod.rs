@@ -74,7 +74,28 @@ pub fn build_operator(kind: &StorageBackend) -> Result<opendal::Operator, AppErr
 /// Build an OpenDAL operator for a persisted data source, lazily loading
 /// WebDAV passwords from the keyring and OneDrive tokens from the token manager.
 pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Operator, AppError> {
+    from_data_source_at_path(source, None).await
+}
+
+pub async fn from_data_source_at_path(
+    source: &DataSourceConfig,
+    relative_root: Option<&str>,
+) -> Result<opendal::Operator, AppError> {
     let mut backend = build_backend(source)?;
+    if let Some(relative_root) = relative_root.filter(|value| !value.trim().is_empty()) {
+        match &mut backend {
+            StorageBackend::LocalDirect { root } => {
+                *root = std::path::Path::new(root)
+                    .join(relative_root.trim_matches('/'))
+                    .to_string_lossy()
+                    .to_string();
+            }
+            StorageBackend::Webdav { root_path, .. }
+            | StorageBackend::Onedrive { root_path, .. } => {
+                *root_path = Some(join_remote_root(root_path.as_deref(), relative_root));
+            }
+        }
+    }
     match &mut backend {
         StorageBackend::Webdav {
             inline_password,
@@ -100,6 +121,17 @@ pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Oper
         _ => {}
     }
     build_operator(&backend)
+}
+
+fn join_remote_root(base: Option<&str>, relative: &str) -> String {
+    let base = base.unwrap_or_default().trim().trim_matches('/');
+    let relative = relative.trim().trim_matches('/');
+    match (base.is_empty(), relative.is_empty()) {
+        (true, true) => "/".to_owned(),
+        (true, false) => format!("/{relative}"),
+        (false, true) => format!("/{base}"),
+        (false, false) => format!("/{base}/{relative}"),
+    }
 }
 
 fn build_backend(source: &DataSourceConfig) -> Result<StorageBackend, AppError> {
@@ -190,6 +222,15 @@ mod tests {
         let op = from_data_source(&source).await.unwrap();
         // Listing the root confirms the operator is usable.
         op.list("/").await.unwrap();
+    }
+
+    #[test]
+    fn should_scope_library_below_data_source_root_when_remote_root_is_joined() {
+        assert_eq!(
+            join_remote_root(Some("/Reading/"), "/Calibre/Library/"),
+            "/Reading/Calibre/Library"
+        );
+        assert_eq!(join_remote_root(None, "/Calibre"), "/Calibre");
     }
 
     #[tokio::test]

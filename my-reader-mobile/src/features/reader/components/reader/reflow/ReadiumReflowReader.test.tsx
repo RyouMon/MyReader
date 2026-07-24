@@ -325,6 +325,52 @@ describe("ReadiumReflowReader", () => {
     expect(onPublicationReady).toHaveBeenCalledWith("publication")
   })
 
+  it("should restore synced progress when native location arrives before publication readiness", () => {
+    const onStateChange = jest.fn()
+    const positions = [
+      locator("OEBPS/chapter1.xhtml", {
+        position: 1,
+        totalProgression: 0,
+      }),
+      locator("OEBPS/chapter2.xhtml", {
+        position: 2,
+        totalProgression: 0.5,
+      }),
+      locator("OEBPS/chapter3.xhtml", {
+        position: 3,
+        totalProgression: 1,
+      }),
+    ]
+    const initialLocator = locator("desktop/chapter3.xhtml", {
+      position: 3,
+      totalProgression: 1,
+    })
+    readerElement({ initialLocator, onStateChange })
+
+    act(() => {
+      mockReadiumProps?.onLocationChange?.(positions[0]!)
+    })
+    mockGoTo.mockClear()
+    onStateChange.mockClear()
+
+    act(() => {
+      mockReadiumProps?.onPublicationReady?.({
+        metadata: { language: [], title: "Book" },
+        positions,
+        publicationId: "publication",
+        tableOfContents: [],
+      } as PublicationReadyEvent)
+    })
+
+    expect(mockGoTo).toHaveBeenCalledWith(positions[2])
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        currentPage: 2,
+        locator: positions[2],
+      }),
+    )
+  })
+
   it("should notify after user navigation follows programmatic navigation", () => {
     const readerRef = React.createRef<ReadiumReflowReaderRef>()
     const onUserLocationChange = jest.fn()

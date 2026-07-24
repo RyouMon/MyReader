@@ -12,6 +12,7 @@ pub use super::comments::Entity as Comments;
 pub use super::data::Entity as Data;
 pub use super::identifiers::Entity as Identifiers;
 pub use super::languages::Entity as Languages;
+pub use super::library_id::Entity as LibraryId;
 pub use super::publishers::Entity as Publishers;
 pub use super::ratings::Entity as Ratings;
 pub use super::series::Entity as Series;

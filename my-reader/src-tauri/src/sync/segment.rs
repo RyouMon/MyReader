@@ -488,6 +488,8 @@ mod tests {
     struct ContractFixture {
         segment: Segment,
         segment_encoding: EncodingFixture,
+        reading_position_segment: Segment,
+        reading_position_segment_encoding: EncodingFixture,
     }
 
     fn fixture() -> ContractFixture {
@@ -535,6 +537,27 @@ mod tests {
             .unwrap(),
             fixture.segment
         );
+    }
+
+    #[test]
+    fn should_produce_mobile_compatible_bytes_when_desktop_prepares_reading_positions() {
+        let fixture = fixture();
+        let prepared =
+            prepare_segment(&fixture.reading_position_segment, 1_771_836_263_919).unwrap();
+
+        assert_eq!(
+            prepared.sha256,
+            fixture.reading_position_segment_encoding.sha256
+        );
+        assert_eq!(
+            prepared.path,
+            format!(
+                ".myreader/changes-v4/{}/{}",
+                fixture.reading_position_segment.replica_id,
+                fixture.reading_position_segment_encoding.file_name
+            )
+        );
+        assert_eq!(prepared.change_ids.len(), 2);
     }
 
     #[test]

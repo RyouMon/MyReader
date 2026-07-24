@@ -1,39 +1,117 @@
-// Feature：阅读进度自动保存
-//
-// Scenario：用户阅读时进度自动保存
-//   Given 用户正在阅读一本书
-//   When 用户翻页或跳转位置
-//   Then 系统应在防抖延迟后自动保存当前阅读位置
-//
-// Scenario：快速翻页时避免重复保存
-//   Given 用户连续快速翻页
-//   When 用户停止翻页超过防抖时间
-//   Then 系统应只保存最终停留的位置，不保存中间位置
-//
-// Scenario：切换书籍时保存上一本书进度
-//   Given 用户正在阅读书籍 A
-//   When 用户切换到书籍 B 并开始阅读
-//   Then 系统应保存书籍 A 的最终进度，并开始跟踪书籍 B 的进度
-//
-// Scenario：保存失败时不阻断阅读
-//   Given 用户正在阅读
-//   When 进度保存因存储错误失败
-//   Then 系统应记录错误日志，用户阅读界面不受影响
+import type { Locator } from "@my-reader/readium"
+import { act, renderHook } from "@testing-library/react-native"
 
-describe("阅读进度自动保存", () => {
-  it("should 阅读位置变化后应在防抖时间内自动保存进度 when saving reader progress", () => {
-    // TODO: BDD 审核通过后实现
+import { setReadingProgress } from "@/src/domain/library/reading-progress"
+import type { Library } from "@/src/domain/types"
+import type { ReaderState } from "@/src/features/reader/components/reader/types"
+import { useAppStore } from "@/src/store/app-store"
+
+import { useReaderProgressSaver } from "./use-reader-progress-saver"
+
+jest.mock("@/src/domain/library/reading-progress", () => ({
+  setReadingProgress: jest.fn(),
+}))
+
+jest.mock("@/src/services/query/query-client", () => ({
+  queryClient: {
+    invalidateQueries: jest.fn(),
+  },
+}))
+
+jest.mock("@/src/store/app-store", () => {
+  const useAppStore = Object.assign(jest.fn(), {
+    getState: jest.fn(),
+  })
+  return { useAppStore }
+})
+
+const library = {
+  id: "library-1",
+  name: "Library",
+  path: "file:///library",
+  sourceType: "local",
+} as Library
+
+const loadState = {
+  status: "ready",
+  bookId: 7,
+  format: "EPUB",
+}
+
+function locator(position: number): Locator {
+  return {
+    href: `chapter-${position}.xhtml`,
+    type: "application/xhtml+xml",
+    locations: {
+      progression: 0,
+      position,
+      totalProgression: position / 10,
+    },
+  }
+}
+
+function readerState(position: number): ReaderState {
+  return {
+    ready: true,
+    currentPage: position - 1,
+    totalPages: 10,
+    progress: position / 10,
+    chapterTitle: "",
+    loading: false,
+    error: null,
+    locator: locator(position),
+  }
+}
+
+describe("useReaderProgressSaver", () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+    jest.clearAllMocks()
+    jest.mocked(useAppStore.getState).mockReturnValue({
+      libraries: [library],
+    } as ReturnType<typeof useAppStore.getState>)
+    jest.mocked(setReadingProgress).mockResolvedValue(undefined)
   })
 
-  it("should 连续快速翻页后应只保存最终位置 when saving reader progress", () => {
-    // TODO: BDD 审核通过后实现
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
-  it("should 切换书籍时应正确切换进度保存上下文 when saving reader progress", () => {
-    // TODO: BDD 审核通过后实现
-  })
+  it("should not overwrite initial progress when a book opens", () => {
+    const { rerender, unmount } = renderHook(
+      ({ state }: { state: ReaderState }) =>
+        useReaderProgressSaver(library.id, loadState, state),
+      { initialProps: { state: readerState(1) } },
+    )
 
-  it("should 保存失败时应静默处理并记录日志 when saving reader progress", () => {
-    // TODO: BDD 审核通过后实现
+    act(() => {
+      jest.advanceTimersByTime(1600)
+    })
+    expect(setReadingProgress).not.toHaveBeenCalled()
+
+    rerender({ state: readerState(1) })
+    act(() => {
+      jest.advanceTimersByTime(1600)
+    })
+    expect(setReadingProgress).not.toHaveBeenCalled()
+
+    rerender({ state: readerState(2) })
+    act(() => {
+      jest.advanceTimersByTime(1600)
+    })
+    expect(setReadingProgress).toHaveBeenCalledWith(
+      library,
+      7,
+      "EPUB",
+      expect.objectContaining({
+        locations: expect.objectContaining({ position: 2 }),
+      }),
+      {
+        displayProgression: 0.2,
+        invalidate: false,
+      },
+    )
+
+    unmount()
   })
 })

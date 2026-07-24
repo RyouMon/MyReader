@@ -71,10 +71,11 @@ jest.mock("expo-crypto", () => ({
     SHA256: "SHA-256",
   },
   digest: async (_algorithm, data) => {
+    if (!ArrayBuffer.isView(data)) {
+      throw new TypeError("expo-crypto digest data must be a TypedArray")
+    }
     const { createHash } = require("node:crypto")
-    const input = ArrayBuffer.isView(data)
-      ? Buffer.from(data.buffer, data.byteOffset, data.byteLength)
-      : Buffer.from(data)
+    const input = Buffer.from(data.buffer, data.byteOffset, data.byteLength)
     const hash = createHash("sha256").update(input).digest()
     return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength)
   },

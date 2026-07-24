@@ -1,12 +1,16 @@
+use my_reader_lib::entities::app::sync_local_meta;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::sync_service::SyncService;
+use sea_orm::{Database, EntityTrait};
+
+use crate::common::calibre::create_calibre_db;
 
 fn local_library(id: &str, original_path: &str) -> LibraryConfig {
     LibraryConfig {
-        id: id.to_string(),
-        name: "Local".to_string(),
-        path: original_path.to_string(),
-        source_type: Some("local".to_string()),
+        id: id.to_owned(),
+        name: "Local".to_owned(),
+        path: original_path.to_owned(),
+        source_type: Some("local".to_owned()),
         data_source_id: None,
         source_path: None,
     }
@@ -14,78 +18,79 @@ fn local_library(id: &str, original_path: &str) -> LibraryConfig {
 
 fn remote_library(id: &str) -> LibraryConfig {
     LibraryConfig {
-        id: id.to_string(),
-        name: "WebDAV".to_string(),
-        path: "".to_string(),
-        source_type: Some("webdav".to_string()),
-        data_source_id: Some("ds-webdav".to_string()),
-        source_path: Some("/books".to_string()),
+        id: id.to_owned(),
+        name: "WebDAV".to_owned(),
+        path: String::new(),
+        source_type: Some("webdav".to_owned()),
+        data_source_id: Some("missing-source".to_owned()),
+        source_path: Some("/books".to_owned()),
     }
 }
 
 #[tokio::test]
-async fn sync_db_for_library_should_sync_remote_library_inside_container() {
-    let app_data = tempfile::tempdir().unwrap();
-    let mut config = AppConfig::default();
-    config.libraries.push(remote_library("lib-remote"));
-
-    let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-remote")
-        .await
-        .expect("remote sync should succeed");
-
-    assert_eq!(report.pushed, 0);
-    assert_eq!(report.pulled, 0);
-    assert!(config.device_id.is_some());
-}
-
-#[tokio::test]
-async fn sync_db_for_library_should_mirror_container_changes_to_original_for_local_library() {
+async fn should_initialize_v4_replica_when_local_library_syncs() {
     let app_data = tempfile::tempdir().unwrap();
     let original = tempfile::tempdir().unwrap();
-    let mut config = AppConfig::default();
-    config.libraries.push(local_library(
-        "lib-local",
-        original.path().to_str().unwrap(),
-    ));
-
-    SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
-        .await
-        .expect("first sync should initialize sidecar");
-    let device_id = config.device_id.clone().expect("device id generated");
-
-    let change_path = app_data
-        .path()
-        .join("libraries/lib-local/.myreader/changes")
-        .join(&device_id)
-        .join("1.jsonl");
-    tokio::fs::create_dir_all(change_path.parent().unwrap())
-        .await
-        .expect("create change dir");
-    tokio::fs::write(&change_path, b"{}")
-        .await
-        .expect("write change file");
+    create_calibre_db(original.path()).await;
+    let mut config = AppConfig {
+        libraries: vec![local_library(
+            "lib-local",
+            original.path().to_str().unwrap(),
+        )],
+        ..Default::default()
+    };
 
     let report = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-local")
         .await
-        .expect("second sync should mirror changes");
+        .expect("local sync should succeed");
+    let sidecar = app_data.path().join("libraries").join("lib-local");
+    let db = Database::connect(format!(
+        "sqlite://{}?mode=ro",
+        sidecar.join(".myreader").join("myreader.db").display()
+    ))
+    .await
+    .unwrap();
+    let identity = sync_local_meta::Entity::find()
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
 
     assert_eq!(report.pushed, 0);
-    let original_change = original
-        .path()
-        .join(".myreader/changes")
-        .join(&device_id)
-        .join("1.jsonl");
-    assert!(tokio::fs::try_exists(&original_change).await.unwrap());
+    assert_eq!(report.pulled, 0);
+    assert_eq!(identity.protocol, "library-sidecar-v4");
+    assert_eq!(
+        identity.library_uuid,
+        "018f2f8d-980b-40ef-b72e-c6e86cb7cc28"
+    );
 }
 
 #[tokio::test]
-async fn sync_db_for_library_should_return_not_found_when_library_is_unknown() {
+async fn should_return_not_found_when_remote_library_data_source_is_missing() {
+    let app_data = tempfile::tempdir().unwrap();
+    let cached_root = app_data.path().join("libraries").join("lib-remote");
+    std::fs::create_dir_all(&cached_root).unwrap();
+    create_calibre_db(&cached_root).await;
+    let mut config = AppConfig {
+        libraries: vec![remote_library("lib-remote")],
+        ..Default::default()
+    };
+
+    let error = SyncService::sync_db_for_library(app_data.path(), &mut config, "lib-remote")
+        .await
+        .expect_err("missing data source should fail");
+
+    assert!(error.to_string().contains("DATASOURCE_NOT_FOUND"));
+}
+
+#[tokio::test]
+async fn should_return_not_found_when_library_is_unknown() {
     let app_data = tempfile::tempdir().unwrap();
     let mut config = AppConfig::default();
 
-    let err = SyncService::sync_db_for_library(app_data.path(), &mut config, "ghost")
+    let error = SyncService::sync_db_for_library(app_data.path(), &mut config, "ghost")
         .await
         .expect_err("unknown library should fail");
 
-    assert!(format!("{err}").contains("LIBRARY_NOT_FOUND"));
+    assert!(error.to_string().contains("LIBRARY_NOT_FOUND"));
 }

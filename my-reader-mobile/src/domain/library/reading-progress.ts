@@ -1,10 +1,12 @@
 import type { Locator } from "@my-reader/readium"
 
-import {
-  getReadingProgressRow,
-  upsertReadingProgress,
-} from "../../repos/reading-progress"
+import { getReadingProgressRow } from "../../repos/reading-progress"
+import { writeLocalReadingPosition } from "../sync/library-sidecar/reading-position"
 import type { Library } from "../types"
+import {
+  invalidateReadingProgress,
+  invalidateRecentlyReadBooks,
+} from "@/src/services/query/invalidate-table"
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v)
@@ -70,13 +72,33 @@ export async function getReadingProgress(
   try {
     const row = await getReadingProgressRow(library, bookId, fmt)
     if (!row) {
+      console.info("[reading-sync] progress:read", {
+        libraryId: library.id,
+        bookId,
+        format: fmt,
+        found: false,
+      })
       return null
     }
 
     const raw: unknown = JSON.parse(row.locatorJson)
-    return parseStoredLocator(raw)
+    const locator = parseStoredLocator(raw)
+    console.info("[reading-sync] progress:read", {
+      libraryId: library.id,
+      bookId,
+      format: fmt,
+      found: true,
+      valid: locator !== null,
+      syncClock: row.syncClock,
+      href: locator?.href ?? null,
+      position: locator?.locations?.position ?? null,
+      totalProgression: locator?.locations?.totalProgression ?? null,
+      displayProgression: row.displayProgression,
+    })
+    return locator
   } catch (e) {
     console.error("[reading-progress] get:error", {
+      libraryId: library.id,
       bookId,
       format: fmt,
       error: e,
@@ -98,24 +120,25 @@ export async function setReadingProgress(
     ...locator,
     href: normalizeHrefForStorage(locator.href),
   }
-  const locatorJson = JSON.stringify(normalized)
 
   try {
-    await upsertReadingProgress(
-      library,
-      {
-        bookId,
-        format: fmt,
-        locatorJson,
-        displayProgression: options?.displayProgression ?? null,
-      },
-      options,
-    )
+    await writeLocalReadingPosition(library, {
+      bookId,
+      format: fmt,
+      locator: normalized,
+      displayProgression: options?.displayProgression ?? null,
+    })
+    if (options?.invalidate ?? true) {
+      void invalidateReadingProgress(library.id)
+      void invalidateRecentlyReadBooks(library.id)
+    }
   } catch (e) {
     console.error("[reading-progress] set:error", {
+      libraryId: library.id,
       bookId,
       format: fmt,
       error: e,
     })
+    throw e
   }
 }

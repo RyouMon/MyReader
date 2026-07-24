@@ -46,6 +46,66 @@
     "sha256": "1016eb9770b1bf6dbbd1e11ae7b8a0968f55e4e76fb500a9ca182b6558dfb0fb",
     "fileName": "42-1016eb9770b1bf6dbbd1e11ae7b8a096.json"
   },
+  "readingPositionSegment": {
+    "protocol": "library-sidecar-v4",
+    "libraryUuid": "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
+    "replicaId": "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
+    "sequence": "1",
+    "changes": [
+      {
+        "changeId": "018f2f8d980b40efb72ec6e86cb70042",
+        "clock": "0000019c89abcdef-000000000000002a-018f2f8d980b40efb72ec6e86cb7cc29",
+        "state": {
+          "domain": "reading_position.v1",
+          "bookId": 42,
+          "format": "EPUB",
+          "register": {
+            "clock": "0000019c89abcdef-000000000000002a-018f2f8d980b40efb72ec6e86cb7cc29",
+            "value": {
+              "locator": {
+                "href": "OPS/chapter-2.xhtml",
+                "type": "application/xhtml+xml",
+                "locations": {
+                  "position": 2,
+                  "progression": 0.2,
+                  "totalProgression": 0.2
+                }
+              },
+              "displayProgression": 0.2
+            }
+          }
+        }
+      },
+      {
+        "changeId": "018f2f8d980b40efb72ec6e86cb70043",
+        "clock": "0000019c89abcdef-000000000000002b-018f2f8d980b40efb72ec6e86cb7cc29",
+        "state": {
+          "domain": "reading_position.v1",
+          "bookId": 43,
+          "format": "EPUB",
+          "register": {
+            "clock": "0000019c89abcdef-000000000000002b-018f2f8d980b40efb72ec6e86cb7cc29",
+            "value": {
+              "locator": {
+                "href": "OPS/chapter-8.xhtml",
+                "type": "application/xhtml+xml",
+                "locations": {
+                  "position": 8,
+                  "progression": 0.8,
+                  "totalProgression": 0.8
+                }
+              },
+              "displayProgression": 0.8
+            }
+          }
+        }
+      }
+    ]
+  },
+  "readingPositionSegmentEncoding": {
+    "sha256": "62900bd0a76a547220fbe08b963d9d43e2424cfc38c45dc261d5a2207f53bb0c",
+    "fileName": "1-62900bd0a76a547220fbe08b963d9d43.json"
+  },
   "replicaMetadata": {
     "schemaVersion": 1,
     "replicaId": "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",

@@ -324,6 +324,15 @@ export function useBookLoader(
 
         const initialLocator = await getReadingProgress(lib, calibreId, fmt)
         if (cancelled) return
+        console.info("[reading-sync] reader:initial-progress-loaded", {
+          libraryId: lib.id,
+          bookId: calibreId,
+          format: fmtUpper,
+          found: initialLocator !== null,
+          href: initialLocator?.href ?? null,
+          position: initialLocator?.locations?.position ?? null,
+          totalProgression: initialLocator?.locations?.totalProgression ?? null,
+        })
 
         const initialPage =
           detailLayoutMode === "fixedLayout"

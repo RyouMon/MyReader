@@ -145,17 +145,37 @@ const ReadiumFixedReader = forwardRef<
       // then find the matching native locator from positions list.
       // This ensures the href matches the platform-native format.
       let startLocator: Locator | undefined = event.positions[0]
+      let startSource = "publication-start"
       if (initialLocator) {
         const resolved = resolveNativeLocator(event.positions, initialLocator)
-        if (resolved) startLocator = resolved
+        if (resolved) {
+          startLocator = resolved
+          startSource = "stored-progress"
+        }
       } else if (currentLocatorRef.current) {
         const resolved = resolveNativeLocator(
           event.positions,
           currentLocatorRef.current,
         )
-        if (resolved) startLocator = resolved
+        if (resolved) {
+          startLocator = resolved
+          startSource = "current-location"
+        }
       }
       currentLocatorRef.current = startLocator ?? null
+      console.info("[reading-sync] reader:position-resolved", {
+        format: "FIXED",
+        source: startSource,
+        positions: event.positions.length,
+        storedHref: initialLocator?.href ?? null,
+        storedPosition: initialLocator?.locations?.position ?? null,
+        storedTotalProgression:
+          initialLocator?.locations?.totalProgression ?? null,
+        resolvedHref: startLocator?.href ?? null,
+        resolvedPosition: startLocator?.locations?.position ?? null,
+        resolvedTotalProgression:
+          startLocator?.locations?.totalProgression ?? null,
+      })
 
       const currentPage = startLocator
         ? positionIndexForLocator(event.positions, startLocator)
