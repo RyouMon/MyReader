@@ -2,25 +2,27 @@
 adr: ADR-0016
 proposal_date: 2026-07-25
 decision_date: 2026-07-25
-status: 已接受
+status: 部分实施
 name: 采用 Automerge 作为书库 sidecar 的 CRDT 核心
 overview: 保留每书库 sidecar、本地 SQLite projection 和现有数据源边界，用 Automerge 的二进制 change、因果历史与冲突保留能力取代 ADR-0015 已部分实施的 HLC、自研 CRDT join 和普通 JSON segment；先验证 Rust、Expo iOS、Expo Android 跨端互操作，再按阅读进度、收藏、书签、批注、阅读会话与完成记录的顺序完成替换。
 todos:
   - id: phase0-automerge-gate
     content: "Phase 0：冻结 Automerge 文档模型，并验证 Rust、Expo iOS、Expo Android 二进制 change 互操作、冲突读取与 SQLite 原子持久化"
     status: pending
+    note: 合同、双向 fixture、Rust 互操作与 iOS production export 已通过；真实 iOS 运行门禁受本机 CoreSimulator 服务崩溃阻塞，Android 运行门禁尚未执行
   - id: phase1-sidecar-storage
     content: "Phase 1：在每书库本地 SQLite 中持久化 Automerge state/change、事务 outbox 和 projection，并通过现有数据源交换不可变二进制增量"
-    status: pending
+    status: completed
   - id: phase2-reading-position
     content: "Phase 2：以阅读进度完成首个纵向切片，支持真正并发进度的手动选择，并通过 desktop、iOS、Android 真实同步闭环"
     status: pending
+    note: 产品切片、冲突选择、双 replica 自动化闭环与 Tauri 保存回读已完成；真实 iOS、Android 和云端双设备门禁尚未完成
   - id: phase3-existing-state
     content: "Phase 3：将收藏、书签、高亮、颜色和短笔记接入 Automerge，并删除 ADR-0015 的 HLC/JSON 产品路径"
-    status: pending
+    status: completed
   - id: phase4-reading-records
     content: "Phase 4：接入阅读会话与最早完成记录，保持当前书库统计口径并完成投影重建验证"
-    status: pending
+    status: completed
 isProject: true
 ---
 

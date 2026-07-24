@@ -342,29 +342,36 @@ my-reader/src-tauri/src/entities
 4. `file_state` 记录文件的本地状态。
 5. 刷新/同步后让 React Query 和产品 store 更新可见状态。
 
-### 7.3 当前 sidecar v3
+### 7.3 当前 Automerge sidecar
 
-当前已经运行的 MyReader 数据同步协议是 `.myreader/changes/<device_id>/<sequence>.jsonl`：
+[ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) 使用 Automerge Core
+取代旧 JSONL/HLC 同步内核：
 
-- desktop 和 mobile 各自枚举本地 sidecar 变化并追加 JSONL segment。
-- 远端只交换普通文件，不共享打开远端 SQLite。
-- 当前注册的业务表只有 `reading_progress` 和 `bookmarks`。
-- 合并使用基于 `updated_at` 的 row-level LWW，并为书签保留 tombstone。
-- `sync_meta` 保存本设备 sequence、push cursor 和各远端设备 pull cursor。
+- 每个 Calibre 书库对应一个独立 Automerge document 和一个独立本地 SQLite。
+- desktop Rust 与 mobile TypeScript 使用同一 canonical genesis binary、root schema 和
+  incremental fixture。
+- 远端只交换
+  `.myreader/automerge/changes/<actor_id>/<sequence>-<change_hash>.am`
+  不可变增量；不上传 SQLite、WAL 或 SHM。
+- 本地 Automerge state/change、durable outbox、receipt、projection metadata 与业务
+  projection 由 SQLite 事务保护。
+- 同步范围固定为收藏、阅读位置、书签、批注、阅读会话和完成记录六个现有 domain。
+- 真正并发的阅读位置保留候选，用户选择后产生因果上晚于所有候选的新 change。
+- SQLite 列表、详情、reader 和当前书库阅读统计仍使用本地 projection；同步完成后立即刷新相关
+  查询。
 
-因此收藏、批注、阅读会话和完成记录虽然已经存在于本地 schema，但当前尚未进入跨设备同步流。
+ADR-0015 的 HLC、普通 JSON segment、自研 join 和旧 prepared/cursor 表已经退出产品路径。
+该 breaking change 不解析或迁移旧远端同步数据；遗留远端目录也不会被自动删除。
 
-### 7.4 已接受但未实施的 sidecar v4
+### 7.4 同步实现边界
 
-[ADR-0015](./docs/adr/0015-library-sidecar-crdt-reading-sync.md) 已接受以下目标，但其 Phase 0 至 Phase 4 仍为 pending，不能当作当前实现：
-
-- `changes-v4` 普通 JSON segment。
-- transaction outbox、连续 cursor、replica ID 和 HLC。
-- 类型化 CRDT merge，而不是通用文档 CRDT。
-- 同步收藏、阅读位置、书签、批注/笔记、阅读会话和最早完成记录六个 domain。
-- 继续保持每书库 sidecar，不引入中央 Profile。
-
-在 v4 落地前，代码和兼容性判断必须以 7.3 的 v3 行为为准。
+- Automerge 负责 change 因果关系、依赖、去重、冲突保留和收敛。
+- MyReader 负责 domain command、书库身份、业务校验、SQLite projection、对象存储传输和产品
+  冲突 UX。
+- OneDrive、WebDAV 与 local-direct 仍是通用数据源适配器；同步协议不得把业务 envelope 重新
+  塞进适配器层。
+- 阅读偏好、应用设置、凭据、下载状态和缓存不进入 Automerge document。
+- 跨书库统计聚合、中心 Profile、账户系统和端到端加密不属于当前实现。
 
 ## 8. 关键架构约束
 
