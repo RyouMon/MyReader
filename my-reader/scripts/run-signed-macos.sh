@@ -5,6 +5,16 @@ set -eu
 binary_path=$1
 shift
 
+# Cargo can replace target/debug/my-reader while a dev process is still running,
+# which makes securityd reject that process when it next reads the Keychain.
+case "$binary_path" in
+  */my-reader)
+    launched_binary_path="${binary_path}.dev-signed"
+    cp "$binary_path" "$launched_binary_path"
+    binary_path=$launched_binary_path
+    ;;
+esac
+
 signing_identity=${MY_READER_MACOS_SIGNING_IDENTITY:-${APPLE_SIGNING_IDENTITY:-}}
 if [ -z "$signing_identity" ]; then
   signing_identity=$(security find-identity -v -p codesigning 2>/dev/null \
