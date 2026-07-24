@@ -4,6 +4,15 @@ import { ReadiumPdfReader } from "@/components/reader/readium/ReadiumPdfReader"
 import { ReaderBottomStatusBar } from "@/components/reader/shared/ReaderBottomStatusBar"
 import { ReaderChromeShell } from "@/components/reader/shared/ReaderChromeShell"
 import { ReaderPaginateEdgeTurnStrips } from "@/components/reader/shared/ReaderPaginateEdgeTurnStrips"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   READER_SETTINGS_CONTENT_CLASS,
   READER_SETTINGS_LABEL_CLASS,
@@ -28,7 +37,7 @@ import {
 import { isMainWebviewWindow, openReaderInNewWindow } from "@/lib/readerWindow"
 import { resolveReadFormat } from "@/lib/readFormats"
 import { parseSavedLocator } from "@/lib/readium/locator"
-import { api } from "@/lib/tauri-api"
+import { api, type ReadingPositionCandidateDto } from "@/lib/tauri-api"
 import { useAppUiStore } from "@/stores/appUiStore"
 import { useLibraryUiStore } from "@/stores/libraryUiStore"
 import type { Locator } from "@readium/shared"
@@ -106,6 +115,11 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
     }
     initialSavedLocator: Locator | null
   } | null>(null)
+  const [positionConflict, setPositionConflict] = useState<
+    ReadingPositionCandidateDto[] | null
+  >(null)
+  const [resolvingPositionConflict, setResolvingPositionConflict] =
+    useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [downloadState, setDownloadState] = useState<
     "idle" | "downloading" | "error" | "cancelled" | "done"
@@ -204,6 +218,7 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
         return
       }
       setBookPayload(null)
+      setPositionConflict(null)
       setFetchError(null)
       setDownloadState("idle")
       setDownloadError(null)
@@ -230,9 +245,20 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
                 .getReadingProgress(activeLibraryId, Number(bookId), fmt)
                 .catch(() => null)
             : Promise.resolve(null)
+        const candidatesP =
+          isTauri() && activeLibraryId
+            ? api
+                .listReadingPositionCandidates(
+                  activeLibraryId,
+                  Number(bookId),
+                  fmt,
+                )
+                .catch(() => [])
+            : Promise.resolve([])
 
-        const [row, preparedSource] = await Promise.all([
+        const [row, candidates, preparedSource] = await Promise.all([
           progressP,
+          candidatesP,
           pTimeout(
             api.prepareBookSource(activeLibraryId, Number(bookId), fmt),
             {
@@ -257,6 +283,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           source,
           initialSavedLocator,
         })
+        if (candidates.length > 1) {
+          setPositionConflict(candidates)
+        }
       } catch (e) {
         if (cancelled) return
         const msg = String(e)
@@ -316,9 +345,18 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           extractedEntries: preparedSource.extractedEntries ?? [],
         }
 
-        const row = await api
-          .getReadingProgress(activeLibraryId, Number(bookId), format)
-          .catch(() => null)
+        const [row, candidates] = await Promise.all([
+          api
+            .getReadingProgress(activeLibraryId, Number(bookId), format)
+            .catch(() => null),
+          api
+            .listReadingPositionCandidates(
+              activeLibraryId,
+              Number(bookId),
+              format,
+            )
+            .catch(() => []),
+        ])
         if (cancelled) return
         const initialSavedLocator = parseSavedLocator(row?.locator ?? null)
 
@@ -326,6 +364,9 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
           source,
           initialSavedLocator,
         })
+        if (candidates.length > 1) {
+          setPositionConflict(candidates)
+        }
       } catch (e) {
         if (!cancelled) setFetchError(String(e))
       }
@@ -344,6 +385,40 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
       navigate({ to: "/book/$bookId", params: { bookId } })
     }
   }, [navigate, bookId])
+
+  const handlePositionConflict = useCallback(
+    async (candidate: ReadingPositionCandidateDto | null) => {
+      if (!candidate) {
+        setPositionConflict(null)
+        return
+      }
+      if (!activeLibraryId || !format) return
+
+      setResolvingPositionConflict(true)
+      try {
+        await api.selectReadingPositionCandidate(
+          activeLibraryId,
+          Number(bookId),
+          format,
+          candidate.operationId,
+        )
+        setBookPayload((current) =>
+          current
+            ? {
+                ...current,
+                initialSavedLocator: parseSavedLocator(candidate.locator),
+              }
+            : current,
+        )
+        setPositionConflict(null)
+      } catch (error) {
+        setFetchError(String(error))
+      } finally {
+        setResolvingPositionConflict(false)
+      }
+    },
+    [activeLibraryId, bookId, format],
+  )
 
   const handleRetryDownload = useCallback(() => {
     if (!activeLibraryId || !format) return
@@ -488,6 +563,57 @@ export function ReadBookPage({ bookId, formatFromSearch }: ReadBookPageProps) {
   if (!bookPayload) {
     return renderWindowState(
       <ReadBookLoading message={t("reader.loadingBook")} />,
+    )
+  }
+
+  if (positionConflict) {
+    return renderWindowState(
+      <>
+        <ReadBookLoading message={t("reader.loadingBook")} />
+        <Dialog open>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle>{t("reader.positionConflictTitle")}</DialogTitle>
+              <DialogDescription>
+                {t("reader.positionConflictDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              {positionConflict.map((candidate) => (
+                <Button
+                  key={candidate.operationId}
+                  variant="outline"
+                  className="h-auto justify-between px-4 py-3"
+                  disabled={resolvingPositionConflict}
+                  onClick={() => void handlePositionConflict(candidate)}
+                >
+                  <span>
+                    {candidate.displayProgression == null
+                      ? t("reader.positionUnknown")
+                      : t("reader.positionPercentage", {
+                          percentage: Math.round(
+                            candidate.displayProgression * 100,
+                          ),
+                        })}
+                  </span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {new Date(candidate.recordedAt).toLocaleString()}
+                  </span>
+                </Button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                disabled={resolvingPositionConflict}
+                onClick={() => void handlePositionConflict(null)}
+              >
+                {t("reader.positionConflictKeepDefault")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>,
     )
   }
 

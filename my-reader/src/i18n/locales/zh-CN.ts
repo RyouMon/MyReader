@@ -325,6 +325,12 @@ export const zhCN = {
       backToDetail: "返回书籍详情",
       loadFailed: "加载失败",
       loadTimeout: "书籍加载超时，请检查书库连接后重试",
+      positionConflictTitle: "选择阅读位置",
+      positionConflictDescription:
+        "这本书在不同设备上有多个离线阅读位置，请选择要继续的位置。",
+      positionConflictKeepDefault: "暂不选择，使用当前进度",
+      positionPercentage: "阅读到 {{percentage}}%",
+      positionUnknown: "未知阅读位置",
       toc: "目录",
       navigation: "目录",
       close: "关闭",

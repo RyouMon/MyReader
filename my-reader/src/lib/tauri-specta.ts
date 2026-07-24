@@ -42,6 +42,10 @@ export const commands = {
 } | null, ErrorKind>(__TAURI_INVOKE("get_reading_progress", { libraryId, bookId, format })),
 	listReadingProgress: (libraryId: string | null) => typedError<ReadingProgressDto[], ErrorKind>(__TAURI_INVOKE("list_reading_progress", { libraryId })),
 	setReadingProgress: (libraryId: string | null, bookId: number, format: string, locator: any, displayProgression: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reading_progress", { libraryId, bookId, format, locator, displayProgression })),
+	listReadingPositionCandidates: (libraryId: string | null, bookId: number, format: string) => typedError<ReadingPositionCandidateDto[], ErrorKind>(__TAURI_INVOKE("list_reading_position_candidates", { libraryId, bookId, format })),
+	selectReadingPositionCandidate: (libraryId: string | null, bookId: number, format: string, operationId: string) => typedError<null, ErrorKind>(__TAURI_INVOKE("select_reading_position_candidate", { libraryId, bookId, format, operationId })),
+	addReadingSessionInterval: (libraryId: string | null, id: string, bookId: number, format: string, localDay: string, startedAt: number | null, durationSeconds: number, updatedAt: number | null) => typedError<null, ErrorKind>(__TAURI_INVOKE("add_reading_session_interval", { libraryId, id, bookId, format, localDay, startedAt, durationSeconds, updatedAt })),
+	addReadingCompletion: (libraryId: string | null, id: string, bookId: number, format: string, localDay: string, completedAt: number | null, updatedAt: number | null) => typedError<boolean, ErrorKind>(__TAURI_INVOKE("add_reading_completion", { libraryId, id, bookId, format, localDay, completedAt, updatedAt })),
 	listReaderAnnotations: (libraryId: string | null, bookId: number, format: string) => typedError<ReaderAnnotationDto[], ErrorKind>(__TAURI_INVOKE("list_reader_annotations", { libraryId, bookId, format })),
 	addReaderAnnotation: (libraryId: string | null, bookId: number, format: string, locator: any, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("add_reader_annotation", { libraryId, bookId, format, locator, color, note })),
 	updateReaderAnnotation: (libraryId: string | null, bookId: number, format: string, id: string, color: string, note: string | null) => typedError<ReaderAnnotationDto, ErrorKind>(__TAURI_INVOKE("update_reader_annotation", { libraryId, bookId, format, id, color, note })),
@@ -278,6 +282,14 @@ export type ReaderUiPreferences_Serialize = {
 	detailFullScreen: boolean,
 	fixedLayout: FixedLayoutSettingsDto,
 	reflowable: ReflowableReaderPreferencesDto,
+};
+
+export type ReadingPositionCandidateDto = {
+	operationId: string,
+	locator: any,
+	displayProgression: number | null,
+	recordedAt: number,
+	replicaId: string,
 };
 
 /**  Returned by `get_reading_progress`: JSON of a Readium `Locator` (compatible with `@readium/shared`). */
