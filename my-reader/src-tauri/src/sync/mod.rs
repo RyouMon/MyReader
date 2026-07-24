@@ -7,6 +7,7 @@
 //! Low-level storage operators live in [`crate::storage`]; high-level
 //! orchestration lives in [`crate::services::sync_service`].
 
+pub mod bookmark;
 pub mod contract;
 pub mod db_sync;
 pub mod favorite;

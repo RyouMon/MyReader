@@ -8,6 +8,7 @@ import { syncMyReader } from "./myreader-sync"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
+  invalidateReaderBookmarks,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 
@@ -27,6 +28,7 @@ jest.mock("./library-sidecar/projection", () => ({
 jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateFavoriteBooks: jest.fn(),
   invalidateReadingProgress: jest.fn(),
+  invalidateReaderBookmarks: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
 }))
 
@@ -56,6 +58,7 @@ describe("syncMyReader", () => {
     jest.mocked(publishLibrarySidecarSegments).mockResolvedValue(2)
     jest.mocked(pullLibrarySidecarSegments).mockResolvedValue(3)
     jest.mocked(invalidateReadingProgress).mockResolvedValue(undefined)
+    jest.mocked(invalidateReaderBookmarks).mockResolvedValue(undefined)
     jest.mocked(invalidateRecentlyReadBooks).mockResolvedValue(undefined)
     jest.mocked(invalidateFavoriteBooks).mockResolvedValue(undefined)
   })
@@ -70,6 +73,7 @@ describe("syncMyReader", () => {
     )
     expect(pullLibrarySidecarSegments).toHaveBeenCalled()
     expect(invalidateFavoriteBooks).toHaveBeenCalledWith(context.library.id)
+    expect(invalidateReaderBookmarks).toHaveBeenCalledWith(context.library.id)
     expect(result.providers).toEqual({
       "library-sidecar.v4": { pushed: 2, pulled: 3 },
     })

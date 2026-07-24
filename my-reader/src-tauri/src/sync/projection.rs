@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 
+use super::bookmark::apply_bookmark_change;
 use super::contract::{DomainState, Segment};
 use super::favorite::apply_favorite_change;
 use super::hlc::Hlc;
@@ -35,6 +36,10 @@ impl SegmentProjection for LibrarySidecarProjection {
 
         for change in &segment.changes {
             let state_clock = match &change.state {
+                DomainState::Bookmark(incoming) => {
+                    apply_bookmark_change(txn, segment, change, incoming).await?;
+                    &incoming.register.clock
+                }
                 DomainState::Favorite(incoming) => {
                     apply_favorite_change(txn, segment, change, incoming).await?;
                     &incoming.register.clock

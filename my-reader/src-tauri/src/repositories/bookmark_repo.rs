@@ -1,6 +1,6 @@
 use sea_orm::{
     sea_query::{Alias, Condition, Expr, ExprTrait, Func, OnConflict},
-    ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
 };
 
 use crate::entities::app::bookmarks;
@@ -57,6 +57,7 @@ impl SqliteBookmarkRepository {
             created_at: Set(now),
             updated_at: Set(now),
             deleted_at: Set(None),
+            sync_clock: Set(None),
         };
         bookmarks::Entity::insert(active)
             .on_conflict(
@@ -200,6 +201,7 @@ impl SqliteBookmarkRepository {
             created_at: Set(created_at),
             updated_at: Set(updated_at),
             deleted_at: Set(deleted_at),
+            sync_clock: Set(None),
         };
         let rows_affected = bookmarks::Entity::insert(active)
             .on_conflict(
@@ -223,6 +225,76 @@ impl SqliteBookmarkRepository {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(rows_affected > 0)
+    }
+
+    pub async fn find_state<C>(
+        db: &C,
+        book_id: i64,
+        format: &str,
+        locator_key: &str,
+    ) -> Result<Option<bookmarks::Model>, AppError>
+    where
+        C: ConnectionTrait,
+    {
+        bookmarks::Entity::find()
+            .filter(bookmarks::Column::BookId.eq(book_id))
+            .filter(bookmarks::Column::Format.eq(format))
+            .filter(bookmarks::Column::LocatorKey.eq(locator_key))
+            .one(db)
+            .await
+            .map_err(|error| AppError::Database(error.to_string()))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn write_state<C>(
+        db: &C,
+        id: &str,
+        book_id: i64,
+        format: &str,
+        locator_key: &str,
+        locator_json: &str,
+        created_at: f64,
+        updated_at: f64,
+        deleted_at: Option<f64>,
+        sync_clock: &str,
+    ) -> Result<bookmarks::Model, AppError>
+    where
+        C: ConnectionTrait,
+    {
+        let active = bookmarks::ActiveModel {
+            id: Set(id.to_owned()),
+            book_id: Set(book_id),
+            format: Set(format.to_owned()),
+            locator_key: Set(locator_key.to_owned()),
+            locator_json: Set(locator_json.to_owned()),
+            created_at: Set(created_at),
+            updated_at: Set(updated_at),
+            deleted_at: Set(deleted_at),
+            sync_clock: Set(Some(sync_clock.to_owned())),
+        };
+        bookmarks::Entity::insert(active)
+            .on_conflict(
+                OnConflict::columns([
+                    bookmarks::Column::BookId,
+                    bookmarks::Column::Format,
+                    bookmarks::Column::LocatorKey,
+                ])
+                .update_columns([
+                    bookmarks::Column::Id,
+                    bookmarks::Column::LocatorJson,
+                    bookmarks::Column::CreatedAt,
+                    bookmarks::Column::UpdatedAt,
+                    bookmarks::Column::DeletedAt,
+                    bookmarks::Column::SyncClock,
+                ])
+                .to_owned(),
+            )
+            .exec_without_returning(db)
+            .await
+            .map_err(|error| AppError::Database(error.to_string()))?;
+        Self::find_state(db, book_id, format, locator_key)
+            .await?
+            .ok_or_else(|| AppError::Database("Bookmark state write returned no row".into()))
     }
 }
 

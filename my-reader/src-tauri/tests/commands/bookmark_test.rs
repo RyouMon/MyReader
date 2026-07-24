@@ -3,13 +3,14 @@ use serde_json::{json, Value};
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 
 use crate::common::app::TestApp;
+use crate::common::calibre::create_calibre_db;
 use crate::common::ipc::{invoke_err, invoke_ok};
 
-fn library_fixture(id: &str) -> LibraryConfig {
+fn library_fixture(id: &str, path: &str) -> LibraryConfig {
     LibraryConfig {
         id: id.into(),
         name: "Library".into(),
-        path: "/path".into(),
+        path: path.into(),
         source_type: Some("local".into()),
         data_source_id: None,
         source_path: None,
@@ -31,8 +32,13 @@ struct BookmarkView {
 
 #[tokio::test]
 async fn add_list_delete_should_round_trip_bookmark_when_commands_are_invoked() {
+    let library_root = tempfile::tempdir().unwrap();
+    create_calibre_db(library_root.path()).await;
     let app = TestApp::with_config(AppConfig {
-        libraries: vec![library_fixture("lib-a")],
+        libraries: vec![library_fixture(
+            "lib-a",
+            library_root.path().to_str().unwrap(),
+        )],
         active_library_id: Some("lib-a".into()),
         ..Default::default()
     });

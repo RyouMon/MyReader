@@ -12,6 +12,7 @@ import m0007 from './0007_add_reading_statistics.sql';
 import m0008 from './0008_add_library_sidecar_sync_kernel.sql';
 import m0009 from './0009_add_reading_progress_sync_clock.sql';
 import m0010 from './0010_add_favorite_sync_projection.sql';
+import m0011 from './0011_add_bookmark_sync_projection.sql';
 
 export default {
   journal,
@@ -27,5 +28,6 @@ export default {
     m0008,
     m0009,
     m0010,
+    m0011,
   },
 };

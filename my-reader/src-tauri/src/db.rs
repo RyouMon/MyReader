@@ -152,6 +152,7 @@ mod tests {
                 ("created_at".into(), "REAL".into(), 1),
                 ("updated_at".into(), "REAL".into(), 1),
                 ("deleted_at".into(), "REAL".into(), 0),
+                ("sync_clock".into(), "TEXT".into(), 0),
             ]
         );
 

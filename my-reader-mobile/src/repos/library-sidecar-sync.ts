@@ -54,6 +54,18 @@ export type LibrarySidecarFavoriteRow = {
   syncClock: string | null
 }
 
+export type LibrarySidecarBookmarkRow = {
+  id: string
+  bookId: number
+  format: string
+  locatorKey: string
+  locatorJson: string
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
+  syncClock: string | null
+}
+
 type DbRow = Record<string, Scalar>
 
 function requiredString(row: DbRow, key: string): string {
@@ -240,6 +252,82 @@ export async function writeLibrarySidecarFavorite(
         sync_clock = excluded.sync_clock`,
     [uuid(), row.bookId, row.addedAt, row.isFavorite ? 1 : 0, row.syncClock],
   )
+}
+
+export async function readLibrarySidecarBookmark(
+  tx: LibrarySidecarSyncTransaction,
+  bookId: number,
+  format: string,
+  locatorKey: string,
+): Promise<LibrarySidecarBookmarkRow | null> {
+  const result = await tx.execute(
+    `SELECT id, book_id, format, locator_key, locator_json,
+        created_at, updated_at, deleted_at, sync_clock
+      FROM bookmarks
+      WHERE book_id = ? AND format = ? AND locator_key = ?`,
+    [bookId, format, locatorKey],
+  )
+  const row = result.rows[0]
+  if (!row) return null
+  const createdAt = row.created_at
+  const updatedAt = row.updated_at
+  const deletedAt = row.deleted_at
+  if (
+    typeof createdAt !== "number" ||
+    typeof updatedAt !== "number" ||
+    (deletedAt !== null && typeof deletedAt !== "number")
+  ) {
+    throw new Error("Expected bookmark timestamps to be numeric")
+  }
+  return {
+    id: requiredString(row, "id"),
+    bookId: Number(row.book_id),
+    format: requiredString(row, "format"),
+    locatorKey: requiredString(row, "locator_key"),
+    locatorJson: requiredString(row, "locator_json"),
+    createdAt,
+    updatedAt,
+    deletedAt,
+    syncClock: optionalString(row, "sync_clock"),
+  }
+}
+
+export async function writeLibrarySidecarBookmark(
+  tx: LibrarySidecarSyncTransaction,
+  row: LibrarySidecarBookmarkRow,
+): Promise<LibrarySidecarBookmarkRow> {
+  await tx.execute(
+    `INSERT INTO bookmarks
+      (id, book_id, format, locator_key, locator_json,
+        created_at, updated_at, deleted_at, sync_clock)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(book_id, format, locator_key) DO UPDATE SET
+        id = excluded.id,
+        locator_json = excluded.locator_json,
+        created_at = excluded.created_at,
+        updated_at = excluded.updated_at,
+        deleted_at = excluded.deleted_at,
+        sync_clock = excluded.sync_clock`,
+    [
+      row.id,
+      row.bookId,
+      row.format,
+      row.locatorKey,
+      row.locatorJson,
+      row.createdAt,
+      row.updatedAt,
+      row.deletedAt,
+      row.syncClock,
+    ],
+  )
+  const stored = await readLibrarySidecarBookmark(
+    tx,
+    row.bookId,
+    row.format,
+    row.locatorKey,
+  )
+  if (!stored) throw new Error("Bookmark state write returned no row")
+  return stored
 }
 
 export async function readLibrarySidecarReadingPosition(

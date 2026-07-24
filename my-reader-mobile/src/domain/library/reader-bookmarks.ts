@@ -5,12 +5,11 @@ import {
 } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 
+import { listActiveReaderBookmarkRows } from "@/src/repos/bookmarks"
 import {
-  addOrReviveReaderBookmarkRow,
-  listActiveReaderBookmarkRows,
-  tombstoneReaderBookmarkRow,
-} from "@/src/repos/bookmarks"
-import { uuid } from "@/src/utils/common"
+  addLocalBookmark,
+  removeLocalBookmark,
+} from "../sync/library-sidecar/bookmark"
 import type { Library } from "../types"
 
 export type ReaderBookmark = {
@@ -86,13 +85,13 @@ export async function addReaderBookmark(
   const canonicalLocator = canonicalizeReaderLocatorForStorage(locator)
   const locatorKey = readerBookmarkLocatorKey(canonicalLocator)
   const normalizedFormat = format.toUpperCase()
-  const row = await addOrReviveReaderBookmarkRow(library, {
-    id: uuid(),
+  const row = await addLocalBookmark(
+    library,
     bookId,
-    format: normalizedFormat,
+    normalizedFormat,
     locatorKey,
-    locatorJson: JSON.stringify(canonicalLocator),
-  })
+    canonicalLocator,
+  )
   const bookmark = toReaderBookmark(row)
   if (!bookmark)
     throw new Error("Invalid bookmark locator returned from storage")
@@ -107,9 +106,5 @@ export async function removeReaderBookmark(
 ): Promise<void> {
   const canonicalLocator = canonicalizeReaderLocatorForStorage(locator)
   const locatorKey = readerBookmarkLocatorKey(canonicalLocator)
-  await tombstoneReaderBookmarkRow(library, {
-    bookId,
-    format: format.toUpperCase(),
-    locatorKey,
-  })
+  await removeLocalBookmark(library, bookId, format.toUpperCase(), locatorKey)
 }

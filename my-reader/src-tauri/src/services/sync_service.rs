@@ -160,6 +160,7 @@ mod tests {
 
     use super::*;
     use crate::models::{AppConfig, LibraryConfig};
+    use crate::services::bookmark_service::BookmarkService;
     use crate::services::favorite_book_service::FavoriteBookService;
     use crate::services::progress_service::ProgressService;
 
@@ -307,6 +308,126 @@ mod tests {
         assert_eq!(report.pulled, 1);
         assert_eq!(progress.display_progression, Some(0.4));
         assert_eq!(progress.locator["href"], "chapter.xhtml");
+    }
+
+    #[tokio::test]
+    async fn should_converge_bookmark_presence_when_two_replicas_sync() {
+        let first_app_data = tempfile::tempdir().unwrap();
+        let second_app_data = tempfile::tempdir().unwrap();
+        let library_root = tempfile::tempdir().unwrap();
+        create_calibre_metadata(library_root.path()).await;
+        let mut first_config = AppConfig {
+            libraries: vec![local_library(
+                "first",
+                library_root.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+        let mut second_config = AppConfig {
+            libraries: vec![local_library(
+                "second",
+                library_root.path().to_str().unwrap(),
+            )],
+            ..Default::default()
+        };
+        let locator = serde_json::json!({
+            "href": "chapter.xhtml",
+            "type": "application/xhtml+xml",
+            "locations": {"progression": 0.4}
+        });
+        BookmarkService::add_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+            42,
+            "EPUB",
+            "chapter.xhtml@0.4",
+            &locator,
+        )
+        .await
+        .unwrap();
+
+        let first_report =
+            SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+                .await
+                .unwrap();
+        let second_report =
+            SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+                .await
+                .unwrap();
+        let bookmarks = BookmarkService::list_for_library(
+            second_app_data.path(),
+            &second_config,
+            Some("second"),
+            42,
+            "EPUB",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(first_report.pushed, 1);
+        assert_eq!(second_report.pulled, 1);
+        assert_eq!(bookmarks.len(), 1);
+        assert_eq!(bookmarks[0].locator_key, "chapter.xhtml@0.4");
+        assert_eq!(bookmarks[0].locator, locator);
+
+        BookmarkService::delete_for_library(
+            second_app_data.path(),
+            &second_config,
+            Some("second"),
+            42,
+            "EPUB",
+            "chapter.xhtml@0.4",
+        )
+        .await
+        .unwrap();
+        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            .await
+            .unwrap();
+        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+            .await
+            .unwrap();
+        assert!(BookmarkService::list_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+            42,
+            "EPUB",
+        )
+        .await
+        .unwrap()
+        .is_empty());
+
+        BookmarkService::add_for_library(
+            first_app_data.path(),
+            &first_config,
+            Some("first"),
+            42,
+            "EPUB",
+            "chapter.xhtml@0.4",
+            &locator,
+        )
+        .await
+        .unwrap();
+        SyncService::sync_db_for_library(first_app_data.path(), &mut first_config, "first")
+            .await
+            .unwrap();
+        SyncService::sync_db_for_library(second_app_data.path(), &mut second_config, "second")
+            .await
+            .unwrap();
+        assert_eq!(
+            BookmarkService::list_for_library(
+                second_app_data.path(),
+                &second_config,
+                Some("second"),
+                42,
+                "EPUB",
+            )
+            .await
+            .unwrap()
+            .len(),
+            1
+        );
     }
 
     #[tokio::test]

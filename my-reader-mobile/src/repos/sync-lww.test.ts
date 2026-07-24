@@ -63,7 +63,8 @@ function setupEmptyDatabase(): void {
       locator_json TEXT NOT NULL,
       created_at REAL NOT NULL,
       updated_at REAL NOT NULL,
-      deleted_at REAL
+      deleted_at REAL,
+      sync_clock TEXT
     );
     CREATE UNIQUE INDEX idx_bookmarks_book_format_locator
       ON bookmarks (book_id, format, locator_key);

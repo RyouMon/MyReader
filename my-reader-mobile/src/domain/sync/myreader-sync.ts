@@ -15,6 +15,7 @@ import { applyLibrarySidecarSegment } from "./library-sidecar/projection"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
+  invalidateReaderBookmarks,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
@@ -40,6 +41,7 @@ const librarySidecarProvider: MyReaderSyncProvider = {
       await Promise.all([
         invalidateFavoriteBooks(ctx.library.id),
         invalidateReadingProgress(ctx.library.id),
+        invalidateReaderBookmarks(ctx.library.id),
         invalidateRecentlyReadBooks(ctx.library.id),
       ])
     }

@@ -1,20 +1,28 @@
 use std::path::Path;
 
+use sea_orm::DatabaseConnection;
+
 use crate::entities::app::bookmarks;
 use crate::error::AppError;
-use crate::models::{is_valid_reader_locator, AppConfig, ReaderBookmarkDto};
-use crate::repositories::bookmark_repo::SqliteBookmarkRepository;
+use crate::models::{is_valid_reader_locator, AppConfig, LibraryConfig, ReaderBookmarkDto};
+use crate::repositories::{
+    bookmark_repo::SqliteBookmarkRepository, calibre_repo::CalibreBookRepository,
+};
 use crate::services::library_service::LibraryService;
-use crate::utils::paths::library_sidecar_path;
+use crate::sync::{
+    bookmark::{add_local_bookmark, remove_local_bookmark},
+    contract::ReaderLocator,
+    kernel::read_replica_identity,
+};
+use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct BookmarkService;
 
-fn unix_epoch_millis() -> f64 {
+fn unix_epoch_millis() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as f64)
-        .unwrap_or(0.0)
+        .map_or(0, |duration| duration.as_millis() as u64)
 }
 
 fn normalize_format(format: &str) -> Result<String, AppError> {
@@ -56,6 +64,31 @@ fn bookmark_dto(library_id: &str, model: bookmarks::Model) -> Result<ReaderBookm
 }
 
 impl BookmarkService {
+    async fn sync_context(
+        app_data_dir: &Path,
+        config: &AppConfig,
+        library_id: Option<&str>,
+    ) -> Result<(LibraryConfig, DatabaseConnection, String), AppError> {
+        let library = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&library, app_data_dir)
+            .to_string_lossy()
+            .to_string();
+        let db = SqliteBookmarkRepository::open(&sidecar_root).await?;
+        let library_uuid = match read_replica_identity(&db).await? {
+            Some(identity) => identity.library_uuid,
+            None => {
+                let library_root = library_root_path(&library, app_data_dir)
+                    .to_string_lossy()
+                    .to_string();
+                CalibreBookRepository::open(&library_root)
+                    .await?
+                    .get_library_uuid()
+                    .await?
+            }
+        };
+        Ok((library, db, library_uuid))
+    }
+
     pub async fn list(
         sidecar_root: &str,
         library_id: &str,
@@ -91,7 +124,7 @@ impl BookmarkService {
             &format,
             locator_key,
             &locator_json,
-            unix_epoch_millis(),
+            unix_epoch_millis() as f64,
         )
         .await?;
         bookmark_dto(library_id, model)
@@ -111,7 +144,7 @@ impl BookmarkService {
             book_id,
             &format,
             locator_key,
-            unix_epoch_millis(),
+            unix_epoch_millis() as f64,
         )
         .await?
         {
@@ -144,19 +177,24 @@ impl BookmarkService {
         locator_key: &str,
         locator: &serde_json::Value,
     ) -> Result<ReaderBookmarkDto, AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::add(
-            &sidecar_root,
-            &library.id,
+        let format = normalize_format(format)?;
+        let locator_key = validate_locator_key(locator_key)?;
+        validate_locator(locator)?;
+        let locator: ReaderLocator = serde_json::from_value(locator.clone())
+            .map_err(|error| AppError::Serialize(error.to_string()))?;
+        let (library, db, library_uuid) =
+            Self::sync_context(app_data_dir, config, library_id).await?;
+        let model = add_local_bookmark(
+            &db,
+            &library_uuid,
             book_id,
-            format,
+            &format,
             locator_key,
             locator,
+            unix_epoch_millis(),
         )
-        .await
+        .await?;
+        bookmark_dto(&library.id, model)
     }
 
     pub async fn delete_for_library(
@@ -167,10 +205,23 @@ impl BookmarkService {
         format: &str,
         locator_key: &str,
     ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::delete(&sidecar_root, book_id, format, locator_key).await
+        let format = normalize_format(format)?;
+        let locator_key = validate_locator_key(locator_key)?;
+        let (_library, db, library_uuid) =
+            Self::sync_context(app_data_dir, config, library_id).await?;
+        if remove_local_bookmark(
+            &db,
+            &library_uuid,
+            book_id,
+            &format,
+            locator_key,
+            unix_epoch_millis(),
+        )
+        .await?
+        {
+            Ok(())
+        } else {
+            Err(AppError::NotFound("BOOKMARK_NOT_FOUND".into()))
+        }
     }
 }

@@ -643,15 +643,17 @@ v3/v4 双写。Phase 2 接入首个 `reading_position.v1` 纵向切片时再切�
 
 ### Phase 3：其他现有实体
 
-状态：`book_favorite.v1` 自动化实现已于 2026-07-24 完成。共享 migration
-`0010_add_favorite_sync_projection.sql` 为现有收藏 projection 增加显式状态与可空 HLC；移动端和
-桌面端的收藏、取消收藏现与 HLC、outbox 在同一事务提交，并由同一个 sidecar projection 路由与
-阅读进度混合 segment，避免按 domain 重复拉取造成 cursor 提前推进。自动化测试已覆盖较新取消
-收藏不会被旧收藏复活，以及两个 replica 交换混合 domain segment 后的收藏、取消收藏和阅读进度
-收敛。真实设备矩阵仍待验收。
+状态：`book_favorite.v1` 自动化实现已于 2026-07-24 完成，`bookmark.v1` 自动化实现已于
+2026-07-25 完成。共享 migration `0010_add_favorite_sync_projection.sql` 为现有收藏 projection
+增加显式状态与可空 HLC，`0011_add_bookmark_sync_projection.sql` 为现有书签 projection 增加
+可空 HLC；移动端和桌面端的收藏、取消收藏、书签新增、删除及恢复现与 HLC、outbox 在同一事务
+提交，并由同一个 sidecar projection 路由混合 domain segment，避免按 domain 重复拉取造成
+cursor 提前推进。自动化测试已覆盖较新删除不会被旧状态复活、较新显式添加可以恢复书签，以及
+两个 replica 交换 segment 后的书签 presence 收敛。高亮、短笔记和颜色尚未接入，真实设备矩阵
+仍待验收。
 
 - Phase 3A：接入现有收藏与取消收藏，不 backfill、不发布 `sync_clock = null` 的旧收藏行。
-- Phase 3B：后续分别接入现有书签，以及高亮、短笔记和颜色；不得与收藏切片捆绑实现。
+- Phase 3B：书签已独立接入；后续单独接入高亮、短笔记和颜色。
 - 内部锚点只使用当前 MyReader canonical `ReaderLocator` 及现有数据库字段，不扩展新定位变体。
 
 ### Phase 4：阅读会话与完成记录

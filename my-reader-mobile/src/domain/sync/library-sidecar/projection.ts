@@ -4,12 +4,14 @@ import {
   type LibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
 import type { LibrarySidecarChange, LibrarySidecarSegment } from "./contract"
+import { applyBookmarkChange } from "./bookmark"
 import { applyFavoriteChange } from "./favorite"
 import { observeLibrarySidecarHlc, parseLibrarySidecarHlc } from "./hlc"
 import { applyReadingPositionChange } from "./reading-position"
 
 function stateClock(change: LibrarySidecarChange): string {
   switch (change.state.domain) {
+    case "bookmark.v1":
     case "book_favorite.v1":
     case "reading_position.v1":
       return change.state.register.clock
@@ -32,6 +34,9 @@ export async function applyLibrarySidecarSegment(
 
   for (const change of segment.changes) {
     switch (change.state.domain) {
+      case "bookmark.v1":
+        await applyBookmarkChange(tx, segment, change)
+        break
       case "book_favorite.v1":
         await applyFavoriteChange(tx, segment, change)
         break
