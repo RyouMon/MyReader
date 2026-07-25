@@ -25,6 +25,6 @@ use scalar_value::ScalarValue;
 mod sync_state;
 use sync_state::{DecodeSyncStateError, SyncState};
 mod value;
-use value::Value;
+use value::{Value, ValueWithId};
 mod text_encoding;
 use text_encoding::TextEncoding;

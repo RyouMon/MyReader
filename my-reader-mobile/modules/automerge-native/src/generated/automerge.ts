@@ -417,6 +417,64 @@ const FfiConverterTypePathElement = (() => {
   return new FFIConverter()
 })()
 
+export type ValueWithId = {
+  value: Value
+  operationId: string
+}
+
+/**
+ * Generated factory for {@link ValueWithId} record objects.
+ */
+export const ValueWithId = (() => {
+  const defaults = () => ({})
+  const create = (() => {
+    return uniffiCreateRecord<ValueWithId, ReturnType<typeof defaults>>(
+      defaults,
+    )
+  })()
+  return Object.freeze({
+    /**
+     * Create a frozen instance of {@link ValueWithId}, with defaults specified
+     * in Rust, in the {@link automerge} crate.
+     */
+    create,
+
+    /**
+     * Create a frozen instance of {@link ValueWithId}, with defaults specified
+     * in Rust, in the {@link automerge} crate.
+     */
+    new: create,
+
+    /**
+     * Defaults specified in the {@link automerge} crate.
+     */
+    defaults: () => Object.freeze(defaults()) as Partial<ValueWithId>,
+  })
+})()
+
+const FfiConverterTypeValueWithId = (() => {
+  type TypeName = ValueWithId
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        value: FfiConverterTypeValue.read(from),
+        operationId: FfiConverterString.read(from),
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterTypeValue.write(value.value, into)
+      FfiConverterString.write(value.operationId, into)
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterTypeValue.allocationSize(value.value) +
+        FfiConverterString.allocationSize(value.operationId)
+      )
+    }
+  }
+  return new FFIConverter()
+})()
+
 const stringConverter = {
   stringToBytes: (s: string) =>
     uniffiCaller.rustCall((status) =>
@@ -2433,14 +2491,14 @@ export interface DocInterface {
     obj: ObjId,
     index: /*u64*/ bigint,
     heads: Array<ChangeHash>,
-  ) /*throws*/: Array<Value>
+  ) /*throws*/: Array<ValueWithId>
   getAllAtInMap(
     obj: ObjId,
     key: string,
     heads: Array<ChangeHash>,
-  ) /*throws*/: Array<Value>
-  getAllInList(obj: ObjId, index: /*u64*/ bigint) /*throws*/: Array<Value>
-  getAllInMap(obj: ObjId, key: string) /*throws*/: Array<Value>
+  ) /*throws*/: Array<ValueWithId>
+  getAllInList(obj: ObjId, index: /*u64*/ bigint) /*throws*/: Array<ValueWithId>
+  getAllInMap(obj: ObjId, key: string) /*throws*/: Array<ValueWithId>
   getAtInList(
     obj: ObjId,
     index: /*u64*/ bigint,
@@ -2939,8 +2997,8 @@ export class Doc extends UniffiAbstractObject implements DocInterface {
     obj: ObjId,
     index: /*u64*/ bigint,
     heads: Array<ChangeHash>,
-  ): Array<Value> /*throws*/ {
-    return FfiConverterArrayTypeValue.lift(
+  ): Array<ValueWithId> /*throws*/ {
+    return FfiConverterArrayTypeValueWithId.lift(
       uniffiCaller.rustCallWithError(
         /*liftError:*/ FfiConverterTypeDocError.lift.bind(
           FfiConverterTypeDocError,
@@ -2963,8 +3021,8 @@ export class Doc extends UniffiAbstractObject implements DocInterface {
     obj: ObjId,
     key: string,
     heads: Array<ChangeHash>,
-  ): Array<Value> /*throws*/ {
-    return FfiConverterArrayTypeValue.lift(
+  ): Array<ValueWithId> /*throws*/ {
+    return FfiConverterArrayTypeValueWithId.lift(
       uniffiCaller.rustCallWithError(
         /*liftError:*/ FfiConverterTypeDocError.lift.bind(
           FfiConverterTypeDocError,
@@ -2986,8 +3044,8 @@ export class Doc extends UniffiAbstractObject implements DocInterface {
   public getAllInList(
     obj: ObjId,
     index: /*u64*/ bigint,
-  ): Array<Value> /*throws*/ {
-    return FfiConverterArrayTypeValue.lift(
+  ): Array<ValueWithId> /*throws*/ {
+    return FfiConverterArrayTypeValueWithId.lift(
       uniffiCaller.rustCallWithError(
         /*liftError:*/ FfiConverterTypeDocError.lift.bind(
           FfiConverterTypeDocError,
@@ -3005,8 +3063,8 @@ export class Doc extends UniffiAbstractObject implements DocInterface {
     )
   }
 
-  public getAllInMap(obj: ObjId, key: string): Array<Value> /*throws*/ {
-    return FfiConverterArrayTypeValue.lift(
+  public getAllInMap(obj: ObjId, key: string): Array<ValueWithId> /*throws*/ {
+    return FfiConverterArrayTypeValueWithId.lift(
       uniffiCaller.rustCallWithError(
         /*liftError:*/ FfiConverterTypeDocError.lift.bind(
           FfiConverterTypeDocError,
@@ -4155,6 +4213,11 @@ const FfiConverterArrayTypePathElement = new FfiConverterArray(
   FfiConverterTypePathElement,
 )
 
+// FfiConverter for Array<ValueWithId>
+const FfiConverterArrayTypeValueWithId = new FfiConverterArray(
+  FfiConverterTypeValueWithId,
+)
+
 // FfiConverter for Array<string>
 const FfiConverterArrayString = new FfiConverterArray(FfiConverterString)
 
@@ -4386,7 +4449,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_automerge_checksum_method_doc_get_all_at_in_list() !==
-    18128
+    48005
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_automerge_checksum_method_doc_get_all_at_in_list",
@@ -4394,7 +4457,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_automerge_checksum_method_doc_get_all_at_in_map() !==
-    53785
+    46137
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_automerge_checksum_method_doc_get_all_at_in_map",
@@ -4402,7 +4465,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_automerge_checksum_method_doc_get_all_in_list() !==
-    35779
+    31742
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_automerge_checksum_method_doc_get_all_in_list",
@@ -4410,7 +4473,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_automerge_checksum_method_doc_get_all_in_map() !==
-    31318
+    47187
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_automerge_checksum_method_doc_get_all_in_map",
@@ -4869,5 +4932,6 @@ export default Object.freeze({
     FfiConverterTypeSyncState,
     FfiConverterTypeTextEncoding,
     FfiConverterTypeValue,
+    FfiConverterTypeValueWithId,
   },
 })

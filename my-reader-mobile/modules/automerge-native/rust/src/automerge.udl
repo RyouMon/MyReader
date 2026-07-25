@@ -42,6 +42,11 @@ interface Value {
     Scalar ( ScalarValue value);
 };
 
+dictionary ValueWithId {
+    Value value;
+    string operation_id;
+};
+
 enum ObjType {
     "Map",
     "List",
@@ -224,14 +229,14 @@ interface Doc {
     Value? get_at_in_list(ObjId obj, u64 index, sequence<ChangeHash> heads);
 
     [Throws=DocError]
-    sequence<Value> get_all_in_map(ObjId obj, string key);
+    sequence<ValueWithId> get_all_in_map(ObjId obj, string key);
     [Throws=DocError]
-    sequence<Value> get_all_in_list(ObjId obj, u64 index);
+    sequence<ValueWithId> get_all_in_list(ObjId obj, u64 index);
 
     [Throws=DocError]
-    sequence<Value> get_all_at_in_map(ObjId obj, string key, sequence<ChangeHash> heads);
+    sequence<ValueWithId> get_all_at_in_map(ObjId obj, string key, sequence<ChangeHash> heads);
     [Throws=DocError]
-    sequence<Value> get_all_at_in_list(ObjId obj, u64 index, sequence<ChangeHash> heads);
+    sequence<ValueWithId> get_all_at_in_list(ObjId obj, u64 index, sequence<ChangeHash> heads);
 
     [Throws=DocError]
     string text(ObjId obj);

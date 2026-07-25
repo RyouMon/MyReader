@@ -34,6 +34,7 @@ import {
   type Mark as GenMark,
   type PathElement,
   type KeyValue,
+  type ValueWithId,
 } from "./generated/automerge"
 import { createRootProxy, createReadableDoc } from "./proxy"
 
@@ -281,6 +282,14 @@ function genValueToFullValue(val: Value): [string, any] {
     const inner = val.inner as { value: ScalarValue }
     return [scalarValueToDatatype(inner.value), scalarValueToJS(inner.value)]
   }
+}
+
+function genValueWithIdToFullValue({
+  value,
+  operationId,
+}: ValueWithId): [string, any, string] {
+  const [datatype, converted] = genValueToFullValue(value)
+  return [datatype, converted, operationId]
 }
 
 function objTypeStrToEnum(s: string): ObjType {
@@ -764,10 +773,10 @@ class NativeAutomerge {
     obj: string,
     prop: string | number,
     heads?: string[],
-  ): [string, any][] {
+  ): [string, any, string][] {
     const objId = strToObjId(obj)
     const { isMap, key, index } = propToGenProp(prop)
-    let vals: Value[]
+    let vals: ValueWithId[]
     if (heads && heads.length > 0) {
       const h = hexToHeads(heads)
       if (isMap) {
@@ -784,19 +793,19 @@ class NativeAutomerge {
     }
 
     // Handle Text objects specially - read their string content
-    return vals.map((val) => {
-      if (val.tag === Value_Tags.Object) {
-        const inner = val.inner as { typ: ObjType; id: ObjId }
+    return vals.map(({ value, operationId }) => {
+      if (value.tag === Value_Tags.Object) {
+        const inner = value.inner as { typ: ObjType; id: ObjId }
         if (inner.typ === ObjType.Text) {
           const textObjId = objIdToStr(inner.id)
           const textContent =
             heads && heads.length > 0
               ? this.doc.textAt(strToObjId(textObjId), hexToHeads(heads))
               : this.doc.text(strToObjId(textObjId))
-          return ["str", textContent] as [string, any]
+          return ["str", textContent, operationId]
         }
       }
-      return genValueToFullValue(val)
+      return genValueWithIdToFullValue({ value, operationId })
     })
   }
 

@@ -11,6 +11,7 @@ use crate::text_encoding::TextEncoding;
 
 use crate::{
     Change, ChangeHash, Cursor, ObjId, ObjType, PathElement, ScalarValue, SyncState, Value,
+    ValueWithId,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -206,26 +207,20 @@ impl Doc {
         Ok(doc.get_at(obj, idx as usize, &heads)?.map(|v| v.into()))
     }
 
-    pub fn get_all_in_map(&self, obj: ObjId, key: String) -> Result<Vec<Value>, DocError> {
+    pub fn get_all_in_map(&self, obj: ObjId, key: String) -> Result<Vec<ValueWithId>, DocError> {
         let obj = am::ObjId::from(obj);
         let doc = self.0.read().unwrap();
         assert_map(&*doc, &obj)?;
         let vals = doc.get_all(&obj, key)?;
-        Ok(vals
-            .into_iter()
-            .map(|(v, id)| Value::from((v, id)))
-            .collect::<Vec<_>>())
+        Ok(vals.into_iter().map(ValueWithId::from).collect::<Vec<_>>())
     }
 
-    pub fn get_all_in_list(&self, obj: ObjId, index: u64) -> Result<Vec<Value>, DocError> {
+    pub fn get_all_in_list(&self, obj: ObjId, index: u64) -> Result<Vec<ValueWithId>, DocError> {
         let obj = am::ObjId::from(obj);
         let doc = self.0.read().unwrap();
         assert_list(&*doc, &obj)?;
         let vals = doc.get_all(&obj, index as usize)?;
-        Ok(vals
-            .into_iter()
-            .map(|(v, id)| Value::from((v, id)))
-            .collect::<Vec<_>>())
+        Ok(vals.into_iter().map(ValueWithId::from).collect::<Vec<_>>())
     }
 
     pub fn get_all_at_in_map(
@@ -233,7 +228,7 @@ impl Doc {
         obj: ObjId,
         key: String,
         heads: Vec<ChangeHash>,
-    ) -> Result<Vec<Value>, DocError> {
+    ) -> Result<Vec<ValueWithId>, DocError> {
         let obj = am::ObjId::from(obj);
         let doc = self.0.read().unwrap();
         let heads = heads
@@ -242,7 +237,7 @@ impl Doc {
             .collect::<Vec<_>>();
         assert_map(&*doc, &obj)?;
         let vals = doc.get_all_at(&obj, key, heads.as_slice())?;
-        Ok(vals.into_iter().map(Value::from).collect::<Vec<_>>())
+        Ok(vals.into_iter().map(ValueWithId::from).collect::<Vec<_>>())
     }
 
     pub fn get_all_at_in_list(
@@ -250,7 +245,7 @@ impl Doc {
         obj: ObjId,
         index: u64,
         heads: Vec<ChangeHash>,
-    ) -> Result<Vec<Value>, DocError> {
+    ) -> Result<Vec<ValueWithId>, DocError> {
         let obj = am::ObjId::from(obj);
         let doc = self.0.read().unwrap();
         let heads = heads
@@ -259,7 +254,7 @@ impl Doc {
             .collect::<Vec<_>>();
         assert_list(&*doc, &obj)?;
         let vals = doc.get_all_at(&obj, index as usize, heads.as_slice())?;
-        Ok(vals.into_iter().map(Value::from).collect::<Vec<_>>())
+        Ok(vals.into_iter().map(ValueWithId::from).collect::<Vec<_>>())
     }
 
     pub fn map_keys(&self, obj: ObjId) -> Vec<String> {
@@ -855,5 +850,39 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(missing, source_heads);
+    }
+
+    #[test]
+    fn should_preserve_operation_ids_when_map_values_conflict() {
+        let first = Arc::new(Doc(RwLock::new(
+            am::AutoCommit::default().with_actor(am::ActorId::from(vec![0xaa; 16])),
+        )));
+        let second = Arc::new(Doc(RwLock::new(
+            am::AutoCommit::default().with_actor(am::ActorId::from(vec![0xbb; 16])),
+        )));
+        first
+            .put_in_map(
+                root(),
+                "position".to_owned(),
+                ScalarValue::String {
+                    value: "first".to_owned(),
+                },
+            )
+            .unwrap();
+        second
+            .put_in_map(
+                root(),
+                "position".to_owned(),
+                ScalarValue::String {
+                    value: "second".to_owned(),
+                },
+            )
+            .unwrap();
+        first.merge(second).unwrap();
+
+        let values = first.get_all_in_map(root(), "position".to_owned()).unwrap();
+
+        assert_eq!(values.len(), 2);
+        assert_ne!(values[0].operation_id, values[1].operation_id);
     }
 }
