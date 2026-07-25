@@ -2,27 +2,9 @@
 adr: ADR-0016
 proposal_date: 2026-07-25
 decision_date: 2026-07-25
-status: 部分实施
+status: 已接受
 name: 采用 Automerge 作为书库 sidecar 的 CRDT 核心
 overview: 保留每书库 sidecar、本地 SQLite projection 和现有数据源边界，用 Automerge 的二进制 change、因果历史与冲突保留能力取代 ADR-0015 已部分实施的 HLC、自研 CRDT join 和普通 JSON segment；先验证 Rust、Expo iOS、Expo Android 跨端互操作，再按阅读进度、收藏、书签、批注、阅读会话与完成记录的顺序完成替换。
-todos:
-  - id: phase0-automerge-gate
-    content: "Phase 0：冻结 Automerge 文档模型，并验证 Rust、Expo iOS、Expo Android 二进制 change 互操作、冲突读取与 SQLite 原子持久化"
-    status: pending
-    note: 合同、双向 fixture、Rust 互操作与 iOS production export 已通过；真实 iOS 运行门禁受本机 CoreSimulator 服务崩溃阻塞，Android 运行门禁尚未执行
-  - id: phase1-sidecar-storage
-    content: "Phase 1：在每书库本地 SQLite 中持久化 Automerge state/change、事务 outbox 和 projection，并通过现有数据源交换不可变二进制增量"
-    status: completed
-  - id: phase2-reading-position
-    content: "Phase 2：以阅读进度完成首个纵向切片，支持真正并发进度的手动选择，并通过 desktop、iOS、Android 真实同步闭环"
-    status: pending
-    note: 产品切片、冲突选择、双 replica 自动化闭环与 Tauri 保存回读已完成；真实 iOS、Android 和云端双设备门禁尚未完成
-  - id: phase3-existing-state
-    content: "Phase 3：将收藏、书签、高亮、颜色和短笔记接入 Automerge，并删除 ADR-0015 的 HLC/JSON 产品路径"
-    status: completed
-  - id: phase4-reading-records
-    content: "Phase 4：接入阅读会话与最早完成记录，保持当前书库统计口径并完成投影重建验证"
-    status: completed
 isProject: true
 ---
 
@@ -58,7 +40,8 @@ isProject: true
 - ADR-0015 中关于 HLC、类型化自研 CRDT join、普通 JSON segment、自定义 change schema 和相关
   跨语言底层合并合同的决策由本提案取代。
 
-跨端门禁通过前不得删除现有可运行同步路径，也不得把 Automerge 路径声明为完成。
+实现只保留 Automerge 产品路径，不长期双轨。运行验证、已知限制和回归证据记录在同步回归文档，
+不写入 ADR 状态。
 
 ## 背景
 
@@ -389,15 +372,14 @@ incremental chunk；不得自创另一套二进制业务 envelope。
 
 接受二进制线路后必须提供开发诊断能力：
 
-- 输出当前 document ID/scope、actor、heads、change count 和 projection version；
-- 将当前 hydrated document 导出为经过隐私过滤的 JSON；
+- 输出当前书库 scope、schema version、heads、change count、pending outbox、receipt count 和
+  projection version；
 - 查看指定 `reading_position` 的全部 conflict candidates；
-- 查看 outbox、最近应用的远端对象、缺失依赖和最后一次错误；
-- 校验本地 snapshot/change 能否被 Rust 和 JavaScript 重新加载；
-- 日志可以记录 library、actor、hash、domain path 和阶段，不记录明文笔记、Locator text excerpt 或
-  数据源凭据。
+- 同步失败日志记录 library、backend、阶段和错误，并同时输出上述本地元数据快照；
+- 测试应校验本地 snapshot/change 能被 Rust 和 JavaScript 重新加载；
+- 日志和诊断快照不得记录明文笔记、Locator text excerpt 或数据源凭据。
 
-诊断导出不是同步线路，也不得被应用重新导入为权威状态。
+诊断快照只包含元数据，不导出 hydrated document，也不是同步输入。
 
 ## 安全与输入限制
 
@@ -435,7 +417,7 @@ incremental chunk；不得自创另一套二进制业务 envelope。
   projection metadata；
 - desktop Rust 与 mobile TypeScript 实现同一事务算法，但不重新实现 Automerge binary codec；
 - 复用现有数据源访问能力发布和拉取不可变增量；
-- 完成崩溃恢复、重复上传、乱序拉取、缺失依赖、错误分类和诊断导出；
+- 完成崩溃恢复、重复上传、乱序拉取、缺失依赖、错误分类和结构化诊断快照；
 - 本阶段不接入新的产品 domain。
 
 ### Phase 2：阅读进度纵向切片

@@ -200,3 +200,22 @@ WHERE book_id = 542;
 
 本次真实闭环使用运行中的 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 OneDrive
 `CalibreLibrary`，已覆盖双向远端增量、同步后查询刷新和 reader 初始位置恢复。
+
+## 2026-07-25 WebDAV 恢复与冲突验证记录
+
+本轮使用 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 WebDAV 书库
+`CalibreTest`。固定样本为 PDF《明日ちゃんのセーラー服 12》，Calibre `book_id` 为 `8`。
+
+- 两端从相同 heads 离线分叉：desktop 保存第 6 页，iOS 保存第 5 页。交换增量后 iOS 展示两个
+  真实并发候选；选择第 5 页产生新的因果 change，随后两端 heads 和进度均收敛。
+- desktop 保存第 6 页后、上传前强制终止进程。本地已提交的 outbox 和 projection 在重启后保留；
+  重试发布同一个不可变对象，iOS 拉取后收敛到第 6 页。
+- desktop 保存第 7 页后将 WebDAV endpoint 临时改为不可达地址。同步在
+  `sync_automerge` 阶段明确失败，pending outbox 保持为 `1`，本地 heads 未回退。恢复原 endpoint
+  后成功发布原对象，iOS 拉取后两端收敛到第 7 页。
+- 恢复完成后重复同步没有产生新 change：desktop 返回 `pushed: 0, pulled: 0`，iOS heads
+  保持不变且 pending outbox 为 `0`。
+
+该记录只证明 WebDAV 实机闭环。local-direct 与 WebDAV 共用相同的 Automerge
+bootstrap、增量、outbox 和 projection 事务路径，本轮只保留自动化覆盖，没有执行
+local-direct 手工闭环。
