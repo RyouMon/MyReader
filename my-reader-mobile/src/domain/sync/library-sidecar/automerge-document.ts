@@ -1,4 +1,3 @@
-import { automergeWasmBase64 } from "@automerge/automerge/automerge.wasm.base64"
 import {
   change,
   decodeChange,
@@ -8,9 +7,7 @@ import {
   getHeads,
   getMissingDeps,
   ImmutableString,
-  initializeBase64Wasm,
   isImmutableString,
-  isWasmInitialized,
   load,
   loadIncremental,
   save,
@@ -29,6 +26,9 @@ import {
   librarySidecarActorId,
   librarySidecarReplicaId,
 } from "./automerge-identity"
+import { initializeLibrarySidecarAutomerge } from "./automerge-runtime"
+
+export { initializeLibrarySidecarAutomerge } from "./automerge-runtime"
 
 export const LIBRARY_SIDECAR_SCHEMA_VERSION = 1
 
@@ -137,20 +137,12 @@ export type LibrarySidecarAutomergeChange = {
   bytes: Uint8Array
 }
 
-let initialization: Promise<void> | null = null
-
 function binaryStringToBytes(value: string): Uint8Array {
   const bytes = new Uint8Array(value.length)
   for (let index = 0; index < value.length; index += 1) {
     bytes[index] = value.charCodeAt(index)
   }
   return bytes
-}
-
-export function initializeLibrarySidecarAutomerge(): Promise<void> {
-  if (isWasmInitialized()) return Promise.resolve()
-  initialization ??= initializeBase64Wasm(automergeWasmBase64)
-  return initialization
 }
 
 export async function createLibrarySidecarDocument(

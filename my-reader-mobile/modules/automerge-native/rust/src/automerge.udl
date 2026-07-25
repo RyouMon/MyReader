@@ -1,0 +1,309 @@
+namespace automerge {
+    ObjId root();
+    [Throws=DecodeChangeError]
+    Change decode_change(bytes data);
+};
+
+[Custom]
+typedef bytes ObjId;
+
+[Custom]
+typedef bytes ChangeHash;
+
+[Custom]
+typedef bytes ActorId;
+
+[Custom]
+typedef bytes Cursor;
+
+[Enum]
+interface Position {
+    Cursor ( Cursor position );
+    Index ( u64 position );
+};
+
+[Enum]
+interface ScalarValue {
+    Bytes( sequence<u8> value);
+    String( string value );
+    Uint( u64 value );
+    Int(i64 value);
+    F64(double value);
+    Counter(i64 value);
+    Timestamp(i64 value);
+    Boolean(boolean value);
+    Unknown(u8 type_code, sequence<u8> data);
+    Null();
+};
+
+[Enum]
+interface Value {
+    Object ( ObjType typ, ObjId id);
+    Scalar ( ScalarValue value);
+};
+
+enum ObjType {
+    "Map",
+    "List",
+    "Text",
+};
+
+[Error] enum DocError {
+    "WrongObjectType",
+    "Internal",
+};
+
+[Error]
+enum LoadError {
+    "Internal",
+};
+
+[Error]
+enum ReceiveSyncError {
+    "Internal",
+    "InvalidMessage",
+};
+
+[Error]
+enum DecodeSyncStateError {
+    "Internal",
+};
+
+[Error]
+enum DecodeChangeError {
+    "Internal",
+};
+
+interface SyncState {
+    constructor();
+
+    [Name=decode, Throws=DecodeSyncStateError]
+    constructor(sequence<u8> bytes);
+    sequence<u8> encode();
+
+    void reset();
+    sequence<ChangeHash>? their_heads();
+
+};
+
+dictionary KeyValue {
+    string key;
+    Value value;
+};
+
+[Enum]
+interface Prop {
+    Key( string value );
+    Index( u64 value );
+};
+
+enum ExpandMark {
+    "Before",
+    "After",
+    "None",
+    "Both",
+};
+
+dictionary Mark {
+    u64 start;
+    u64 end;
+    string name;
+    ScalarValue value;
+};
+
+dictionary PathElement {
+    Prop prop;
+    ObjId obj;
+};
+
+dictionary Change {
+    ActorId actor_id;
+    u64 seq;
+    u64 start_op;
+    string? message;
+    sequence<ChangeHash> deps;
+    i64 timestamp;
+    sequence<u8> bytes;
+    ChangeHash hash;
+};
+
+dictionary Patch {
+    sequence<PathElement> path;
+    PatchAction action;
+};
+
+[Enum]
+interface PatchAction {
+    Put( ObjId obj, Prop prop, Value value);
+    Insert( ObjId obj, u64 index, sequence<Value> values);
+    SpliceText( ObjId obj, u64 index, string value, record<string, Value> marks);
+    Increment( ObjId obj, Prop prop, i64 value);
+    Conflict( ObjId obj, Prop prop);
+    DeleteMap( ObjId obj, string key);
+    DeleteSeq( ObjId obj, u64 index, u64 length);
+    Marks( ObjId obj, sequence<Mark> marks );
+};
+
+enum TextEncoding {
+    "UnicodeCodePoint",
+    "Utf8CodeUnit",
+    "Utf16CodeUnit",
+    "GraphemeCluster",
+};
+
+interface Doc {
+
+    constructor();
+    [Name=new_with_actor]
+    constructor(ActorId actor);
+    [Name=load, Throws=LoadError]
+    constructor(sequence<u8> bytes);
+    [Name=new_with_text_encoding]
+    constructor(TextEncoding text_encoding);
+
+    ActorId actor_id();
+    TextEncoding text_encoding();
+    void set_actor(ActorId actor);
+    Doc fork();
+    [Throws=DocError]
+    Doc fork_at(sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    void put_in_map(ObjId obj, string key, ScalarValue value);
+    [Throws=DocError]
+    ObjId put_object_in_map(ObjId obj, string key, ObjType obj_type);
+    [Throws=DocError]
+    void put_in_list(ObjId obj, u64 index, ScalarValue value);
+    [Throws=DocError]
+    ObjId put_object_in_list(ObjId obj, u64 index, ObjType obj_type);
+    [Throws=DocError]
+    void insert_in_list(ObjId obj, u64 index, ScalarValue value);
+    [Throws=DocError]
+    ObjId insert_object_in_list(ObjId obj, u64 index, ObjType obj_type);
+
+    [Throws=DocError]
+    void splice_text(ObjId obj, u64 start, i64 del_count, string chars);
+    [Throws=DocError]
+    void update_text(ObjId obj, string chars);
+
+    [Throws=DocError]
+    void splice(ObjId obj, u64 start, i64 del_count, sequence<ScalarValue> values);
+
+    [Throws=DocError]
+    void mark(ObjId obj, u64 start, u64 end, ExpandMark expand, string name, ScalarValue value);
+    [Throws=DocError]
+    sequence<Mark> marks(ObjId obj);
+    [Throws=DocError]
+    sequence<Mark> marks_at(ObjId obj, sequence<ChangeHash> heads);
+    [Throws=DocError]
+    sequence<Mark> marks_at_position(ObjId obj, Position position, sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    ObjId split_block(ObjId obj, u32 index);
+    [Throws=DocError]
+    void join_block(ObjId obj, u32 index);
+
+    [Throws=DocError]
+    void delete_in_map(ObjId obj, string key);
+    [Throws=DocError]
+    void delete_in_list(ObjId obj, u64 index);
+
+    [Throws=DocError]
+    void increment_in_map(ObjId obj, string key, i64 by);
+    [Throws=DocError]
+    void increment_in_list(ObjId obj, u64 index, i64 by);
+
+    [Throws=DocError]
+    Value? get_in_map(ObjId obj, string key);
+    [Throws=DocError]
+    Value? get_in_list(ObjId obj, u64 index);
+
+    [Throws=DocError]
+    Value? get_at_in_map(ObjId obj, string key, sequence<ChangeHash> heads);
+    [Throws=DocError]
+    Value? get_at_in_list(ObjId obj, u64 index, sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    sequence<Value> get_all_in_map(ObjId obj, string key);
+    [Throws=DocError]
+    sequence<Value> get_all_in_list(ObjId obj, u64 index);
+
+    [Throws=DocError]
+    sequence<Value> get_all_at_in_map(ObjId obj, string key, sequence<ChangeHash> heads);
+    [Throws=DocError]
+    sequence<Value> get_all_at_in_list(ObjId obj, u64 index, sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    string text(ObjId obj);
+    [Throws=DocError]
+    string text_at(ObjId obj, sequence<ChangeHash> heads);
+
+    sequence<string> map_keys(ObjId obj);
+    sequence<string> map_keys_at(ObjId obj, sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    sequence<KeyValue> map_entries(ObjId obj);
+    [Throws=DocError]
+    sequence<KeyValue> map_entries_at(ObjId obj, sequence<ChangeHash> heads);
+
+    [Throws=DocError]
+    sequence<Value> values(ObjId obj);
+    [Throws=DocError]
+    sequence<Value> values_at(ObjId obj, sequence<ChangeHash> heads);
+
+    u64 length(ObjId obj);
+    u64 length_at(ObjId obj, sequence<ChangeHash> heads);
+
+    ObjType object_type(ObjId obj);
+
+    [Throws=DocError]
+    sequence<PathElement> path(ObjId obj);
+
+    sequence<ChangeHash> heads();
+
+    sequence<ChangeHash> changes();
+
+    sequence<Change> changes_since(sequence<ChangeHash> heads);
+
+    sequence<ChangeHash> missing_deps(sequence<ChangeHash> heads);
+
+    Change? change_by_hash(ChangeHash hash);
+
+    sequence<Patch> difference(sequence<ChangeHash> before, sequence<ChangeHash> after);
+
+    void commit_with(string? msg, i64 time);
+
+    sequence<u8> save();
+
+    [Throws=DocError]
+    void merge(Doc other);
+    [Throws=DocError]
+    sequence<Patch> merge_with_patches(Doc other);
+
+    sequence<u8>? generate_sync_message(SyncState state);
+    [Throws=ReceiveSyncError]
+    void receive_sync_message(SyncState state, sequence<u8> msg);
+    [Throws=ReceiveSyncError]
+    sequence<Patch> receive_sync_message_with_patches(SyncState state, sequence<u8> msg);
+
+    sequence<u8> encode_new_changes();
+    [Throws=DocError]
+    sequence<u8> encode_changes_since(sequence<ChangeHash> heads);
+    [Throws=DocError]
+    void apply_encoded_changes(sequence<u8> changes);
+    [Throws=DocError]
+    sequence<Patch> apply_encoded_changes_with_patches(sequence<u8> changes);
+
+    u64 pending_ops();
+    u64 rollback();
+
+    [Throws=DocError]
+    Cursor cursor(ObjId obj, u64 position);
+    [Throws=DocError]
+    Cursor cursor_at(ObjId obj, u64 position, sequence<ChangeHash> heads);
+    [Throws=DocError]
+    u64 cursor_position(ObjId obj, Cursor cursor);
+    [Throws=DocError]
+    u64 cursor_position_at(ObjId obj, Cursor cursor, sequence<ChangeHash> heads);
+
+};

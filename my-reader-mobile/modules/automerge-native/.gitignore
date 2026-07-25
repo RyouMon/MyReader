@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+lib/
+build/
+
+# Prebuilt native artifacts are local build output and must not enter Git history.
+AutomergeGeneratedFramework.xcframework/
+android/src/main/jniLibs/
+
+# Rust build
+rust/target/
+
+# iOS
+ios/build/
+*.xcworkspace
+*.xcodeproj
+Pods/
+
+# Android
+android/build/
+android/.gradle/
+android/.cxx/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

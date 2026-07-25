@@ -5,6 +5,7 @@ packages:
   - "my-reader"
   - "my-reader-mobile"
 patchedDependencies:
+  "@automerge/automerge@3.3.2": "patches/@automerge__automerge@3.3.2.patch"
   "@react-native-menu/menu@2.0.0": "patches/@react-native-menu__menu@2.0.0.patch"
   drizzle-orm@0.40.1: patches/drizzle-orm@0.40.1.patch
   "react-native-css@3.0.7": "patches/react-native-css@3.0.7.patch"

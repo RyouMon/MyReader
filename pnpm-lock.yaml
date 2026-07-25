@@ -8,6 +8,7 @@ overrides:
   lightningcss: 1.30.1
 
 patchedDependencies:
+  '@automerge/automerge@3.3.2': 48575c7246c8363531f72cd231e6a707ad2c6574e772e494a36a4e18929d992c
   '@react-native-menu/menu@2.0.0': d895ba2671db65cd7d9afff53df442f931c5b05ec9e69ef1a1d7cf09270d9b81
   drizzle-orm@0.40.1: f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e
   react-native-css@3.0.7: 84b0a43e5b79ecff96a437135adc90aaac139f76b9da3220162ed6a7e19203b5
@@ -223,7 +224,7 @@ importers:
     dependencies:
       '@automerge/automerge':
         specifier: 3.3.2
-        version: 3.3.2
+        version: 3.3.2(patch_hash=48575c7246c8363531f72cd231e6a707ad2c6574e772e494a36a4e18929d992c)
       '@babel/runtime':
         specifier: ^7.29.2
         version: 7.29.2
@@ -248,6 +249,9 @@ importers:
       '@material/material-color-utilities':
         specifier: ^0.4.0
         version: 0.4.0
+      '@my-reader/automerge-native':
+        specifier: link:modules/automerge-native
+        version: link:modules/automerge-native
       '@my-reader/book-transition':
         specifier: link:modules/book-transition
         version: link:modules/book-transition
@@ -458,6 +462,9 @@ importers:
       tailwindcss:
         specifier: ^4.2.2
         version: 4.3.0
+      uniffi-bindgen-react-native:
+        specifier: 0.29.3-1
+        version: 0.29.3-1
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -9415,6 +9422,10 @@ packages:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
     engines: {node: '>=18'}
 
+  uniffi-bindgen-react-native@0.29.3-1:
+    resolution: {integrity: sha512-o6gXZsAh55yuvhwF2WSFdIHV4phyfWcCmg4DuyfJWJ7CvUz1UcIz2S4u9SmXAz1jsuqvu6Xc9hexrRBB0a5osg==}
+    hasBin: true
+
   universalify@0.2.0:
     resolution: {integrity: sha512-CJ1QgKmNg3CwvAv/kOFmtnEN05f0D/cn9QntgNOQlQF9dgvVTHj3t+8JPdjqawCHk7V/KA+fbUqzZ9XWhcqPUg==}
     engines: {node: '>= 4.0.0'}
@@ -9941,7 +9952,7 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
-  '@automerge/automerge@3.3.2': {}
+  '@automerge/automerge@3.3.2(patch_hash=48575c7246c8363531f72cd231e6a707ad2c6574e772e494a36a4e18929d992c)': {}
 
   '@babel/code-frame@7.29.0':
     dependencies:
@@ -20279,6 +20290,8 @@ snapshots:
   unicode-property-aliases-ecmascript@2.2.0: {}
 
   unicorn-magic@0.3.0: {}
+
+  uniffi-bindgen-react-native@0.29.3-1: {}
 
   universalify@0.2.0: {}
 

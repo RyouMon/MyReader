@@ -1,0 +1,2 @@
+# UniFFI configuration for react-native-automerge-generated
+# Custom type mappings are handled in Rust code via custom_type! macro

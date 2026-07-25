@@ -182,10 +182,21 @@ WHERE book_id = 542;
 ## 2026-07-25 实施验证记录
 
 - canonical Automerge fixture、Rust/TypeScript 互操作、Rust 双 replica 本地对象存储闭环通过；
-- iOS Metro/Hermes production export 通过；
-- Tauri 真实打开固定 PDF，第 2 页立即保存并投影为 `67%`；
+- iOS signed Debug 构建在 Hermes 中使用原生 Automerge backend，不再依赖全局
+  `WebAssembly`；应用启动后的真实 OneDrive 同步成功；
+- Tauri 真实打开固定 PDF 并定位到第 2 页，列表与详情立即投影为 `67%`；同步后 iOS 日志记录
+  `pulled: 21, pushed: 0`，主页在打开书前已显示 `67%`，打开后 reader 显示
+  `第 2 页` 和 `2 / 3`；
+- iOS 将同一本书推进到第 3 页，本地日志记录 `position: 3`、
+  `displayProgression: 1`；完整同步记录 `pulled: 0, pushed: 2`；
+- Tauri 随后同步，列表与详情在打开书前更新为 `100%` / `已读完`，打开后 reader 显示
+  `第 3 / 3 页`；
+- 关闭两端 reader 后再次同步，双方 `heads_json` 收敛到同一个 head，进度均为
+  `position: 3`、`displayProgression: 1`；下一次 iOS 同步为 `pulled: 0, pushed: 0`；
+- Metro 模块重载后不会重复安装 UniFFI 全局绑定，Fast Refresh 不再触发
+  `property is not configurable`；
 - 真实运行暴露旧 `library-sidecar-v4` identity 阻止写入，已增加回归测试和一次性丢弃旧同步
-  内部状态的 migration；业务 projection 保留；
-- 本机 CoreSimulator 服务在启动 DeviceIO 时崩溃，OneDrive 推送等待 macOS 钥匙串授权，因此
-  本次会话未形成新的真实 iOS ↔ Tauri 云端闭环证据。修复环境后必须按本文补跑，不能把 production
-  export 或自动化双 replica 测试写成真实设备通过。
+  内部状态的 migration；业务 projection 保留。
+
+本次真实闭环使用运行中的 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 OneDrive
+`CalibreLibrary`，已覆盖双向远端增量、同步后查询刷新和 reader 初始位置恢复。
