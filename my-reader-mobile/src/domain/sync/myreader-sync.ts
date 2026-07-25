@@ -11,6 +11,7 @@ import {
   ensureLibrarySidecarAutomergeState,
   publishLibrarySidecarAutomergeChanges,
   pullLibrarySidecarAutomergeChanges,
+  readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./library-sidecar/automerge-store"
 import { projectLibrarySidecarAutomergeDocument } from "./library-sidecar/automerge-projection"
 import {
@@ -63,6 +64,27 @@ const librarySidecarProvider: MyReaderSyncProvider = {
 
 const PROVIDERS: MyReaderSyncProvider[] = [librarySidecarProvider]
 
+async function logAutomergeDiagnostics(
+  ctx: SyncTargetContext,
+  event: "complete" | "failed",
+): Promise<void> {
+  try {
+    const diagnostics = await readLibrarySidecarAutomergeDiagnosticSnapshot(
+      ctx.library,
+    )
+    console.info(`[reading-sync] automerge:${event}`, {
+      libraryId: ctx.library.id,
+      backend: ctx.backend.kind,
+      ...diagnostics,
+    })
+  } catch (error) {
+    console.warn("[reading-sync] automerge:diagnostics-failed", {
+      libraryId: ctx.library.id,
+      error: describeError(error),
+    })
+  }
+}
+
 async function syncProviders(
   ctx: SyncTargetContext,
   mode: MyReaderSyncMode,
@@ -102,16 +124,21 @@ export async function syncMyReader(
     backend: ctx.backend.kind,
   })
   try {
+    let result: MyReaderSyncResult
     if (
       ctx.backend.kind === "local-direct" &&
       ctx.library.securityScopedBookmark
     ) {
-      return await withLocalLibraryCalibreRoot(ctx.library, () =>
+      result = await withLocalLibraryCalibreRoot(ctx.library, () =>
         syncProviders(ctx, mode, providers),
       )
+    } else {
+      result = await syncProviders(ctx, mode, providers)
     }
-    return await syncProviders(ctx, mode, providers)
+    await logAutomergeDiagnostics(ctx, "complete")
+    return result
   } catch (err) {
+    await logAutomergeDiagnostics(ctx, "failed")
     console.error("[reading-sync] sync:failed", {
       libraryId: ctx.library.id,
       mode,

@@ -260,6 +260,8 @@ export async function readLibrarySidecarAutomergeProjectionMeta(
 export async function readLibrarySidecarAutomergeDiagnostics(
   tx: LibrarySidecarSyncTransaction,
 ): Promise<{
+  schemaVersion: number | null
+  headsJson: string | null
   changes: number
   pendingOutbox: number
   receipts: number
@@ -267,6 +269,10 @@ export async function readLibrarySidecarAutomergeDiagnostics(
 }> {
   const result = await tx.execute(
     `SELECT
+      (SELECT schema_version FROM sync_automerge_state WHERE id = 'local')
+        AS schema_version,
+      (SELECT heads_json FROM sync_automerge_state WHERE id = 'local')
+        AS heads_json,
       (SELECT COUNT(*) FROM sync_automerge_changes) AS changes,
       (SELECT COUNT(*) FROM sync_automerge_outbox WHERE published_at IS NULL) AS pending_outbox,
       (SELECT COUNT(*) FROM sync_automerge_receipts) AS receipts,
@@ -276,6 +282,8 @@ export async function readLibrarySidecarAutomergeDiagnostics(
   const row = result.rows[0]
   if (!row) {
     return {
+      schemaVersion: null,
+      headsJson: null,
       changes: 0,
       pendingOutbox: 0,
       receipts: 0,
@@ -283,6 +291,12 @@ export async function readLibrarySidecarAutomergeDiagnostics(
     }
   }
   return {
+    schemaVersion:
+      row.schema_version === null
+        ? null
+        : requiredInteger(row, "schema_version"),
+    headsJson:
+      row.heads_json === null ? null : requiredString(row, "heads_json"),
     changes: requiredInteger(row, "changes"),
     pendingOutbox: requiredInteger(row, "pending_outbox"),
     receipts: requiredInteger(row, "receipts"),

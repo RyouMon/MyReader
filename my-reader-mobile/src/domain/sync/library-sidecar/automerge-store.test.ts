@@ -38,6 +38,7 @@ import {
   insertLibrarySidecarAutomergeOutbox,
   listPendingLibrarySidecarAutomergeOutbox,
   markLibrarySidecarAutomergeOutboxPublished,
+  readLibrarySidecarAutomergeDiagnostics,
   readLibrarySidecarAutomergeState,
   writeLibrarySidecarAutomergeProjectionMeta,
   writeLibrarySidecarAutomergeState,
@@ -57,6 +58,7 @@ import {
   ensureLibrarySidecarAutomergeState,
   publishLibrarySidecarAutomergeChanges,
   pullLibrarySidecarAutomergeChanges,
+  readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./automerge-store"
 
 const library = {
@@ -108,6 +110,14 @@ describe("library sidecar Automerge store", () => {
     jest
       .mocked(hashLibrarySidecarAutomergeBytes)
       .mockResolvedValue("b".repeat(64))
+    jest.mocked(readLibrarySidecarAutomergeDiagnostics).mockResolvedValue({
+      schemaVersion: 1,
+      headsJson: '["identity-head"]',
+      changes: 1,
+      pendingOutbox: 0,
+      receipts: 2,
+      projectionVersion: 1,
+    })
     jest.mocked(loadLibrarySidecarDocument).mockResolvedValue({
       state: "loaded",
       schema: 1,
@@ -152,6 +162,19 @@ describe("library sidecar Automerge store", () => {
         rebuiltAt: 1,
       },
     )
+  })
+
+  it("should expose local sync metadata when diagnostics are read", async () => {
+    await expect(
+      readLibrarySidecarAutomergeDiagnosticSnapshot(library),
+    ).resolves.toEqual({
+      schemaVersion: 1,
+      heads: ["identity-head"],
+      changes: 1,
+      pendingOutbox: 0,
+      receipts: 2,
+      projectionVersion: 1,
+    })
   })
 
   it("should not publish different bytes when an immutable object already exists", async () => {

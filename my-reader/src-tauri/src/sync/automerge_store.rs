@@ -609,6 +609,7 @@ pub async fn sync_library_sidecar_automerge(
         event = "automerge.complete",
         replica_id = %identity.replica_id,
         heads = %state.heads_json,
+        schema_version = state.schema_version,
         projection_version = ?projection_version,
         pushed,
         pulled,

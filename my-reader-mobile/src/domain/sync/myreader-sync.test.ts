@@ -4,6 +4,7 @@ import {
   ensureLibrarySidecarAutomergeState,
   publishLibrarySidecarAutomergeChanges,
   pullLibrarySidecarAutomergeChanges,
+  readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./library-sidecar/automerge-store"
 import { syncMyReader } from "./myreader-sync"
 import {
@@ -23,6 +24,7 @@ jest.mock("./library-sidecar/automerge-store", () => ({
   ensureLibrarySidecarAutomergeState: jest.fn(),
   publishLibrarySidecarAutomergeChanges: jest.fn(),
   pullLibrarySidecarAutomergeChanges: jest.fn(),
+  readLibrarySidecarAutomergeDiagnosticSnapshot: jest.fn(),
 }))
 
 jest.mock("./library-sidecar/automerge-projection", () => ({
@@ -66,6 +68,16 @@ describe("syncMyReader", () => {
       .mockResolvedValue({} as never)
     jest.mocked(publishLibrarySidecarAutomergeChanges).mockResolvedValue(1)
     jest.mocked(pullLibrarySidecarAutomergeChanges).mockResolvedValue(1)
+    jest
+      .mocked(readLibrarySidecarAutomergeDiagnosticSnapshot)
+      .mockResolvedValue({
+        schemaVersion: 1,
+        heads: ["head"],
+        changes: 2,
+        pendingOutbox: 0,
+        receipts: 1,
+        projectionVersion: 1,
+      })
     jest.mocked(invalidateReadingProgress).mockResolvedValue(undefined)
     jest.mocked(invalidateReadingStatistics).mockResolvedValue(undefined)
     jest.mocked(invalidateReaderAnnotations).mockResolvedValue(undefined)
@@ -131,5 +143,36 @@ describe("syncMyReader", () => {
 
     resolveInvalidation()
     await expect(syncPromise).resolves.toMatchObject({ skipped: false })
+  })
+
+  it("should log Automerge diagnostics when sync fails", async () => {
+    const info = jest.spyOn(console, "info").mockImplementation()
+    const error = jest.spyOn(console, "error").mockImplementation()
+    jest
+      .mocked(publishLibrarySidecarAutomergeChanges)
+      .mockRejectedValue(new Error("network unavailable"))
+
+    const result = await syncMyReader(context)
+
+    expect(readLibrarySidecarAutomergeDiagnosticSnapshot).toHaveBeenCalledWith(
+      context.library,
+    )
+    expect(info).toHaveBeenCalledWith("[reading-sync] automerge:failed", {
+      libraryId: context.library.id,
+      backend: "local-direct",
+      schemaVersion: 1,
+      heads: ["head"],
+      changes: 2,
+      pendingOutbox: 0,
+      receipts: 1,
+      projectionVersion: 1,
+    })
+    expect(result).toMatchObject({
+      skipped: true,
+      skipReason: "error",
+      error: "network unavailable",
+    })
+    info.mockRestore()
+    error.mockRestore()
   })
 })

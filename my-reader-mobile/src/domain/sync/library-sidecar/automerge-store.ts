@@ -427,36 +427,34 @@ export async function pullLibrarySidecarAutomergeChanges(
   })
 }
 
-export async function syncLibrarySidecarAutomerge(
+export type LibrarySidecarAutomergeDiagnosticSnapshot = {
+  schemaVersion: number | null
+  heads: string[]
+  changes: number
+  pendingOutbox: number
+  receipts: number
+  projectionVersion: number | null
+}
+
+export async function readLibrarySidecarAutomergeDiagnosticSnapshot(
   library: Library,
-  backend: SyncBackend,
-  identity: LibrarySidecarReplicaIdentity,
-  nowMs: number,
-  project?: ProjectionWriter,
-): Promise<{ pushed: number; pulled: number }> {
-  await ensureLibrarySidecarAutomergeState(library, identity, nowMs)
-  const pushed = await publishLibrarySidecarAutomergeChanges(
-    library,
-    backend,
-    nowMs,
-  )
-  const pulled = await pullLibrarySidecarAutomergeChanges(
-    library,
-    backend,
-    identity,
-    nowMs,
-    project,
-  )
+): Promise<LibrarySidecarAutomergeDiagnosticSnapshot> {
   const diagnostics = await withLibrarySidecarSyncTransaction(
     library,
     readLibrarySidecarAutomergeDiagnostics,
   )
-  console.info("[reading-sync] automerge:complete", {
-    libraryId: library.id,
-    replicaId: identity.replicaId,
-    pushed,
-    pulled,
-    ...diagnostics,
-  })
-  return { pushed, pulled }
+  const parsedHeads = diagnostics.headsJson
+    ? (JSON.parse(diagnostics.headsJson) as unknown)
+    : []
+  if (
+    !Array.isArray(parsedHeads) ||
+    parsedHeads.some((head) => typeof head !== "string")
+  ) {
+    throw new Error("Persisted Automerge heads are invalid")
+  }
+  const { headsJson: _headsJson, ...counts } = diagnostics
+  return {
+    ...counts,
+    heads: parsedHeads,
+  }
 }
