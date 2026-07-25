@@ -250,8 +250,8 @@ pub fn normalize_rel_path(rel_path: &str) -> String {
 }
 
 /// Convert a WebDAV href from a PROPFIND response into a path relative to the
-/// configured root_path. Percent-encoded sequences are decoded.
-pub fn to_remote_entry_path(href: &str, root_path: &str, is_directory: bool) -> String {
+/// configured WebDAV base path. Percent-encoded sequences are decoded.
+pub fn to_remote_entry_path(href: &str, base_path: &str, is_directory: bool) -> String {
     use percent_encoding::percent_decode_str;
 
     let raw_path = if href.starts_with("http://") || href.starts_with("https://") {
@@ -274,10 +274,10 @@ pub fn to_remote_entry_path(href: &str, root_path: &str, is_directory: bool) -> 
         normalized = format!("/{normalized}");
     }
 
-    let root_normalized = if root_path == "/" {
+    let root_normalized = if base_path == "/" {
         String::new()
     } else {
-        let mut r = root_path.to_string();
+        let mut r = base_path.to_string();
         while r.contains("//") {
             r = r.replace("//", "/");
         }
@@ -486,6 +486,40 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "参考资料");
         assert_eq!(entries[0].path, "参考资料/");
+    }
+
+    #[test]
+    fn parse_propfind_response_should_strip_endpoint_path_when_root_path_is_missing() {
+        let xml = r#"<?xml version="1.0"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/dav/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:resourcetype><D:collection/></D:resourcetype>
+        <D:displayname>root</D:displayname>
+      </D:prop>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/Shared/</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:resourcetype><D:collection/></D:resourcetype>
+        <D:displayname>Shared</D:displayname>
+      </D:prop>
+    </D:propstat>
+  </D:response>
+</D:multistatus>"#;
+
+        let base_url =
+            build_test_url("https://example.com/dav", None).expect("expected valid base url");
+        let entries =
+            parse_propfind_response(xml, Some(base_url.path()), "/").expect("parse should succeed");
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "Shared");
+        assert_eq!(entries[0].path, "Shared/");
     }
 
     #[test]

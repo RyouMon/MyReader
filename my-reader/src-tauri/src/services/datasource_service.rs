@@ -275,7 +275,8 @@ impl DataSourceService {
             .await
             .map_err(|err| AppError::Config(format!("WEBDAV_READ_BODY_FAILED: {err}")))?;
 
-        let entries = parse_propfind_response(&xml_body, creds.root_path.as_deref(), rel_path)?;
+        let base_url = build_test_url(&creds.endpoint, creds.root_path.as_deref())?;
+        let entries = parse_propfind_response(&xml_body, Some(base_url.path()), rel_path)?;
 
         info!(
             "WebDAV folder listing. folder count: {}, data_source_id: \"{data_source_id}\", rel_path: \"{rel_path}\"",
