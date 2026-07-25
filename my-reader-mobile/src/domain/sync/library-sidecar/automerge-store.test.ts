@@ -180,6 +180,51 @@ describe("library sidecar Automerge store", () => {
     expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalled()
   })
 
+  it("should reuse remote bytes when publication confirmation fails", async () => {
+    const bytes = new Uint8Array([4])
+    const objectPath =
+      ".myreader/automerge/changes/aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa/" +
+      `00000000000000000001-${"a".repeat(64)}.am`
+    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+      {
+        objectPath,
+        bytes,
+        sha256: "b".repeat(64),
+        changeHashesJson: `["${"a".repeat(64)}"]`,
+        publishedAt: null,
+      },
+    ])
+    jest
+      .mocked(markLibrarySidecarAutomergeOutboxPublished)
+      .mockRejectedValueOnce(new Error("publish confirmation failed"))
+      .mockResolvedValueOnce()
+    const backend = {
+      listRemote: jest
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          objectPath.slice(objectPath.lastIndexOf("/") + 1),
+        ]),
+      readBytes: jest.fn().mockResolvedValue(bytes),
+      writeBytes: jest.fn().mockResolvedValue(undefined),
+    } as never
+
+    await expect(
+      publishLibrarySidecarAutomergeChanges(library, backend, 2),
+    ).rejects.toThrow("publish confirmation failed")
+    await expect(
+      publishLibrarySidecarAutomergeChanges(library, backend, 3),
+    ).resolves.toBe(1)
+
+    expect(
+      (backend as { writeBytes: jest.Mock }).writeBytes,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      (backend as { readBytes: jest.Mock }).readBytes,
+    ).toHaveBeenCalledWith(objectPath)
+    expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalledTimes(2)
+  })
+
   it("should reject a remote object when its bytes exceed the input limit", async () => {
     jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
       schemaVersion: 1,

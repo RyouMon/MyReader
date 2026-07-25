@@ -741,6 +741,79 @@ mod tests {
         assert_eq!(second, (0, 0));
     }
 
+    #[tokio::test]
+    async fn should_reuse_remote_bytes_when_publication_confirmation_fails() {
+        let db = database().await;
+        let identity = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: REPLICA_ID.to_owned(),
+        };
+        ensure_library_sidecar_automerge_state(&db, &identity, 1)
+            .await
+            .unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(directory.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        db.execute_unprepared(
+            "CREATE TRIGGER fail_automerge_publish
+             BEFORE UPDATE OF published_at ON sync_automerge_outbox
+             BEGIN SELECT RAISE(ABORT, 'publish confirmation failed'); END",
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            sync_library_sidecar_automerge(&db, &operator, &identity, 2, None)
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            operator
+                .list_with(REMOTE_CHANGES_ROOT)
+                .recursive(true)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|entry| entry.metadata().is_file())
+                .count(),
+            1
+        );
+        assert!(sync_automerge_outbox::Entity::find()
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap()
+            .published_at
+            .is_none());
+
+        db.execute_unprepared("DROP TRIGGER fail_automerge_publish")
+            .await
+            .unwrap();
+        let retried = sync_library_sidecar_automerge(&db, &operator, &identity, 3, None)
+            .await
+            .unwrap();
+        let settled = sync_library_sidecar_automerge(&db, &operator, &identity, 4, None)
+            .await
+            .unwrap();
+
+        assert_eq!(retried, (1, 0));
+        assert_eq!(settled, (0, 0));
+        assert_eq!(
+            operator
+                .list_with(REMOTE_CHANGES_ROOT)
+                .recursive(true)
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|entry| entry.metadata().is_file())
+                .count(),
+            1
+        );
+    }
+
     #[test]
     fn should_reject_remote_object_when_input_limits_are_exceeded() {
         assert!(validate_remote_object_count(MAX_REMOTE_OBJECTS_PER_SYNC).is_ok());
@@ -811,6 +884,266 @@ mod tests {
             r#"{"href":"page=7","type":"application/pdf"}"#
         );
         assert_eq!(row.display_progression, Some(0.7));
+        assert_eq!(row.sync_conflict_count, 1);
+    }
+
+    struct FailingProjection;
+
+    #[async_trait::async_trait]
+    impl AutomergeProjection for FailingProjection {
+        async fn apply(
+            &self,
+            _txn: &DatabaseTransaction,
+            _document: &AutoCommit,
+            _heads_json: &str,
+        ) -> Result<(), AppError> {
+            Err(sync_error("projection failed"))
+        }
+    }
+
+    #[tokio::test]
+    async fn should_not_commit_remote_state_when_projection_fails() {
+        let source_db = database().await;
+        let target_db = database().await;
+        let source = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: REPLICA_ID.to_owned(),
+        };
+        let target = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+        };
+        commit_library_sidecar_automerge_mutation(
+            &source_db,
+            &source,
+            2,
+            |document| {
+                set_reading_position(
+                    document,
+                    42,
+                    &ReadingPositionValue {
+                        format: "PDF".to_owned(),
+                        locator_json: r#"{"href":"page=7","type":"application/pdf"}"#.to_owned(),
+                        display_progression_ppm: Some(700_000),
+                        recorded_at: 2,
+                        replica_id: source.replica_id.clone(),
+                    },
+                )?;
+                Ok(())
+            },
+            None,
+        )
+        .await
+        .unwrap();
+        ensure_library_sidecar_automerge_state(&target_db, &target, 2)
+            .await
+            .unwrap();
+        let before = read_state(&target_db).await.unwrap().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        sync_library_sidecar_automerge(&source_db, &operator, &source, 3, None)
+            .await
+            .unwrap();
+
+        assert!(sync_library_sidecar_automerge(
+            &target_db,
+            &operator,
+            &target,
+            4,
+            Some(&FailingProjection),
+        )
+        .await
+        .is_err());
+
+        let after = read_state(&target_db).await.unwrap().unwrap();
+        assert_eq!(after.snapshot_bytes, before.snapshot_bytes);
+        assert_eq!(after.heads_json, before.heads_json);
+        assert!(sync_automerge_receipts::Entity::find()
+            .all(&target_db)
+            .await
+            .unwrap()
+            .is_empty());
+        assert!(reading_progress::Entity::find()
+            .all(&target_db)
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    async fn copy_remote_actor(source: &Operator, target: &Operator, actor_id: &str) {
+        let actor_path = format!("{REMOTE_CHANGES_ROOT}/{actor_id}");
+        for entry in source.list_with(&actor_path).recursive(true).await.unwrap() {
+            if entry.metadata().is_file() {
+                target
+                    .write(entry.path(), source.read(entry.path()).await.unwrap())
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn should_converge_when_dependency_objects_appear_after_dependents() {
+        let source_db = database().await;
+        let dependent_db = database().await;
+        let target_db = database().await;
+        let source = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb".to_owned(),
+        };
+        let dependent = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa".to_owned(),
+        };
+        let target = ReplicaIdentity {
+            library_uuid: LIBRARY_UUID.to_owned(),
+            replica_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc".to_owned(),
+        };
+        let projection = LibrarySidecarAutomergeProjection;
+        commit_library_sidecar_automerge_mutation(
+            &source_db,
+            &source,
+            2,
+            |document| {
+                set_reading_position(
+                    document,
+                    42,
+                    &ReadingPositionValue {
+                        format: "PDF".to_owned(),
+                        locator_json: r#"{"href":"page=7","type":"application/pdf"}"#.to_owned(),
+                        display_progression_ppm: Some(700_000),
+                        recorded_at: 2,
+                        replica_id: source.replica_id.clone(),
+                    },
+                )?;
+                Ok(())
+            },
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+        let complete_remote = tempfile::tempdir().unwrap();
+        let complete_operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(complete_remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        sync_library_sidecar_automerge(
+            &source_db,
+            &complete_operator,
+            &source,
+            3,
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+        sync_library_sidecar_automerge(
+            &dependent_db,
+            &complete_operator,
+            &dependent,
+            4,
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+        commit_library_sidecar_automerge_mutation(
+            &dependent_db,
+            &dependent,
+            5,
+            |document| {
+                set_reading_position(
+                    document,
+                    42,
+                    &ReadingPositionValue {
+                        format: "PDF".to_owned(),
+                        locator_json: r#"{"href":"page=3","type":"application/pdf"}"#.to_owned(),
+                        display_progression_ppm: Some(300_000),
+                        recorded_at: 5,
+                        replica_id: dependent.replica_id.clone(),
+                    },
+                )?;
+                Ok(())
+            },
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+        sync_library_sidecar_automerge(
+            &dependent_db,
+            &complete_operator,
+            &dependent,
+            6,
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+
+        let delayed_remote = tempfile::tempdir().unwrap();
+        let delayed_operator = opendal::Operator::new(
+            opendal::services::Fs::default().root(delayed_remote.path().to_str().unwrap()),
+        )
+        .unwrap()
+        .finish();
+        copy_remote_actor(
+            &complete_operator,
+            &delayed_operator,
+            &dependent.replica_id.replace('-', ""),
+        )
+        .await;
+        ensure_library_sidecar_automerge_state(&target_db, &target, 6)
+            .await
+            .unwrap();
+        let before = read_state(&target_db).await.unwrap().unwrap();
+
+        assert!(sync_library_sidecar_automerge(
+            &target_db,
+            &delayed_operator,
+            &target,
+            7,
+            Some(&projection),
+        )
+        .await
+        .is_err());
+        assert_eq!(
+            read_state(&target_db).await.unwrap().unwrap().heads_json,
+            before.heads_json
+        );
+        assert!(sync_automerge_receipts::Entity::find()
+            .all(&target_db)
+            .await
+            .unwrap()
+            .is_empty());
+
+        copy_remote_actor(
+            &complete_operator,
+            &delayed_operator,
+            &source.replica_id.replace('-', ""),
+        )
+        .await;
+        sync_library_sidecar_automerge(
+            &target_db,
+            &delayed_operator,
+            &target,
+            8,
+            Some(&projection),
+        )
+        .await
+        .unwrap();
+
+        let row = reading_progress::Entity::find()
+            .one(&target_db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row.locator_json,
+            r#"{"href":"page=3","type":"application/pdf"}"#
+        );
+        assert_eq!(row.display_progression, Some(0.3));
         assert_eq!(row.sync_conflict_count, 1);
     }
 }
