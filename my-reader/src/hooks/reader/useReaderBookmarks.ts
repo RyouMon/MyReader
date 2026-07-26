@@ -15,6 +15,10 @@ import {
   useState,
 } from "react"
 import { toast } from "sonner"
+import {
+  SIDECAR_SYNC_COMPLETED_EVENT,
+  type SidecarSyncCompletedEvent,
+} from "@/hooks/useSidecarSync"
 import i18n from "@/i18n"
 import { serializeReaderBookmarkLocator } from "@/lib/readium/bookmarks"
 import type { ReaderBookmarkDto } from "@/lib/tauri-api"
@@ -108,6 +112,19 @@ export function useReaderBookmarks({
       mountedRef.current = false
     }
   }, [])
+
+  useEffect(() => {
+    const reload = (event: Event) => {
+      const detail = (event as CustomEvent<SidecarSyncCompletedEvent>).detail
+      if (detail.libraryId === libraryId) {
+        setLoadGeneration((generation) => generation + 1)
+      }
+    }
+    window.addEventListener(SIDECAR_SYNC_COMPLETED_EVENT, reload)
+    return () => {
+      window.removeEventListener(SIDECAR_SYNC_COMPLETED_EVENT, reload)
+    }
+  }, [libraryId])
 
   useEffect(() => {
     void loadGeneration

@@ -621,6 +621,32 @@ pub async fn sync_library_sidecar_automerge(
     Ok((pushed, pulled))
 }
 
+pub async fn publish_library_sidecar_automerge(
+    db: &DatabaseConnection,
+    operator: &Operator,
+    identity: &ReplicaIdentity,
+    now_ms: u64,
+) -> Result<usize, AppError> {
+    let _guard = writer().lock().await;
+    ensure_state_locked(db, identity, now_ms).await?;
+    let pushed = publish_locked(db, operator, now_ms).await?;
+    let pending = sync_automerge_outbox::Entity::find()
+        .filter(sync_automerge_outbox::Column::PublishedAt.is_null())
+        .all(db)
+        .await
+        .map_err(database_error)?
+        .len();
+    info!(
+        target: "myreader_sync",
+        event = "automerge.publish_complete",
+        replica_id = %identity.replica_id,
+        pushed,
+        pending_outbox = pending,
+        "Published Automerge sidecar changes"
+    );
+    Ok(pushed)
+}
+
 #[cfg(test)]
 mod tests {
     use sea_orm::{ConnectionTrait, Database};

@@ -87,6 +87,9 @@ export const api = {
   setReaderTrafficLightsVisible: wrap(commands.setReaderTrafficLightsVisible),
   closeBookStreamer: wrap(commands.closeBookStreamer),
   syncDbForLibrary: wrap(commands.syncDbForLibrary),
+  notifySidecarNetworkReconnected: wrap(
+    commands.notifySidecarNetworkReconnected,
+  ),
   checkBookFileState: wrap(commands.checkBookFileState),
   checkBookFileStates: wrap(commands.checkBookFileStates),
   downloadBookFile: wrap(commands.downloadBookFile),

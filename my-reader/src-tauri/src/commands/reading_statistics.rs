@@ -2,6 +2,7 @@ use tauri::{AppHandle, State};
 
 use crate::commands::{common, AppState};
 use crate::error::AppError;
+use crate::services::library_service::LibraryService;
 use crate::services::reading_statistics_service::ReadingStatisticsService;
 
 #[tauri::command]
@@ -21,10 +22,11 @@ pub async fn add_reading_session_interval<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
     ReadingStatisticsService::add_session_interval_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         &id,
         book_id,
         &format,
@@ -33,7 +35,9 @@ pub async fn add_reading_session_interval<R: tauri::Runtime>(
         duration_seconds,
         updated_at,
     )
-    .await
+    .await?;
+    common::schedule_sidecar_push(&app, &library.id);
+    Ok(())
 }
 
 #[tauri::command]
@@ -52,10 +56,11 @@ pub async fn add_reading_completion<R: tauri::Runtime>(
 ) -> Result<bool, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    ReadingStatisticsService::add_completion_for_library(
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+    let inserted = ReadingStatisticsService::add_completion_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         &id,
         book_id,
         &format,
@@ -63,5 +68,7 @@ pub async fn add_reading_completion<R: tauri::Runtime>(
         completed_at,
         updated_at,
     )
-    .await
+    .await?;
+    common::schedule_sidecar_push(&app, &library.id);
+    Ok(inserted)
 }

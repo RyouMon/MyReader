@@ -6,6 +6,7 @@ use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::LibraryInfo;
 use crate::services::library_service::LibraryService;
+use crate::services::sidecar_sync_scheduler::SidecarSyncReason;
 
 static LIBRARY_ADD_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
@@ -230,7 +231,10 @@ pub fn switch_library<R: tauri::Runtime>(
         common::persist_config(&app, &snapshot)
     })();
     match &result {
-        Ok(()) => info!("Success to switch active library. id: \"{id}\""),
+        Ok(()) => {
+            common::schedule_sidecar_pull(&app, &id, SidecarSyncReason::LibraryActivated);
+            info!("Success to switch active library. id: \"{id}\"");
+        }
         Err(err) => error!("Failed to switch active library. id: \"{id}\", error: {err}"),
     }
     result

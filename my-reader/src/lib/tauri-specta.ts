@@ -60,6 +60,7 @@ export const commands = {
 	setReaderTrafficLightsVisible: (visible: boolean, x: number, y: number, reposition: boolean) => typedError<null, ErrorKind>(__TAURI_INVOKE("set_reader_traffic_lights_visible", { visible, x, y, reposition })),
 	closeBookStreamer: (libraryId: string, bookId: number) => typedError<null, ErrorKind>(__TAURI_INVOKE("close_book_streamer", { libraryId, bookId })),
 	syncDbForLibrary: (libraryId: string) => typedError<DbSyncReport, ErrorKind>(__TAURI_INVOKE("sync_db_for_library", { libraryId })),
+	notifySidecarNetworkReconnected: () => typedError<null, ErrorKind>(__TAURI_INVOKE("notify_sidecar_network_reconnected")),
 	checkBookFileState: (libraryId: string, bookId: number, format: string) => typedError<FileStateDto, ErrorKind>(__TAURI_INVOKE("check_book_file_state", { libraryId, bookId, format })),
 	checkBookFileStates: (libraryId: string, requests: FileStateRequestDto[]) => typedError<BookFileStateDto[], ErrorKind>(__TAURI_INVOKE("check_book_file_states", { libraryId, requests })),
 	downloadBookFile: (libraryId: string, bookId: number, format: string) => typedError<string, ErrorKind>(__TAURI_INVOKE("download_book_file", { libraryId, bookId, format })),

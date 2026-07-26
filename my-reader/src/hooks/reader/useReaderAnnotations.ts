@@ -7,6 +7,10 @@ import {
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import {
+  SIDECAR_SYNC_COMPLETED_EVENT,
+  type SidecarSyncCompletedEvent,
+} from "@/hooks/useSidecarSync"
 import i18n from "@/i18n"
 import type { ReaderAnnotationDto } from "@/lib/tauri-api"
 import { api } from "@/lib/tauri-api"
@@ -66,6 +70,19 @@ export function useReaderAnnotations({
   const scopeKey = `${libraryId ?? ""}:${bookId}:${normalizedFormat}`
   const scopeKeyRef = useRef(scopeKey)
   scopeKeyRef.current = scopeKey
+
+  useEffect(() => {
+    const reload = (event: Event) => {
+      const detail = (event as CustomEvent<SidecarSyncCompletedEvent>).detail
+      if (detail.libraryId === libraryId) {
+        setReloadGeneration((generation) => generation + 1)
+      }
+    }
+    window.addEventListener(SIDECAR_SYNC_COMPLETED_EVENT, reload)
+    return () => {
+      window.removeEventListener(SIDECAR_SYNC_COMPLETED_EVENT, reload)
+    }
+  }, [libraryId])
 
   useEffect(() => {
     void reloadGeneration

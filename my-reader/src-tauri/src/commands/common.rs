@@ -21,6 +21,10 @@ use crate::commands::AppState;
 use crate::config;
 use crate::error::AppError;
 use crate::models::AppConfig;
+use crate::services::sidecar_sync_scheduler::{
+    SidecarSyncReason, SidecarSyncScheduler, SidecarSyncTiming,
+};
+use crate::services::sync_service::SidecarSyncMode;
 
 /// Clone the current `AppConfig` out of managed state. Safe to call from `async` paths
 /// since the lock is released before this returns (the snapshot is owned).
@@ -56,6 +60,32 @@ pub(crate) fn persist_config<R: Runtime>(
 ) -> Result<(), AppError> {
     let path = config::config_path(&app_data_dir(app)?);
     config::save_config(&path, config)
+}
+
+pub(crate) fn schedule_sidecar_push<R: Runtime>(app: &AppHandle<R>, library_id: &str) {
+    if let Some(scheduler) = app.try_state::<SidecarSyncScheduler>() {
+        scheduler.request(
+            library_id,
+            SidecarSyncMode::PushOnly,
+            SidecarSyncReason::LocalChange,
+            SidecarSyncTiming::Debounced,
+        );
+    }
+}
+
+pub(crate) fn schedule_sidecar_pull<R: Runtime>(
+    app: &AppHandle<R>,
+    library_id: &str,
+    reason: SidecarSyncReason,
+) {
+    if let Some(scheduler) = app.try_state::<SidecarSyncScheduler>() {
+        scheduler.request(
+            library_id,
+            SidecarSyncMode::Full,
+            reason,
+            SidecarSyncTiming::Immediate,
+        );
+    }
 }
 
 /// Mutate the managed `AppConfig` and persist the result to `config.json`. The most

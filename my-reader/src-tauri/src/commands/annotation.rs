@@ -4,6 +4,7 @@ use crate::commands::{common, AppState};
 use crate::error::AppError;
 use crate::models::{JsonAny, ReaderAnnotationDto};
 use crate::services::annotation_service::AnnotationService;
+use crate::services::library_service::LibraryService;
 
 #[tauri::command]
 #[specta::specta]
@@ -41,17 +42,20 @@ pub async fn add_reader_annotation<R: tauri::Runtime>(
 ) -> Result<ReaderAnnotationDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    AnnotationService::add_for_library(
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+    let annotation = AnnotationService::add_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         book_id,
         &format,
         &locator.0,
         &color,
         note.as_deref(),
     )
-    .await
+    .await?;
+    common::schedule_sidecar_push(&app, &library.id);
+    Ok(annotation)
 }
 
 #[tauri::command]
@@ -69,17 +73,20 @@ pub async fn update_reader_annotation<R: tauri::Runtime>(
 ) -> Result<ReaderAnnotationDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
-    AnnotationService::update_for_library(
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
+    let annotation = AnnotationService::update_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         book_id,
         &format,
         &id,
         &color,
         note.as_deref(),
     )
-    .await
+    .await?;
+    common::schedule_sidecar_push(&app, &library.id);
+    Ok(annotation)
 }
 
 #[tauri::command]
@@ -94,13 +101,16 @@ pub async fn delete_reader_annotation<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
     AnnotationService::delete_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         book_id,
         &format,
         &id,
     )
-    .await
+    .await?;
+    common::schedule_sidecar_push(&app, &library.id);
+    Ok(())
 }

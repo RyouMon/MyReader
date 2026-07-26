@@ -5,6 +5,7 @@ use crate::commands::{common, AppState};
 use crate::error::AppError;
 use crate::models::{JsonAny, ReaderBookmarkDto};
 use crate::services::bookmark_service::BookmarkService;
+use crate::services::library_service::LibraryService;
 
 #[tauri::command]
 #[specta::specta]
@@ -47,16 +48,18 @@ pub async fn add_reader_bookmark<R: tauri::Runtime>(
 ) -> Result<ReaderBookmarkDto, AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
     let bookmark = BookmarkService::add_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         book_id,
         &format,
         &locator_key,
         &locator.0,
     )
     .await?;
+    common::schedule_sidecar_push(&app, &library.id);
     info!(book_id, format, locator_key, "Added reader bookmark");
     Ok(bookmark)
 }
@@ -73,15 +76,17 @@ pub async fn delete_reader_bookmark<R: tauri::Runtime>(
 ) -> Result<(), AppError> {
     let app_data_dir = common::app_data_dir(&app)?;
     let config = common::config_snapshot(&state);
+    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
     BookmarkService::delete_for_library(
         &app_data_dir,
         &config,
-        library_id.as_deref(),
+        Some(&library.id),
         book_id,
         &format,
         &locator_key,
     )
     .await?;
+    common::schedule_sidecar_push(&app, &library.id);
     info!(book_id, format, locator_key, "Deleted reader bookmark");
     Ok(())
 }

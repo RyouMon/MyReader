@@ -144,6 +144,7 @@ pub async fn set_reading_progress<R: tauri::Runtime>(
     }
 
     if result.is_ok() {
+        common::schedule_sidecar_push(&app, &resolved_library.id);
         emit_reading_progress_changed(
             &app,
             &resolved_library.id,
@@ -200,6 +201,7 @@ pub async fn select_reading_position_candidate<R: tauri::Runtime>(
         &operation_id,
     )
     .await?;
+    common::schedule_sidecar_push(&app, &library.id);
     if let Some(progress) = ProgressService::get_reading_progress_for_library(
         &app_data_dir,
         &config,

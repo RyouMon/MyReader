@@ -34,6 +34,7 @@ use tracing::{error, info};
 
 use commands::AppState;
 use services::download_service::DownloadService;
+use services::sidecar_sync_scheduler::{SidecarSyncReason, SidecarSyncScheduler};
 use streamer::StreamerState;
 
 /// Local datetime with millisecond precision. Falls back to UTC when the local
@@ -95,6 +96,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::reader::set_reader_traffic_lights_visible::<tauri::Wry>,
             commands::reader::close_book_streamer,
             commands::sync::sync_db_for_library::<tauri::Wry>,
+            commands::sync::notify_sidecar_network_reconnected,
             commands::download::check_book_file_state::<tauri::Wry>,
             commands::download::check_book_file_states::<tauri::Wry>,
             commands::download::download_book_file::<tauri::Wry>,
@@ -159,8 +161,19 @@ pub fn run() -> Result<(), tauri::Error> {
                     e
                 );
             }
+            let scheduler =
+                SidecarSyncScheduler::start(app.handle().clone(), app.path().app_data_dir()?);
+            scheduler.recover_pending_work();
+            app.manage(scheduler);
             info!("Success to initialize application.");
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Focused(true)) {
+                if let Some(scheduler) = window.app_handle().try_state::<SidecarSyncScheduler>() {
+                    scheduler.schedule_active_pull(SidecarSyncReason::AppFocused);
+                }
+            }
         })
         .register_asynchronous_uri_scheme_protocol("bookcover", protocols::bookcover_handler)
         .register_asynchronous_uri_scheme_protocol("bookfile", protocols::bookfile_handler)

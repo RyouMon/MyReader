@@ -57,6 +57,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::reader::set_reader_traffic_lights_visible::<tauri::Wry>,
             my_reader_lib::commands::reader::close_book_streamer,
             my_reader_lib::commands::sync::sync_db_for_library::<tauri::Wry>,
+            my_reader_lib::commands::sync::notify_sidecar_network_reconnected,
             my_reader_lib::commands::download::check_book_file_state::<tauri::Wry>,
             my_reader_lib::commands::download::check_book_file_states::<tauri::Wry>,
             my_reader_lib::commands::download::download_book_file::<tauri::Wry>,
