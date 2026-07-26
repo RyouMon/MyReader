@@ -32,6 +32,10 @@ jest.mock("./automerge-document", () => ({
   setLibrarySidecarIdentity: jest.fn(),
 }))
 
+jest.mock("../background-sidecar-upload", () => ({
+  uploadLibrarySidecarObject: jest.fn(),
+}))
+
 import {
   hasLibrarySidecarAutomergeReceipt,
   insertLibrarySidecarAutomergeChange,
@@ -44,6 +48,8 @@ import {
   writeLibrarySidecarAutomergeState,
 } from "@/src/repos/library-sidecar-automerge"
 import { withLibrarySidecarSyncTransaction } from "@/src/repos/library-sidecar-sync"
+import { uploadLibrarySidecarObject } from "../background-sidecar-upload"
+import { subscribeLibrarySidecarWork } from "../sidecar-work"
 import { hashLibrarySidecarAutomergeBytes } from "./automerge-binary"
 import {
   createLibrarySidecarDocument,
@@ -62,7 +68,6 @@ import {
   pullLibrarySidecarAutomergeChanges,
   readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./automerge-store"
-import { subscribeLibrarySidecarWork } from "../sidecar-work"
 
 const library = {
   id: "library-1",
@@ -315,6 +320,40 @@ describe("library sidecar Automerge store", () => {
       (backend as { readBytes: jest.Mock }).readBytes,
     ).toHaveBeenCalledWith(objectPath)
     expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalledTimes(2)
+  })
+
+  it("should use native background upload when a remote object is missing", async () => {
+    const bytes = new Uint8Array([4])
+    const objectPath =
+      ".myreader/automerge/changes/aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa/" +
+      `00000000000000000001-${"a".repeat(64)}.am`
+    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+      {
+        objectPath,
+        bytes,
+        sha256: "b".repeat(64),
+        changeHashesJson: `["${"a".repeat(64)}"]`,
+        publishedAt: null,
+      },
+    ])
+    const backend = {
+      kind: "onedrive",
+      listRemote: jest.fn().mockResolvedValue([]),
+      readBytes: jest.fn(),
+      writeBytes: jest.fn(),
+    } as never
+
+    await publishLibrarySidecarAutomergeChanges(library, backend, 2)
+
+    expect(uploadLibrarySidecarObject).toHaveBeenCalledWith(
+      backend,
+      objectPath,
+      bytes,
+    )
+    expect(
+      (backend as { writeBytes: jest.Mock }).writeBytes,
+    ).not.toHaveBeenCalled()
+    expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalled()
   })
 
   it("should reject a remote object when its bytes exceed the input limit", async () => {

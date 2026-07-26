@@ -1,5 +1,5 @@
+import type { Doc } from "@automerge/automerge/slim"
 import type { Library } from "@my-reader/tools/types/library"
-
 import {
   hasLibrarySidecarAutomergeReceipt,
   insertLibrarySidecarAutomergeChange,
@@ -14,9 +14,11 @@ import {
   writeLibrarySidecarAutomergeState,
 } from "@/src/repos/library-sidecar-automerge"
 import {
-  withLibrarySidecarSyncTransaction,
   type LibrarySidecarSyncTransaction,
+  withLibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
+import type { RemoteBackend } from "@/src/services/remote/backend"
+import { uploadLibrarySidecarObject } from "../background-sidecar-upload"
 import type { SyncBackend } from "../resolve"
 import { announceLibrarySidecarWork } from "../sidecar-work"
 import { hashLibrarySidecarAutomergeBytes } from "./automerge-binary"
@@ -24,6 +26,7 @@ import {
   applyLibrarySidecarIncremental,
   assertLibrarySidecarIdentity,
   createLibrarySidecarDocument,
+  type LibrarySidecarDocument,
   librarySidecarChangesSince,
   librarySidecarDocumentHeads,
   librarySidecarMissingDependencies,
@@ -31,10 +34,8 @@ import {
   saveLibrarySidecarDocument,
   saveLibrarySidecarIncremental,
   setLibrarySidecarIdentity,
-  type LibrarySidecarDocument,
 } from "./automerge-document"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
-import type { Doc } from "@automerge/automerge/slim"
 
 const REMOTE_CHANGES_ROOT = ".myreader/automerge/changes"
 const PROJECTION_VERSION = 1
@@ -299,7 +300,35 @@ async function remoteObjectExists(
   const separator = objectPath.lastIndexOf("/")
   const directory = objectPath.slice(0, separator + 1)
   const name = objectPath.slice(separator + 1)
-  return (await backend.listRemote(directory)).includes(name)
+  return (await listRemoteEntries(backend, directory, "publish")).includes(name)
+}
+
+async function listRemoteEntries(
+  backend: SyncBackend,
+  prefix: string,
+  stage: "publish" | "pull_actors" | "pull_objects",
+): Promise<string[]> {
+  const startedAt = Date.now()
+  try {
+    const entries = await backend.listRemote(prefix)
+    console.info("[reading-sync] remote:list", {
+      backend: backend.kind,
+      prefix,
+      stage,
+      entries: entries.length,
+      durationMs: Date.now() - startedAt,
+    })
+    return entries
+  } catch (error) {
+    console.warn("[reading-sync] remote:list-failed", {
+      backend: backend.kind,
+      prefix,
+      stage,
+      durationMs: Date.now() - startedAt,
+      error,
+    })
+    throw error
+  }
 }
 
 export async function publishLibrarySidecarAutomergeChanges(
@@ -319,7 +348,15 @@ export async function publishLibrarySidecarAutomergeChanges(
         throw new Error(`Remote Automerge object changed: ${row.objectPath}`)
       }
     } else {
-      await backend.writeBytes(row.objectPath, row.bytes)
+      if (backend.kind === "onedrive" || backend.kind === "webdav") {
+        await uploadLibrarySidecarObject(
+          backend as RemoteBackend,
+          row.objectPath,
+          row.bytes,
+        )
+      } else {
+        await backend.writeBytes(row.objectPath, row.bytes)
+      }
     }
     await withLibrarySidecarSyncTransaction(library, (tx) =>
       markLibrarySidecarAutomergeOutboxPublished(tx, row.objectPath, nowMs),
@@ -351,7 +388,11 @@ async function listRemoteObjects(
   backend: SyncBackend,
   identity: LibrarySidecarReplicaIdentity,
 ): Promise<RemoteObject[]> {
-  const actorEntries = await backend.listRemote(`${REMOTE_CHANGES_ROOT}/`)
+  const actorEntries = await listRemoteEntries(
+    backend,
+    `${REMOTE_CHANGES_ROOT}/`,
+    "pull_actors",
+  )
   const objects: RemoteObject[] = []
   for (const entry of actorEntries) {
     const remoteActor = entry.replace(/\/$/, "")
@@ -362,7 +403,7 @@ async function listRemoteObjects(
       continue
     }
     const directory = `${REMOTE_CHANGES_ROOT}/${remoteActor}/`
-    const names = await backend.listRemote(directory)
+    const names = await listRemoteEntries(backend, directory, "pull_objects")
     for (const name of names) {
       const match = CHANGE_FILE_PATTERN.exec(name)
       if (!match) continue

@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react"
-import { usePathname } from "expo-router"
 import * as Network from "expo-network"
+import { usePathname } from "expo-router"
+import { useEffect, useRef } from "react"
 import { AppState } from "react-native"
-
+import { Notifier } from "react-native-notifier"
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import {
   runSyncLibraries,
@@ -15,6 +15,7 @@ import {
   requestContextualSidecarPull,
   startSidecarPullSafetySweep,
 } from "@/src/domain/sync/automatic-sidecar-sync"
+import { recoverLibrarySidecarUploads } from "@/src/domain/sync/background-sidecar-upload"
 import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
 import { subscribeLibrarySidecarWork } from "@/src/domain/sync/sidecar-work"
 import { isRemoteSourceType } from "@/src/domain/types"
@@ -24,7 +25,6 @@ import { getValidAccessToken } from "@/src/services/auth/onedrive"
 import { setCachedAuth } from "@/src/services/remote/auth-cache"
 import { useAppStore } from "@/src/store/app-store"
 import { cancelIdleWork, scheduleIdleWork } from "@/src/utils/common"
-import { Notifier } from "react-native-notifier"
 
 function notifySyncConfigError(message: string): void {
   Notifier.showNotification({
@@ -77,6 +77,13 @@ export function SyncRuntime(): null {
     hasRunStartup.current = true
 
     const state = useAppStore.getState()
+    void recoverLibrarySidecarUploads()
+      .then((count) => {
+        if (count > 0) {
+          console.info("[reading-sync] background-upload:recovered", { count })
+        }
+      })
+      .catch((error) => handleSyncError(error, "background-upload-recovery"))
     for (const ds of state.dataSources) {
       if (ds.type === "onedrive") {
         void getValidAccessToken(ds.id)
@@ -110,7 +117,7 @@ export function SyncRuntime(): null {
         const state = useAppStore.getState()
         return {
           libraries: state.libraries,
-          dataSources: state.dataSources,
+          dataSources,
           enableAutoSync: state.settings.enableAutoSync,
         }
       },
