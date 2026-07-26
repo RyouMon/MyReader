@@ -17,3 +17,4 @@ pub mod sync_automerge_receipts;
 pub mod sync_automerge_state;
 pub mod sync_errors;
 pub mod sync_local_meta;
+pub mod sync_schedule_state;

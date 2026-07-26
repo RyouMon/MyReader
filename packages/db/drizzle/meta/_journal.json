@@ -120,6 +120,13 @@
       "when": 1784927312000,
       "tag": "0016_discard_legacy_sync_state",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1785046521990,
+      "tag": "0017_add_sync_schedule_state",
+      "breakpoints": true
     }
   ]
 }

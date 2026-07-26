@@ -23,8 +23,8 @@
     "build:dev:ios": "npx eas-cli@latest build --platform ios --profile development --local"
   },
   "dependencies": {
-    "@babel/runtime": "^7.29.2",
     "@automerge/automerge": "3.3.2",
+    "@babel/runtime": "^7.29.2",
     "@expo/dom-webview": "~56.0.5",
     "@expo/material-symbols": "^0.1.1",
     "@expo/metro-runtime": "~56.0.13",
@@ -72,6 +72,7 @@
     "expo-linking": "~56.0.13",
     "expo-localization": "^56.0.6",
     "expo-modules-core": "~56.0.14",
+    "expo-network": "~56.0.5",
     "expo-router": "~56.2.8",
     "expo-secure-store": "^56.0.4",
     "expo-sharing": "~56.0.18",

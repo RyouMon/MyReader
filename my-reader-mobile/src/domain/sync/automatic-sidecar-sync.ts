@@ -1,5 +1,10 @@
 import type { DataSource, Library } from "../types"
 import {
+  readLibrarySidecarScheduleState,
+  writeLibrarySidecarScheduleState,
+  type LibrarySidecarScheduleState,
+} from "@/src/repos/library-sidecar-schedule"
+import {
   DataIntegrityError,
   NetworkError,
   SyncConfigError,
@@ -10,6 +15,7 @@ import { hasPendingLibrarySidecarAutomergeChanges } from "./library-sidecar/auto
 import {
   createSidecarSyncScheduler,
   type SidecarSyncErrorDisposition,
+  type SidecarSyncReason,
   type SidecarSyncScheduler,
 } from "./sidecar-scheduler"
 import { syncLibrary } from "./sync-library"
@@ -18,6 +24,111 @@ export type AutomaticSidecarSyncState = {
   libraries: Library[]
   dataSources: DataSource[]
   enableAutoSync: boolean
+}
+
+export async function shouldPullLibrarySidecar(
+  library: Library,
+  nowMs: number,
+  freshnessMs: number,
+): Promise<boolean> {
+  const state = await readLibrarySidecarScheduleState(library)
+  return (
+    state?.lastSuccessfulPullAt === null ||
+    state?.lastSuccessfulPullAt === undefined ||
+    nowMs - state.lastSuccessfulPullAt >= freshnessMs
+  )
+}
+
+export async function requestContextualSidecarPull(
+  scheduler: SidecarSyncScheduler,
+  library: Library,
+  reason: Extract<
+    SidecarSyncReason,
+    "app_foregrounded" | "network_reconnected" | "library_activated"
+  >,
+  nowMs = Date.now(),
+  freshnessMs = 30_000,
+): Promise<boolean> {
+  if (!(await shouldPullLibrarySidecar(library, nowMs, freshnessMs))) {
+    return false
+  }
+  scheduler.request({
+    libraryId: library.id,
+    mode: "full",
+    reason,
+    timing: "immediate",
+  })
+  return true
+}
+
+export function startSidecarPullSafetySweep(options: {
+  scheduler: SidecarSyncScheduler
+  getLibraries: () => Library[]
+  maxStalenessMs?: number
+  jitterRatio?: number
+  random?: () => number
+  onError?: (error: unknown, library: Library) => void
+}): () => void {
+  const maxStalenessMs = options.maxStalenessMs ?? 5 * 60_000
+  const jitterRatio = options.jitterRatio ?? 0.2
+  const random = options.random ?? Math.random
+  let stopped = false
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const scheduleNext = () => {
+    const jitter = 1 + (random() * 2 - 1) * jitterRatio
+    timer = setTimeout(
+      async () => {
+        for (const library of options.getLibraries()) {
+          try {
+            if (
+              await shouldPullLibrarySidecar(
+                library,
+                Date.now(),
+                maxStalenessMs,
+              )
+            ) {
+              options.scheduler.request({
+                libraryId: library.id,
+                mode: "full",
+                reason: "recovery_sweep",
+                timing: "immediate",
+              })
+            }
+          } catch (error) {
+            options.onError?.(error, library)
+          }
+        }
+        if (!stopped) scheduleNext()
+      },
+      Math.round(maxStalenessMs * jitter),
+    )
+  }
+
+  scheduleNext()
+  return () => {
+    stopped = true
+    if (timer) clearTimeout(timer)
+  }
+}
+
+async function updateScheduleState(
+  library: Library,
+  update: (current: LibrarySidecarScheduleState) => LibrarySidecarScheduleState,
+): Promise<void> {
+  const current = (await readLibrarySidecarScheduleState(library)) ?? {
+    lastSuccessfulPullAt: null,
+    nextRetryAt: null,
+    transientFailureCount: 0,
+    suspendedReason: null,
+  }
+  await writeLibrarySidecarScheduleState(library, update(current))
+}
+
+function suspendedReason(error: unknown): string {
+  if (error instanceof SyncConfigError) return "configuration"
+  if (error instanceof DataIntegrityError) return "data_integrity"
+  return "unexpected"
 }
 
 export function classifyAutomaticSidecarSyncError(
@@ -68,6 +179,29 @@ export function createAutomaticSidecarSyncScheduler(
         error: error instanceof Error ? error.message : String(error),
       })
       onError?.(error)
+    },
+    async onRetryScheduled(_error, execution, retry) {
+      const library = getState().libraries.find(
+        (candidate) => candidate.id === execution.libraryId,
+      )
+      if (!library) return
+      await updateScheduleState(library, (current) => ({
+        ...current,
+        nextRetryAt: retry.nextRetryAt,
+        transientFailureCount: retry.retryCount,
+        suspendedReason: null,
+      }))
+    },
+    async onSuspended(error, execution) {
+      const library = getState().libraries.find(
+        (candidate) => candidate.id === execution.libraryId,
+      )
+      if (!library) return
+      await updateScheduleState(library, (current) => ({
+        ...current,
+        nextRetryAt: null,
+        suspendedReason: suspendedReason(error),
+      }))
     },
   })
 }

@@ -231,6 +231,7 @@ mod tests {
             "sync_automerge_state",
             "sync_errors",
             "sync_local_meta",
+            "sync_schedule_state",
         ] {
             assert!(names.contains(&table.to_owned()));
         }
@@ -259,6 +260,7 @@ mod tests {
             "sync_automerge_state",
             "sync_errors",
             "sync_local_meta",
+            "sync_schedule_state",
         ] {
             let columns = db
                 .query_all_raw(Statement::from_string(

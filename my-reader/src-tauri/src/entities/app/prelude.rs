@@ -15,3 +15,4 @@ pub use super::sync_automerge_receipts::Entity as SyncAutomergeReceipts;
 pub use super::sync_automerge_state::Entity as SyncAutomergeState;
 pub use super::sync_errors::Entity as SyncErrors;
 pub use super::sync_local_meta::Entity as SyncLocalMeta;
+pub use super::sync_schedule_state::Entity as SyncScheduleState;

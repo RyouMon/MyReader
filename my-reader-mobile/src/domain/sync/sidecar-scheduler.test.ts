@@ -137,6 +137,42 @@ describe("sidecar sync scheduler", () => {
     scheduler.dispose()
   })
 
+  it("should expose retry deadline when transient backoff is scheduled", async () => {
+    jest.setSystemTime(100_000)
+    const onRetryScheduled = jest.fn(async () => {})
+    const scheduler = createSidecarSyncScheduler({
+      execute: async () => {
+        throw new Error("network unavailable")
+      },
+      classifyError: () => "retry",
+      random: () => 0.5,
+      retryBaseMs: 2_000,
+      onRetryScheduled,
+    })
+
+    scheduler.request({
+      libraryId: "library-1",
+      mode: "full",
+      reason: "app_foregrounded",
+      timing: "immediate",
+    })
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(onRetryScheduled).toHaveBeenCalledWith(
+      expect.any(Error),
+      {
+        libraryId: "library-1",
+        mode: "full",
+        reasons: ["app_foregrounded"],
+      },
+      {
+        retryCount: 1,
+        nextRetryAt: 101_000,
+      },
+    )
+    scheduler.dispose()
+  })
+
   it("should wait for resume when execution fails with suspended error", async () => {
     const execute = jest
       .fn<Promise<void>, [SidecarSyncExecution]>()
@@ -184,6 +220,37 @@ describe("sidecar sync scheduler", () => {
     await jest.advanceTimersByTimeAsync(0)
 
     expect(execute).toHaveBeenCalledTimes(1)
+    scheduler.dispose()
+  })
+
+  it("should keep local libraries runnable when one remote library is offline", async () => {
+    const execute = jest.fn(async () => {})
+    const scheduler = createSidecarSyncScheduler({ execute })
+    scheduler.setLibraryOnline("remote-library", false)
+
+    scheduler.request({
+      libraryId: "remote-library",
+      mode: "push_only",
+      reason: "local_change",
+      timing: "immediate",
+    })
+    scheduler.request({
+      libraryId: "local-library",
+      mode: "push_only",
+      reason: "local_change",
+      timing: "immediate",
+    })
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(execute).toHaveBeenCalledTimes(1)
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ libraryId: "local-library" }),
+    )
+
+    scheduler.setLibraryOnline("remote-library", true)
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(execute).toHaveBeenCalledTimes(2)
     scheduler.dispose()
   })
 

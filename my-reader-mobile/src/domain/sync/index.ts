@@ -17,8 +17,6 @@ export type {
 
 export {
   DEFAULT_SYNC_POLICY,
-  LIBRARY_SYNC_INTERVAL_MS,
-  READING_SYNC_INTERVAL_MS,
   resolveSyncOptions,
   scopeHasCalibre,
   scopeHasMyreader,

@@ -15,6 +15,7 @@ import {
   invalidateReaderBookmarks,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
+import { markLibrarySidecarSyncSucceeded } from "@/src/repos/library-sidecar-schedule"
 
 jest.mock("./library-sidecar/identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
@@ -38,6 +39,10 @@ jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateReaderAnnotations: jest.fn(),
   invalidateReaderBookmarks: jest.fn(),
   invalidateRecentlyReadBooks: jest.fn(),
+}))
+
+jest.mock("@/src/repos/library-sidecar-schedule", () => ({
+  markLibrarySidecarSyncSucceeded: jest.fn(),
 }))
 
 const context = {
@@ -104,6 +109,10 @@ describe("syncMyReader", () => {
     expect(result.providers).toEqual({
       "library-sidecar": { pushed: 1, pulled: 1 },
     })
+    expect(markLibrarySidecarSyncSucceeded).toHaveBeenCalledWith(
+      context.library,
+      expect.any(Number),
+    )
   })
 
   it("should not pull remote changes when push-only sync runs", async () => {
@@ -115,6 +124,10 @@ describe("syncMyReader", () => {
     expect(result.providers).toEqual({
       "library-sidecar": { pushed: 1, pulled: 0 },
     })
+    expect(markLibrarySidecarSyncSucceeded).toHaveBeenCalledWith(
+      context.library,
+      null,
+    )
   })
 
   it("should wait for progress cache refresh when remote positions are pulled", async () => {

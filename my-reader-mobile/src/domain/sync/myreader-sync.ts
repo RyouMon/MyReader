@@ -23,6 +23,7 @@ import {
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
+import { markLibrarySidecarSyncSucceeded } from "@/src/repos/library-sidecar-schedule"
 
 const librarySidecarProvider: MyReaderSyncProvider = {
   id: "library-sidecar",
@@ -108,6 +109,10 @@ async function syncProviders(
       pulled,
     })
   }
+  await markLibrarySidecarSyncSucceeded(
+    ctx.library,
+    mode === "full" ? Date.now() : null,
+  )
   return { skipped: false, mode, providers }
 }
 

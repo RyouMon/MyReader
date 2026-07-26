@@ -34,8 +34,8 @@ export type SyncTriggerPolicy = {
   add: SyncPolicyEntry
   startup: SyncPolicyEntry
   scheduled: {
-    reading: SyncPolicyEntry & { intervalMs: number }
-    library: SyncPolicyEntry & { intervalMs: number }
+    reading: SyncPolicyEntry
+    library: SyncPolicyEntry
   }
 }
 

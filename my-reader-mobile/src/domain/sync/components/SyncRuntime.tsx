@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react"
 import { usePathname } from "expo-router"
+import * as Network from "expo-network"
 import { AppState } from "react-native"
 
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import {
-  LIBRARY_SYNC_INTERVAL_MS,
   runSyncLibraries,
   type SidecarSyncScheduler,
   type SyncLibrariesDeps,
@@ -12,9 +12,12 @@ import {
 import {
   createAutomaticSidecarSyncScheduler,
   recoverPendingSidecarWork,
+  requestContextualSidecarPull,
+  startSidecarPullSafetySweep,
 } from "@/src/domain/sync/automatic-sidecar-sync"
 import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
 import { subscribeLibrarySidecarWork } from "@/src/domain/sync/sidecar-work"
+import { isRemoteSourceType } from "@/src/domain/types"
 import { SyncConfigError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { getValidAccessToken } from "@/src/services/auth/onedrive"
@@ -57,22 +60,17 @@ function isReaderRoute(pathname: string): boolean {
   return pathname.startsWith("/reader")
 }
 
-function isLibraryBrowsingRoute(pathname: string): boolean {
-  return (
-    pathname.startsWith("/library") ||
-    pathname.startsWith("/library-book") ||
-    pathname.includes("/(tabs)/library")
-  )
-}
-
-/** Passive sync: startup + scheduled myreader ticks. */
+/** Passive sync: startup plus event- and lifecycle-driven sidecar scheduling. */
 export function SyncRuntime(): null {
   const storeReady = useAppStore((state) => state.storeReady)
   const enableAutoSync = useAppStore((state) => state.settings.enableAutoSync)
+  const activeLibraryId = useAppStore((state) => state.activeLibraryId)
+  const dataSources = useAppStore((state) => state.dataSources)
   const pathname = usePathname()
   const hasRunStartup = useRef(false)
   const sidecarScheduler = useRef<SidecarSyncScheduler | null>(null)
   const previousPathname = useRef(pathname)
+  const previousActiveLibraryId = useRef(activeLibraryId)
 
   useEffect(() => {
     if (!storeReady || hasRunStartup.current) return
@@ -131,18 +129,76 @@ export function SyncRuntime(): null {
     void recoverPendingSidecarWork(scheduler, state.libraries).catch((error) =>
       handleSyncError(error, "recovery"),
     )
+    let stopSafetySweep: (() => void) | null = null
+    const startSafetySweep = () => {
+      if (stopSafetySweep) return
+      stopSafetySweep = startSidecarPullSafetySweep({
+        scheduler,
+        getLibraries: () => useAppStore.getState().libraries,
+        onError: (error) => handleSyncError(error, "recovery_sweep"),
+      })
+    }
+    const stopSafety = () => {
+      stopSafetySweep?.()
+      stopSafetySweep = null
+    }
+    const requestActivePull = (
+      reason: "app_foregrounded" | "network_reconnected" | "library_activated",
+    ) => {
+      const current = useAppStore.getState()
+      const activeLibrary = current.libraries.find(
+        (library) => library.id === current.activeLibraryId,
+      )
+      if (!activeLibrary) return
+      void requestContextualSidecarPull(scheduler, activeLibrary, reason).catch(
+        (error) => handleSyncError(error, reason),
+      )
+    }
+    if (AppState.currentState === "active") {
+      startSafetySweep()
+      if (!state.settings.syncOnStartup) {
+        requestActivePull("app_foregrounded")
+      }
+    }
     const appStateSubscription = AppState.addEventListener(
       "change",
       (nextState) => {
-        if (nextState === "active") return
+        if (nextState === "active") {
+          startSafetySweep()
+          requestActivePull("app_foregrounded")
+          return
+        }
+        stopSafety()
         const activeLibraryId = useAppStore.getState().activeLibraryId
         if (activeLibraryId) {
           scheduler.flushPending(activeLibraryId, "app_backgrounding")
         }
       },
     )
+    let lastNetworkReachable: boolean | null = null
+    const handleNetworkState = (networkState: Network.NetworkState) => {
+      const reachable =
+        networkState.isInternetReachable ?? networkState.isConnected ?? true
+      const current = useAppStore.getState()
+      for (const library of current.libraries) {
+        if (isRemoteSourceType(library.sourceType)) {
+          scheduler.setLibraryOnline(library.id, reachable)
+        }
+      }
+      if (reachable && lastNetworkReachable === false) {
+        requestActivePull("network_reconnected")
+      }
+      lastNetworkReachable = reachable
+    }
+    void Network.getNetworkStateAsync()
+      .then(handleNetworkState)
+      .catch((error) => handleSyncError(error, "network-state"))
+    const networkSubscription =
+      Network.addNetworkStateListener(handleNetworkState)
 
     return () => {
+      stopSafety()
+      networkSubscription.remove()
       appStateSubscription.remove()
       unsubscribeWork()
       scheduler.dispose()
@@ -150,7 +206,7 @@ export function SyncRuntime(): null {
         sidecarScheduler.current = null
       }
     }
-  }, [storeReady, enableAutoSync])
+  }, [storeReady, enableAutoSync, dataSources])
 
   useEffect(() => {
     const previous = previousPathname.current
@@ -163,21 +219,28 @@ export function SyncRuntime(): null {
   }, [pathname])
 
   useEffect(() => {
-    if (!storeReady || !enableAutoSync || !isLibraryBrowsingRoute(pathname)) {
+    const previous = previousActiveLibraryId.current
+    previousActiveLibraryId.current = activeLibraryId
+    if (
+      !storeReady ||
+      !enableAutoSync ||
+      !activeLibraryId ||
+      previous === activeLibraryId
+    ) {
       return
     }
-
-    const tick = () => {
-      void runSyncLibraries("scheduled", getSyncDeps(), "library")
-        .then((report) => {
-          applySyncRunReports(report.results, { trigger: "scheduled" })
-        })
-        .catch((err) => handleSyncError(err, "library"))
-    }
-
-    const handle = setInterval(tick, LIBRARY_SYNC_INTERVAL_MS)
-    return () => clearInterval(handle)
-  }, [storeReady, enableAutoSync, pathname])
+    const state = useAppStore.getState()
+    const library = state.libraries.find(
+      (candidate) => candidate.id === activeLibraryId,
+    )
+    const scheduler = sidecarScheduler.current
+    if (!library || !scheduler) return
+    void requestContextualSidecarPull(
+      scheduler,
+      library,
+      "library_activated",
+    ).catch((error) => handleSyncError(error, "library_activated"))
+  }, [storeReady, enableAutoSync, activeLibraryId])
 
   return null
 }

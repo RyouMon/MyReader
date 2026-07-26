@@ -28,6 +28,7 @@ export type SidecarSyncScheduler = {
   flushPending(libraryId: string, reason: SidecarSyncReason): void
   resume(libraryId: string): void
   setOnline(online: boolean): void
+  setLibraryOnline(libraryId: string, online: boolean): void
   dispose(): void
 }
 
@@ -56,6 +57,19 @@ export function createSidecarSyncScheduler(options: {
   execute(execution: SidecarSyncExecution): Promise<void>
   classifyError?(error: unknown): SidecarSyncErrorDisposition
   onError?(error: unknown, execution: SidecarSyncExecution): void
+  onCompleted?(
+    execution: SidecarSyncExecution,
+    completedAt: number,
+  ): Promise<void> | void
+  onRetryScheduled?(
+    error: unknown,
+    execution: SidecarSyncExecution,
+    retry: { retryCount: number; nextRetryAt: number },
+  ): Promise<void> | void
+  onSuspended?(
+    error: unknown,
+    execution: SidecarSyncExecution,
+  ): Promise<void> | void
   debounceMs?: number
   maxWaitMs?: number
   retryBaseMs?: number
@@ -66,6 +80,7 @@ export function createSidecarSyncScheduler(options: {
   const runningLibraries = new Set<string>()
   const retryCounts = new Map<string, number>()
   const suspendedLibraries = new Set<string>()
+  const offlineLibraries = new Set<string>()
   let online = true
   let disposed = false
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS
@@ -93,6 +108,7 @@ export function createSidecarSyncScheduler(options: {
     if (
       disposed ||
       !online ||
+      offlineLibraries.has(libraryId) ||
       suspendedLibraries.has(libraryId) ||
       runningLibraries.has(libraryId)
     ) {
@@ -109,6 +125,7 @@ export function createSidecarSyncScheduler(options: {
     }
     try {
       await options.execute(execution)
+      await options.onCompleted?.(execution, Date.now())
       retryCounts.delete(libraryId)
     } catch (error) {
       options.onError?.(error, execution)
@@ -121,14 +138,17 @@ export function createSidecarSyncScheduler(options: {
           retryMaxMs,
           retryBaseMs * 2 ** (retryCount - 1),
         )
-        retry.timer = setTimeout(
-          () => {
-            retry.timer = null
-            void execute(libraryId)
-          },
-          Math.floor(random() * ceiling),
-        )
+        const delay = Math.floor(random() * ceiling)
+        await options.onRetryScheduled?.(error, execution, {
+          retryCount,
+          nextRetryAt: Date.now() + delay,
+        })
+        retry.timer = setTimeout(() => {
+          retry.timer = null
+          void execute(libraryId)
+        }, delay)
       } else {
+        await options.onSuspended?.(error, execution)
         suspendedLibraries.add(libraryId)
       }
     } finally {
@@ -137,6 +157,7 @@ export function createSidecarSyncScheduler(options: {
       if (
         !disposed &&
         online &&
+        !offlineLibraries.has(libraryId) &&
         !suspendedLibraries.has(libraryId) &&
         rerun &&
         !rerun.timer
@@ -163,6 +184,7 @@ export function createSidecarSyncScheduler(options: {
       if (
         disposed ||
         !online ||
+        offlineLibraries.has(request.libraryId) ||
         suspendedLibraries.has(request.libraryId) ||
         runningLibraries.has(request.libraryId)
       ) {
@@ -188,6 +210,7 @@ export function createSidecarSyncScheduler(options: {
       if (
         disposed ||
         !online ||
+        offlineLibraries.has(libraryId) ||
         suspendedLibraries.has(libraryId) ||
         runningLibraries.has(libraryId)
       ) {
@@ -203,7 +226,13 @@ export function createSidecarSyncScheduler(options: {
       suspendedLibraries.delete(libraryId)
       retryCounts.delete(libraryId)
       const pending = pendingByLibrary.get(libraryId)
-      if (!disposed && online && pending && !pending.timer) {
+      if (
+        !disposed &&
+        online &&
+        !offlineLibraries.has(libraryId) &&
+        pending &&
+        !pending.timer
+      ) {
         pending.timer = setTimeout(() => {
           pending.timer = null
           void execute(libraryId)
@@ -218,12 +247,40 @@ export function createSidecarSyncScheduler(options: {
           clearTimeout(pending.timer)
           pending.timer = null
         }
-        if (online && !suspendedLibraries.has(libraryId)) {
+        if (
+          online &&
+          !offlineLibraries.has(libraryId) &&
+          !suspendedLibraries.has(libraryId)
+        ) {
           pending.timer = setTimeout(() => {
             pending.timer = null
             void execute(libraryId)
           }, 0)
         }
+      }
+    },
+    setLibraryOnline(libraryId, nextOnline) {
+      const pending = pendingByLibrary.get(libraryId)
+      if (!nextOnline) {
+        offlineLibraries.add(libraryId)
+        if (pending?.timer) {
+          clearTimeout(pending.timer)
+          pending.timer = null
+        }
+        return
+      }
+      offlineLibraries.delete(libraryId)
+      if (
+        !disposed &&
+        online &&
+        pending &&
+        !pending.timer &&
+        !suspendedLibraries.has(libraryId)
+      ) {
+        pending.timer = setTimeout(() => {
+          pending.timer = null
+          void execute(libraryId)
+        }, 0)
       }
     },
     dispose() {
@@ -233,6 +290,7 @@ export function createSidecarSyncScheduler(options: {
       }
       pendingByLibrary.clear()
       suspendedLibraries.clear()
+      offlineLibraries.clear()
       retryCounts.clear()
     },
   }

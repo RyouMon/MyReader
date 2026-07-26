@@ -6,9 +6,6 @@ import type {
   SyncTriggerPolicy,
 } from "./types"
 
-export const READING_SYNC_INTERVAL_MS = 60_000
-export const LIBRARY_SYNC_INTERVAL_MS = 180_000
-
 export const DEFAULT_SYNC_POLICY: SyncTriggerPolicy = {
   manual: {
     enabled: true,
@@ -25,7 +22,6 @@ export const DEFAULT_SYNC_POLICY: SyncTriggerPolicy = {
   scheduled: {
     reading: {
       enabled: true,
-      intervalMs: READING_SYNC_INTERVAL_MS,
       options: {
         scope: "myreader",
         myreaderMode: "push_only",
@@ -34,7 +30,6 @@ export const DEFAULT_SYNC_POLICY: SyncTriggerPolicy = {
     },
     library: {
       enabled: true,
-      intervalMs: LIBRARY_SYNC_INTERVAL_MS,
       options: {
         scope: "myreader",
         myreaderMode: "full",

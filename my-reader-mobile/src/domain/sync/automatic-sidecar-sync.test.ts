@@ -10,14 +10,26 @@ jest.mock("./library-sidecar/automerge-store", () => ({
   hasPendingLibrarySidecarAutomergeChanges: jest.fn(),
 }))
 
+jest.mock("@/src/repos/library-sidecar-schedule", () => ({
+  readLibrarySidecarScheduleState: jest.fn(),
+  writeLibrarySidecarScheduleState: jest.fn(),
+}))
+
 import type { DataSource, Library } from "../types"
+import {
+  readLibrarySidecarScheduleState,
+  writeLibrarySidecarScheduleState,
+} from "@/src/repos/library-sidecar-schedule"
 import { applySyncReport } from "./hooks/apply-sync-report"
 import { hasPendingLibrarySidecarAutomergeChanges } from "./library-sidecar/automerge-store"
 import { syncLibrary } from "./sync-library"
 import {
   createAutomaticSidecarSyncScheduler,
   recoverPendingSidecarWork,
+  startSidecarPullSafetySweep,
+  shouldPullLibrarySidecar,
 } from "./automatic-sidecar-sync"
+import type { SidecarSyncScheduler } from "./sidecar-scheduler"
 
 const library = {
   id: "library-1",
@@ -34,6 +46,8 @@ describe("automatic sidecar sync", () => {
   beforeEach(() => {
     jest.useFakeTimers()
     jest.clearAllMocks()
+    jest.mocked(readLibrarySidecarScheduleState).mockResolvedValue(null)
+    jest.mocked(writeLibrarySidecarScheduleState).mockResolvedValue()
     jest.mocked(syncLibrary).mockResolvedValue({
       libraryId: library.id,
       libraryName: library.name,
@@ -100,5 +114,58 @@ describe("automatic sidecar sync", () => {
       expect.anything(),
     )
     scheduler.dispose()
+  })
+
+  it("should skip contextual pull when the last pull is still fresh", async () => {
+    jest.mocked(readLibrarySidecarScheduleState).mockResolvedValue({
+      lastSuccessfulPullAt: 90_000,
+      nextRetryAt: null,
+      transientFailureCount: 0,
+      suspendedReason: null,
+    })
+
+    await expect(
+      shouldPullLibrarySidecar(library, 100_000, 30_000),
+    ).resolves.toBe(false)
+  })
+
+  it("should allow contextual pull when no successful pull is recorded", async () => {
+    jest.mocked(readLibrarySidecarScheduleState).mockResolvedValue(null)
+
+    await expect(
+      shouldPullLibrarySidecar(library, 100_000, 30_000),
+    ).resolves.toBe(true)
+  })
+
+  it("should request a full pull when the safety deadline becomes due", async () => {
+    const request = jest.fn()
+    const scheduler = {
+      request,
+      flushPending: jest.fn(),
+      resume: jest.fn(),
+      setOnline: jest.fn(),
+      setLibraryOnline: jest.fn(),
+      dispose: jest.fn(),
+    } as SidecarSyncScheduler
+    const stop = startSidecarPullSafetySweep({
+      scheduler,
+      getLibraries: () => [library],
+      maxStalenessMs: 5 * 60_000,
+      jitterRatio: 0,
+    })
+
+    await jest.advanceTimersByTimeAsync(5 * 60_000 - 1)
+    expect(request).not.toHaveBeenCalled()
+
+    await jest.advanceTimersByTimeAsync(1)
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(request).toHaveBeenCalledWith({
+      libraryId: library.id,
+      mode: "full",
+      reason: "recovery_sweep",
+      timing: "immediate",
+    })
+    stop()
   })
 })
