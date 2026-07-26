@@ -86,6 +86,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn up_should_accept_sync_schedule_migration_when_original_name_was_applied() {
+        let db = Database::connect("sqlite::memory:").await.unwrap();
+        LibraryMigrator::up(&db, Some(17)).await.unwrap();
+        db.execute_unprepared(
+            "CREATE TABLE sync_schedule_state (
+                id TEXT PRIMARY KEY NOT NULL,
+                last_successful_pull_at INTEGER,
+                next_retry_at INTEGER,
+                transient_failure_count INTEGER DEFAULT 0 NOT NULL,
+                suspended_reason TEXT
+            );
+            INSERT INTO seaql_migrations (version, applied_at)
+            VALUES ('0017_square_toro', 1785046558);",
+        )
+        .await
+        .unwrap();
+
+        LibraryMigrator::up(&db, None).await.unwrap();
+
+        assert_eq!(applied_versions(&db).await, migration_names());
+    }
+
+    #[tokio::test]
     async fn up_should_discard_legacy_sync_state_when_automerge_protocol_replaces_v4() {
         let db = Database::connect("sqlite::memory:").await.unwrap();
         LibraryMigrator::up(&db, Some(16)).await.unwrap();
