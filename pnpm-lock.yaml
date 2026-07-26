@@ -9,6 +9,7 @@ overrides:
 
 patchedDependencies:
   '@automerge/automerge@3.3.2': 48575c7246c8363531f72cd231e6a707ad2c6574e772e494a36a4e18929d992c
+  '@kesha-antonov/react-native-background-downloader@4.5.4': 92b54a886e9c74257469811f307b3e9faca12d005ef03654e4ea06e55bf4fbd9
   '@react-native-menu/menu@2.0.0': d895ba2671db65cd7d9afff53df442f931c5b05ec9e69ef1a1d7cf09270d9b81
   drizzle-orm@0.40.1: f3f7f38212d815c032de3d82b067687f986796e4a160c33630baabc930d1ab5e
   react-native-css@3.0.7: 84b0a43e5b79ecff96a437135adc90aaac139f76b9da3220162ed6a7e19203b5
@@ -245,7 +246,7 @@ importers:
         version: 15.1.1(expo-font@56.0.5)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@kesha-antonov/react-native-background-downloader':
         specifier: ^4.5.4
-        version: 4.5.4(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))
+        version: 4.5.4(patch_hash=92b54a886e9c74257469811f307b3e9faca12d005ef03654e4ea06e55bf4fbd9)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))
       '@material/material-color-utilities':
         specifier: ^0.4.0
         version: 0.4.0
@@ -12039,7 +12040,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kesha-antonov/react-native-background-downloader@4.5.4(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))':
+  '@kesha-antonov/react-native-background-downloader@4.5.4(patch_hash=92b54a886e9c74257469811f307b3e9faca12d005ef03654e4ea06e55bf4fbd9)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1))':
     dependencies:
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/jest-preset@0.85.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.3)(supports-color@8.1.1)
 

@@ -1,0 +1,37 @@
+diff --git a/ios/RNBackgroundDownloader.mm b/ios/RNBackgroundDownloader.mm
+--- a/ios/RNBackgroundDownloader.mm
++++ b/ios/RNBackgroundDownloader.mm
+@@ -1477,5 +1477,6 @@
+     NSString *method = options.method() ? options.method() : @"POST";
+     NSString *metadata = options.metadata() ? options.metadata() : @"";
+     NSDictionary *headers = options.headers() ? (NSDictionary *)options.headers() : nil;
+-    NSString *fieldName = options.fieldName() ? options.fieldName() : @"file";
++    // An omitted field name means a raw upload, matching the Android implementation.
++    NSString *fieldName = options.fieldName() ? options.fieldName() : nil;
+     NSString *mimeType = options.mimeType() ? options.mimeType() : nil;
+@@ -1499,5 +1500,6 @@
+     NSString *method = options[@"method"] ?: @"POST";
+     NSString *metadata = options[@"metadata"] ?: @"";
+     NSDictionary *headers = options[@"headers"];
+-    NSString *fieldName = options[@"fieldName"] ?: @"file";
++    // An omitted field name means a raw upload, matching the Android implementation.
++    NSString *fieldName = options[@"fieldName"];
+     NSString *mimeType = options[@"mimeType"];
+@@ -1615,2 +1617,17 @@
+         idToUploadPercentMap[identifier] = @0.0;
+         idToUploadLastBytesMap[identifier] = @0;
++
++        // Report task creation immediately, matching Android and preventing callers
++        // from timing out while the background session is waiting to schedule bytes.
++        taskConfig.reportedBegin = YES;
++#ifdef RCT_NEW_ARCH_ENABLED
++        [self safeEmitEvent:@"onUploadBegin" value:@{
++            @"id": taskConfig.id,
++            @"expectedBytes": @(taskConfig.bytesTotal)
++        }];
++#else
++        [self sendEventWithName:@"uploadBegin" body:@{
++            @"id": taskConfig.id,
++            @"expectedBytes": @(taskConfig.bytesTotal)
++        }];
++#endif
