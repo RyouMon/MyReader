@@ -27,6 +27,14 @@ export {
 export { syncLibrary, syncLibraries } from "./sync-library"
 export { runSyncLibraries, useSyncSchedulerStatus } from "./scheduler"
 export type { SchedulerStatus } from "./scheduler"
+export { createSidecarSyncScheduler } from "./sidecar-scheduler"
+export type {
+  SidecarSyncErrorDisposition,
+  SidecarSyncExecution,
+  SidecarSyncReason,
+  SidecarSyncRequest,
+  SidecarSyncScheduler,
+} from "./sidecar-scheduler"
 
 export { openSyncContext, type SyncTargetContext } from "./context"
 
