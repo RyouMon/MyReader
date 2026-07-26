@@ -74,8 +74,8 @@ cargo test
 1. 桌面端打开固定样本并翻到第 2 页。
 2. 保持 reader 打开，确认 `reading_progress` 已立即更新为第 2 页和 `0.666667`；关闭
    reader 不是保存进度的必要条件。
-3. 回到书库执行“同步当前书库”，确认日志中的 `pushed > 0`、pending outbox 为 `0`。
-4. iOS 执行当前书库同步，确认 `pulled > 0`。
+3. 不执行手动同步，等待事件调度完成；确认 pending outbox 自动变为 `0`。
+4. 将 iOS 切到前台或重新激活当前书库，确认机会性 pull 自动执行并取得远端 change。
 5. 不打开书，先确认 iOS 列表和详情均显示 `67%`。
 6. 打开该书，确认初始位置是第 2 页。
 7. 检查当前书库阅读统计已刷新；本次会话时长不应因重复同步而重复累计。
@@ -87,8 +87,8 @@ cargo test
 
 1. iOS 打开固定样本并翻到第 3 页。
 2. 确认本地列表/详情更新为 `100%` 或已读。
-3. iOS 执行当前书库同步，确认 `pushed > 0`。
-4. 桌面端执行当前书库同步，确认 `pulled > 0`。
+3. 不执行手动同步，等待事件调度完成；确认 pending outbox 自动变为 `0`。
+4. 聚焦桌面应用或重新激活当前书库，确认机会性 pull 自动执行并取得远端 change。
 5. 不打开书，先确认桌面列表和详情显示 `100%` 或已读。
 6. 打开该书，确认初始位置是第 3 页。
 7. 重复同步两次，确认进度、session 时长和完成本数不再变化。
@@ -125,6 +125,7 @@ cargo test
 | 写端 `reading_progress` | Locator、展示进度和目标页一致 |
 | 写端 `sync_automerge_outbox` | 新对象存在；发布后 `published_at` 非空 |
 | 远端对象 | `.am` 路径符合 actor、20 位 sequence 和 change hash 规则 |
+| 远端对象正文 | 字节数和 SHA-256 与 outbox 完全一致，不得以 multipart boundary `--` 开头 |
 | 读端同步结果 | `pulled > 0`，没有 `sync.stage_failed` |
 | 读端 `sync_automerge_receipts` | 对应对象仅记录一次 |
 | 两端 state | `heads_json` 最终一致 |
@@ -170,6 +171,9 @@ WHERE book_id = 542;
    `library-sidecar-automerge`，`library_uuid` 必须等于当前 Calibre UUID。旧开发协议状态由
    breaking-change migration 丢弃，不转换旧 change。
 3. **outbox 未发布**：检查数据源凭据、远端目录创建和 immutable object 摘要冲突。
+   iOS WebDAV/OneDrive 后台上传必须发送原始 `.am` 字节；省略 `fieldName` 表示 raw upload，
+   不能把对象包装成 multipart。小文件任务创建后必须立即报告 begin，不能在后台会话尚未调度
+   首个字节时被 JS 启动超时误杀。
 4. **远端已有对象但 `pulled = 0`**：检查 actor 路径过滤、receipt、依赖和 library identity。
 5. **receipt 已写但 projection 未更新**：这是事务不变量破坏；远端 state、receipt 与
    projection 必须一起提交。
@@ -219,3 +223,21 @@ WHERE book_id = 542;
 该记录只证明 WebDAV 实机闭环。local-direct 与 WebDAV 共用相同的 Automerge
 bootstrap、增量、outbox 和 projection 事务路径，本轮只保留自动化覆盖，没有执行
 local-direct 手工闭环。
+
+## 2026-07-27 WebDAV 自动调度验证记录
+
+本轮使用运行中的 Tauri 桌面端、iPhone 17 Pro iOS 26.5 模拟器和同一个 WebDAV 书库
+`CalibreTest`。固定样本为 PDF《明日ちゃんのセーラー服 12》，Calibre `book_id` 为 `8`，
+总页数为 `189`。
+
+- desktop 保存第 20 页后没有执行手动同步；durable outbox 在 debounce 后自动发布。iOS 从后台
+  回到前台后自动拉取，主页在打开书前更新为 `11%`，reader 初始位置为第 20 页。
+- iOS 从第 21 页滑到第 22 页后没有执行手动同步；本地 `reading_progress` 为
+  `position: 22`、`displayProgression: 0.116402`，pending outbox 自动变为 `0`。
+- desktop 重新激活当前书库后没有执行手动同步；约 3 秒内列表更新为 `12%`，Tauri IPC 读取到
+  `position: 22`，独立 reader 窗口显示 `第 22 / 189 页`。
+- 真实 WebDAV 闭环暴露 iOS 后台 uploader 的两个上游缺陷：省略 `fieldName` 仍默认包装
+  multipart，以及小文件等待首个字节才报告 begin。pnpm patch 将 raw upload 和 begin 时机对齐
+  Android；修复后远端对象正文与 outbox 字节、SHA-256 一致。
+
+最终验收轮只使用事件驱动 push 和书库激活 pull；手动 `scope: "all"` 未参与。
