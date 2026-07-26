@@ -35,6 +35,11 @@ export type {
   SidecarSyncRequest,
   SidecarSyncScheduler,
 } from "./sidecar-scheduler"
+export {
+  announceLibrarySidecarWork,
+  subscribeLibrarySidecarWork,
+} from "./sidecar-work"
+export type { LibrarySidecarWork } from "./sidecar-work"
 
 export { openSyncContext, type SyncTargetContext } from "./context"
 

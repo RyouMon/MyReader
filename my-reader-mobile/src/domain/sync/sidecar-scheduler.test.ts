@@ -186,4 +186,25 @@ describe("sidecar sync scheduler", () => {
     expect(execute).toHaveBeenCalledTimes(1)
     scheduler.dispose()
   })
+
+  it("should run immediately when pending work is flushed before backgrounding", async () => {
+    const execute = jest.fn(async () => {})
+    const scheduler = createSidecarSyncScheduler({ execute })
+
+    scheduler.request({
+      libraryId: "library-1",
+      mode: "push_only",
+      reason: "local_change",
+      timing: "debounced",
+    })
+    scheduler.flushPending("library-1", "app_backgrounding")
+    await jest.advanceTimersByTimeAsync(0)
+
+    expect(execute).toHaveBeenCalledWith({
+      libraryId: "library-1",
+      mode: "push_only",
+      reasons: ["app_backgrounding", "local_change"],
+    })
+    scheduler.dispose()
+  })
 })

@@ -18,6 +18,7 @@ import {
   type LibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
 import type { SyncBackend } from "../resolve"
+import { announceLibrarySidecarWork } from "../sidecar-work"
 import { hashLibrarySidecarAutomergeBytes } from "./automerge-binary"
 import {
   applyLibrarySidecarIncremental,
@@ -244,6 +245,10 @@ export async function commitLibrarySidecarAutomergeMutation(
         rebuiltAt: null,
       })
     })
+    announceLibrarySidecarWork({
+      libraryId: library.id,
+      reason: "local_change",
+    })
     return next
   })
 }
@@ -329,6 +334,16 @@ export async function publishLibrarySidecarAutomergeChanges(
     pushed += changeHashes.length
   }
   return pushed
+}
+
+export async function hasPendingLibrarySidecarAutomergeChanges(
+  library: Library,
+): Promise<boolean> {
+  const pending = await withLibrarySidecarSyncTransaction(
+    library,
+    listPendingLibrarySidecarAutomergeOutbox,
+  )
+  return pending.length > 0
 }
 
 async function listRemoteObjects(

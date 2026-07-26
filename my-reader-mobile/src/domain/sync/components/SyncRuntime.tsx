@@ -1,15 +1,20 @@
 import { useEffect, useRef } from "react"
 import { usePathname } from "expo-router"
+import { AppState } from "react-native"
 
 import { InAppNotification } from "@/src/domain/notifications/in-app-notification"
 import {
   LIBRARY_SYNC_INTERVAL_MS,
-  READING_SYNC_INTERVAL_MS,
   runSyncLibraries,
-  type ScheduledSyncTarget,
+  type SidecarSyncScheduler,
   type SyncLibrariesDeps,
 } from "@/src/domain/sync"
+import {
+  createAutomaticSidecarSyncScheduler,
+  recoverPendingSidecarWork,
+} from "@/src/domain/sync/automatic-sidecar-sync"
 import { applySyncRunReports } from "@/src/domain/sync/hooks/apply-sync-report"
+import { subscribeLibrarySidecarWork } from "@/src/domain/sync/sidecar-work"
 import { SyncConfigError } from "@/src/errors"
 import i18n from "@/src/i18n"
 import { getValidAccessToken } from "@/src/services/auth/onedrive"
@@ -66,6 +71,8 @@ export function SyncRuntime(): null {
   const enableAutoSync = useAppStore((state) => state.settings.enableAutoSync)
   const pathname = usePathname()
   const hasRunStartup = useRef(false)
+  const sidecarScheduler = useRef<SidecarSyncScheduler | null>(null)
+  const previousPathname = useRef(pathname)
 
   useEffect(() => {
     if (!storeReady || hasRunStartup.current) return
@@ -100,29 +107,75 @@ export function SyncRuntime(): null {
   useEffect(() => {
     if (!storeReady || !enableAutoSync) return
 
-    let scheduledTarget: ScheduledSyncTarget | null = null
-    if (isReaderRoute(pathname)) {
-      scheduledTarget = "reading"
-    } else if (isLibraryBrowsingRoute(pathname)) {
-      scheduledTarget = "library"
+    const scheduler = createAutomaticSidecarSyncScheduler(
+      () => {
+        const state = useAppStore.getState()
+        return {
+          libraries: state.libraries,
+          dataSources: state.dataSources,
+          enableAutoSync: state.settings.enableAutoSync,
+        }
+      },
+      (error) => handleSyncError(error, "automatic"),
+    )
+    sidecarScheduler.current = scheduler
+    const unsubscribeWork = subscribeLibrarySidecarWork((work) => {
+      scheduler.request({
+        libraryId: work.libraryId,
+        mode: "push_only",
+        reason: work.reason,
+        timing: "debounced",
+      })
+    })
+    const state = useAppStore.getState()
+    void recoverPendingSidecarWork(scheduler, state.libraries).catch((error) =>
+      handleSyncError(error, "recovery"),
+    )
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (nextState === "active") return
+        const activeLibraryId = useAppStore.getState().activeLibraryId
+        if (activeLibraryId) {
+          scheduler.flushPending(activeLibraryId, "app_backgrounding")
+        }
+      },
+    )
+
+    return () => {
+      appStateSubscription.remove()
+      unsubscribeWork()
+      scheduler.dispose()
+      if (sidecarScheduler.current === scheduler) {
+        sidecarScheduler.current = null
+      }
+    }
+  }, [storeReady, enableAutoSync])
+
+  useEffect(() => {
+    const previous = previousPathname.current
+    previousPathname.current = pathname
+    if (!isReaderRoute(previous) || isReaderRoute(pathname)) return
+    const activeLibraryId = useAppStore.getState().activeLibraryId
+    if (activeLibraryId) {
+      sidecarScheduler.current?.flushPending(activeLibraryId, "reader_closed")
+    }
+  }, [pathname])
+
+  useEffect(() => {
+    if (!storeReady || !enableAutoSync || !isLibraryBrowsingRoute(pathname)) {
+      return
     }
 
-    if (!scheduledTarget) return
-
-    const intervalMs =
-      scheduledTarget === "reading"
-        ? READING_SYNC_INTERVAL_MS
-        : LIBRARY_SYNC_INTERVAL_MS
-
     const tick = () => {
-      void runSyncLibraries("scheduled", getSyncDeps(), scheduledTarget!)
+      void runSyncLibraries("scheduled", getSyncDeps(), "library")
         .then((report) => {
           applySyncRunReports(report.results, { trigger: "scheduled" })
         })
-        .catch((err) => handleSyncError(err, scheduledTarget!))
+        .catch((err) => handleSyncError(err, "library"))
     }
 
-    const handle = setInterval(tick, intervalMs)
+    const handle = setInterval(tick, LIBRARY_SYNC_INTERVAL_MS)
     return () => clearInterval(handle)
   }, [storeReady, enableAutoSync, pathname])
 

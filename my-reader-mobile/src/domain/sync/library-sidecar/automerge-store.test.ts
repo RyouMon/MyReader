@@ -55,11 +55,14 @@ import {
   setLibrarySidecarIdentity,
 } from "./automerge-document"
 import {
+  commitLibrarySidecarAutomergeMutation,
   ensureLibrarySidecarAutomergeState,
+  hasPendingLibrarySidecarAutomergeChanges,
   publishLibrarySidecarAutomergeChanges,
   pullLibrarySidecarAutomergeChanges,
   readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./automerge-store"
+import { subscribeLibrarySidecarWork } from "../sidecar-work"
 
 const library = {
   id: "library-1",
@@ -175,6 +178,72 @@ describe("library sidecar Automerge store", () => {
       receipts: 2,
       projectionVersion: 1,
     })
+  })
+
+  it("should report pending work when the durable outbox is not empty", async () => {
+    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+      {
+        objectPath: ".myreader/automerge/changes/actor/change.am",
+        bytes: new Uint8Array([1]),
+        sha256: "a".repeat(64),
+        changeHashesJson: `["${"b".repeat(64)}"]`,
+        publishedAt: null,
+      },
+    ])
+
+    await expect(
+      hasPendingLibrarySidecarAutomergeChanges(library),
+    ).resolves.toBe(true)
+  })
+
+  it("should announce work after a local mutation commits", async () => {
+    jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
+      schemaVersion: 1,
+      snapshotBytes: new Uint8Array([3]),
+      headsJson: '["identity-head"]',
+      updatedAt: 1,
+    })
+    const listener = jest.fn()
+    const unsubscribe = subscribeLibrarySidecarWork(listener)
+
+    await commitLibrarySidecarAutomergeMutation(
+      library,
+      identity,
+      2,
+      () => ({ state: "mutated", schema: 1 }) as never,
+    )
+
+    expect(listener).toHaveBeenCalledWith({
+      libraryId: "library-1",
+      reason: "local_change",
+    })
+    unsubscribe()
+  })
+
+  it("should not announce work when a local mutation rolls back", async () => {
+    jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
+      schemaVersion: 1,
+      snapshotBytes: new Uint8Array([3]),
+      headsJson: '["identity-head"]',
+      updatedAt: 1,
+    })
+    jest
+      .mocked(insertLibrarySidecarAutomergeOutbox)
+      .mockRejectedValueOnce(new Error("transaction failed"))
+    const listener = jest.fn()
+    const unsubscribe = subscribeLibrarySidecarWork(listener)
+
+    await expect(
+      commitLibrarySidecarAutomergeMutation(
+        library,
+        identity,
+        2,
+        () => ({ state: "mutated", schema: 1 }) as never,
+      ),
+    ).rejects.toThrow("transaction failed")
+
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
   })
 
   it("should not publish different bytes when an immutable object already exists", async () => {

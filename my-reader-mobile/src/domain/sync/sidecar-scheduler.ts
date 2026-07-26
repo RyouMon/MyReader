@@ -25,6 +25,7 @@ export type SidecarSyncRequest = {
 
 export type SidecarSyncScheduler = {
   request(request: SidecarSyncRequest): void
+  flushPending(libraryId: string, reason: SidecarSyncReason): void
   resume(libraryId: string): void
   setOnline(online: boolean): void
   dispose(): void
@@ -179,6 +180,24 @@ export function createSidecarSyncScheduler(options: {
         pending.timer = null
         void execute(request.libraryId)
       }, delay)
+    },
+    flushPending(libraryId, reason) {
+      const pending = pendingByLibrary.get(libraryId)
+      if (!pending) return
+      pending.reasons.add(reason)
+      if (
+        disposed ||
+        !online ||
+        suspendedLibraries.has(libraryId) ||
+        runningLibraries.has(libraryId)
+      ) {
+        return
+      }
+      if (pending.timer) clearTimeout(pending.timer)
+      pending.timer = setTimeout(() => {
+        pending.timer = null
+        void execute(libraryId)
+      }, 0)
     },
     resume(libraryId) {
       suspendedLibraries.delete(libraryId)
