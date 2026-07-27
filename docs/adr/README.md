@@ -44,3 +44,4 @@
 | [ADR-0015](./0015-library-sidecar-crdt-reading-sync.md) | 将书库 sidecar 升级为类型化 CRDT 阅读数据同步 | 部分实施，已取代 | 2026-07-22 |
 | [ADR-0016](./0016-adopt-automerge-for-library-sidecar-sync.md) | 采用 Automerge 作为书库 sidecar 的 CRDT 核心 | 已接受 | 2026-07-25 |
 | [ADR-0017](./0017-event-driven-library-sidecar-sync-scheduling.md) | 使用事件驱动调度自动同步书库 sidecar | 已接受 | 2026-07-26 |
+| [ADR-0018](./0018-shared-rust-components.md) | 使用分域 Rust Components 和聚合原生产物统一桌面与移动后端 | 已接受 | 2026-07-27 |
