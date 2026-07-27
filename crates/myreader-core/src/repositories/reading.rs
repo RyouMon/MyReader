@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
 
-use crate::entities::app::{annotations, bookmarks, favorite_books, reading_progress};
-use crate::models::{ReaderAnnotation, ReaderBookmark, ReadingPosition};
+use crate::entities::app::{
+    annotations, bookmarks, favorite_books, reading_completions, reading_progress, reading_sessions,
+};
+use crate::models::{LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition};
 use crate::CoreError;
 
 pub(crate) struct ReadingRepository<'a> {
@@ -124,6 +126,54 @@ impl<'a> ReadingRepository<'a> {
             .await?
             .map(TryInto::try_into)
             .transpose()
+    }
+
+    pub(crate) async fn list_reading_sessions_by_day_range(
+        &self,
+        start_day: &str,
+        end_day: &str,
+    ) -> Result<Vec<reading_sessions::Model>, CoreError> {
+        Ok(reading_sessions::Entity::find()
+            .filter(reading_sessions::Column::LocalDay.gte(start_day))
+            .filter(reading_sessions::Column::LocalDay.lte(end_day))
+            .all(self.db)
+            .await?)
+    }
+
+    pub(crate) async fn list_reading_completions_by_day_range(
+        &self,
+        start_day: &str,
+        end_day: &str,
+    ) -> Result<Vec<reading_completions::Model>, CoreError> {
+        Ok(reading_completions::Entity::find()
+            .filter(reading_completions::Column::LocalDay.gte(start_day))
+            .filter(reading_completions::Column::LocalDay.lte(end_day))
+            .all(self.db)
+            .await?)
+    }
+
+    pub(crate) async fn list_legacy_finished_readings(
+        &self,
+    ) -> Result<Vec<LegacyFinishedReading>, CoreError> {
+        let completed_book_ids = reading_completions::Entity::find()
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(|row| row.book_id)
+            .collect::<std::collections::BTreeSet<_>>();
+        Ok(reading_progress::Entity::find()
+            .filter(reading_progress::Column::DisplayProgression.eq(1.0))
+            .order_by_asc(reading_progress::Column::UpdatedAt)
+            .all(self.db)
+            .await?
+            .into_iter()
+            .filter(|row| !completed_book_ids.contains(&row.book_id))
+            .map(|row| LegacyFinishedReading {
+                book_id: row.book_id,
+                format: row.format,
+                updated_at: row.updated_at,
+            })
+            .collect())
     }
 }
 

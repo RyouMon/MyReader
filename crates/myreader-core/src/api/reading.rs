@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::models::{ReaderAnnotation, ReaderBookmark, ReadingPosition, ReadingPositionCandidate};
+use crate::models::{
+    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
+    ReadingPositionCandidate, ReadingStatistics,
+};
 use crate::{services, CoreError};
 
 pub async fn list_favorite_book_ids(sidecar_root: &Path) -> Result<Vec<i64>, CoreError> {
@@ -221,4 +224,68 @@ pub async fn remove_reader_annotation(
         recorded_at_ms,
     )
     .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn add_reading_session_interval(
+    sidecar_root: &Path,
+    library_root: &Path,
+    id: &str,
+    book_id: i64,
+    format: &str,
+    local_day: &str,
+    started_at_ms: i64,
+    duration_seconds: i64,
+    recorded_at_ms: i64,
+) -> Result<(), CoreError> {
+    services::reading::add_reading_session_interval(
+        sidecar_root,
+        library_root,
+        id,
+        book_id,
+        format,
+        local_day,
+        started_at_ms,
+        duration_seconds,
+        recorded_at_ms,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn add_reading_completion(
+    sidecar_root: &Path,
+    library_root: &Path,
+    id: &str,
+    book_id: i64,
+    format: &str,
+    local_day: &str,
+    completed_at_ms: i64,
+    recorded_at_ms: i64,
+) -> Result<bool, CoreError> {
+    services::reading::add_reading_completion(
+        sidecar_root,
+        library_root,
+        id,
+        book_id,
+        format,
+        local_day,
+        completed_at_ms,
+        recorded_at_ms,
+    )
+    .await
+}
+
+pub async fn get_reading_statistics(
+    sidecar_root: &Path,
+    start_day: &str,
+    end_day: &str,
+) -> Result<ReadingStatistics, CoreError> {
+    services::reading::get_reading_statistics(sidecar_root, start_day, end_day).await
+}
+
+pub async fn list_legacy_finished_readings(
+    sidecar_root: &Path,
+) -> Result<Vec<LegacyFinishedReading>, CoreError> {
+    services::reading::list_legacy_finished_readings(sidecar_root).await
 }

@@ -1275,6 +1275,34 @@ public func addReaderBookmark(sidecarRootPath: String, libraryRootPath: String, 
     )
 })
 }
+public func addReadingCompletion(sidecarRootPath: String, libraryRootPath: String, id: String, bookId: Int64, format: String, localDay: String, completedAtMs: Int64, recordedAtMs: Int64)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_reading_completion(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(localDay),
+        FfiConverterInt64.lower(completedAtMs),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+})
+}
+public func addReadingSessionInterval(sidecarRootPath: String, libraryRootPath: String, id: String, bookId: Int64, format: String, localDay: String, startedAtMs: Int64, durationSeconds: Int64, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_reading_session_interval(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(localDay),
+        FfiConverterInt64.lower(startedAtMs),
+        FfiConverterInt64.lower(durationSeconds),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+}
+}
 public func addRemoteLibrary(registryPath: String, requestJson: String, credentialJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_add_remote_library(
@@ -1375,6 +1403,15 @@ public func getReadingPosition(sidecarRootPath: String, bookId: Int64, format: S
     )
 })
 }
+public func getReadingStatistics(sidecarRootPath: String, startDay: String, endDay: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_get_reading_statistics(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(startDay),
+        FfiConverterString.lower(endDay),$0
+    )
+})
+}
 public func hasSyncDatabasePendingWork(databasePath: String)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(
@@ -1443,6 +1480,13 @@ public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, 
 public func listFavoriteBookIds(sidecarRootPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
+        FfiConverterString.lower(sidecarRootPath),$0
+    )
+})
+}
+public func listLegacyFinishedReadings(sidecarRootPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_legacy_finished_readings(
         FfiConverterString.lower(sidecarRootPath),$0
     )
 })
@@ -1754,6 +1798,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 20057) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_add_reading_completion() != 57805) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_add_reading_session_interval() != 55280) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1790,6 +1840,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_get_reading_position() != 24023) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 7607) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1815,6 +1868,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_legacy_finished_readings() != 13801) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {

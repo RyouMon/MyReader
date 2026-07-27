@@ -580,6 +580,80 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("addReadingSessionInterval") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        id: String,
+        bookId: Int64,
+        format: String,
+        localDay: String,
+        startedAtMs: Int64,
+        durationSeconds: Int64,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try addReadingSessionInterval(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          id: id,
+          bookId: bookId,
+          format: format,
+          localDay: localDay,
+          startedAtMs: startedAtMs,
+          durationSeconds: durationSeconds,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("addReadingCompletion") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        id: String,
+        bookId: Int64,
+        format: String,
+        localDay: String,
+        completedAtMs: Int64,
+        recordedAtMs: Int64
+      ) -> Bool in
+      try componentCall {
+        try addReadingCompletion(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          id: id,
+          bookId: bookId,
+          format: format,
+          localDay: localDay,
+          completedAtMs: completedAtMs,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("getReadingStatistics") {
+      (
+        sidecarRootPath: String,
+        startDay: String,
+        endDay: String
+      ) -> String in
+      try componentCall {
+        try getReadingStatistics(
+          sidecarRootPath: sidecarRootPath,
+          startDay: startDay,
+          endDay: endDay
+        )
+      }
+    }
+
+    AsyncFunction("listLegacyFinishedReadings") {
+      (sidecarRootPath: String) -> String in
+      try componentCall {
+        try listLegacyFinishedReadings(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }

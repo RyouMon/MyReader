@@ -221,6 +221,33 @@ export type MyReaderRustComponentsModule = {
     id: string,
     recordedAtMs: number,
   ): Promise<void>
+  addReadingSessionInterval(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    id: string,
+    bookId: number,
+    format: string,
+    localDay: string,
+    startedAtMs: number,
+    durationSeconds: number,
+    recordedAtMs: number,
+  ): Promise<void>
+  addReadingCompletion(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    id: string,
+    bookId: number,
+    format: string,
+    localDay: string,
+    completedAtMs: number,
+    recordedAtMs: number,
+  ): Promise<boolean>
+  getReadingStatistics(
+    sidecarRootPath: string,
+    startDay: string,
+    endDay: string,
+  ): Promise<string>
+  listLegacyFinishedReadings(sidecarRootPath: string): Promise<string>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -592,6 +619,60 @@ const moduleFacade: MyReaderRustComponentsModule = {
       id,
       recordedAtMs,
     )
+  },
+  addReadingSessionInterval(
+    sidecarRootPath,
+    libraryRootPath,
+    id,
+    bookId,
+    format,
+    localDay,
+    startedAtMs,
+    durationSeconds,
+    recordedAtMs,
+  ) {
+    return getNativeModule().addReadingSessionInterval(
+      sidecarRootPath,
+      libraryRootPath,
+      id,
+      bookId,
+      format,
+      localDay,
+      startedAtMs,
+      durationSeconds,
+      recordedAtMs,
+    )
+  },
+  addReadingCompletion(
+    sidecarRootPath,
+    libraryRootPath,
+    id,
+    bookId,
+    format,
+    localDay,
+    completedAtMs,
+    recordedAtMs,
+  ) {
+    return getNativeModule().addReadingCompletion(
+      sidecarRootPath,
+      libraryRootPath,
+      id,
+      bookId,
+      format,
+      localDay,
+      completedAtMs,
+      recordedAtMs,
+    )
+  },
+  getReadingStatistics(sidecarRootPath, startDay, endDay) {
+    return getNativeModule().getReadingStatistics(
+      sidecarRootPath,
+      startDay,
+      endDay,
+    )
+  },
+  listLegacyFinishedReadings(sidecarRootPath) {
+    return getNativeModule().listLegacyFinishedReadings(sidecarRootPath)
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

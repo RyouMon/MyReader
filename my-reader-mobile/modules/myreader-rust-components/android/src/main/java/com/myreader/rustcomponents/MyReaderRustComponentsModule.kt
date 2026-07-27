@@ -542,6 +542,69 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
+    AsyncFunction("addReadingSessionInterval") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        id: String,
+        bookId: Long,
+        format: String,
+        localDay: String,
+        startedAtMs: Long,
+        durationSeconds: Long,
+        recordedAtMs: Long ->
+      componentCall {
+        addReadingSessionInterval(
+          sidecarRootPath,
+          libraryRootPath,
+          id,
+          bookId,
+          format,
+          localDay,
+          startedAtMs,
+          durationSeconds,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("addReadingCompletion") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        id: String,
+        bookId: Long,
+        format: String,
+        localDay: String,
+        completedAtMs: Long,
+        recordedAtMs: Long ->
+      componentCall {
+        addReadingCompletion(
+          sidecarRootPath,
+          libraryRootPath,
+          id,
+          bookId,
+          format,
+          localDay,
+          completedAtMs,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("getReadingStatistics") {
+        sidecarRootPath: String,
+        startDay: String,
+        endDay: String ->
+      componentCall {
+        getReadingStatistics(sidecarRootPath, startDay, endDay)
+      }
+    }
+
+    AsyncFunction("listLegacyFinishedReadings") { sidecarRootPath: String ->
+      componentCall {
+        listLegacyFinishedReadings(sidecarRootPath)
+      }
+    }
+
     Function("syncContractVersion") {
       syncContractVersion().toInt()
     }

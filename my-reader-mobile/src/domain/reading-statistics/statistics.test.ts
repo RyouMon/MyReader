@@ -1,46 +1,12 @@
-import {
-  aggregateReadingStatistics,
-  longestReadingStreak,
-  readingIntensityLevel,
-} from "./statistics"
+import { localDayKey, readingIntensityLevel, yearDayRange } from "./statistics"
 
 describe("reading statistics", () => {
-  it("should aggregate durations, streaks, and completed books when records overlap", () => {
-    expect(
-      aggregateReadingStatistics(
-        [
-          { localDay: "2026-01-01", durationSeconds: 600 },
-          { localDay: "2026-01-01", durationSeconds: 300 },
-          { localDay: "2026-01-02", durationSeconds: 900 },
-          { localDay: "2026-01-04", durationSeconds: 120 },
-        ],
-        [
-          { bookId: 1, localDay: "2026-01-01" },
-          { bookId: 1, localDay: "2026-01-02" },
-          { bookId: 2, localDay: "2026-01-04" },
-        ],
-      ),
-    ).toEqual({
-      days: {
-        "2026-01-01": 900,
-        "2026-01-02": 900,
-        "2026-01-04": 120,
-      },
-      totalDurationSeconds: 1920,
-      longestStreakDays: 2,
-      completedBooks: 2,
+  it("should format a local calendar day when a date is displayed", () => {
+    expect(localDayKey(new Date(2024, 1, 29))).toBe("2024-02-29")
+    expect(yearDayRange(2024)).toEqual({
+      startDay: "2024-01-01",
+      endDay: "2024-12-31",
     })
-  })
-
-  it("should keep days consecutive when a streak crosses leap-day boundaries", () => {
-    expect(
-      longestReadingStreak([
-        "2024-02-28",
-        "2024-02-29",
-        "2024-03-01",
-        "2024-03-03",
-      ]),
-    ).toBe(3)
   })
 
   it.each([

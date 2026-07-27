@@ -15,6 +15,10 @@ jest.mock("@/modules/myreader-rust-components", () => ({
     addReaderAnnotation: jest.fn(),
     updateReaderAnnotation: jest.fn(),
     removeReaderAnnotation: jest.fn(),
+    addReadingSessionInterval: jest.fn(),
+    addReadingCompletion: jest.fn(),
+    getReadingStatistics: jest.fn(),
+    listLegacyFinishedReadings: jest.fn(),
   },
 }))
 
@@ -40,7 +44,9 @@ import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import {
   addReaderAnnotation,
   addReaderBookmark,
+  addReadingSessionInterval,
   getReadingPosition,
+  getReadingStatistics,
   listFavoriteBookIds,
   setFavoriteBook,
   setReadingPosition,
@@ -178,6 +184,70 @@ describe("core reading adapter", () => {
       "yellow",
       null,
       900,
+    )
+  })
+
+  it("should pass incremental duration when reading session is recorded", async () => {
+    jest
+      .mocked(MyReaderRustComponents.addReadingSessionInterval)
+      .mockResolvedValue(undefined)
+
+    await addReadingSessionInterval(library, {
+      id: "11111111111141118111111111111111",
+      bookId: 42,
+      format: "EPUB",
+      localDay: "2026-07-28",
+      startedAt: 600,
+      durationSeconds: 30,
+      updatedAt: 900,
+    })
+
+    expect(
+      MyReaderRustComponents.addReadingSessionInterval,
+    ).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      "11111111111141118111111111111111",
+      42,
+      "EPUB",
+      "2026-07-28",
+      600,
+      30,
+      900,
+    )
+  })
+
+  it("should backfill legacy completion before statistics are read", async () => {
+    jest
+      .mocked(MyReaderRustComponents.listLegacyFinishedReadings)
+      .mockResolvedValue('[{"bookId":42,"format":"EPUB","updatedAt":900}]')
+    jest
+      .mocked(MyReaderRustComponents.addReadingCompletion)
+      .mockResolvedValue(true)
+    jest
+      .mocked(MyReaderRustComponents.getReadingStatistics)
+      .mockResolvedValue(
+        '{"days":{},"totalDurationSeconds":0,"longestStreakDays":0,"completedBooks":1}',
+      )
+
+    await expect(
+      getReadingStatistics(library, "2026-01-01", "2026-12-31"),
+    ).resolves.toMatchObject({ completedBooks: 1 })
+
+    expect(MyReaderRustComponents.addReadingCompletion).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      expect.any(String),
+      42,
+      "EPUB",
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      900,
+      900,
+    )
+    expect(MyReaderRustComponents.getReadingStatistics).toHaveBeenCalledWith(
+      "/sidecar",
+      "2026-01-01",
+      "2026-12-31",
     )
   })
 })

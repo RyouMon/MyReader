@@ -730,6 +730,78 @@ pub fn remove_reader_annotation(
 }
 
 #[uniffi::export]
+pub fn add_reading_session_interval(
+    sidecar_root_path: String,
+    library_root_path: String,
+    id: String,
+    book_id: i64,
+    format: String,
+    local_day: String,
+    started_at_ms: i64,
+    duration_seconds: i64,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::reading::add_reading_session_interval(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        &id,
+        book_id,
+        &format,
+        &local_day,
+        started_at_ms,
+        duration_seconds,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
+pub fn add_reading_completion(
+    sidecar_root_path: String,
+    library_root_path: String,
+    id: String,
+    book_id: i64,
+    format: String,
+    local_day: String,
+    completed_at_ms: i64,
+    recorded_at_ms: i64,
+) -> Result<bool, RustComponentsError> {
+    run_core_async(myreader_core::api::reading::add_reading_completion(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        &id,
+        book_id,
+        &format,
+        &local_day,
+        completed_at_ms,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
+pub fn get_reading_statistics(
+    sidecar_root_path: String,
+    start_day: String,
+    end_day: String,
+) -> Result<String, RustComponentsError> {
+    let statistics = run_core_async(myreader_core::api::reading::get_reading_statistics(
+        Path::new(&sidecar_root_path),
+        &start_day,
+        &end_day,
+    ))?;
+    serialize_core_json(&statistics)
+}
+
+#[uniffi::export]
+pub fn list_legacy_finished_readings(
+    sidecar_root_path: String,
+) -> Result<String, RustComponentsError> {
+    let readings = run_core_async(myreader_core::api::reading::list_legacy_finished_readings(
+        Path::new(&sidecar_root_path),
+    ))?;
+    serialize_core_json(&readings)
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,

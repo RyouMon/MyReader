@@ -44,3 +44,21 @@ pub struct ReaderAnnotation {
     pub created_at: f64,
     pub updated_at: f64,
 }
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingStatistics {
+    pub days: BTreeMap<String, i64>,
+    pub total_duration_seconds: i64,
+    pub longest_streak_days: u32,
+    pub completed_books: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyFinishedReading {
+    pub book_id: i64,
+    pub format: String,
+    pub updated_at: f64,
+}
+use std::collections::BTreeMap;

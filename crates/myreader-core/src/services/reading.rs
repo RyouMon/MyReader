@@ -2,10 +2,12 @@ use std::path::Path;
 
 use myreader_sync::{
     document::{
+        add_reading_completion as write_reading_completion, add_reading_session_duration,
         annotation_projections, bookmark_projections, create_annotation, delete_annotation,
-        favorite_projections, resolve_reading_position, set_bookmark, set_favorite,
-        set_reading_position as write_reading_position, update_annotation, AnnotationValue,
-        BookmarkValue, FavoriteValue, ReadingPositionValue,
+        favorite_projections, reading_completion_records, resolve_reading_position, set_bookmark,
+        set_favorite, set_reading_position as write_reading_position, update_annotation,
+        AnnotationValue, BookmarkValue, FavoriteValue, ReadingCompletionValue,
+        ReadingPositionValue, ReadingSessionValue,
     },
     persistence::{
         ensure_database_document, ensure_database_identity, execute_local_database_mutation,
@@ -15,7 +17,10 @@ use myreader_sync::{
 use tracing::info;
 
 use crate::database;
-use crate::models::{ReaderAnnotation, ReaderBookmark, ReadingPosition, ReadingPositionCandidate};
+use crate::models::{
+    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
+    ReadingPositionCandidate, ReadingStatistics,
+};
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::reading::ReadingRepository;
 use crate::CoreError;
@@ -520,6 +525,161 @@ async fn find_annotation(sidecar_root: &Path, id: &str) -> Result<ReaderAnnotati
         .ok_or_else(|| CoreError::Database("Annotation mutation returned no row".into()))
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn add_reading_session_interval(
+    sidecar_root: &Path,
+    library_root: &Path,
+    id: &str,
+    book_id: i64,
+    format: &str,
+    local_day: &str,
+    started_at_ms: i64,
+    duration_seconds: i64,
+    recorded_at_ms: i64,
+) -> Result<(), CoreError> {
+    validate_compact_uuid(id, "Reading session")?;
+    if book_id < 1 || started_at_ms < 0 || duration_seconds < 0 || recorded_at_ms < 0 {
+        return Err(CoreError::Config("Reading session is invalid".into()));
+    }
+    let format = normalize_reading_format(format)?;
+    validate_local_day(local_day)?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let value = ReadingSessionValue {
+        id: id.to_owned(),
+        origin_replica_id: identity.replica_id.clone(),
+        book_id,
+        format: format.clone(),
+        local_day: local_day.to_owned(),
+        started_at: started_at_ms,
+        duration_seconds,
+        updated_at: recorded_at_ms,
+    };
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        add_reading_session_duration(document, &value)?;
+        Ok(())
+    })?;
+    info!(
+        target: "myreader_sync",
+        event = "reading_session.local_write",
+        library_uuid = identity.library_uuid,
+        replica_id = identity.replica_id,
+        session_id = id,
+        book_id,
+        format,
+        duration_seconds,
+        "Committed local reading session interval"
+    );
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn add_reading_completion(
+    sidecar_root: &Path,
+    library_root: &Path,
+    id: &str,
+    book_id: i64,
+    format: &str,
+    local_day: &str,
+    completed_at_ms: i64,
+    recorded_at_ms: i64,
+) -> Result<bool, CoreError> {
+    validate_compact_uuid(id, "Reading completion")?;
+    if book_id < 1 || completed_at_ms < 0 || recorded_at_ms < 0 {
+        return Err(CoreError::Config("Reading completion is invalid".into()));
+    }
+    let format = normalize_reading_format(format)?;
+    validate_local_day(local_day)?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let value = ReadingCompletionValue {
+        id: id.to_owned(),
+        book_id,
+        format: format.clone(),
+        local_day: local_day.to_owned(),
+        completed_at: completed_at_ms,
+        updated_at: recorded_at_ms,
+        replica_id: identity.replica_id.clone(),
+    };
+    let mut changed = false;
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        let existing = reading_completion_records(document)?
+            .into_iter()
+            .find(|current| current.book_id == book_id);
+        if existing.is_some_and(|current| {
+            current.completed_at < completed_at_ms
+                || (current.completed_at == completed_at_ms && current.id.as_str() <= id)
+        }) {
+            return Ok(());
+        }
+        changed = write_reading_completion(document, &value)?.is_some();
+        Ok(())
+    })?;
+    if changed {
+        info!(
+            target: "myreader_sync",
+            event = "reading_completion.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            completion_id = id,
+            book_id,
+            format,
+            "Committed local reading completion"
+        );
+    }
+    Ok(changed)
+}
+
+pub(crate) async fn get_reading_statistics(
+    sidecar_root: &Path,
+    start_day: &str,
+    end_day: &str,
+) -> Result<ReadingStatistics, CoreError> {
+    validate_local_day(start_day)?;
+    validate_local_day(end_day)?;
+    if start_day > end_day {
+        return Err(CoreError::Config(
+            "Reading statistics day range is invalid".into(),
+        ));
+    }
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    let repository = ReadingRepository::new(&db);
+    let sessions = repository
+        .list_reading_sessions_by_day_range(start_day, end_day)
+        .await?;
+    let completions = repository
+        .list_reading_completions_by_day_range(start_day, end_day)
+        .await?;
+    let mut days = std::collections::BTreeMap::new();
+    let mut total_duration_seconds = 0_i64;
+    for session in sessions {
+        if session.duration_seconds <= 0 {
+            continue;
+        }
+        let duration = days.entry(session.local_day).or_insert(0_i64);
+        *duration = duration.saturating_add(session.duration_seconds);
+        total_duration_seconds = total_duration_seconds.saturating_add(session.duration_seconds);
+    }
+    let longest_streak_days = longest_streak_days(days.keys())?;
+    Ok(ReadingStatistics {
+        days,
+        total_duration_seconds,
+        longest_streak_days,
+        completed_books: completions
+            .into_iter()
+            .map(|completion| completion.book_id)
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+    })
+}
+
+pub(crate) async fn list_legacy_finished_readings(
+    sidecar_root: &Path,
+) -> Result<Vec<LegacyFinishedReading>, CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ReadingRepository::new(&db)
+        .list_legacy_finished_readings()
+        .await
+}
+
 async fn sync_context(
     sidecar_root: &Path,
     library_root: &Path,
@@ -547,6 +707,80 @@ fn normalize_reading_format(format: &str) -> Result<String, CoreError> {
             "Reading position format is unsupported".into(),
         ))
     }
+}
+
+fn validate_compact_uuid(value: &str, name: &str) -> Result<(), CoreError> {
+    let uuid = uuid::Uuid::parse_str(value)
+        .map_err(|_| CoreError::Config(format!("{name} ID is invalid")))?;
+    if uuid.get_version() != Some(uuid::Version::Random) || uuid.as_simple().to_string() != value {
+        return Err(CoreError::Config(format!("{name} ID is invalid")));
+    }
+    Ok(())
+}
+
+fn validate_local_day(value: &str) -> Result<(), CoreError> {
+    let mut parts = value.split('-');
+    let year = parts.next().and_then(|part| part.parse::<i32>().ok());
+    let month = parts.next().and_then(|part| part.parse::<u32>().ok());
+    let day = parts.next().and_then(|part| part.parse::<u32>().ok());
+    if value.len() != 10 || parts.next().is_some() {
+        return Err(CoreError::Config("Reading local day is invalid".into()));
+    }
+    let Some((year, month, day)) = year.zip(month).zip(day).map(|((y, m), d)| (y, m, d)) else {
+        return Err(CoreError::Config("Reading local day is invalid".into()));
+    };
+    let max_day = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if year % 400 == 0 || (year % 4 == 0 && year % 100 != 0) => 29,
+        2 => 28,
+        _ => 0,
+    };
+    if year < 1 || day == 0 || day > max_day {
+        return Err(CoreError::Config("Reading local day is invalid".into()));
+    }
+    Ok(())
+}
+
+fn longest_streak_days<'a>(local_days: impl Iterator<Item = &'a String>) -> Result<u32, CoreError> {
+    let mut longest = 0_u32;
+    let mut current = 0_u32;
+    let mut previous = None;
+    for local_day in local_days {
+        validate_local_day(local_day)?;
+        let ordinal = civil_day_ordinal(local_day)?;
+        current = if previous.is_some_and(|value| ordinal == value + 1) {
+            current.saturating_add(1)
+        } else {
+            1
+        };
+        longest = longest.max(current);
+        previous = Some(ordinal);
+    }
+    Ok(longest)
+}
+
+fn civil_day_ordinal(local_day: &str) -> Result<i64, CoreError> {
+    let mut parts = local_day.split('-');
+    let year = parts
+        .next()
+        .and_then(|value| value.parse::<i64>().ok())
+        .ok_or_else(|| CoreError::Config("Reading local day is invalid".into()))?;
+    let month = parts
+        .next()
+        .and_then(|value| value.parse::<i64>().ok())
+        .ok_or_else(|| CoreError::Config("Reading local day is invalid".into()))?;
+    let day = parts
+        .next()
+        .and_then(|value| value.parse::<i64>().ok())
+        .ok_or_else(|| CoreError::Config("Reading local day is invalid".into()))?;
+    let adjusted_year = year - i64::from(month <= 2);
+    let era = adjusted_year.div_euclid(400);
+    let year_of_era = adjusted_year - era * 400;
+    let adjusted_month = month + if month > 2 { -3 } else { 9 };
+    let day_of_year = (153 * adjusted_month + 2) / 5 + day - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    Ok(era * 146_097 + day_of_era)
 }
 
 fn validate_locator_json(locator_json: &str) -> Result<String, CoreError> {
@@ -940,5 +1174,109 @@ mod tests {
         .unwrap_err();
 
         assert!(error.to_string().contains("Annotation locator is invalid"));
+    }
+
+    #[tokio::test]
+    async fn should_aggregate_reading_statistics_when_sessions_and_completions_overlap() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let session_id = "11111111111141118111111111111111";
+
+        for (duration, recorded_at) in [(600, 1_000), (300, 1_001)] {
+            super::add_reading_session_interval(
+                sidecar.path(),
+                library.path(),
+                session_id,
+                42,
+                "epub",
+                "2024-02-28",
+                900,
+                duration,
+                recorded_at,
+            )
+            .await
+            .unwrap();
+        }
+        super::add_reading_session_interval(
+            sidecar.path(),
+            library.path(),
+            "22222222222242228222222222222222",
+            42,
+            "EPUB",
+            "2024-02-29",
+            1_100,
+            120,
+            1_101,
+        )
+        .await
+        .unwrap();
+        super::add_reading_completion(
+            sidecar.path(),
+            library.path(),
+            "33333333333343338333333333333333",
+            42,
+            "EPUB",
+            "2024-02-29",
+            1_200,
+            1_200,
+        )
+        .await
+        .unwrap();
+
+        let statistics = super::get_reading_statistics(sidecar.path(), "2024-01-01", "2024-12-31")
+            .await
+            .unwrap();
+
+        assert_eq!(statistics.days["2024-02-28"], 900);
+        assert_eq!(statistics.days["2024-02-29"], 120);
+        assert_eq!(statistics.total_duration_seconds, 1_020);
+        assert_eq!(statistics.longest_streak_days, 2);
+        assert_eq!(statistics.completed_books, 1);
+    }
+
+    #[tokio::test]
+    async fn should_keep_earliest_completion_when_book_is_completed_again() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+
+        let later = super::add_reading_completion(
+            sidecar.path(),
+            library.path(),
+            "44444444444444448444444444444444",
+            42,
+            "PDF",
+            "2026-07-25",
+            200,
+            200,
+        )
+        .await
+        .unwrap();
+        let earlier = super::add_reading_completion(
+            sidecar.path(),
+            library.path(),
+            "55555555555545559555555555555555",
+            42,
+            "PDF",
+            "2026-07-24",
+            100,
+            100,
+        )
+        .await
+        .unwrap();
+
+        assert!(later);
+        assert!(earlier);
+        let db = crate::database::open_db(&sidecar.path().to_string_lossy())
+            .await
+            .unwrap();
+        let completion = crate::entities::app::reading_completions::Entity::find()
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(completion.local_day, "2026-07-24");
+        assert_eq!(completion.completed_at, 100.0);
     }
 }

@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useRef } from "react"
-import { AppState } from "react-native"
 import {
   READING_HEARTBEAT_MS,
   ReadingTimeAccumulator,
   splitReadingIntervalByLocalDay,
   type TimedReadingInterval,
 } from "@my-reader/tools/reading-time-accumulator"
-
-import type { Library } from "@/src/domain/types"
+import { useCallback, useEffect, useRef } from "react"
+import { AppState } from "react-native"
 import { localDayKey } from "@/src/domain/reading-statistics/statistics"
+import type { Library } from "@/src/domain/types"
 import {
-  addLocalReadingCompletion,
-  addLocalReadingSessionInterval,
-} from "@/src/domain/sync/library-sidecar/reading-statistics"
+  addReadingCompletion,
+  addReadingSessionInterval,
+} from "@/src/services/core/reading"
 import { invalidateReadingStatistics } from "@/src/services/query/invalidate-table"
 import { uuid } from "@/src/utils/common"
 
@@ -68,7 +67,7 @@ export function useReadingSessionTracker(
               session = { id: uuid(), startedAt: piece.startedAt }
               context.sessions.set(piece.localDay, session)
             }
-            await addLocalReadingSessionInterval(context.library, {
+            await addReadingSessionInterval(context.library, {
               id: session.id,
               bookId: context.bookId,
               format: context.format,
@@ -148,7 +147,7 @@ export function useReadingSessionTracker(
 
     completionAttemptRef.current = trackingKey
     const completedAt = Date.now()
-    void addLocalReadingCompletion(library, {
+    void addReadingCompletion(library, {
       id: uuid(),
       bookId,
       format,

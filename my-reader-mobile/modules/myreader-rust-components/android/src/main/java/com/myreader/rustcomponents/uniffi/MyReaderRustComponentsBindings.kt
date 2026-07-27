@@ -823,6 +823,14 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -841,6 +849,10 @@ internal interface IntegrityCheckingUniffiLib : Library {
     fun uniffi_myreader_rust_components_checksum_func_add_reader_annotation(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_add_reader_bookmark(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_add_reading_completion(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_add_reading_session_interval(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_add_remote_library(
 ): Short
@@ -866,6 +878,8 @@ fun uniffi_myreader_rust_components_checksum_func_get_library_file_state(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_get_reading_position(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_get_reading_statistics(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_initialize_device_registry(
@@ -883,6 +897,8 @@ fun uniffi_myreader_rust_components_checksum_func_list_calibre_books_page(
 fun uniffi_myreader_rust_components_checksum_func_list_calibre_series_books(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_legacy_finished_readings(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_library_file_states(
 ): Short
@@ -999,6 +1015,10 @@ internal interface UniffiLib : Library {
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_add_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_add_reading_completion(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`localDay`: RustBuffer.ByValue,`completedAtMs`: Long,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Byte
+fun uniffi_myreader_rust_components_fn_func_add_reading_session_interval(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`localDay`: RustBuffer.ByValue,`startedAtMs`: Long,`durationSeconds`: Long,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun uniffi_myreader_rust_components_fn_func_add_remote_library(`registryPath`: RustBuffer.ByValue,`requestJson`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(`stateJson`: RustBuffer.ByValue,`policyJson`: RustBuffer.ByValue,`eventJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1023,6 +1043,8 @@ fun uniffi_myreader_rust_components_fn_func_get_library_file_state(`sidecarRootP
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_get_reading_position(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_get_reading_statistics(`sidecarRootPath`: RustBuffer.ByValue,`startDay`: RustBuffer.ByValue,`endDay`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_initialize_device_registry(`registryPath`: RustBuffer.ByValue,`legacyRegistryJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1040,6 +1062,8 @@ fun uniffi_myreader_rust_components_fn_func_list_calibre_books_page(`libraryRoot
 fun uniffi_myreader_rust_components_fn_func_list_calibre_series_books(`libraryRootPath`: RustBuffer.ByValue,`seriesName`: RustBuffer.ByValue,`excludeBookId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_legacy_finished_readings(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_library_file_states(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1239,6 +1263,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 20057.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_add_reading_completion() != 57805.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_add_reading_session_interval() != 55280.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1275,6 +1305,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_get_reading_position() != 24023.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 7607.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1300,6 +1333,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_legacy_finished_readings() != 13801.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011.toShort()) {
@@ -2167,6 +2203,25 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `addReadingCompletion`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `id`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `localDay`: kotlin.String, `completedAtMs`: kotlin.Long, `recordedAtMs`: kotlin.Long): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reading_completion(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`localDay`),FfiConverterLong.lower(`completedAtMs`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `addReadingSessionInterval`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `id`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `localDay`: kotlin.String, `startedAtMs`: kotlin.Long, `durationSeconds`: kotlin.Long, `recordedAtMs`: kotlin.Long)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reading_session_interval(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`localDay`),FfiConverterLong.lower(`startedAtMs`),FfiConverterLong.lower(`durationSeconds`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+
+
+
     @Throws(RustComponentsException::class) fun `addRemoteLibrary`(`registryPath`: kotlin.String, `requestJson`: kotlin.String, `credentialJson`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2285,6 +2340,16 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `getReadingStatistics`(`sidecarRootPath`: kotlin.String, `startDay`: kotlin.String, `endDay`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_reading_statistics(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`startDay`),FfiConverterString.lower(`endDay`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `hasSyncDatabasePendingWork`(`databasePath`: kotlin.String): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2369,6 +2434,16 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
+        FfiConverterString.lower(`sidecarRootPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listLegacyFinishedReadings`(`sidecarRootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_legacy_finished_readings(
         FfiConverterString.lower(`sidecarRootPath`),_status)
 }
     )

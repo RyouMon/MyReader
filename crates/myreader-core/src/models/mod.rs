@@ -8,7 +8,10 @@ pub use catalog::{
     BookDetail, BookEntry, BookFormat, BookIdentifier, BookSummary, FormatSize, PaginatedBooks,
 };
 pub use content::{FileState, FileStateUpdate};
-pub use reading::{ReaderAnnotation, ReaderBookmark, ReadingPosition, ReadingPositionCandidate};
+pub use reading::{
+    LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
+    ReadingPositionCandidate, ReadingStatistics,
+};
 pub use registry::{
     DataSource, DeviceRegistry, Library, SecurityScopedBookmark, DEVICE_REGISTRY_SCHEMA_VERSION,
 };
