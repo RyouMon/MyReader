@@ -124,6 +124,7 @@ import { useReaderProgressSaver } from "@/src/hooks/use-reader-progress-saver"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { useAppStore } from "@/src/store/app-store"
 import type { ReaderTheme } from "@/src/store/app-store.types"
+import { describeError } from "@/src/utils/common"
 import { Animated, Pressable, Text, View } from "@/tw"
 
 const FixedReaderSurface = lazy(
@@ -524,6 +525,13 @@ export default function ReaderScreen() {
     setAnnotationEditorState(null)
   }, [])
 
+  const showAnnotationError = useCallback(
+    (error: unknown) => {
+      Alert.alert(t("reader.annotations.error"), describeError(error))
+    },
+    [t],
+  )
+
   const dismissSelectionMenu = useCallback(() => {
     setSelectionMenuState(null)
     reflowReaderRef.current?.clearSelection()
@@ -601,12 +609,12 @@ export default function ReaderScreen() {
       try {
         await readerAnnotations.remove(annotation)
         return true
-      } catch {
-        Alert.alert(t("reader.annotations.error"))
+      } catch (error) {
+        showAnnotationError(error)
         return false
       }
     },
-    [readerAnnotations, t],
+    [readerAnnotations, showAnnotationError],
   )
 
   const handleSelectionColorSelect = useCallback(
@@ -623,9 +631,14 @@ export default function ReaderScreen() {
               selection.annotation.note,
             )
         : readerAnnotations.add(selection.locator, color)
-      void mutation.catch(() => Alert.alert(t("reader.annotations.error")))
+      void mutation.catch(showAnnotationError)
     },
-    [dismissSelectionMenu, readerAnnotations, selectionMenuState, t],
+    [
+      dismissSelectionMenu,
+      readerAnnotations,
+      selectionMenuState,
+      showAnnotationError,
+    ],
   )
 
   const handleSelectionAddNote = useCallback(() => {
@@ -736,12 +749,17 @@ export default function ReaderScreen() {
         }
         closeAnnotationEditor()
         return true
-      } catch {
-        Alert.alert(t("reader.annotations.error"))
+      } catch (error) {
+        showAnnotationError(error)
         return false
       }
     },
-    [annotationEditorState, closeAnnotationEditor, readerAnnotations, t],
+    [
+      annotationEditorState,
+      closeAnnotationEditor,
+      readerAnnotations,
+      showAnnotationError,
+    ],
   )
 
   const handleAnnotationEditorDelete = useCallback(async () => {

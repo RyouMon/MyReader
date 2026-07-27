@@ -212,6 +212,37 @@ function jsToScalarValue(val: any, datatype?: string): ScalarValue {
   return new ScalarValue.String({ value: String(val) })
 }
 
+const IMMUTABLE_STRING = Symbol.for("_am_immutableString")
+
+function hydratedValue(value: any): { datatype: string; value: any } {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    Object.prototype.hasOwnProperty.call(value, IMMUTABLE_STRING)
+  ) {
+    return { datatype: "str", value: value.toString() }
+  }
+  if (value === null) return { datatype: "null", value: null }
+  if (value === undefined) {
+    throw new RangeError("Cannot hydrate an undefined Automerge value")
+  }
+  if (Array.isArray(value)) return { datatype: "list", value }
+  if (value instanceof Date) {
+    return { datatype: "timestamp", value: value.getTime() }
+  }
+  if (value instanceof Uint8Array) return { datatype: "bytes", value }
+  if (typeof value === "object") return { datatype: "map", value }
+  if (typeof value === "string") return { datatype: "text", value }
+  if (typeof value === "boolean") return { datatype: "boolean", value }
+  if (typeof value === "number") {
+    return {
+      datatype: Number.isInteger(value) ? "int" : "f64",
+      value,
+    }
+  }
+  throw new RangeError(`Cannot hydrate an Automerge ${typeof value} value`)
+}
+
 function scalarValueToJS(sv: ScalarValue): any {
   switch (sv.tag) {
     case ScalarValue_Tags.String:
@@ -650,6 +681,62 @@ class NativeAutomerge {
       newId = this.doc.putObjectInList(objId, BigInt(index), ot)
     }
     return objIdToStr(newId)
+  }
+
+  putObjectFromHydrate(obj: string, prop: string | number, value: any): string {
+    const hydrated = hydratedValue(value)
+    if (
+      hydrated.datatype !== "map" &&
+      hydrated.datatype !== "list" &&
+      hydrated.datatype !== "text"
+    ) {
+      throw new RangeError(
+        "Hydrated Automerge object must be a map, list, or text",
+      )
+    }
+    const objectId = this.putObject(obj, prop, hydrated.datatype)
+    this.hydrateObject(objectId, hydrated)
+    return objectId
+  }
+
+  private hydrateObject(
+    objectId: string,
+    hydrated: { datatype: string; value: any },
+  ): void {
+    if (hydrated.datatype === "text") {
+      this.updateText(objectId, hydrated.value)
+      return
+    }
+    if (hydrated.datatype === "list") {
+      for (const value of hydrated.value) {
+        const child = hydratedValue(value)
+        const index = this.length(objectId)
+        if (
+          child.datatype === "map" ||
+          child.datatype === "list" ||
+          child.datatype === "text"
+        ) {
+          const childId = this.insertObject(objectId, index, child.datatype)
+          this.hydrateObject(childId, child)
+        } else {
+          this.insert(objectId, index, child.value, child.datatype)
+        }
+      }
+      return
+    }
+    for (const [key, value] of Object.entries(hydrated.value)) {
+      const child = hydratedValue(value)
+      if (
+        child.datatype === "map" ||
+        child.datatype === "list" ||
+        child.datatype === "text"
+      ) {
+        const childId = this.putObject(objectId, key, child.datatype)
+        this.hydrateObject(childId, child)
+      } else {
+        this.put(objectId, key, child.value, child.datatype)
+      }
+    }
   }
 
   // --- Mutation: insert ---
@@ -1245,9 +1332,18 @@ function applyPatchesToObject(obj: any, patches: any[], meta?: any): any {
     const lastProp = path[path.length - 1]
 
     switch (action) {
-      case "put":
-        target[lastProp] = patch.value
+      case "put": {
+        if (patch.datatype === "map" || patch.datatype === "list") {
+          const value = patch.datatype === "map" ? {} : []
+          attachMeta(value, patch.value, meta)
+          target[lastProp] = value
+        } else if (patch.datatype === "text") {
+          target[lastProp] = ""
+        } else {
+          target[lastProp] = patch.value
+        }
         break
+      }
       case "del":
         if (Array.isArray(target)) {
           const delLen = patch.length || 1

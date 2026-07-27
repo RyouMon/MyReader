@@ -31,6 +31,26 @@ type AnnotationMutation =
     }
   | { action: "remove"; annotation: ReaderAnnotation }
 
+function logAnnotationFailure(
+  operation: "load" | AnnotationMutation["action"],
+  scope: {
+    library: Library
+    bookId: number
+    format: string
+  },
+  error: unknown,
+  annotationId?: string,
+): void {
+  console.error(`[reader-annotations] ${operation}:failed`, {
+    libraryId: scope.library.id,
+    bookId: scope.bookId,
+    format: scope.format,
+    annotationId: annotationId ?? null,
+    error,
+    cause: error instanceof Error ? error.cause : undefined,
+  })
+}
+
 export function useReaderAnnotations(
   library: Library | null,
   bookId: number | null,
@@ -50,34 +70,53 @@ export function useReaderAnnotations(
   const query = useQuery({
     queryKey,
     enabled: scope !== null,
-    queryFn: () =>
-      scope
-        ? listReaderAnnotations(scope.library, scope.bookId, scope.format)
-        : Promise.resolve([]),
+    queryFn: async () => {
+      if (!scope) return []
+      try {
+        return await listReaderAnnotations(
+          scope.library,
+          scope.bookId,
+          scope.format,
+        )
+      } catch (error) {
+        logAnnotationFailure("load", scope, error)
+        throw error
+      }
+    },
   })
   const mutation = useMutation({
     mutationFn: async (input: AnnotationMutation) => {
       if (!scope) throw new Error("Annotation scope is unavailable")
-      if (input.action === "add") {
-        return addReaderAnnotation(
-          scope.library,
-          scope.bookId,
-          scope.format,
-          input.locator,
-          input.color,
-          input.note,
+      try {
+        if (input.action === "add") {
+          return await addReaderAnnotation(
+            scope.library,
+            scope.bookId,
+            scope.format,
+            input.locator,
+            input.color,
+            input.note,
+          )
+        }
+        if (input.action === "update") {
+          return await updateReaderAnnotation(
+            scope.library,
+            input.annotation,
+            input.color,
+            input.note,
+          )
+        }
+        await removeReaderAnnotation(scope.library, input.annotation.id)
+        return input.annotation
+      } catch (error) {
+        logAnnotationFailure(
+          input.action,
+          scope,
+          error,
+          input.action === "add" ? undefined : input.annotation.id,
         )
+        throw error
       }
-      if (input.action === "update") {
-        return updateReaderAnnotation(
-          scope.library,
-          input.annotation,
-          input.color,
-          input.note,
-        )
-      }
-      await removeReaderAnnotation(scope.library, input.annotation.id)
-      return input.annotation
     },
     onSuccess: (annotation, input) => {
       queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (current = []) =>
