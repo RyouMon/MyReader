@@ -4,6 +4,49 @@ All notable changes to MyReader are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-07-27
+
+### Breaking Changes
+
+- 书库 sidecar 同步切换为 Automerge；旧 `.myreader/changes/` 和
+  `.myreader/changes-v4/` 不再读取
+- 升级会保留本机现有业务数据，但不会迁移旧同步状态和远端变更；既有记录在下次修改后才会进入
+  Automerge 同步
+
+### Mobile
+
+#### Added
+
+- sidecar 变化后自动安排上传，并支持应用进入后台后继续完成上传
+
+#### Changed
+
+- 通过原生 UniFFI/JSI bridge 在 Hermes 上运行 Automerge
+- 阅读进度、收藏、书签、批注和阅读统计由 Automerge document 与本地 SQLite projection
+  原子更新
+- 数据库 migration 改为事务执行，失败后完整回滚并可重试
+
+### Desktop
+
+#### Added
+
+- 从应用启动、书库切换、阅读器关闭和本地写入事件自动安排 sidecar 同步
+- 同步跨设备阅读统计，并保留并发阅读位置供后续选择
+
+### Shared
+
+#### Added
+
+- 基于 Automerge 的跨设备阅读进度、收藏、书签、批注、阅读会话与完成记录同步
+- 持久化 document、不可变增量、outbox、receipt 和 projection metadata，支持崩溃恢复与幂等重放
+- 同步诊断快照，以及跨 Rust、TypeScript 和原生 bridge 的互操作 fixture
+
+#### Changed
+
+- 以 Automerge 因果历史和冲突保留取代自研 HLC/JSON segment 合并
+- 同步改为事件驱动调度，合并 debounce、single-flight、重试和 pull/push 模式升级
+- 根据应用生命周期、书库上下文和网络状态触发 pull，并每分钟轮询活跃书库的远端变化
+
 ## [0.9.0] - 2026-07-23
 
 ### Breaking Changes
