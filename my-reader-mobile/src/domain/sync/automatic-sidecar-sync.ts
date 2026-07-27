@@ -63,13 +63,15 @@ export async function requestContextualSidecarPull(
 
 export function startSidecarPullSafetySweep(options: {
   scheduler: SidecarSyncScheduler
-  getLibraries: () => Library[]
-  maxStalenessMs?: number
+  getActiveLibrary: () => Library | undefined
+  intervalMs?: number
+  freshnessMs?: number
   jitterRatio?: number
   random?: () => number
   onError?: (error: unknown, library: Library) => void
 }): () => void {
-  const maxStalenessMs = options.maxStalenessMs ?? 5 * 60_000
+  const intervalMs = options.intervalMs ?? 60_000
+  const freshnessMs = options.freshnessMs ?? 30_000
   const jitterRatio = options.jitterRatio ?? 0.2
   const random = options.random ?? Math.random
   let stopped = false
@@ -79,14 +81,11 @@ export function startSidecarPullSafetySweep(options: {
     const jitter = 1 + (random() * 2 - 1) * jitterRatio
     timer = setTimeout(
       async () => {
-        for (const library of options.getLibraries()) {
+        const library = options.getActiveLibrary()
+        if (library) {
           try {
             if (
-              await shouldPullLibrarySidecar(
-                library,
-                Date.now(),
-                maxStalenessMs,
-              )
+              await shouldPullLibrarySidecar(library, Date.now(), freshnessMs)
             ) {
               options.scheduler.request({
                 libraryId: library.id,
@@ -101,7 +100,7 @@ export function startSidecarPullSafetySweep(options: {
         }
         if (!stopped) scheduleNext()
       },
-      Math.round(maxStalenessMs * jitter),
+      Math.round(intervalMs * jitter),
     )
   }
 

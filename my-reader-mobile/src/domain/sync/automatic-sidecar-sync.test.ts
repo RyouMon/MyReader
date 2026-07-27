@@ -137,7 +137,14 @@ describe("automatic sidecar sync", () => {
     ).resolves.toBe(true)
   })
 
-  it("should request a full pull when the safety deadline becomes due", async () => {
+  it("should request a full pull when the active library reaches the jittered safety sweep", async () => {
+    jest.setSystemTime(0)
+    jest.mocked(readLibrarySidecarScheduleState).mockResolvedValue({
+      lastSuccessfulPullAt: 0,
+      nextRetryAt: null,
+      transientFailureCount: 0,
+      suspendedReason: null,
+    })
     const request = jest.fn()
     const scheduler = {
       request,
@@ -149,12 +156,11 @@ describe("automatic sidecar sync", () => {
     } as SidecarSyncScheduler
     const stop = startSidecarPullSafetySweep({
       scheduler,
-      getLibraries: () => [library],
-      maxStalenessMs: 5 * 60_000,
-      jitterRatio: 0,
+      getActiveLibrary: () => library,
+      random: () => 0,
     })
 
-    await jest.advanceTimersByTimeAsync(5 * 60_000 - 1)
+    await jest.advanceTimersByTimeAsync(48_000 - 1)
     expect(request).not.toHaveBeenCalled()
 
     await jest.advanceTimersByTimeAsync(1)

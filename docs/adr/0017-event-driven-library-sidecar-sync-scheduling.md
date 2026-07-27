@@ -245,11 +245,12 @@ manual、add 和 startup 继续经过现有 `syncLibrary` policy；调度器不�
 | 应用进入前台 | active library | 异步 `full`，fresh 时跳过，不阻塞首屏 |
 | 切换 active library | 新书库 | fresh 时跳过，否则 `full` |
 | reader 打开前 | 当前书库 | 复用已在运行的 full；不额外制造并发请求 |
-| foreground safety sweep | due libraries | 带 jitter 的低频 `full` |
+| foreground safety sweep | active library | 每 60 秒带 jitter 检查一次，超过 freshness window 时执行 `full` |
 
-建议初始 freshness window 为 30 秒，foreground safety sweep 的最大陈旧时间为 5 分钟并加入
-±20% jitter。安全 sweep 使用按 `lastSuccessfulPullAt` 计算的单次 deadline，不使用永久
-`setInterval`。
+初始 freshness window 为 30 秒。foreground safety sweep 只检查 active library，以 60 秒为
+基准加入 ±20% jitter，即每 48–72 秒检查一次；非 active library 不轮询，在切换为 active 时
+立即按 freshness window 判断是否 pull。安全 sweep 使用递归单次 deadline，不使用永久
+`setInterval`；移动端进入后台时停止 sweep。
 
 pull 不阻塞应用激活和书库列表首帧。UI 先展示本地 projection；远端变化应用后通过现有 query
 invalidation 更新列表、详情、统计和 reader 冲突候选。
@@ -376,7 +377,7 @@ hint 可以减少 pull 延迟和列举成本，但永远不是正确性的唯一
 - 在 Tauri state 中建立 per-library scheduler；
 - Rust sidecar mutation commit 后唤醒 scheduler；
 - 启动时从 outbox 恢复 pending push；
-- 接入窗口 focus、网络恢复和低频 pull safety sweep；
+- 接入窗口 focus、网络恢复和 active library pull safety sweep；
 - 保留桌面刷新按钮当前的 Calibre refresh + sidecar full 行为；
 - desktop/mobile 使用相同的状态机案例验证合并、重试和恢复。
 
@@ -443,4 +444,4 @@ TypeScript 测试描述使用 `it("should ... when ...")`；Rust 测试函数使
 - 漏掉事件、离线、崩溃或后台到期不会丢失待发送数据；
 - manual `all` 行为保持不变；
 - mobile 与 desktop 对同一调度场景给出一致结果；
-- 固定 interval 仅保留为带 jitter 的低频 pull 恢复手段，而不是主要同步机制。
+- 固定 interval 仅保留为 active library 带 jitter 的 pull 恢复手段，而不是主要同步机制。

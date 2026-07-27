@@ -17,7 +17,7 @@ const MAX_WAIT_MS: u64 = 10_000;
 const PULL_FRESHNESS_MS: u64 = 30_000;
 const RETRY_BASE_MS: u64 = 2_000;
 const RETRY_MAX_MS: u64 = 5 * 60_000;
-const SAFETY_SWEEP_MS: u64 = 5 * 60_000;
+const SAFETY_SWEEP_MS: u64 = 60_000;
 const MAX_CONCURRENT_SYNCS: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -224,6 +224,11 @@ fn retry_delay_ms(retry_count: u32, random_fraction: f64) -> u64 {
         .saturating_mul(2_u64.saturating_pow(retry_count.saturating_sub(1)))
         .min(RETRY_MAX_MS);
     (ceiling as f64 * random_fraction.clamp(0.0, 1.0)) as u64
+}
+
+fn safety_sweep_delay_ms(random_fraction: f64) -> u64 {
+    let factor = 0.8 + random_fraction.clamp(0.0, 1.0) * 0.4;
+    (SAFETY_SWEEP_MS as f64 * factor) as u64
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -571,10 +576,9 @@ impl SidecarSyncScheduler {
         let scheduler = self.clone();
         tauri::async_runtime::spawn(async move {
             loop {
-                let factor = 0.8 + jitter_fraction() * 0.4;
-                tokio::time::sleep(Duration::from_millis(
-                    (SAFETY_SWEEP_MS as f64 * factor) as u64,
-                ))
+                tokio::time::sleep(Duration::from_millis(safety_sweep_delay_ms(
+                    jitter_fraction(),
+                )))
                 .await;
                 scheduler.schedule_active_pull(SidecarSyncReason::RecoverySweep);
             }
@@ -727,5 +731,11 @@ mod tests {
         assert_eq!(retry_delay_ms(1, 0.5), 1_000);
         assert_eq!(retry_delay_ms(2, 0.5), 2_000);
         assert_eq!(retry_delay_ms(20, 1.0), RETRY_MAX_MS);
+    }
+
+    #[test]
+    fn should_keep_safety_sweep_between_48_and_72_seconds_when_jittering() {
+        assert_eq!(safety_sweep_delay_ms(0.0), 48_000);
+        assert_eq!(safety_sweep_delay_ms(1.0), 72_000);
     }
 }

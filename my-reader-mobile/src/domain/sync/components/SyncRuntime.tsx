@@ -141,7 +141,12 @@ export function SyncRuntime(): null {
       if (stopSafetySweep) return
       stopSafetySweep = startSidecarPullSafetySweep({
         scheduler,
-        getLibraries: () => useAppStore.getState().libraries,
+        getActiveLibrary: () => {
+          const current = useAppStore.getState()
+          return current.libraries.find(
+            (library) => library.id === current.activeLibraryId,
+          )
+        },
         onError: (error) => handleSyncError(error, "recovery_sweep"),
       })
     }
