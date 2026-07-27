@@ -991,6 +991,8 @@ public enum RustComponentsError: Swift.Error {
 
 
 
+    case Core(String
+    )
     case Sync(String
     )
 }
@@ -1009,7 +1011,10 @@ public struct FfiConverterTypeRustComponentsError: FfiConverterRustBuffer {
 
 
 
-        case 1: return .Sync(
+        case 1: return .Core(
+            try FfiConverterString.read(from: &buf)
+            )
+        case 2: return .Sync(
             try FfiConverterString.read(from: &buf)
             )
 
@@ -1024,8 +1029,13 @@ public struct FfiConverterTypeRustComponentsError: FfiConverterRustBuffer {
 
 
 
-        case let .Sync(v1):
+        case let .Core(v1):
             writeInt(&buf, Int32(1))
+            FfiConverterString.write(v1, into: &buf)
+
+
+        case let .Sync(v1):
+            writeInt(&buf, Int32(2))
             FfiConverterString.write(v1, into: &buf)
 
         }
@@ -1241,6 +1251,12 @@ public func markSyncDatabaseScheduleSucceeded(databasePath: String, completedPul
     )
 }
 }
+public func migrateLibraryDatabase(databasePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_migrate_library_database(
+        FfiConverterString.lower(databasePath),$0
+    )
+}
+}
 public func readSyncDatabaseDiagnostics(databasePath: String)throws  -> SyncDatabaseDiagnostics  {
     return try  FfiConverterTypeSyncDatabaseDiagnostics_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(
@@ -1330,6 +1346,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded() != 64229) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics() != 34122) {

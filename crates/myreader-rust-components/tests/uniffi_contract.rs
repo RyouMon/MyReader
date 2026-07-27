@@ -1,47 +1,39 @@
 use myreader_rust_components::{
     cancel_sync_task, ensure_sync_database_identity, mark_sync_database_schedule_succeeded,
-    read_sync_database_schedule_state, read_sync_task_progress, release_sync_task,
-    sync_contract_version, sync_library_sidecar, write_sync_database_schedule_state,
-    SyncDatabaseScheduleState,
+    migrate_library_database, read_sync_database_schedule_state, read_sync_task_progress,
+    release_sync_task, sync_contract_version, sync_library_sidecar,
+    write_sync_database_schedule_state, SyncDatabaseScheduleState,
 };
 use rusqlite::Connection;
 
 fn create_database() -> (tempfile::TempDir, String) {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("myreader.db");
-    let connection = Connection::open(&path).unwrap();
-    for migration in [
-        include_str!("../../../packages/db/drizzle/0000_initial.sql"),
-        include_str!("../../../packages/db/drizzle/0001_add_book_reading_format.sql"),
-        include_str!("../../../packages/db/drizzle/0002_add_favorite_books.sql"),
-        include_str!("../../../packages/db/drizzle/0003_add_book_cover_thumbnail_cache.sql"),
-        include_str!("../../../packages/db/drizzle/0004_add_bookmarks.sql"),
-        include_str!("../../../packages/db/drizzle/0005_add_annotations.sql"),
-        include_str!(
-            "../../../packages/db/drizzle/0006_add_reading_progress_display_progression.sql"
-        ),
-        include_str!("../../../packages/db/drizzle/0007_add_reading_statistics.sql"),
-        include_str!("../../../packages/db/drizzle/0008_add_library_sidecar_sync_kernel.sql"),
-        include_str!("../../../packages/db/drizzle/0009_add_reading_progress_sync_clock.sql"),
-        include_str!("../../../packages/db/drizzle/0010_add_favorite_sync_projection.sql"),
-        include_str!("../../../packages/db/drizzle/0011_add_bookmark_sync_projection.sql"),
-        include_str!("../../../packages/db/drizzle/0012_add_automerge_sync_storage.sql"),
-        include_str!(
-            "../../../packages/db/drizzle/0013_add_reading_position_conflict_projection.sql"
-        ),
-        include_str!("../../../packages/db/drizzle/0014_remove_legacy_sidecar_sync.sql"),
-        include_str!("../../../packages/db/drizzle/0015_remove_hlc_projection_columns.sql"),
-        include_str!("../../../packages/db/drizzle/0016_discard_legacy_sync_state.sql"),
-        include_str!("../../../packages/db/drizzle/0017_square_toro.sql"),
-    ] {
-        connection.execute_batch(migration).unwrap();
-    }
-    (directory, path.to_string_lossy().into_owned())
+    let database_path = path.to_string_lossy().into_owned();
+    migrate_library_database(database_path.clone()).unwrap();
+    (directory, database_path)
 }
 
 #[test]
 fn should_expose_current_sync_contract_version_when_bridge_loads() {
     assert_eq!(sync_contract_version(), 7);
+}
+
+#[test]
+fn should_create_library_schema_when_native_bridge_migrates_database() {
+    let (_database_directory, database_path) = create_database();
+    let connection = Connection::open(database_path).unwrap();
+
+    let table_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master
+             WHERE type = 'table' AND name = 'reading_progress'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    assert_eq!(table_count, 1);
 }
 
 #[test]

@@ -3,36 +3,75 @@ use sea_orm_migration::{
     async_trait::async_trait, DbErr, MigrationName, MigrationTrait, MigratorTrait, SchemaManager,
 };
 
+#[derive(Clone, Copy)]
+pub(crate) struct LegacyMigrationSpec {
+    pub name: &'static str,
+    pub drizzle_timestamp_ms: i64,
+    pub sql: &'static str,
+}
+
+macro_rules! legacy_migration {
+    ($name:literal, $timestamp:literal) => {
+        LegacyMigrationSpec {
+            name: $name,
+            drizzle_timestamp_ms: $timestamp,
+            sql: include_str!(concat!("../migrations/legacy/", $name, ".sql")),
+        }
+    };
+}
+
+pub(crate) const LEGACY_MIGRATIONS: &[LegacyMigrationSpec] = &[
+    legacy_migration!("0000_initial", 1_779_021_476_646),
+    legacy_migration!("0001_add_book_reading_format", 1_780_000_000_000),
+    legacy_migration!("0002_add_favorite_books", 1_780_000_000_001),
+    legacy_migration!("0003_add_book_cover_thumbnail_cache", 1_780_000_000_002),
+    legacy_migration!("0004_add_bookmarks", 1_783_949_592_104),
+    legacy_migration!("0005_add_annotations", 1_784_226_182_903),
+    legacy_migration!(
+        "0006_add_reading_progress_display_progression",
+        1_784_618_458_102
+    ),
+    legacy_migration!("0007_add_reading_statistics", 1_784_658_006_413),
+    legacy_migration!("0008_add_library_sidecar_sync_kernel", 1_784_815_521_994),
+    legacy_migration!("0009_add_reading_progress_sync_clock", 1_784_828_886_707),
+    legacy_migration!("0010_add_favorite_sync_projection", 1_784_903_303_909),
+    legacy_migration!("0011_add_bookmark_sync_projection", 1_784_914_154_044),
+    legacy_migration!("0012_add_automerge_sync_storage", 1_784_921_919_652),
+    legacy_migration!(
+        "0013_add_reading_position_conflict_projection",
+        1_784_922_803_193
+    ),
+    legacy_migration!("0014_remove_legacy_sidecar_sync", 1_784_924_567_219),
+    legacy_migration!("0015_remove_hlc_projection_columns", 1_784_925_791_603),
+    legacy_migration!("0016_discard_legacy_sync_state", 1_784_927_312_000),
+    legacy_migration!("0017_square_toro", 1_785_046_521_990),
+];
+
 pub struct LibraryMigrator;
 
 #[async_trait]
 impl MigratorTrait for LibraryMigrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        include!(concat!(env!("OUT_DIR"), "/library_drizzle_migrations.rs"))
+        LEGACY_MIGRATIONS
+            .iter()
+            .copied()
+            .map(|spec| Box::new(LegacyMigration(spec)) as Box<dyn MigrationTrait>)
+            .collect()
     }
 }
 
-struct DrizzleMigration {
-    name: &'static str,
-    sql: &'static str,
-}
+struct LegacyMigration(LegacyMigrationSpec);
 
-impl DrizzleMigration {
-    const fn new(name: &'static str, sql: &'static str) -> Self {
-        Self { name, sql }
-    }
-}
-
-impl MigrationName for DrizzleMigration {
+impl MigrationName for LegacyMigration {
     fn name(&self) -> &str {
-        self.name
+        self.0.name
     }
 }
 
 #[async_trait]
-impl MigrationTrait for DrizzleMigration {
+impl MigrationTrait for LegacyMigration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        for statement in self.sql.split("--> statement-breakpoint") {
+        for statement in self.0.sql.split("--> statement-breakpoint") {
             let statement = statement.trim();
             if statement.is_empty() {
                 continue;
@@ -77,7 +116,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn up_should_record_every_drizzle_migration_when_database_is_new() {
+    async fn up_should_record_every_legacy_migration_when_database_is_new() {
         let db = Database::connect("sqlite::memory:").await.unwrap();
 
         LibraryMigrator::up(&db, None).await.unwrap();

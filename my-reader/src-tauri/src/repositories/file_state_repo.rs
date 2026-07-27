@@ -2,14 +2,16 @@ use std::collections::HashMap;
 
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
-use crate::entities::app::file_state;
 use crate::error::AppError;
+use myreader_core::entities::app::file_state;
 
 pub struct SqliteFileStateRepository;
 
 impl SqliteFileStateRepository {
     pub async fn open(sidecar_root: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(sidecar_root).await
+        myreader_core::database::open_db(sidecar_root)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_by_path(

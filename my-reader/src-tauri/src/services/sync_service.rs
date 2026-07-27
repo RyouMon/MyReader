@@ -6,7 +6,6 @@ use serde::Serialize;
 use tracing::{error, info};
 
 use crate::cache;
-use crate::db;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
 use crate::repositories::calibre_repo::CalibreBookRepository;
@@ -16,6 +15,7 @@ use crate::sync::automerge_store::{
 };
 use crate::sync::replica_identity::ensure_replica_identity;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
+use myreader_core::database;
 use myreader_rust_components::sync::{
     exchange::has_pending_database_work,
     persistence::{
@@ -313,7 +313,7 @@ impl SyncService {
         let path_str = sidecar_path
             .to_str()
             .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
-        db::open_db(path_str).await
+        database::open_db(path_str).await.map_err(Into::into)
     }
 
     fn unix_epoch_millis() -> u64 {

@@ -739,6 +739,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -767,6 +769,8 @@ fun uniffi_myreader_rust_components_checksum_func_execute_sync_database_command(
 fun uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_migrate_library_database(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics(
 ): Short
@@ -840,6 +844,8 @@ fun uniffi_myreader_rust_components_fn_func_execute_sync_database_command(`datab
 fun uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(`databasePath`: RustBuffer.ByValue,`completedPullAt`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
+fun uniffi_myreader_rust_components_fn_func_migrate_library_database(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1000,6 +1006,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_mark_sync_database_schedule_succeeded() != 64229.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics() != 34122.toShort()) {
@@ -1462,6 +1471,14 @@ public object FfiConverterTypeSyncTaskProgress: FfiConverterRustBuffer<SyncTaskP
 
 sealed class RustComponentsException: kotlin.Exception() {
 
+    class Core(
+
+        val v1: kotlin.String
+        ) : RustComponentsException() {
+        override val message
+            get() = "v1=${ v1 }"
+    }
+
     class Sync(
 
         val v1: kotlin.String
@@ -1486,7 +1503,10 @@ public object FfiConverterTypeRustComponentsError : FfiConverterRustBuffer<RustC
 
 
         return when(buf.getInt()) {
-            1 -> RustComponentsException.Sync(
+            1 -> RustComponentsException.Core(
+                FfiConverterString.read(buf),
+                )
+            2 -> RustComponentsException.Sync(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
@@ -1495,6 +1515,11 @@ public object FfiConverterTypeRustComponentsError : FfiConverterRustBuffer<RustC
 
     override fun allocationSize(value: RustComponentsException): ULong {
         return when(value) {
+            is RustComponentsException.Core -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.v1)
+            )
             is RustComponentsException.Sync -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
@@ -1505,8 +1530,13 @@ public object FfiConverterTypeRustComponentsError : FfiConverterRustBuffer<RustC
 
     override fun write(value: RustComponentsException, buf: ByteBuffer) {
         when(value) {
-            is RustComponentsException.Sync -> {
+            is RustComponentsException.Core -> {
                 buf.putInt(1)
+                FfiConverterString.write(value.v1, buf)
+                Unit
+            }
+            is RustComponentsException.Sync -> {
+                buf.putInt(2)
                 FfiConverterString.write(value.v1, buf)
                 Unit
             }
@@ -1734,6 +1764,15 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_mark_sync_database_schedule_succeeded(
         FfiConverterString.lower(`databasePath`),FfiConverterOptionalLong.lower(`completedPullAt`),_status)
+}
+
+
+
+    @Throws(RustComponentsException::class) fun `migrateLibraryDatabase`(`databasePath`: kotlin.String)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_migrate_library_database(
+        FfiConverterString.lower(`databasePath`),_status)
 }
 
 

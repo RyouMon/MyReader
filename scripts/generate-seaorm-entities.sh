@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Generate SeaORM query entities from the Drizzle-generated SQL migrations.
+# Generate SeaORM query entities from the Rust-owned legacy SQL migrations.
 #
 # Prerequisites:
 #   - sea-orm-cli installed: cargo install sea-orm-cli
 #   - sqlite3 CLI available
-#   - pnpm db:generate has been run (produces packages/db/drizzle/*.sql)
 #
 # Usage: bash scripts/generate-seaorm-entities.sh
 
@@ -14,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMP_DIR=$(mktemp -d)
 TEMP_DB="$TEMP_DIR/myreader_schema.db"
-ENTITY_DIR="$ROOT_DIR/my-reader/src-tauri/src/entities/app"
+ENTITY_DIR="$ROOT_DIR/crates/myreader-core/src/entities/app"
 
 cleanup() {
   rm -rf "$TEMP_DIR"
@@ -22,10 +21,10 @@ cleanup() {
 trap cleanup EXIT
 
 # Bash expands the zero-padded migration names in lexical order.
-MIGRATION_SQL_FILES=("$ROOT_DIR"/packages/db/drizzle/*.sql)
+MIGRATION_SQL_FILES=("$ROOT_DIR"/crates/myreader-core/migrations/legacy/*.sql)
 
 if [ ! -e "${MIGRATION_SQL_FILES[0]}" ]; then
-  echo "Error: No Drizzle migration SQL found. Run 'pnpm db:generate' first."
+  echo "Error: No myreader-core migration SQL found."
   exit 1
 fi
 

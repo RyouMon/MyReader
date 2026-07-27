@@ -2,7 +2,6 @@ use std::path::Path;
 
 use sea_orm::DatabaseConnection;
 
-use crate::entities::app::bookmarks;
 use crate::error::AppError;
 use crate::models::{is_valid_reader_locator, AppConfig, LibraryConfig, ReaderBookmarkDto};
 use crate::repositories::{
@@ -15,6 +14,7 @@ use crate::sync::{
     replica_identity::read_replica_identity,
 };
 use crate::utils::paths::{library_root_path, library_sidecar_path};
+use myreader_core::entities::app::bookmarks;
 
 pub struct BookmarkService;
 

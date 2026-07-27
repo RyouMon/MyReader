@@ -4,8 +4,8 @@ use sea_orm::{
     QueryOrder, Set,
 };
 
-use crate::entities::app::annotations;
 use crate::error::AppError;
+use myreader_core::entities::app::annotations;
 
 pub struct SqliteAnnotationRepository;
 
@@ -18,7 +18,9 @@ fn next_updated_at(now: f64) -> SimpleExpr {
 
 impl SqliteAnnotationRepository {
     pub async fn open(library_path: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(library_path).await
+        myreader_core::database::open_db(library_path)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list(

@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use my_reader_lib::entities::calibre::{
+use myreader_core::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
     publishers, ratings, series, tags,

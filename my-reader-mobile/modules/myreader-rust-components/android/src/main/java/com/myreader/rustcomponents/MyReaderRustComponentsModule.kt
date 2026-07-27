@@ -9,6 +9,7 @@ import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
 import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
 import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
+import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
@@ -22,10 +23,11 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class MyReaderRustComponentsModule : Module() {
-  private fun <T> syncCall(operation: () -> T): T = try {
+  private fun <T> componentCall(operation: () -> T): T = try {
     operation()
   } catch (error: RustComponentsException) {
     val message = when (error) {
+      is RustComponentsException.Core -> error.v1
       is RustComponentsException.Sync -> error.v1
     }
     throw CodedException("SYNC_ERROR", message, error)
@@ -40,6 +42,12 @@ class MyReaderRustComponentsModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MyReaderRustComponents")
 
+    AsyncFunction("migrateLibraryDatabase") { databasePath: String ->
+      componentCall {
+        migrateLibraryDatabase(databasePath)
+      }
+    }
+
     Function("syncContractVersion") {
       syncContractVersion().toInt()
     }
@@ -48,7 +56,7 @@ class MyReaderRustComponentsModule : Module() {
         stateJson: String?,
         policyJson: String,
         eventJson: String ->
-      syncCall {
+      componentCall {
         advanceSyncScheduler(stateJson, policyJson, eventJson)
       }
     }
@@ -56,7 +64,7 @@ class MyReaderRustComponentsModule : Module() {
     AsyncFunction("ensureSyncDatabaseIdentity") {
         databasePath: String,
         libraryUuid: String ->
-      syncCall {
+      componentCall {
         val identity = ensureSyncDatabaseIdentity(databasePath, libraryUuid)
         mapOf(
           "libraryUuid" to identity.libraryUuid,
@@ -66,7 +74,7 @@ class MyReaderRustComponentsModule : Module() {
     }
 
     AsyncFunction("readSyncDatabaseScheduleState") { databasePath: String ->
-      syncCall {
+      componentCall {
         readSyncDatabaseScheduleState(databasePath)?.let { state ->
           mapOf(
             "lastSuccessfulPullAt" to state.lastSuccessfulPullAt,
@@ -84,7 +92,7 @@ class MyReaderRustComponentsModule : Module() {
         nextRetryAt: Long?,
         transientFailureCount: Int,
         suspendedReason: String? ->
-      syncCall {
+      componentCall {
         writeSyncDatabaseScheduleState(
           databasePath,
           SyncDatabaseScheduleState(
@@ -100,7 +108,7 @@ class MyReaderRustComponentsModule : Module() {
     AsyncFunction("markSyncDatabaseScheduleSucceeded") {
         databasePath: String,
         completedPullAt: Long? ->
-      syncCall {
+      componentCall {
         markSyncDatabaseScheduleSucceeded(databasePath, completedPullAt)
       }
     }
@@ -110,7 +118,7 @@ class MyReaderRustComponentsModule : Module() {
         libraryUuid: String,
         replicaId: String,
         nowMs: String ->
-      syncCall {
+      componentCall {
         documentResult(
         ensureSyncDatabaseDocument(databasePath, libraryUuid, replicaId, nowMs),
       )
@@ -123,7 +131,7 @@ class MyReaderRustComponentsModule : Module() {
         replicaId: String,
         nowMs: String,
         commandJson: String ->
-      syncCall {
+      componentCall {
         documentResult(
         executeSyncDatabaseCommand(
           databasePath,
@@ -137,13 +145,13 @@ class MyReaderRustComponentsModule : Module() {
     }
 
     AsyncFunction("hasSyncDatabasePendingWork") { databasePath: String ->
-      syncCall {
+      componentCall {
         hasSyncDatabasePendingWork(databasePath)
       }
     }
 
     AsyncFunction("readSyncDatabaseDiagnostics") { databasePath: String ->
-      syncCall {
+      componentCall {
         val result = readSyncDatabaseDiagnostics(databasePath)
         mapOf(
           "schemaVersion" to result.schemaVersion,
@@ -183,7 +191,7 @@ class MyReaderRustComponentsModule : Module() {
         nowMs: String,
         mode: String,
         storageJson: String ->
-      syncCall {
+      componentCall {
         val result = syncLibrarySidecar(
           taskId,
           databasePath,

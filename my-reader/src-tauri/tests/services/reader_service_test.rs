@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use my_reader_lib::cache;
-use my_reader_lib::entities::calibre::data;
 use my_reader_lib::models::AppConfig;
 use my_reader_lib::repositories::file_state_repo::SqliteFileStateRepository;
 use my_reader_lib::services::reader_service::ReaderService;
 use my_reader_lib::streamer::{EpubStreamer, StreamerState};
+use myreader_core::entities::calibre::data;
 use sea_orm::{ActiveModelTrait, Database, Set};
 use tokio::sync::RwLock;
 

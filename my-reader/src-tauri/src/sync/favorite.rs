@@ -65,15 +65,15 @@ pub async fn write_local_favorite(
 mod tests {
     use sea_orm::EntityTrait;
 
-    use crate::db;
-    use crate::entities::app::{favorite_books, sync_automerge_outbox};
+    use myreader_core::database;
+    use myreader_core::entities::app::{favorite_books, sync_automerge_outbox};
 
     use super::*;
 
     #[tokio::test]
     async fn should_persist_projection_and_outbox_when_book_is_favorited() {
         let directory = tempfile::tempdir().unwrap();
-        let db = db::open_db(directory.path().to_str().unwrap())
+        let db = database::open_db(directory.path().to_str().unwrap())
             .await
             .unwrap();
 

@@ -10,6 +10,7 @@ crate-type = ["rlib", "staticlib", "cdylib"]
 bindgen = ["uniffi/cli"]
 
 [dependencies]
+myreader-core.workspace = true
 myreader-sync.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

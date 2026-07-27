@@ -40,6 +40,7 @@ export type NativeSyncTaskProgress = {
 }
 
 export type MyReaderRustComponentsModule = {
+  migrateLibraryDatabase(databasePath: string): Promise<void>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -105,6 +106,9 @@ function getNativeModule(): MyReaderRustComponentsModule {
 }
 
 const moduleFacade: MyReaderRustComponentsModule = {
+  migrateLibraryDatabase(databasePath) {
+    return getNativeModule().migrateLibraryDatabase(databasePath)
+  },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()
   },

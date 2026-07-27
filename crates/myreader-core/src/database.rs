@@ -1,27 +1,31 @@
 use std::path::{Path, PathBuf};
 
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
 
-use crate::constants::path::{MYREADER_LIBRARY_DB_FILE_NAME, MYREADER_LIBRARY_DIR_NAME};
-use crate::error::AppError;
-use crate::migration::LibraryMigrator;
+use crate::{
+    migration::{LibraryMigrator, LEGACY_MIGRATIONS},
+    CoreError,
+};
+
+const MYREADER_LIBRARY_DIR_NAME: &str = ".myreader";
+const MYREADER_LIBRARY_DB_FILE_NAME: &str = "myreader.db";
 
 /// Open and migrate a per-library SQLite database, then return the connection
 /// for SeaORM entity queries.
-pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, AppError> {
+pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, CoreError> {
     info!("Start to open library database.");
     let path = library_db_path(sidecar_root)?;
+    open_database_file(&path).await
+}
+
+pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreError> {
     let url = format!("sqlite://{}?mode=rwc", path.display());
 
-    let db = Database::connect(&url)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    let db = Database::connect(&url).await?;
 
-    LibraryMigrator::up(&db, None)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    migrate_database(&db).await?;
 
     info!(
         "Success to open library database. path: \"{}\"",
@@ -30,13 +34,77 @@ pub async fn open_db(sidecar_root: &str) -> Result<DatabaseConnection, AppError>
     Ok(db)
 }
 
-pub fn ensure_library_data_dir(sidecar_root: &str) -> Result<PathBuf, AppError> {
+pub async fn migrate_database_file(path: &Path) -> Result<(), CoreError> {
+    open_database_file(path).await.map(|_| ())
+}
+
+async fn migrate_database(db: &DatabaseConnection) -> Result<(), CoreError> {
+    handoff_drizzle_migrations(db).await?;
+    LibraryMigrator::up(db, None).await?;
+
+    if table_exists(db, "__drizzle_migrations").await? {
+        db.execute_unprepared("DROP TABLE __drizzle_migrations")
+            .await?;
+    }
+    Ok(())
+}
+
+async fn handoff_drizzle_migrations(db: &DatabaseConnection) -> Result<(), CoreError> {
+    if table_exists(db, "seaql_migrations").await?
+        || !table_exists(db, "__drizzle_migrations").await?
+    {
+        return Ok(());
+    }
+
+    let last_applied_at = db
+        .query_one_raw(Statement::from_string(
+            DbBackend::Sqlite,
+            "SELECT MAX(created_at) AS created_at FROM __drizzle_migrations",
+        ))
+        .await?
+        .and_then(|row| row.try_get::<i64>("", "created_at").ok());
+
+    LibraryMigrator::install(db).await?;
+    let Some(last_applied_at) = last_applied_at else {
+        return Ok(());
+    };
+
+    for migration in LEGACY_MIGRATIONS
+        .iter()
+        .take_while(|migration| migration.drizzle_timestamp_ms <= last_applied_at)
+    {
+        db.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "INSERT INTO seaql_migrations (version, applied_at) VALUES (?, ?)",
+            [
+                migration.name.into(),
+                (migration.drizzle_timestamp_ms / 1_000).into(),
+            ],
+        ))
+        .await?;
+    }
+    Ok(())
+}
+
+async fn table_exists(db: &DatabaseConnection, name: &str) -> Result<bool, CoreError> {
+    let row = db
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Sqlite,
+            "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = ?",
+            [name.into()],
+        ))
+        .await?
+        .ok_or_else(|| CoreError::Database("SQLite schema query returned no row".to_owned()))?;
+    Ok(row.try_get::<i64>("", "count")? > 0)
+}
+
+pub fn ensure_library_data_dir(sidecar_root: &str) -> Result<PathBuf, CoreError> {
     let dir = Path::new(sidecar_root).join(MYREADER_LIBRARY_DIR_NAME);
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
 
-fn library_db_path(sidecar_root: &str) -> Result<PathBuf, AppError> {
+fn library_db_path(sidecar_root: &str) -> Result<PathBuf, CoreError> {
     Ok(ensure_library_data_dir(sidecar_root)?.join(MYREADER_LIBRARY_DB_FILE_NAME))
 }
 
@@ -45,9 +113,12 @@ mod tests {
     use std::sync::Arc;
 
     use sea_orm::{ConnectionTrait, DbBackend, Statement};
+    use sea_orm_migration::MigratorTrait;
     use tokio::{sync::Barrier, task::JoinSet};
 
-    use super::open_db;
+    use crate::migration::{LibraryMigrator, LEGACY_MIGRATIONS};
+
+    use super::{migrate_database, open_db};
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn open_should_succeed_when_library_database_is_opened_concurrently() {
@@ -114,7 +185,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bookmarks_schema_should_match_drizzle_migration_when_library_database_is_created() {
+    async fn bookmarks_schema_should_match_legacy_migration_when_library_database_is_created() {
         let temp = tempfile::tempdir().unwrap();
         let sidecar_root = temp.path().to_string_lossy().to_string();
         let db = open_db(&sidecar_root).await.expect("database should open");
@@ -321,5 +392,68 @@ mod tests {
             assert_eq!(unique, 1);
             assert_eq!(columns, vec![expected_column]);
         }
+    }
+
+    #[tokio::test]
+    async fn migrate_should_adopt_drizzle_history_when_mobile_database_already_exists() {
+        let db = sea_orm::Database::connect("sqlite::memory:").await.unwrap();
+        for migration in LEGACY_MIGRATIONS {
+            for statement in migration.sql.split("--> statement-breakpoint") {
+                let statement = statement.trim();
+                if !statement.is_empty() {
+                    db.execute_unprepared(statement).await.unwrap();
+                }
+            }
+        }
+        db.execute_unprepared(
+            "CREATE TABLE __drizzle_migrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                hash TEXT NOT NULL,
+                created_at NUMERIC
+            );
+            INSERT INTO __drizzle_migrations (hash, created_at)
+            VALUES ('', 1785046521990);
+            INSERT INTO favorite_books
+                (id, book_id, added_at)
+            VALUES ('favorite', 7, 1);",
+        )
+        .await
+        .unwrap();
+
+        migrate_database(&db).await.unwrap();
+
+        let versions = db
+            .query_all_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT version FROM seaql_migrations ORDER BY version",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(versions.len(), LibraryMigrator::migrations().len());
+
+        let favorite_count = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT COUNT(*) AS count FROM favorite_books WHERE book_id = 7",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64>("", "count")
+            .unwrap();
+        assert_eq!(favorite_count, 1);
+
+        let drizzle_table_count = db
+            .query_one_raw(Statement::from_string(
+                DbBackend::Sqlite,
+                "SELECT COUNT(*) AS count FROM sqlite_master
+                 WHERE type = 'table' AND name = '__drizzle_migrations'",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<i64>("", "count")
+            .unwrap();
+        assert_eq!(drizzle_table_count, 0);
     }
 }

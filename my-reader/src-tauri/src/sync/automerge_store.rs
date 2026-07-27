@@ -141,18 +141,15 @@ mod tests {
     use sea_orm::{DatabaseConnection, EntityTrait};
 
     use super::*;
-    use crate::{
-        db,
-        entities::app::reading_progress,
-        sync::automerge_document::{set_reading_position, ReadingPositionValue},
-    };
+    use crate::sync::automerge_document::{set_reading_position, ReadingPositionValue};
+    use myreader_core::{database, entities::app::reading_progress};
 
     const LIBRARY_UUID: &str = "11111111-2222-4333-8444-555555555555";
     const REPLICA_ID: &str = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
     async fn database() -> (tempfile::TempDir, DatabaseConnection) {
         let directory = tempfile::tempdir().unwrap();
-        let db = db::open_db(directory.path().to_str().unwrap())
+        let db = database::open_db(directory.path().to_str().unwrap())
             .await
             .unwrap();
         (directory, db)

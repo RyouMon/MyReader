@@ -1,10 +1,9 @@
 import { Directory } from "expo-file-system"
 import { open, type DB } from "@op-engineering/op-sqlite"
 import { drizzle } from "drizzle-orm/op-sqlite"
-import { migrate } from "drizzle-orm/op-sqlite/migrator"
 import * as schema from "@my-reader/db/schema"
-import migrations from "@my-reader/db/drizzle/migrations"
 
+import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import type { Library } from "@my-reader/tools/types/library"
 import { fileUriFor } from "../fs/path"
 import {
@@ -49,7 +48,7 @@ function uriToNativePath(uri: string): string {
  * Returns a process-wide handle to the library-wide database.
  * Path: {libraryRoot}/.myreader/myreader.db
  *
- * Applies Drizzle migrations on first access.
+ * Applies myreader-core migrations on first access.
  * Concurrent callers for the same database await the same init promise
  * to avoid "database is locked" on Android.
  */
@@ -74,10 +73,10 @@ export async function getLibraryDatabase(
       const location = lastSlash > 0 ? nativePath.slice(0, lastSlash) : "."
       const name = lastSlash >= 0 ? nativePath.slice(lastSlash + 1) : nativePath
 
+      await MyReaderRustComponents.migrateLibraryDatabase(nativePath)
+
       raw = open({ name, location })
       const db = drizzle(raw, { schema })
-
-      await migrate(db, migrations)
 
       const handle = { raw, db, path: nativePath }
       dbCache.set(cacheKey, handle)

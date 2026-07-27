@@ -1,7 +1,7 @@
 use sea_orm::{sea_query::OnConflict, ConnectionTrait, EntityTrait, Set};
 
-use crate::entities::app::{reading_completions, reading_sessions};
 use crate::error::AppError;
+use myreader_core::entities::app::{reading_completions, reading_sessions};
 
 pub struct SqliteReadingStatisticsRepository;
 

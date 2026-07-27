@@ -28,14 +28,15 @@ sha2 = "0.10"
 specta = { version = "2.0.0-rc.25", features = ["derive", "serde_json"] }
 specta-typescript = { version = "0.0.12", features = ["serde"] }
 tauri-specta = { version = "2.0.0-rc.25", features = ["typescript"] }
-sea-orm = { version = "2.0.0-rc.38", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
-sea-orm-migration = { version = "2.0.0-rc.38", default-features = false }
+sea-orm.workspace = true
+sea-orm-migration.workspace = true
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls"] }
 thiserror = "1"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 log = "0.4"
 myreader-rust-components.workspace = true
+myreader-core.workspace = true
 tauri-plugin-log = "2"
 tracing = "0.1"
 time = { version = "0.3", features = ["macros", "formatting", "parsing"] }

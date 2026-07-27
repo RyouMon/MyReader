@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use crate::entities::app::annotations;
 use crate::error::AppError;
 use crate::models::{is_valid_reader_locator, AppConfig, ReaderAnnotationDto};
 use crate::repositories::annotation_repo::SqliteAnnotationRepository;
@@ -11,6 +10,7 @@ use crate::sync::annotation::{
 };
 use crate::sync::replica_identity::read_replica_identity;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
+use myreader_core::entities::app::annotations;
 
 const HIGHLIGHT_KIND: &str = "highlight";
 const ANNOTATION_COLORS: [&str; 4] = ["yellow", "orange", "green", "blue"];

@@ -7,13 +7,13 @@ use sea_orm::{
 };
 use tracing::{debug, info};
 
-use crate::entities::calibre::{
+use crate::error::AppError;
+use crate::models::BookEntry;
+use myreader_core::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
     library_id, publishers, ratings, series, tags,
 };
-use crate::error::AppError;
-use crate::models::BookEntry;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BookFilePathRequest {

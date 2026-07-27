@@ -10,9 +10,15 @@ private func documentResultDictionary(
   ]
 }
 
-private func syncCall<T>(_ operation: () throws -> T) throws -> T {
+private func componentCall<T>(_ operation: () throws -> T) throws -> T {
   do {
     return try operation()
+  } catch let RustComponentsError.Core(message) {
+    throw Exception(
+      name: "RustComponentException",
+      description: message,
+      code: "CORE_ERROR"
+    )
   } catch let RustComponentsError.Sync(message) {
     throw Exception(
       name: "SyncComponentException",
@@ -32,6 +38,13 @@ public class MyReaderRustComponentsModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MyReaderRustComponents")
 
+    AsyncFunction("migrateLibraryDatabase") {
+      (databasePath: String) in
+      try componentCall {
+        try migrateLibraryDatabase(databasePath: databasePath)
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }
@@ -42,7 +55,7 @@ public class MyReaderRustComponentsModule: Module {
         policyJson: String,
         eventJson: String
       ) -> String in
-      try syncCall {
+      try componentCall {
         try advanceSyncScheduler(
           stateJson: stateJson,
           policyJson: policyJson,
@@ -56,7 +69,7 @@ public class MyReaderRustComponentsModule: Module {
         databasePath: String,
         libraryUuid: String
       ) -> [String: Any] in
-      try syncCall {
+      try componentCall {
         let identity = try ensureSyncDatabaseIdentity(
           databasePath: databasePath,
           libraryUuid: libraryUuid
@@ -70,7 +83,7 @@ public class MyReaderRustComponentsModule: Module {
 
     AsyncFunction("readSyncDatabaseScheduleState") {
       (databasePath: String) -> [String: Any]? in
-      try syncCall {
+      try componentCall {
         guard let state = try readSyncDatabaseScheduleState(databasePath: databasePath) else {
           return nil
         }
@@ -91,7 +104,7 @@ public class MyReaderRustComponentsModule: Module {
         transientFailureCount: UInt32,
         suspendedReason: String?
       ) in
-      try syncCall {
+      try componentCall {
         try writeSyncDatabaseScheduleState(
           databasePath: databasePath,
           state: SyncDatabaseScheduleState(
@@ -109,7 +122,7 @@ public class MyReaderRustComponentsModule: Module {
         databasePath: String,
         completedPullAt: Int64?
       ) in
-      try syncCall {
+      try componentCall {
         try markSyncDatabaseScheduleSucceeded(
           databasePath: databasePath,
           completedPullAt: completedPullAt
@@ -124,7 +137,7 @@ public class MyReaderRustComponentsModule: Module {
         replicaId: String,
         nowMs: String
       ) -> [String: Any] in
-      try syncCall {
+      try componentCall {
         documentResultDictionary(try ensureSyncDatabaseDocument(
           databasePath: databasePath,
           libraryUuid: libraryUuid,
@@ -142,7 +155,7 @@ public class MyReaderRustComponentsModule: Module {
         nowMs: String,
         commandJson: String
       ) -> [String: Any] in
-      try syncCall {
+      try componentCall {
         documentResultDictionary(try executeSyncDatabaseCommand(
           databasePath: databasePath,
           libraryUuid: libraryUuid,
@@ -155,14 +168,14 @@ public class MyReaderRustComponentsModule: Module {
 
     AsyncFunction("hasSyncDatabasePendingWork") {
       (databasePath: String) -> Bool in
-      try syncCall {
+      try componentCall {
         try hasSyncDatabasePendingWork(databasePath: databasePath)
       }
     }
 
     AsyncFunction("readSyncDatabaseDiagnostics") {
       (databasePath: String) -> [String: Any] in
-      try syncCall {
+      try componentCall {
         let result = try readSyncDatabaseDiagnostics(databasePath: databasePath)
         return [
           "schemaVersion": result.schemaVersion ?? NSNull(),
@@ -208,7 +221,7 @@ public class MyReaderRustComponentsModule: Module {
         mode: String,
         storageJson: String
       ) async throws -> [String: Any] in
-      let result = try syncCall {
+      let result = try componentCall {
         try syncLibrarySidecar(
           taskId: taskId,
           databasePath: databasePath,

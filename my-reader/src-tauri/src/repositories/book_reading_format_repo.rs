@@ -2,14 +2,16 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
 };
 
-use crate::entities::app::book_reading_format;
 use crate::error::AppError;
+use myreader_core::entities::app::book_reading_format;
 
 pub struct SqliteBookReadingFormatRepository;
 
 impl SqliteBookReadingFormatRepository {
     pub async fn open(sidecar_root: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(sidecar_root).await
+        myreader_core::database::open_db(sidecar_root)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list(

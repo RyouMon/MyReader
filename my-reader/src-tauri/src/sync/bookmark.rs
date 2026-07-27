@@ -2,9 +2,9 @@ use sea_orm::DatabaseConnection;
 use tracing::info;
 use uuid::Uuid;
 
-use crate::entities::app::bookmarks;
 use crate::error::AppError;
 use crate::repositories::bookmark_repo::SqliteBookmarkRepository;
+use myreader_core::entities::app::bookmarks;
 
 use super::automerge_document::{bookmark_projections, set_bookmark, BookmarkValue};
 use super::automerge_store::commit_library_sidecar_automerge_mutation;
@@ -147,15 +147,15 @@ pub async fn remove_local_bookmark(
 mod tests {
     use sea_orm::EntityTrait;
 
-    use crate::db;
-    use crate::entities::app::{bookmarks, sync_automerge_outbox};
+    use myreader_core::database;
+    use myreader_core::entities::app::{bookmarks, sync_automerge_outbox};
 
     use super::*;
 
     #[tokio::test]
     async fn should_persist_projection_and_outbox_when_bookmark_is_added() {
         let directory = tempfile::tempdir().unwrap();
-        let db = db::open_db(directory.path().to_str().unwrap())
+        let db = database::open_db(directory.path().to_str().unwrap())
             .await
             .unwrap();
         let locator: ReaderLocator =

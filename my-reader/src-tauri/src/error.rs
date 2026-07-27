@@ -48,6 +48,15 @@ impl From<sea_orm::DbErr> for AppError {
     }
 }
 
+impl From<myreader_core::CoreError> for AppError {
+    fn from(error: myreader_core::CoreError) -> Self {
+        match error {
+            myreader_core::CoreError::Io(error) => Self::Io(error),
+            myreader_core::CoreError::Database(message) => Self::Database(message),
+        }
+    }
+}
+
 impl From<serde_json::Error> for AppError {
     fn from(err: serde_json::Error) -> Self {
         AppError::Serialize(err.to_string())

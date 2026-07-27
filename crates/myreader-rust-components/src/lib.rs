@@ -2,6 +2,7 @@
 
 use std::{
     collections::HashMap,
+    path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, LazyLock, Mutex,
@@ -12,6 +13,9 @@ pub use myreader_sync as sync;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RustComponentsError {
+    #[error("CORE_ERROR: {0}")]
+    Core(String),
+
     #[error("SYNC_ERROR: {0}")]
     Sync(String),
 }
@@ -100,6 +104,21 @@ impl sync::exchange::SyncObserver for NativeSyncObserver {
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
     7
+}
+
+#[uniffi::export]
+pub fn migrate_library_database(database_path: String) -> Result<(), RustComponentsError> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| {
+            RustComponentsError::Core(format!("Failed to start database runtime: {error}"))
+        })?;
+    runtime
+        .block_on(myreader_core::database::migrate_database_file(Path::new(
+            &database_path,
+        )))
+        .map_err(|error| RustComponentsError::Core(error.to_string()))
 }
 
 #[uniffi::export]

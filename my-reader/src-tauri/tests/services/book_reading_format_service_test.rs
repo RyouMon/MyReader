@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use my_reader_lib::entities::calibre::{books, data};
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::repositories::book_reading_format_repo::SqliteBookReadingFormatRepository;
 use my_reader_lib::services::book_reading_format_service::BookReadingFormatService;
+use myreader_core::entities::calibre::{books, data};
 use sea_orm::{ActiveModelTrait, Set};
 
 use crate::common::calibre::{seed_minimal_calibre_library, SeededBook};

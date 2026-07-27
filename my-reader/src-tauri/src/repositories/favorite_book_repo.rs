@@ -2,14 +2,16 @@ use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
 };
 
-use crate::entities::app::favorite_books;
 use crate::error::AppError;
+use myreader_core::entities::app::favorite_books;
 
 pub struct SqliteFavoriteBookRepository;
 
 impl SqliteFavoriteBookRepository {
     pub async fn open(sidecar_root: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(sidecar_root).await
+        myreader_core::database::open_db(sidecar_root)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list_book_ids(db: &DatabaseConnection) -> Result<Vec<i64>, AppError> {

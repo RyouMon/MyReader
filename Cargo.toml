@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/myreader-core",
     "crates/myreader-rust-components",
     "crates/myreader-sync",
     "my-reader/src-tauri",
@@ -10,6 +11,7 @@ edition = "2021"
 
 [workspace.dependencies]
 automerge = "=0.10.0"
+myreader-core = { path = "crates/myreader-core" }
 myreader-rust-components = { path = "crates/myreader-rust-components" }
 myreader-sync = { path = "crates/myreader-sync" }
 opendal = { version = "0.50", default-features = false, features = ["services-webdav", "services-fs", "services-onedrive"] }
@@ -21,6 +23,9 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", 
 uniffi = "=0.29.3"
 uuid = { version = "1", features = ["v4"] }
 rusqlite = "0.32.1"
+sea-orm = { version = "2.0.0-rc.38", features = ["sqlx-sqlite", "runtime-tokio-rustls"] }
+sea-orm-migration = { version = "2.0.0-rc.38", default-features = false }
+tracing = "0.1"
 
 [profile.release]
 opt-level = "s"

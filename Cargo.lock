@@ -3427,6 +3427,7 @@ dependencies = [
  "futures",
  "keyring",
  "log",
+ "myreader-core",
  "myreader-rust-components",
  "notify",
  "oauth2",
@@ -3464,9 +3465,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "myreader-core"
+version = "0.1.0"
+dependencies = [
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "myreader-rust-components"
 version = "0.1.0"
 dependencies = [
+ "myreader-core",
  "myreader-sync",
  "rusqlite",
  "serde_json",

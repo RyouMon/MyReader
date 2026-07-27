@@ -3,12 +3,13 @@ use std::path::Path;
 use tauri::AppHandle;
 
 use crate::asset_scope;
+use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
 use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::utils::io::download_metadata_db;
 use crate::utils::paths::{library_container_dir, library_metadata_db_path, library_root_path};
-use crate::{cache, db};
+use myreader_core::database;
 
 pub struct LibraryService;
 
@@ -67,7 +68,7 @@ impl LibraryService {
         // Sidecar lives in the app container for all library types.
         let sidecar_root = library_container_dir(app_data_dir, &id);
         std::fs::create_dir_all(&sidecar_root)?;
-        db::ensure_library_data_dir(sidecar_root.to_str().unwrap_or(&id))?;
+        database::ensure_library_data_dir(sidecar_root.to_str().unwrap_or(&id))?;
 
         let book_count = match CalibreBookRepository::open(&canon_str).await {
             Ok(repo) => repo.get_book_count().await.unwrap_or(0),
@@ -153,7 +154,7 @@ impl LibraryService {
                 .to_string()
         });
 
-        db::ensure_library_data_dir(&cache_str)?;
+        database::ensure_library_data_dir(&cache_str)?;
 
         let book_count = match CalibreBookRepository::open(&cache_str).await {
             Ok(repo) => repo.get_book_count().await.unwrap_or(0),
@@ -242,7 +243,7 @@ impl LibraryService {
                 .to_string()
         });
 
-        db::ensure_library_data_dir(&cache_str)?;
+        database::ensure_library_data_dir(&cache_str)?;
 
         let book_count = match CalibreBookRepository::open(&cache_str).await {
             Ok(repo) => repo.get_book_count().await.unwrap_or(0),

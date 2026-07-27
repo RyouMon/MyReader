@@ -5,9 +5,9 @@ use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
 
-use crate::entities::app::reading_progress;
 use crate::error::AppError;
 use crate::models::ReadingProgressDto;
+use myreader_core::entities::app::reading_progress;
 
 pub struct SqliteProgressRepository;
 
@@ -21,7 +21,9 @@ fn current(column: reading_progress::Column) -> Expr {
 
 impl SqliteProgressRepository {
     pub async fn open(library_path: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(library_path).await
+        myreader_core::database::open_db(library_path)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn get_progress(

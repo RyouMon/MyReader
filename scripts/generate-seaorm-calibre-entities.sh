@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DB_DIR="$ROOT_DIR/packages/db"
-ENTITY_DIR="$ROOT_DIR/my-reader/src-tauri/src/entities/calibre"
+ENTITY_DIR="$ROOT_DIR/crates/myreader-core/src/entities/calibre"
 TEMP_DIR=$(mktemp -d)
 
 cleanup() {

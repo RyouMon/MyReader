@@ -3,8 +3,8 @@ use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
 };
 
-use crate::entities::app::bookmarks;
 use crate::error::AppError;
+use myreader_core::entities::app::bookmarks;
 
 pub struct SqliteBookmarkRepository;
 
@@ -22,7 +22,9 @@ fn next_updated_at(candidate: Expr) -> Expr {
 
 impl SqliteBookmarkRepository {
     pub async fn open(library_path: &str) -> Result<DatabaseConnection, AppError> {
-        crate::db::open_db(library_path).await
+        myreader_core::database::open_db(library_path)
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list(

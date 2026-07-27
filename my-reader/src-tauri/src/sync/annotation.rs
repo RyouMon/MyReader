@@ -1,9 +1,9 @@
 use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 
-use crate::entities::app::annotations;
 use crate::error::AppError;
 use crate::repositories::annotation_repo::SqliteAnnotationRepository;
+use myreader_core::entities::app::annotations;
 
 use super::automerge_document::{
     annotation_projections, create_annotation, delete_annotation, update_annotation,
