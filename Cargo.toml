@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/myreader-rust-components",
+    "crates/myreader-sync",
+    "my-reader/src-tauri",
+]
+exclude = ["my-reader-mobile/modules/automerge-native/rust"]
+
+[workspace.package]
+edition = "2021"
+
+[workspace.dependencies]
+automerge = "=0.10.0"
+myreader-rust-components = { path = "crates/myreader-rust-components" }
+myreader-sync = { path = "crates/myreader-sync" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

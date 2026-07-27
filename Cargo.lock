@@ -3275,6 +3275,7 @@ dependencies = [
  "futures",
  "keyring",
  "log",
+ "myreader-rust-components",
  "notify",
  "oauth2",
  "objc2-app-kit 0.3.2",
@@ -3308,6 +3309,24 @@ dependencies = [
  "uuid",
  "warp",
  "zip",
+]
+
+[[package]]
+name = "myreader-rust-components"
+version = "0.1.0"
+dependencies = [
+ "myreader-sync",
+]
+
+[[package]]
+name = "myreader-sync"
+version = "0.1.0"
+dependencies = [
+ "automerge",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]

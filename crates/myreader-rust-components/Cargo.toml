@@ -1,0 +1,10 @@
+[package]
+name = "myreader-rust-components"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+myreader-sync.workspace = true
