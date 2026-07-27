@@ -60,9 +60,15 @@ pub struct SyncDatabaseDiagnostics {
     pub projection_version: Option<i64>,
 }
 
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SyncLibrarySidecarReport {
+    pub pushed: u32,
+    pub pulled: u32,
+}
+
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    2
+    3
 }
 
 fn map_document_result(
@@ -256,6 +262,46 @@ pub fn read_sync_database_diagnostics(
             projection_version: diagnostics.projection_version,
         })
         .map_err(map_sync_error)
+}
+
+#[uniffi::export]
+pub async fn sync_library_sidecar(
+    database_path: String,
+    library_uuid: String,
+    replica_id: String,
+    now_ms: String,
+    mode: String,
+    storage_json: String,
+) -> Result<SyncLibrarySidecarReport, RustComponentsError> {
+    let mode = match mode.as_str() {
+        "push_only" => sync::exchange::SyncMode::PushOnly,
+        "full" => sync::exchange::SyncMode::Full,
+        _ => {
+            return Err(RustComponentsError::Sync(
+                "Sync mode is unsupported".to_owned(),
+            ))
+        }
+    };
+    let storage = serde_json::from_str(&storage_json)
+        .map_err(|error| RustComponentsError::Sync(format!("Invalid storage config: {error}")))?;
+    let report = sync::transport::sync_database(
+        &database_path,
+        &sync::persistence::DatabaseIdentity {
+            library_uuid,
+            replica_id,
+        },
+        parse_now_ms(&now_ms)?,
+        mode,
+        &storage,
+    )
+    .await
+    .map_err(map_sync_error)?;
+    Ok(SyncLibrarySidecarReport {
+        pushed: u32::try_from(report.pushed)
+            .map_err(|_| RustComponentsError::Sync("Pushed count is out of range".to_owned()))?,
+        pulled: u32::try_from(report.pulled)
+            .map_err(|_| RustComponentsError::Sync("Pulled count is out of range".to_owned()))?,
+    })
 }
 
 uniffi::setup_scaffolding!();

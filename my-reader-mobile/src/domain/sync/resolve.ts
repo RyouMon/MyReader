@@ -8,6 +8,7 @@ import {
   libraryRootUri,
   librarySidecarRootUri,
 } from "@/src/services/fs/library-paths"
+import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { SyncConfigError } from "../../errors"
 import { createRemoteBackend } from "../../services/remote/factory"
 import type { RemoteBackend } from "../../services/remote/backend"
@@ -16,14 +17,36 @@ import i18n from "@/src/i18n"
 
 export type SyncBackend = RemoteBackend | LocalDirectBackend
 
+export type NativeSidecarStorageConfig =
+  | { kind: "local-direct"; root: string }
+  | {
+      kind: "webdav"
+      endpoint: string
+      username: string
+      password: string
+      root: string | null
+    }
+  | { kind: "onedrive"; accessToken: string; root: string | null }
+
 export type ResolvedSyncTarget = {
   backend: SyncBackend
+  sidecarStorage: NativeSidecarStorageConfig
   dataSourceId: string
   libraryId: string
   /** Calibre tree root (metadata, books, covers). */
   libraryRootUri: string
   /** Root for `{root}/.myreader/` sidecar data. */
   librarySidecarRootUri: string
+}
+
+function remoteLibraryRoot(
+  sourceRoot: string | null | undefined,
+  libraryPath: string,
+): string {
+  const parts = [sourceRoot, libraryPath]
+    .map((value) => value?.trim().replace(/^\/+|\/+$/g, "") ?? "")
+    .filter(Boolean)
+  return parts.length === 0 ? "/" : `/${parts.join("/")}`
 }
 
 export async function resolveSyncTarget(
@@ -50,6 +73,16 @@ export async function resolveSyncTarget(
       throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"))
     return {
       backend,
+      sidecarStorage: {
+        kind: "webdav",
+        endpoint: rawSource.endpoint,
+        username: rawSource.username,
+        password,
+        root: remoteLibraryRoot(
+          rawSource.rootPath,
+          library.sourcePath ?? library.path ?? "",
+        ),
+      },
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
@@ -71,8 +104,21 @@ export async function resolveSyncTarget(
     const backend = await createRemoteBackend(rawSource, library)
     if (!backend)
       throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
+    const authorization = (await backend.getAuthHeaders()).Authorization
+    const accessToken = authorization?.replace(/^Bearer\s+/i, "") ?? ""
+    if (!accessToken) {
+      throw new SyncConfigError(i18n.t("sync.onedriveRefreshTokenMissing"))
+    }
     return {
       backend,
+      sidecarStorage: {
+        kind: "onedrive",
+        accessToken,
+        root: remoteLibraryRoot(
+          rawSource.rootPath,
+          library.sourcePath ?? library.path ?? "",
+        ),
+      },
       dataSourceId: rawSource.id,
       libraryId: library.id,
       libraryRootUri: rootUri,
@@ -83,6 +129,10 @@ export async function resolveSyncTarget(
   const backend = new LocalDirectBackend(rootUri)
   return {
     backend,
+    sidecarStorage: {
+      kind: "local-direct",
+      root: toNativeFilesystemPath(rootUri),
+    },
     dataSourceId: library.dataSourceId ?? LOCAL_LIBRARY_DATA_SOURCE_ID,
     libraryId: library.id,
     libraryRootUri: rootUri,

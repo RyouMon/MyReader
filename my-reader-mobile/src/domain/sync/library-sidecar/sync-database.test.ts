@@ -1,9 +1,10 @@
 jest.mock("@/modules/myreader-rust-components", () => ({
   __esModule: true,
   default: {
-    syncContractVersion: jest.fn(() => 2),
+    syncContractVersion: jest.fn(() => 3),
     ensureSyncDatabaseDocument: jest.fn(),
     executeSyncDatabaseCommand: jest.fn(),
+    syncLibrarySidecar: jest.fn(),
   },
 }))
 
@@ -18,6 +19,7 @@ import { getLibraryDatabase } from "@/src/services/db/library-db"
 import {
   ensureSyncDatabaseDocument,
   executeSyncDatabaseCommand,
+  syncLibrarySidecarDatabase,
 } from "./sync-database"
 
 const library = { id: "library-1" } as Library
@@ -57,6 +59,9 @@ describe("sync database adapter", () => {
     jest
       .mocked(MyReaderRustComponents.executeSyncDatabaseCommand)
       .mockResolvedValue(nativeResult)
+    jest
+      .mocked(MyReaderRustComponents.syncLibrarySidecar)
+      .mockResolvedValue({ pushed: 2, pulled: 1 })
   })
 
   it("should pass the migrated library database path when state is ensured", async () => {
@@ -102,6 +107,33 @@ describe("sync database adapter", () => {
             replicaId: identity.replicaId,
           },
         },
+      }),
+    )
+  })
+
+  it("should delegate sidecar exchange to the Rust use case when sync runs", async () => {
+    await expect(
+      syncLibrarySidecarDatabase(library, identity, 300, "full", {
+        kind: "webdav",
+        endpoint: "https://example.com/dav",
+        username: "reader",
+        password: "secret",
+        root: "/books/library",
+      }),
+    ).resolves.toEqual({ pushed: 2, pulled: 1 })
+
+    expect(MyReaderRustComponents.syncLibrarySidecar).toHaveBeenCalledWith(
+      "/library/.myreader/myreader.db",
+      identity.libraryUuid,
+      identity.replicaId,
+      "300",
+      "full",
+      JSON.stringify({
+        kind: "webdav",
+        endpoint: "https://example.com/dav",
+        username: "reader",
+        password: "secret",
+        root: "/books/library",
       }),
     )
   })

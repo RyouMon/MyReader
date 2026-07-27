@@ -12,6 +12,7 @@ import com.myreader.rustcomponents.uniffi.listSyncDatabaseOutbox
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseOutboxPublished
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
 import com.myreader.rustcomponents.uniffi.syncContractVersion
+import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -43,6 +44,15 @@ class MyReaderRustComponentsModule : Module() {
     "missingDependencies" to result.missingDependencies,
     "projectionJson" to result.projectionJson,
   )
+
+  private suspend fun <T> syncAsyncCall(operation: suspend () -> T): T = try {
+    operation()
+  } catch (error: RustComponentsException) {
+    val message = when (error) {
+      is RustComponentsException.Sync -> error.v1
+    }
+    throw CodedException("SYNC_ERROR", message, error)
+  }
 
   override fun definition() = ModuleDefinition {
     Name("MyReaderRustComponents")
@@ -164,6 +174,29 @@ class MyReaderRustComponentsModule : Module() {
           "pendingOutbox" to result.pendingOutbox,
           "receipts" to result.receipts,
           "projectionVersion" to result.projectionVersion,
+        )
+      }
+    }
+
+    AsyncFunction("syncLibrarySidecar") {
+        databasePath: String,
+        libraryUuid: String,
+        replicaId: String,
+        nowMs: String,
+        mode: String,
+        storageJson: String ->
+      syncAsyncCall {
+        val result = syncLibrarySidecar(
+          databasePath,
+          libraryUuid,
+          replicaId,
+          nowMs,
+          mode,
+          storageJson,
+        )
+        mapOf(
+          "pushed" to result.pushed.toInt(),
+          "pulled" to result.pulled.toInt(),
         )
       }
     }

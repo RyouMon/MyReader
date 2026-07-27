@@ -47,6 +47,24 @@ private func syncCall<T>(_ operation: () throws -> T) throws -> T {
   }
 }
 
+private func syncAsyncCall<T>(_ operation: () async throws -> T) async throws -> T {
+  do {
+    return try await operation()
+  } catch let RustComponentsError.Sync(message) {
+    throw Exception(
+      name: "SyncComponentException",
+      description: message,
+      code: "SYNC_ERROR"
+    )
+  } catch {
+    throw Exception(
+      name: "SyncComponentException",
+      description: error.localizedDescription,
+      code: "SYNC_ERROR"
+    )
+  }
+}
+
 public class MyReaderRustComponentsModule: Module {
   public func definition() -> ModuleDefinition {
     Name("MyReaderRustComponents")
@@ -185,6 +203,31 @@ public class MyReaderRustComponentsModule: Module {
           "projectionVersion": result.projectionVersion ?? NSNull(),
         ]
       }
+    }
+
+    AsyncFunction("syncLibrarySidecar") {
+      (
+        databasePath: String,
+        libraryUuid: String,
+        replicaId: String,
+        nowMs: String,
+        mode: String,
+        storageJson: String
+      ) async throws -> [String: Any] in
+      let result = try await syncAsyncCall {
+        try await syncLibrarySidecar(
+          databasePath: databasePath,
+          libraryUuid: libraryUuid,
+          replicaId: replicaId,
+          nowMs: nowMs,
+          mode: mode,
+          storageJson: storageJson
+        )
+      }
+      return [
+        "pushed": Int(result.pushed),
+        "pulled": Int(result.pulled),
+      ]
     }
   }
 }

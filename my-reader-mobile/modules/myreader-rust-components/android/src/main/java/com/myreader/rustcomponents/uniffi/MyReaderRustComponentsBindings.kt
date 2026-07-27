@@ -30,6 +30,13 @@ import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 // This is a helper for safely working with byte buffers returned from the Rust code.
 // A rust-owned buffer is represented by its capacity, its current length, and a
@@ -729,6 +736,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -761,6 +770,8 @@ fun uniffi_myreader_rust_components_checksum_func_mark_sync_database_outbox_publ
 fun uniffi_myreader_rust_components_checksum_func_read_sync_database_diagnostics(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_contract_version(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
 ): Short
 fun ffi_myreader_rust_components_uniffi_contract_version(
 ): Int
@@ -825,6 +836,8 @@ fun uniffi_myreader_rust_components_fn_func_read_sync_database_diagnostics(`data
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_sync_contract_version(uniffi_out_err: UniffiRustCallStatus,
 ): Int
+fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`storageJson`: RustBuffer.ByValue,
+): Long
 fun ffi_myreader_rust_components_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun ffi_myreader_rust_components_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -978,6 +991,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 22445.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
 }
 
 /**
@@ -988,6 +1004,46 @@ public fun uniffiEnsureInitialized() {
 }
 
 // Async support
+// Async return type handlers
+
+internal const val UNIFFI_RUST_FUTURE_POLL_READY = 0.toByte()
+internal const val UNIFFI_RUST_FUTURE_POLL_MAYBE_READY = 1.toByte()
+
+internal val uniffiContinuationHandleMap = UniffiHandleMap<CancellableContinuation<Byte>>()
+
+// FFI type for Rust future continuations
+internal object uniffiRustFutureContinuationCallbackImpl: UniffiRustFutureContinuationCallback {
+    override fun callback(data: Long, pollResult: Byte) {
+        uniffiContinuationHandleMap.remove(data).resume(pollResult)
+    }
+}
+
+internal suspend fun<T, F, E: kotlin.Exception> uniffiRustCallAsync(
+    rustFuture: Long,
+    pollFunc: (Long, UniffiRustFutureContinuationCallback, Long) -> Unit,
+    completeFunc: (Long, UniffiRustCallStatus) -> F,
+    freeFunc: (Long) -> Unit,
+    liftFunc: (F) -> T,
+    errorHandler: UniffiRustCallStatusErrorHandler<E>
+): T {
+    try {
+        do {
+            val pollResult = suspendCancellableCoroutine<Byte> { continuation ->
+                pollFunc(
+                    rustFuture,
+                    uniffiRustFutureContinuationCallbackImpl,
+                    uniffiContinuationHandleMap.insert(continuation)
+                )
+            }
+        } while (pollResult != UNIFFI_RUST_FUTURE_POLL_READY);
+
+        return liftFunc(
+            uniffiRustCallWithError(errorHandler, { status -> completeFunc(rustFuture, status) })
+        )
+    } finally {
+        freeFunc(rustFuture)
+    }
+}
 
 // Public interface members begin here.
 
@@ -1380,6 +1436,38 @@ public object FfiConverterTypeSyncDocumentCommandResult: FfiConverterRustBuffer<
 
 
 
+data class SyncLibrarySidecarReport (
+    var `pushed`: kotlin.UInt,
+    var `pulled`: kotlin.UInt
+) {
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSyncLibrarySidecarReport: FfiConverterRustBuffer<SyncLibrarySidecarReport> {
+    override fun read(buf: ByteBuffer): SyncLibrarySidecarReport {
+        return SyncLibrarySidecarReport(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SyncLibrarySidecarReport) = (
+            FfiConverterUInt.allocationSize(value.`pushed`) +
+            FfiConverterUInt.allocationSize(value.`pulled`)
+    )
+
+    override fun write(value: SyncLibrarySidecarReport, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`pushed`, buf)
+            FfiConverterUInt.write(value.`pulled`, buf)
+    }
+}
+
+
+
 data class SyncOutboxEntry (
     var `objectPath`: kotlin.String,
     var `bytes`: kotlin.ByteArray,
@@ -1724,6 +1812,14 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
         }
     }
 }
+
+
+
+
+
+
+
+
     @Throws(RustComponentsException::class) fun `applySyncDatabaseRemoteObjects`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `objects`: List<SyncRemoteObject>): ApplyRemoteDatabaseResult {
             return FfiConverterTypeApplyRemoteDatabaseResult.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -1808,5 +1904,21 @@ public object FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuffer<L
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_sync_contract_version(
         _status)
 }
+    )
+    }
+
+
+    @Throws(RustComponentsException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+     suspend fun `syncLibrarySidecar`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String, `mode`: kotlin.String, `storageJson`: kotlin.String) : SyncLibrarySidecarReport {
+        return uniffiRustCallAsync(
+        UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_sync_library_sidecar(FfiConverterString.lower(`databasePath`),FfiConverterString.lower(`libraryUuid`),FfiConverterString.lower(`replicaId`),FfiConverterString.lower(`nowMs`),FfiConverterString.lower(`mode`),FfiConverterString.lower(`storageJson`),),
+        { future, callback, continuation -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.INSTANCE.ffi_myreader_rust_components_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeSyncLibrarySidecarReport.lift(it) },
+        // Error FFI converter
+        RustComponentsException.ErrorHandler,
     )
     }

@@ -30,7 +30,7 @@ const emptyProjection = {
 describe("Rust Automerge document adapter", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(MyReaderRustComponents.syncContractVersion).mockReturnValue(2)
+    jest.mocked(MyReaderRustComponents.syncContractVersion).mockReturnValue(3)
     jest
       .mocked(MyReaderRustComponents.executeSyncDocumentCommand)
       .mockReturnValue({

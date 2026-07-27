@@ -1,18 +1,13 @@
 import type { SyncTargetContext } from "./context"
 import type {
   MyReaderSyncMode,
-  MyReaderSyncProvider,
   MyReaderSyncResult,
   SyncLibraryOptions,
 } from "./types"
 import { describeError } from "../../utils/common"
 import { ensureLibrarySidecarIdentity } from "./library-sidecar/identity"
-import {
-  ensureLibrarySidecarAutomergeState,
-  publishLibrarySidecarAutomergeChanges,
-  pullLibrarySidecarAutomergeChanges,
-  readLibrarySidecarAutomergeDiagnosticSnapshot,
-} from "./library-sidecar/automerge-store"
+import { readLibrarySidecarAutomergeDiagnosticSnapshot } from "./library-sidecar/automerge-store"
+import { syncLibrarySidecarDatabase } from "./library-sidecar/sync-database"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
@@ -23,45 +18,6 @@ import {
 } from "@/src/services/query/invalidate-table"
 import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import { markLibrarySidecarSyncSucceeded } from "@/src/repos/library-sidecar-schedule"
-
-const librarySidecarProvider: MyReaderSyncProvider = {
-  id: "library-sidecar",
-  async push(ctx) {
-    const identity = await ensureLibrarySidecarIdentity(ctx.library)
-    const nowMs = Date.now()
-    await ensureLibrarySidecarAutomergeState(ctx.library, identity, nowMs)
-    const automergePushed = await publishLibrarySidecarAutomergeChanges(
-      ctx.library,
-      ctx.backend,
-      nowMs,
-    )
-    return automergePushed
-  },
-  async pull(ctx) {
-    const nowMs = Date.now()
-    const identity = await ensureLibrarySidecarIdentity(ctx.library)
-    const automergePulled = await pullLibrarySidecarAutomergeChanges(
-      ctx.library,
-      ctx.backend,
-      identity,
-      nowMs,
-    )
-    const pulled = automergePulled
-    if (pulled > 0) {
-      await Promise.all([
-        invalidateFavoriteBooks(ctx.library.id),
-        invalidateReadingProgress(ctx.library.id),
-        invalidateReadingStatistics(ctx.library.id),
-        invalidateReaderAnnotations(ctx.library.id),
-        invalidateReaderBookmarks(ctx.library.id),
-        invalidateRecentlyReadBooks(ctx.library.id),
-      ])
-    }
-    return pulled
-  },
-}
-
-const PROVIDERS: MyReaderSyncProvider[] = [librarySidecarProvider]
 
 async function logAutomergeDiagnostics(
   ctx: SyncTargetContext,
@@ -89,24 +45,38 @@ async function syncProviders(
   mode: MyReaderSyncMode,
   providers: MyReaderSyncResult["providers"],
 ): Promise<MyReaderSyncResult> {
-  for (const provider of PROVIDERS) {
-    console.info("[reading-sync] provider:start", {
-      libraryId: ctx.library.id,
-      provider: provider.id,
-      mode,
-      backend: ctx.backend.kind,
-    })
-    const pushed = await provider.push(ctx)
-    const pulled = mode === "full" ? await provider.pull(ctx) : 0
-    providers[provider.id] = { pushed, pulled }
-    console.info("[reading-sync] provider:complete", {
-      libraryId: ctx.library.id,
-      provider: provider.id,
-      mode,
-      pushed,
-      pulled,
-    })
+  const providerId = "library-sidecar"
+  console.info("[reading-sync] provider:start", {
+    libraryId: ctx.library.id,
+    provider: providerId,
+    mode,
+    backend: ctx.backend.kind,
+  })
+  const identity = await ensureLibrarySidecarIdentity(ctx.library)
+  const report = await syncLibrarySidecarDatabase(
+    ctx.library,
+    identity,
+    Date.now(),
+    mode,
+    ctx.sidecarStorage,
+  )
+  providers[providerId] = report
+  if (report.pulled > 0) {
+    await Promise.all([
+      invalidateFavoriteBooks(ctx.library.id),
+      invalidateReadingProgress(ctx.library.id),
+      invalidateReadingStatistics(ctx.library.id),
+      invalidateReaderAnnotations(ctx.library.id),
+      invalidateReaderBookmarks(ctx.library.id),
+      invalidateRecentlyReadBooks(ctx.library.id),
+    ])
   }
+  console.info("[reading-sync] provider:complete", {
+    libraryId: ctx.library.id,
+    provider: providerId,
+    mode,
+    ...report,
+  })
   await markLibrarySidecarSyncSucceeded(
     ctx.library,
     mode === "full" ? Date.now() : null,

@@ -1,28 +1,17 @@
-use std::str::FromStr;
-
-use automerge::{AutoCommit, ChangeHash};
+use automerge::AutoCommit;
 use myreader_rust_components::sync::{
-    persistence::{
-        apply_remote_database_objects, ensure_database_document, execute_local_database_mutation,
-        has_receipt, list_pending_outbox, mark_outbox_published, read_database_diagnostics,
-        DatabaseIdentity, SyncRemoteObject,
-    },
+    exchange::{sync_database_with_operator, SyncMode},
+    persistence::{ensure_database_document, execute_local_database_mutation, DatabaseIdentity},
     SyncError,
 };
 use opendal::Operator;
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
-use sha2::{Digest, Sha256};
-use tracing::info;
 
 use crate::error::AppError;
 
 use super::{
     automerge_document::load_library_sidecar_document_bytes, replica_identity::ReplicaIdentity,
 };
-
-const REMOTE_CHANGES_ROOT: &str = ".myreader/automerge/changes";
-const MAX_REMOTE_OBJECT_BYTES: usize = 4 * 1024 * 1024;
-const MAX_REMOTE_OBJECTS_PER_SYNC: usize = 10_000;
 
 fn sync_error(message: impl Into<String>) -> AppError {
     AppError::Sync(message.into())
@@ -36,28 +25,6 @@ fn map_sync_error(error: SyncError) -> AppError {
 
 fn now_i64(now_ms: u64) -> Result<i64, AppError> {
     i64::try_from(now_ms).map_err(|_| sync_error("Sync time is out of range"))
-}
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
-}
-
-fn validate_remote_object_count(count: usize) -> Result<(), AppError> {
-    if count > MAX_REMOTE_OBJECTS_PER_SYNC {
-        return Err(sync_error(format!(
-            "Remote Automerge object count exceeds {MAX_REMOTE_OBJECTS_PER_SYNC}"
-        )));
-    }
-    Ok(())
-}
-
-fn validate_remote_object_size(size: usize) -> Result<(), AppError> {
-    if size > MAX_REMOTE_OBJECT_BYTES {
-        return Err(sync_error(format!(
-            "Remote Automerge object exceeds {MAX_REMOTE_OBJECT_BYTES} bytes"
-        )));
-    }
-    Ok(())
 }
 
 async fn database_path(db: &DatabaseConnection) -> Result<String, AppError> {
@@ -130,132 +97,6 @@ where
     Ok(())
 }
 
-async fn publish(database_path: &str, operator: &Operator, now_ms: u64) -> Result<usize, AppError> {
-    let pending = list_pending_outbox(database_path).map_err(map_sync_error)?;
-    let mut pushed = 0;
-    for row in pending {
-        match operator.read(&row.object_path).await {
-            Ok(existing) => {
-                if sha256_hex(&existing.to_vec()) != row.sha256 {
-                    return Err(sync_error(format!(
-                        "Remote Automerge object changed: {}",
-                        row.object_path
-                    )));
-                }
-            }
-            Err(error) if error.kind() == opendal::ErrorKind::NotFound => {
-                operator
-                    .write(&row.object_path, row.bytes.clone())
-                    .await
-                    .map_err(|error| {
-                        sync_error(format!(
-                            "Write Automerge object {} failed: {error}",
-                            row.object_path
-                        ))
-                    })?;
-            }
-            Err(error) => {
-                return Err(sync_error(format!(
-                    "Read Automerge object {} failed: {error}",
-                    row.object_path
-                )));
-            }
-        }
-        mark_outbox_published(database_path, &row.object_path, now_i64(now_ms)?)
-            .map_err(map_sync_error)?;
-        pushed += serde_json::from_str::<Vec<String>>(&row.change_hashes_json)
-            .map_err(|error| sync_error(format!("Invalid outbox change hashes: {error}")))?
-            .len();
-    }
-    Ok(pushed)
-}
-
-fn parse_remote_path(path: &str) -> Option<(String, String)> {
-    let relative = path.strip_prefix(&format!("{REMOTE_CHANGES_ROOT}/"))?;
-    let (actor, file_name) = relative.split_once('/')?;
-    if actor.len() != 32
-        || !actor
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-    {
-        return None;
-    }
-    let (sequence, hash_suffix) = file_name.split_once('-')?;
-    if sequence.len() != 20 || !sequence.bytes().all(|byte| byte.is_ascii_digit()) {
-        return None;
-    }
-    let hash = hash_suffix.strip_suffix(".am")?;
-    ChangeHash::from_str(hash)
-        .ok()
-        .map(|_| (actor.to_owned(), hash.to_owned()))
-}
-
-async fn list_remote_objects(
-    database_path: &str,
-    operator: &Operator,
-    identity: &ReplicaIdentity,
-) -> Result<Vec<SyncRemoteObject>, AppError> {
-    let entries = match operator
-        .list_with(REMOTE_CHANGES_ROOT)
-        .recursive(true)
-        .await
-    {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == opendal::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => {
-            return Err(sync_error(format!(
-                "List {REMOTE_CHANGES_ROOT} failed: {error}"
-            )));
-        }
-    };
-    validate_remote_object_count(entries.len())?;
-    let local_actor = identity.replica_id.replace('-', "");
-    let mut objects = Vec::new();
-    for entry in entries {
-        let path = entry.path().trim_end_matches('/');
-        let Some((actor, head)) = parse_remote_path(path) else {
-            continue;
-        };
-        if actor == local_actor || has_receipt(database_path, path).map_err(map_sync_error)? {
-            continue;
-        }
-        let bytes = operator
-            .read(path)
-            .await
-            .map_err(|error| sync_error(format!("Read {path} failed: {error}")))?
-            .to_vec();
-        validate_remote_object_size(bytes.len())?;
-        objects.push(SyncRemoteObject {
-            object_path: path.to_owned(),
-            head,
-            sha256: sha256_hex(&bytes),
-            bytes,
-        });
-    }
-    objects.sort_by(|left, right| left.object_path.cmp(&right.object_path));
-    Ok(objects)
-}
-
-async fn pull(
-    database_path: &str,
-    operator: &Operator,
-    identity: &ReplicaIdentity,
-    now_ms: u64,
-) -> Result<usize, AppError> {
-    let objects = list_remote_objects(database_path, operator, identity).await?;
-    if objects.is_empty() {
-        return Ok(0);
-    }
-    apply_remote_database_objects(
-        database_path,
-        &database_identity(identity),
-        now_i64(now_ms)?,
-        objects,
-    )
-    .map(|result| result.applied_objects)
-    .map_err(map_sync_error)
-}
-
 pub async fn sync_library_sidecar_automerge(
     db: &DatabaseConnection,
     operator: &Operator,
@@ -263,26 +104,16 @@ pub async fn sync_library_sidecar_automerge(
     now_ms: u64,
 ) -> Result<(usize, usize), AppError> {
     let path = database_path(db).await?;
-    ensure_database_document(&path, &database_identity(identity), now_i64(now_ms)?)
-        .map_err(map_sync_error)?;
-    let pushed = publish(&path, operator, now_ms).await?;
-    let pulled = pull(&path, operator, identity, now_ms).await?;
-    let diagnostics = read_database_diagnostics(&path).map_err(map_sync_error)?;
-    info!(
-        target: "myreader_sync",
-        event = "automerge.complete",
-        replica_id = %identity.replica_id,
-        heads = ?diagnostics.heads,
-        schema_version = ?diagnostics.schema_version,
-        projection_version = ?diagnostics.projection_version,
-        pushed,
-        pulled,
-        changes = diagnostics.changes,
-        pending_outbox = diagnostics.pending_outbox,
-        receipts = diagnostics.receipts,
-        "Completed Automerge sidecar exchange"
-    );
-    Ok((pushed, pulled))
+    let report = sync_database_with_operator(
+        &path,
+        operator,
+        &database_identity(identity),
+        now_i64(now_ms)?,
+        SyncMode::Full,
+    )
+    .await
+    .map_err(map_sync_error)?;
+    Ok((report.pushed, report.pulled))
 }
 
 pub async fn publish_library_sidecar_automerge(
@@ -292,23 +123,21 @@ pub async fn publish_library_sidecar_automerge(
     now_ms: u64,
 ) -> Result<usize, AppError> {
     let path = database_path(db).await?;
-    ensure_database_document(&path, &database_identity(identity), now_i64(now_ms)?)
-        .map_err(map_sync_error)?;
-    let pushed = publish(&path, operator, now_ms).await?;
-    let diagnostics = read_database_diagnostics(&path).map_err(map_sync_error)?;
-    info!(
-        target: "myreader_sync",
-        event = "automerge.publish_complete",
-        replica_id = %identity.replica_id,
-        pushed,
-        pending_outbox = diagnostics.pending_outbox,
-        "Published Automerge sidecar changes"
-    );
-    Ok(pushed)
+    sync_database_with_operator(
+        &path,
+        operator,
+        &database_identity(identity),
+        now_i64(now_ms)?,
+        SyncMode::PushOnly,
+    )
+    .await
+    .map(|report| report.pushed)
+    .map_err(map_sync_error)
 }
 
 #[cfg(test)]
 mod tests {
+    use myreader_rust_components::sync::persistence::read_database_diagnostics;
     use sea_orm::{DatabaseConnection, EntityTrait};
 
     use super::*;
@@ -370,14 +199,6 @@ mod tests {
 
         assert_eq!(first, (1, 0));
         assert_eq!(second, (0, 0));
-    }
-
-    #[test]
-    fn should_reject_remote_object_when_input_limits_are_exceeded() {
-        assert!(validate_remote_object_count(MAX_REMOTE_OBJECTS_PER_SYNC).is_ok());
-        assert!(validate_remote_object_count(MAX_REMOTE_OBJECTS_PER_SYNC + 1).is_err());
-        assert!(validate_remote_object_size(MAX_REMOTE_OBJECT_BYTES).is_ok());
-        assert!(validate_remote_object_size(MAX_REMOTE_OBJECT_BYTES + 1).is_err());
     }
 
     #[tokio::test]

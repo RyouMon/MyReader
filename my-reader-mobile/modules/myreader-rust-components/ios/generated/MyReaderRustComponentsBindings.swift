@@ -889,6 +889,76 @@ public func FfiConverterTypeSyncDocumentCommandResult_lower(_ value: SyncDocumen
 }
 
 
+public struct SyncLibrarySidecarReport {
+    public var pushed: UInt32
+    public var pulled: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(pushed: UInt32, pulled: UInt32) {
+        self.pushed = pushed
+        self.pulled = pulled
+    }
+}
+
+#if compiler(>=6)
+extension SyncLibrarySidecarReport: Sendable {}
+#endif
+
+
+extension SyncLibrarySidecarReport: Equatable, Hashable {
+    public static func ==(lhs: SyncLibrarySidecarReport, rhs: SyncLibrarySidecarReport) -> Bool {
+        if lhs.pushed != rhs.pushed {
+            return false
+        }
+        if lhs.pulled != rhs.pulled {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(pushed)
+        hasher.combine(pulled)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncLibrarySidecarReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncLibrarySidecarReport {
+        return
+            try SyncLibrarySidecarReport(
+                pushed: FfiConverterUInt32.read(from: &buf),
+                pulled: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyncLibrarySidecarReport, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.pushed, into: &buf)
+        FfiConverterUInt32.write(value.pulled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncLibrarySidecarReport_lift(_ buf: RustBuffer) throws -> SyncLibrarySidecarReport {
+    return try FfiConverterTypeSyncLibrarySidecarReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncLibrarySidecarReport_lower(_ value: SyncLibrarySidecarReport) -> RustBuffer {
+    return FfiConverterTypeSyncLibrarySidecarReport.lower(value)
+}
+
+
 public struct SyncOutboxEntry {
     public var objectPath: String
     public var bytes: Data
@@ -1307,6 +1377,52 @@ fileprivate struct FfiConverterSequenceTypeSyncRemoteObject: FfiConverterRustBuf
         return seq
     }
 }
+private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
+private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
+
+fileprivate let uniffiContinuationHandleMap = UniffiHandleMap<UnsafeContinuation<Int8, Never>>()
+
+fileprivate func uniffiRustCallAsync<F, T>(
+    rustFutureFunc: () -> UInt64,
+    pollFunc: (UInt64, @escaping UniffiRustFutureContinuationCallback, UInt64) -> (),
+    completeFunc: (UInt64, UnsafeMutablePointer<RustCallStatus>) -> F,
+    freeFunc: (UInt64) -> (),
+    liftFunc: (F) throws -> T,
+    errorHandler: ((RustBuffer) throws -> Swift.Error)?
+) async throws -> T {
+    // Make sure to call the ensure init function since future creation doesn't have a
+    // RustCallStatus param, so doesn't use makeRustCall()
+    uniffiEnsureMyreaderRustComponentsInitialized()
+    let rustFuture = rustFutureFunc()
+    defer {
+        freeFunc(rustFuture)
+    }
+    var pollResult: Int8;
+    repeat {
+        pollResult = await withUnsafeContinuation {
+            pollFunc(
+                rustFuture,
+                uniffiFutureContinuationCallback,
+                uniffiContinuationHandleMap.insert(obj: $0)
+            )
+        }
+    } while pollResult != UNIFFI_RUST_FUTURE_POLL_READY
+
+    return try liftFunc(makeRustCall(
+        { completeFunc(rustFuture, $0) },
+        errorHandler: errorHandler
+    ))
+}
+
+// Callback handlers for an async calls.  These are invoked by Rust when the future is ready.  They
+// lift the return value or error and resume the suspended function.
+fileprivate func uniffiFutureContinuationCallback(handle: UInt64, pollResult: Int8) {
+    if let continuation = try? uniffiContinuationHandleMap.remove(handle: handle) {
+        continuation.resume(returning: pollResult)
+    } else {
+        print("uniffiFutureContinuationCallback invalid handle")
+    }
+}
 public func applySyncDatabaseRemoteObjects(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, objects: [SyncRemoteObject])throws  -> ApplyRemoteDatabaseResult  {
     return try  FfiConverterTypeApplyRemoteDatabaseResult_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_apply_sync_database_remote_objects(
@@ -1384,6 +1500,20 @@ public func syncContractVersion() -> UInt32  {
     )
 })
 }
+public func syncLibrarySidecar(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String, mode: String, storageJson: String)async throws  -> SyncLibrarySidecarReport  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_myreader_rust_components_fn_func_sync_library_sidecar(FfiConverterString.lower(databasePath),FfiConverterString.lower(libraryUuid),FfiConverterString.lower(replicaId),FfiConverterString.lower(nowMs),FfiConverterString.lower(mode),FfiConverterString.lower(storageJson)
+                )
+            },
+            pollFunc: ffi_myreader_rust_components_rust_future_poll_rust_buffer,
+            completeFunc: ffi_myreader_rust_components_rust_future_complete_rust_buffer,
+            freeFunc: ffi_myreader_rust_components_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSyncLibrarySidecarReport_lift,
+            errorHandler: FfiConverterTypeRustComponentsError_lift
+        )
+}
 
 private enum InitializationResult {
     case ok
@@ -1425,6 +1555,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 22445) {
         return InitializationResult.apiChecksumMismatch
     }
 

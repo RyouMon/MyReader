@@ -3,6 +3,8 @@
 pub mod document;
 pub mod document_engine;
 mod error;
+pub mod exchange;
 pub mod persistence;
+pub mod transport;
 
 pub use error::SyncError;

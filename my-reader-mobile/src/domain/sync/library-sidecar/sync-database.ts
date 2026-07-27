@@ -11,6 +11,7 @@ import {
   type LibrarySidecarDocumentCommand,
 } from "./automerge-document"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
+import type { NativeSidecarStorageConfig } from "../resolve"
 
 async function databasePath(library: Library): Promise<string> {
   return (await getLibraryDatabase(library)).path
@@ -96,5 +97,22 @@ export async function applySyncDatabaseRemoteObjects(
 export async function readSyncDatabaseDiagnostics(library: Library) {
   return MyReaderRustComponents.readSyncDatabaseDiagnostics(
     await databasePath(library),
+  )
+}
+
+export async function syncLibrarySidecarDatabase(
+  library: Library,
+  identity: LibrarySidecarReplicaIdentity,
+  nowMs: number,
+  mode: "push_only" | "full",
+  storage: NativeSidecarStorageConfig,
+): Promise<{ pushed: number; pulled: number }> {
+  return MyReaderRustComponents.syncLibrarySidecar(
+    await databasePath(library),
+    identity.libraryUuid,
+    identity.replicaId,
+    String(nowMs),
+    mode,
+    JSON.stringify(storage),
   )
 }

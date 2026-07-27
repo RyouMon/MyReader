@@ -16,7 +16,7 @@ fn uniffi_contract_should_return_portable_result_when_sync_command_executes() {
 
     let result = execute_sync_document_command(None, request.to_string(), None).unwrap();
 
-    assert_eq!(sync_contract_version(), 2);
+    assert_eq!(sync_contract_version(), 3);
     assert_eq!(result.schema_version, 1);
     assert_eq!(result.changes.len(), 2);
     assert!(!result.snapshot_bytes.is_empty());

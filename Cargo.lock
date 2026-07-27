@@ -3478,12 +3478,14 @@ name = "myreader-sync"
 version = "0.1.0"
 dependencies = [
  "automerge",
+ "opendal",
  "rusqlite",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
  "thiserror 1.0.69",
+ "tokio",
  "uuid",
 ]
 

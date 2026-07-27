@@ -46,6 +46,11 @@ export type NativeSyncDatabaseDiagnostics = {
   projectionVersion: number | null
 }
 
+export type NativeSyncLibrarySidecarReport = {
+  pushed: number
+  pulled: number
+}
+
 export type MyReaderRustComponentsModule = {
   syncContractVersion(): number
   executeSyncDocumentCommand(
@@ -86,6 +91,14 @@ export type MyReaderRustComponentsModule = {
   readSyncDatabaseDiagnostics(
     databasePath: string,
   ): Promise<NativeSyncDatabaseDiagnostics>
+  syncLibrarySidecar(
+    databasePath: string,
+    libraryUuid: string,
+    replicaId: string,
+    nowMs: string,
+    mode: string,
+    storageJson: string,
+  ): Promise<NativeSyncLibrarySidecarReport>
 }
 
 let nativeModule: MyReaderRustComponentsModule | null = null
@@ -161,6 +174,23 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   readSyncDatabaseDiagnostics(databasePath) {
     return getNativeModule().readSyncDatabaseDiagnostics(databasePath)
+  },
+  syncLibrarySidecar(
+    databasePath,
+    libraryUuid,
+    replicaId,
+    nowMs,
+    mode,
+    storageJson,
+  ) {
+    return getNativeModule().syncLibrarySidecar(
+      databasePath,
+      libraryUuid,
+      replicaId,
+      nowMs,
+      mode,
+      storageJson,
+    )
   },
 }
 
