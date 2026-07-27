@@ -3,21 +3,13 @@ jest.mock("./automerge-store", () => ({
 }))
 jest.mock("./automerge-document", () => ({
   librarySidecarFavoriteProjections: jest.fn(),
-  setLibrarySidecarFavorite: jest.fn(),
 }))
 jest.mock("./identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
 }))
-jest.mock("./automerge-projection", () => ({
-  projectLibrarySidecarAutomergeDocument: jest.fn(),
-}))
-
 import type { Library } from "@my-reader/tools/types/library"
 
-import {
-  librarySidecarFavoriteProjections,
-  setLibrarySidecarFavorite,
-} from "./automerge-document"
+import { librarySidecarFavoriteProjections } from "./automerge-document"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { writeLocalFavorite } from "./favorite"
 import { ensureLibrarySidecarIdentity } from "./identity"
@@ -28,6 +20,7 @@ const identity = {
   libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
   replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
 }
+let selectedCommand: unknown
 
 describe("Automerge favorite", () => {
   beforeEach(() => {
@@ -35,28 +28,30 @@ describe("Automerge favorite", () => {
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
       .mocked(commitLibrarySidecarAutomergeMutation)
-      .mockImplementation(async (_library, _identity, _now, mutate) => {
-        mutate(document)
+      .mockImplementation(async (_library, _identity, _now, selectCommand) => {
+        selectedCommand = selectCommand(document)
         return document
       })
-    jest.mocked(setLibrarySidecarFavorite).mockReturnValue(document)
     jest.mocked(librarySidecarFavoriteProjections).mockReturnValue([])
   })
 
-  it("should commit favorite and projection together when a book is favorited", async () => {
+  it("should submit a favorite command when a book is favorited", async () => {
     await writeLocalFavorite(library, 42, true, 900)
 
-    expect(setLibrarySidecarFavorite).toHaveBeenCalledWith(document, 42, {
-      isFavorite: true,
-      addedAt: 900,
-      recordedAt: 900,
-      replicaId: identity.replicaId,
+    expect(selectedCommand).toEqual({
+      type: "setFavorite",
+      bookId: 42,
+      value: {
+        isFavorite: true,
+        addedAt: 900,
+        recordedAt: 900,
+        replicaId: identity.replicaId,
+      },
     })
     expect(commitLibrarySidecarAutomergeMutation).toHaveBeenCalledWith(
       library,
       identity,
       900,
-      expect.any(Function),
       expect.any(Function),
     )
   })
@@ -76,6 +71,6 @@ describe("Automerge favorite", () => {
 
     await writeLocalFavorite(library, 42, true, 900)
 
-    expect(setLibrarySidecarFavorite).not.toHaveBeenCalled()
+    expect(selectedCommand).toBeNull()
   })
 })

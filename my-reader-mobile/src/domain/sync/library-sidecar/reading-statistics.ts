@@ -4,12 +4,7 @@ import type {
   ReadingCompletionInsert,
   ReadingSessionInterval,
 } from "@/src/repos/reading-statistics"
-import {
-  addLibrarySidecarReadingCompletion,
-  addLibrarySidecarReadingSessionDuration,
-  librarySidecarReadingCompletionRecords,
-} from "./automerge-document"
-import { projectLibrarySidecarAutomergeDocument } from "./automerge-projection"
+import { librarySidecarReadingCompletionRecords } from "./automerge-document"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
@@ -30,13 +25,14 @@ export async function addLocalReadingSessionInterval(
     library,
     identity,
     interval.updatedAt,
-    (document) =>
-      addLibrarySidecarReadingSessionDuration(document, {
+    () => ({
+      type: "addReadingSessionDuration",
+      value: {
         ...interval,
         format: normalizedFormat(interval.format),
         originReplicaId: identity.replicaId,
-      }),
-    projectLibrarySidecarAutomergeDocument,
+      },
+    }),
   )
 }
 
@@ -60,16 +56,18 @@ export async function addLocalReadingCompletion(
           (earliest.completedAt === completion.completedAt &&
             earliest.id <= completion.id))
       ) {
-        return document
+        return null
       }
       changed = true
-      return addLibrarySidecarReadingCompletion(document, {
-        ...completion,
-        format: normalizedFormat(completion.format),
-        replicaId: identity.replicaId,
-      })
+      return {
+        type: "addReadingCompletion",
+        value: {
+          ...completion,
+          format: normalizedFormat(completion.format),
+          replicaId: identity.replicaId,
+        },
+      }
     },
-    projectLibrarySidecarAutomergeDocument,
   )
   return changed
 }

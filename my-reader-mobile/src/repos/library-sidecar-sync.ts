@@ -12,23 +12,6 @@ export type LibrarySidecarLocalMetaRow = {
   replicaId: string
 }
 
-export type LibrarySidecarReadingPositionRow = {
-  id: string
-  bookId: number
-  format: string
-  locatorJson: string
-  displayProgression: number | null
-  updatedAt: number
-  syncConflictCount: number
-}
-
-export type LibrarySidecarFavoriteRow = {
-  id: string
-  bookId: number
-  addedAt: number
-  isFavorite: boolean
-}
-
 export type LibrarySidecarBookmarkRow = {
   id: string
   bookId: number
@@ -69,16 +52,7 @@ function optionalString(row: DbRow, key: string): string | null {
   return requiredString(row, key)
 }
 
-/**
- * This repository intentionally uses OP-SQLite's native transaction and raw
- * SQL instead of the Drizzle OP-SQLite adapter. The Drizzle adapter commits
- * immediately after invoking a transaction callback without awaiting an async
- * callback, but sync mutations must keep awaited Automerge state, outbox, and
- * projection writes in one transaction. OP-SQLite's native transaction awaits
- * the callback correctly, but its transaction handle exposes only execute()
- * and cannot be wrapped as a Drizzle connection. Raw SQL stays confined here
- * so those transaction boundaries remain explicit and atomic.
- */
+/** Runs the remaining mobile-owned identity and projection reads atomically. */
 export async function withLibrarySidecarSyncTransaction<T>(
   library: Library,
   operation: (tx: LibrarySidecarSyncTransaction) => Promise<T>,
@@ -115,49 +89,6 @@ export async function insertLibrarySidecarLocalMeta(
       (id, protocol, library_uuid, replica_id)
       VALUES (?, ?, ?, ?)`,
     [uuid(), row.protocol, row.libraryUuid, row.replicaId],
-  )
-}
-
-export async function readLibrarySidecarFavorite(
-  tx: LibrarySidecarSyncTransaction,
-  bookId: number,
-): Promise<LibrarySidecarFavoriteRow | null> {
-  const result = await tx.execute(
-    `SELECT id, book_id, added_at, is_favorite
-      FROM favorite_books
-      WHERE book_id = ?`,
-    [bookId],
-  )
-  const row = result.rows[0]
-  if (!row) return null
-  const addedAt = row.added_at
-  const isFavorite = row.is_favorite
-  if (typeof addedAt !== "number") {
-    throw new Error("Expected added_at to be numeric")
-  }
-  if (isFavorite !== 0 && isFavorite !== 1) {
-    throw new Error("Expected is_favorite to be boolean")
-  }
-  return {
-    id: requiredString(row, "id"),
-    bookId: Number(row.book_id),
-    addedAt,
-    isFavorite: isFavorite === 1,
-  }
-}
-
-export async function writeLibrarySidecarFavorite(
-  tx: LibrarySidecarSyncTransaction,
-  row: Omit<LibrarySidecarFavoriteRow, "id">,
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO favorite_books
-      (id, book_id, added_at, is_favorite)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(book_id) DO UPDATE SET
-        added_at = excluded.added_at,
-        is_favorite = excluded.is_favorite`,
-    [uuid(), row.bookId, row.addedAt, row.isFavorite ? 1 : 0],
   )
 }
 
@@ -198,101 +129,6 @@ export async function readLibrarySidecarBookmark(
   }
 }
 
-export async function writeLibrarySidecarBookmark(
-  tx: LibrarySidecarSyncTransaction,
-  row: LibrarySidecarBookmarkRow,
-): Promise<LibrarySidecarBookmarkRow> {
-  await tx.execute(
-    `INSERT INTO bookmarks
-      (id, book_id, format, locator_key, locator_json,
-        created_at, updated_at, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(book_id, format, locator_key) DO UPDATE SET
-        id = excluded.id,
-        locator_json = excluded.locator_json,
-        created_at = excluded.created_at,
-        updated_at = excluded.updated_at,
-        deleted_at = excluded.deleted_at`,
-    [
-      row.id,
-      row.bookId,
-      row.format,
-      row.locatorKey,
-      row.locatorJson,
-      row.createdAt,
-      row.updatedAt,
-      row.deletedAt,
-    ],
-  )
-  const stored = await readLibrarySidecarBookmark(
-    tx,
-    row.bookId,
-    row.format,
-    row.locatorKey,
-  )
-  if (!stored) throw new Error("Bookmark state write returned no row")
-  return stored
-}
-
-export async function readLibrarySidecarReadingPosition(
-  tx: LibrarySidecarSyncTransaction,
-  bookId: number,
-  format: string,
-): Promise<LibrarySidecarReadingPositionRow | null> {
-  const result = await tx.execute(
-    `SELECT id, book_id, format, locator_json, display_progression, updated_at,
-        sync_conflict_count
-      FROM reading_progress
-      WHERE book_id = ? AND format = ?`,
-    [bookId, format],
-  )
-  const row = result.rows[0]
-  if (!row) return null
-  const displayProgression = row.display_progression
-  const updatedAt = row.updated_at
-  if (displayProgression !== null && typeof displayProgression !== "number") {
-    throw new Error("Expected display_progression to be numeric")
-  }
-  if (typeof updatedAt !== "number") {
-    throw new Error("Expected updated_at to be numeric")
-  }
-  return {
-    id: requiredString(row, "id"),
-    bookId: Number(row.book_id),
-    format: requiredString(row, "format"),
-    locatorJson: requiredString(row, "locator_json"),
-    displayProgression,
-    updatedAt,
-    syncConflictCount: Number(row.sync_conflict_count),
-  }
-}
-
-export async function writeLibrarySidecarReadingPosition(
-  tx: LibrarySidecarSyncTransaction,
-  row: Omit<LibrarySidecarReadingPositionRow, "id">,
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO reading_progress
-      (id, book_id, format, locator_json, display_progression, updated_at,
-        sync_conflict_count)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(book_id, format) DO UPDATE SET
-        locator_json = excluded.locator_json,
-        display_progression = excluded.display_progression,
-        updated_at = excluded.updated_at,
-        sync_conflict_count = excluded.sync_conflict_count`,
-    [
-      uuid(),
-      row.bookId,
-      row.format,
-      row.locatorJson,
-      row.displayProgression,
-      row.updatedAt,
-      row.syncConflictCount,
-    ],
-  )
-}
-
 export async function readLibrarySidecarAnnotation(
   tx: LibrarySidecarSyncTransaction,
   id: string,
@@ -318,105 +154,4 @@ export async function readLibrarySidecarAnnotation(
     updatedAt: Number(row.updated_at),
     deletedAt: row.deleted_at === null ? null : Number(row.deleted_at),
   }
-}
-
-export async function writeLibrarySidecarAnnotation(
-  tx: LibrarySidecarSyncTransaction,
-  row: LibrarySidecarAnnotationRow,
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO annotations
-      (id, book_id, format, kind, locator_json, color, note, created_at,
-        updated_at, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        book_id = excluded.book_id,
-        format = excluded.format,
-        kind = excluded.kind,
-        locator_json = excluded.locator_json,
-        color = excluded.color,
-        note = excluded.note,
-        created_at = excluded.created_at,
-        updated_at = excluded.updated_at,
-        deleted_at = excluded.deleted_at`,
-    [
-      row.id,
-      row.bookId,
-      row.format,
-      row.kind,
-      row.locatorJson,
-      row.color,
-      row.note,
-      row.createdAt,
-      row.updatedAt,
-      row.deletedAt,
-    ],
-  )
-}
-
-export async function writeLibrarySidecarReadingSession(
-  tx: LibrarySidecarSyncTransaction,
-  row: {
-    id: string
-    bookId: number
-    format: string
-    localDay: string
-    startedAt: number
-    durationSeconds: number
-    updatedAt: number
-  },
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO reading_sessions
-      (id, book_id, format, local_day, started_at, duration_seconds, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        book_id = excluded.book_id,
-        format = excluded.format,
-        local_day = excluded.local_day,
-        started_at = excluded.started_at,
-        duration_seconds = excluded.duration_seconds,
-        updated_at = excluded.updated_at`,
-    [
-      row.id,
-      row.bookId,
-      row.format,
-      row.localDay,
-      row.startedAt,
-      row.durationSeconds,
-      row.updatedAt,
-    ],
-  )
-}
-
-export async function writeLibrarySidecarReadingCompletion(
-  tx: LibrarySidecarSyncTransaction,
-  row: {
-    id: string
-    bookId: number
-    format: string
-    localDay: string
-    completedAt: number
-    updatedAt: number
-  },
-): Promise<void> {
-  await tx.execute(
-    `INSERT INTO reading_completions
-      (id, book_id, format, local_day, completed_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(book_id) DO UPDATE SET
-        id = excluded.id,
-        format = excluded.format,
-        local_day = excluded.local_day,
-        completed_at = excluded.completed_at,
-        updated_at = excluded.updated_at`,
-    [
-      row.id,
-      row.bookId,
-      row.format,
-      row.localDay,
-      row.completedAt,
-      row.updatedAt,
-    ],
-  )
 }

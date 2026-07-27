@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.libraries = 'myreader_rust_components'
+  s.libraries = 'myreader_rust_components', 'sqlite3'
   s.public_header_files = 'generated/*FFI.h'
   s.source_files = '**/*.{h,m,mm,swift,hpp,cpp}'
 

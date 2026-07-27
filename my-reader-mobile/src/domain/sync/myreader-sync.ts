@@ -13,7 +13,6 @@ import {
   pullLibrarySidecarAutomergeChanges,
   readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./library-sidecar/automerge-store"
-import { projectLibrarySidecarAutomergeDocument } from "./library-sidecar/automerge-projection"
 import {
   invalidateFavoriteBooks,
   invalidateReadingProgress,
@@ -46,7 +45,6 @@ const librarySidecarProvider: MyReaderSyncProvider = {
       ctx.backend,
       identity,
       nowMs,
-      projectLibrarySidecarAutomergeDocument,
     )
     const pulled = automergePulled
     if (pulled > 0) {

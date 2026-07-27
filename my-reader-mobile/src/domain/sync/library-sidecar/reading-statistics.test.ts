@@ -2,12 +2,7 @@ jest.mock("./automerge-store", () => ({
   commitLibrarySidecarAutomergeMutation: jest.fn(),
 }))
 jest.mock("./automerge-document", () => ({
-  addLibrarySidecarReadingCompletion: jest.fn(),
-  addLibrarySidecarReadingSessionDuration: jest.fn(),
   librarySidecarReadingCompletionRecords: jest.fn(),
-}))
-jest.mock("./automerge-projection", () => ({
-  projectLibrarySidecarAutomergeDocument: jest.fn(),
 }))
 jest.mock("./identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
@@ -15,11 +10,7 @@ jest.mock("./identity", () => ({
 
 import type { Library } from "@my-reader/tools/types/library"
 
-import {
-  addLibrarySidecarReadingCompletion,
-  addLibrarySidecarReadingSessionDuration,
-  librarySidecarReadingCompletionRecords,
-} from "./automerge-document"
+import { librarySidecarReadingCompletionRecords } from "./automerge-document"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 import {
@@ -33,6 +24,7 @@ const identity = {
   libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
   replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
 }
+let selectedCommand: unknown
 
 describe("Automerge reading statistics", () => {
   beforeEach(() => {
@@ -40,14 +32,10 @@ describe("Automerge reading statistics", () => {
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
       .mocked(commitLibrarySidecarAutomergeMutation)
-      .mockImplementation(async (_library, _identity, _now, mutate) => {
-        mutate(document)
+      .mockImplementation(async (_library, _identity, _now, selectCommand) => {
+        selectedCommand = selectCommand(document)
         return document
       })
-    jest
-      .mocked(addLibrarySidecarReadingSessionDuration)
-      .mockReturnValue(document)
-    jest.mocked(addLibrarySidecarReadingCompletion).mockReturnValue(document)
     jest.mocked(librarySidecarReadingCompletionRecords).mockReturnValue([])
   })
 
@@ -62,14 +50,14 @@ describe("Automerge reading statistics", () => {
       updatedAt: 130,
     })
 
-    expect(addLibrarySidecarReadingSessionDuration).toHaveBeenCalledWith(
-      document,
-      expect.objectContaining({
+    expect(selectedCommand).toEqual({
+      type: "addReadingSessionDuration",
+      value: expect.objectContaining({
         format: "EPUB",
         originReplicaId: identity.replicaId,
         durationSeconds: 30,
       }),
-    )
+    })
   })
 
   it("should avoid another completion record when an earlier completion already exists", async () => {
@@ -95,6 +83,6 @@ describe("Automerge reading statistics", () => {
         updatedAt: 200,
       }),
     ).resolves.toBe(false)
-    expect(addLibrarySidecarReadingCompletion).not.toHaveBeenCalled()
+    expect(selectedCommand).toBeNull()
   })
 })

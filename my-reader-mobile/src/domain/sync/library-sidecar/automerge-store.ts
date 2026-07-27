@@ -1,53 +1,29 @@
 import type { Library } from "@my-reader/tools/types/library"
-import {
-  hasLibrarySidecarAutomergeReceipt,
-  insertLibrarySidecarAutomergeChange,
-  insertLibrarySidecarAutomergeOutbox,
-  insertLibrarySidecarAutomergeReceipt,
-  listPendingLibrarySidecarAutomergeOutbox,
-  markLibrarySidecarAutomergeOutboxPublished,
-  readLibrarySidecarAutomergeDiagnostics,
-  readLibrarySidecarAutomergeProjectionMeta,
-  readLibrarySidecarAutomergeState,
-  writeLibrarySidecarAutomergeProjectionMeta,
-  writeLibrarySidecarAutomergeState,
-} from "@/src/repos/library-sidecar-automerge"
-import {
-  type LibrarySidecarSyncTransaction,
-  withLibrarySidecarSyncTransaction,
-} from "@/src/repos/library-sidecar-sync"
 import type { RemoteBackend } from "@/src/services/remote/backend"
 import { uploadLibrarySidecarObject } from "../background-sidecar-upload"
 import type { SyncBackend } from "../resolve"
 import { announceLibrarySidecarWork } from "../sidecar-work"
 import { hashLibrarySidecarAutomergeBytes } from "./automerge-binary"
 import {
-  applyLibrarySidecarIncremental,
-  assertLibrarySidecarIdentity,
-  createLibrarySidecarDocument,
   type LibrarySidecarDocument,
-  librarySidecarChangesSince,
-  librarySidecarDocumentHeads,
-  librarySidecarMissingDependencies,
-  loadLibrarySidecarDocument,
-  saveLibrarySidecarDocument,
-  saveLibrarySidecarIncremental,
-  setLibrarySidecarIdentity,
+  type LibrarySidecarDocumentCommand,
 } from "./automerge-document"
 import type { LibrarySidecarReplicaIdentity } from "./replica-identity"
+import {
+  applySyncDatabaseRemoteObjects,
+  ensureSyncDatabaseDocument,
+  executeSyncDatabaseCommand,
+  hasSyncDatabaseReceipt,
+  listSyncDatabaseOutbox,
+  markSyncDatabaseOutboxPublished,
+  readSyncDatabaseDiagnostics,
+} from "./sync-database"
 
 const REMOTE_CHANGES_ROOT = ".myreader/automerge/changes"
-const PROJECTION_VERSION = 1
 const MAX_REMOTE_OBJECT_BYTES = 4 * 1024 * 1024
 const MAX_REMOTE_OBJECTS_PER_SYNC = 10_000
 const ACTOR_PATTERN = /^[0-9a-f]{32}$/
 const CHANGE_FILE_PATTERN = /^([0-9]{20})-([0-9a-f]{64})\.am$/
-
-type ProjectionWriter = (
-  tx: LibrarySidecarSyncTransaction,
-  document: LibrarySidecarDocument,
-  headsJson: string,
-) => Promise<void>
 
 type RemoteObject = {
   path: string
@@ -82,211 +58,40 @@ function actorId(replicaId: string): string {
   return replicaId.replaceAll("-", "")
 }
 
-function outboxPath(change: {
-  actorId: string
-  sequence: string
-  hash: string
-}): string {
-  const sequence = change.sequence.padStart(20, "0")
-  if (sequence.length !== 20) {
-    throw new Error("Automerge actor sequence exceeds the supported range")
-  }
-  return `${REMOTE_CHANGES_ROOT}/${change.actorId}/${sequence}-${change.hash}.am`
-}
-
-async function writeDocumentState(
-  tx: LibrarySidecarSyncTransaction,
-  document: LibrarySidecarDocument,
-  nowMs: number,
-): Promise<string> {
-  const headsJson = JSON.stringify(librarySidecarDocumentHeads(document))
-  await writeLibrarySidecarAutomergeState(tx, {
-    schemaVersion: document.schema,
-    snapshotBytes: saveLibrarySidecarDocument(document),
-    headsJson,
-    updatedAt: nowMs,
-  })
-  return headsJson
-}
-
-async function writeChanges(
-  tx: LibrarySidecarSyncTransaction,
-  changes: ReturnType<typeof librarySidecarChangesSince>,
-  origin: "local" | "remote",
-  nowMs: number,
-): Promise<void> {
-  for (const change of changes) {
-    await insertLibrarySidecarAutomergeChange(tx, {
-      changeHash: change.hash,
-      actorId: change.actorId,
-      actorSequence: change.sequence,
-      bytes: change.bytes,
-      origin,
-      createdAt: nowMs,
-    })
-  }
-}
-
-async function initializeDocument(
-  library: Library,
-  identity: LibrarySidecarReplicaIdentity,
-  nowMs: number,
-): Promise<LibrarySidecarDocument> {
-  const genesis = await createLibrarySidecarDocument(identity.replicaId)
-  const genesisHeads = librarySidecarDocumentHeads(genesis)
-  const initialized = setLibrarySidecarIdentity(
-    genesis,
-    identity.libraryUuid,
-    nowMs,
-  )
-  const changes = librarySidecarChangesSince(initialized, genesisHeads)
-  const incremental = saveLibrarySidecarIncremental(initialized, genesisHeads)
-  const lastChange = changes.at(-1)
-  if (!lastChange) {
-    throw new Error("Automerge library initialization produced no change")
-  }
-  const sha256 = await hashLibrarySidecarAutomergeBytes(incremental)
-  await withLibrarySidecarSyncTransaction(library, async (tx) => {
-    const existing = await readLibrarySidecarAutomergeState(tx)
-    if (existing) return
-    const headsJson = await writeDocumentState(tx, initialized, nowMs)
-    await writeChanges(tx, changes, "local", nowMs)
-    await insertLibrarySidecarAutomergeOutbox(tx, {
-      objectPath: outboxPath(lastChange),
-      bytes: incremental,
-      sha256,
-      changeHashesJson: JSON.stringify(changes.map((change) => change.hash)),
-      publishedAt: null,
-    })
-    await writeLibrarySidecarAutomergeProjectionMeta(tx, {
-      projectionVersion: PROJECTION_VERSION,
-      headsJson,
-      rebuiltAt: nowMs,
-    })
-  })
-  return initialized
-}
-
-async function loadCommittedDocument(
-  library: Library,
-  identity: LibrarySidecarReplicaIdentity,
-): Promise<LibrarySidecarDocument | null> {
-  const state = await withLibrarySidecarSyncTransaction(
-    library,
-    readLibrarySidecarAutomergeState,
-  )
-  if (!state) return null
-  const document = await loadLibrarySidecarDocument(
-    state.snapshotBytes,
-    identity.replicaId,
-  )
-  assertLibrarySidecarIdentity(document, identity.libraryUuid)
-  if (
-    JSON.stringify(librarySidecarDocumentHeads(document)) !== state.headsJson
-  ) {
-    throw new Error("Persisted Automerge heads do not match its snapshot")
-  }
-  return document
-}
-
 export async function ensureLibrarySidecarAutomergeState(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
 ): Promise<LibrarySidecarDocument> {
-  return withLibraryWriter(library.id, async () => {
-    const existing = await loadCommittedDocument(library, identity)
-    if (existing) return existing
-    await initializeDocument(library, identity, nowMs)
-    const committed = await loadCommittedDocument(library, identity)
-    if (!committed) {
-      throw new Error("Automerge state initialization did not commit")
-    }
-    return committed
-  })
+  return withLibraryWriter(library.id, () =>
+    ensureSyncDatabaseDocument(library, identity, nowMs),
+  )
 }
 
 export async function commitLibrarySidecarAutomergeMutation(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
-  mutate: (document: LibrarySidecarDocument) => LibrarySidecarDocument,
-  project?: ProjectionWriter,
+  selectCommand: (
+    document: LibrarySidecarDocument,
+  ) => LibrarySidecarDocumentCommand | null,
 ): Promise<LibrarySidecarDocument> {
-  await ensureLibrarySidecarAutomergeState(library, identity, nowMs)
   return withLibraryWriter(library.id, async () => {
-    const committed = await loadCommittedDocument(library, identity)
-    if (!committed) throw new Error("Automerge state is not initialized")
-    const beforeHeads = librarySidecarDocumentHeads(committed)
-    const next = mutate(committed)
-    assertLibrarySidecarIdentity(next, identity.libraryUuid)
-    const changes = librarySidecarChangesSince(next, beforeHeads)
-    if (changes.length === 0) return committed
-    const incremental = saveLibrarySidecarIncremental(next, beforeHeads)
-    const lastChange = changes.at(-1)
-    if (!lastChange) throw new Error("Automerge mutation produced no change")
-    const sha256 = await hashLibrarySidecarAutomergeBytes(incremental)
-    await withLibrarySidecarSyncTransaction(library, async (tx) => {
-      const headsJson = await writeDocumentState(tx, next, nowMs)
-      await writeChanges(tx, changes, "local", nowMs)
-      await insertLibrarySidecarAutomergeOutbox(tx, {
-        objectPath: outboxPath(lastChange),
-        bytes: incremental,
-        sha256,
-        changeHashesJson: JSON.stringify(changes.map((change) => change.hash)),
-        publishedAt: null,
-      })
-      await project?.(tx, next, headsJson)
-      await writeLibrarySidecarAutomergeProjectionMeta(tx, {
-        projectionVersion: PROJECTION_VERSION,
-        headsJson,
-        rebuiltAt: null,
-      })
-    })
+    const committed = await ensureSyncDatabaseDocument(library, identity, nowMs)
+    const command = selectCommand(committed)
+    if (!command) return committed
+    const next = await executeSyncDatabaseCommand(
+      library,
+      identity,
+      nowMs,
+      command,
+    )
+    if (next.heads.join(",") === committed.heads.join(",")) return committed
     announceLibrarySidecarWork({
       libraryId: library.id,
       reason: "local_change",
     })
     return next
-  })
-}
-
-async function rebuildProjectionIfNeeded(
-  library: Library,
-  identity: LibrarySidecarReplicaIdentity,
-  nowMs: number,
-  project?: ProjectionWriter,
-): Promise<void> {
-  if (!project) return
-  await withLibraryWriter(library.id, async () => {
-    const state = await withLibrarySidecarSyncTransaction(
-      library,
-      readLibrarySidecarAutomergeState,
-    )
-    if (!state) throw new Error("Automerge state is not initialized")
-    const meta = await withLibrarySidecarSyncTransaction(
-      library,
-      readLibrarySidecarAutomergeProjectionMeta,
-    )
-    if (
-      meta?.projectionVersion === PROJECTION_VERSION &&
-      meta.headsJson === state.headsJson
-    ) {
-      return
-    }
-    const document = await loadLibrarySidecarDocument(
-      state.snapshotBytes,
-      identity.replicaId,
-    )
-    assertLibrarySidecarIdentity(document, identity.libraryUuid)
-    await withLibrarySidecarSyncTransaction(library, async (tx) => {
-      await project(tx, document, state.headsJson)
-      await writeLibrarySidecarAutomergeProjectionMeta(tx, {
-        projectionVersion: PROJECTION_VERSION,
-        headsJson: state.headsJson,
-        rebuiltAt: nowMs,
-      })
-    })
   })
 }
 
@@ -333,10 +138,7 @@ export async function publishLibrarySidecarAutomergeChanges(
   backend: SyncBackend,
   nowMs: number,
 ): Promise<number> {
-  const pending = await withLibrarySidecarSyncTransaction(
-    library,
-    listPendingLibrarySidecarAutomergeOutbox,
-  )
+  const pending = await listSyncDatabaseOutbox(library)
   let pushed = 0
   for (const row of pending) {
     if (await remoteObjectExists(backend, row.objectPath)) {
@@ -355,9 +157,7 @@ export async function publishLibrarySidecarAutomergeChanges(
         await backend.writeBytes(row.objectPath, row.bytes)
       }
     }
-    await withLibrarySidecarSyncTransaction(library, (tx) =>
-      markLibrarySidecarAutomergeOutboxPublished(tx, row.objectPath, nowMs),
-    )
+    await markSyncDatabaseOutboxPublished(library, row.objectPath, nowMs)
     const changeHashes = JSON.parse(row.changeHashesJson) as unknown
     if (
       !Array.isArray(changeHashes) ||
@@ -373,10 +173,7 @@ export async function publishLibrarySidecarAutomergeChanges(
 export async function hasPendingLibrarySidecarAutomergeChanges(
   library: Library,
 ): Promise<boolean> {
-  const pending = await withLibrarySidecarSyncTransaction(
-    library,
-    listPendingLibrarySidecarAutomergeOutbox,
-  )
+  const pending = await listSyncDatabaseOutbox(library)
   return pending.length > 0
 }
 
@@ -405,9 +202,7 @@ async function listRemoteObjects(
       const match = CHANGE_FILE_PATTERN.exec(name)
       if (!match) continue
       const path = `${directory}${name}`
-      const received = await withLibrarySidecarSyncTransaction(library, (tx) =>
-        hasLibrarySidecarAutomergeReceipt(tx, path),
-      )
+      const received = await hasSyncDatabaseReceipt(library, path)
       if (received) continue
       const bytes = await backend.readBytes(path)
       if (bytes.byteLength > MAX_REMOTE_OBJECT_BYTES) {
@@ -436,48 +231,23 @@ export async function pullLibrarySidecarAutomergeChanges(
   backend: SyncBackend,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
-  project?: ProjectionWriter,
 ): Promise<number> {
   await ensureLibrarySidecarAutomergeState(library, identity, nowMs)
-  await rebuildProjectionIfNeeded(library, identity, nowMs, project)
   const remoteObjects = await listRemoteObjects(library, backend, identity)
   if (remoteObjects.length === 0) return 0
-  return withLibraryWriter(library.id, async () => {
-    const committed = await loadCommittedDocument(library, identity)
-    if (!committed) throw new Error("Automerge state is not initialized")
-    const beforeHeads = librarySidecarDocumentHeads(committed)
-    let next = committed
-    for (const object of remoteObjects) {
-      next = applyLibrarySidecarIncremental(next, object.bytes)
-    }
-    assertLibrarySidecarIdentity(next, identity.libraryUuid)
-    const accepted = remoteObjects.filter(
-      (object) =>
-        librarySidecarMissingDependencies(next, [object.head]).length === 0,
-    )
-    if (accepted.length !== remoteObjects.length) {
-      throw new Error("Remote Automerge objects have missing dependencies")
-    }
-    const changes = librarySidecarChangesSince(next, beforeHeads)
-    await withLibrarySidecarSyncTransaction(library, async (tx) => {
-      const headsJson = await writeDocumentState(tx, next, nowMs)
-      await writeChanges(tx, changes, "remote", nowMs)
-      for (const object of accepted) {
-        await insertLibrarySidecarAutomergeReceipt(tx, {
-          objectPath: object.path,
-          sha256: object.sha256,
-          appliedAt: nowMs,
-        })
-      }
-      await project?.(tx, next, headsJson)
-      await writeLibrarySidecarAutomergeProjectionMeta(tx, {
-        projectionVersion: PROJECTION_VERSION,
-        headsJson,
-        rebuiltAt: null,
-      })
-    })
-    return accepted.length
-  })
+  return withLibraryWriter(library.id, () =>
+    applySyncDatabaseRemoteObjects(
+      library,
+      identity,
+      nowMs,
+      remoteObjects.map((object) => ({
+        objectPath: object.path,
+        head: object.head,
+        bytes: object.bytes,
+        sha256: object.sha256,
+      })),
+    ),
+  )
 }
 
 export type LibrarySidecarAutomergeDiagnosticSnapshot = {
@@ -492,22 +262,9 @@ export type LibrarySidecarAutomergeDiagnosticSnapshot = {
 export async function readLibrarySidecarAutomergeDiagnosticSnapshot(
   library: Library,
 ): Promise<LibrarySidecarAutomergeDiagnosticSnapshot> {
-  const diagnostics = await withLibrarySidecarSyncTransaction(
-    library,
-    readLibrarySidecarAutomergeDiagnostics,
-  )
-  const parsedHeads = diagnostics.headsJson
-    ? (JSON.parse(diagnostics.headsJson) as unknown)
-    : []
-  if (
-    !Array.isArray(parsedHeads) ||
-    parsedHeads.some((head) => typeof head !== "string")
-  ) {
-    throw new Error("Persisted Automerge heads are invalid")
-  }
-  const { headsJson: _headsJson, ...counts } = diagnostics
+  const diagnostics = await readSyncDatabaseDiagnostics(library)
   return {
-    ...counts,
-    heads: parsedHeads,
+    ...diagnostics,
+    heads: diagnostics.heads,
   }
 }

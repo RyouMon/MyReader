@@ -1,65 +1,24 @@
-jest.mock("@/src/repos/library-sidecar-automerge", () => ({
-  hasLibrarySidecarAutomergeReceipt: jest.fn(),
-  insertLibrarySidecarAutomergeChange: jest.fn(),
-  insertLibrarySidecarAutomergeOutbox: jest.fn(),
-  insertLibrarySidecarAutomergeReceipt: jest.fn(),
-  listPendingLibrarySidecarAutomergeOutbox: jest.fn(),
-  markLibrarySidecarAutomergeOutboxPublished: jest.fn(),
-  readLibrarySidecarAutomergeDiagnostics: jest.fn(),
-  readLibrarySidecarAutomergeState: jest.fn(),
-  writeLibrarySidecarAutomergeProjectionMeta: jest.fn(),
-  writeLibrarySidecarAutomergeState: jest.fn(),
-}))
-
-jest.mock("@/src/repos/library-sidecar-sync", () => ({
-  withLibrarySidecarSyncTransaction: jest.fn(),
+jest.mock("./sync-database", () => ({
+  applySyncDatabaseRemoteObjects: jest.fn(),
+  ensureSyncDatabaseDocument: jest.fn(),
+  executeSyncDatabaseCommand: jest.fn(),
+  hasSyncDatabaseReceipt: jest.fn(),
+  listSyncDatabaseOutbox: jest.fn(),
+  markSyncDatabaseOutboxPublished: jest.fn(),
+  readSyncDatabaseDiagnostics: jest.fn(),
 }))
 
 jest.mock("./automerge-binary", () => ({
   hashLibrarySidecarAutomergeBytes: jest.fn(),
 }))
 
-jest.mock("./automerge-document", () => ({
-  applyLibrarySidecarIncremental: jest.fn(),
-  assertLibrarySidecarIdentity: jest.fn(),
-  createLibrarySidecarDocument: jest.fn(),
-  librarySidecarChangesSince: jest.fn(),
-  librarySidecarDocumentHeads: jest.fn(),
-  librarySidecarMissingDependencies: jest.fn(),
-  loadLibrarySidecarDocument: jest.fn(),
-  saveLibrarySidecarDocument: jest.fn(),
-  saveLibrarySidecarIncremental: jest.fn(),
-  setLibrarySidecarIdentity: jest.fn(),
-}))
-
 jest.mock("../background-sidecar-upload", () => ({
   uploadLibrarySidecarObject: jest.fn(),
 }))
 
-import {
-  hasLibrarySidecarAutomergeReceipt,
-  insertLibrarySidecarAutomergeChange,
-  insertLibrarySidecarAutomergeOutbox,
-  listPendingLibrarySidecarAutomergeOutbox,
-  markLibrarySidecarAutomergeOutboxPublished,
-  readLibrarySidecarAutomergeDiagnostics,
-  readLibrarySidecarAutomergeState,
-  writeLibrarySidecarAutomergeProjectionMeta,
-  writeLibrarySidecarAutomergeState,
-} from "@/src/repos/library-sidecar-automerge"
-import { withLibrarySidecarSyncTransaction } from "@/src/repos/library-sidecar-sync"
 import { uploadLibrarySidecarObject } from "../background-sidecar-upload"
 import { subscribeLibrarySidecarWork } from "../sidecar-work"
 import { hashLibrarySidecarAutomergeBytes } from "./automerge-binary"
-import {
-  createLibrarySidecarDocument,
-  librarySidecarChangesSince,
-  librarySidecarDocumentHeads,
-  loadLibrarySidecarDocument,
-  saveLibrarySidecarDocument,
-  saveLibrarySidecarIncremental,
-  setLibrarySidecarIdentity,
-} from "./automerge-document"
 import {
   commitLibrarySidecarAutomergeMutation,
   ensureLibrarySidecarAutomergeState,
@@ -68,6 +27,15 @@ import {
   pullLibrarySidecarAutomergeChanges,
   readLibrarySidecarAutomergeDiagnosticSnapshot,
 } from "./automerge-store"
+import {
+  applySyncDatabaseRemoteObjects,
+  ensureSyncDatabaseDocument,
+  executeSyncDatabaseCommand,
+  hasSyncDatabaseReceipt,
+  listSyncDatabaseOutbox,
+  markSyncDatabaseOutboxPublished,
+  readSyncDatabaseDiagnostics,
+} from "./sync-database"
 
 const library = {
   id: "library-1",
@@ -83,92 +51,53 @@ const identity = {
   replicaId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 }
 
+const document = {
+  schema: 1,
+  libraryUuid: identity.libraryUuid,
+  replicaId: identity.replicaId,
+  snapshotBytes: new Uint8Array([1]),
+  heads: ["head-1"],
+  projection: {
+    readingPositions: [],
+    readingPositionCandidates: [],
+    favorites: [],
+    bookmarks: [],
+    annotations: [],
+    readingSessions: [],
+    readingCompletionRecords: [],
+    readingCompletions: [],
+  },
+}
+
 describe("library sidecar Automerge store", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest
-      .mocked(withLibrarySidecarSyncTransaction)
-      .mockImplementation(async (_library, operation) => operation({} as never))
-    jest.mocked(createLibrarySidecarDocument).mockResolvedValue({
-      state: "genesis",
-    } as never)
-    jest.mocked(setLibrarySidecarIdentity).mockReturnValue({
-      state: "initialized",
-      schema: 1,
-    } as never)
-    jest
-      .mocked(librarySidecarDocumentHeads)
-      .mockImplementation((document) =>
-        (document as unknown as { state: string }).state === "genesis"
-          ? ["genesis-head"]
-          : ["identity-head"],
-      )
-    jest.mocked(librarySidecarChangesSince).mockReturnValue([
-      {
-        actorId: "aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa",
-        sequence: "1",
-        hash: "a".repeat(64),
-        bytes: new Uint8Array([1]),
-      },
-    ])
-    jest
-      .mocked(saveLibrarySidecarIncremental)
-      .mockReturnValue(new Uint8Array([2]))
-    jest.mocked(saveLibrarySidecarDocument).mockReturnValue(new Uint8Array([3]))
+    jest.mocked(ensureSyncDatabaseDocument).mockResolvedValue(document)
+    jest.mocked(executeSyncDatabaseCommand).mockResolvedValue({
+      ...document,
+      heads: ["head-2"],
+    })
     jest
       .mocked(hashLibrarySidecarAutomergeBytes)
       .mockResolvedValue("b".repeat(64))
-    jest.mocked(readLibrarySidecarAutomergeDiagnostics).mockResolvedValue({
+    jest.mocked(readSyncDatabaseDiagnostics).mockResolvedValue({
       schemaVersion: 1,
-      headsJson: '["identity-head"]',
+      heads: ["head-1"],
       changes: 1,
       pendingOutbox: 0,
       receipts: 2,
       projectionVersion: 1,
     })
-    jest.mocked(loadLibrarySidecarDocument).mockResolvedValue({
-      state: "loaded",
-      schema: 1,
-    } as never)
   })
 
-  it("should persist state change outbox and projection when initialization commits", async () => {
-    jest
-      .mocked(readLibrarySidecarAutomergeState)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        schemaVersion: 1,
-        snapshotBytes: new Uint8Array([3]),
-        headsJson: '["identity-head"]',
-        updatedAt: 1,
-      })
-
-    await ensureLibrarySidecarAutomergeState(library, identity, 1)
-
-    expect(writeLibrarySidecarAutomergeState).toHaveBeenCalled()
-    expect(insertLibrarySidecarAutomergeChange).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        changeHash: "a".repeat(64),
-        actorSequence: "1",
-        origin: "local",
-      }),
-    )
-    expect(insertLibrarySidecarAutomergeOutbox).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        objectPath: `.myreader/automerge/changes/aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa/00000000000000000001-${"a".repeat(64)}.am`,
-        bytes: new Uint8Array([2]),
-      }),
-    )
-    expect(writeLibrarySidecarAutomergeProjectionMeta).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        projectionVersion: 1,
-        headsJson: '["identity-head"]',
-        rebuiltAt: 1,
-      },
+  it("should initialize state through the Rust database store when state is requested", async () => {
+    await expect(
+      ensureLibrarySidecarAutomergeState(library, identity, 1),
+    ).resolves.toBe(document)
+    expect(ensureSyncDatabaseDocument).toHaveBeenCalledWith(
+      library,
+      identity,
+      1,
     )
   })
 
@@ -177,7 +106,7 @@ describe("library sidecar Automerge store", () => {
       readLibrarySidecarAutomergeDiagnosticSnapshot(library),
     ).resolves.toEqual({
       schemaVersion: 1,
-      heads: ["identity-head"],
+      heads: ["head-1"],
       changes: 1,
       pendingOutbox: 0,
       receipts: 2,
@@ -186,13 +115,12 @@ describe("library sidecar Automerge store", () => {
   })
 
   it("should report pending work when the durable outbox is not empty", async () => {
-    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+    jest.mocked(listSyncDatabaseOutbox).mockResolvedValue([
       {
         objectPath: ".myreader/automerge/changes/actor/change.am",
         bytes: new Uint8Array([1]),
         sha256: "a".repeat(64),
         changeHashesJson: `["${"b".repeat(64)}"]`,
-        publishedAt: null,
       },
     ])
 
@@ -201,22 +129,13 @@ describe("library sidecar Automerge store", () => {
     ).resolves.toBe(true)
   })
 
-  it("should announce work after a local mutation commits", async () => {
-    jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
-      schemaVersion: 1,
-      snapshotBytes: new Uint8Array([3]),
-      headsJson: '["identity-head"]',
-      updatedAt: 1,
-    })
+  it("should announce work after the Rust transaction commits a local mutation", async () => {
     const listener = jest.fn()
     const unsubscribe = subscribeLibrarySidecarWork(listener)
 
-    await commitLibrarySidecarAutomergeMutation(
-      library,
-      identity,
-      2,
-      () => ({ state: "mutated", schema: 1 }) as never,
-    )
+    await commitLibrarySidecarAutomergeMutation(library, identity, 2, () => ({
+      type: "inspect",
+    }))
 
     expect(listener).toHaveBeenCalledWith({
       libraryId: "library-1",
@@ -225,26 +144,17 @@ describe("library sidecar Automerge store", () => {
     unsubscribe()
   })
 
-  it("should not announce work when a local mutation rolls back", async () => {
-    jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
-      schemaVersion: 1,
-      snapshotBytes: new Uint8Array([3]),
-      headsJson: '["identity-head"]',
-      updatedAt: 1,
-    })
+  it("should not announce work when the Rust transaction fails", async () => {
     jest
-      .mocked(insertLibrarySidecarAutomergeOutbox)
+      .mocked(executeSyncDatabaseCommand)
       .mockRejectedValueOnce(new Error("transaction failed"))
     const listener = jest.fn()
     const unsubscribe = subscribeLibrarySidecarWork(listener)
 
     await expect(
-      commitLibrarySidecarAutomergeMutation(
-        library,
-        identity,
-        2,
-        () => ({ state: "mutated", schema: 1 }) as never,
-      ),
+      commitLibrarySidecarAutomergeMutation(library, identity, 2, () => ({
+        type: "inspect",
+      })),
     ).rejects.toThrow("transaction failed")
 
     expect(listener).not.toHaveBeenCalled()
@@ -253,14 +163,13 @@ describe("library sidecar Automerge store", () => {
 
   it("should not publish different bytes when an immutable object already exists", async () => {
     const bytes = new Uint8Array([4])
-    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+    jest.mocked(listSyncDatabaseOutbox).mockResolvedValue([
       {
         objectPath:
           ".myreader/automerge/changes/actor/00000000000000000001-head.am",
         bytes,
         sha256: "b".repeat(64),
         changeHashesJson: '["head"]',
-        publishedAt: null,
       },
     ])
     const backend = {
@@ -274,7 +183,7 @@ describe("library sidecar Automerge store", () => {
     expect(
       (backend as { writeBytes: jest.Mock }).writeBytes,
     ).not.toHaveBeenCalled()
-    expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalled()
+    expect(markSyncDatabaseOutboxPublished).toHaveBeenCalled()
   })
 
   it("should reuse remote bytes when publication confirmation fails", async () => {
@@ -282,17 +191,16 @@ describe("library sidecar Automerge store", () => {
     const objectPath =
       ".myreader/automerge/changes/aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa/" +
       `00000000000000000001-${"a".repeat(64)}.am`
-    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+    jest.mocked(listSyncDatabaseOutbox).mockResolvedValue([
       {
         objectPath,
         bytes,
         sha256: "b".repeat(64),
         changeHashesJson: `["${"a".repeat(64)}"]`,
-        publishedAt: null,
       },
     ])
     jest
-      .mocked(markLibrarySidecarAutomergeOutboxPublished)
+      .mocked(markSyncDatabaseOutboxPublished)
       .mockRejectedValueOnce(new Error("publish confirmation failed"))
       .mockResolvedValueOnce()
     const backend = {
@@ -319,7 +227,7 @@ describe("library sidecar Automerge store", () => {
     expect(
       (backend as { readBytes: jest.Mock }).readBytes,
     ).toHaveBeenCalledWith(objectPath)
-    expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalledTimes(2)
+    expect(markSyncDatabaseOutboxPublished).toHaveBeenCalledTimes(2)
   })
 
   it("should use native background upload when a remote object is missing", async () => {
@@ -327,13 +235,12 @@ describe("library sidecar Automerge store", () => {
     const objectPath =
       ".myreader/automerge/changes/aaaaaaaaaaaa4aaa8aaaaaaaaaaaaaaa/" +
       `00000000000000000001-${"a".repeat(64)}.am`
-    jest.mocked(listPendingLibrarySidecarAutomergeOutbox).mockResolvedValue([
+    jest.mocked(listSyncDatabaseOutbox).mockResolvedValue([
       {
         objectPath,
         bytes,
         sha256: "b".repeat(64),
         changeHashesJson: `["${"a".repeat(64)}"]`,
-        publishedAt: null,
       },
     ])
     const backend = {
@@ -353,17 +260,10 @@ describe("library sidecar Automerge store", () => {
     expect(
       (backend as { writeBytes: jest.Mock }).writeBytes,
     ).not.toHaveBeenCalled()
-    expect(markLibrarySidecarAutomergeOutboxPublished).toHaveBeenCalled()
   })
 
   it("should reject a remote object when its bytes exceed the input limit", async () => {
-    jest.mocked(readLibrarySidecarAutomergeState).mockResolvedValue({
-      schemaVersion: 1,
-      snapshotBytes: new Uint8Array([3]),
-      headsJson: '["identity-head"]',
-      updatedAt: 1,
-    })
-    jest.mocked(hasLibrarySidecarAutomergeReceipt).mockResolvedValue(false)
+    jest.mocked(hasSyncDatabaseReceipt).mockResolvedValue(false)
     const actorId = "bbbbbbbbbbbb4bbb8bbbbbbbbbbbbbbb"
     const fileName = `00000000000000000001-${"c".repeat(64)}.am`
     const backend = {
@@ -380,5 +280,6 @@ describe("library sidecar Automerge store", () => {
     await expect(
       pullLibrarySidecarAutomergeChanges(library, backend, identity, 2),
     ).rejects.toThrow("Remote Automerge object exceeds 4194304 bytes")
+    expect(applySyncDatabaseRemoteObjects).not.toHaveBeenCalled()
   })
 })

@@ -28,10 +28,6 @@ jest.mock("./library-sidecar/automerge-store", () => ({
   readLibrarySidecarAutomergeDiagnosticSnapshot: jest.fn(),
 }))
 
-jest.mock("./library-sidecar/automerge-projection", () => ({
-  projectLibrarySidecarAutomergeDocument: jest.fn(),
-}))
-
 jest.mock("@/src/services/query/invalidate-table", () => ({
   invalidateFavoriteBooks: jest.fn(),
   invalidateReadingProgress: jest.fn(),

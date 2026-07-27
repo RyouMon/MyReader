@@ -1,7 +1,3 @@
-jest.mock("@/src/repos/library-sidecar-sync", () => ({
-  writeLibrarySidecarReadingPosition: jest.fn(),
-}))
-
 jest.mock("./automerge-store", () => ({
   commitLibrarySidecarAutomergeMutation: jest.fn(),
   ensureLibrarySidecarAutomergeState: jest.fn(),
@@ -9,9 +5,6 @@ jest.mock("./automerge-store", () => ({
 
 jest.mock("./automerge-document", () => ({
   librarySidecarReadingPositionCandidates: jest.fn(),
-  librarySidecarReadingPositionProjections: jest.fn(),
-  resolveLibrarySidecarReadingPosition: jest.fn(),
-  setLibrarySidecarReadingPosition: jest.fn(),
 }))
 
 jest.mock("./identity", () => ({
@@ -20,20 +13,14 @@ jest.mock("./identity", () => ({
 
 import type { Library } from "@my-reader/tools/types/library"
 
-import { writeLibrarySidecarReadingPosition } from "@/src/repos/library-sidecar-sync"
 import {
   commitLibrarySidecarAutomergeMutation,
   ensureLibrarySidecarAutomergeState,
 } from "./automerge-store"
-import {
-  librarySidecarReadingPositionCandidates,
-  librarySidecarReadingPositionProjections,
-  setLibrarySidecarReadingPosition,
-} from "./automerge-document"
+import { librarySidecarReadingPositionCandidates } from "./automerge-document"
 import { ensureLibrarySidecarIdentity } from "./identity"
 import {
   getReadingPositionCandidates,
-  projectLibrarySidecarReadingPositions,
   writeLocalReadingPosition,
 } from "./reading-position"
 
@@ -51,7 +38,7 @@ const identity = {
   replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
 }
 const document = {} as never
-const tx = { execute: jest.fn() } as never
+let selectedCommand: unknown
 
 describe("Automerge reading position", () => {
   beforeEach(() => {
@@ -59,15 +46,13 @@ describe("Automerge reading position", () => {
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
       .mocked(commitLibrarySidecarAutomergeMutation)
-      .mockImplementation(async (_library, _identity, _now, mutate) => {
-        mutate(document)
+      .mockImplementation(async (_library, _identity, _now, selectCommand) => {
+        selectedCommand = selectCommand(document)
         return document
       })
   })
 
-  it("should write Automerge and its projection atomically when progress changes", async () => {
-    jest.mocked(setLibrarySidecarReadingPosition).mockReturnValue(document)
-
+  it("should submit a reading position command when progress changes", async () => {
     await writeLocalReadingPosition(
       library,
       {
@@ -83,10 +68,10 @@ describe("Automerge reading position", () => {
       900,
     )
 
-    expect(setLibrarySidecarReadingPosition).toHaveBeenCalledWith(
-      document,
-      42,
-      {
+    expect(selectedCommand).toEqual({
+      type: "setReadingPosition",
+      bookId: 42,
+      value: {
         format: "EPUB",
         locatorJson: JSON.stringify({
           href: "chapter-1.xhtml",
@@ -97,13 +82,12 @@ describe("Automerge reading position", () => {
         recordedAt: 900,
         replicaId: identity.replicaId,
       },
-    )
+    })
     expect(commitLibrarySidecarAutomergeMutation).toHaveBeenCalledWith(
       library,
       identity,
       900,
       expect.any(Function),
-      projectLibrarySidecarReadingPositions,
     )
   })
 
@@ -128,32 +112,5 @@ describe("Automerge reading position", () => {
     await expect(
       getReadingPositionCandidates(library, 42, "pdf"),
     ).resolves.toEqual(candidates)
-  })
-
-  it("should persist conflict count when Automerge state is projected", async () => {
-    jest.mocked(librarySidecarReadingPositionProjections).mockReturnValue([
-      {
-        bookId: 42,
-        value: {
-          format: "PDF",
-          locatorJson: '{"href":"page=7","type":"application/pdf"}',
-          displayProgressionPpm: 700_000,
-          recordedAt: 10,
-          replicaId: identity.replicaId,
-        },
-        conflictCount: 2,
-      },
-    ])
-
-    await projectLibrarySidecarReadingPositions(tx, document)
-
-    expect(writeLibrarySidecarReadingPosition).toHaveBeenCalledWith(tx, {
-      bookId: 42,
-      format: "PDF",
-      locatorJson: '{"href":"page=7","type":"application/pdf"}',
-      displayProgression: 0.7,
-      updatedAt: 10,
-      syncConflictCount: 2,
-    })
   })
 })

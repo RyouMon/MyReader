@@ -18,6 +18,7 @@ const SIDECAR_RELATIVE_PATH = `${LIBRARY_MYREADER_DIR}/${LIBRARY_DB_FILE_NAME}`
 export type LibraryDbHandle = {
   raw: DB
   db: ReturnType<typeof drizzle<typeof schema>>
+  path: string
 }
 
 const dbCache = new Map<string, LibraryDbHandle>()
@@ -78,7 +79,7 @@ export async function getLibraryDatabase(
 
       await migrate(db, migrations)
 
-      const handle = { raw, db }
+      const handle = { raw, db, path: nativePath }
       dbCache.set(cacheKey, handle)
       return handle
     } catch (error) {

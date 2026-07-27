@@ -7,7 +7,6 @@ jest.mock("./automerge-store", () => ({
 }))
 jest.mock("./automerge-document", () => ({
   librarySidecarBookmarkProjections: jest.fn(),
-  setLibrarySidecarBookmark: jest.fn(),
 }))
 jest.mock("./identity", () => ({
   ensureLibrarySidecarIdentity: jest.fn(),
@@ -22,10 +21,7 @@ import {
   readLibrarySidecarBookmark,
   withLibrarySidecarSyncTransaction,
 } from "@/src/repos/library-sidecar-sync"
-import {
-  librarySidecarBookmarkProjections,
-  setLibrarySidecarBookmark,
-} from "./automerge-document"
+import { librarySidecarBookmarkProjections } from "./automerge-document"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { addLocalBookmark, removeLocalBookmark } from "./bookmark"
 import { ensureLibrarySidecarIdentity } from "./identity"
@@ -37,6 +33,7 @@ const identity = {
   libraryUuid: "018f2f8d-980b-40ef-b72e-c6e86cb7cc28",
   replicaId: "018f2f8d-980b-40ef-b72e-c6e86cb7cc29",
 }
+let selectedCommand: unknown
 
 describe("Automerge bookmark", () => {
   beforeEach(() => {
@@ -44,18 +41,17 @@ describe("Automerge bookmark", () => {
     jest.mocked(ensureLibrarySidecarIdentity).mockResolvedValue(identity)
     jest
       .mocked(commitLibrarySidecarAutomergeMutation)
-      .mockImplementation(async (_library, _identity, _now, mutate) => {
-        mutate(document)
+      .mockImplementation(async (_library, _identity, _now, selectCommand) => {
+        selectedCommand = selectCommand(document)
         return document
       })
     jest
       .mocked(withLibrarySidecarSyncTransaction)
       .mockImplementation(async (_library, operation) => operation(tx))
-    jest.mocked(setLibrarySidecarBookmark).mockReturnValue(document)
     jest.mocked(librarySidecarBookmarkProjections).mockReturnValue([])
   })
 
-  it("should commit bookmark and projection together when a bookmark is added", async () => {
+  it("should submit a bookmark command when a bookmark is added", async () => {
     const locator = {
       href: "chapter.xhtml",
       type: "application/xhtml+xml",
@@ -73,16 +69,19 @@ describe("Automerge bookmark", () => {
 
     await addLocalBookmark(library, 42, "epub", "chapter.xhtml", locator, 900)
 
-    expect(setLibrarySidecarBookmark).toHaveBeenCalledWith(document, {
-      id: "018f2f8d980b40efb72ec6e86cb70001",
-      bookId: 42,
-      format: "EPUB",
-      locatorKey: "chapter.xhtml",
-      locatorJson: JSON.stringify(locator),
-      createdAt: 900,
-      deletedAt: null,
-      recordedAt: 900,
-      replicaId: identity.replicaId,
+    expect(selectedCommand).toEqual({
+      type: "setBookmark",
+      value: {
+        id: "018f2f8d980b40efb72ec6e86cb70001",
+        bookId: 42,
+        format: "EPUB",
+        locatorKey: "chapter.xhtml",
+        locatorJson: JSON.stringify(locator),
+        createdAt: 900,
+        deletedAt: null,
+        recordedAt: 900,
+        replicaId: identity.replicaId,
+      },
     })
   })
 
@@ -103,13 +102,13 @@ describe("Automerge bookmark", () => {
 
     await removeLocalBookmark(library, 42, "EPUB", "chapter.xhtml", 900)
 
-    expect(setLibrarySidecarBookmark).toHaveBeenCalledWith(
-      document,
-      expect.objectContaining({
+    expect(selectedCommand).toEqual({
+      type: "setBookmark",
+      value: expect.objectContaining({
         id: "bookmark-id",
         deletedAt: 900,
         recordedAt: 900,
       }),
-    )
+    })
   })
 })

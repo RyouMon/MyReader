@@ -7,11 +7,7 @@ import {
   type LibrarySidecarBookmarkRow,
 } from "@/src/repos/library-sidecar-sync"
 import { uuid } from "@/src/utils/common"
-import {
-  librarySidecarBookmarkProjections,
-  setLibrarySidecarBookmark,
-} from "./automerge-document"
-import { projectLibrarySidecarAutomergeDocument } from "./automerge-projection"
+import { librarySidecarBookmarkProjections } from "./automerge-document"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
@@ -58,25 +54,27 @@ async function writeLocalBookmark(
       )
       const currentIsPresent = current?.deletedAt === null
       if ((present && currentIsPresent) || (!present && !currentIsPresent)) {
-        return document
+        return null
       }
       const locatorJson =
         locator === null ? current?.locatorJson : JSON.stringify(locator)
       if (!locatorJson) throw new Error("Bookmark does not exist")
       changed = true
-      return setLibrarySidecarBookmark(document, {
-        id: current?.id ?? uuid(),
-        bookId,
-        format: normalizedFormat,
-        locatorKey,
-        locatorJson,
-        createdAt: current?.createdAt ?? nowMs,
-        deletedAt: present ? null : nowMs,
-        recordedAt: nowMs,
-        replicaId: identity.replicaId,
-      })
+      return {
+        type: "setBookmark",
+        value: {
+          id: current?.id ?? uuid(),
+          bookId,
+          format: normalizedFormat,
+          locatorKey,
+          locatorJson,
+          createdAt: current?.createdAt ?? nowMs,
+          deletedAt: present ? null : nowMs,
+          recordedAt: nowMs,
+          replicaId: identity.replicaId,
+        },
+      }
     },
-    projectLibrarySidecarAutomergeDocument,
   )
   const row = await withLibrarySidecarSyncTransaction(library, (tx) =>
     readLibrarySidecarBookmark(tx, bookId, normalizedFormat, locatorKey),

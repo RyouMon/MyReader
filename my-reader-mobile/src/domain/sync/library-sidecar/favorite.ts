@@ -1,11 +1,7 @@
 import type { Library } from "@my-reader/tools/types/library"
 
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
-import {
-  librarySidecarFavoriteProjections,
-  setLibrarySidecarFavorite,
-} from "./automerge-document"
-import { projectLibrarySidecarAutomergeDocument } from "./automerge-projection"
+import { librarySidecarFavoriteProjections } from "./automerge-document"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
 export async function writeLocalFavorite(
@@ -31,17 +27,20 @@ export async function writeLocalFavorite(
         current?.value.isFavorite === isFavorite ||
         (!current && !isFavorite)
       ) {
-        return document
+        return null
       }
       changed = true
-      return setLibrarySidecarFavorite(document, bookId, {
-        isFavorite,
-        addedAt: isFavorite ? nowMs : (current?.value.addedAt ?? null),
-        recordedAt: nowMs,
-        replicaId: identity.replicaId,
-      })
+      return {
+        type: "setFavorite",
+        bookId,
+        value: {
+          isFavorite,
+          addedAt: isFavorite ? nowMs : (current?.value.addedAt ?? null),
+          recordedAt: nowMs,
+          replicaId: identity.replicaId,
+        },
+      }
     },
-    projectLibrarySidecarAutomergeDocument,
   )
   if (changed) {
     console.info("[reading-sync] favorite:local-write", {

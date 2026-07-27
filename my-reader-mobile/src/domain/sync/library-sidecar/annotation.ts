@@ -6,13 +6,9 @@ import {
   type LibrarySidecarAnnotationRow,
 } from "@/src/repos/library-sidecar-sync"
 import {
-  createLibrarySidecarAnnotation,
-  deleteLibrarySidecarAnnotation,
   librarySidecarAnnotationProjections,
-  updateLibrarySidecarAnnotation,
   type LibrarySidecarAnnotationValue,
 } from "./automerge-document"
-import { projectLibrarySidecarAutomergeDocument } from "./automerge-projection"
 import { commitLibrarySidecarAutomergeMutation } from "./automerge-store"
 import { ensureLibrarySidecarIdentity } from "./identity"
 
@@ -34,20 +30,16 @@ export async function createLocalAnnotation(
   nowMs = Date.now(),
 ): Promise<LibrarySidecarAnnotationRow> {
   const identity = await ensureLibrarySidecarIdentity(library)
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) =>
-      createLibrarySidecarAnnotation(document, {
-        ...value,
-        createdAt: nowMs,
-        updatedAt: nowMs,
-        deleted: false,
-        deletedAt: null,
-      }),
-    projectLibrarySidecarAutomergeDocument,
-  )
+  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+    type: "createAnnotation",
+    value: {
+      ...value,
+      createdAt: nowMs,
+      updatedAt: nowMs,
+      deleted: false,
+      deletedAt: null,
+    },
+  }))
   const row = await projectedAnnotation(library, value.id)
   if (!row) throw new Error("Annotation creation returned no row")
   return row
@@ -72,11 +64,10 @@ export async function updateLocalAnnotation(
       )
       if (!current) {
         exists = false
-        return document
+        return null
       }
-      return updateLibrarySidecarAnnotation(document, id, color, note, nowMs)
+      return { type: "updateAnnotation", id, color, note, updatedAt: nowMs }
     },
-    projectLibrarySidecarAutomergeDocument,
   )
   return exists ? projectedAnnotation(library, id) : null
 }
@@ -98,11 +89,10 @@ export async function deleteLocalAnnotation(
       )
       if (!current) {
         exists = false
-        return document
+        return null
       }
-      return deleteLibrarySidecarAnnotation(document, id, nowMs)
+      return { type: "deleteAnnotation", id, deletedAt: nowMs }
     },
-    projectLibrarySidecarAutomergeDocument,
   )
   return exists
 }

@@ -5,7 +5,7 @@ import MyReaderRustComponents, {
 import { LIBRARY_SIDECAR_GENESIS_HEADS } from "./automerge-genesis.generated"
 
 export const LIBRARY_SIDECAR_SCHEMA_VERSION = 1
-const SYNC_CONTRACT_VERSION = 1
+const SYNC_CONTRACT_VERSION = 2
 
 type ReadingFormat = "EPUB" | "PDF" | "CBZ"
 
@@ -117,7 +117,7 @@ export type LibrarySidecarDocument = {
   projection: LibrarySidecarProjection
 }
 
-type DocumentCommand =
+export type LibrarySidecarDocumentCommand =
   | { type: "inspect" }
   | { type: "inspectDependencies"; heads: string[] }
   | {
@@ -201,7 +201,7 @@ function parseProjection(value: string): LibrarySidecarProjection {
 function executeCommand(
   document: LibrarySidecarDocument | null,
   replicaId: string,
-  command: DocumentCommand,
+  command: LibrarySidecarDocumentCommand,
   baseHeads: string[],
   payloadBytes: Uint8Array | null = null,
   expectedLibraryUuid: string | null = document?.libraryUuid ?? null,
@@ -230,6 +230,24 @@ function executeCommand(
       heads: [...result.heads],
       projection: parseProjection(result.projectionJson),
     },
+  }
+}
+
+export function librarySidecarDocumentFromNativeResult(
+  result: NativeSyncDocumentCommandResult,
+  replicaId: string,
+): LibrarySidecarDocument {
+  checkContract()
+  if (result.schemaVersion !== LIBRARY_SIDECAR_SCHEMA_VERSION) {
+    throw new Error(`unsupported Automerge schema ${result.schemaVersion}`)
+  }
+  return {
+    schema: result.schemaVersion,
+    libraryUuid: result.libraryUuid,
+    replicaId,
+    snapshotBytes: result.snapshotBytes,
+    heads: [...result.heads],
+    projection: parseProjection(result.projectionJson),
   }
 }
 

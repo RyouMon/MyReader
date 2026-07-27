@@ -1,21 +1,15 @@
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
 import type { Library } from "@my-reader/tools/types/library"
 
-import { writeLibrarySidecarReadingPosition } from "@/src/repos/library-sidecar-sync"
 import {
   commitLibrarySidecarAutomergeMutation,
   ensureLibrarySidecarAutomergeState,
 } from "./automerge-store"
 import {
   librarySidecarReadingPositionCandidates,
-  librarySidecarReadingPositionProjections,
-  resolveLibrarySidecarReadingPosition,
-  setLibrarySidecarReadingPosition,
-  type LibrarySidecarDocument,
   type LibrarySidecarReadingPositionCandidate,
 } from "./automerge-document"
 import { ensureLibrarySidecarIdentity } from "./identity"
-import type { LibrarySidecarSyncTransaction } from "@/src/repos/library-sidecar-sync"
 
 export type ReadingPositionInput = {
   bookId: number
@@ -48,25 +42,6 @@ function validateReadingPositionInput(
   return format as ReadingFormat
 }
 
-export async function projectLibrarySidecarReadingPositions(
-  tx: LibrarySidecarSyncTransaction,
-  document: LibrarySidecarDocument,
-): Promise<void> {
-  for (const projection of librarySidecarReadingPositionProjections(document)) {
-    await writeLibrarySidecarReadingPosition(tx, {
-      bookId: projection.bookId,
-      format: projection.value.format,
-      locatorJson: projection.value.locatorJson,
-      displayProgression:
-        projection.value.displayProgressionPpm === null
-          ? null
-          : projection.value.displayProgressionPpm / 1_000_000,
-      updatedAt: projection.value.recordedAt,
-      syncConflictCount: projection.conflictCount,
-    })
-  }
-}
-
 export async function writeLocalReadingPosition(
   library: Library,
   input: ReadingPositionInput,
@@ -84,14 +59,11 @@ export async function writeLocalReadingPosition(
     recordedAt: nowMs,
     replicaId: identity.replicaId,
   }
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) =>
-      setLibrarySidecarReadingPosition(document, input.bookId, value),
-    projectLibrarySidecarReadingPositions,
-  )
+  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+    type: "setReadingPosition",
+    bookId: input.bookId,
+    value,
+  }))
   console.info("[reading-sync] progress:local-write", {
     libraryId: library.id,
     libraryUuid: identity.libraryUuid,
@@ -143,18 +115,11 @@ export async function selectReadingPositionCandidate(
     locator: { href: "_", type: "_" },
     displayProgression: null,
   })
-  await commitLibrarySidecarAutomergeMutation(
-    library,
-    identity,
-    nowMs,
-    (document) =>
-      resolveLibrarySidecarReadingPosition(
-        document,
-        bookId,
-        normalizedFormat,
-        operationId,
-        nowMs,
-      ),
-    projectLibrarySidecarReadingPositions,
-  )
+  await commitLibrarySidecarAutomergeMutation(library, identity, nowMs, () => ({
+    type: "resolveReadingPosition",
+    bookId,
+    format: normalizedFormat,
+    operationId,
+    recordedAt: nowMs,
+  }))
 }
