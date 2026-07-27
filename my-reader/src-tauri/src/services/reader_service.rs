@@ -3,7 +3,6 @@ use crate::commands::PreparedBookSource;
 use crate::error::AppError;
 use crate::models::AppConfig;
 use crate::reader_ui_prefs::ReaderUiPreferences;
-use crate::repositories::file_state_repo::SqliteFileStateRepository;
 use crate::utils::paths::compute_book_relative_path;
 
 use std::path::Path;
@@ -102,8 +101,7 @@ impl ReaderService {
             return Ok(true);
         };
 
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        let row = SqliteFileStateRepository::get_by_path(&db, relative_path).await?;
+        let row = myreader_core::api::content::get_file_state(sidecar_root, relative_path).await?;
         Ok(row.is_some_and(|r| r.local_state == "present"))
     }
 
@@ -130,7 +128,7 @@ impl ReaderService {
 
 #[cfg(test)]
 mod tests {
-    use crate::repositories::file_state_repo::SqliteFileStateRepository;
+    use myreader_core::models::FileStateUpdate;
 
     use super::ReaderService;
 
@@ -140,9 +138,6 @@ mod tests {
         let file_path = book_dir.path().join("It.epub");
         tokio::fs::write(&file_path, b"partial").await.unwrap();
         let sidecar_root = tempfile::tempdir().unwrap();
-        let db = SqliteFileStateRepository::open(&sidecar_root.path().to_string_lossy())
-            .await
-            .expect("open sidecar db");
 
         assert!(!ReaderService::remote_book_file_available(
             &file_path,
@@ -152,9 +147,18 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        SqliteFileStateRepository::upsert(&db, "It.epub", "remote_only", None, None)
-            .await
-            .expect("upsert remote_only state");
+        myreader_core::api::content::upsert_file_state(
+            sidecar_root.path(),
+            "It.epub",
+            FileStateUpdate {
+                local_state: "remote_only".into(),
+                local_blake3: None,
+                local_size: None,
+                local_mtime: None,
+            },
+        )
+        .await
+        .expect("upsert remote_only state");
         assert!(!ReaderService::remote_book_file_available(
             &file_path,
             Some(sidecar_root.path()),
@@ -163,9 +167,18 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        SqliteFileStateRepository::upsert(&db, "It.epub", "present", Some(7), None)
-            .await
-            .expect("upsert present state");
+        myreader_core::api::content::upsert_file_state(
+            sidecar_root.path(),
+            "It.epub",
+            FileStateUpdate {
+                local_state: "present".into(),
+                local_blake3: None,
+                local_size: Some(7),
+                local_mtime: None,
+            },
+        )
+        .await
+        .expect("upsert present state");
         assert!(ReaderService::remote_book_file_available(
             &file_path,
             Some(sidecar_root.path()),

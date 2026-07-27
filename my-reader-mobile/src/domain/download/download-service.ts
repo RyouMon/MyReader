@@ -3,7 +3,7 @@ import i18n from "@/src/i18n"
 import { AppInvariantError } from "../../errors"
 import type { DataSource, Library } from "../types"
 
-import { upsertFileState } from "../../repos/file-state"
+import { upsertFileState } from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
 import { readFileStat } from "../../services/fs/file-io"
 import { assertSafeRelativePath, fileUriFor } from "../../services/fs/path"

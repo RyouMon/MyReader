@@ -1240,6 +1240,13 @@ public func countCalibreBooks(libraryRootPath: String)throws  -> UInt64  {
     )
 })
 }
+public func deleteLibraryFileState(sidecarRootPath: String, path: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_delete_library_file_state(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(path),$0
+    )
+}
+}
 public func ensureSyncDatabaseDocument(databasePath: String, libraryUuid: String, replicaId: String, nowMs: String)throws  -> SyncDocumentCommandResult  {
     return try  FfiConverterTypeSyncDocumentCommandResult_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_ensure_sync_database_document(
@@ -1284,6 +1291,14 @@ public func getCalibreLibraryUuid(libraryRootPath: String)throws  -> String  {
     )
 })
 }
+public func getLibraryFileState(sidecarRootPath: String, path: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_get_library_file_state(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(path),$0
+    )
+})
+}
 public func hasSyncDatabasePendingWork(databasePath: String)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(
@@ -1296,6 +1311,14 @@ public func initializeDeviceRegistry(registryPath: String, legacyRegistryJson: S
     uniffi_myreader_rust_components_fn_func_initialize_device_registry(
         FfiConverterString.lower(registryPath),
         FfiConverterOptionString.lower(legacyRegistryJson),$0
+    )
+})
+}
+public func listBookReadingFormats(sidecarRootPath: String, libraryRootPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_book_reading_formats(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),$0
     )
 })
 }
@@ -1338,6 +1361,13 @@ public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, 
         FfiConverterString.lower(libraryRootPath),
         FfiConverterString.lower(seriesName),
         FfiConverterOptionInt64.lower(excludeBookId),$0
+    )
+})
+}
+public func listLibraryFileStates(sidecarRootPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_library_file_states(
+        FfiConverterString.lower(sidecarRootPath),$0
     )
 })
 }
@@ -1434,6 +1464,15 @@ public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throw
     )
 })
 }
+public func setBookReadingFormat(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String?)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_set_book_reading_format(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterOptionString.lower(format),$0
+    )
+}
+}
 public func switchDeviceLibrary(registryPath: String, libraryId: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_switch_device_library(
@@ -1475,6 +1514,14 @@ public func upsertDeviceDataSource(registryPath: String, sourceJson: String)thro
         FfiConverterString.lower(sourceJson),$0
     )
 })
+}
+public func upsertLibraryFileState(sidecarRootPath: String, path: String, updateJson: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_upsert_library_file_state(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(updateJson),$0
+    )
+}
 }
 public func validateCalibreLibrary(libraryRootPath: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
@@ -1525,6 +1572,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document() != 40101) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1540,10 +1590,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_get_calibre_library_uuid() != 363) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_get_library_file_state() != 32423) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 43967) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_book_formats() != 14830) {
@@ -1559,6 +1615,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
@@ -1597,6 +1656,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_switch_device_library() != 62391) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1610,6 +1672,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_upsert_library_file_state() != 16535) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_validate_calibre_library() != 40706) {

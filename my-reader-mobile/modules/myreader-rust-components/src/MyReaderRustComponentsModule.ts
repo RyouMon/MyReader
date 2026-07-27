@@ -110,6 +110,24 @@ export type MyReaderRustComponentsModule = {
     libraryRootPath: string,
     bookId: number,
   ): Promise<string>
+  listBookReadingFormats(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+  ): Promise<string>
+  setBookReadingFormat(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string | null,
+  ): Promise<void>
+  getLibraryFileState(sidecarRootPath: string, path: string): Promise<string>
+  listLibraryFileStates(sidecarRootPath: string): Promise<string>
+  upsertLibraryFileState(
+    sidecarRootPath: string,
+    path: string,
+    updateJson: string,
+  ): Promise<void>
+  deleteLibraryFileState(sidecarRootPath: string, path: string): Promise<void>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -267,6 +285,36 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   listCalibreBookFormats(libraryRootPath, bookId) {
     return getNativeModule().listCalibreBookFormats(libraryRootPath, bookId)
+  },
+  listBookReadingFormats(sidecarRootPath, libraryRootPath) {
+    return getNativeModule().listBookReadingFormats(
+      sidecarRootPath,
+      libraryRootPath,
+    )
+  },
+  setBookReadingFormat(sidecarRootPath, libraryRootPath, bookId, format) {
+    return getNativeModule().setBookReadingFormat(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+    )
+  },
+  getLibraryFileState(sidecarRootPath, path) {
+    return getNativeModule().getLibraryFileState(sidecarRootPath, path)
+  },
+  listLibraryFileStates(sidecarRootPath) {
+    return getNativeModule().listLibraryFileStates(sidecarRootPath)
+  },
+  upsertLibraryFileState(sidecarRootPath, path, updateJson) {
+    return getNativeModule().upsertLibraryFileState(
+      sidecarRootPath,
+      path,
+      updateJson,
+    )
+  },
+  deleteLibraryFileState(sidecarRootPath, path) {
+    return getNativeModule().deleteLibraryFileState(sidecarRootPath, path)
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

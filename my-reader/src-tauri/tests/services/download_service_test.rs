@@ -1,12 +1,48 @@
 use my_reader_lib::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
-use my_reader_lib::repositories::file_state_repo::SqliteFileStateRepository;
 use my_reader_lib::services::download_service::DownloadService;
+use myreader_core::models::FileStateUpdate;
 use opendal::services::Fs;
 use opendal::Operator;
 use tokio::sync::watch;
 
 use crate::common::app::TestApp;
 use crate::common::calibre::seed_minimal_calibre_library;
+
+struct TestFileStateRepository;
+
+impl TestFileStateRepository {
+    async fn open(sidecar_root: &str) -> Result<std::path::PathBuf, myreader_core::CoreError> {
+        myreader_core::database::open_db(sidecar_root).await?;
+        Ok(sidecar_root.into())
+    }
+
+    async fn get_by_path(
+        sidecar_root: &std::path::Path,
+        path: &str,
+    ) -> Result<Option<myreader_core::models::FileState>, myreader_core::CoreError> {
+        myreader_core::api::content::get_file_state(sidecar_root, path).await
+    }
+
+    async fn upsert(
+        sidecar_root: &std::path::Path,
+        path: &str,
+        local_state: &str,
+        local_size: Option<i64>,
+        local_mtime: Option<i64>,
+    ) -> Result<(), myreader_core::CoreError> {
+        myreader_core::api::content::upsert_file_state(
+            sidecar_root,
+            path,
+            FileStateUpdate {
+                local_state: local_state.into(),
+                local_blake3: None,
+                local_size,
+                local_mtime,
+            },
+        )
+        .await
+    }
+}
 
 fn local_test_library(id: &str, root: &std::path::Path) -> LibraryConfig {
     LibraryConfig {
@@ -177,10 +213,10 @@ async fn check_file_state_should_cover_local_present_missing_and_sidecar_size() 
     assert_eq!(dto.path, "It/It.epub");
 
     let sidecar_root = library_container_dir(app_data.path(), &lib.id);
-    let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
+    let db = TestFileStateRepository::open(&sidecar_root.to_string_lossy())
         .await
         .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12345), None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12345), None)
         .await
         .expect("upsert state");
     let dto = DownloadService::check_file_state(
@@ -232,10 +268,10 @@ async fn check_file_state_should_require_present_sidecar_row_for_remote_librarie
     assert_eq!(dto.local_state, "remote_only");
 
     let sidecar_root = library_container_dir(app_data.path(), &lib.id);
-    let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy())
+    let db = TestFileStateRepository::open(&sidecar_root.to_string_lossy())
         .await
         .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
         .await
         .expect("upsert state");
 
@@ -251,7 +287,7 @@ async fn check_file_state_should_require_present_sidecar_row_for_remote_librarie
     assert_eq!(dto.local_state, "present");
     assert_eq!(dto.local_size, Some(12));
 
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "remote_only", None, None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "remote_only", None, None)
         .await
         .expect("upsert state");
     let dto = DownloadService::check_file_state(
@@ -304,10 +340,10 @@ async fn delete_local_file_should_remove_remote_copy_and_reject_local_library() 
     let lib_root = library_container_dir(app_data.path(), &lib.id);
     tokio::fs::create_dir_all(&lib_root).await.unwrap();
     let seeded = seed_minimal_calibre_library(&lib_root).await;
-    let db = SqliteFileStateRepository::open(&lib_root.to_string_lossy())
+    let db = TestFileStateRepository::open(&lib_root.to_string_lossy())
         .await
         .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
         .await
         .expect("upsert state");
 
@@ -326,7 +362,7 @@ async fn delete_local_file_should_remove_remote_copy_and_reject_local_library() 
     .expect("delete should succeed");
 
     assert!(!tokio::fs::try_exists(&seeded.file_path).await.unwrap());
-    let row = SqliteFileStateRepository::get_by_path(&db, "It/It.epub")
+    let row = TestFileStateRepository::get_by_path(&db, "It/It.epub")
         .await
         .unwrap()
         .unwrap();
@@ -362,10 +398,10 @@ async fn delete_local_book_file_should_emit_status_after_removing_remote_copy() 
     let lib_root = library_container_dir(app_data.path(), &lib.id);
     tokio::fs::create_dir_all(&lib_root).await.unwrap();
     let seeded = seed_minimal_calibre_library(&lib_root).await;
-    let db = SqliteFileStateRepository::open(&lib_root.to_string_lossy())
+    let db = TestFileStateRepository::open(&lib_root.to_string_lossy())
         .await
         .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "present", Some(12), None)
         .await
         .expect("upsert state");
     let config = AppConfig {
@@ -627,10 +663,10 @@ async fn execute_download_should_download_remote_file_into_container_and_record_
         b"remote book content"
     );
 
-    let db = SqliteFileStateRepository::open(&container_root.to_string_lossy())
+    let db = TestFileStateRepository::open(&container_root.to_string_lossy())
         .await
         .expect("open sidecar db");
-    let row = SqliteFileStateRepository::get_by_path(&db, "It/It.epub")
+    let row = TestFileStateRepository::get_by_path(&db, "It/It.epub")
         .await
         .unwrap()
         .unwrap();
@@ -670,10 +706,10 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
         large_remote_content
     );
 
-    let db = SqliteFileStateRepository::open(&sidecar_root.path().to_string_lossy())
+    let db = TestFileStateRepository::open(&sidecar_root.path().to_string_lossy())
         .await
         .expect("open sidecar db");
-    let row = SqliteFileStateRepository::get_by_path(&db, "It/It.epub")
+    let row = TestFileStateRepository::get_by_path(&db, "It/It.epub")
         .await
         .unwrap()
         .unwrap();
@@ -700,7 +736,7 @@ async fn download_book_file_should_copy_remote_content_and_reset_state_on_error(
             || message.contains("REMOTE_BOOK_FILE_READER_FAILED"),
         "message was {message}"
     );
-    let row = SqliteFileStateRepository::get_by_path(&db, "Missing/It.epub")
+    let row = TestFileStateRepository::get_by_path(&db, "Missing/It.epub")
         .await
         .unwrap()
         .unwrap();
@@ -719,10 +755,10 @@ async fn download_book_file_should_skip_remote_read_when_sidecar_and_file_are_pr
         .await
         .unwrap();
     tokio::fs::write(&local_path, b"cached").await.unwrap();
-    let db = SqliteFileStateRepository::open(&sidecar_root.path().to_string_lossy())
+    let db = TestFileStateRepository::open(&sidecar_root.path().to_string_lossy())
         .await
         .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.epub", "present", Some(6), None)
+    TestFileStateRepository::upsert(&db, "It/It.epub", "present", Some(6), None)
         .await
         .expect("upsert state");
 
@@ -774,10 +810,10 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
 
     assert!(format!("{err}").contains("BOOK_DOWNLOAD_CANCELLED"));
     assert!(!tokio::fs::try_exists(&local_path).await.unwrap());
-    let db = SqliteFileStateRepository::open(&sidecar_root.path().to_string_lossy())
+    let db = TestFileStateRepository::open(&sidecar_root.path().to_string_lossy())
         .await
         .expect("open sidecar db");
-    let row = SqliteFileStateRepository::get_by_path(&db, "It/It.epub")
+    let row = TestFileStateRepository::get_by_path(&db, "It/It.epub")
         .await
         .unwrap()
         .unwrap();

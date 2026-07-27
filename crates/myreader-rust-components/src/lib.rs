@@ -414,6 +414,77 @@ pub fn list_calibre_book_formats(
 }
 
 #[uniffi::export]
+pub fn list_book_reading_formats(
+    sidecar_root_path: String,
+    library_root_path: String,
+) -> Result<String, RustComponentsError> {
+    let formats = run_core_async(myreader_core::api::content::list_reading_formats(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+    ))?;
+    serialize_core_json(&formats)
+}
+
+#[uniffi::export]
+pub fn set_book_reading_format(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: Option<String>,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::set_reading_format(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        format.as_deref(),
+    ))
+}
+
+#[uniffi::export]
+pub fn get_library_file_state(
+    sidecar_root_path: String,
+    path: String,
+) -> Result<String, RustComponentsError> {
+    let state = run_core_async(myreader_core::api::content::get_file_state(
+        Path::new(&sidecar_root_path),
+        &path,
+    ))?;
+    serialize_core_json(&state)
+}
+
+#[uniffi::export]
+pub fn list_library_file_states(sidecar_root_path: String) -> Result<String, RustComponentsError> {
+    let states = run_core_async(myreader_core::api::content::list_file_states(Path::new(
+        &sidecar_root_path,
+    )))?;
+    serialize_core_json(&states)
+}
+
+#[uniffi::export]
+pub fn upsert_library_file_state(
+    sidecar_root_path: String,
+    path: String,
+    update_json: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::upsert_file_state(
+        Path::new(&sidecar_root_path),
+        &path,
+        parse_core_json(&update_json)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn delete_library_file_state(
+    sidecar_root_path: String,
+    path: String,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::content::delete_file_state(
+        Path::new(&sidecar_root_path),
+        &path,
+    ))
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,

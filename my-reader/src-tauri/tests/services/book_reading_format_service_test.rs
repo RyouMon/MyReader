@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
 use my_reader_lib::models::{AppConfig, LibraryConfig};
-use my_reader_lib::repositories::book_reading_format_repo::SqliteBookReadingFormatRepository;
 use my_reader_lib::services::book_reading_format_service::BookReadingFormatService;
-use myreader_core::entities::calibre::{books, data};
-use sea_orm::{ActiveModelTrait, Set};
+use myreader_core::entities::{
+    app::book_reading_format,
+    calibre::{books, data},
+};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 
 use crate::common::calibre::{seed_minimal_calibre_library, SeededBook};
 
@@ -81,15 +83,44 @@ fn config_for(lib_root: &std::path::Path) -> AppConfig {
 
 async fn raw_preferences(app_data_dir: &std::path::Path) -> Vec<(i64, String)> {
     let sidecar_root = app_data_dir.join("libraries").join("lib-format");
-    let db = SqliteBookReadingFormatRepository::open(&sidecar_root.to_string_lossy())
+    let db = myreader_core::database::open_db(&sidecar_root.to_string_lossy())
         .await
         .expect("open reading format db");
-    SqliteBookReadingFormatRepository::list(&db)
+    book_reading_format::Entity::find()
+        .order_by_asc(book_reading_format::Column::BookId)
+        .all(&db)
         .await
         .expect("list raw preferences")
         .into_iter()
         .map(|row| (row.book_id, row.reading_format))
         .collect()
+}
+
+async fn set_raw_preference(app_data_dir: &std::path::Path, book_id: i64, format: &str) {
+    let sidecar_root = app_data_dir.join("libraries").join("lib-format");
+    let db = myreader_core::database::open_db(&sidecar_root.to_string_lossy())
+        .await
+        .expect("open reading format db");
+    let existing = book_reading_format::Entity::find()
+        .filter(book_reading_format::Column::BookId.eq(book_id))
+        .one(&db)
+        .await
+        .expect("read raw preference");
+    if let Some(existing) = existing {
+        let mut active: book_reading_format::ActiveModel = existing.into();
+        active.reading_format = Set(format.to_owned());
+        active.update(&db).await.expect("update raw preference");
+    } else {
+        book_reading_format::ActiveModel {
+            id: Set(format!("test-{book_id}")),
+            book_id: Set(book_id),
+            reading_format: Set(format.to_owned()),
+            updated_at: Set(1.0),
+        }
+        .insert(&db)
+        .await
+        .expect("insert raw preference");
+    }
 }
 
 #[tokio::test]
@@ -199,20 +230,9 @@ async fn list_should_ignore_stale_single_format_and_unreadable_preferences() {
     let lib = tempfile::tempdir().unwrap();
     let seeded = seed_format_library(lib.path()).await;
     let config = config_for(lib.path());
-    let sidecar_root = app_data.path().join("libraries").join("lib-format");
-    let db = SqliteBookReadingFormatRepository::open(&sidecar_root.to_string_lossy())
-        .await
-        .expect("open reading format db");
-
-    SqliteBookReadingFormatRepository::set(&db, seeded.book_id, "PDF")
-        .await
-        .expect("store valid preference");
-    SqliteBookReadingFormatRepository::set(&db, 43, "EPUB")
-        .await
-        .expect("store redundant preference");
-    SqliteBookReadingFormatRepository::set(&db, 404, "PDF")
-        .await
-        .expect("store missing-book preference");
+    set_raw_preference(app_data.path(), seeded.book_id, "PDF").await;
+    set_raw_preference(app_data.path(), 43, "EPUB").await;
+    set_raw_preference(app_data.path(), 404, "PDF").await;
 
     let formats = BookReadingFormatService::list(app_data.path(), &config, "lib-format")
         .await

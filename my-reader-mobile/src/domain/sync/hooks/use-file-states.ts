@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
 
 import type { Library } from "@/src/domain/types"
-import { listFileStates, type FileStateRow } from "@/src/repos/file-state"
+import {
+  listFileStates,
+  type FileState as FileStateRow,
+} from "@/src/services/core/content"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 export function useFileStates(library: Library | null) {

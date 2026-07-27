@@ -3,24 +3,17 @@ import { act, renderHook, waitFor } from "@testing-library/react-native"
 import type { ReactNode } from "react"
 
 import type { Library } from "@/src/domain/types"
-import { getAllBookFormats } from "@/src/domain/library/calibre"
 import {
-  clearBookReadingFormat,
   listBookReadingFormats,
   setBookReadingFormat,
-} from "@/src/repos/book-reading-format"
+} from "@/src/services/core/content"
 
 import {
   useBookReadingFormat,
   fetchBookReadingFormats,
 } from "./use-book-reading-format"
 
-jest.mock("@/src/domain/library/calibre", () => ({
-  getAllBookFormats: jest.fn(),
-}))
-
-jest.mock("@/src/repos/book-reading-format", () => ({
-  clearBookReadingFormat: jest.fn(),
+jest.mock("@/src/services/core/content", () => ({
   listBookReadingFormats: jest.fn(),
   setBookReadingFormat: jest.fn(),
 }))
@@ -55,7 +48,6 @@ describe("useBookReadingFormat", () => {
 
     expect(result.current.selectedFormatById).toEqual({})
     expect(listBookReadingFormats).not.toHaveBeenCalled()
-    expect(getAllBookFormats).not.toHaveBeenCalled()
 
     unmount()
   })
@@ -65,20 +57,11 @@ describe("useBookReadingFormat", () => {
 
     expect(result).toEqual({})
     expect(listBookReadingFormats).not.toHaveBeenCalled()
-    expect(getAllBookFormats).not.toHaveBeenCalled()
   })
 
-  it("should return selected formats only for books with multiple readable formats when managing selected reading formats", async () => {
-    jest.mocked(listBookReadingFormats).mockResolvedValue([
-      { bookId: 1, readingFormat: "epub" },
-      { bookId: 2, readingFormat: "pdf" },
-      { bookId: 3, readingFormat: "cbz" },
-    ] as Awaited<ReturnType<typeof listBookReadingFormats>>)
-
-    jest.mocked(getAllBookFormats).mockResolvedValue({
-      "1": ["EPUB", "PDF"],
-      "2": ["EPUB"],
-      "3": [],
+  it("should return formats validated by core when a library is selected", async () => {
+    jest.mocked(listBookReadingFormats).mockResolvedValue({
+      "1": "EPUB",
     })
 
     const { result, unmount } = renderHook(
@@ -87,24 +70,16 @@ describe("useBookReadingFormat", () => {
     )
 
     await waitFor(() =>
-      expect(result.current.selectedFormatById).toEqual({ "1": "epub" }),
+      expect(result.current.selectedFormatById).toEqual({ "1": "EPUB" }),
     )
 
-    expect(getAllBookFormats).toHaveBeenCalledWith(mockLibrary)
     expect(listBookReadingFormats).toHaveBeenCalledWith(mockLibrary)
 
     unmount()
   })
 
   it("should set the reading format when the book has multiple readable formats", async () => {
-    jest
-      .mocked(listBookReadingFormats)
-      .mockResolvedValue(
-        [] as Awaited<ReturnType<typeof listBookReadingFormats>>,
-      )
-    jest.mocked(getAllBookFormats).mockResolvedValue({
-      "1": ["EPUB", "PDF"],
-    })
+    jest.mocked(listBookReadingFormats).mockResolvedValue({})
     jest.mocked(setBookReadingFormat).mockResolvedValue(undefined)
 
     const { result, unmount } = renderHook(
@@ -119,19 +94,13 @@ describe("useBookReadingFormat", () => {
     })
 
     expect(setBookReadingFormat).toHaveBeenCalledWith(mockLibrary, 1, "pdf")
-    expect(clearBookReadingFormat).not.toHaveBeenCalled()
 
     unmount()
   })
 
   it("should clear the reading format when set to null", async () => {
-    jest
-      .mocked(listBookReadingFormats)
-      .mockResolvedValue(
-        [] as Awaited<ReturnType<typeof listBookReadingFormats>>,
-      )
-    jest.mocked(getAllBookFormats).mockResolvedValue({})
-    jest.mocked(clearBookReadingFormat).mockResolvedValue(undefined)
+    jest.mocked(listBookReadingFormats).mockResolvedValue({})
+    jest.mocked(setBookReadingFormat).mockResolvedValue(undefined)
 
     const { result, unmount } = renderHook(
       () => useBookReadingFormat(mockLibrary),
@@ -144,41 +113,12 @@ describe("useBookReadingFormat", () => {
       await result.current.setBookReadingFormat("1", null)
     })
 
-    expect(clearBookReadingFormat).toHaveBeenCalledWith(mockLibrary, 1)
-    expect(setBookReadingFormat).not.toHaveBeenCalled()
+    expect(setBookReadingFormat).toHaveBeenCalledWith(mockLibrary, 1, null)
 
     unmount()
   })
 
-  it("should clear the reading format when the book has only one readable format", async () => {
-    jest
-      .mocked(listBookReadingFormats)
-      .mockResolvedValue(
-        [] as Awaited<ReturnType<typeof listBookReadingFormats>>,
-      )
-    jest.mocked(getAllBookFormats).mockResolvedValue({
-      "1": ["EPUB"],
-    })
-    jest.mocked(clearBookReadingFormat).mockResolvedValue(undefined)
-
-    const { result, unmount } = renderHook(
-      () => useBookReadingFormat(mockLibrary),
-      { wrapper },
-    )
-
-    await waitFor(() => expect(result.current.selectedFormatById).toEqual({}))
-
-    await act(async () => {
-      await result.current.setBookReadingFormat("1", "pdf")
-    })
-
-    expect(clearBookReadingFormat).toHaveBeenCalledWith(mockLibrary, 1)
-    expect(setBookReadingFormat).not.toHaveBeenCalled()
-
-    unmount()
-  })
-
-  it("should does nothing when setting format without a library", async () => {
+  it("should do nothing when setting format without a library", async () => {
     const { result, unmount } = renderHook(() => useBookReadingFormat(null), {
       wrapper,
     })
@@ -188,7 +128,6 @@ describe("useBookReadingFormat", () => {
     })
 
     expect(setBookReadingFormat).not.toHaveBeenCalled()
-    expect(clearBookReadingFormat).not.toHaveBeenCalled()
 
     unmount()
   })

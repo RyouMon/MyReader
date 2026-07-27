@@ -271,6 +271,71 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("listBookReadingFormats") {
+      (sidecarRootPath: String, libraryRootPath: String) -> String in
+      try componentCall {
+        try listBookReadingFormats(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath
+        )
+      }
+    }
+
+    AsyncFunction("setBookReadingFormat") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String?
+      ) in
+      try componentCall {
+        try setBookReadingFormat(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format
+        )
+      }
+    }
+
+    AsyncFunction("getLibraryFileState") {
+      (sidecarRootPath: String, path: String) -> String in
+      try componentCall {
+        try getLibraryFileState(
+          sidecarRootPath: sidecarRootPath,
+          path: path
+        )
+      }
+    }
+
+    AsyncFunction("listLibraryFileStates") {
+      (sidecarRootPath: String) -> String in
+      try componentCall {
+        try listLibraryFileStates(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
+    AsyncFunction("upsertLibraryFileState") {
+      (sidecarRootPath: String, path: String, updateJson: String) in
+      try componentCall {
+        try upsertLibraryFileState(
+          sidecarRootPath: sidecarRootPath,
+          path: path,
+          updateJson: updateJson
+        )
+      }
+    }
+
+    AsyncFunction("deleteLibraryFileState") {
+      (sidecarRootPath: String, path: String) in
+      try componentCall {
+        try deleteLibraryFileState(
+          sidecarRootPath: sidecarRootPath,
+          path: path
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }

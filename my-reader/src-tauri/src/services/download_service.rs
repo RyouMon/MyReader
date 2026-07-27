@@ -8,11 +8,12 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
+use myreader_core::models::FileStateUpdate;
+
 use crate::error::AppError;
 use crate::models::{
     AppConfig, BookFileStateDto, FileStateDto, FileStateRequestDto, LibraryConfig,
 };
-use crate::repositories::file_state_repo::SqliteFileStateRepository;
 use crate::services::library_service::LibraryService;
 use crate::storage::from_data_source;
 use crate::utils::paths::{compute_book_relative_path, library_root_path, library_sidecar_path};
@@ -368,6 +369,33 @@ impl DownloadService {
         format.to_uppercase()
     }
 
+    async fn get_stored_file_state(
+        sidecar_root: &Path,
+        path: &str,
+    ) -> Result<Option<myreader_core::models::FileState>, AppError> {
+        Ok(myreader_core::api::content::get_file_state(sidecar_root, path).await?)
+    }
+
+    async fn set_stored_file_state(
+        sidecar_root: &Path,
+        path: &str,
+        local_state: &str,
+        local_size: Option<i64>,
+        local_mtime: Option<i64>,
+    ) -> Result<(), AppError> {
+        Ok(myreader_core::api::content::upsert_file_state(
+            sidecar_root,
+            path,
+            FileStateUpdate {
+                local_state: local_state.to_owned(),
+                local_blake3: None,
+                local_size,
+                local_mtime,
+            },
+        )
+        .await?)
+    }
+
     /// Resolve a library and reject file mutations against original local Calibre files.
     fn resolve_remote_library(
         config: &AppConfig,
@@ -433,8 +461,7 @@ impl DownloadService {
         let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
         let sidecar_root = library_sidecar_path(&lib, app_data_dir);
 
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        let row = SqliteFileStateRepository::get_by_path(&db, &relative_path).await?;
+        let row = Self::get_stored_file_state(&sidecar_root, &relative_path).await?;
 
         let present = Self::is_book_file_present(&file_path).await
             && (!lib.is_remote()
@@ -493,8 +520,7 @@ impl DownloadService {
 
         let rows_by_path = if lib.is_remote() {
             let sidecar_root = library_sidecar_path(&lib, app_data_dir);
-            let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-            SqliteFileStateRepository::get_by_paths(&db, &relative_paths).await?
+            myreader_core::api::content::get_file_states(&sidecar_root, &relative_paths).await?
         } else {
             HashMap::new()
         };
@@ -546,8 +572,8 @@ impl DownloadService {
                 .map_err(|e| AppError::Config(format!("BOOK_FILE_DELETE_FAILED: {e}")))?;
         }
 
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        SqliteFileStateRepository::upsert(&db, &relative_path, "remote_only", None, None).await?;
+        Self::set_stored_file_state(&sidecar_root, &relative_path, "remote_only", None, None)
+            .await?;
         Ok(())
     }
 
@@ -654,8 +680,7 @@ impl DownloadService {
         sidecar_root: &Path,
         cancel_rx: Option<watch::Receiver<bool>>,
     ) -> Result<PathBuf, AppError> {
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        let row = SqliteFileStateRepository::get_by_path(&db, book_relative_path).await?;
+        let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
         let sidecar_present = row
             .as_ref()
             .is_some_and(|r| r.local_state.as_str() == "present");
@@ -846,8 +871,8 @@ impl DownloadService {
             .map(|d| d.as_secs() as i64);
 
         // Update file_state to present.
-        SqliteFileStateRepository::upsert(
-            &db,
+        Self::set_stored_file_state(
+            sidecar_root,
             book_relative_path,
             "present",
             Some(local_size),
@@ -887,8 +912,7 @@ impl DownloadService {
                 );
             }
         }
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        SqliteFileStateRepository::upsert(&db, book_relative_path, "remote_only", None, None)
+        Self::set_stored_file_state(sidecar_root, book_relative_path, "remote_only", None, None)
             .await?;
         Ok(())
     }
@@ -909,8 +933,7 @@ impl DownloadService {
                 );
             }
         }
-        let db = SqliteFileStateRepository::open(&sidecar_root.to_string_lossy()).await?;
-        SqliteFileStateRepository::upsert(&db, book_relative_path, "remote_only", None, None)
+        Self::set_stored_file_state(sidecar_root, book_relative_path, "remote_only", None, None)
             .await?;
         Ok(())
     }

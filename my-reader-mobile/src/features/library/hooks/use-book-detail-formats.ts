@@ -23,7 +23,7 @@ import { describeDownloadError } from "@/src/errors"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { confirmDeleteLocalDownload } from "../utils/delete-download"
 
-import type { FileStateRow } from "@/src/repos/file-state"
+import type { FileState as FileStateRow } from "@/src/services/core/content"
 
 const EMPTY_FILE_STATE_ROWS: FileStateRow[] = []
 

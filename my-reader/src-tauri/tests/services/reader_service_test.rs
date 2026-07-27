@@ -3,10 +3,10 @@ use std::io::Write;
 
 use my_reader_lib::cache;
 use my_reader_lib::models::AppConfig;
-use my_reader_lib::repositories::file_state_repo::SqliteFileStateRepository;
 use my_reader_lib::services::reader_service::ReaderService;
 use my_reader_lib::streamer::{EpubStreamer, StreamerState};
 use myreader_core::entities::calibre::data;
+use myreader_core::models::FileStateUpdate;
 use sea_orm::{ActiveModelTrait, Database, Set};
 use tokio::sync::RwLock;
 
@@ -168,12 +168,18 @@ async fn prepare_book_source_should_require_present_sidecar_row_for_remote_libra
     .expect_err("remote file without present state should fail");
     assert!(format!("{err}").contains("BOOK_FORMAT_NOT_DOWNLOADED"));
 
-    let db = SqliteFileStateRepository::open(&sidecar_root.path().to_string_lossy())
-        .await
-        .expect("open sidecar db");
-    SqliteFileStateRepository::upsert(&db, "It/It.pdf", "present", Some(7), None)
-        .await
-        .expect("mark remote file present");
+    myreader_core::api::content::upsert_file_state(
+        sidecar_root.path(),
+        "It/It.pdf",
+        FileStateUpdate {
+            local_state: "present".into(),
+            local_blake3: None,
+            local_size: Some(7),
+            local_mtime: None,
+        },
+    )
+    .await
+    .expect("mark remote file present");
 
     let source = ReaderService::prepare_book_source(
         "lib-reader-remote",

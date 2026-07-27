@@ -1,7 +1,7 @@
 import i18n from "@/src/i18n"
 import { libraryContainerRootUri } from "@/src/services/fs/library-paths"
 import { AppInvariantError } from "../../errors"
-import { deleteFileState, upsertFileState } from "../../repos/file-state"
+import { deleteFileState, upsertFileState } from "../../services/core/content"
 import type { NativeDownloadOptions } from "../../services/download/native"
 import { downloadRemoteToLocalUri } from "../../services/download/remote-to-local"
 import { deleteFileAtUri } from "../../services/fs/file-io"

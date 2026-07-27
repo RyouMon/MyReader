@@ -21,8 +21,8 @@ export {
   evictLocalFileForLibrary,
 } from "./file-actions"
 
-export type { FileState as FileStateRow } from "@my-reader/db/types"
+export type { FileState as FileStateRow } from "../../services/core/content"
 export {
   getFileState,
   listFileStates,
-} from "../../repos/file-state"
+} from "../../services/core/content"
