@@ -13,7 +13,6 @@ use crate::sync::{
         add_reading_completion, add_reading_session_duration, reading_completion_records,
         ReadingCompletionValue, ReadingSessionValue,
     },
-    automerge_projection::LibrarySidecarAutomergeProjection,
     automerge_store::commit_library_sidecar_automerge_mutation,
     replica_identity::{ensure_replica_identity, ReplicaIdentity},
 };
@@ -104,17 +103,10 @@ impl ReadingStatisticsService {
             duration_seconds,
             updated_at,
         };
-        let projection = LibrarySidecarAutomergeProjection;
-        commit_library_sidecar_automerge_mutation(
-            &db,
-            &identity,
-            updated_at as u64,
-            |document| {
-                add_reading_session_duration(document, &interval)?;
-                Ok(())
-            },
-            Some(&projection),
-        )
+        commit_library_sidecar_automerge_mutation(&db, &identity, updated_at as u64, |document| {
+            add_reading_session_duration(document, &interval)?;
+            Ok(())
+        })
         .await
     }
 
@@ -145,27 +137,19 @@ impl ReadingStatisticsService {
             replica_id: identity.replica_id.clone(),
         };
         let mut changed = false;
-        let projection = LibrarySidecarAutomergeProjection;
-        commit_library_sidecar_automerge_mutation(
-            &db,
-            &identity,
-            updated_at as u64,
-            |document| {
-                let existing = reading_completion_records(document)?
-                    .into_iter()
-                    .find(|value| value.book_id == completion.book_id);
-                if existing.is_some_and(|value| {
-                    value.completed_at < completion.completed_at
-                        || (value.completed_at == completion.completed_at
-                            && value.id <= completion.id)
-                }) {
-                    return Ok(());
-                }
-                changed = add_reading_completion(document, &completion)?.is_some();
-                Ok(())
-            },
-            Some(&projection),
-        )
+        commit_library_sidecar_automerge_mutation(&db, &identity, updated_at as u64, |document| {
+            let existing = reading_completion_records(document)?
+                .into_iter()
+                .find(|value| value.book_id == completion.book_id);
+            if existing.is_some_and(|value| {
+                value.completed_at < completion.completed_at
+                    || (value.completed_at == completion.completed_at && value.id <= completion.id)
+            }) {
+                return Ok(());
+            }
+            changed = add_reading_completion(document, &completion)?.is_some();
+            Ok(())
+        })
         .await?;
         Ok(changed)
     }

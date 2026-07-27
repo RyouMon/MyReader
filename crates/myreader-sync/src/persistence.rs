@@ -11,8 +11,8 @@ use uuid::Uuid;
 use crate::{
     document::LIBRARY_SIDECAR_SCHEMA_VERSION,
     document_engine::{
-        execute_document_command, DocumentCommand, DocumentCommandRequest, DocumentCommandResult,
-        DocumentProjection,
+        execute_document_command, execute_document_mutation, DocumentCommand,
+        DocumentCommandRequest, DocumentCommandResult, DocumentProjection,
     },
     SyncError,
 };
@@ -610,6 +610,48 @@ pub fn execute_local_database_command(
         Some(&current.snapshot_bytes),
         request(identity, current.heads, command.command),
         None,
+    )?;
+    if !result.changes.is_empty() {
+        persist_local_result(&transaction, &result, now_ms, None)?;
+    } else {
+        rebuild_projection(&transaction, &result, now_ms)?;
+    }
+    transaction.commit().map_err(database_error)?;
+    Ok(result)
+}
+
+pub fn execute_local_database_mutation<F>(
+    database_path: &str,
+    identity: &DatabaseIdentity,
+    now_ms: i64,
+    mutate: F,
+) -> Result<DocumentCommandResult, SyncError>
+where
+    F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
+{
+    let _writer = writer()
+        .lock()
+        .map_err(|_| sync_error("SQLite sync writer lock is poisoned"))?;
+    let mut connection = open_connection(database_path)?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(database_error)?;
+    let current = match read_state(&transaction, identity)? {
+        Some(state) => state,
+        None => {
+            let initialized = initialize(&transaction, identity, now_ms)?;
+            PersistedState {
+                snapshot_bytes: initialized.snapshot_bytes,
+                heads: initialized.heads,
+            }
+        }
+    };
+    let result = execute_document_mutation(
+        &current.snapshot_bytes,
+        &identity.replica_id,
+        &identity.library_uuid,
+        current.heads,
+        mutate,
     )?;
     if !result.changes.is_empty() {
         persist_local_result(&transaction, &result, now_ms, None)?;

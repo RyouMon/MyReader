@@ -242,53 +242,6 @@ impl SqliteBookmarkRepository {
             .await
             .map_err(|error| AppError::Database(error.to_string()))
     }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn write_automerge_projection<C>(
-        db: &C,
-        id: &str,
-        book_id: i64,
-        format: &str,
-        locator_key: &str,
-        locator_json: &str,
-        created_at: f64,
-        updated_at: f64,
-        deleted_at: Option<f64>,
-    ) -> Result<(), AppError>
-    where
-        C: ConnectionTrait,
-    {
-        let active = bookmarks::ActiveModel {
-            id: Set(id.to_owned()),
-            book_id: Set(book_id),
-            format: Set(format.to_owned()),
-            locator_key: Set(locator_key.to_owned()),
-            locator_json: Set(locator_json.to_owned()),
-            created_at: Set(created_at),
-            updated_at: Set(updated_at),
-            deleted_at: Set(deleted_at),
-        };
-        bookmarks::Entity::insert(active)
-            .on_conflict(
-                OnConflict::columns([
-                    bookmarks::Column::BookId,
-                    bookmarks::Column::Format,
-                    bookmarks::Column::LocatorKey,
-                ])
-                .update_columns([
-                    bookmarks::Column::Id,
-                    bookmarks::Column::LocatorJson,
-                    bookmarks::Column::CreatedAt,
-                    bookmarks::Column::UpdatedAt,
-                    bookmarks::Column::DeletedAt,
-                ])
-                .to_owned(),
-            )
-            .exec_without_returning(db)
-            .await
-            .map_err(|error| AppError::Database(error.to_string()))?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]

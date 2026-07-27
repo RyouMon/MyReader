@@ -203,48 +203,6 @@ impl SqliteProgressRepository {
             .await
             .map_err(|error| AppError::Database(error.to_string()))
     }
-
-    pub async fn write_automerge_projection<C>(
-        db: &C,
-        book_id: i64,
-        format: &str,
-        locator_json: &str,
-        display_progression: Option<f64>,
-        updated_at: f64,
-        conflict_count: i64,
-    ) -> Result<(), AppError>
-    where
-        C: ConnectionTrait,
-    {
-        let active = reading_progress::ActiveModel {
-            id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
-            book_id: Set(book_id),
-            format: Set(format.to_owned()),
-            locator_json: Set(locator_json.to_owned()),
-            updated_at: Set(updated_at),
-            display_progression: Set(display_progression),
-            sync_conflict_count: Set(conflict_count),
-        };
-        reading_progress::Entity::insert(active)
-            .on_conflict(
-                OnConflict::columns([
-                    reading_progress::Column::BookId,
-                    reading_progress::Column::Format,
-                ])
-                .update_columns([
-                    reading_progress::Column::LocatorJson,
-                    reading_progress::Column::DisplayProgression,
-                    reading_progress::Column::UpdatedAt,
-                    reading_progress::Column::SyncConflictCount,
-                ])
-                .to_owned(),
-            )
-            .exec_without_returning(db)
-            .await
-            .map_err(|error| AppError::Database(error.to_string()))?;
-        Ok(())
-    }
-
     pub async fn list_latest_book_updates(
         db: &DatabaseConnection,
     ) -> Result<HashMap<i64, f64>, AppError> {

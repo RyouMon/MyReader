@@ -1,5 +1,4 @@
 use sea_orm::{
-    sea_query::OnConflict,
     sea_query::{Expr, ExprTrait, SimpleExpr},
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter,
     QueryOrder, Set,
@@ -121,56 +120,6 @@ impl SqliteAnnotationRepository {
             .await
             .map_err(|error| AppError::Database(error.to_string()))?;
         Ok(!rows.is_empty())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn write_automerge_projection<C>(
-        db: &C,
-        id: &str,
-        book_id: i64,
-        format: &str,
-        kind: &str,
-        locator_json: &str,
-        color: &str,
-        note: Option<&str>,
-        created_at: f64,
-        updated_at: f64,
-        deleted_at: Option<f64>,
-    ) -> Result<(), AppError>
-    where
-        C: ConnectionTrait,
-    {
-        annotations::Entity::insert(annotations::ActiveModel {
-            id: Set(id.to_owned()),
-            book_id: Set(book_id),
-            format: Set(format.to_owned()),
-            kind: Set(kind.to_owned()),
-            locator_json: Set(locator_json.to_owned()),
-            color: Set(color.to_owned()),
-            note: Set(note.map(ToOwned::to_owned)),
-            created_at: Set(created_at),
-            updated_at: Set(updated_at),
-            deleted_at: Set(deleted_at),
-        })
-        .on_conflict(
-            OnConflict::column(annotations::Column::Id)
-                .update_columns([
-                    annotations::Column::BookId,
-                    annotations::Column::Format,
-                    annotations::Column::Kind,
-                    annotations::Column::LocatorJson,
-                    annotations::Column::Color,
-                    annotations::Column::Note,
-                    annotations::Column::CreatedAt,
-                    annotations::Column::UpdatedAt,
-                    annotations::Column::DeletedAt,
-                ])
-                .to_owned(),
-        )
-        .exec_without_returning(db)
-        .await
-        .map_err(|error| AppError::Database(error.to_string()))?;
-        Ok(())
     }
 }
 

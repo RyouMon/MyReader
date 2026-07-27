@@ -266,3 +266,35 @@ pub fn execute_document_command(
         projection,
     })
 }
+
+pub fn execute_document_mutation<F>(
+    snapshot: &[u8],
+    replica_id: &str,
+    expected_library_uuid: &str,
+    base_heads: Vec<String>,
+    mutate: F,
+) -> Result<DocumentCommandResult, SyncError>
+where
+    F: FnOnce(&mut automerge::AutoCommit) -> Result<(), SyncError>,
+{
+    let mut document = load_library_sidecar_document_bytes(snapshot, replica_id)?;
+    validate_library_identity(&document, expected_library_uuid)?;
+    let base_heads = parse_heads(&base_heads)?;
+    mutate(&mut document)?;
+    validate_library_identity(&document, expected_library_uuid)?;
+    let changes = library_sidecar_changes_since(&mut document, &base_heads);
+    let incremental_bytes = save_library_sidecar_incremental(&mut document, &base_heads);
+    let projection = project_document(&document)?;
+    let heads = library_sidecar_heads(&mut document);
+    let snapshot_bytes = save_library_sidecar_document(&mut document);
+    Ok(DocumentCommandResult {
+        schema_version: LIBRARY_SIDECAR_SCHEMA_VERSION,
+        library_uuid: library_identity(&document)?,
+        snapshot_bytes,
+        heads,
+        incremental_bytes,
+        changes,
+        missing_dependencies: Vec::new(),
+        projection,
+    })
+}

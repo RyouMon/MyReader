@@ -14,7 +14,6 @@ use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
 use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::storage::{self, StorageBackend};
-use crate::sync::automerge_projection::LibrarySidecarAutomergeProjection;
 use crate::sync::automerge_store::{
     publish_library_sidecar_automerge, sync_library_sidecar_automerge,
 };
@@ -108,16 +107,9 @@ impl SyncService {
                 (pushed, 0)
             }
             SidecarSyncMode::Full => {
-                let automerge_projection = LibrarySidecarAutomergeProjection;
-                let report = sync_library_sidecar_automerge(
-                    &db,
-                    &operator,
-                    &identity,
-                    now_ms,
-                    Some(&automerge_projection),
-                )
-                .await
-                .map_err(|err| Self::log_stage_error(library_id, "sync_automerge", err))?;
+                let report = sync_library_sidecar_automerge(&db, &operator, &identity, now_ms)
+                    .await
+                    .map_err(|err| Self::log_stage_error(library_id, "sync_automerge", err))?;
                 Self::record_successful_pull(&db, now_ms).await?;
                 report
             }

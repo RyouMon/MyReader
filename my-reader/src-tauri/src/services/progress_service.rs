@@ -13,7 +13,6 @@ use crate::sync::{
         reading_position_candidates, resolve_reading_position, set_reading_position,
         ReadingPositionValue,
     },
-    automerge_projection::LibrarySidecarAutomergeProjection,
     automerge_store::{
         commit_library_sidecar_automerge_mutation, read_library_sidecar_automerge_document,
     },
@@ -110,17 +109,10 @@ impl ProgressService {
             recorded_at: now_ms as i64,
             replica_id: identity.replica_id.clone(),
         };
-        let projection = LibrarySidecarAutomergeProjection;
-        commit_library_sidecar_automerge_mutation(
-            db,
-            identity,
-            now_ms,
-            |document| {
-                set_reading_position(document, book_id, &value)?;
-                Ok(())
-            },
-            Some(&projection),
-        )
+        commit_library_sidecar_automerge_mutation(db, identity, now_ms, |document| {
+            set_reading_position(document, book_id, &value)?;
+            Ok(())
+        })
         .await
     }
 
@@ -253,23 +245,16 @@ impl ProgressService {
     ) -> Result<(), AppError> {
         let (db, identity) = Self::automerge_context(app_data_dir, config, library_id).await?;
         let now_ms = unix_epoch_millis() as u64;
-        let projection = LibrarySidecarAutomergeProjection;
-        commit_library_sidecar_automerge_mutation(
-            &db,
-            &identity,
-            now_ms,
-            |document| {
-                resolve_reading_position(
-                    document,
-                    book_id,
-                    &format.trim().to_uppercase(),
-                    operation_id,
-                    now_ms as i64,
-                )?;
-                Ok(())
-            },
-            Some(&projection),
-        )
+        commit_library_sidecar_automerge_mutation(&db, &identity, now_ms, |document| {
+            resolve_reading_position(
+                document,
+                book_id,
+                &format.trim().to_uppercase(),
+                operation_id,
+                now_ms as i64,
+            )?;
+            Ok(())
+        })
         .await
     }
 }

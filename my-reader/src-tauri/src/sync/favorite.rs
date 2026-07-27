@@ -4,7 +4,6 @@ use tracing::info;
 use crate::error::AppError;
 
 use super::automerge_document::{favorite_projections, set_favorite, FavoriteValue};
-use super::automerge_projection::LibrarySidecarAutomergeProjection;
 use super::automerge_store::commit_library_sidecar_automerge_mutation;
 use super::replica_identity::ensure_replica_identity;
 
@@ -19,41 +18,34 @@ pub async fn write_local_favorite(
         return Err(AppError::Sync("Favorite book ID is invalid".into()));
     }
     let identity = ensure_replica_identity(db, library_uuid).await?;
-    let projection = LibrarySidecarAutomergeProjection;
     let mut changed = false;
-    commit_library_sidecar_automerge_mutation(
-        db,
-        &identity,
-        now_ms,
-        |document| {
-            let current = favorite_projections(document)?
-                .into_iter()
-                .find(|(id, _)| *id == book_id)
-                .map(|(_, value)| value);
-            if current.as_ref().map(|value| value.is_favorite) == Some(is_favorite)
-                || (current.is_none() && !is_favorite)
-            {
-                return Ok(());
-            }
-            changed = true;
-            set_favorite(
-                document,
-                book_id,
-                &FavoriteValue {
-                    is_favorite,
-                    added_at: if is_favorite {
-                        Some(now_ms as i64)
-                    } else {
-                        current.and_then(|value| value.added_at)
-                    },
-                    recorded_at: now_ms as i64,
-                    replica_id: identity.replica_id.clone(),
+    commit_library_sidecar_automerge_mutation(db, &identity, now_ms, |document| {
+        let current = favorite_projections(document)?
+            .into_iter()
+            .find(|(id, _)| *id == book_id)
+            .map(|(_, value)| value);
+        if current.as_ref().map(|value| value.is_favorite) == Some(is_favorite)
+            || (current.is_none() && !is_favorite)
+        {
+            return Ok(());
+        }
+        changed = true;
+        set_favorite(
+            document,
+            book_id,
+            &FavoriteValue {
+                is_favorite,
+                added_at: if is_favorite {
+                    Some(now_ms as i64)
+                } else {
+                    current.and_then(|value| value.added_at)
                 },
-            )?;
-            Ok(())
-        },
-        Some(&projection),
-    )
+                recorded_at: now_ms as i64,
+                replica_id: identity.replica_id.clone(),
+            },
+        )?;
+        Ok(())
+    })
     .await?;
     if changed {
         info!(
@@ -71,18 +63,19 @@ pub async fn write_local_favorite(
 
 #[cfg(test)]
 mod tests {
-    use sea_orm::{Database, EntityTrait};
-    use sea_orm_migration::MigratorTrait;
+    use sea_orm::EntityTrait;
 
+    use crate::db;
     use crate::entities::app::{favorite_books, sync_automerge_outbox};
-    use crate::migration::LibraryMigrator;
 
     use super::*;
 
     #[tokio::test]
     async fn should_persist_projection_and_outbox_when_book_is_favorited() {
-        let db = Database::connect("sqlite::memory:").await.unwrap();
-        LibraryMigrator::up(&db, None).await.unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let db = db::open_db(directory.path().to_str().unwrap())
+            .await
+            .unwrap();
 
         write_local_favorite(&db, "018f2f8d-980b-40ef-b72e-c6e86cb7cc28", 42, true, 900)
             .await

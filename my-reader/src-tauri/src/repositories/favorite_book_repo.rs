@@ -1,6 +1,5 @@
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    QueryOrder, Set,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
 };
 
 use crate::entities::app::favorite_books;
@@ -36,36 +35,5 @@ impl SqliteFavoriteBookRepository {
             .one(db)
             .await
             .map_err(|error| AppError::Database(error.to_string()))
-    }
-
-    pub async fn write_automerge_projection<C>(
-        db: &C,
-        book_id: i64,
-        added_at: f64,
-        is_favorite: bool,
-    ) -> Result<(), AppError>
-    where
-        C: ConnectionTrait,
-    {
-        if let Some(model) = Self::find_by_book_id(db, book_id).await? {
-            let mut active: favorite_books::ActiveModel = model.into();
-            active.added_at = Set(added_at);
-            active.is_favorite = Set(i64::from(is_favorite));
-            active
-                .update(db)
-                .await
-                .map_err(|error| AppError::Database(error.to_string()))?;
-        } else {
-            favorite_books::ActiveModel {
-                id: Set(uuid::Uuid::new_v4().as_simple().to_string()),
-                book_id: Set(book_id),
-                added_at: Set(added_at),
-                is_favorite: Set(i64::from(is_favorite)),
-            }
-            .insert(db)
-            .await
-            .map_err(|error| AppError::Database(error.to_string()))?;
-        }
-        Ok(())
     }
 }
