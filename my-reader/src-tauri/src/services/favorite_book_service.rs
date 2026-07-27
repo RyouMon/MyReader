@@ -2,9 +2,7 @@ use std::path::Path;
 
 use crate::error::AppError;
 use crate::models::AppConfig;
-use crate::repositories::{
-    calibre_repo::CalibreBookRepository, favorite_book_repo::SqliteFavoriteBookRepository,
-};
+use crate::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
 use crate::services::library_service::LibraryService;
 use crate::sync::{favorite::write_local_favorite, replica_identity::read_replica_identity};
 use crate::utils::paths::{library_root_path, library_sidecar_path};
@@ -51,13 +49,8 @@ impl FavoriteBookService {
         let library_uuid = match read_replica_identity(&db).await? {
             Some(identity) => identity.library_uuid,
             None => {
-                let library_root = library_root_path(&lib, app_data_dir)
-                    .to_string_lossy()
-                    .to_string();
-                CalibreBookRepository::open(&library_root)
-                    .await?
-                    .get_library_uuid()
-                    .await?
+                let library_root = library_root_path(&lib, app_data_dir);
+                myreader_core::api::catalog::get_library_uuid(&library_root).await?
             }
         };
         write_local_favorite(

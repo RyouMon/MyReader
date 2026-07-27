@@ -4,7 +4,6 @@ use std::path::Path;
 use crate::error::AppError;
 use crate::models::AppConfig;
 use crate::repositories::book_reading_format_repo::SqliteBookReadingFormatRepository;
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::services::library_service::LibraryService;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
@@ -20,15 +19,19 @@ impl BookReadingFormatService {
         let sidecar_root = library_sidecar_path(&lib, app_data_dir);
         let db = SqliteBookReadingFormatRepository::open(&sidecar_root.to_string_lossy()).await?;
         let rows = SqliteBookReadingFormatRepository::list(&db).await?;
-        let library_root = library_root_path(&lib, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        let repo = CalibreBookRepository::open(&library_root).await?;
+        let library_root = library_root_path(&lib, app_data_dir);
         let mut result = BTreeMap::new();
 
         for row in rows {
-            let Some(book) = repo.get_book_by_id(row.book_id).await? else {
-                continue;
+            let book = match myreader_core::api::catalog::get_book_detail(
+                &library_root,
+                row.book_id,
+            )
+            .await
+            {
+                Ok(detail) => detail.book,
+                Err(myreader_core::CoreError::NotFound(_)) => continue,
+                Err(error) => return Err(error.into()),
             };
             let readable = readable_formats(&book.formats);
             if readable.len() <= 1 {
@@ -59,14 +62,10 @@ impl BookReadingFormatService {
             return Ok(());
         };
 
-        let library_root = library_root_path(&lib, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        let repo = CalibreBookRepository::open(&library_root).await?;
-        let book = repo
-            .get_book_by_id(book_id)
+        let library_root = library_root_path(&lib, app_data_dir);
+        let book = myreader_core::api::catalog::get_book_detail(&library_root, book_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
+            .book;
         let readable = readable_formats(&book.formats);
         if readable.len() <= 1 {
             SqliteBookReadingFormatRepository::clear(&db, book_id).await?;

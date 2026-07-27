@@ -765,6 +765,24 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -786,15 +804,31 @@ fun uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_cancel_sync_task(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_count_calibre_books(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_ensure_sync_database_identity(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_execute_sync_database_command(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_get_calibre_library_uuid(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_initialize_device_registry(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_calibre_book_formats(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_calibre_book_summaries(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_calibre_books(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_calibre_books_page(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_calibre_series_books(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_remote_directories(
 ): Short
@@ -829,6 +863,8 @@ fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
 fun uniffi_myreader_rust_components_checksum_func_test_remote_data_source(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_device_data_source(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_validate_calibre_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_validate_device_data_source(
 ): Short
@@ -885,15 +921,31 @@ fun uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(`stateJson`: 
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_cancel_sync_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
+fun uniffi_myreader_rust_components_fn_func_count_calibre_books(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Long
 fun uniffi_myreader_rust_components_fn_func_ensure_sync_database_document(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_ensure_sync_database_identity(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_execute_sync_database_command(`databasePath`: RustBuffer.ByValue,`libraryUuid`: RustBuffer.ByValue,`replicaId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`commandJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_get_calibre_book_detail(`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_get_calibre_library_uuid(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_initialize_device_registry(`registryPath`: RustBuffer.ByValue,`legacyRegistryJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_calibre_book_formats(`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_calibre_book_summaries(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_calibre_books(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_calibre_books_page(`libraryRootPath`: RustBuffer.ByValue,`offset`: Long,`limit`: Long,`sortBy`: RustBuffer.ByValue,`search`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_calibre_series_books(`libraryRootPath`: RustBuffer.ByValue,`seriesName`: RustBuffer.ByValue,`excludeBookId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_remote_directories(`registryPath`: RustBuffer.ByValue,`dataSourceId`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -929,6 +981,8 @@ fun uniffi_myreader_rust_components_fn_func_test_remote_data_source(`sourceJson`
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_upsert_device_data_source(`registryPath`: RustBuffer.ByValue,`sourceJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_validate_calibre_library(`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Byte
 fun uniffi_myreader_rust_components_fn_func_validate_device_data_source(`registryPath`: RustBuffer.ByValue,`sourceJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_write_sync_database_schedule_state(`databasePath`: RustBuffer.ByValue,`state`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1068,6 +1122,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_ensure_sync_database_document() != 40101.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1077,10 +1134,31 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_execute_sync_database_command() != 40736.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail() != 17242.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_get_calibre_library_uuid() != 363.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_book_formats() != 14830.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_book_summaries() != 54507.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_books() != 36149.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_books_page() != 1089.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595.toShort()) {
@@ -1132,6 +1210,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_validate_calibre_library() != 40706.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_validate_device_data_source() != 3261.toShort()) {
@@ -1239,6 +1320,29 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
     }
 }
 
@@ -1837,6 +1941,16 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `countCalibreBooks`(`libraryRootPath`: kotlin.String): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_count_calibre_books(
+        FfiConverterString.lower(`libraryRootPath`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `ensureSyncDatabaseDocument`(`databasePath`: kotlin.String, `libraryUuid`: kotlin.String, `replicaId`: kotlin.String, `nowMs`: kotlin.String): SyncDocumentCommandResult {
             return FfiConverterTypeSyncDocumentCommandResult.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -1867,6 +1981,26 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `getCalibreBookDetail`(`libraryRootPath`: kotlin.String, `bookId`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_calibre_book_detail(
+        FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `getCalibreLibraryUuid`(`libraryRootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_calibre_library_uuid(
+        FfiConverterString.lower(`libraryRootPath`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `hasSyncDatabasePendingWork`(`databasePath`: kotlin.String): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -1882,6 +2016,56 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_initialize_device_registry(
         FfiConverterString.lower(`registryPath`),FfiConverterOptionalString.lower(`legacyRegistryJson`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listCalibreBookFormats`(`libraryRootPath`: kotlin.String, `bookId`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_book_formats(
+        FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listCalibreBookSummaries`(`libraryRootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_book_summaries(
+        FfiConverterString.lower(`libraryRootPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listCalibreBooks`(`libraryRootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_books(
+        FfiConverterString.lower(`libraryRootPath`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listCalibreBooksPage`(`libraryRootPath`: kotlin.String, `offset`: kotlin.ULong, `limit`: kotlin.ULong, `sortBy`: kotlin.String?, `search`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_books_page(
+        FfiConverterString.lower(`libraryRootPath`),FfiConverterULong.lower(`offset`),FfiConverterULong.lower(`limit`),FfiConverterOptionalString.lower(`sortBy`),FfiConverterOptionalString.lower(`search`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listCalibreSeriesBooks`(`libraryRootPath`: kotlin.String, `seriesName`: kotlin.String, `excludeBookId`: kotlin.Long?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_calibre_series_books(
+        FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`seriesName`),FfiConverterOptionalLong.lower(`excludeBookId`),_status)
 }
     )
     }
@@ -2046,6 +2230,15 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_device_data_source(
         FfiConverterString.lower(`registryPath`),FfiConverterString.lower(`sourceJson`),_status)
+}
+    )
+    }
+
+ fun `validateCalibreLibrary`(`libraryRootPath`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_validate_calibre_library(
+        FfiConverterString.lower(`libraryRootPath`),_status)
 }
     )
     }

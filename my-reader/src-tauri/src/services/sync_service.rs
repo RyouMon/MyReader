@@ -8,7 +8,6 @@ use tracing::{error, info};
 use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig};
-use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::storage::{self, StorageBackend};
 use crate::sync::automerge_store::{
     database_path, publish_library_sidecar_automerge, sync_library_sidecar_automerge,
@@ -78,12 +77,9 @@ impl SyncService {
         let db = Self::open_library_db(&sidecar_path)
             .await
             .map_err(|err| Self::log_stage_error(library_id, "open_sidecar_database", err))?;
-        let calibre = CalibreBookRepository::open(&library_root.to_string_lossy())
+        let library_uuid = myreader_core::api::catalog::get_library_uuid(&library_root)
             .await
-            .map_err(|err| Self::log_stage_error(library_id, "open_calibre_database", err))?;
-        let library_uuid = calibre
-            .get_library_uuid()
-            .await
+            .map_err(AppError::from)
             .map_err(|err| Self::log_stage_error(library_id, "read_library_uuid", err))?;
         let identity = ensure_replica_identity(&db, &library_uuid)
             .await

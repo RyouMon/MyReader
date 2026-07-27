@@ -400,6 +400,64 @@ pub struct BookIdentifier {
     pub value: String,
 }
 
+impl From<myreader_core::models::BookEntry> for BookEntry {
+    fn from(value: myreader_core::models::BookEntry) -> Self {
+        Self {
+            id: value.id,
+            title: value.title,
+            author_sort: value.author_sort,
+            authors: value.authors,
+            tags: value.tags,
+            series: value.series,
+            series_index: value.series_index,
+            formats: value.formats,
+            has_cover: value.has_cover,
+            path: value.path,
+            timestamp: value.timestamp,
+            pubdate: value.pubdate,
+            last_modified: value.last_modified,
+            comment: value.comment,
+            publisher: value.publisher,
+            languages: value.languages,
+            rating: value.rating,
+            uuid: value.uuid,
+        }
+    }
+}
+
+impl From<myreader_core::models::PaginatedBooks> for PaginatedBooks {
+    fn from(value: myreader_core::models::PaginatedBooks) -> Self {
+        Self {
+            items: value.items.into_iter().map(Into::into).collect(),
+            total: value.total,
+        }
+    }
+}
+
+impl From<myreader_core::models::BookDetail> for BookDetail {
+    fn from(value: myreader_core::models::BookDetail) -> Self {
+        Self {
+            book: value.book.into(),
+            format_sizes: value
+                .format_sizes
+                .into_iter()
+                .map(|item| FormatSize {
+                    format: item.format,
+                    size_bytes: item.size_bytes,
+                })
+                .collect(),
+            identifiers: value
+                .identifiers
+                .into_iter()
+                .map(|item| BookIdentifier {
+                    id_type: item.id_type,
+                    value: item.value,
+                })
+                .collect(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryInfo {

@@ -3,7 +3,6 @@ use std::path::Path;
 use crate::error::AppError;
 use crate::models::{is_valid_reader_locator, AppConfig, ReaderAnnotationDto};
 use crate::repositories::annotation_repo::SqliteAnnotationRepository;
-use crate::repositories::calibre_repo::CalibreBookRepository;
 use crate::services::library_service::LibraryService;
 use crate::sync::annotation::{
     add_local_annotation, delete_local_annotation, update_local_annotation,
@@ -104,13 +103,8 @@ impl AnnotationService {
         let library_uuid = match read_replica_identity(&db).await? {
             Some(identity) => identity.library_uuid,
             None => {
-                let library_root = library_root_path(&library, app_data_dir)
-                    .to_string_lossy()
-                    .to_string();
-                CalibreBookRepository::open(&library_root)
-                    .await?
-                    .get_library_uuid()
-                    .await?
+                let library_root = library_root_path(&library, app_data_dir);
+                myreader_core::api::catalog::get_library_uuid(&library_root).await?
             }
         };
         Ok((library, db, library_uuid))

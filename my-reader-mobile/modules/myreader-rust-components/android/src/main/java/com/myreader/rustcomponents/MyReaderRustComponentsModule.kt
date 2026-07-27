@@ -5,11 +5,19 @@ import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
+import com.myreader.rustcomponents.uniffi.countCalibreBooks
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseIdentity
 import com.myreader.rustcomponents.uniffi.ensureSyncDatabaseDocument
 import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
+import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
+import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
+import com.myreader.rustcomponents.uniffi.listCalibreBookFormats
+import com.myreader.rustcomponents.uniffi.listCalibreBookSummaries
+import com.myreader.rustcomponents.uniffi.listCalibreBooks
+import com.myreader.rustcomponents.uniffi.listCalibreBooksPage
+import com.myreader.rustcomponents.uniffi.listCalibreSeriesBooks
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
@@ -29,6 +37,7 @@ import com.myreader.rustcomponents.uniffi.switchDeviceLibrary
 import com.myreader.rustcomponents.uniffi.testRemoteDataSource
 import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
+import com.myreader.rustcomponents.uniffi.validateCalibreLibrary
 import com.myreader.rustcomponents.uniffi.writeSyncDatabaseScheduleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -169,6 +178,80 @@ class MyReaderRustComponentsModule : Module() {
           localRootPath,
           credentialJson,
         )
+      }
+    }
+
+    Function("validateCalibreLibrary") { libraryRootPath: String ->
+      validateCalibreLibrary(libraryRootPath)
+    }
+
+    AsyncFunction("countCalibreBooks") { libraryRootPath: String ->
+      componentCall {
+        countCalibreBooks(libraryRootPath).toLong()
+      }
+    }
+
+    AsyncFunction("listCalibreBooks") { libraryRootPath: String ->
+      componentCall {
+        listCalibreBooks(libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBooksPage") {
+        libraryRootPath: String,
+        offset: Long,
+        limit: Long,
+        sortBy: String?,
+        search: String? ->
+      componentCall {
+        listCalibreBooksPage(
+          libraryRootPath,
+          offset.toULong(),
+          limit.toULong(),
+          sortBy,
+          search,
+        )
+      }
+    }
+
+    AsyncFunction("getCalibreBookDetail") {
+        libraryRootPath: String,
+        bookId: Long ->
+      componentCall {
+        getCalibreBookDetail(libraryRootPath, bookId)
+      }
+    }
+
+    AsyncFunction("listCalibreSeriesBooks") {
+        libraryRootPath: String,
+        seriesName: String,
+        excludeBookId: Long? ->
+      componentCall {
+        listCalibreSeriesBooks(
+          libraryRootPath,
+          seriesName,
+          excludeBookId,
+        )
+      }
+    }
+
+    AsyncFunction("getCalibreLibraryUuid") { libraryRootPath: String ->
+      componentCall {
+        getCalibreLibraryUuid(libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBookSummaries") { libraryRootPath: String ->
+      componentCall {
+        listCalibreBookSummaries(libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBookFormats") {
+        libraryRootPath: String,
+        bookId: Long ->
+      componentCall {
+        listCalibreBookFormats(libraryRootPath, bookId)
       }
     }
 

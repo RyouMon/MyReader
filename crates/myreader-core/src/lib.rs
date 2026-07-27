@@ -8,6 +8,7 @@ pub mod models;
 
 mod error;
 mod infrastructure;
+mod repositories;
 mod services;
 
 pub use error::CoreError;

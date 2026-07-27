@@ -7,55 +7,14 @@ use sea_orm::{
 };
 use tracing::{debug, info};
 
-use crate::error::AppError;
-use crate::models::BookEntry;
-use myreader_core::entities::calibre::{
+use crate::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
     library_id, publishers, ratings, series, tags,
 };
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct BookFilePathRequest {
-    pub book_id: i64,
-    pub format: String,
-}
-
-/// Lightweight summary for cover download — avoids joining all book columns.
-pub struct CoverSummary {
-    pub id: i64,
-    pub path: String,
-    pub has_cover: bool,
-}
-
-/// Repository trait for Calibre book metadata access.
-#[async_trait::async_trait]
-pub trait BookRepository {
-    async fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError>;
-    async fn get_books_page(
-        &self,
-        offset: usize,
-        limit: usize,
-        sort_by: &str,
-        search: Option<&str>,
-    ) -> Result<(Vec<BookEntry>, usize), AppError>;
-    async fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError>;
-    async fn get_books_by_series(
-        &self,
-        series_name: &str,
-        exclude_book_id: Option<i64>,
-    ) -> Result<Vec<BookEntry>, AppError>;
-    async fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError>;
-    async fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError>;
-    async fn get_book_count(&self) -> Result<usize, AppError>;
-    fn get_book_cover_path(&self, book_path: &str) -> Result<Option<PathBuf>, AppError>;
-    async fn get_book_file_path(
-        &self,
-        library_path: &str,
-        book_id: i64,
-        format: &str,
-    ) -> Result<Option<PathBuf>, AppError>;
-}
+use crate::models::catalog::BookFilePathRequest;
+use crate::models::{BookEntry, BookFormat, BookSummary};
+use crate::CoreError;
 
 /// Read-only Calibre metadata.db repository using SeaORM.
 pub struct CalibreBookRepository {
@@ -64,18 +23,18 @@ pub struct CalibreBookRepository {
 }
 
 impl CalibreBookRepository {
-    pub async fn open(library_path: &str) -> Result<Self, AppError> {
+    pub async fn open(library_path: &str) -> Result<Self, CoreError> {
         info!("Start to open Calibre database. library path: \"{library_path}\"");
         let db_path = Path::new(library_path).join("metadata.db");
         let url = format!(
             "sqlite://{}?mode=ro",
             db_path
                 .to_str()
-                .ok_or_else(|| AppError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
+                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
         );
         let db = Database::connect(&url)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         info!(
             "Success to open Calibre database. db path: \"{}\"",
             db_path.display()
@@ -90,31 +49,84 @@ impl CalibreBookRepository {
         Path::new(library_path).join("metadata.db").is_file()
     }
 
-    pub async fn get_library_uuid(&self) -> Result<String, AppError> {
+    pub async fn get_library_uuid(&self) -> Result<String, CoreError> {
         let row = library_id::Entity::find()
             .one(&self.db)
             .await
-            .map_err(|error| AppError::Database(error.to_string()))?
-            .ok_or_else(|| AppError::Database("Calibre library UUID is missing".into()))?;
+            .map_err(|error| CoreError::Database(error.to_string()))?
+            .ok_or_else(|| CoreError::Database("Calibre library UUID is missing".into()))?;
         Ok(row.uuid.to_lowercase())
     }
 
-    /// Return lightweight (id, path, has_cover) for every book — used by bulk cover download.
-    pub async fn get_cover_summaries(&self) -> Result<Vec<CoverSummary>, AppError> {
-        let rows = books::Entity::find()
-            .select_only()
-            .column(books::Column::Id)
-            .column(books::Column::Path)
-            .column(books::Column::HasCover)
+    pub async fn get_book_summaries(&self) -> Result<Vec<BookSummary>, CoreError> {
+        let book_rows = books::Entity::find()
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|error| CoreError::Database(error.to_string()))?;
+        let format_rows = data::Entity::find()
+            .all(&self.db)
+            .await
+            .map_err(|error| CoreError::Database(error.to_string()))?;
+        let book_paths = book_rows
+            .iter()
+            .filter_map(|book| book.path.as_deref().map(|path| (book.id, path)))
+            .collect::<HashMap<_, _>>();
+        let mut formats_by_book = HashMap::<i64, Vec<String>>::new();
+        let mut format_paths_by_book = HashMap::<i64, Vec<String>>::new();
+        for row in format_rows {
+            formats_by_book
+                .entry(row.book)
+                .or_default()
+                .push(row.format.clone());
+            if let Some(book_path) = book_paths.get(&row.book) {
+                format_paths_by_book.entry(row.book).or_default().push(
+                    Path::new(book_path)
+                        .join(format!("{}.{}", row.name, row.format.to_lowercase()))
+                        .to_string_lossy()
+                        .to_string(),
+                );
+            }
+        }
+
+        Ok(book_rows
+            .into_iter()
+            .map(|book| BookSummary {
+                id: book.id,
+                path: book.path.unwrap_or_default(),
+                has_cover: book.has_cover.unwrap_or_default() != 0,
+                formats: formats_by_book.remove(&book.id).unwrap_or_default(),
+                format_paths: format_paths_by_book.remove(&book.id).unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    pub async fn get_book_formats(&self, book_id: i64) -> Result<Vec<BookFormat>, CoreError> {
+        let book = books::Entity::find_by_id(book_id)
+            .one(&self.db)
+            .await
+            .map_err(|error| CoreError::Database(error.to_string()))?
+            .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
+        let book_path = book.path.unwrap_or_default();
+        let rows = data::Entity::find()
+            .filter(data::Column::Book.eq(book_id))
+            .order_by_asc(data::Column::Format)
+            .all(&self.db)
+            .await
+            .map_err(|error| CoreError::Database(error.to_string()))?;
+
         Ok(rows
             .into_iter()
-            .map(|m| CoverSummary {
-                id: m.id,
-                path: m.path.unwrap_or_default(),
-                has_cover: m.has_cover.unwrap_or(0) != 0,
+            .map(|row| {
+                let relative_path = Path::new(&book_path)
+                    .join(format!("{}.{}", row.name, row.format.to_lowercase()))
+                    .to_string_lossy()
+                    .to_string();
+                BookFormat {
+                    format: row.format,
+                    name: row.name,
+                    size_bytes: row.uncompressed_size,
+                    relative_path,
+                }
             })
             .collect())
     }
@@ -123,7 +135,7 @@ impl CalibreBookRepository {
         &self,
         library_path: &str,
         requests: &[BookFilePathRequest],
-    ) -> Result<HashMap<(i64, String), PathBuf>, AppError> {
+    ) -> Result<HashMap<(i64, String), PathBuf>, CoreError> {
         if requests.is_empty() {
             return Ok(HashMap::new());
         }
@@ -133,12 +145,12 @@ impl CalibreBookRepository {
             .filter(books::Column::Id.is_in(book_ids.clone()))
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         let data_rows = data::Entity::find()
             .filter(data::Column::Book.is_in(book_ids))
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let books_by_id: HashMap<i64, books::Model> =
             book_rows.into_iter().map(|book| (book.id, book)).collect();
@@ -178,7 +190,7 @@ impl CalibreBookRepository {
 async fn assemble_book_entries(
     db: &DatabaseConnection,
     book_models: Vec<books::Model>,
-) -> Result<Vec<BookEntry>, AppError> {
+) -> Result<Vec<BookEntry>, CoreError> {
     if book_models.is_empty() {
         return Ok(Vec::new());
     }
@@ -190,7 +202,7 @@ async fn assemble_book_entries(
         .filter(books_authors_link::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let author_ids: Vec<i64> = author_links.iter().map(|l| l.author).collect();
     let author_models = if author_ids.is_empty() {
@@ -200,7 +212,7 @@ async fn assemble_book_entries(
             .filter(authors::Column::Id.is_in(author_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let author_map: HashMap<i64, String> =
         author_models.into_iter().map(|a| (a.id, a.name)).collect();
@@ -220,7 +232,7 @@ async fn assemble_book_entries(
         .filter(books_tags_link::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let tag_ids: Vec<i64> = tag_links.iter().map(|l| l.tag).collect();
     let tag_models = if tag_ids.is_empty() {
@@ -230,7 +242,7 @@ async fn assemble_book_entries(
             .filter(tags::Column::Id.is_in(tag_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let tag_map: HashMap<i64, String> = tag_models.into_iter().map(|t| (t.id, t.name)).collect();
 
@@ -249,7 +261,7 @@ async fn assemble_book_entries(
         .filter(books_series_link::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let series_ids: Vec<i64> = series_links.iter().map(|l| l.series).collect();
     let series_models = if series_ids.is_empty() {
@@ -259,7 +271,7 @@ async fn assemble_book_entries(
             .filter(series::Column::Id.is_in(series_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let series_map: HashMap<i64, String> =
         series_models.into_iter().map(|s| (s.id, s.name)).collect();
@@ -276,7 +288,7 @@ async fn assemble_book_entries(
         .filter(data::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let mut book_formats_map: HashMap<i64, Vec<String>> = HashMap::new();
     for d in &data_rows {
@@ -291,7 +303,7 @@ async fn assemble_book_entries(
         .filter(comments::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let mut book_comment_map: HashMap<i64, String> =
         comment_rows.into_iter().map(|c| (c.book, c.text)).collect();
@@ -301,7 +313,7 @@ async fn assemble_book_entries(
         .filter(books_publishers_link::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let pub_ids: Vec<i64> = pub_links.iter().map(|l| l.publisher).collect();
     let pub_models = if pub_ids.is_empty() {
@@ -311,7 +323,7 @@ async fn assemble_book_entries(
             .filter(publishers::Column::Id.is_in(pub_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let pub_map: HashMap<i64, String> = pub_models.into_iter().map(|p| (p.id, p.name)).collect();
 
@@ -327,7 +339,7 @@ async fn assemble_book_entries(
         .filter(books_languages_link::Column::Book.is_in(book_ids.clone()))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let lang_ids: Vec<i64> = lang_links.iter().map(|l| l.lang_code).collect();
     let lang_models = if lang_ids.is_empty() {
@@ -337,7 +349,7 @@ async fn assemble_book_entries(
             .filter(languages::Column::Id.is_in(lang_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let lang_map: HashMap<i64, String> = lang_models
         .into_iter()
@@ -359,7 +371,7 @@ async fn assemble_book_entries(
         .filter(books_ratings_link::Column::Book.is_in(book_ids))
         .all(db)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| CoreError::Database(e.to_string()))?;
 
     let rating_ids: Vec<i64> = rating_links.iter().map(|l| l.rating).collect();
     let rating_models = if rating_ids.is_empty() {
@@ -369,7 +381,7 @@ async fn assemble_book_entries(
             .filter(ratings::Column::Id.is_in(rating_ids))
             .all(db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?
+            .map_err(|e| CoreError::Database(e.to_string()))?
     };
     let rating_map: HashMap<i64, i64> = rating_models
         .into_iter()
@@ -389,6 +401,7 @@ async fn assemble_book_entries(
         .map(|b| BookEntry {
             id: b.id,
             title: b.title.unwrap_or_default(),
+            title_sort: b.sort.unwrap_or_default(),
             author_sort: b.author_sort.unwrap_or_default(),
             authors: book_authors_map.remove(&b.id).unwrap_or_default(),
             tags: book_tags_map.remove(&b.id).unwrap_or_default(),
@@ -409,14 +422,13 @@ async fn assemble_book_entries(
         .collect())
 }
 
-#[async_trait::async_trait]
-impl BookRepository for CalibreBookRepository {
-    async fn get_all_books(&self) -> Result<Vec<BookEntry>, AppError> {
+impl CalibreBookRepository {
+    pub(crate) async fn get_all_books(&self) -> Result<Vec<BookEntry>, CoreError> {
         info!("Start to load all books from Calibre.");
         let book_models = books::Entity::find()
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         let result = assemble_book_entries(&self.db, book_models).await?;
         info!(
             "Success to load all books from Calibre. count: {}",
@@ -425,13 +437,13 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    async fn get_books_page(
+    pub(crate) async fn get_books_page(
         &self,
         offset: usize,
         limit: usize,
         sort_by: &str,
         search: Option<&str>,
-    ) -> Result<(Vec<BookEntry>, usize), AppError> {
+    ) -> Result<(Vec<BookEntry>, usize), CoreError> {
         info!(
             "Start to query books page. offset: {offset}, limit: {limit}, sort by: {sort_by}, search: {search:?}"
         );
@@ -447,7 +459,7 @@ impl BookRepository for CalibreBookRepository {
                 .filter(authors::Column::Name.contains(keyword))
                 .all(&self.db)
                 .await
-                .map_err(|e| AppError::Database(e.to_string()))?
+                .map_err(|e| CoreError::Database(e.to_string()))?
                 .into_iter()
                 .map(|a| a.id)
                 .collect();
@@ -460,7 +472,7 @@ impl BookRepository for CalibreBookRepository {
                     .filter(books_authors_link::Column::Author.is_in(matching_author_ids))
                     .all(&self.db)
                     .await
-                    .map_err(|e| AppError::Database(e.to_string()))?
+                    .map_err(|e| CoreError::Database(e.to_string()))?
                     .into_iter()
                     .map(|l| l.book)
                     .collect()
@@ -471,7 +483,7 @@ impl BookRepository for CalibreBookRepository {
                 .filter(tags::Column::Name.contains(keyword))
                 .all(&self.db)
                 .await
-                .map_err(|e| AppError::Database(e.to_string()))?
+                .map_err(|e| CoreError::Database(e.to_string()))?
                 .into_iter()
                 .map(|t| t.id)
                 .collect();
@@ -484,7 +496,7 @@ impl BookRepository for CalibreBookRepository {
                     .filter(books_tags_link::Column::Tag.is_in(matching_tag_ids))
                     .all(&self.db)
                     .await
-                    .map_err(|e| AppError::Database(e.to_string()))?
+                    .map_err(|e| CoreError::Database(e.to_string()))?
                     .into_iter()
                     .map(|l| l.book)
                     .collect()
@@ -500,7 +512,7 @@ impl BookRepository for CalibreBookRepository {
                 )
                 .all(&self.db)
                 .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
+                .map_err(|e| CoreError::Database(e.to_string()))?;
 
             let mut matched_ids: std::collections::HashSet<i64> =
                 all_books.into_iter().map(|b| b.id).collect();
@@ -533,7 +545,7 @@ impl BookRepository for CalibreBookRepository {
                 .limit(limit as u64)
                 .all(&self.db)
                 .await
-                .map_err(|e| AppError::Database(e.to_string()))?;
+                .map_err(|e| CoreError::Database(e.to_string()))?;
 
             let result = assemble_book_entries(&self.db, book_models).await?;
             info!(
@@ -548,7 +560,7 @@ impl BookRepository for CalibreBookRepository {
         let total = books::Entity::find()
             .count(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let (order_expr, order_dir) = match sort_by {
             "author" => ("author_sort COLLATE NOCASE", sea_orm::Order::Asc),
@@ -561,7 +573,7 @@ impl BookRepository for CalibreBookRepository {
             .limit(limit as u64)
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let result = assemble_book_entries(&self.db, book_models).await?;
         info!(
@@ -572,12 +584,15 @@ impl BookRepository for CalibreBookRepository {
         Ok((result, total as usize))
     }
 
-    async fn get_book_by_id(&self, book_id: i64) -> Result<Option<BookEntry>, AppError> {
+    pub(crate) async fn get_book_by_id(
+        &self,
+        book_id: i64,
+    ) -> Result<Option<BookEntry>, CoreError> {
         info!("Start to load book by id. book id: {book_id}");
         let book_model = books::Entity::find_by_id(book_id)
             .one(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         match book_model {
             Some(m) => {
@@ -588,11 +603,11 @@ impl BookRepository for CalibreBookRepository {
         }
     }
 
-    async fn get_books_by_series(
+    pub(crate) async fn get_books_by_series(
         &self,
         series_name: &str,
         exclude_book_id: Option<i64>,
-    ) -> Result<Vec<BookEntry>, AppError> {
+    ) -> Result<Vec<BookEntry>, CoreError> {
         info!(
             "Start to load books by series. series name: \"{series_name}\", exclude book id: {exclude_book_id:?}"
         );
@@ -602,7 +617,7 @@ impl BookRepository for CalibreBookRepository {
             .filter(series::Column::Name.eq(series_name))
             .one(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let Some(series_model) = series_model else {
             return Ok(Vec::new());
@@ -619,7 +634,7 @@ impl BookRepository for CalibreBookRepository {
         let links = query
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         let book_ids: Vec<i64> = links.iter().map(|l| l.book).collect();
 
         if book_ids.is_empty() {
@@ -632,7 +647,7 @@ impl BookRepository for CalibreBookRepository {
             .order_by_asc(books::Column::SeriesIndex)
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let result = assemble_book_entries(&self.db, book_models).await?;
         info!(
@@ -642,14 +657,17 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    async fn get_book_format_sizes(&self, book_id: i64) -> Result<Vec<(String, i64)>, AppError> {
+    pub(crate) async fn get_book_format_sizes(
+        &self,
+        book_id: i64,
+    ) -> Result<Vec<(String, i64)>, CoreError> {
         debug!("Start to load book format sizes. book id: {book_id}");
         let rows = data::Entity::find()
             .filter(data::Column::Book.eq(book_id))
             .order_by_asc(data::Column::Format)
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         let result: Vec<(String, i64)> = rows
             .into_iter()
             .map(|d| (d.format, d.uncompressed_size))
@@ -662,14 +680,17 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    async fn get_book_identifiers(&self, book_id: i64) -> Result<Vec<(String, String)>, AppError> {
+    pub(crate) async fn get_book_identifiers(
+        &self,
+        book_id: i64,
+    ) -> Result<Vec<(String, String)>, CoreError> {
         debug!("Start to load book identifiers. book id: {book_id}");
         let rows = identifiers::Entity::find()
             .filter(identifiers::Column::Book.eq(book_id))
             .order_by_asc(identifiers::Column::Type)
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         let result: Vec<(String, String)> = rows
             .into_iter()
             .map(|i| (i.r#type.unwrap_or_default(), i.val))
@@ -682,17 +703,20 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    async fn get_book_count(&self) -> Result<usize, AppError> {
+    pub(crate) async fn get_book_count(&self) -> Result<usize, CoreError> {
         debug!("Start to count books in Calibre.");
         let count = books::Entity::find()
             .count(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
         debug!("Success to count books in Calibre. count: {count}");
         Ok(count as usize)
     }
 
-    fn get_book_cover_path(&self, book_path: &str) -> Result<Option<PathBuf>, AppError> {
+    pub(crate) fn get_book_cover_path(
+        &self,
+        book_path: &str,
+    ) -> Result<Option<PathBuf>, CoreError> {
         debug!(
             "Start to resolve book cover path. library path: \"{}\", book path: \"{book_path}\"",
             self.library_path
@@ -720,12 +744,12 @@ impl BookRepository for CalibreBookRepository {
         Ok(result)
     }
 
-    async fn get_book_file_path(
+    pub(crate) async fn get_book_file_path(
         &self,
         library_path: &str,
         book_id: i64,
         format: &str,
-    ) -> Result<Option<PathBuf>, AppError> {
+    ) -> Result<Option<PathBuf>, CoreError> {
         info!(
             "Start to resolve book file path. library path: \"{library_path}\", book id: {book_id}, format: \"{format}\""
         );
@@ -734,7 +758,7 @@ impl BookRepository for CalibreBookRepository {
         let book_model = books::Entity::find_by_id(book_id)
             .one(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let Some(book_model) = book_model else {
             info!(
@@ -748,7 +772,7 @@ impl BookRepository for CalibreBookRepository {
             .filter(data::Column::Book.eq(book_id))
             .all(&self.db)
             .await
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            .map_err(|e| CoreError::Database(e.to_string()))?;
 
         let data_match = data_rows
             .into_iter()

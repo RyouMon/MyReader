@@ -1,14 +1,18 @@
 use crate::error::AppError;
-use crate::models::{BookDetail, BookEntry, BookIdentifier, FormatSize, PaginatedBooks};
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
+use std::path::Path;
+
+use crate::models::{BookDetail, BookEntry, PaginatedBooks};
 use crate::repositories::progress_repo::SqliteProgressRepository;
 
 pub struct BookService;
 
 impl BookService {
     pub async fn get_books(lib_path: &str) -> Result<Vec<BookEntry>, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        repo.get_all_books().await
+        Ok(myreader_core::api::catalog::list_books(Path::new(lib_path))
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
     }
 
     pub async fn get_books_page(
@@ -18,11 +22,15 @@ impl BookService {
         sort_by: Option<&str>,
         search: Option<&str>,
     ) -> Result<PaginatedBooks, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        let sort = sort_by.unwrap_or("title");
-        let limit = limit.clamp(1, 200);
-        let (items, total) = repo.get_books_page(offset, limit, sort, search).await?;
-        Ok(PaginatedBooks { items, total })
+        Ok(myreader_core::api::catalog::list_books_page(
+            Path::new(lib_path),
+            offset,
+            limit,
+            sort_by,
+            search,
+        )
+        .await?
+        .into())
     }
 
     pub async fn get_books_page_by_last_read(
@@ -32,8 +40,12 @@ impl BookService {
         limit: usize,
         search: Option<&str>,
     ) -> Result<PaginatedBooks, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        let mut books = repo.get_all_books().await?;
+        let mut books: Vec<BookEntry> =
+            myreader_core::api::catalog::list_books(Path::new(lib_path))
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect();
         if let Some(keyword) = search.filter(|s| !s.trim().is_empty()) {
             let keyword = keyword.to_lowercase();
             books.retain(|book| {
@@ -77,31 +89,11 @@ impl BookService {
     }
 
     pub async fn get_book_detail(lib_path: &str, book_id: i64) -> Result<BookDetail, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        let book = repo
-            .get_book_by_id(book_id)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("BOOK_NOT_FOUND: {}", book_id)))?;
-
-        let format_sizes = repo
-            .get_book_format_sizes(book_id)
-            .await?
-            .into_iter()
-            .map(|(format, size_bytes)| FormatSize { format, size_bytes })
-            .collect();
-
-        let identifiers = repo
-            .get_book_identifiers(book_id)
-            .await?
-            .into_iter()
-            .map(|(id_type, value)| BookIdentifier { id_type, value })
-            .collect();
-
-        Ok(BookDetail {
-            book,
-            format_sizes,
-            identifiers,
-        })
+        Ok(
+            myreader_core::api::catalog::get_book_detail(Path::new(lib_path), book_id)
+                .await?
+                .into(),
+        )
     }
 
     pub async fn get_series_books(
@@ -109,18 +101,24 @@ impl BookService {
         series_name: &str,
         exclude_book_id: Option<i64>,
     ) -> Result<Vec<BookEntry>, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        repo.get_books_by_series(series_name, exclude_book_id).await
+        Ok(myreader_core::api::catalog::list_series_books(
+            Path::new(lib_path),
+            series_name,
+            exclude_book_id,
+        )
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
     }
 
     pub async fn get_book_cover_bytes(
         lib_path: &str,
         book_path: &str,
     ) -> Result<Option<Vec<u8>>, AppError> {
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        match repo.get_book_cover_path(book_path)? {
-            Some(path) => Ok(Some(std::fs::read(&path)?)),
-            None => Ok(None),
-        }
+        Ok(
+            myreader_core::api::catalog::get_book_cover_bytes(Path::new(lib_path), book_path)
+                .await?,
+        )
     }
 }

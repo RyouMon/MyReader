@@ -12,9 +12,6 @@ use crate::error::AppError;
 use crate::models::{
     AppConfig, BookFileStateDto, FileStateDto, FileStateRequestDto, LibraryConfig,
 };
-use crate::repositories::calibre_repo::{
-    BookFilePathRequest, BookRepository, CalibreBookRepository,
-};
 use crate::repositories::file_state_repo::SqliteFileStateRepository;
 use crate::services::library_service::LibraryService;
 use crate::storage::from_data_source;
@@ -392,12 +389,8 @@ impl DownloadService {
         book_id: i64,
         format: &str,
     ) -> Result<PathBuf, AppError> {
-        let lib_root = library_root_path(lib, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        let repo = CalibreBookRepository::open(&lib_root).await?;
-        let file_path = repo
-            .get_book_file_path(&lib_root, book_id, format)
+        let lib_root = library_root_path(lib, app_data_dir);
+        let file_path = myreader_core::api::catalog::get_book_file_path(&lib_root, book_id, format)
             .await?
             .ok_or_else(|| {
                 AppError::NotFound(format!(
@@ -475,27 +468,22 @@ impl DownloadService {
 
         let lib = LibraryService::resolve_library(Some(library_id), config)?;
         let lib_root = library_root_path(&lib, app_data_dir);
-        let lib_root_string = lib_root.to_string_lossy().to_string();
-        let repo = CalibreBookRepository::open(&lib_root_string).await?;
-        let normalized_requests: Vec<BookFilePathRequest> = requests
+        let normalized_requests: Vec<(i64, String)> = requests
             .iter()
-            .map(|item| BookFilePathRequest {
-                book_id: item.book_id,
-                format: Self::normalize_format(&item.format),
-            })
+            .map(|item| (item.book_id, Self::normalize_format(&item.format)))
             .collect();
-        let file_paths = repo
-            .get_book_file_paths(&lib_root_string, &normalized_requests)
-            .await?;
+        let file_paths =
+            myreader_core::api::catalog::get_book_file_paths(&lib_root, &normalized_requests)
+                .await?;
 
         let mut relative_paths = Vec::with_capacity(normalized_requests.len());
         let mut relative_by_key = HashMap::with_capacity(normalized_requests.len());
-        for item in &normalized_requests {
-            let key = (item.book_id, item.format.clone());
+        for (book_id, format) in &normalized_requests {
+            let key = (*book_id, format.clone());
             let file_path = file_paths.get(&key).ok_or_else(|| {
                 AppError::NotFound(format!(
                     "BOOK_FORMAT_NOT_FOUND: book={}, format={}",
-                    item.book_id, item.format
+                    book_id, format
                 ))
             })?;
             let relative_path = compute_book_relative_path(file_path, &lib_root)?;
@@ -512,9 +500,9 @@ impl DownloadService {
         };
 
         let mut result = Vec::with_capacity(normalized_requests.len());
-        for item in normalized_requests {
+        for (book_id, format) in normalized_requests {
             let (file_path, relative_path) = relative_by_key
-                .get(&(item.book_id, item.format.clone()))
+                .get(&(book_id, format.clone()))
                 .cloned()
                 .expect("relative path should be resolved for request");
             let row = rows_by_path.get(&relative_path);
@@ -522,8 +510,8 @@ impl DownloadService {
                 && (!lib.is_remote()
                     || row.is_some_and(|row| row.local_state.as_str() == "present"));
             result.push(BookFileStateDto {
-                book_id: item.book_id,
-                format: item.format,
+                book_id,
+                format,
                 path: relative_path,
                 local_state: if present { "present" } else { "remote_only" }.to_string(),
                 local_size: if present {

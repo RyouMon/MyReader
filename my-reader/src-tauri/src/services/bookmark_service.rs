@@ -4,9 +4,7 @@ use sea_orm::DatabaseConnection;
 
 use crate::error::AppError;
 use crate::models::{is_valid_reader_locator, AppConfig, LibraryConfig, ReaderBookmarkDto};
-use crate::repositories::{
-    bookmark_repo::SqliteBookmarkRepository, calibre_repo::CalibreBookRepository,
-};
+use crate::repositories::bookmark_repo::SqliteBookmarkRepository;
 use crate::services::library_service::LibraryService;
 use crate::sync::{
     bookmark::{add_local_bookmark, remove_local_bookmark},
@@ -77,13 +75,8 @@ impl BookmarkService {
         let library_uuid = match read_replica_identity(&db).await? {
             Some(identity) => identity.library_uuid,
             None => {
-                let library_root = library_root_path(&library, app_data_dir)
-                    .to_string_lossy()
-                    .to_string();
-                CalibreBookRepository::open(&library_root)
-                    .await?
-                    .get_library_uuid()
-                    .await?
+                let library_root = library_root_path(&library, app_data_dir);
+                myreader_core::api::catalog::get_library_uuid(&library_root).await?
             }
         };
         Ok((library, db, library_uuid))

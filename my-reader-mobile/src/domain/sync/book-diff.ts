@@ -3,6 +3,7 @@ export interface BookSummary {
   path?: string
   hasCover: boolean
   formats: string[]
+  formatPaths: string[]
 }
 
 export interface BookDiff {

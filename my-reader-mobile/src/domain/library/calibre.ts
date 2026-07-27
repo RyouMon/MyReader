@@ -1,23 +1,15 @@
 import { Directory, File as FSFile } from "expo-file-system"
 
 import i18n from "@/src/i18n"
-import type {
-  BookDetail,
-  BookIdentifier,
-  FormatSize,
-} from "@my-reader/tools/types/book"
+import type { BookDetail, CalibreBook } from "@my-reader/tools/types/book"
 import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
-import { fetchBookDetailRows } from "../../repos/calibre/book_relations"
 import {
-  countBooks,
-  listBooksWithAuthors,
-  type BookWithAuthorsRow,
-} from "../../repos/calibre/books"
-import {
-  getBookFormatRows,
-  listAllFormatRows,
-  lookupBookFileRow,
-} from "../../repos/calibre/data"
+  countCalibreBooks,
+  getCalibreBookDetail,
+  listCalibreBookFormats,
+  listCalibreBooks,
+  listCalibreBookSummaries,
+} from "../../services/core/catalog"
 import {
   createSecurityScopedBookmark,
   withSecurityScopedLibraryAccess,
@@ -68,7 +60,7 @@ export function buildCoverUri(
 
 export function mapListRowsToBookItems(
   library: Library,
-  rows: BookWithAuthorsRow[],
+  rows: CalibreBook[],
   options?: {
     buildCoverUri?: (
       lib: Library,
@@ -82,7 +74,7 @@ export function mapListRowsToBookItems(
     ((lib, bookPath, hasCover) => resolveCoverUri(lib, bookPath, hasCover))
 
   return rows.map((row) => {
-    const hasCover = (row.hasCover ?? 0) !== 0
+    const hasCover = row.hasCover
     const coverUri =
       row.path && hasCover ? resolveCover(library, row.path, true) : undefined
 
@@ -182,8 +174,7 @@ export async function forceRefreshLibraryMetadata(
 
   const bookCount = await withLocalLibraryCalibreRoot(
     library,
-    (calibreRootUri) =>
-      countBooks(fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)),
+    (calibreRootUri) => countCalibreBooks(calibreRootUri),
   )
 
   return {
@@ -198,8 +189,7 @@ export async function readBookCountFromLibrary(library: Library) {
   const metadataUri = nextLibrary.metadataUri ?? libraryMetadataUri(nextLibrary)
   const bookCount = await withLocalLibraryCalibreRoot(
     library,
-    (calibreRootUri) =>
-      countBooks(fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)),
+    (calibreRootUri) => countCalibreBooks(calibreRootUri),
   )
 
   return {
@@ -253,70 +243,9 @@ export async function readBookDetailFromMetadata(
     return null
   }
 
-  const rows = await fetchBookDetailRows(metadataUri, calibreBookId)
-  const book = rows.book
-  if (!book) {
-    return null
-  }
-
-  const bookAuthors = rows.authorRows.map((r) => r.name ?? "").filter(Boolean)
-  const bookTags = rows.tagRows.map((r) => r.name ?? "").filter(Boolean)
-  const bookLanguages = rows.languageRows
-    .map((r) => r.langCode ?? "")
-    .filter(Boolean)
-  const formats = rows.formatRows.map((r) => (r.format ?? "").toUpperCase())
-
-  const seriesIndexRaw = book.seriesIndex
-  const seriesIndex =
-    seriesIndexRaw !== null &&
-    seriesIndexRaw !== undefined &&
-    !Number.isNaN(Number(seriesIndexRaw))
-      ? Number(seriesIndexRaw)
-      : null
-
-  const formatSizes: FormatSize[] = rows.formatRows.map((r) => ({
-    format: (r.format ?? "").toUpperCase(),
-    sizeBytes: Math.trunc(Number(r.uncompressedSize ?? 0)),
-  }))
-
-  const bookIdentifiers: BookIdentifier[] = rows.identifierRows
-    .map((r) => ({
-      idType: r.type ?? "isbn",
-      value: r.val ?? "",
-    }))
-    .filter((id) => id.value.length > 0)
-
-  const ratingRaw = rows.ratingRow?.rating
-  const rating =
-    ratingRaw !== null &&
-    ratingRaw !== undefined &&
-    !Number.isNaN(Number(ratingRaw))
-      ? Math.round(Number(ratingRaw))
-      : null
-
-  return {
-    id: book.id,
-    title: book.title || i18n.t("common.unnamedBook"),
-    titleSort: book.sort ?? "",
-    authorSort: book.authorSort ?? "",
-    authors: bookAuthors,
-    tags: bookTags,
-    series: rows.seriesRow?.name ?? null,
-    seriesIndex,
-    formats,
-    hasCover: (book.hasCover ?? 0) !== 0,
-    path: book.path ?? "",
-    timestamp: book.timestamp,
-    pubdate: book.pubdate,
-    lastModified: book.lastModified,
-    comment: rows.commentRow?.text ?? null,
-    publisher: rows.publisherRow?.name ?? null,
-    languages: bookLanguages,
-    rating,
-    uuid: book.uuid,
-    formatSizes,
-    identifiers: bookIdentifiers,
-  } satisfies BookDetail
+  return withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    getCalibreBookDetail(calibreRootUri, calibreBookId),
+  )
 }
 
 async function lookupBookFileLocation(
@@ -329,17 +258,24 @@ async function lookupBookFileLocation(
     throw new Error(i18n.t("sync.metadataDbNotAvailable"))
   }
 
-  const row = await lookupBookFileRow(metadataUri, calibreBookId, format)
+  const rows = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    listCalibreBookFormats(calibreRootUri, calibreBookId),
+  )
+  const row = rows.find(
+    (item) => item.format.toUpperCase() === format.toUpperCase(),
+  )
   if (!row) {
     throw new Error(
       i18n.t("sync.formatNotFoundInLibrary", { format, id: calibreBookId }),
     )
   }
 
+  const segments = row.relativePath.split("/").filter(Boolean)
+  const fileName = segments.pop() ?? `${row.name}.${format.toLowerCase()}`
   return {
-    rowPath: row.path,
-    fileName: `${row.name}.${format.toLowerCase()}`,
-    segments: row.path.split("/").filter(Boolean),
+    rowPath: segments.join("/"),
+    fileName,
+    segments,
   }
 }
 
@@ -352,20 +288,12 @@ export async function getBookFormatPaths(
     return []
   }
 
-  const { bookPath, formats } = await getBookFormatRows(
-    metadataUri,
-    calibreBookId,
+  const formats = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    listCalibreBookFormats(calibreRootUri, calibreBookId),
   )
-  if (!bookPath) {
-    return []
-  }
-
-  return formats.map((r) => ({
-    format: (r.format ?? "").toUpperCase(),
-    relativePath: joinRelativePath(
-      bookPath,
-      `${r.name}.${(r.format ?? "").toLowerCase()}`,
-    ),
+  return formats.map((item) => ({
+    format: item.format.toUpperCase(),
+    relativePath: item.relativePath,
   }))
 }
 
@@ -377,17 +305,15 @@ export async function getAllBookFormats(
     return {}
   }
 
-  const rows = await listAllFormatRows(metadataUri)
-
-  return rows.reduce<Record<string, string[]>>((mapped, row) => {
-    const bookIdKey = String(row.bookId)
-    mapped[bookIdKey] = mapped[bookIdKey] ?? []
-    const upper = (row.format ?? "").toUpperCase()
-    if (!mapped[bookIdKey].includes(upper)) {
-      mapped[bookIdKey].push(upper)
-    }
-    return mapped
-  }, {})
+  const books = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    listCalibreBookSummaries(calibreRootUri),
+  )
+  return Object.fromEntries(
+    books.map((book) => [
+      String(book.id),
+      book.formats.map((format) => format.toUpperCase()),
+    ]),
+  )
 }
 
 function createBookFile(rootUri: string, segments: string[], fileName: string) {
@@ -448,8 +374,7 @@ export async function readBooksFromLibrary(
   library: Library,
 ): Promise<BookItem[]> {
   return withLocalLibraryCalibreRoot(library, async (calibreRootUri) => {
-    const metadataUri = fileUriFor(calibreRootUri, METADATA_DB_RELATIVE)
-    const rows = await listBooksWithAuthors(metadataUri)
+    const rows = await listCalibreBooks(calibreRootUri)
     if (rows.length === 0) {
       return []
     }

@@ -2,10 +2,13 @@ import { File } from "expo-file-system"
 import i18n from "@/src/i18n"
 import {
   COVER_FILE_NAME,
+  libraryRootUri,
   METADATA_DB_RELATIVE,
 } from "@/src/services/fs/library-paths"
-import { countBooks, listBookSummaries } from "../../repos/calibre/books"
-import { getBookFormatRows } from "../../repos/calibre/data"
+import {
+  countCalibreBooks,
+  listCalibreBookSummaries,
+} from "../../services/core/catalog"
 import { refreshRemoteLibrary } from "../../services/core/remote"
 import { joinRelativePath } from "../../services/fs/path"
 import { describeError } from "../../utils/common"
@@ -22,13 +25,14 @@ import { evictLocalFileOfflineSafe } from "./transfer"
 import type { CalibreSyncResult, SyncLibraryOptions } from "./types"
 
 function mapSummaries(
-  rows: Awaited<ReturnType<typeof listBookSummaries>>,
+  rows: Awaited<ReturnType<typeof listCalibreBookSummaries>>,
 ): BookSummary[] {
   return rows.map((row) => ({
     id: String(row.id),
-    path: row.path ?? undefined,
-    hasCover: row.hasCover !== 0,
+    path: row.path || undefined,
+    hasCover: row.hasCover,
     formats: row.formats,
+    formatPaths: row.formatPaths,
   }))
 }
 
@@ -75,7 +79,6 @@ async function materializeMetadata(
 async function evictRemovedBookFiles(
   library: Library,
   book: BookSummary,
-  metadataUri: string,
 ): Promise<void> {
   if (!isRemoteSourceType(library.sourceType)) return
   if (!book.path) return
@@ -87,12 +90,7 @@ async function evictRemovedBookFiles(
     )
   } catch {}
 
-  const formatRows = await getBookFormatRows(metadataUri, Number(book.id))
-  for (const row of formatRows.formats) {
-    const relative = joinRelativePath(
-      book.path,
-      `${row.name}.${(row.format ?? "").toLowerCase()}`,
-    )
+  for (const relative of book.formatPaths) {
     try {
       await evictLocalFileOfflineSafe(library, relative)
     } catch {}
@@ -102,12 +100,9 @@ async function evictRemovedBookFiles(
 async function applyBookDiffCleanup(
   library: Library,
   diff: BookDiff,
-  oldMetadataUri: string | undefined,
 ): Promise<void> {
-  if (oldMetadataUri) {
-    for (const book of diff.removed) {
-      await evictRemovedBookFiles(library, book, oldMetadataUri)
-    }
+  for (const book of diff.removed) {
+    await evictRemovedBookFiles(library, book)
   }
 
   if (!isRemoteSourceType(library.sourceType)) return
@@ -163,7 +158,9 @@ export async function syncCalibre(
     if (oldMetadataUri) {
       const oldFile = new File(oldMetadataUri)
       if (oldFile.exists) {
-        oldSummaries = mapSummaries(await listBookSummaries(oldMetadataUri))
+        oldSummaries = mapSummaries(
+          await listCalibreBookSummaries(libraryRootUri(library)),
+        )
       }
     }
 
@@ -175,12 +172,15 @@ export async function syncCalibre(
       throw new Error(i18n.t("sync.cannotRedownloadMeta"))
     }
 
-    const newSummaries = mapSummaries(await listBookSummaries(newMetadataUri))
-    const newBookCount = await countBooks(newMetadataUri)
+    const nextLibraryRoot = libraryRootUri(newLibrary)
+    const newSummaries = mapSummaries(
+      await listCalibreBookSummaries(nextLibraryRoot),
+    )
+    const newBookCount = await countCalibreBooks(nextLibraryRoot)
     newLibrary = { ...newLibrary, bookCount: newBookCount }
 
     const diff = diffBooks(oldSummaries, newSummaries)
-    await applyBookDiffCleanup(newLibrary, diff, oldMetadataUri)
+    await applyBookDiffCleanup(newLibrary, diff)
 
     const books = await fetchBooks(newLibrary, dataSources)
 

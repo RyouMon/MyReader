@@ -8,7 +8,6 @@ use crate::cache;
 use crate::commands::AppState;
 use crate::error::AppError;
 use crate::models::{AppConfig, DataSourceConfig, LibraryConfig};
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::storage::from_data_source;
 use crate::utils::paths::{library_book_file_path, library_root_path};
 
@@ -358,11 +357,10 @@ async fn serve_local_book_file(
         .to_str()
         .ok_or_else(|| AppError::Config("LIB_PATH_INVALID_UTF8".into()))?;
 
-    let repo = CalibreBookRepository::open(lib_path_str).await?;
-    let file_path = repo
-        .get_book_file_path(lib_path_str, book_id, format)
-        .await?
-        .ok_or_else(|| AppError::NotFound(format!("BOOK_FILE_NOT_FOUND: {book_id}")))?;
+    let file_path =
+        myreader_core::api::catalog::get_book_file_path(Path::new(lib_path_str), book_id, format)
+            .await?
+            .ok_or_else(|| AppError::NotFound(format!("BOOK_FILE_NOT_FOUND: {book_id}")))?;
 
     let file_path = dunce::canonicalize(&file_path)
         .map_err(|e| AppError::Config(format!("BOOK_FILE_CANONICALIZE_FAILED: {e}")))?;

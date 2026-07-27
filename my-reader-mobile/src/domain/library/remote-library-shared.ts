@@ -2,11 +2,12 @@ import { File as ExpoFile } from "expo-file-system"
 
 import i18n from "@/src/i18n"
 import {
+  libraryRootUri,
   libraryMetadataUri,
   METADATA_DB_RELATIVE,
 } from "@/src/services/fs/library-paths"
+import { listCalibreBooks } from "@/src/services/core/catalog"
 import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
-import { listBooksWithAuthors } from "../../repos/calibre/books"
 import type { RemoteBackend } from "../../services/remote/backend"
 import type { BookItem, Library } from "../types"
 import { mapListRowsToBookItems } from "./calibre"
@@ -70,7 +71,7 @@ export async function readBooks(
 
   await backend.getAuthHeaders()
 
-  const rows = await listBooksWithAuthors(metadataUri)
+  const rows = await listCalibreBooks(libraryRootUri(library))
   const books = mapListRowsToBookItems(library, rows, {
     buildCoverUri: buildCoverUriFn,
   })

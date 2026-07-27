@@ -4,9 +4,7 @@ use sea_orm::DatabaseConnection;
 
 use crate::error::AppError;
 use crate::models::AppConfig;
-use crate::repositories::{
-    calibre_repo::CalibreBookRepository, progress_repo::SqliteProgressRepository,
-};
+use crate::repositories::progress_repo::SqliteProgressRepository;
 use crate::services::library_service::LibraryService;
 use crate::sync::{
     automerge_document::{
@@ -61,13 +59,8 @@ impl ReadingStatisticsService {
             .to_string_lossy()
             .to_string();
         let db = SqliteProgressRepository::open(&sidecar_root).await?;
-        let library_root = library_root_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        let library_uuid = CalibreBookRepository::open(&library_root)
-            .await?
-            .get_library_uuid()
-            .await?;
+        let library_root = library_root_path(&library, app_data_dir);
+        let library_uuid = myreader_core::api::catalog::get_library_uuid(&library_root).await?;
         let identity = ensure_replica_identity(&db, &library_uuid).await?;
         Ok((db, identity))
     }

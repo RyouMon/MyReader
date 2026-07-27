@@ -88,6 +88,28 @@ export type MyReaderRustComponentsModule = {
     localRootPath: string,
     credentialJson: string,
   ): Promise<string>
+  validateCalibreLibrary(libraryRootPath: string): boolean
+  countCalibreBooks(libraryRootPath: string): Promise<number>
+  listCalibreBooks(libraryRootPath: string): Promise<string>
+  listCalibreBooksPage(
+    libraryRootPath: string,
+    offset: number,
+    limit: number,
+    sortBy: string | null,
+    search: string | null,
+  ): Promise<string>
+  getCalibreBookDetail(libraryRootPath: string, bookId: number): Promise<string>
+  listCalibreSeriesBooks(
+    libraryRootPath: string,
+    seriesName: string,
+    excludeBookId: number | null,
+  ): Promise<string>
+  getCalibreLibraryUuid(libraryRootPath: string): Promise<string>
+  listCalibreBookSummaries(libraryRootPath: string): Promise<string>
+  listCalibreBookFormats(
+    libraryRootPath: string,
+    bookId: number,
+  ): Promise<string>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -208,6 +230,43 @@ const moduleFacade: MyReaderRustComponentsModule = {
       localRootPath,
       credentialJson,
     )
+  },
+  validateCalibreLibrary(libraryRootPath) {
+    return getNativeModule().validateCalibreLibrary(libraryRootPath)
+  },
+  countCalibreBooks(libraryRootPath) {
+    return getNativeModule().countCalibreBooks(libraryRootPath)
+  },
+  listCalibreBooks(libraryRootPath) {
+    return getNativeModule().listCalibreBooks(libraryRootPath)
+  },
+  listCalibreBooksPage(libraryRootPath, offset, limit, sortBy, search) {
+    return getNativeModule().listCalibreBooksPage(
+      libraryRootPath,
+      offset,
+      limit,
+      sortBy,
+      search,
+    )
+  },
+  getCalibreBookDetail(libraryRootPath, bookId) {
+    return getNativeModule().getCalibreBookDetail(libraryRootPath, bookId)
+  },
+  listCalibreSeriesBooks(libraryRootPath, seriesName, excludeBookId) {
+    return getNativeModule().listCalibreSeriesBooks(
+      libraryRootPath,
+      seriesName,
+      excludeBookId,
+    )
+  },
+  getCalibreLibraryUuid(libraryRootPath) {
+    return getNativeModule().getCalibreLibraryUuid(libraryRootPath)
+  },
+  listCalibreBookSummaries(libraryRootPath) {
+    return getNativeModule().listCalibreBookSummaries(libraryRootPath)
+  },
+  listCalibreBookFormats(libraryRootPath, bookId) {
+    return getNativeModule().listCalibreBookFormats(libraryRootPath, bookId)
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

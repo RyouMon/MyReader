@@ -315,6 +315,105 @@ pub fn refresh_remote_library(
 }
 
 #[uniffi::export]
+pub fn validate_calibre_library(library_root_path: String) -> bool {
+    myreader_core::api::catalog::validate_library(Path::new(&library_root_path))
+}
+
+#[uniffi::export]
+pub fn count_calibre_books(library_root_path: String) -> Result<u64, RustComponentsError> {
+    let count = run_core_async(myreader_core::api::catalog::count_books(Path::new(
+        &library_root_path,
+    )))?;
+    u64::try_from(count)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid Calibre book count: {error}")))
+}
+
+#[uniffi::export]
+pub fn list_calibre_books(library_root_path: String) -> Result<String, RustComponentsError> {
+    let books = run_core_async(myreader_core::api::catalog::list_books(Path::new(
+        &library_root_path,
+    )))?;
+    serialize_core_json(&books)
+}
+
+#[uniffi::export]
+pub fn list_calibre_books_page(
+    library_root_path: String,
+    offset: u64,
+    limit: u64,
+    sort_by: Option<String>,
+    search: Option<String>,
+) -> Result<String, RustComponentsError> {
+    let offset = usize::try_from(offset)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid page offset: {error}")))?;
+    let limit = usize::try_from(limit)
+        .map_err(|error| RustComponentsError::Core(format!("Invalid page limit: {error}")))?;
+    let page = run_core_async(myreader_core::api::catalog::list_books_page(
+        Path::new(&library_root_path),
+        offset,
+        limit,
+        sort_by.as_deref(),
+        search.as_deref(),
+    ))?;
+    serialize_core_json(&page)
+}
+
+#[uniffi::export]
+pub fn get_calibre_book_detail(
+    library_root_path: String,
+    book_id: i64,
+) -> Result<String, RustComponentsError> {
+    let detail = run_core_async(myreader_core::api::catalog::get_book_detail(
+        Path::new(&library_root_path),
+        book_id,
+    ))?;
+    serialize_core_json(&detail)
+}
+
+#[uniffi::export]
+pub fn list_calibre_series_books(
+    library_root_path: String,
+    series_name: String,
+    exclude_book_id: Option<i64>,
+) -> Result<String, RustComponentsError> {
+    let books = run_core_async(myreader_core::api::catalog::list_series_books(
+        Path::new(&library_root_path),
+        &series_name,
+        exclude_book_id,
+    ))?;
+    serialize_core_json(&books)
+}
+
+#[uniffi::export]
+pub fn get_calibre_library_uuid(library_root_path: String) -> Result<String, RustComponentsError> {
+    run_core_async(myreader_core::api::catalog::get_library_uuid(Path::new(
+        &library_root_path,
+    )))
+}
+
+#[uniffi::export]
+pub fn list_calibre_book_summaries(
+    library_root_path: String,
+) -> Result<String, RustComponentsError> {
+    let books = run_core_async(myreader_core::api::catalog::list_book_summaries(Path::new(
+        &library_root_path,
+    )))?;
+    serialize_core_json(&books)
+}
+
+#[uniffi::export]
+pub fn list_calibre_book_formats(
+    library_root_path: String,
+    book_id: i64,
+) -> Result<String, RustComponentsError> {
+    let formats = run_core_async(myreader_core::api::catalog::list_book_formats(
+        Path::new(&library_root_path),
+        book_id,
+    ))?;
+    serialize_core_json(&formats)
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,

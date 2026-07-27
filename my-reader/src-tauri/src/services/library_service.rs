@@ -6,7 +6,6 @@ use crate::asset_scope;
 use crate::cache;
 use crate::error::AppError;
 use crate::models::{AppConfig, LibraryConfig, LibraryInfo};
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::utils::paths::{library_container_dir, library_root_path};
 use myreader_core::database;
 
@@ -16,10 +15,9 @@ impl LibraryService {
     pub async fn list_libraries(config: &AppConfig) -> Result<Vec<LibraryInfo>, AppError> {
         let mut infos = Vec::new();
         for lib in &config.libraries {
-            let book_count = match CalibreBookRepository::open(&lib.path).await {
-                Ok(repo) => repo.get_book_count().await.unwrap_or(0),
-                Err(_) => 0,
-            };
+            let book_count = myreader_core::api::catalog::count_books(Path::new(&lib.path))
+                .await
+                .unwrap_or(0);
             infos.push(LibraryInfo {
                 id: lib.id.clone(),
                 name: lib.name.clone(),
@@ -44,7 +42,7 @@ impl LibraryService {
             .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
         let canon_str = canon_path.to_string_lossy().to_string();
 
-        if !CalibreBookRepository::validate_library(&canon_str) {
+        if !myreader_core::api::catalog::validate_library(&canon_path) {
             return Err(AppError::NotFound(format!(
                 "METADATA_DB_NOT_FOUND: {}",
                 canon_str
@@ -79,10 +77,9 @@ impl LibraryService {
         std::fs::create_dir_all(&sidecar_root)?;
         database::ensure_library_data_dir(sidecar_root.to_str().unwrap_or(&id))?;
 
-        let book_count = match CalibreBookRepository::open(&canon_str).await {
-            Ok(repo) => repo.get_book_count().await.unwrap_or(0),
-            Err(_) => 0,
-        };
+        let book_count = myreader_core::api::catalog::count_books(&canon_path)
+            .await
+            .unwrap_or(0);
 
         let info = LibraryInfo {
             id,
@@ -210,15 +207,14 @@ impl LibraryService {
             .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
         let lib_path_str = lib_path_canon.to_string_lossy().to_string();
 
-        if !CalibreBookRepository::validate_library(&lib_path_str) {
+        if !myreader_core::api::catalog::validate_library(&lib_path_canon) {
             return Err(AppError::NotFound(format!(
                 "METADATA_DB_NOT_FOUND: {}",
                 lib_path_str
             )));
         }
 
-        let repo = CalibreBookRepository::open(&lib_path_str).await?;
-        let books = repo.get_all_books().await?;
+        let books = myreader_core::api::catalog::list_books(&lib_path_canon).await?;
         let book_count = books.len();
         let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 
@@ -376,9 +372,7 @@ async fn refresh_remote_library(
     )
     .await?;
 
-    let repo = CalibreBookRepository::open(&local_root.to_string_lossy()).await?;
-    let book_ids = repo
-        .get_all_books()
+    let book_ids = myreader_core::api::catalog::list_books(&local_root)
         .await?
         .into_iter()
         .map(|book| book.id)

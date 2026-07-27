@@ -1,6 +1,6 @@
 use myreader_rust_components::{
-    cancel_sync_task, ensure_sync_database_identity, initialize_device_registry,
-    mark_sync_database_schedule_succeeded, migrate_library_database,
+    cancel_sync_task, count_calibre_books, ensure_sync_database_identity,
+    initialize_device_registry, mark_sync_database_schedule_succeeded, migrate_library_database,
     read_sync_database_schedule_state, read_sync_task_progress, register_device_library,
     release_sync_task, sync_contract_version, sync_library_sidecar,
     write_sync_database_schedule_state, SyncDatabaseScheduleState,
@@ -35,6 +35,37 @@ fn should_create_library_schema_when_native_bridge_migrates_database() {
         .unwrap();
 
     assert_eq!(table_count, 1);
+}
+
+#[test]
+fn should_return_catalog_count_when_native_bridge_reads_calibre_library() {
+    let directory = tempfile::tempdir().unwrap();
+    let connection = Connection::open(directory.path().join("metadata.db")).unwrap();
+    connection
+        .execute_batch(
+            "CREATE TABLE books (
+                id INTEGER PRIMARY KEY,
+                title TEXT,
+                sort TEXT,
+                timestamp TEXT,
+                pubdate TEXT,
+                series_index REAL,
+                author_sort TEXT,
+                isbn TEXT,
+                lccn TEXT,
+                path TEXT,
+                flags INTEGER,
+                uuid TEXT,
+                has_cover INTEGER,
+                last_modified TEXT
+             );
+             INSERT INTO books (id) VALUES (1), (2);",
+        )
+        .unwrap();
+
+    let count = count_calibre_books(directory.path().to_string_lossy().into_owned()).unwrap();
+
+    assert_eq!(count, 2);
 }
 
 #[test]

@@ -3,7 +3,6 @@ use crate::commands::PreparedBookSource;
 use crate::error::AppError;
 use crate::models::AppConfig;
 use crate::reader_ui_prefs::ReaderUiPreferences;
-use crate::repositories::calibre_repo::{BookRepository, CalibreBookRepository};
 use crate::repositories::file_state_repo::SqliteFileStateRepository;
 use crate::utils::paths::compute_book_relative_path;
 
@@ -43,15 +42,14 @@ impl ReaderService {
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
         cache::ensure_reader_cache_dirs()?;
-        let repo = CalibreBookRepository::open(lib_path).await?;
-        let file_path = repo
-            .get_book_file_path(lib_path, book_id, format)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!(
-                    "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
-                ))
-            })?;
+        let file_path =
+            myreader_core::api::catalog::get_book_file_path(Path::new(lib_path), book_id, format)
+                .await?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!(
+                        "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
+                    ))
+                })?;
 
         if is_remote {
             let relative_path = compute_book_relative_path(&file_path, Path::new(lib_path))?;

@@ -184,6 +184,93 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    Function("validateCalibreLibrary") {
+      (libraryRootPath: String) -> Bool in
+      validateCalibreLibrary(libraryRootPath: libraryRootPath)
+    }
+
+    AsyncFunction("countCalibreBooks") {
+      (libraryRootPath: String) -> Int in
+      try componentCall {
+        Int(try countCalibreBooks(libraryRootPath: libraryRootPath))
+      }
+    }
+
+    AsyncFunction("listCalibreBooks") {
+      (libraryRootPath: String) -> String in
+      try componentCall {
+        try listCalibreBooks(libraryRootPath: libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBooksPage") {
+      (
+        libraryRootPath: String,
+        offset: Int,
+        limit: Int,
+        sortBy: String?,
+        search: String?
+      ) -> String in
+      try componentCall {
+        try listCalibreBooksPage(
+          libraryRootPath: libraryRootPath,
+          offset: UInt64(offset),
+          limit: UInt64(limit),
+          sortBy: sortBy,
+          search: search
+        )
+      }
+    }
+
+    AsyncFunction("getCalibreBookDetail") {
+      (libraryRootPath: String, bookId: Int64) -> String in
+      try componentCall {
+        try getCalibreBookDetail(
+          libraryRootPath: libraryRootPath,
+          bookId: bookId
+        )
+      }
+    }
+
+    AsyncFunction("listCalibreSeriesBooks") {
+      (
+        libraryRootPath: String,
+        seriesName: String,
+        excludeBookId: Int64?
+      ) -> String in
+      try componentCall {
+        try listCalibreSeriesBooks(
+          libraryRootPath: libraryRootPath,
+          seriesName: seriesName,
+          excludeBookId: excludeBookId
+        )
+      }
+    }
+
+    AsyncFunction("getCalibreLibraryUuid") {
+      (libraryRootPath: String) -> String in
+      try componentCall {
+        try getCalibreLibraryUuid(libraryRootPath: libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBookSummaries") {
+      (libraryRootPath: String) -> String in
+      try componentCall {
+        try listCalibreBookSummaries(libraryRootPath: libraryRootPath)
+      }
+    }
+
+    AsyncFunction("listCalibreBookFormats") {
+      (libraryRootPath: String, bookId: Int64) -> String in
+      try componentCall {
+        try listCalibreBookFormats(
+          libraryRootPath: libraryRootPath,
+          bookId: bookId
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }
