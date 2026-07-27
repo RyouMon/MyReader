@@ -17,6 +17,9 @@ pub enum CoreError {
 
     #[error("STORAGE_ERROR: {0}")]
     Storage(String),
+
+    #[error("SYNC_ERROR: {0}")]
+    Sync(String),
 }
 
 impl From<sea_orm::DbErr> for CoreError {
@@ -28,5 +31,13 @@ impl From<sea_orm::DbErr> for CoreError {
 impl From<serde_json::Error> for CoreError {
     fn from(error: serde_json::Error) -> Self {
         Self::Serialize(error.to_string())
+    }
+}
+
+impl From<myreader_sync::SyncError> for CoreError {
+    fn from(error: myreader_sync::SyncError) -> Self {
+        match error {
+            myreader_sync::SyncError::Sync(message) => Self::Sync(message),
+        }
     }
 }

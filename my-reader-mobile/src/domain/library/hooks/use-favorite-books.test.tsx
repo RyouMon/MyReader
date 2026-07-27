@@ -3,12 +3,12 @@ import { act, renderHook, waitFor } from "@testing-library/react-native"
 import type { ComponentProps } from "react"
 
 import type { BookItem, Library } from "@/src/domain/types"
-import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
-import { listFavoriteBooks } from "@/src/repos/favorite-books"
+import { listFavoriteBookIds } from "@/src/services/core/reading"
 import { queryClient } from "@/src/services/query/query-client"
 import { queryKeys } from "@/src/services/query/query-keys"
+import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
 
-import { useFavoriteBooks, fetchFavoriteBookIds } from "./use-favorite-books"
+import { fetchFavoriteBookIds, useFavoriteBooks } from "./use-favorite-books"
 
 jest.mock("@/src/services/query/query-client", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -27,8 +27,8 @@ jest.mock("../favorite-books", () => ({
   removeFavoriteBook: jest.fn(),
 }))
 
-jest.mock("@/src/repos/favorite-books", () => ({
-  listFavoriteBooks: jest.fn(),
+jest.mock("@/src/services/core/reading", () => ({
+  listFavoriteBookIds: jest.fn(),
 }))
 const mockLibrary: Library = {
   id: "lib-1",
@@ -67,7 +67,7 @@ describe("useFavoriteBooks", () => {
 
     expect(result.current.favoriteSet.size).toBe(0)
     expect(result.current.isFavorite("1")).toBe(false)
-    expect(listFavoriteBooks).not.toHaveBeenCalled()
+    expect(listFavoriteBookIds).not.toHaveBeenCalled()
 
     unmount()
   })
@@ -76,17 +76,11 @@ describe("useFavoriteBooks", () => {
     const result = await fetchFavoriteBookIds(null)
 
     expect(result).toEqual([])
-    expect(listFavoriteBooks).not.toHaveBeenCalled()
+    expect(listFavoriteBookIds).not.toHaveBeenCalled()
   })
 
   it("should return favorite ids present in the current books when managing favorite books", async () => {
-    jest
-      .mocked(listFavoriteBooks)
-      .mockResolvedValue([
-        { bookId: 1 },
-        { bookId: 2 },
-        { bookId: 99 },
-      ] as Awaited<ReturnType<typeof listFavoriteBooks>>)
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([1, 2, 99])
 
     const { result, unmount } = renderHook(
       () => useFavoriteBooks(mockLibrary, books),
@@ -104,11 +98,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should filter out favorite ids that are not in the current books when managing favorite books", async () => {
-    jest
-      .mocked(listFavoriteBooks)
-      .mockResolvedValue([{ bookId: 1 }, { bookId: 99 }] as Awaited<
-        ReturnType<typeof listFavoriteBooks>
-      >)
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([1, 99])
 
     const { result, unmount } = renderHook(
       () => useFavoriteBooks(mockLibrary, books),
@@ -123,11 +113,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should remove a favorite when toggling an already-favorite book", async () => {
-    jest
-      .mocked(listFavoriteBooks)
-      .mockResolvedValue([{ bookId: 1 }] as Awaited<
-        ReturnType<typeof listFavoriteBooks>
-      >)
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([1])
     jest.mocked(removeFavoriteBook).mockResolvedValue(undefined)
 
     const { result, unmount } = renderHook(
@@ -148,9 +134,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should add a favorite when toggling a non-favorite book", async () => {
-    jest
-      .mocked(listFavoriteBooks)
-      .mockResolvedValue([] as Awaited<ReturnType<typeof listFavoriteBooks>>)
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([])
     jest.mocked(addFavoriteBook).mockResolvedValue(undefined)
 
     const { result, unmount } = renderHook(
@@ -170,10 +154,8 @@ describe("useFavoriteBooks", () => {
     unmount()
   })
 
-  it("should does nothing when toggling with an invalid book id", async () => {
-    jest
-      .mocked(listFavoriteBooks)
-      .mockResolvedValue([] as Awaited<ReturnType<typeof listFavoriteBooks>>)
+  it("should do nothing when toggling with an invalid book id", async () => {
+    jest.mocked(listFavoriteBookIds).mockResolvedValue([])
 
     const { result, unmount } = renderHook(
       () => useFavoriteBooks(mockLibrary, books),
@@ -192,7 +174,7 @@ describe("useFavoriteBooks", () => {
     unmount()
   })
 
-  it("should does nothing when toggling without a library", async () => {
+  it("should do nothing when toggling without a library", async () => {
     const { result, unmount } = renderHook(
       () => useFavoriteBooks(null, books),
       { wrapper },
@@ -264,7 +246,7 @@ describe("useFavoriteBooks", () => {
   })
 
   it("should return an empty set when the query fails", async () => {
-    jest.mocked(listFavoriteBooks).mockRejectedValue(new Error("db error"))
+    jest.mocked(listFavoriteBookIds).mockRejectedValue(new Error("db error"))
 
     const { result, unmount } = renderHook(
       () => useFavoriteBooks(mockLibrary, books),

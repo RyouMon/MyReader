@@ -336,6 +336,32 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("listFavoriteBookIds") {
+      (sidecarRootPath: String) -> String in
+      try componentCall {
+        try listFavoriteBookIds(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
+    AsyncFunction("setFavoriteBook") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        isFavorite: Bool,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try setFavoriteBook(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          isFavorite: isFavorite,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }

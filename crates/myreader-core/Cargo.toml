@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 dunce.workspace = true
+myreader-sync.workspace = true
 opendal.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true

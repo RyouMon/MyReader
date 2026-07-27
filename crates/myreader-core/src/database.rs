@@ -104,7 +104,7 @@ pub fn ensure_library_data_dir(sidecar_root: &str) -> Result<PathBuf, CoreError>
     Ok(dir)
 }
 
-fn library_db_path(sidecar_root: &str) -> Result<PathBuf, CoreError> {
+pub(crate) fn library_db_path(sidecar_root: &str) -> Result<PathBuf, CoreError> {
     Ok(ensure_library_data_dir(sidecar_root)?.join(MYREADER_LIBRARY_DB_FILE_NAME))
 }
 

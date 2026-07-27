@@ -1,5 +1,5 @@
-jest.mock("../sync/library-sidecar/favorite", () => ({
-  writeLocalFavorite: jest.fn(),
+jest.mock("@/src/services/core/reading", () => ({
+  setFavoriteBook: jest.fn(),
 }))
 
 jest.mock("@/src/services/query/invalidate-table", () => ({
@@ -8,8 +8,8 @@ jest.mock("@/src/services/query/invalidate-table", () => ({
 
 import type { Library } from "@my-reader/tools/types/library"
 
+import { setFavoriteBook } from "@/src/services/core/reading"
 import { invalidateFavoriteBooks } from "@/src/services/query/invalidate-table"
-import { writeLocalFavorite } from "../sync/library-sidecar/favorite"
 import { addFavoriteBook, removeFavoriteBook } from "./favorite-books"
 
 const library = {
@@ -24,21 +24,21 @@ const library = {
 describe("favorite book actions", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(writeLocalFavorite).mockResolvedValue(undefined)
+    jest.mocked(setFavoriteBook).mockResolvedValue(undefined)
     jest.mocked(invalidateFavoriteBooks).mockResolvedValue(undefined)
   })
 
   it("should write a synchronized favorite before invalidating the list when a book is added", async () => {
     await addFavoriteBook(library, 42)
 
-    expect(writeLocalFavorite).toHaveBeenCalledWith(library, 42, true)
+    expect(setFavoriteBook).toHaveBeenCalledWith(library, 42, true)
     expect(invalidateFavoriteBooks).toHaveBeenCalledWith(library.id)
   })
 
   it("should write a synchronized tombstone before invalidating the list when a book is removed", async () => {
     await removeFavoriteBook(library, 42)
 
-    expect(writeLocalFavorite).toHaveBeenCalledWith(library, 42, false)
+    expect(setFavoriteBook).toHaveBeenCalledWith(library, 42, false)
     expect(invalidateFavoriteBooks).toHaveBeenCalledWith(library.id)
   })
 })

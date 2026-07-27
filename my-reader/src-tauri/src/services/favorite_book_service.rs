@@ -2,9 +2,7 @@ use std::path::Path;
 
 use crate::error::AppError;
 use crate::models::AppConfig;
-use crate::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
 use crate::services::library_service::LibraryService;
-use crate::sync::{favorite::write_local_favorite, replica_identity::read_replica_identity};
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct FavoriteBookService;
@@ -18,8 +16,9 @@ impl FavoriteBookService {
     }
 
     pub async fn list_favorite_book_ids(sidecar_root: &str) -> Result<Vec<i64>, AppError> {
-        let db = SqliteFavoriteBookRepository::open(sidecar_root).await?;
-        SqliteFavoriteBookRepository::list_book_ids(&db).await
+        myreader_core::api::reading::list_favorite_book_ids(Path::new(sidecar_root))
+            .await
+            .map_err(Into::into)
     }
 
     pub async fn list_favorite_book_ids_for_library(
@@ -45,22 +44,16 @@ impl FavoriteBookService {
         let sidecar_root = library_sidecar_path(&lib, app_data_dir)
             .to_string_lossy()
             .to_string();
-        let db = SqliteFavoriteBookRepository::open(&sidecar_root).await?;
-        let library_uuid = match read_replica_identity(&db).await? {
-            Some(identity) => identity.library_uuid,
-            None => {
-                let library_root = library_root_path(&lib, app_data_dir);
-                myreader_core::api::catalog::get_library_uuid(&library_root).await?
-            }
-        };
-        write_local_favorite(
-            &db,
-            &library_uuid,
+        let library_root = library_root_path(&lib, app_data_dir);
+        myreader_core::api::reading::set_favorite_book(
+            Path::new(&sidecar_root),
+            &library_root,
             book_id,
             is_favorite,
-            Self::unix_epoch_millis(),
+            Self::unix_epoch_millis() as i64,
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     pub async fn add_favorite_book_for_library(

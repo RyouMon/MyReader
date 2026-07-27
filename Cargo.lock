@@ -3468,6 +3468,7 @@ name = "myreader-core"
 version = "0.1.0"
 dependencies = [
  "dunce",
+ "myreader-sync",
  "opendal",
  "rusqlite",
  "sea-orm",

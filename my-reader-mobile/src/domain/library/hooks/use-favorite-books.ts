@@ -1,12 +1,11 @@
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo } from "react"
 
-import { useQuery } from "@tanstack/react-query"
-
 import type { BookItem, Library } from "@/src/domain/types"
-import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
-import { listFavoriteBooks } from "@/src/repos/favorite-books"
+import { listFavoriteBookIds } from "@/src/services/core/reading"
 import { queryClient } from "@/src/services/query/query-client"
 import { queryKeys } from "@/src/services/query/query-keys"
+import { addFavoriteBook, removeFavoriteBook } from "../favorite-books"
 
 const emptySet = new Set<string>()
 
@@ -14,8 +13,8 @@ export async function fetchFavoriteBookIds(
   selectedLibrary: Library | null,
 ): Promise<string[]> {
   if (!selectedLibrary) return []
-  const rows = await listFavoriteBooks(selectedLibrary)
-  return rows.map((row) => String(row.bookId))
+  const ids = await listFavoriteBookIds(selectedLibrary)
+  return ids.map(String)
 }
 
 export function useFavoriteBooks(

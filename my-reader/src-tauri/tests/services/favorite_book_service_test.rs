@@ -1,31 +1,36 @@
+use sea_orm::{ConnectionTrait, Database};
+
 use my_reader_lib::models::{AppConfig, LibraryConfig};
-use my_reader_lib::repositories::favorite_book_repo::SqliteFavoriteBookRepository;
 use my_reader_lib::services::favorite_book_service::FavoriteBookService;
-use my_reader_lib::sync::replica_identity::ensure_replica_identity;
 
 const LIBRARY_UUID: &str = "018f2f8d-980b-40ef-b72e-c6e86cb7cc28";
 
-fn library_config(id: &str) -> LibraryConfig {
+fn library_config(id: &str, path: &str) -> LibraryConfig {
     LibraryConfig {
         id: id.into(),
         name: id.into(),
-        path: "/unused".into(),
+        path: path.into(),
         source_type: Some("local".into()),
         data_source_id: None,
         source_path: None,
     }
 }
 
-async fn seed_replica_identity(app_data_dir: &std::path::Path, library: &LibraryConfig) {
-    let sidecar_root = app_data_dir
-        .join("libraries")
-        .join(&library.id)
-        .to_string_lossy()
-        .to_string();
-    let db = SqliteFavoriteBookRepository::open(&sidecar_root)
-        .await
-        .unwrap();
-    ensure_replica_identity(&db, LIBRARY_UUID).await.unwrap();
+async fn create_calibre_metadata(root: &std::path::Path) {
+    let db = Database::connect(format!(
+        "sqlite://{}?mode=rwc",
+        root.join("metadata.db").display()
+    ))
+    .await
+    .unwrap();
+    db.execute_unprepared(&format!(
+        "CREATE TABLE library_id (\
+           id INTEGER PRIMARY KEY, uuid TEXT NOT NULL, UNIQUE(uuid)\
+         );\
+         INSERT INTO library_id (id, uuid) VALUES (1, '{LIBRARY_UUID}');"
+    ))
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -43,7 +48,7 @@ async fn list_favorite_book_ids_should_return_empty_when_no_favorites_exist() {
 #[tokio::test]
 async fn list_favorite_book_ids_for_library_should_return_empty_when_no_favorites_exist() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-fav-1");
+    let lib = library_config("lib-fav-1", "/unused");
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
@@ -64,14 +69,14 @@ async fn list_favorite_book_ids_for_library_should_return_empty_when_no_favorite
 #[tokio::test]
 async fn add_and_list_favorite_books_for_library_should_round_trip_book_ids() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-fav-2");
+    let library = tempfile::tempdir().unwrap();
+    create_calibre_metadata(library.path()).await;
+    let lib = library_config("lib-fav-2", library.path().to_str().unwrap());
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
-    seed_replica_identity(temp.path(), &lib).await;
-
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, Some(&lib.id), 7)
         .await
         .expect("add should succeed");
@@ -93,14 +98,14 @@ async fn add_and_list_favorite_books_for_library_should_round_trip_book_ids() {
 #[tokio::test]
 async fn remove_favorite_book_for_library_should_delete_record() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-fav-3");
+    let library = tempfile::tempdir().unwrap();
+    create_calibre_metadata(library.path()).await;
+    let lib = library_config("lib-fav-3", library.path().to_str().unwrap());
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
-    seed_replica_identity(temp.path(), &lib).await;
-
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, Some(&lib.id), 7)
         .await
         .expect("add should succeed");
@@ -122,14 +127,14 @@ async fn remove_favorite_book_for_library_should_delete_record() {
 #[tokio::test]
 async fn favorite_book_operations_for_library_should_resolve_active_library_when_id_is_none() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-fav-4");
+    let library = tempfile::tempdir().unwrap();
+    create_calibre_metadata(library.path()).await;
+    let lib = library_config("lib-fav-4", library.path().to_str().unwrap());
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),
         ..Default::default()
     };
-    seed_replica_identity(temp.path(), &lib).await;
-
     FavoriteBookService::add_favorite_book_for_library(temp.path(), &config, None, 7)
         .await
         .expect("add should succeed");
@@ -167,7 +172,7 @@ async fn favorite_book_operations_for_library_should_return_not_found_when_no_ac
 #[tokio::test]
 async fn favorite_book_operations_for_library_should_return_not_found_when_library_id_unknown() {
     let temp = tempfile::tempdir().unwrap();
-    let lib = library_config("lib-fav-5");
+    let lib = library_config("lib-fav-5", "/unused");
     let config = AppConfig {
         libraries: vec![lib.clone()],
         active_library_id: Some(lib.id.clone()),

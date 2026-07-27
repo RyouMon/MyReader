@@ -128,6 +128,14 @@ export type MyReaderRustComponentsModule = {
     updateJson: string,
   ): Promise<void>
   deleteLibraryFileState(sidecarRootPath: string, path: string): Promise<void>
+  listFavoriteBookIds(sidecarRootPath: string): Promise<string>
+  setFavoriteBook(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    isFavorite: boolean,
+    recordedAtMs: number,
+  ): Promise<void>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -315,6 +323,24 @@ const moduleFacade: MyReaderRustComponentsModule = {
   },
   deleteLibraryFileState(sidecarRootPath, path) {
     return getNativeModule().deleteLibraryFileState(sidecarRootPath, path)
+  },
+  listFavoriteBookIds(sidecarRootPath) {
+    return getNativeModule().listFavoriteBookIds(sidecarRootPath)
+  },
+  setFavoriteBook(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    isFavorite,
+    recordedAtMs,
+  ) {
+    return getNativeModule().setFavoriteBook(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      isFavorite,
+      recordedAtMs,
+    )
   },
   syncContractVersion() {
     return getNativeModule().syncContractVersion()

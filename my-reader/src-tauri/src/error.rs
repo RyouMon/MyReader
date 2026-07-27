@@ -60,6 +60,7 @@ impl From<myreader_core::CoreError> for AppError {
             myreader_core::CoreError::NotFound(message) => Self::NotFound(message),
             myreader_core::CoreError::Serialize(message) => Self::Serialize(message),
             myreader_core::CoreError::Storage(message) => Self::Storage(message),
+            myreader_core::CoreError::Sync(message) => Self::Sync(message),
         }
     }
 }

@@ -1364,6 +1364,13 @@ public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, 
     )
 })
 }
+public func listFavoriteBookIds(sidecarRootPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
+        FfiConverterString.lower(sidecarRootPath),$0
+    )
+})
+}
 public func listLibraryFileStates(sidecarRootPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_library_file_states(
@@ -1470,6 +1477,16 @@ public func setBookReadingFormat(sidecarRootPath: String, libraryRootPath: Strin
         FfiConverterString.lower(libraryRootPath),
         FfiConverterInt64.lower(bookId),
         FfiConverterOptionString.lower(format),$0
+    )
+}
+}
+public func setFavoriteBook(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, isFavorite: Bool, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_set_favorite_book(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterBool.lower(isFavorite),
+        FfiConverterInt64.lower(recordedAtMs),$0
     )
 }
 }
@@ -1617,6 +1634,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1657,6 +1677,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_switch_device_library() != 62391) {

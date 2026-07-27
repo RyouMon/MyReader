@@ -485,6 +485,31 @@ pub fn delete_library_file_state(
 }
 
 #[uniffi::export]
+pub fn list_favorite_book_ids(sidecar_root_path: String) -> Result<String, RustComponentsError> {
+    let ids = run_core_async(myreader_core::api::reading::list_favorite_book_ids(
+        Path::new(&sidecar_root_path),
+    ))?;
+    serialize_core_json(&ids)
+}
+
+#[uniffi::export]
+pub fn set_favorite_book(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    is_favorite: bool,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::reading::set_favorite_book(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        is_favorite,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,

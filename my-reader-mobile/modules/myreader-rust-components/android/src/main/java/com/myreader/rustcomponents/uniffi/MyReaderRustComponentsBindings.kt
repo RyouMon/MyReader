@@ -795,6 +795,10 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -848,6 +852,8 @@ fun uniffi_myreader_rust_components_checksum_func_list_calibre_books_page(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_calibre_series_books(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_list_library_file_states(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_remote_directories(
@@ -875,6 +881,8 @@ fun uniffi_myreader_rust_components_checksum_func_remove_device_library(
 fun uniffi_myreader_rust_components_checksum_func_replace_device_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_set_book_reading_format(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_set_favorite_book(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_switch_device_library(
 ): Short
@@ -977,6 +985,8 @@ fun uniffi_myreader_rust_components_fn_func_list_calibre_books_page(`libraryRoot
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_calibre_series_books(`libraryRootPath`: RustBuffer.ByValue,`seriesName`: RustBuffer.ByValue,`excludeBookId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_library_file_states(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_remote_directories(`registryPath`: RustBuffer.ByValue,`dataSourceId`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1004,6 +1014,8 @@ fun uniffi_myreader_rust_components_fn_func_remove_device_library(`registryPath`
 fun uniffi_myreader_rust_components_fn_func_replace_device_library(`registryPath`: RustBuffer.ByValue,`libraryJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_set_book_reading_format(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
+fun uniffi_myreader_rust_components_fn_func_set_favorite_book(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`isFavorite`: Byte,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_switch_device_library(`registryPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1206,6 +1218,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1246,6 +1261,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_switch_device_library() != 62391.toShort()) {
@@ -2154,6 +2172,16 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `listFavoriteBookIds`(`sidecarRootPath`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
+        FfiConverterString.lower(`sidecarRootPath`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `listLibraryFileStates`(`sidecarRootPath`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2285,6 +2313,15 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_set_book_reading_format(
         FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterOptionalString.lower(`format`),_status)
+}
+
+
+
+    @Throws(RustComponentsException::class) fun `setFavoriteBook`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `isFavorite`: kotlin.Boolean, `recordedAtMs`: kotlin.Long)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_set_favorite_book(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterBoolean.lower(`isFavorite`),FfiConverterLong.lower(`recordedAtMs`),_status)
 }
 
 

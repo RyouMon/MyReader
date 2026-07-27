@@ -21,6 +21,7 @@ import com.myreader.rustcomponents.uniffi.listCalibreBooks
 import com.myreader.rustcomponents.uniffi.listCalibreBooksPage
 import com.myreader.rustcomponents.uniffi.listCalibreSeriesBooks
 import com.myreader.rustcomponents.uniffi.listBookReadingFormats
+import com.myreader.rustcomponents.uniffi.listFavoriteBookIds
 import com.myreader.rustcomponents.uniffi.listLibraryFileStates
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
@@ -38,6 +39,7 @@ import com.myreader.rustcomponents.uniffi.SyncDatabaseScheduleState
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import com.myreader.rustcomponents.uniffi.setBookReadingFormat
+import com.myreader.rustcomponents.uniffi.setFavoriteBook
 import com.myreader.rustcomponents.uniffi.switchDeviceLibrary
 import com.myreader.rustcomponents.uniffi.testRemoteDataSource
 import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
@@ -307,6 +309,29 @@ class MyReaderRustComponentsModule : Module() {
         path: String ->
       componentCall {
         deleteLibraryFileState(sidecarRootPath, path)
+      }
+    }
+
+    AsyncFunction("listFavoriteBookIds") { sidecarRootPath: String ->
+      componentCall {
+        listFavoriteBookIds(sidecarRootPath)
+      }
+    }
+
+    AsyncFunction("setFavoriteBook") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        isFavorite: Boolean,
+        recordedAtMs: Long ->
+      componentCall {
+        setFavoriteBook(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          isFavorite,
+          recordedAtMs,
+        )
       }
     }
 
