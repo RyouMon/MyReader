@@ -1,5 +1,4 @@
 use my_reader_lib::models::BookEntry;
-use my_reader_lib::repositories::progress_repo::SqliteProgressRepository;
 use my_reader_lib::services::book_service::BookService;
 use myreader_core::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
@@ -413,26 +412,25 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
     let lib_path = path_string(lib.path());
     let sidecar_path = path_string(sidecar.path());
 
-    let progress_db = SqliteProgressRepository::open(&sidecar_path)
-        .await
-        .expect("open progress db");
-    SqliteProgressRepository::set_progress(
-        &progress_db,
+    myreader_core::api::reading::set_reading_position(
+        sidecar.path(),
+        lib.path(),
         1,
         "EPUB",
-        r#"{"href":"alpha.xhtml"}"#,
+        r#"{"href":"alpha.xhtml","type":"application/xhtml+xml"}"#,
         None,
-        1000.0,
+        1000,
     )
     .await
     .expect("set alpha progress");
-    SqliteProgressRepository::set_progress(
-        &progress_db,
+    myreader_core::api::reading::set_reading_position(
+        sidecar.path(),
+        lib.path(),
         2,
         "EPUB",
-        r#"{"href":"beta.xhtml"}"#,
+        r#"{"href":"beta.xhtml","type":"application/xhtml+xml"}"#,
         None,
-        2000.0,
+        2000,
     )
     .await
     .expect("set beta progress");

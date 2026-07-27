@@ -362,6 +362,87 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("getReadingPosition") {
+      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      try componentCall {
+        try getReadingPosition(
+          sidecarRootPath: sidecarRootPath,
+          bookId: bookId,
+          format: format
+        )
+      }
+    }
+
+    AsyncFunction("listReadingPositions") {
+      (sidecarRootPath: String) -> String in
+      try componentCall {
+        try listReadingPositions(sidecarRootPath: sidecarRootPath)
+      }
+    }
+
+    AsyncFunction("setReadingPosition") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        locatorJson: String,
+        displayProgression: Double?,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try setReadingPosition(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          locatorJson: locatorJson,
+          displayProgression: displayProgression,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("listReadingPositionCandidates") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        nowMs: Int64
+      ) -> String in
+      try componentCall {
+        try listReadingPositionCandidates(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          nowMs: nowMs
+        )
+      }
+    }
+
+    AsyncFunction("selectReadingPositionCandidate") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        operationId: String,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try selectReadingPositionCandidate(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          operationId: operationId,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }

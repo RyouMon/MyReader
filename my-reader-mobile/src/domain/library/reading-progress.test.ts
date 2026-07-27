@@ -1,14 +1,11 @@
 import type { Locator } from "@my-reader/readium"
+import { setReadingPosition } from "@/src/services/core/reading"
 import type { Library } from "../types"
-import { writeLocalReadingPosition } from "../sync/library-sidecar/reading-position"
 import { setReadingProgress } from "./reading-progress"
 
-jest.mock("../../repos/reading-progress", () => ({
-  getReadingProgressRow: jest.fn(),
-}))
-
-jest.mock("../sync/library-sidecar/reading-position", () => ({
-  writeLocalReadingPosition: jest.fn(),
+jest.mock("@/src/services/core/reading", () => ({
+  getReadingPosition: jest.fn(),
+  setReadingPosition: jest.fn(),
 }))
 
 jest.mock("@/src/services/query/invalidate-table", () => ({
@@ -34,7 +31,7 @@ const locator: Locator = {
 describe("setReadingProgress", () => {
   it("should reject when the atomic local position write fails", async () => {
     const error = new Error("database unavailable")
-    jest.mocked(writeLocalReadingPosition).mockRejectedValueOnce(error)
+    jest.mocked(setReadingPosition).mockRejectedValueOnce(error)
     const consoleError = jest
       .spyOn(console, "error")
       .mockImplementation(() => {})

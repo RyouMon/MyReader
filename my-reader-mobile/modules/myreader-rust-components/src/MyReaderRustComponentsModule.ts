@@ -136,6 +136,36 @@ export type MyReaderRustComponentsModule = {
     isFavorite: boolean,
     recordedAtMs: number,
   ): Promise<void>
+  getReadingPosition(
+    sidecarRootPath: string,
+    bookId: number,
+    format: string,
+  ): Promise<string>
+  listReadingPositions(sidecarRootPath: string): Promise<string>
+  setReadingPosition(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    locatorJson: string,
+    displayProgression: number | null,
+    recordedAtMs: number,
+  ): Promise<void>
+  listReadingPositionCandidates(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    nowMs: number,
+  ): Promise<string>
+  selectReadingPositionCandidate(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    operationId: string,
+    recordedAtMs: number,
+  ): Promise<void>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -339,6 +369,63 @@ const moduleFacade: MyReaderRustComponentsModule = {
       libraryRootPath,
       bookId,
       isFavorite,
+      recordedAtMs,
+    )
+  },
+  getReadingPosition(sidecarRootPath, bookId, format) {
+    return getNativeModule().getReadingPosition(sidecarRootPath, bookId, format)
+  },
+  listReadingPositions(sidecarRootPath) {
+    return getNativeModule().listReadingPositions(sidecarRootPath)
+  },
+  setReadingPosition(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    locatorJson,
+    displayProgression,
+    recordedAtMs,
+  ) {
+    return getNativeModule().setReadingPosition(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      locatorJson,
+      displayProgression,
+      recordedAtMs,
+    )
+  },
+  listReadingPositionCandidates(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    nowMs,
+  ) {
+    return getNativeModule().listReadingPositionCandidates(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      nowMs,
+    )
+  },
+  selectReadingPositionCandidate(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    operationId,
+    recordedAtMs,
+  ) {
+    return getNativeModule().selectReadingPositionCandidate(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      operationId,
       recordedAtMs,
     )
   },

@@ -11,18 +11,18 @@ export function useBookReadingProgress(library: Library | null) {
       if (!library) return {} as Record<string, Record<string, number>>
 
       const [
-        { listAllReadingProgress },
+        { listReadingPositions },
         { parseStoredLocator, locatorToPercent },
       ] = await Promise.all([
-        import("@/src/repos/reading-progress"),
+        import("@/src/services/core/reading"),
         import("@/src/domain/library/reading-progress"),
       ])
 
-      const rows = await listAllReadingProgress(library)
+      const rows = await listReadingPositions(library)
       const byBook: Record<string, Record<string, number>> = {}
 
       for (const row of rows) {
-        const locator = parseStoredLocator(JSON.parse(row.locatorJson))
+        const locator = parseStoredLocator(row.locator)
         const percent =
           displayProgressionToPercent(row.displayProgression) ??
           locatorToPercent(locator)

@@ -2,7 +2,6 @@ use crate::error::AppError;
 use std::path::Path;
 
 use crate::models::{BookDetail, BookEntry, PaginatedBooks};
-use crate::repositories::progress_repo::SqliteProgressRepository;
 
 pub struct BookService;
 
@@ -62,9 +61,8 @@ impl BookService {
             });
         }
 
-        let progress_db = SqliteProgressRepository::open(sidecar_root).await?;
         let latest_by_book =
-            SqliteProgressRepository::list_latest_book_updates(&progress_db).await?;
+            myreader_core::api::reading::latest_read_at_by_book(Path::new(sidecar_root)).await?;
         books.retain(|book| latest_by_book.contains_key(&book.id));
 
         books.sort_by(|a, b| {

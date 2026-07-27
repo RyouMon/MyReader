@@ -13,6 +13,7 @@ import com.myreader.rustcomponents.uniffi.executeSyncDatabaseCommand
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
 import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.getLibraryFileState
+import com.myreader.rustcomponents.uniffi.getReadingPosition
 import com.myreader.rustcomponents.uniffi.hasSyncDatabasePendingWork
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
 import com.myreader.rustcomponents.uniffi.listCalibreBookFormats
@@ -24,6 +25,8 @@ import com.myreader.rustcomponents.uniffi.listBookReadingFormats
 import com.myreader.rustcomponents.uniffi.listFavoriteBookIds
 import com.myreader.rustcomponents.uniffi.listLibraryFileStates
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
+import com.myreader.rustcomponents.uniffi.listReadingPositionCandidates
+import com.myreader.rustcomponents.uniffi.listReadingPositions
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
 import com.myreader.rustcomponents.uniffi.registerDeviceLibrary
@@ -40,6 +43,8 @@ import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import com.myreader.rustcomponents.uniffi.setBookReadingFormat
 import com.myreader.rustcomponents.uniffi.setFavoriteBook
+import com.myreader.rustcomponents.uniffi.setReadingPosition
+import com.myreader.rustcomponents.uniffi.selectReadingPositionCandidate
 import com.myreader.rustcomponents.uniffi.switchDeviceLibrary
 import com.myreader.rustcomponents.uniffi.testRemoteDataSource
 import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
@@ -330,6 +335,78 @@ class MyReaderRustComponentsModule : Module() {
           libraryRootPath,
           bookId,
           isFavorite,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("getReadingPosition") {
+        sidecarRootPath: String,
+        bookId: Long,
+        format: String ->
+      componentCall {
+        getReadingPosition(sidecarRootPath, bookId, format)
+      }
+    }
+
+    AsyncFunction("listReadingPositions") { sidecarRootPath: String ->
+      componentCall {
+        listReadingPositions(sidecarRootPath)
+      }
+    }
+
+    AsyncFunction("setReadingPosition") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        locatorJson: String,
+        displayProgression: Double?,
+        recordedAtMs: Long ->
+      componentCall {
+        setReadingPosition(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          locatorJson,
+          displayProgression,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("listReadingPositionCandidates") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        nowMs: Long ->
+      componentCall {
+        listReadingPositionCandidates(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          nowMs,
+        )
+      }
+    }
+
+    AsyncFunction("selectReadingPositionCandidate") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        operationId: String,
+        recordedAtMs: Long ->
+      componentCall {
+        selectReadingPositionCandidate(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          operationId,
           recordedAtMs,
         )
       }

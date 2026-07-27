@@ -1139,7 +1139,7 @@ export default function ReaderScreen() {
           </Text>
           <View className="mt-4 gap-2">
             {loadState.candidates.map((candidate) => {
-              const progression = candidate.value.displayProgressionPpm
+              const progression = candidate.displayProgression
               return (
                 <Pressable
                   key={candidate.operationId}
@@ -1156,15 +1156,15 @@ export default function ReaderScreen() {
                   >
                     {progression === null
                       ? t("reader.positionConflictUnknownProgress")
-                      : `${Math.round(progression / 10_000)}%`}
+                      : `${Math.round(progression * 100)}%`}
                   </Text>
                   <Text
                     className="mt-1 text-sm"
                     style={{ color: palette.textMuted }}
                   >
-                    {new Date(candidate.value.recordedAt).toLocaleString()}
+                    {new Date(candidate.recordedAt).toLocaleString()}
                     {" · "}
-                    {candidate.value.replicaId.slice(0, 8)}
+                    {candidate.replicaId.slice(0, 8)}
                   </Text>
                 </Pressable>
               )

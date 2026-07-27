@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 
 import type { BookItem, Library } from "@/src/domain/types"
-import { listAllReadingProgress } from "@/src/repos/reading-progress"
+import { listReadingPositions } from "@/src/services/core/reading"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 /**
@@ -17,7 +17,7 @@ export function useRecentlyReadBooks(
     queryKey: queryKeys.recentlyReadBooks(library?.id),
     queryFn: async () => {
       if (!library) return []
-      return listAllReadingProgress(library)
+      return listReadingPositions(library)
     },
     enabled: !!library,
     staleTime: 1000 * 60 * 5,

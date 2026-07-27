@@ -1,12 +1,14 @@
 import type { Locator } from "@my-reader/readium"
 
-import { getReadingProgressRow } from "../../repos/reading-progress"
-import { writeLocalReadingPosition } from "../sync/library-sidecar/reading-position"
-import type { Library } from "../types"
+import {
+  getReadingPosition,
+  setReadingPosition,
+} from "@/src/services/core/reading"
 import {
   invalidateReadingProgress,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
+import type { Library } from "../types"
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v)
@@ -70,7 +72,7 @@ export async function getReadingProgress(
   const fmt = format.toUpperCase()
 
   try {
-    const row = await getReadingProgressRow(library, bookId, fmt)
+    const row = await getReadingPosition(library, bookId, fmt)
     if (!row) {
       console.info("[reading-sync] progress:read", {
         libraryId: library.id,
@@ -81,8 +83,7 @@ export async function getReadingProgress(
       return null
     }
 
-    const raw: unknown = JSON.parse(row.locatorJson)
-    const locator = parseStoredLocator(raw)
+    const locator = parseStoredLocator(row.locator)
     console.info("[reading-sync] progress:read", {
       libraryId: library.id,
       bookId,
@@ -121,12 +122,13 @@ export async function setReadingProgress(
   }
 
   try {
-    await writeLocalReadingPosition(library, {
+    await setReadingPosition(
+      library,
       bookId,
-      format: fmt,
-      locator: normalized,
-      displayProgression: options?.displayProgression ?? null,
-    })
+      fmt,
+      normalized,
+      options?.displayProgression ?? null,
+    )
     if (options?.invalidate ?? true) {
       void invalidateReadingProgress(library.id)
       void invalidateRecentlyReadBooks(library.id)

@@ -9,13 +9,7 @@ import {
   resolveBookFileForRead,
 } from "@/src/domain/library/calibre"
 import { getReadingProgress } from "@/src/domain/library/reading-progress"
-import {
-  getReadingPositionCandidates,
-  selectReadingPositionCandidate,
-} from "@/src/domain/sync/library-sidecar/reading-position"
-import type { LibrarySidecarReadingPositionCandidate } from "@/src/domain/sync/library-sidecar/document-contract"
 import { createRemoteOps } from "@/src/domain/library/remote-library"
-import { getFileState } from "@/src/services/core/content"
 import type {
   BookItem,
   DataSource,
@@ -25,6 +19,12 @@ import type {
 import { isRemoteSourceType } from "@/src/domain/types"
 import { pageIndexFromFixedLocator } from "@/src/features/reader/components/reader/locator"
 import i18n from "@/src/i18n"
+import { getFileState } from "@/src/services/core/content"
+import {
+  listReadingPositionCandidates,
+  type ReadingPositionCandidate,
+  selectReadingPositionCandidate,
+} from "@/src/services/core/reading"
 import { libraryBookFileUri } from "@/src/services/fs/library-paths"
 import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
@@ -128,7 +128,7 @@ export type LoadState =
   | {
       status: "position-conflict"
       ready: ReadyBookLoad
-      candidates: LibrarySidecarReadingPositionCandidate[]
+      candidates: ReadingPositionCandidate[]
     }
 
 export function useBookLoader(
@@ -367,7 +367,7 @@ export function useBookLoader(
           initialLocator,
           layoutMode: detailLayoutMode,
         }
-        const candidates = await getReadingPositionCandidates(
+        const candidates = await listReadingPositionCandidates(
           lib,
           calibreId,
           fmt,
@@ -412,7 +412,7 @@ export function useBookLoader(
         current.ready.format,
         operationId,
       )
-      initialLocator = JSON.parse(candidate.value.locatorJson) as Locator
+      initialLocator = candidate.locator as Locator
     }
     setLoadState({
       status: "ready",

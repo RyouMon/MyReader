@@ -448,6 +448,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -1115,6 +1131,30 @@ fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = Double?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterDouble.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -1299,6 +1339,15 @@ public func getLibraryFileState(sidecarRootPath: String, path: String)throws  ->
     )
 })
 }
+public func getReadingPosition(sidecarRootPath: String, bookId: Int64, format: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_get_reading_position(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),$0
+    )
+})
+}
 public func hasSyncDatabasePendingWork(databasePath: String)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_has_sync_database_pending_work(
@@ -1374,6 +1423,24 @@ public func listFavoriteBookIds(sidecarRootPath: String)throws  -> String  {
 public func listLibraryFileStates(sidecarRootPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_library_file_states(
+        FfiConverterString.lower(sidecarRootPath),$0
+    )
+})
+}
+public func listReadingPositionCandidates(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, nowMs: Int64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterInt64.lower(nowMs),$0
+    )
+})
+}
+public func listReadingPositions(sidecarRootPath: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_reading_positions(
         FfiConverterString.lower(sidecarRootPath),$0
     )
 })
@@ -1471,6 +1538,17 @@ public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throw
     )
 })
 }
+public func selectReadingPositionCandidate(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, operationId: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(operationId),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+}
+}
 public func setBookReadingFormat(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String?)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_set_book_reading_format(
         FfiConverterString.lower(sidecarRootPath),
@@ -1486,6 +1564,18 @@ public func setFavoriteBook(sidecarRootPath: String, libraryRootPath: String, bo
         FfiConverterString.lower(libraryRootPath),
         FfiConverterInt64.lower(bookId),
         FfiConverterBool.lower(isFavorite),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+}
+}
+public func setReadingPosition(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, displayProgression: Double?, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_set_reading_position(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(locatorJson),
+        FfiConverterOptionDouble.lower(displayProgression),
         FfiConverterInt64.lower(recordedAtMs),$0
     )
 }
@@ -1610,6 +1700,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_get_library_file_state() != 32423) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_get_reading_position() != 24023) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_has_sync_database_pending_work() != 63542) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1638,6 +1731,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates() != 55094) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_reading_positions() != 27106) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
@@ -1676,10 +1775,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate() != 65073) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_set_reading_position() != 4866) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_switch_device_library() != 62391) {

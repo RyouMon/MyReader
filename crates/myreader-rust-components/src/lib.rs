@@ -510,6 +510,90 @@ pub fn set_favorite_book(
 }
 
 #[uniffi::export]
+pub fn get_reading_position(
+    sidecar_root_path: String,
+    book_id: i64,
+    format: String,
+) -> Result<String, RustComponentsError> {
+    let position = run_core_async(myreader_core::api::reading::get_reading_position(
+        Path::new(&sidecar_root_path),
+        book_id,
+        &format,
+    ))?;
+    serialize_core_json(&position)
+}
+
+#[uniffi::export]
+pub fn list_reading_positions(sidecar_root_path: String) -> Result<String, RustComponentsError> {
+    let positions = run_core_async(myreader_core::api::reading::list_reading_positions(
+        Path::new(&sidecar_root_path),
+    ))?;
+    serialize_core_json(&positions)
+}
+
+#[uniffi::export]
+pub fn set_reading_position(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    locator_json: String,
+    display_progression: Option<f64>,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::reading::set_reading_position(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &locator_json,
+        display_progression,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
+pub fn list_reading_position_candidates(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    now_ms: i64,
+) -> Result<String, RustComponentsError> {
+    let candidates = run_core_async(
+        myreader_core::api::reading::list_reading_position_candidates(
+            Path::new(&sidecar_root_path),
+            Path::new(&library_root_path),
+            book_id,
+            &format,
+            now_ms,
+        ),
+    )?;
+    serialize_core_json(&candidates)
+}
+
+#[uniffi::export]
+pub fn select_reading_position_candidate(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    operation_id: String,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(
+        myreader_core::api::reading::select_reading_position_candidate(
+            Path::new(&sidecar_root_path),
+            Path::new(&library_root_path),
+            book_id,
+            &format,
+            &operation_id,
+            recorded_at_ms,
+        ),
+    )
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,
