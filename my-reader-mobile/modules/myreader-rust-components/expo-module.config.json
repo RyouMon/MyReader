@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["MyReaderRustComponentsModule"]
+  },
+  "android": {
+    "modules": ["com.myreader.rustcomponents.MyReaderRustComponentsModule"]
+  }
+}

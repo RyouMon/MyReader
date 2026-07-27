@@ -1,5 +1,3 @@
-import type { Doc } from "@automerge/automerge/slim"
-
 import {
   writeLibrarySidecarAnnotation,
   writeLibrarySidecarBookmark,
@@ -20,7 +18,7 @@ import { projectLibrarySidecarReadingPositions } from "./reading-position"
 
 export async function projectLibrarySidecarAutomergeDocument(
   tx: LibrarySidecarSyncTransaction,
-  document: Doc<LibrarySidecarDocument>,
+  document: LibrarySidecarDocument,
 ): Promise<void> {
   await projectLibrarySidecarReadingPositions(tx, document)
   for (const projection of librarySidecarFavoriteProjections(document)) {

@@ -6,5 +6,16 @@ edition.workspace = true
 [lib]
 crate-type = ["rlib", "staticlib", "cdylib"]
 
+[features]
+bindgen = ["uniffi/cli"]
+
 [dependencies]
 myreader-sync.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uniffi.workspace = true
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]

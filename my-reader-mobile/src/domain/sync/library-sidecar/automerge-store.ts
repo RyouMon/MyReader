@@ -1,4 +1,3 @@
-import type { Doc } from "@automerge/automerge/slim"
 import type { Library } from "@my-reader/tools/types/library"
 import {
   hasLibrarySidecarAutomergeReceipt,
@@ -46,7 +45,7 @@ const CHANGE_FILE_PATTERN = /^([0-9]{20})-([0-9a-f]{64})\.am$/
 
 type ProjectionWriter = (
   tx: LibrarySidecarSyncTransaction,
-  document: Doc<LibrarySidecarDocument>,
+  document: LibrarySidecarDocument,
   headsJson: string,
 ) => Promise<void>
 
@@ -97,7 +96,7 @@ function outboxPath(change: {
 
 async function writeDocumentState(
   tx: LibrarySidecarSyncTransaction,
-  document: Doc<LibrarySidecarDocument>,
+  document: LibrarySidecarDocument,
   nowMs: number,
 ): Promise<string> {
   const headsJson = JSON.stringify(librarySidecarDocumentHeads(document))
@@ -132,7 +131,7 @@ async function initializeDocument(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
-): Promise<Doc<LibrarySidecarDocument>> {
+): Promise<LibrarySidecarDocument> {
   const genesis = await createLibrarySidecarDocument(identity.replicaId)
   const genesisHeads = librarySidecarDocumentHeads(genesis)
   const initialized = setLibrarySidecarIdentity(
@@ -171,7 +170,7 @@ async function initializeDocument(
 async function loadCommittedDocument(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
-): Promise<Doc<LibrarySidecarDocument> | null> {
+): Promise<LibrarySidecarDocument | null> {
   const state = await withLibrarySidecarSyncTransaction(
     library,
     readLibrarySidecarAutomergeState,
@@ -194,7 +193,7 @@ export async function ensureLibrarySidecarAutomergeState(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
-): Promise<Doc<LibrarySidecarDocument>> {
+): Promise<LibrarySidecarDocument> {
   return withLibraryWriter(library.id, async () => {
     const existing = await loadCommittedDocument(library, identity)
     if (existing) return existing
@@ -211,11 +210,9 @@ export async function commitLibrarySidecarAutomergeMutation(
   library: Library,
   identity: LibrarySidecarReplicaIdentity,
   nowMs: number,
-  mutate: (
-    document: Doc<LibrarySidecarDocument>,
-  ) => Doc<LibrarySidecarDocument>,
+  mutate: (document: LibrarySidecarDocument) => LibrarySidecarDocument,
   project?: ProjectionWriter,
-): Promise<Doc<LibrarySidecarDocument>> {
+): Promise<LibrarySidecarDocument> {
   await ensureLibrarySidecarAutomergeState(library, identity, nowMs)
   return withLibraryWriter(library.id, async () => {
     const committed = await loadCommittedDocument(library, identity)

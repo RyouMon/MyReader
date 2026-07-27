@@ -58,7 +58,8 @@ pub struct BookmarkValue {
     pub replica_id: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AnnotationValue {
     pub id: String,
     pub book_id: i64,
@@ -98,20 +99,23 @@ pub struct ReadingCompletionValue {
     pub replica_id: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadingPositionCandidate {
     pub operation_id: String,
     pub value: ReadingPositionValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadingPositionProjection {
     pub book_id: i64,
     pub value: ReadingPositionValue,
     pub conflict_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LibrarySidecarAutomergeChange {
     pub actor_id: String,
     pub sequence: u64,
@@ -213,17 +217,32 @@ pub fn set_library_identity(
 }
 
 pub fn validate_library_identity(doc: &AutoCommit, library_uuid: &str) -> Result<(), SyncError> {
-    for (value, _) in doc
-        .get_all(ROOT, "libraryUuid")
-        .map_err(|error| sync_error(format!("Failed to read library identity: {error}")))?
-    {
-        if value.to_str() != Some(library_uuid) {
-            return Err(sync_error(
-                "Automerge document belongs to a different library",
-            ));
-        }
+    if library_identity(doc)?.is_some_and(|identity| identity != library_uuid) {
+        return Err(sync_error(
+            "Automerge document belongs to a different library",
+        ));
     }
     Ok(())
+}
+
+pub fn library_identity(doc: &AutoCommit) -> Result<Option<String>, SyncError> {
+    let identities = doc
+        .get_all(ROOT, "libraryUuid")
+        .map_err(|error| sync_error(format!("Failed to read library identity: {error}")))?
+        .into_iter()
+        .map(|(value, _)| {
+            value
+                .to_str()
+                .map(str::to_owned)
+                .ok_or_else(|| sync_error("Library identity is invalid"))
+        })
+        .collect::<Result<std::collections::BTreeSet<_>, _>>()?;
+    if identities.len() > 1 {
+        return Err(sync_error(
+            "Automerge document has conflicting library identities",
+        ));
+    }
+    Ok(identities.into_iter().next())
 }
 
 pub fn library_sidecar_changes_since(

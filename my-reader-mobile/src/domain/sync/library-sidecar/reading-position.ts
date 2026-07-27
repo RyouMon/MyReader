@@ -16,7 +16,6 @@ import {
 } from "./automerge-document"
 import { ensureLibrarySidecarIdentity } from "./identity"
 import type { LibrarySidecarSyncTransaction } from "@/src/repos/library-sidecar-sync"
-import type { Doc } from "@automerge/automerge/slim"
 
 export type ReadingPositionInput = {
   bookId: number
@@ -51,7 +50,7 @@ function validateReadingPositionInput(
 
 export async function projectLibrarySidecarReadingPositions(
   tx: LibrarySidecarSyncTransaction,
-  document: Doc<LibrarySidecarDocument>,
+  document: LibrarySidecarDocument,
 ): Promise<void> {
   for (const projection of librarySidecarReadingPositionProjections(document)) {
     await writeLibrarySidecarReadingPosition(tx, {

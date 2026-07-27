@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-import * as Automerge from "../my-reader-mobile/node_modules/@automerge/automerge/dist/mjs/entrypoints/fullfat_node.js"
+import * as Automerge from "../node_modules/@automerge/automerge/dist/mjs/entrypoints/fullfat_node.js"
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
