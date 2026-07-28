@@ -1,12 +1,5 @@
 import { requireNativeModule } from "expo"
 
-export type NativeSyncDatabaseScheduleState = {
-  lastSuccessfulPullAt: number | null
-  nextRetryAt: number | null
-  transientFailureCount: number
-  suspendedReason: string | null
-}
-
 export type NativeSyncLibrarySidecarReport = {
   pushed: number
   pulled: number
@@ -265,31 +258,68 @@ export type MyReaderRustComponentsModule = {
     endDay: string,
   ): Promise<string>
   syncContractVersion(): number
-  advanceSyncScheduler(
-    stateJson: string | null,
-    policyJson: string,
-    eventJson: string,
+  createSyncCoordinator(coordinatorId: string): boolean
+  requestCoordinatedSync(
+    coordinatorId: string,
+    libraryId: string,
+    mode: string,
+    reason: string,
+    timing: string,
+    nowMs: string,
   ): string
-  readSidecarSyncSchedule(
+  flushCoordinatedSync(
+    coordinatorId: string,
+    libraryId: string,
+    reason: string,
+    nowMs: string,
+  ): string
+  recoverCoordinatedSync(
+    coordinatorId: string,
     sidecarRootPath: string,
-  ): Promise<NativeSyncDatabaseScheduleState>
-  effectiveSidecarSyncMode(
+    libraryId: string,
+    nowMs: string,
+  ): Promise<string>
+  requestCoordinatedPull(
+    coordinatorId: string,
     sidecarRootPath: string,
-    requestedMode: string,
+    libraryId: string,
+    reason: string,
+    nowMs: string,
+    freshnessMs: string,
+  ): Promise<string>
+  beginCoordinatedSync(
+    coordinatorId: string,
+    libraryId: string,
+    generation: number,
+  ): string
+  effectiveCoordinatedSyncExecution(
+    coordinatorId: string,
+    sidecarRootPath: string,
+    executionJson: string,
     nowMs: string,
     freshnessMs: string,
   ): Promise<string | null>
-  recordSidecarSyncRetry(
+  completeCoordinatedSync(
+    coordinatorId: string,
+    libraryId: string,
+    nowMs: string,
+  ): string
+  failCoordinatedSync(
+    coordinatorId: string,
     sidecarRootPath: string,
-    nextRetryAt: string,
-    failureCount: number,
-  ): Promise<void>
-  recordSidecarSyncSuspension(
-    sidecarRootPath: string,
+    executionJson: string,
+    failureKind: string,
     reason: string,
-  ): Promise<void>
-  hasSidecarSyncPendingWork(sidecarRootPath: string): Promise<boolean>
-  classifySidecarSyncFailure(kind: string): string
+    nowMs: string,
+    randomFraction: number,
+  ): Promise<string>
+  setCoordinatedSyncLibraryOnline(
+    coordinatorId: string,
+    libraryId: string,
+    online: boolean,
+    nowMs: string,
+  ): string
+  disposeSyncCoordinator(coordinatorId: string): string
   readSyncTaskProgress(taskId: string): NativeSyncTaskProgress | null
   cancelSyncTask(taskId: string): boolean
   releaseSyncTask(taskId: string): boolean
@@ -746,42 +776,117 @@ const moduleFacade: MyReaderRustComponentsModule = {
   syncContractVersion() {
     return getNativeModule().syncContractVersion()
   },
-  advanceSyncScheduler(stateJson, policyJson, eventJson) {
-    return getNativeModule().advanceSyncScheduler(
-      stateJson,
-      policyJson,
-      eventJson,
+  createSyncCoordinator(coordinatorId) {
+    return getNativeModule().createSyncCoordinator(coordinatorId)
+  },
+  requestCoordinatedSync(
+    coordinatorId,
+    libraryId,
+    mode,
+    reason,
+    timing,
+    nowMs,
+  ) {
+    return getNativeModule().requestCoordinatedSync(
+      coordinatorId,
+      libraryId,
+      mode,
+      reason,
+      timing,
+      nowMs,
     )
   },
-  readSidecarSyncSchedule(sidecarRootPath) {
-    return getNativeModule().readSidecarSyncSchedule(sidecarRootPath)
+  flushCoordinatedSync(coordinatorId, libraryId, reason, nowMs) {
+    return getNativeModule().flushCoordinatedSync(
+      coordinatorId,
+      libraryId,
+      reason,
+      nowMs,
+    )
   },
-  effectiveSidecarSyncMode(sidecarRootPath, requestedMode, nowMs, freshnessMs) {
-    return getNativeModule().effectiveSidecarSyncMode(
+  recoverCoordinatedSync(coordinatorId, sidecarRootPath, libraryId, nowMs) {
+    return getNativeModule().recoverCoordinatedSync(
+      coordinatorId,
       sidecarRootPath,
-      requestedMode,
+      libraryId,
+      nowMs,
+    )
+  },
+  requestCoordinatedPull(
+    coordinatorId,
+    sidecarRootPath,
+    libraryId,
+    reason,
+    nowMs,
+    freshnessMs,
+  ) {
+    return getNativeModule().requestCoordinatedPull(
+      coordinatorId,
+      sidecarRootPath,
+      libraryId,
+      reason,
       nowMs,
       freshnessMs,
     )
   },
-  recordSidecarSyncRetry(sidecarRootPath, nextRetryAt, failureCount) {
-    return getNativeModule().recordSidecarSyncRetry(
-      sidecarRootPath,
-      nextRetryAt,
-      failureCount,
+  beginCoordinatedSync(coordinatorId, libraryId, generation) {
+    return getNativeModule().beginCoordinatedSync(
+      coordinatorId,
+      libraryId,
+      generation,
     )
   },
-  recordSidecarSyncSuspension(sidecarRootPath, reason) {
-    return getNativeModule().recordSidecarSyncSuspension(
+  effectiveCoordinatedSyncExecution(
+    coordinatorId,
+    sidecarRootPath,
+    executionJson,
+    nowMs,
+    freshnessMs,
+  ) {
+    return getNativeModule().effectiveCoordinatedSyncExecution(
+      coordinatorId,
       sidecarRootPath,
+      executionJson,
+      nowMs,
+      freshnessMs,
+    )
+  },
+  completeCoordinatedSync(coordinatorId, libraryId, nowMs) {
+    return getNativeModule().completeCoordinatedSync(
+      coordinatorId,
+      libraryId,
+      nowMs,
+    )
+  },
+  failCoordinatedSync(
+    coordinatorId,
+    sidecarRootPath,
+    executionJson,
+    failureKind,
+    reason,
+    nowMs,
+    randomFraction,
+  ) {
+    return getNativeModule().failCoordinatedSync(
+      coordinatorId,
+      sidecarRootPath,
+      executionJson,
+      failureKind,
       reason,
+      nowMs,
+      randomFraction,
     )
   },
-  hasSidecarSyncPendingWork(sidecarRootPath) {
-    return getNativeModule().hasSidecarSyncPendingWork(sidecarRootPath)
+  setCoordinatedSyncLibraryOnline(coordinatorId, libraryId, online, nowMs) {
+    return getNativeModule().setCoordinatedSyncLibraryOnline(
+      coordinatorId,
+      libraryId,
+      online,
+      nowMs,
+    )
   },
-  classifySidecarSyncFailure(kind) {
-    return getNativeModule().classifySidecarSyncFailure(kind)
+  disposeSyncCoordinator(coordinatorId) {
+    return getNativeModule().disposeSyncCoordinator(coordinatorId)
   },
   readSyncTaskProgress(taskId) {
     return getNativeModule().readSyncTaskProgress(taskId)

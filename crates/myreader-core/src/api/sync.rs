@@ -1,28 +1,132 @@
 use std::path::Path;
 
 use crate::{
-    models::{
-        SidecarStorageConfig, SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition,
-        SyncFailureKind, SyncScheduleSnapshot,
-    },
+    models::{SidecarStorageConfig, SidecarSyncMode, SidecarSyncReport, SyncFailureKind},
     services, CoreError,
 };
 
 pub use crate::sync::{
     exchange::{SyncMode, SyncObserver, SyncProgress, SyncStage},
-    scheduler::{
-        SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
-        SyncTiming,
-    },
+    scheduler::{SchedulerPolicy, SchedulerTransition, SyncExecution, SyncTiming},
 };
 
-pub fn reduce_scheduler_json(
-    state_json: Option<&str>,
-    policy_json: &str,
-    event_json: &str,
-) -> Result<String, CoreError> {
-    crate::sync::scheduler::reduce_json(state_json, policy_json, event_json)
-        .map_err(CoreError::from)
+pub struct SyncCoordinator {
+    inner: services::sync::SyncCoordinator,
+}
+
+impl Default for SyncCoordinator {
+    fn default() -> Self {
+        Self::new(SchedulerPolicy::default())
+    }
+}
+
+impl SyncCoordinator {
+    pub fn new(policy: SchedulerPolicy) -> Self {
+        Self {
+            inner: services::sync::SyncCoordinator::new(policy),
+        }
+    }
+
+    pub fn request(
+        &self,
+        library_id: &str,
+        mode: SidecarSyncMode,
+        reason: &str,
+        timing: SyncTiming,
+        now_ms: u64,
+    ) -> SchedulerTransition {
+        self.inner.request(library_id, mode, reason, timing, now_ms)
+    }
+
+    pub fn flush(&self, library_id: &str, reason: &str, now_ms: u64) -> SchedulerTransition {
+        self.inner.flush(library_id, reason, now_ms)
+    }
+
+    pub async fn request_contextual_pull(
+        &self,
+        sidecar_root: &Path,
+        library_id: &str,
+        reason: &str,
+        now_ms: u64,
+        freshness_ms: u64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        self.inner
+            .request_contextual_pull(sidecar_root, library_id, reason, now_ms, freshness_ms)
+            .await
+    }
+
+    pub async fn recover_library(
+        &self,
+        sidecar_root: &Path,
+        library_id: &str,
+        now_ms: u64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        self.inner
+            .recover_library(sidecar_root, library_id, now_ms)
+            .await
+    }
+
+    pub fn begin(&self, library_id: &str, generation: u64) -> SchedulerTransition {
+        self.inner.begin(library_id, generation)
+    }
+
+    pub async fn effective_execution(
+        &self,
+        sidecar_root: &Path,
+        execution: SyncExecution,
+        now_ms: u64,
+        freshness_ms: u64,
+    ) -> Result<Option<SyncExecution>, CoreError> {
+        self.inner
+            .effective_execution(sidecar_root, execution, now_ms, freshness_ms)
+            .await
+    }
+
+    pub fn complete(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.inner.complete(library_id, now_ms)
+    }
+
+    pub async fn fail(
+        &self,
+        sidecar_root: &Path,
+        execution: SyncExecution,
+        kind: SyncFailureKind,
+        reason: &str,
+        now_ms: u64,
+        random_fraction: f64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        self.inner
+            .fail(
+                sidecar_root,
+                execution,
+                kind,
+                reason,
+                now_ms,
+                random_fraction,
+            )
+            .await
+    }
+
+    pub fn resume(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.inner.resume(library_id, now_ms)
+    }
+
+    pub fn wake_retry(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.inner.wake_retry(library_id, now_ms)
+    }
+
+    pub fn set_library_online(
+        &self,
+        library_id: &str,
+        online: bool,
+        now_ms: u64,
+    ) -> SchedulerTransition {
+        self.inner.set_library_online(library_id, online, now_ms)
+    }
+
+    pub fn dispose(&self) -> SchedulerTransition {
+        self.inner.dispose()
+    }
 }
 
 pub async fn sync_sidecar(
@@ -52,37 +156,4 @@ pub async fn sync_sidecar_observed(
         observer,
     )
     .await
-}
-
-pub async fn has_pending_work(sidecar_root: &Path) -> Result<bool, CoreError> {
-    services::sync::has_pending_work(sidecar_root).await
-}
-
-pub async fn effective_mode(
-    sidecar_root: &Path,
-    requested_mode: SidecarSyncMode,
-    now_ms: i64,
-    freshness_ms: i64,
-) -> Result<Option<SidecarSyncMode>, CoreError> {
-    services::sync::effective_mode(sidecar_root, requested_mode, now_ms, freshness_ms).await
-}
-
-pub async fn schedule_snapshot(sidecar_root: &Path) -> Result<SyncScheduleSnapshot, CoreError> {
-    services::sync::schedule_snapshot(sidecar_root).await
-}
-
-pub async fn record_retry(
-    sidecar_root: &Path,
-    next_retry_at: i64,
-    failure_count: u32,
-) -> Result<(), CoreError> {
-    services::sync::record_retry(sidecar_root, next_retry_at, failure_count).await
-}
-
-pub async fn record_suspension(sidecar_root: &Path, reason: &str) -> Result<(), CoreError> {
-    services::sync::record_suspension(sidecar_root, reason).await
-}
-
-pub fn classify_failure(kind: SyncFailureKind) -> SyncFailureDisposition {
-    services::sync::classify_failure(kind)
 }

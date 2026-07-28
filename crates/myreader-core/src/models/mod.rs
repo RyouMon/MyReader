@@ -22,7 +22,5 @@ pub use registry::{
     DataSource, DeviceRegistry, Library, SecurityScopedBookmark, DEVICE_REGISTRY_SCHEMA_VERSION,
 };
 pub use storage::{RemoteCredential, RemoteDirectoryEntry, SidecarStorageConfig};
-pub use sync::{
-    SidecarSyncMode, SidecarSyncReport, SyncFailureDisposition, SyncFailureKind,
-    SyncScheduleSnapshot,
-};
+pub use sync::{SidecarSyncMode, SidecarSyncReport, SyncFailureKind};
+pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};

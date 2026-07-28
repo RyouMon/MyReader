@@ -527,92 +527,6 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
-public struct SyncDatabaseScheduleState {
-    public var lastSuccessfulPullAt: Int64?
-    public var nextRetryAt: Int64?
-    public var transientFailureCount: UInt32
-    public var suspendedReason: String?
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(lastSuccessfulPullAt: Int64?, nextRetryAt: Int64?, transientFailureCount: UInt32, suspendedReason: String?) {
-        self.lastSuccessfulPullAt = lastSuccessfulPullAt
-        self.nextRetryAt = nextRetryAt
-        self.transientFailureCount = transientFailureCount
-        self.suspendedReason = suspendedReason
-    }
-}
-
-#if compiler(>=6)
-extension SyncDatabaseScheduleState: Sendable {}
-#endif
-
-
-extension SyncDatabaseScheduleState: Equatable, Hashable {
-    public static func ==(lhs: SyncDatabaseScheduleState, rhs: SyncDatabaseScheduleState) -> Bool {
-        if lhs.lastSuccessfulPullAt != rhs.lastSuccessfulPullAt {
-            return false
-        }
-        if lhs.nextRetryAt != rhs.nextRetryAt {
-            return false
-        }
-        if lhs.transientFailureCount != rhs.transientFailureCount {
-            return false
-        }
-        if lhs.suspendedReason != rhs.suspendedReason {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(lastSuccessfulPullAt)
-        hasher.combine(nextRetryAt)
-        hasher.combine(transientFailureCount)
-        hasher.combine(suspendedReason)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSyncDatabaseScheduleState: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncDatabaseScheduleState {
-        return
-            try SyncDatabaseScheduleState(
-                lastSuccessfulPullAt: FfiConverterOptionInt64.read(from: &buf),
-                nextRetryAt: FfiConverterOptionInt64.read(from: &buf),
-                transientFailureCount: FfiConverterUInt32.read(from: &buf),
-                suspendedReason: FfiConverterOptionString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SyncDatabaseScheduleState, into buf: inout [UInt8]) {
-        FfiConverterOptionInt64.write(value.lastSuccessfulPullAt, into: &buf)
-        FfiConverterOptionInt64.write(value.nextRetryAt, into: &buf)
-        FfiConverterUInt32.write(value.transientFailureCount, into: &buf)
-        FfiConverterOptionString.write(value.suspendedReason, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseScheduleState_lift(_ buf: RustBuffer) throws -> SyncDatabaseScheduleState {
-    return try FfiConverterTypeSyncDatabaseScheduleState.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncDatabaseScheduleState_lower(_ value: SyncDatabaseScheduleState) -> RustBuffer {
-    return FfiConverterTypeSyncDatabaseScheduleState.lower(value)
-}
-
-
 public struct SyncLibrarySidecarReport {
     public var pushed: UInt32
     public var pulled: UInt32
@@ -1021,12 +935,12 @@ public func addRemoteLibrary(registryPath: String, requestJson: String, credenti
     )
 })
 }
-public func advanceSyncScheduler(stateJson: String?, policyJson: String, eventJson: String)throws  -> String  {
+public func beginCoordinatedSync(coordinatorId: String, libraryId: String, generation: UInt64)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(
-        FfiConverterOptionString.lower(stateJson),
-        FfiConverterString.lower(policyJson),
-        FfiConverterString.lower(eventJson),$0
+    uniffi_myreader_rust_components_fn_func_begin_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(libraryId),
+        FfiConverterUInt64.lower(generation),$0
     )
 })
 }
@@ -1037,23 +951,32 @@ public func cancelSyncTask(taskId: String) -> Bool  {
     )
 })
 }
-public func classifySidecarSyncFailure(kind: String) -> String  {
-    return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_myreader_rust_components_fn_func_classify_sidecar_sync_failure(
-        FfiConverterString.lower(kind),$0
-    )
-})
-}
 public func clearBookCoverThumbnailCache(sidecarRootPath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(
         FfiConverterString.lower(sidecarRootPath),$0
     )
 }
 }
+public func completeCoordinatedSync(coordinatorId: String, libraryId: String, nowMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_complete_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(nowMs),$0
+    )
+})
+}
 public func countCalibreBooks(libraryRootPath: String)throws  -> UInt64  {
     return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_count_calibre_books(
         FfiConverterString.lower(libraryRootPath),$0
+    )
+})
+}
+public func createSyncCoordinator(coordinatorId: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_create_sync_coordinator(
+        FfiConverterString.lower(coordinatorId),$0
     )
 })
 }
@@ -1074,13 +997,34 @@ public func deleteLibraryFileState(sidecarRootPath: String, path: String)throws 
     )
 }
 }
-public func effectiveSidecarSyncMode(sidecarRootPath: String, requestedMode: String, nowMs: String, freshnessMs: String)throws  -> String?  {
+public func disposeSyncCoordinator(coordinatorId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_dispose_sync_coordinator(
+        FfiConverterString.lower(coordinatorId),$0
+    )
+})
+}
+public func effectiveCoordinatedSyncExecution(coordinatorId: String, sidecarRootPath: String, executionJson: String, nowMs: String, freshnessMs: String)throws  -> String?  {
     return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_effective_sidecar_sync_mode(
+    uniffi_myreader_rust_components_fn_func_effective_coordinated_sync_execution(
+        FfiConverterString.lower(coordinatorId),
         FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(requestedMode),
+        FfiConverterString.lower(executionJson),
         FfiConverterString.lower(nowMs),
         FfiConverterString.lower(freshnessMs),$0
+    )
+})
+}
+public func failCoordinatedSync(coordinatorId: String, sidecarRootPath: String, executionJson: String, failureKind: String, reason: String, nowMs: String, randomFraction: Double)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_fail_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(executionJson),
+        FfiConverterString.lower(failureKind),
+        FfiConverterString.lower(reason),
+        FfiConverterString.lower(nowMs),
+        FfiConverterDouble.lower(randomFraction),$0
     )
 })
 }
@@ -1090,6 +1034,16 @@ public func finalizeDownloadedFile(sidecarRootPath: String, relativePath: String
         FfiConverterString.lower(sidecarRootPath),
         FfiConverterString.lower(relativePath),
         FfiConverterString.lower(localPath),$0
+    )
+})
+}
+public func flushCoordinatedSync(coordinatorId: String, libraryId: String, reason: String, nowMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_flush_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(reason),
+        FfiConverterString.lower(nowMs),$0
     )
 })
 }
@@ -1132,13 +1086,6 @@ public func getReadingStatistics(sidecarRootPath: String, libraryRootPath: Strin
         FfiConverterString.lower(libraryRootPath),
         FfiConverterString.lower(startDay),
         FfiConverterString.lower(endDay),$0
-    )
-})
-}
-public func hasSidecarSyncPendingWork(sidecarRootPath: String)throws  -> Bool  {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_has_sidecar_sync_pending_work(
-        FfiConverterString.lower(sidecarRootPath),$0
     )
 })
 }
@@ -1301,13 +1248,6 @@ public func prepareDeviceDataSource(sourceJson: String)throws  -> String  {
     )
 })
 }
-public func readSidecarSyncSchedule(sidecarRootPath: String)throws  -> SyncDatabaseScheduleState  {
-    return try  FfiConverterTypeSyncDatabaseScheduleState_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_read_sidecar_sync_schedule(
-        FfiConverterString.lower(sidecarRootPath),$0
-    )
-})
-}
 public func readSyncTaskProgress(taskId: String) -> SyncTaskProgress?  {
     return try!  FfiConverterOptionTypeSyncTaskProgress.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_read_sync_task_progress(
@@ -1315,20 +1255,15 @@ public func readSyncTaskProgress(taskId: String) -> SyncTaskProgress?  {
     )
 })
 }
-public func recordSidecarSyncRetry(sidecarRootPath: String, nextRetryAt: String, failureCount: UInt32)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_record_sidecar_sync_retry(
+public func recoverCoordinatedSync(coordinatorId: String, sidecarRootPath: String, libraryId: String, nowMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_recover_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
         FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(nextRetryAt),
-        FfiConverterUInt32.lower(failureCount),$0
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(nowMs),$0
     )
-}
-}
-public func recordSidecarSyncSuspension(sidecarRootPath: String, reason: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_record_sidecar_sync_suspension(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(reason),$0
-    )
-}
+})
 }
 public func refreshRemoteLibrary(registryPath: String, libraryId: String, localRootPath: String, credentialJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
@@ -1401,6 +1336,30 @@ public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throw
     )
 })
 }
+public func requestCoordinatedPull(coordinatorId: String, sidecarRootPath: String, libraryId: String, reason: String, nowMs: String, freshnessMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_request_coordinated_pull(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(reason),
+        FfiConverterString.lower(nowMs),
+        FfiConverterString.lower(freshnessMs),$0
+    )
+})
+}
+public func requestCoordinatedSync(coordinatorId: String, libraryId: String, mode: String, reason: String, timing: String, nowMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_request_coordinated_sync(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(mode),
+        FfiConverterString.lower(reason),
+        FfiConverterString.lower(timing),
+        FfiConverterString.lower(nowMs),$0
+    )
+})
+}
 public func selectReadingPositionCandidate(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, operationId: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(
         FfiConverterString.lower(sidecarRootPath),
@@ -1420,6 +1379,16 @@ public func setBookReadingFormat(sidecarRootPath: String, libraryRootPath: Strin
         FfiConverterOptionString.lower(format),$0
     )
 }
+}
+public func setCoordinatedSyncLibraryOnline(coordinatorId: String, libraryId: String, online: Bool, nowMs: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_set_coordinated_sync_library_online(
+        FfiConverterString.lower(coordinatorId),
+        FfiConverterString.lower(libraryId),
+        FfiConverterBool.lower(online),
+        FfiConverterString.lower(nowMs),$0
+    )
+})
 }
 public func setFavoriteBook(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, isFavorite: Bool, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_set_favorite_book(
@@ -1561,19 +1530,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler() != 4510) {
+    if (uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync() != 19096) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_classify_sidecar_sync_failure() != 3331) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_complete_coordinated_sync() != 1632) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_create_sync_coordinator() != 2040) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache() != 52456) {
@@ -1582,10 +1554,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_effective_sidecar_sync_mode() != 25640) {
+    if (uniffi_myreader_rust_components_checksum_func_dispose_sync_coordinator() != 38564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_effective_coordinated_sync_execution() != 40963) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_fail_coordinated_sync() != 20944) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file() != 9231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync() != 58831) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_get_calibre_book_detail() != 17242) {
@@ -1601,9 +1582,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 6610) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_has_sidecar_sync_pending_work() != 46572) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_initialize_device_registry() != 45379) {
@@ -1663,16 +1641,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_prepare_device_data_source() != 27455) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_read_sidecar_sync_schedule() != 23984) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_read_sync_task_progress() != 25370) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_record_sidecar_sync_retry() != 38326) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_record_sidecar_sync_suspension() != 55448) {
+    if (uniffi_myreader_rust_components_checksum_func_recover_coordinated_sync() != 65499) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_refresh_remote_library() != 14599) {
@@ -1699,10 +1671,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_request_coordinated_pull() != 21845) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_request_coordinated_sync() != 41780) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate() != 65073) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_set_coordinated_sync_library_online() != 33729) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516) {

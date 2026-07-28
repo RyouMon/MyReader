@@ -15,6 +15,10 @@ use crate::{
     sync::{
         exchange::{self, SyncMode, SyncObserver},
         persistence::{self, SyncScheduleState},
+        scheduler::{
+            SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncExecution,
+            SyncTiming,
+        },
         transport,
     },
     CoreError,
@@ -22,6 +26,212 @@ use crate::{
 
 static SYNC_LOCKS: LazyLock<Mutex<HashMap<String, Weak<AsyncMutex<()>>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+pub(crate) struct SyncCoordinator {
+    state: Mutex<SchedulerState>,
+}
+
+impl Default for SyncCoordinator {
+    fn default() -> Self {
+        Self::new(SchedulerPolicy::default())
+    }
+}
+
+impl SyncCoordinator {
+    pub(crate) fn new(policy: SchedulerPolicy) -> Self {
+        Self {
+            state: Mutex::new(SchedulerState::new(policy)),
+        }
+    }
+
+    pub(crate) fn request(
+        &self,
+        library_id: &str,
+        mode: SidecarSyncMode,
+        reason: &str,
+        timing: SyncTiming,
+        now_ms: u64,
+    ) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Request {
+            library_id: library_id.to_owned(),
+            mode: engine_mode(mode),
+            reason: reason.to_owned(),
+            timing,
+            now_ms,
+        })
+    }
+
+    pub(crate) fn flush(&self, library_id: &str, reason: &str, now_ms: u64) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Flush {
+            library_id: library_id.to_owned(),
+            reason: reason.to_owned(),
+            now_ms,
+        })
+    }
+
+    pub(crate) async fn request_contextual_pull(
+        &self,
+        sidecar_root: &Path,
+        library_id: &str,
+        reason: &str,
+        now_ms: u64,
+        freshness_ms: u64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        let Some(mode) = effective_mode(
+            sidecar_root,
+            SidecarSyncMode::Full,
+            sqlite_timestamp(now_ms)?,
+            sqlite_timestamp(freshness_ms)?,
+        )
+        .await?
+        else {
+            return Ok(SchedulerTransition::default());
+        };
+        Ok(self.request(library_id, mode, reason, SyncTiming::Immediate, now_ms))
+    }
+
+    pub(crate) async fn recover_library(
+        &self,
+        sidecar_root: &Path,
+        library_id: &str,
+        now_ms: u64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        let snapshot = schedule_snapshot(sidecar_root).await?;
+        self.apply(SchedulerEvent::Restore {
+            library_id: library_id.to_owned(),
+            next_retry_at: snapshot
+                .next_retry_at
+                .map(|value| u64::try_from(value.max(0)).unwrap_or_default()),
+            retry_count: snapshot.transient_failure_count,
+            suspended: snapshot.suspended_reason.is_some(),
+        });
+        if snapshot.suspended_reason.is_some() || !has_pending_work(sidecar_root).await? {
+            return Ok(SchedulerTransition::default());
+        }
+        Ok(self.request(
+            library_id,
+            SidecarSyncMode::PushOnly,
+            "startup_recovery",
+            SyncTiming::Immediate,
+            now_ms,
+        ))
+    }
+
+    pub(crate) fn begin(&self, library_id: &str, generation: u64) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Begin {
+            library_id: library_id.to_owned(),
+            generation,
+        })
+    }
+
+    pub(crate) async fn effective_execution(
+        &self,
+        sidecar_root: &Path,
+        mut execution: SyncExecution,
+        now_ms: u64,
+        freshness_ms: u64,
+    ) -> Result<Option<SyncExecution>, CoreError> {
+        let requested_mode = sidecar_mode(execution.mode);
+        match effective_mode(
+            sidecar_root,
+            requested_mode,
+            sqlite_timestamp(now_ms)?,
+            sqlite_timestamp(freshness_ms)?,
+        )
+        .await?
+        {
+            Some(mode) => {
+                execution.mode = engine_mode(mode);
+                Ok(Some(execution))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub(crate) fn complete(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Complete {
+            library_id: library_id.to_owned(),
+            now_ms,
+        })
+    }
+
+    pub(crate) async fn fail(
+        &self,
+        sidecar_root: &Path,
+        execution: SyncExecution,
+        kind: SyncFailureKind,
+        reason: &str,
+        now_ms: u64,
+        random_fraction: f64,
+    ) -> Result<SchedulerTransition, CoreError> {
+        match classify_failure(kind) {
+            SyncFailureDisposition::Retry => {
+                let transition = self.apply(SchedulerEvent::Retry {
+                    execution,
+                    now_ms,
+                    random_fraction,
+                });
+                if let Some(retry) = transition.retry.as_ref() {
+                    record_retry(
+                        sidecar_root,
+                        sqlite_timestamp(retry.next_retry_at)?,
+                        retry.retry_count,
+                    )
+                    .await?;
+                }
+                Ok(transition)
+            }
+            SyncFailureDisposition::Suspend => {
+                let transition = self.apply(SchedulerEvent::Suspend { execution });
+                record_suspension(sidecar_root, reason).await?;
+                Ok(transition)
+            }
+        }
+    }
+
+    pub(crate) fn resume(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Resume {
+            library_id: library_id.to_owned(),
+            now_ms,
+        })
+    }
+
+    pub(crate) fn wake_retry(&self, library_id: &str, now_ms: u64) -> SchedulerTransition {
+        self.apply(SchedulerEvent::WakeRetry {
+            library_id: library_id.to_owned(),
+            now_ms,
+        })
+    }
+
+    pub(crate) fn set_library_online(
+        &self,
+        library_id: &str,
+        online: bool,
+        now_ms: u64,
+    ) -> SchedulerTransition {
+        let transition = self.apply(SchedulerEvent::SetLibraryOnline {
+            library_id: library_id.to_owned(),
+            online,
+            now_ms,
+        });
+        if online {
+            self.wake_retry(library_id, now_ms)
+        } else {
+            transition
+        }
+    }
+
+    pub(crate) fn dispose(&self) -> SchedulerTransition {
+        self.apply(SchedulerEvent::Dispose)
+    }
+
+    fn apply(&self, event: SchedulerEvent) -> SchedulerTransition {
+        self.state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .apply(event)
+    }
+}
 
 struct NoopObserver;
 
@@ -53,6 +263,18 @@ fn engine_mode(mode: SidecarSyncMode) -> SyncMode {
         SidecarSyncMode::PushOnly => SyncMode::PushOnly,
         SidecarSyncMode::Full => SyncMode::Full,
     }
+}
+
+fn sidecar_mode(mode: SyncMode) -> SidecarSyncMode {
+    match mode {
+        SyncMode::PushOnly => SidecarSyncMode::PushOnly,
+        SyncMode::Full => SidecarSyncMode::Full,
+    }
+}
+
+fn sqlite_timestamp(timestamp: u64) -> Result<i64, CoreError> {
+    i64::try_from(timestamp)
+        .map_err(|_| CoreError::Sync("Timestamp exceeds SQLite INTEGER range".into()))
 }
 
 pub(crate) async fn sync_sidecar(
@@ -205,6 +427,20 @@ pub(crate) fn classify_failure(kind: SyncFailureKind) -> SyncFailureDisposition 
 mod tests {
     use super::*;
 
+    fn begin_execution(coordinator: &SyncCoordinator) -> crate::sync::scheduler::SyncExecution {
+        let scheduled = coordinator.request(
+            "library-1",
+            SidecarSyncMode::Full,
+            "app_foregrounded",
+            crate::sync::scheduler::SyncTiming::Immediate,
+            1_000,
+        );
+        coordinator
+            .begin("library-1", scheduled.schedules[0].generation)
+            .execution
+            .expect("execution should begin")
+    }
+
     #[tokio::test]
     async fn effective_mode_should_pull_when_no_successful_pull_exists() {
         let directory = tempfile::tempdir().unwrap();
@@ -246,5 +482,103 @@ mod tests {
             classify_failure(SyncFailureKind::Unexpected),
             SyncFailureDisposition::Suspend
         );
+    }
+
+    #[tokio::test]
+    async fn coordinator_should_persist_retry_when_connectivity_failure_occurs() {
+        let directory = tempfile::tempdir().unwrap();
+        let coordinator = SyncCoordinator::default();
+        let execution = begin_execution(&coordinator);
+
+        let transition = coordinator
+            .fail(
+                directory.path(),
+                execution,
+                SyncFailureKind::Connectivity,
+                "network unavailable",
+                2_000,
+                0.5,
+            )
+            .await
+            .unwrap();
+        let snapshot = schedule_snapshot(directory.path()).await.unwrap();
+
+        assert_eq!(transition.retry.unwrap().next_retry_at, 3_000);
+        assert_eq!(snapshot.next_retry_at, Some(3_000));
+        assert_eq!(snapshot.transient_failure_count, 1);
+        assert_eq!(snapshot.suspended_reason, None);
+    }
+
+    #[tokio::test]
+    async fn coordinator_should_persist_suspension_when_configuration_failure_occurs() {
+        let directory = tempfile::tempdir().unwrap();
+        let coordinator = SyncCoordinator::default();
+        let execution = begin_execution(&coordinator);
+
+        let transition = coordinator
+            .fail(
+                directory.path(),
+                execution,
+                SyncFailureKind::Configuration,
+                "missing WebDAV URL",
+                2_000,
+                0.5,
+            )
+            .await
+            .unwrap();
+        let snapshot = schedule_snapshot(directory.path()).await.unwrap();
+
+        assert!(transition.retry.is_none());
+        assert_eq!(
+            snapshot.suspended_reason.as_deref(),
+            Some("missing WebDAV URL")
+        );
+    }
+
+    #[tokio::test]
+    async fn coordinator_should_skip_contextual_pull_when_recent_pull_is_fresh() {
+        let directory = tempfile::tempdir().unwrap();
+        database::open_db(directory.path().to_str().unwrap())
+            .await
+            .unwrap();
+        let path = database_path(directory.path()).unwrap();
+        persistence::mark_schedule_succeeded(&path, Some(1_000)).unwrap();
+        let coordinator = SyncCoordinator::default();
+
+        let transition = coordinator
+            .request_contextual_pull(
+                directory.path(),
+                "library-1",
+                "app_foregrounded",
+                2_000,
+                30_000,
+            )
+            .await
+            .unwrap();
+
+        assert!(transition.schedules.is_empty());
+    }
+
+    #[tokio::test]
+    async fn coordinator_should_wake_retry_when_library_reconnects() {
+        let directory = tempfile::tempdir().unwrap();
+        let coordinator = SyncCoordinator::default();
+        let execution = begin_execution(&coordinator);
+        coordinator
+            .fail(
+                directory.path(),
+                execution,
+                SyncFailureKind::Connectivity,
+                "network unavailable",
+                2_000,
+                1.0,
+            )
+            .await
+            .unwrap();
+        coordinator.set_library_online("library-1", false, 2_100);
+
+        let transition = coordinator.set_library_online("library-1", true, 2_200);
+
+        assert_eq!(transition.schedules[0].deadline, 2_200);
     }
 }

@@ -2,7 +2,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use super::{exchange::SyncMode, SyncError};
+use super::exchange::SyncMode;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -515,33 +515,6 @@ impl SchedulerState {
     }
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SchedulerEnvelope {
-    state: SchedulerState,
-    transition: SchedulerTransition,
-}
-
-pub fn reduce_json(
-    state_json: Option<&str>,
-    policy_json: &str,
-    event_json: &str,
-) -> Result<String, SyncError> {
-    let mut state = match state_json {
-        Some(value) => serde_json::from_str(value)
-            .map_err(|error| SyncError::Sync(format!("Invalid scheduler state: {error}")))?,
-        None => SchedulerState::new(
-            serde_json::from_str(policy_json)
-                .map_err(|error| SyncError::Sync(format!("Invalid scheduler policy: {error}")))?,
-        ),
-    };
-    let event = serde_json::from_str(event_json)
-        .map_err(|error| SyncError::Sync(format!("Invalid scheduler event: {error}")))?;
-    let transition = state.apply(event);
-    serde_json::to_string(&SchedulerEnvelope { state, transition })
-        .map_err(|error| SyncError::Sync(format!("Serialize scheduler state failed: {error}")))
-}
-
 fn merge_mode(current: SyncMode, incoming: SyncMode) -> SyncMode {
     if current == SyncMode::Full || incoming == SyncMode::Full {
         SyncMode::Full
@@ -741,30 +714,5 @@ mod tests {
             now_ms: 2_000,
         });
         assert_eq!(online.schedules[0].deadline, 2_000);
-    }
-
-    #[test]
-    fn should_round_trip_scheduler_state_when_mobile_uses_json_bridge() {
-        let policy = serde_json::to_string(&SchedulerPolicy::default()).unwrap();
-        let event = serde_json::to_string(&SchedulerEvent::Request {
-            library_id: "library-1".to_owned(),
-            mode: SyncMode::Full,
-            reason: "app_foregrounded".to_owned(),
-            timing: SyncTiming::Immediate,
-            now_ms: 1_000,
-        })
-        .unwrap();
-
-        let envelope = reduce_json(None, &policy, &event).unwrap();
-        let value: serde_json::Value = serde_json::from_str(&envelope).unwrap();
-
-        assert_eq!(
-            value["transition"]["schedules"][0]["libraryId"],
-            "library-1"
-        );
-        assert_eq!(
-            value["state"]["libraries"]["library-1"]["pending"]["mode"],
-            "full"
-        );
     }
 }

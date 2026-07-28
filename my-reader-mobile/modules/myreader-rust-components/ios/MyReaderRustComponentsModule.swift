@@ -750,89 +750,181 @@ public class MyReaderRustComponentsModule: Module {
       Int(syncContractVersion())
     }
 
-    Function("advanceSyncScheduler") {
+    Function("createSyncCoordinator") {
+      (coordinatorId: String) -> Bool in
+      createSyncCoordinator(coordinatorId: coordinatorId)
+    }
+
+    Function("requestCoordinatedSync") {
       (
-        stateJson: String?,
-        policyJson: String,
-        eventJson: String
+        coordinatorId: String,
+        libraryId: String,
+        mode: String,
+        reason: String,
+        timing: String,
+        nowMs: String
       ) -> String in
       try componentCall {
-        try advanceSyncScheduler(
-          stateJson: stateJson,
-          policyJson: policyJson,
-          eventJson: eventJson
+        try requestCoordinatedSync(
+          coordinatorId: coordinatorId,
+          libraryId: libraryId,
+          mode: mode,
+          reason: reason,
+          timing: timing,
+          nowMs: nowMs
         )
       }
     }
 
-    AsyncFunction("readSidecarSyncSchedule") {
-      (sidecarRootPath: String) -> [String: Any] in
+    Function("flushCoordinatedSync") {
+      (
+        coordinatorId: String,
+        libraryId: String,
+        reason: String,
+        nowMs: String
+      ) -> String in
       try componentCall {
-        let state = try readSidecarSyncSchedule(sidecarRootPath: sidecarRootPath)
-        return [
-          "lastSuccessfulPullAt": state.lastSuccessfulPullAt ?? NSNull(),
-          "nextRetryAt": state.nextRetryAt ?? NSNull(),
-          "transientFailureCount": Int(state.transientFailureCount),
-          "suspendedReason": state.suspendedReason ?? NSNull(),
-        ]
+        try flushCoordinatedSync(
+          coordinatorId: coordinatorId,
+          libraryId: libraryId,
+          reason: reason,
+          nowMs: nowMs
+        )
       }
     }
 
-    AsyncFunction("effectiveSidecarSyncMode") {
+    AsyncFunction("recoverCoordinatedSync") {
       (
+        coordinatorId: String,
         sidecarRootPath: String,
-        requestedMode: String,
+        libraryId: String,
+        nowMs: String
+      ) -> String in
+      try componentCall {
+        try recoverCoordinatedSync(
+          coordinatorId: coordinatorId,
+          sidecarRootPath: sidecarRootPath,
+          libraryId: libraryId,
+          nowMs: nowMs
+        )
+      }
+    }
+
+    AsyncFunction("requestCoordinatedPull") {
+      (
+        coordinatorId: String,
+        sidecarRootPath: String,
+        libraryId: String,
+        reason: String,
         nowMs: String,
         freshnessMs: String
-      ) -> String? in
+      ) -> String in
       try componentCall {
-        try effectiveSidecarSyncMode(
+        try requestCoordinatedPull(
+          coordinatorId: coordinatorId,
           sidecarRootPath: sidecarRootPath,
-          requestedMode: requestedMode,
+          libraryId: libraryId,
+          reason: reason,
           nowMs: nowMs,
           freshnessMs: freshnessMs
         )
       }
     }
 
-    AsyncFunction("recordSidecarSyncRetry") {
+    Function("beginCoordinatedSync") {
       (
-        sidecarRootPath: String,
-        nextRetryAt: String,
-        failureCount: UInt32
-      ) in
+        coordinatorId: String,
+        libraryId: String,
+        generation: Int
+      ) -> String in
       try componentCall {
-        try recordSidecarSyncRetry(
-          sidecarRootPath: sidecarRootPath,
-          nextRetryAt: nextRetryAt,
-          failureCount: failureCount
+        try beginCoordinatedSync(
+          coordinatorId: coordinatorId,
+          libraryId: libraryId,
+          generation: UInt64(generation)
         )
       }
     }
 
-    AsyncFunction("recordSidecarSyncSuspension") {
+    AsyncFunction("effectiveCoordinatedSyncExecution") {
       (
+        coordinatorId: String,
         sidecarRootPath: String,
-        reason: String
-      ) in
+        executionJson: String,
+        nowMs: String,
+        freshnessMs: String
+      ) -> String? in
       try componentCall {
-        try recordSidecarSyncSuspension(
+        try effectiveCoordinatedSyncExecution(
+          coordinatorId: coordinatorId,
           sidecarRootPath: sidecarRootPath,
-          reason: reason
+          executionJson: executionJson,
+          nowMs: nowMs,
+          freshnessMs: freshnessMs
         )
       }
     }
 
-    AsyncFunction("hasSidecarSyncPendingWork") {
-      (sidecarRootPath: String) -> Bool in
+    Function("completeCoordinatedSync") {
+      (
+        coordinatorId: String,
+        libraryId: String,
+        nowMs: String
+      ) -> String in
       try componentCall {
-        try hasSidecarSyncPendingWork(sidecarRootPath: sidecarRootPath)
+        try completeCoordinatedSync(
+          coordinatorId: coordinatorId,
+          libraryId: libraryId,
+          nowMs: nowMs
+        )
       }
     }
 
-    Function("classifySidecarSyncFailure") {
-      (kind: String) -> String in
-      classifySidecarSyncFailure(kind: kind)
+    AsyncFunction("failCoordinatedSync") {
+      (
+        coordinatorId: String,
+        sidecarRootPath: String,
+        executionJson: String,
+        failureKind: String,
+        reason: String,
+        nowMs: String,
+        randomFraction: Double
+      ) -> String in
+      try componentCall {
+        try failCoordinatedSync(
+          coordinatorId: coordinatorId,
+          sidecarRootPath: sidecarRootPath,
+          executionJson: executionJson,
+          failureKind: failureKind,
+          reason: reason,
+          nowMs: nowMs,
+          randomFraction: randomFraction
+        )
+      }
+    }
+
+    Function("setCoordinatedSyncLibraryOnline") {
+      (
+        coordinatorId: String,
+        libraryId: String,
+        online: Bool,
+        nowMs: String
+      ) -> String in
+      try componentCall {
+        try setCoordinatedSyncLibraryOnline(
+          coordinatorId: coordinatorId,
+          libraryId: libraryId,
+          online: online,
+          nowMs: nowMs
+        )
+      }
+    }
+
+    Function("disposeSyncCoordinator") {
+      (coordinatorId: String) -> String in
+      try componentCall {
+        try disposeSyncCoordinator(coordinatorId: coordinatorId)
+      }
     }
 
     Function("readSyncTaskProgress") {

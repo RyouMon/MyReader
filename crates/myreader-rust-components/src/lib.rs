@@ -20,14 +20,6 @@ pub enum RustComponentsError {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SyncDatabaseScheduleState {
-    pub last_successful_pull_at: Option<i64>,
-    pub next_retry_at: Option<i64>,
-    pub transient_failure_count: u32,
-    pub suspended_reason: Option<String>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
 pub struct SyncLibrarySidecarReport {
     pub pushed: u32,
     pub pulled: u32,
@@ -48,6 +40,9 @@ struct SyncTaskState {
 
 static SYNC_TASKS: LazyLock<Mutex<HashMap<String, Arc<SyncTaskState>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+static SYNC_COORDINATORS: LazyLock<
+    Mutex<HashMap<String, Arc<myreader_core::api::sync::SyncCoordinator>>>,
+> = LazyLock::new(|| Mutex::new(HashMap::new()));
 static CORE_RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
 
 struct NativeSyncObserver {
@@ -80,7 +75,7 @@ impl myreader_core::api::sync::SyncObserver for NativeSyncObserver {
 
 #[uniffi::export]
 pub fn sync_contract_version() -> u32 {
-    10
+    11
 }
 
 #[uniffi::export]
@@ -126,6 +121,60 @@ fn core_runtime() -> Result<&'static tokio::runtime::Runtime, RustComponentsErro
         })
         .as_ref()
         .map_err(|error| RustComponentsError::Core(error.clone()))
+}
+
+fn sync_coordinator(
+    coordinator_id: &str,
+) -> Result<Arc<myreader_core::api::sync::SyncCoordinator>, RustComponentsError> {
+    SYNC_COORDINATORS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .get(coordinator_id)
+        .cloned()
+        .ok_or_else(|| {
+            RustComponentsError::Sync(format!(
+                "Sync coordinator is not registered: {coordinator_id}"
+            ))
+        })
+}
+
+fn parse_sidecar_sync_mode(
+    value: &str,
+) -> Result<myreader_core::models::SidecarSyncMode, RustComponentsError> {
+    match value {
+        "push_only" => Ok(myreader_core::models::SidecarSyncMode::PushOnly),
+        "full" => Ok(myreader_core::models::SidecarSyncMode::Full),
+        _ => Err(RustComponentsError::Sync(format!(
+            "Unsupported sidecar sync mode: {value}"
+        ))),
+    }
+}
+
+fn parse_sync_timing(
+    value: &str,
+) -> Result<myreader_core::api::sync::SyncTiming, RustComponentsError> {
+    match value {
+        "debounced" => Ok(myreader_core::api::sync::SyncTiming::Debounced),
+        "immediate" => Ok(myreader_core::api::sync::SyncTiming::Immediate),
+        _ => Err(RustComponentsError::Sync(format!(
+            "Unsupported sidecar sync timing: {value}"
+        ))),
+    }
+}
+
+fn parse_sync_failure_kind(
+    value: &str,
+) -> Result<myreader_core::models::SyncFailureKind, RustComponentsError> {
+    match value {
+        "connectivity" => Ok(myreader_core::models::SyncFailureKind::Connectivity),
+        "configuration" => Ok(myreader_core::models::SyncFailureKind::Configuration),
+        "credential" => Ok(myreader_core::models::SyncFailureKind::Credential),
+        "data_integrity" => Ok(myreader_core::models::SyncFailureKind::DataIntegrity),
+        "unexpected" => Ok(myreader_core::models::SyncFailureKind::Unexpected),
+        _ => Err(RustComponentsError::Sync(format!(
+            "Unsupported sidecar sync failure kind: {value}"
+        ))),
+    }
 }
 
 #[uniffi::export]
@@ -893,20 +942,6 @@ pub fn get_reading_statistics(
 }
 
 #[uniffi::export]
-pub fn advance_sync_scheduler(
-    state_json: Option<String>,
-    policy_json: String,
-    event_json: String,
-) -> Result<String, RustComponentsError> {
-    myreader_core::api::sync::reduce_scheduler_json(
-        state_json.as_deref(),
-        &policy_json,
-        &event_json,
-    )
-    .map_err(|error| RustComponentsError::Sync(error.to_string()))
-}
-
-#[uniffi::export]
 pub fn read_sync_task_progress(task_id: String) -> Option<SyncTaskProgress> {
     SYNC_TASKS
         .lock()
@@ -953,98 +988,179 @@ fn parse_now_ms(value: &str) -> Result<i64, RustComponentsError> {
         .map_err(|_| RustComponentsError::Sync("Sync timestamp is invalid".to_owned()))
 }
 
-fn parse_sidecar_sync_mode(
-    value: &str,
-) -> Result<myreader_core::models::SidecarSyncMode, RustComponentsError> {
-    match value {
-        "push_only" => Ok(myreader_core::models::SidecarSyncMode::PushOnly),
-        "full" => Ok(myreader_core::models::SidecarSyncMode::Full),
-        _ => Err(RustComponentsError::Sync(
-            "Sync mode is unsupported".to_owned(),
-        )),
-    }
+fn parse_scheduler_timestamp(value: &str) -> Result<u64, RustComponentsError> {
+    value
+        .parse()
+        .map_err(|_| RustComponentsError::Sync("Sync timestamp is invalid".to_owned()))
 }
 
 #[uniffi::export]
-pub fn read_sidecar_sync_schedule(
-    sidecar_root_path: String,
-) -> Result<SyncDatabaseScheduleState, RustComponentsError> {
-    let state = run_core_async(myreader_core::api::sync::schedule_snapshot(Path::new(
-        &sidecar_root_path,
-    )))?;
-    Ok(SyncDatabaseScheduleState {
-        last_successful_pull_at: state.last_successful_pull_at,
-        next_retry_at: state.next_retry_at,
-        transient_failure_count: state.transient_failure_count,
-        suspended_reason: state.suspended_reason,
-    })
+pub fn create_sync_coordinator(coordinator_id: String) -> bool {
+    SYNC_COORDINATORS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .insert(
+            coordinator_id,
+            Arc::new(myreader_core::api::sync::SyncCoordinator::default()),
+        )
+        .is_none()
 }
 
 #[uniffi::export]
-pub fn effective_sidecar_sync_mode(
+pub fn request_coordinated_sync(
+    coordinator_id: String,
+    library_id: String,
+    mode: String,
+    reason: String,
+    timing: String,
+    now_ms: String,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(&sync_coordinator(&coordinator_id)?.request(
+        &library_id,
+        parse_sidecar_sync_mode(&mode)?,
+        &reason,
+        parse_sync_timing(&timing)?,
+        parse_scheduler_timestamp(&now_ms)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn flush_coordinated_sync(
+    coordinator_id: String,
+    library_id: String,
+    reason: String,
+    now_ms: String,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(&sync_coordinator(&coordinator_id)?.flush(
+        &library_id,
+        &reason,
+        parse_scheduler_timestamp(&now_ms)?,
+    ))
+}
+
+#[uniffi::export]
+pub fn recover_coordinated_sync(
+    coordinator_id: String,
     sidecar_root_path: String,
-    requested_mode: String,
+    library_id: String,
+    now_ms: String,
+) -> Result<String, RustComponentsError> {
+    let coordinator = sync_coordinator(&coordinator_id)?;
+    let transition = run_core_async(coordinator.recover_library(
+        Path::new(&sidecar_root_path),
+        &library_id,
+        parse_scheduler_timestamp(&now_ms)?,
+    ))?;
+    serialize_core_json(&transition)
+}
+
+#[uniffi::export]
+pub fn request_coordinated_pull(
+    coordinator_id: String,
+    sidecar_root_path: String,
+    library_id: String,
+    reason: String,
+    now_ms: String,
+    freshness_ms: String,
+) -> Result<String, RustComponentsError> {
+    let coordinator = sync_coordinator(&coordinator_id)?;
+    let transition = run_core_async(coordinator.request_contextual_pull(
+        Path::new(&sidecar_root_path),
+        &library_id,
+        &reason,
+        parse_scheduler_timestamp(&now_ms)?,
+        parse_scheduler_timestamp(&freshness_ms)?,
+    ))?;
+    serialize_core_json(&transition)
+}
+
+#[uniffi::export]
+pub fn begin_coordinated_sync(
+    coordinator_id: String,
+    library_id: String,
+    generation: u64,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(&sync_coordinator(&coordinator_id)?.begin(&library_id, generation))
+}
+
+#[uniffi::export]
+pub fn effective_coordinated_sync_execution(
+    coordinator_id: String,
+    sidecar_root_path: String,
+    execution_json: String,
     now_ms: String,
     freshness_ms: String,
 ) -> Result<Option<String>, RustComponentsError> {
-    let mode = run_core_async(myreader_core::api::sync::effective_mode(
+    let coordinator = sync_coordinator(&coordinator_id)?;
+    let execution = run_core_async(coordinator.effective_execution(
         Path::new(&sidecar_root_path),
-        parse_sidecar_sync_mode(&requested_mode)?,
-        parse_now_ms(&now_ms)?,
-        parse_now_ms(&freshness_ms)?,
+        parse_core_json(&execution_json)?,
+        parse_scheduler_timestamp(&now_ms)?,
+        parse_scheduler_timestamp(&freshness_ms)?,
     ))?;
-    Ok(mode.map(|mode| match mode {
-        myreader_core::models::SidecarSyncMode::PushOnly => "push_only".to_owned(),
-        myreader_core::models::SidecarSyncMode::Full => "full".to_owned(),
-    }))
+    execution.as_ref().map(serialize_core_json).transpose()
 }
 
 #[uniffi::export]
-pub fn record_sidecar_sync_retry(
-    sidecar_root_path: String,
-    next_retry_at: String,
-    failure_count: u32,
-) -> Result<(), RustComponentsError> {
-    run_core_async(myreader_core::api::sync::record_retry(
-        Path::new(&sidecar_root_path),
-        parse_now_ms(&next_retry_at)?,
-        failure_count,
-    ))
+pub fn complete_coordinated_sync(
+    coordinator_id: String,
+    library_id: String,
+    now_ms: String,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(
+        &sync_coordinator(&coordinator_id)?
+            .complete(&library_id, parse_scheduler_timestamp(&now_ms)?),
+    )
 }
 
 #[uniffi::export]
-pub fn record_sidecar_sync_suspension(
+pub fn fail_coordinated_sync(
+    coordinator_id: String,
     sidecar_root_path: String,
+    execution_json: String,
+    failure_kind: String,
     reason: String,
-) -> Result<(), RustComponentsError> {
-    run_core_async(myreader_core::api::sync::record_suspension(
+    now_ms: String,
+    random_fraction: f64,
+) -> Result<String, RustComponentsError> {
+    let coordinator = sync_coordinator(&coordinator_id)?;
+    let transition = run_core_async(coordinator.fail(
         Path::new(&sidecar_root_path),
+        parse_core_json(&execution_json)?,
+        parse_sync_failure_kind(&failure_kind)?,
         &reason,
+        parse_scheduler_timestamp(&now_ms)?,
+        random_fraction,
+    ))?;
+    serialize_core_json(&transition)
+}
+
+#[uniffi::export]
+pub fn set_coordinated_sync_library_online(
+    coordinator_id: String,
+    library_id: String,
+    online: bool,
+    now_ms: String,
+) -> Result<String, RustComponentsError> {
+    serialize_core_json(&sync_coordinator(&coordinator_id)?.set_library_online(
+        &library_id,
+        online,
+        parse_scheduler_timestamp(&now_ms)?,
     ))
 }
 
 #[uniffi::export]
-pub fn has_sidecar_sync_pending_work(
-    sidecar_root_path: String,
-) -> Result<bool, RustComponentsError> {
-    run_core_async(myreader_core::api::sync::has_pending_work(Path::new(
-        &sidecar_root_path,
-    )))
-}
-
-#[uniffi::export]
-pub fn classify_sidecar_sync_failure(kind: String) -> String {
-    let kind = match kind.as_str() {
-        "connectivity" => myreader_core::models::SyncFailureKind::Connectivity,
-        "configuration" => myreader_core::models::SyncFailureKind::Configuration,
-        "credential" => myreader_core::models::SyncFailureKind::Credential,
-        "data_integrity" => myreader_core::models::SyncFailureKind::DataIntegrity,
-        _ => myreader_core::models::SyncFailureKind::Unexpected,
-    };
-    match myreader_core::api::sync::classify_failure(kind) {
-        myreader_core::models::SyncFailureDisposition::Retry => "retry".to_owned(),
-        myreader_core::models::SyncFailureDisposition::Suspend => "suspend".to_owned(),
-    }
+pub fn dispose_sync_coordinator(coordinator_id: String) -> Result<String, RustComponentsError> {
+    let coordinator = SYNC_COORDINATORS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .remove(&coordinator_id)
+        .ok_or_else(|| {
+            RustComponentsError::Sync(format!(
+                "Sync coordinator is not registered: {coordinator_id}"
+            ))
+        })?;
+    serialize_core_json(&coordinator.dispose())
 }
 
 #[uniffi::export]

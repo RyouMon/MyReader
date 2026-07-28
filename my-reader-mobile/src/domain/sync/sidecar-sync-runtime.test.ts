@@ -4,23 +4,29 @@ import { createSidecarSyncRuntime } from "./sidecar-sync-runtime"
 jest.mock("@/modules/myreader-rust-components", () => ({
   __esModule: true,
   default: {
-    advanceSyncScheduler: jest.fn(() =>
+    createSyncCoordinator: jest.fn(() => true),
+    requestCoordinatedSync: jest.fn(() =>
       JSON.stringify({
-        state: {},
-        transition: {
-          schedules: [],
-          cancelTimersFor: [],
-          execution: null,
-          retry: null,
-        },
+        schedules: [],
+        cancelTimersFor: [],
+        execution: null,
       }),
     ),
-    effectiveSidecarSyncMode: jest.fn(),
-    readSidecarSyncSchedule: jest.fn(),
-    hasSidecarSyncPendingWork: jest.fn(),
-    classifySidecarSyncFailure: jest.fn(() => "suspend"),
-    recordSidecarSyncRetry: jest.fn(),
-    recordSidecarSyncSuspension: jest.fn(),
+    flushCoordinatedSync: jest.fn(),
+    recoverCoordinatedSync: jest.fn(),
+    requestCoordinatedPull: jest.fn(),
+    beginCoordinatedSync: jest.fn(),
+    effectiveCoordinatedSyncExecution: jest.fn(),
+    completeCoordinatedSync: jest.fn(),
+    failCoordinatedSync: jest.fn(),
+    setCoordinatedSyncLibraryOnline: jest.fn(),
+    disposeSyncCoordinator: jest.fn(() =>
+      JSON.stringify({
+        schedules: [],
+        cancelTimersFor: [],
+        execution: null,
+      }),
+    ),
     cancelSyncTask: jest.fn(),
   },
 }))
@@ -57,8 +63,16 @@ describe("createSidecarSyncRuntime", () => {
 
   it("should request the core-selected mode when contextual pull is needed", async () => {
     jest
-      .mocked(MyReaderRustComponents.effectiveSidecarSyncMode)
-      .mockResolvedValue("full")
+      .mocked(MyReaderRustComponents.requestCoordinatedPull)
+      .mockResolvedValue(
+        JSON.stringify({
+          schedules: [
+            { libraryId: "library-1", generation: 1, deadline: Date.now() },
+          ],
+          cancelTimersFor: [],
+          execution: null,
+        }),
+      )
     const runtime = createSidecarSyncRuntime(() => ({
       libraries: [library],
       dataSources: [],
@@ -69,32 +83,27 @@ describe("createSidecarSyncRuntime", () => {
       runtime.requestContextualPull("library-1", "app_foregrounded"),
     ).resolves.toBe(true)
 
-    const request = JSON.parse(
-      jest.mocked(MyReaderRustComponents.advanceSyncScheduler).mock
-        .calls[0]![2],
+    expect(MyReaderRustComponents.requestCoordinatedPull).toHaveBeenCalledWith(
+      expect.stringMatching(/^mobile:/),
+      "/sidecar",
+      "library-1",
+      "app_foregrounded",
+      expect.any(String),
+      "30000",
     )
-    expect(request).toMatchObject({
-      type: "request",
-      libraryId: "library-1",
-      mode: "full",
-      reason: "app_foregrounded",
-      timing: "immediate",
-    })
     runtime.dispose()
   })
 
   it("should restore durable work when runtime starts", async () => {
     jest
-      .mocked(MyReaderRustComponents.readSidecarSyncSchedule)
-      .mockResolvedValue({
-        lastSuccessfulPullAt: 100,
-        nextRetryAt: null,
-        transientFailureCount: 0,
-        suspendedReason: null,
-      })
-    jest
-      .mocked(MyReaderRustComponents.hasSidecarSyncPendingWork)
-      .mockResolvedValue(true)
+      .mocked(MyReaderRustComponents.recoverCoordinatedSync)
+      .mockResolvedValue(
+        JSON.stringify({
+          schedules: [],
+          cancelTimersFor: [],
+          execution: null,
+        }),
+      )
     const runtime = createSidecarSyncRuntime(() => ({
       libraries: [library],
       dataSources: [],
@@ -103,21 +112,11 @@ describe("createSidecarSyncRuntime", () => {
 
     await runtime.recover()
 
-    const events = jest
-      .mocked(MyReaderRustComponents.advanceSyncScheduler)
-      .mock.calls.map((call) => JSON.parse(call[2]))
-    expect(events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "restore",
-          libraryId: "library-1",
-        }),
-        expect.objectContaining({
-          type: "request",
-          libraryId: "library-1",
-          mode: "push_only",
-        }),
-      ]),
+    expect(MyReaderRustComponents.recoverCoordinatedSync).toHaveBeenCalledWith(
+      expect.stringMatching(/^mobile:/),
+      "/sidecar",
+      "library-1",
+      expect.any(String),
     )
     runtime.dispose()
   })

@@ -39,12 +39,6 @@ type SchedulerTransition = {
   schedules: ScheduledSync[]
   cancelTimersFor: string[]
   execution: SyncExecution | null
-  retry: { retryCount: number; nextRetryAt: number } | null
-}
-
-type SchedulerEnvelope = {
-  state: unknown
-  transition: SchedulerTransition
 }
 
 export type SidecarSyncRuntimeState = {
@@ -75,14 +69,9 @@ export type SidecarSyncRuntime = {
   dispose(): void
 }
 
-const POLICY_JSON = JSON.stringify({
-  debounceMs: 2_000,
-  maxWaitMs: 10_000,
-  retryBaseMs: 2_000,
-  retryMaxMs: 5 * 60_000,
-})
 const PULL_FRESHNESS_MS = 30_000
 const SAFETY_SWEEP_MS = 60_000
+let coordinatorSequence = 0
 
 function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
@@ -118,9 +107,11 @@ export function createSidecarSyncRuntime(
   const timers = new Map<string, ReturnType<typeof setTimeout>>()
   const runningTasks = new Map<string, string>()
   const cancelledTasks = new Set<string>()
-  let stateJson: string | null = null
   let disposed = false
   let nextTaskSequence = 0
+  coordinatorSequence += 1
+  const coordinatorId = `mobile:${Date.now()}:${coordinatorSequence}`
+  MyReaderRustComponents.createSyncCoordinator(coordinatorId)
 
   const findLibrary = (libraryId: string) =>
     getState().libraries.find((library) => library.id === libraryId)
@@ -136,11 +127,13 @@ export function createSidecarSyncRuntime(
     const timer = setTimeout(
       () => {
         timers.delete(sync.libraryId)
-        const transition = advance({
-          type: "begin",
-          libraryId: sync.libraryId,
-          generation: sync.generation,
-        })
+        const transition = applyTransition(
+          MyReaderRustComponents.beginCoordinatedSync(
+            coordinatorId,
+            sync.libraryId,
+            sync.generation,
+          ),
+        )
         if (transition.execution) void execute(transition.execution)
       },
       Math.max(0, sync.deadline - Date.now()),
@@ -148,58 +141,69 @@ export function createSidecarSyncRuntime(
     timers.set(sync.libraryId, timer)
   }
 
-  function advance(event: object): SchedulerTransition {
-    const envelope = JSON.parse(
-      MyReaderRustComponents.advanceSyncScheduler(
-        stateJson,
-        POLICY_JSON,
-        JSON.stringify(event),
-      ),
-    ) as SchedulerEnvelope
-    stateJson = JSON.stringify(envelope.state)
-    for (const libraryId of envelope.transition.cancelTimersFor) {
+  function applyTransition(transitionJson: string): SchedulerTransition {
+    const transition = JSON.parse(transitionJson) as SchedulerTransition
+    for (const libraryId of transition.cancelTimersFor) {
       clearTimer(libraryId)
     }
-    for (const scheduled of envelope.transition.schedules) schedule(scheduled)
-    return envelope.transition
+    for (const scheduled of transition.schedules) schedule(scheduled)
+    return transition
   }
 
   async function execute(execution: SyncExecution): Promise<void> {
     const state = getState()
     if (!state.enableAutoSync) {
-      advance({
-        type: "complete",
-        libraryId: execution.libraryId,
-        nowMs: Date.now(),
-      })
+      applyTransition(
+        MyReaderRustComponents.completeCoordinatedSync(
+          coordinatorId,
+          execution.libraryId,
+          String(Date.now()),
+        ),
+      )
       return
     }
     const library = findLibrary(execution.libraryId)
-    if (!library) return
+    if (!library) {
+      applyTransition(
+        MyReaderRustComponents.completeCoordinatedSync(
+          coordinatorId,
+          execution.libraryId,
+          String(Date.now()),
+        ),
+      )
+      return
+    }
     nextTaskSequence += 1
     const taskId = `${execution.libraryId}:${Date.now()}:${nextTaskSequence}`
     runningTasks.set(execution.libraryId, taskId)
     try {
-      const mode = (await MyReaderRustComponents.effectiveSidecarSyncMode(
-        sidecarRootPath(library),
-        execution.mode,
-        String(Date.now()),
-        String(PULL_FRESHNESS_MS),
-      )) as MyReaderSyncMode | null
-      if (mode) {
+      const effectiveExecutionJson =
+        await MyReaderRustComponents.effectiveCoordinatedSyncExecution(
+          coordinatorId,
+          sidecarRootPath(library),
+          JSON.stringify(execution),
+          String(Date.now()),
+          String(PULL_FRESHNESS_MS),
+        )
+      if (effectiveExecutionJson) {
+        const effectiveExecution = JSON.parse(
+          effectiveExecutionJson,
+        ) as SyncExecution
         const report = await syncLibrary(library, state.dataSources, {
           scope: "myreader",
-          myreaderMode: mode,
+          myreaderMode: effectiveExecution.mode,
           myreaderTaskId: taskId,
           throwOnFailure: true,
         })
         await applySyncReport(report, { trigger: "scheduled" })
       }
-      advance({
-        type: "complete",
-        libraryId: execution.libraryId,
-        nowMs: Date.now(),
-      })
+      applyTransition(
+        MyReaderRustComponents.completeCoordinatedSync(
+          coordinatorId,
+          execution.libraryId,
+          String(Date.now()),
+        ),
+      )
     } catch (error) {
       if (cancelledTasks.has(taskId)) return
       console.warn("[reading-sync] automatic:failed", {
@@ -209,30 +213,17 @@ export function createSidecarSyncRuntime(
         error: error instanceof Error ? error.message : String(error),
       })
       onError?.(error)
-      const disposition = MyReaderRustComponents.classifySidecarSyncFailure(
-        failureKind(error),
-      )
-      if (disposition === "retry") {
-        const transition = advance({
-          type: "retry",
-          execution,
-          nowMs: Date.now(),
-          randomFraction: Math.random(),
-        })
-        if (transition.retry) {
-          await MyReaderRustComponents.recordSidecarSyncRetry(
-            sidecarRootPath(library),
-            String(transition.retry.nextRetryAt),
-            transition.retry.retryCount,
-          )
-        }
-      } else {
-        advance({ type: "suspend", execution })
-        await MyReaderRustComponents.recordSidecarSyncSuspension(
+      applyTransition(
+        await MyReaderRustComponents.failCoordinatedSync(
+          coordinatorId,
           sidecarRootPath(library),
+          JSON.stringify(execution),
+          failureKind(error),
           suspendedReason(error),
-        )
-      }
+          String(Date.now()),
+          Math.random(),
+        ),
+      )
     } finally {
       if (runningTasks.get(execution.libraryId) === taskId) {
         runningTasks.delete(execution.libraryId)
@@ -244,62 +235,65 @@ export function createSidecarSyncRuntime(
   const runtime: SidecarSyncRuntime = {
     request(libraryId, mode, reason, timing = "debounced") {
       if (disposed) return
-      advance({
-        type: "request",
-        libraryId,
-        mode,
-        reason,
-        timing,
-        nowMs: Date.now(),
-      })
+      applyTransition(
+        MyReaderRustComponents.requestCoordinatedSync(
+          coordinatorId,
+          libraryId,
+          mode,
+          reason,
+          timing,
+          String(Date.now()),
+        ),
+      )
     },
     flush(libraryId, reason) {
       if (disposed) return
-      advance({ type: "flush", libraryId, reason, nowMs: Date.now() })
+      applyTransition(
+        MyReaderRustComponents.flushCoordinatedSync(
+          coordinatorId,
+          libraryId,
+          reason,
+          String(Date.now()),
+        ),
+      )
     },
     async recover() {
       for (const library of getState().libraries) {
-        const snapshot = await MyReaderRustComponents.readSidecarSyncSchedule(
-          sidecarRootPath(library),
-        )
-        advance({
-          type: "restore",
-          libraryId: library.id,
-          nextRetryAt: snapshot.nextRetryAt,
-          retryCount: snapshot.transientFailureCount,
-          suspended: snapshot.suspendedReason !== null,
-        })
-        if (
-          snapshot.suspendedReason === null &&
-          (await MyReaderRustComponents.hasSidecarSyncPendingWork(
+        applyTransition(
+          await MyReaderRustComponents.recoverCoordinatedSync(
+            coordinatorId,
             sidecarRootPath(library),
-          ))
-        ) {
-          runtime.request(library.id, "push_only", "local_change", "immediate")
-        }
+            library.id,
+            String(Date.now()),
+          ),
+        )
       }
     },
     async requestContextualPull(libraryId, reason) {
       const library = findLibrary(libraryId)
       if (!library) return false
-      const mode = (await MyReaderRustComponents.effectiveSidecarSyncMode(
-        sidecarRootPath(library),
-        "full",
-        String(Date.now()),
-        String(PULL_FRESHNESS_MS),
-      )) as MyReaderSyncMode | null
-      if (!mode) return false
-      runtime.request(libraryId, mode, reason, "immediate")
-      return true
+      const transition = applyTransition(
+        await MyReaderRustComponents.requestCoordinatedPull(
+          coordinatorId,
+          sidecarRootPath(library),
+          libraryId,
+          reason,
+          String(Date.now()),
+          String(PULL_FRESHNESS_MS),
+        ),
+      )
+      return transition.schedules.length > 0
     },
     setLibraryOnline(libraryId, online) {
       if (disposed) return
-      advance({
-        type: "set_library_online",
-        libraryId,
-        online,
-        nowMs: Date.now(),
-      })
+      applyTransition(
+        MyReaderRustComponents.setCoordinatedSyncLibraryOnline(
+          coordinatorId,
+          libraryId,
+          online,
+          String(Date.now()),
+        ),
+      )
     },
     startSafetySweep(getActiveLibraryId) {
       let stopped = false
@@ -329,7 +323,9 @@ export function createSidecarSyncRuntime(
     },
     dispose() {
       if (disposed) return
-      advance({ type: "dispose" })
+      applyTransition(
+        MyReaderRustComponents.disposeSyncCoordinator(coordinatorId),
+      )
       disposed = true
       for (const taskId of runningTasks.values()) {
         cancelledTasks.add(taskId)

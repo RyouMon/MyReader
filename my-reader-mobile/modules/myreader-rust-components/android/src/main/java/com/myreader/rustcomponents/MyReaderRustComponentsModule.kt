@@ -1,24 +1,27 @@
 package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
-import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
+import com.myreader.rustcomponents.uniffi.beginCoordinatedSync
 import com.myreader.rustcomponents.uniffi.addLocalLibrary
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.addReaderBookmark
 import com.myreader.rustcomponents.uniffi.addReaderAnnotation
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
-import com.myreader.rustcomponents.uniffi.classifySidecarSyncFailure
 import com.myreader.rustcomponents.uniffi.clearBookCoverThumbnailCache
+import com.myreader.rustcomponents.uniffi.completeCoordinatedSync
 import com.myreader.rustcomponents.uniffi.countCalibreBooks
+import com.myreader.rustcomponents.uniffi.createSyncCoordinator
 import com.myreader.rustcomponents.uniffi.deleteBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.deleteLibraryFileState
-import com.myreader.rustcomponents.uniffi.effectiveSidecarSyncMode
+import com.myreader.rustcomponents.uniffi.disposeSyncCoordinator
+import com.myreader.rustcomponents.uniffi.effectiveCoordinatedSyncExecution
+import com.myreader.rustcomponents.uniffi.failCoordinatedSync
+import com.myreader.rustcomponents.uniffi.flushCoordinatedSync
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
 import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.getLibraryFileState
 import com.myreader.rustcomponents.uniffi.finalizeDownloadedFile
 import com.myreader.rustcomponents.uniffi.getReadingPosition
-import com.myreader.rustcomponents.uniffi.hasSidecarSyncPendingWork
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
 import com.myreader.rustcomponents.uniffi.listCalibreBookFormats
 import com.myreader.rustcomponents.uniffi.listCalibreBookSummaries
@@ -44,12 +47,13 @@ import com.myreader.rustcomponents.uniffi.removeDeviceLibrary
 import com.myreader.rustcomponents.uniffi.removeReaderBookmark
 import com.myreader.rustcomponents.uniffi.removeReaderAnnotation
 import com.myreader.rustcomponents.uniffi.replaceDeviceLibrary
-import com.myreader.rustcomponents.uniffi.readSidecarSyncSchedule
 import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
+import com.myreader.rustcomponents.uniffi.recoverCoordinatedSync
 import com.myreader.rustcomponents.uniffi.refreshRemoteLibrary
 import com.myreader.rustcomponents.uniffi.releaseSyncTask
-import com.myreader.rustcomponents.uniffi.recordSidecarSyncRetry
-import com.myreader.rustcomponents.uniffi.recordSidecarSyncSuspension
+import com.myreader.rustcomponents.uniffi.requestCoordinatedPull
+import com.myreader.rustcomponents.uniffi.requestCoordinatedSync
+import com.myreader.rustcomponents.uniffi.setCoordinatedSyncLibraryOnline
 import com.myreader.rustcomponents.uniffi.syncContractVersion
 import com.myreader.rustcomponents.uniffi.syncLibrarySidecar
 import com.myreader.rustcomponents.uniffi.setBookReadingFormat
@@ -697,71 +701,148 @@ class MyReaderRustComponentsModule : Module() {
       syncContractVersion().toInt()
     }
 
-    Function("advanceSyncScheduler") {
-        stateJson: String?,
-        policyJson: String,
-        eventJson: String ->
-      componentCall {
-        advanceSyncScheduler(stateJson, policyJson, eventJson)
-      }
+    Function("createSyncCoordinator") { coordinatorId: String ->
+      createSyncCoordinator(coordinatorId)
     }
 
-    AsyncFunction("readSidecarSyncSchedule") { sidecarRootPath: String ->
+    Function("requestCoordinatedSync") {
+        coordinatorId: String,
+        libraryId: String,
+        mode: String,
+        reason: String,
+        timing: String,
+        nowMs: String ->
       componentCall {
-        val state = readSidecarSyncSchedule(sidecarRootPath)
-        mapOf(
-          "lastSuccessfulPullAt" to state.lastSuccessfulPullAt,
-          "nextRetryAt" to state.nextRetryAt,
-          "transientFailureCount" to state.transientFailureCount.toInt(),
-          "suspendedReason" to state.suspendedReason,
+        requestCoordinatedSync(
+          coordinatorId,
+          libraryId,
+          mode,
+          reason,
+          timing,
+          nowMs,
         )
       }
     }
 
-    AsyncFunction("effectiveSidecarSyncMode") {
+    Function("flushCoordinatedSync") {
+        coordinatorId: String,
+        libraryId: String,
+        reason: String,
+        nowMs: String ->
+      componentCall {
+        flushCoordinatedSync(coordinatorId, libraryId, reason, nowMs)
+      }
+    }
+
+    AsyncFunction("recoverCoordinatedSync") {
+        coordinatorId: String,
         sidecarRootPath: String,
-        requestedMode: String,
+        libraryId: String,
+        nowMs: String ->
+      componentCall {
+        recoverCoordinatedSync(
+          coordinatorId,
+          sidecarRootPath,
+          libraryId,
+          nowMs,
+        )
+      }
+    }
+
+    AsyncFunction("requestCoordinatedPull") {
+        coordinatorId: String,
+        sidecarRootPath: String,
+        libraryId: String,
+        reason: String,
         nowMs: String,
         freshnessMs: String ->
       componentCall {
-        effectiveSidecarSyncMode(
+        requestCoordinatedPull(
+          coordinatorId,
           sidecarRootPath,
-          requestedMode,
+          libraryId,
+          reason,
           nowMs,
           freshnessMs,
         )
       }
     }
 
-    AsyncFunction("recordSidecarSyncRetry") {
-        sidecarRootPath: String,
-        nextRetryAt: String,
-        failureCount: Int ->
+    Function("beginCoordinatedSync") {
+        coordinatorId: String,
+        libraryId: String,
+        generation: Long ->
       componentCall {
-        recordSidecarSyncRetry(
+        beginCoordinatedSync(coordinatorId, libraryId, generation.toULong())
+      }
+    }
+
+    AsyncFunction("effectiveCoordinatedSyncExecution") {
+        coordinatorId: String,
+        sidecarRootPath: String,
+        executionJson: String,
+        nowMs: String,
+        freshnessMs: String ->
+      componentCall {
+        effectiveCoordinatedSyncExecution(
+          coordinatorId,
           sidecarRootPath,
-          nextRetryAt,
-          failureCount.toUInt(),
+          executionJson,
+          nowMs,
+          freshnessMs,
         )
       }
     }
 
-    AsyncFunction("recordSidecarSyncSuspension") {
+    Function("completeCoordinatedSync") {
+        coordinatorId: String,
+        libraryId: String,
+        nowMs: String ->
+      componentCall {
+        completeCoordinatedSync(coordinatorId, libraryId, nowMs)
+      }
+    }
+
+    AsyncFunction("failCoordinatedSync") {
+        coordinatorId: String,
         sidecarRootPath: String,
-        reason: String ->
+        executionJson: String,
+        failureKind: String,
+        reason: String,
+        nowMs: String,
+        randomFraction: Double ->
       componentCall {
-        recordSidecarSyncSuspension(sidecarRootPath, reason)
+        failCoordinatedSync(
+          coordinatorId,
+          sidecarRootPath,
+          executionJson,
+          failureKind,
+          reason,
+          nowMs,
+          randomFraction,
+        )
       }
     }
 
-    AsyncFunction("hasSidecarSyncPendingWork") { sidecarRootPath: String ->
+    Function("setCoordinatedSyncLibraryOnline") {
+        coordinatorId: String,
+        libraryId: String,
+        online: Boolean,
+        nowMs: String ->
       componentCall {
-        hasSidecarSyncPendingWork(sidecarRootPath)
+        setCoordinatedSyncLibraryOnline(
+          coordinatorId,
+          libraryId,
+          online,
+          nowMs,
+        )
       }
     }
 
-    Function("classifySidecarSyncFailure") { kind: String ->
-      classifySidecarSyncFailure(kind)
+    Function("disposeSyncCoordinator") { coordinatorId: String ->
+      componentCall {
+        disposeSyncCoordinator(coordinatorId)
+      }
     }
 
     Function("readSyncTaskProgress") { taskId: String ->

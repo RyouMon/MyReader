@@ -1,8 +1,9 @@
 use myreader_rust_components::{
-    cancel_sync_task, count_calibre_books, initialize_device_registry,
-    list_book_cover_thumbnail_cache, migrate_library_database, read_sidecar_sync_schedule,
-    read_sync_task_progress, record_sidecar_sync_retry, register_device_library, release_sync_task,
-    sync_contract_version, sync_library_sidecar, upsert_book_cover_thumbnail_cache,
+    begin_coordinated_sync, cancel_sync_task, count_calibre_books, create_sync_coordinator,
+    dispose_sync_coordinator, fail_coordinated_sync, initialize_device_registry,
+    list_book_cover_thumbnail_cache, migrate_library_database, read_sync_task_progress,
+    register_device_library, release_sync_task, request_coordinated_sync, sync_contract_version,
+    sync_library_sidecar, upsert_book_cover_thumbnail_cache,
 };
 use rusqlite::Connection;
 
@@ -32,7 +33,7 @@ fn create_calibre_library() -> tempfile::TempDir {
 
 #[test]
 fn should_expose_current_sync_contract_version_when_bridge_loads() {
-    assert_eq!(sync_contract_version(), 10);
+    assert_eq!(sync_contract_version(), 11);
 }
 
 #[test]
@@ -196,12 +197,6 @@ fn should_run_sync_when_native_caller_has_no_tokio_runtime() {
 
     assert!(report.pushed > 0);
     assert_eq!(report.pulled, 0);
-    assert_eq!(
-        read_sidecar_sync_schedule(sidecar_directory.path().to_string_lossy().into_owned())
-            .unwrap()
-            .last_successful_pull_at,
-        Some(100)
-    );
     assert!(release_sync_task("native-task".to_owned()));
 }
 
@@ -209,14 +204,57 @@ fn should_run_sync_when_native_caller_has_no_tokio_runtime() {
 fn should_own_retry_schedule_when_native_bridge_uses_sidecar_root() {
     let sidecar_directory = tempfile::tempdir().unwrap();
     let sidecar_root = sidecar_directory.path().to_string_lossy().into_owned();
+    let coordinator_id = "coordinator-1".to_owned();
+    assert!(create_sync_coordinator(coordinator_id.clone()));
+    let requested = serde_json::from_str::<serde_json::Value>(
+        &request_coordinated_sync(
+            coordinator_id.clone(),
+            "library-1".to_owned(),
+            "full".to_owned(),
+            "app_foregrounded".to_owned(),
+            "immediate".to_owned(),
+            "100".to_owned(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let generation = requested["schedules"][0]["generation"].as_u64().unwrap();
+    let begun = serde_json::from_str::<serde_json::Value>(
+        &begin_coordinated_sync(coordinator_id.clone(), "library-1".to_owned(), generation)
+            .unwrap(),
+    )
+    .unwrap();
 
-    record_sidecar_sync_retry(sidecar_root.clone(), "200".to_owned(), 2).unwrap();
+    fail_coordinated_sync(
+        coordinator_id.clone(),
+        sidecar_root.clone(),
+        begun["execution"].to_string(),
+        "connectivity".to_owned(),
+        "network unavailable".to_owned(),
+        "200".to_owned(),
+        0.5,
+    )
+    .unwrap();
 
-    let state = read_sidecar_sync_schedule(sidecar_root).unwrap();
-    assert_eq!(state.last_successful_pull_at, None);
-    assert_eq!(state.next_retry_at, Some(200));
-    assert_eq!(state.transient_failure_count, 2);
-    assert_eq!(state.suspended_reason, None);
+    let connection = Connection::open(
+        sidecar_directory
+            .path()
+            .join(".myreader")
+            .join("myreader.db"),
+    )
+    .unwrap();
+    let (next_retry_at, failure_count): (i64, i64) = connection
+        .query_row(
+            "SELECT next_retry_at, transient_failure_count
+             FROM sync_schedule_state
+             WHERE id = 'local'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(next_retry_at, 1_200);
+    assert_eq!(failure_count, 1);
+    dispose_sync_coordinator(coordinator_id).unwrap();
 }
 
 #[test]

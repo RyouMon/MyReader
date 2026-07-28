@@ -1,17 +1,20 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use myreader_core::api::sync::{
-    SchedulerEvent, SchedulerPolicy, SchedulerState, SchedulerTransition, SyncMode, SyncTiming,
+    SchedulerTransition, SyncCoordinator, SyncExecution, SyncMode, SyncTiming,
 };
+use myreader_core::models::SyncFailureKind;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Semaphore;
 use tracing::{error, info};
 
 use crate::commands::AppState;
+use crate::services::library_service::LibraryService;
 use crate::services::sync_service::{SidecarSyncMode, SyncService};
+use crate::utils::paths::library_sidecar_path;
 
 const PULL_FRESHNESS_MS: u64 = 30_000;
 const SAFETY_SWEEP_MS: u64 = 60_000;
@@ -46,13 +49,6 @@ impl SidecarSyncReason {
     }
 }
 
-fn scheduler_mode(mode: SidecarSyncMode) -> SyncMode {
-    match mode {
-        SidecarSyncMode::PushOnly => SyncMode::PushOnly,
-        SidecarSyncMode::Full => SyncMode::Full,
-    }
-}
-
 fn scheduler_timing(timing: SidecarSyncTiming) -> SyncTiming {
     match timing {
         SidecarSyncTiming::Debounced => SyncTiming::Debounced,
@@ -78,7 +74,7 @@ struct SidecarSyncCompletedPayload {
 pub struct SidecarSyncScheduler {
     app: AppHandle,
     app_data_dir: PathBuf,
-    state: Arc<Mutex<SchedulerState>>,
+    coordinator: Arc<SyncCoordinator>,
     concurrency: Arc<Semaphore>,
 }
 
@@ -87,7 +83,7 @@ impl SidecarSyncScheduler {
         let scheduler = Self {
             app,
             app_data_dir,
-            state: Arc::new(Mutex::new(SchedulerState::new(SchedulerPolicy::default()))),
+            coordinator: Arc::new(SyncCoordinator::default()),
             concurrency: Arc::new(Semaphore::new(MAX_CONCURRENT_SYNCS)),
         };
         scheduler.start_safety_sweep();
@@ -103,17 +99,13 @@ impl SidecarSyncScheduler {
     ) {
         let library_id = library_id.into();
         let now_ms = unix_epoch_millis();
-        let transition = self
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .apply(SchedulerEvent::Request {
-                library_id,
-                mode: scheduler_mode(mode),
-                reason: reason.as_str().to_owned(),
-                timing: scheduler_timing(timing),
-                now_ms,
-            });
+        let transition = self.coordinator.request(
+            &library_id,
+            mode,
+            reason.as_str(),
+            scheduler_timing(timing),
+            now_ms,
+        );
         self.spawn_transition(transition);
     }
 
@@ -140,14 +132,13 @@ impl SidecarSyncScheduler {
         tauri::async_runtime::spawn(async move {
             let config = scheduler.config_snapshot();
             for library in &config.libraries {
-                let snapshot = match SyncService::schedule_snapshot(
-                    &scheduler.app_data_dir,
-                    &config,
-                    &library.id,
-                )
-                .await
+                let sidecar_path = library_sidecar_path(library, &scheduler.app_data_dir);
+                match scheduler
+                    .coordinator
+                    .recover_library(&sidecar_path, &library.id, unix_epoch_millis())
+                    .await
                 {
-                    Ok(snapshot) => snapshot,
+                    Ok(transition) => scheduler.spawn_transition(transition),
                     Err(error) => {
                         error!(
                             target: "myreader_sync",
@@ -158,41 +149,6 @@ impl SidecarSyncScheduler {
                         );
                         continue;
                     }
-                };
-                scheduler
-                    .state
-                    .lock()
-                    .unwrap_or_else(|error| error.into_inner())
-                    .apply(SchedulerEvent::Restore {
-                        library_id: library.id.clone(),
-                        next_retry_at: snapshot.next_retry_at,
-                        retry_count: snapshot.transient_failure_count,
-                        suspended: snapshot.suspended_reason.is_some(),
-                    });
-                if snapshot.suspended_reason.is_some() {
-                    continue;
-                }
-                match SyncService::has_pending_sidecar_work(
-                    &scheduler.app_data_dir,
-                    &config,
-                    &library.id,
-                )
-                .await
-                {
-                    Ok(true) => scheduler.request(
-                        library.id.clone(),
-                        SidecarSyncMode::PushOnly,
-                        SidecarSyncReason::StartupRecovery,
-                        SidecarSyncTiming::Immediate,
-                    ),
-                    Ok(false) => {}
-                    Err(error) => error!(
-                        target: "myreader_sync",
-                        event = "sync.scheduler_recovery_failed",
-                        library_id = library.id,
-                        error = %error,
-                        "Failed to inspect pending sidecar work"
-                    ),
                 }
             }
             scheduler.schedule_active_pull(SidecarSyncReason::StartupRecovery);
@@ -208,29 +164,14 @@ impl SidecarSyncScheduler {
             .collect::<Vec<_>>();
         let now_ms = unix_epoch_millis();
         for library_id in &library_ids {
-            let transition = self
-                .state
-                .lock()
-                .unwrap_or_else(|error| error.into_inner())
-                .apply(SchedulerEvent::WakeRetry {
-                    library_id: library_id.clone(),
-                    now_ms,
-                });
+            let transition = self.coordinator.wake_retry(library_id, now_ms);
             self.spawn_transition(transition);
         }
-        self.recover_pending_work();
         self.schedule_active_pull(SidecarSyncReason::NetworkReconnected);
     }
 
     pub fn resume_library(&self, library_id: &str) {
-        let transition = self
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .apply(SchedulerEvent::Resume {
-                library_id: library_id.to_owned(),
-                now_ms: unix_epoch_millis(),
-            });
+        let transition = self.coordinator.resume(library_id, unix_epoch_millis());
         self.spawn_transition(transition);
     }
 
@@ -262,14 +203,7 @@ impl SidecarSyncScheduler {
     }
 
     async fn run(&self, library_id: String, generation: u64) {
-        let transition = self
-            .state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .apply(SchedulerEvent::Begin {
-                library_id: library_id.clone(),
-                generation,
-            });
+        let transition = self.coordinator.begin(&library_id, generation);
         let Some(execution) = transition.execution else {
             return;
         };
@@ -278,33 +212,45 @@ impl SidecarSyncScheduler {
             Err(_) => return,
         };
         let config = self.config_snapshot();
-        let mode = SyncService::effective_mode(
-            &self.app_data_dir,
-            &config,
-            &execution.library_id,
-            match execution.mode {
-                SyncMode::PushOnly => SidecarSyncMode::PushOnly,
-                SyncMode::Full => SidecarSyncMode::Full,
-            },
-            unix_epoch_millis(),
-            PULL_FRESHNESS_MS,
-        )
-        .await;
-        let result = match mode {
-            Ok(Some(mode)) => SyncService::sync_sidecar_for_library(
-                &self.app_data_dir,
-                &config,
-                &library_id,
-                mode,
+        let library = match LibraryService::resolve_library(Some(&library_id), &config) {
+            Ok(library) => library,
+            Err(error) => {
+                self.fail_execution(&config, execution, error).await;
+                return;
+            }
+        };
+        let sidecar_path = library_sidecar_path(&library, &self.app_data_dir);
+        let execution = match self
+            .coordinator
+            .effective_execution(
+                &sidecar_path,
+                execution.clone(),
+                unix_epoch_millis(),
+                PULL_FRESHNESS_MS,
             )
             .await
-            .map(|report| Some((mode, report))),
-            Ok(None) => Ok(None),
-            Err(error) => Err(error),
+        {
+            Ok(Some(execution)) => execution,
+            Ok(None) => {
+                let transition = self.coordinator.complete(&library_id, unix_epoch_millis());
+                self.spawn_transition(transition);
+                return;
+            }
+            Err(error) => {
+                self.fail_execution(&config, execution, error.into()).await;
+                return;
+            }
         };
+        let mode = match execution.mode {
+            SyncMode::PushOnly => SidecarSyncMode::PushOnly,
+            SyncMode::Full => SidecarSyncMode::Full,
+        };
+        let result =
+            SyncService::sync_sidecar_for_library(&self.app_data_dir, &config, &library_id, mode)
+                .await;
 
         match result {
-            Ok(Some((mode, report))) => {
+            Ok(report) => {
                 info!(
                     target: "myreader_sync",
                     event = "sync.scheduler_completed",
@@ -325,96 +271,68 @@ impl SidecarSyncScheduler {
                         },
                     );
                 }
-                let transition = self
-                    .state
-                    .lock()
-                    .unwrap_or_else(|error| error.into_inner())
-                    .apply(SchedulerEvent::Complete {
-                        library_id,
-                        now_ms: unix_epoch_millis(),
-                    });
+                let transition = self.coordinator.complete(&library_id, unix_epoch_millis());
                 self.spawn_transition(transition);
             }
-            Ok(None) => {
-                let transition = self
-                    .state
-                    .lock()
-                    .unwrap_or_else(|error| error.into_inner())
-                    .apply(SchedulerEvent::Complete {
-                        library_id,
-                        now_ms: unix_epoch_millis(),
-                    });
-                self.spawn_transition(transition);
-            }
-            Err(error) if SyncService::should_suspend(&error) => {
-                error!(
-                    target: "myreader_sync",
-                    event = "sync.scheduler_suspended",
-                    library_id,
-                    error = %error,
-                    "Suspended automatic sidecar sync"
-                );
-                self.state
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .apply(SchedulerEvent::Suspend { execution });
-                if let Err(state_error) = SyncService::record_suspension(
-                    &self.app_data_dir,
-                    &config,
-                    &library_id,
-                    error.to_string(),
-                )
-                .await
-                {
-                    error!(
-                        target: "myreader_sync",
-                        event = "sync.scheduler_state_write_failed",
-                        library_id,
-                        error = %state_error,
-                        "Failed to persist sidecar scheduler suspension"
-                    );
-                }
-            }
+            Err(error) => self.fail_execution(&config, execution, error).await,
+        }
+    }
+
+    async fn fail_execution(
+        &self,
+        config: &crate::models::AppConfig,
+        execution: SyncExecution,
+        failure: crate::error::AppError,
+    ) {
+        let library_id = execution.library_id.clone();
+        let kind = SyncService::failure_kind(&failure);
+        let event = if kind == SyncFailureKind::Connectivity {
+            "sync.scheduler_retry"
+        } else {
+            "sync.scheduler_suspended"
+        };
+        error!(
+            target: "myreader_sync",
+            event,
+            library_id,
+            error = %failure,
+            "Scheduled automatic sidecar sync failed"
+        );
+        let sidecar_path = match LibraryService::resolve_library(Some(&library_id), config) {
+            Ok(library) => library_sidecar_path(&library, &self.app_data_dir),
             Err(error) => {
                 error!(
                     target: "myreader_sync",
-                    event = "sync.scheduler_retry",
+                    event = "sync.scheduler_state_write_failed",
                     library_id,
                     error = %error,
-                    "Scheduled automatic sidecar sync retry"
+                    "Failed to resolve sidecar scheduler state"
                 );
-                let random_fraction = jitter_fraction();
-                let transition = self
-                    .state
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .apply(SchedulerEvent::Retry {
-                        execution,
-                        now_ms: unix_epoch_millis(),
-                        random_fraction,
-                    });
-                let Some(retry) = transition.retry.as_ref() else {
-                    return;
-                };
-                if let Err(state_error) = SyncService::record_retry(
-                    &self.app_data_dir,
-                    &config,
-                    &library_id,
-                    retry.next_retry_at,
-                    retry.retry_count,
-                )
-                .await
-                {
-                    error!(
-                        target: "myreader_sync",
-                        event = "sync.scheduler_state_write_failed",
-                        library_id,
-                        error = %state_error,
-                        "Failed to persist sidecar scheduler retry"
-                    );
-                }
+                let transition = self.coordinator.complete(&library_id, unix_epoch_millis());
                 self.spawn_transition(transition);
+                return;
             }
+        };
+        match self
+            .coordinator
+            .fail(
+                &sidecar_path,
+                execution,
+                kind,
+                &failure.to_string(),
+                unix_epoch_millis(),
+                jitter_fraction(),
+            )
+            .await
+        {
+            Ok(transition) => self.spawn_transition(transition),
+            Err(error) => error!(
+                target: "myreader_sync",
+                event = "sync.scheduler_state_write_failed",
+                library_id,
+                error = %error,
+                "Failed to persist sidecar scheduler failure"
+            ),
         }
     }
 

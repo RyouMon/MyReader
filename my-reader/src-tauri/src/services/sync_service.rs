@@ -1,7 +1,7 @@
 use std::path::Path;
 
 pub use myreader_core::models::SidecarSyncMode;
-use myreader_core::models::{SyncFailureDisposition, SyncFailureKind};
+use myreader_core::models::SyncFailureKind;
 use serde::Serialize;
 use tracing::{error, info};
 
@@ -13,13 +13,6 @@ use crate::storage;
 use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct SyncService;
-
-#[derive(Debug, Clone)]
-pub struct SyncScheduleSnapshot {
-    pub next_retry_at: Option<u64>,
-    pub transient_failure_count: u32,
-    pub suspended_reason: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -88,98 +81,19 @@ impl SyncService {
         })
     }
 
-    pub async fn has_pending_sidecar_work(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-    ) -> Result<bool, AppError> {
-        let library = LibraryService::resolve_library(Some(library_id), config)?;
-        let sidecar_path = library_sidecar_path(&library, app_data_dir);
-        myreader_core::api::sync::has_pending_work(&sidecar_path)
-            .await
-            .map_err(Into::into)
-    }
-
-    pub async fn effective_mode(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-        requested_mode: SidecarSyncMode,
-        now_ms: u64,
-        freshness_ms: u64,
-    ) -> Result<Option<SidecarSyncMode>, AppError> {
-        let library = LibraryService::resolve_library(Some(library_id), config)?;
-        let sidecar_path = library_sidecar_path(&library, app_data_dir);
-        myreader_core::api::sync::effective_mode(
-            &sidecar_path,
-            requested_mode,
-            Self::sqlite_timestamp(now_ms)?,
-            Self::sqlite_timestamp(freshness_ms)?,
-        )
-        .await
-        .map_err(Into::into)
-    }
-
-    pub async fn schedule_snapshot(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-    ) -> Result<SyncScheduleSnapshot, AppError> {
-        let library = LibraryService::resolve_library(Some(library_id), config)?;
-        let sidecar_path = library_sidecar_path(&library, app_data_dir);
-        let state = myreader_core::api::sync::schedule_snapshot(&sidecar_path).await?;
-        Ok(SyncScheduleSnapshot {
-            next_retry_at: state.next_retry_at.map(|value| value.max(0) as u64),
-            transient_failure_count: state.transient_failure_count,
-            suspended_reason: state.suspended_reason,
-        })
-    }
-
-    pub async fn record_retry(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-        next_retry_at: u64,
-        failure_count: u32,
-    ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(Some(library_id), config)?;
-        let sidecar_path = library_sidecar_path(&library, app_data_dir);
-        myreader_core::api::sync::record_retry(
-            &sidecar_path,
-            Self::sqlite_timestamp(next_retry_at)?,
-            failure_count,
-        )
-        .await
-        .map_err(Into::into)
-    }
-
-    pub async fn record_suspension(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: &str,
-        reason: String,
-    ) -> Result<(), AppError> {
-        let library = LibraryService::resolve_library(Some(library_id), config)?;
-        let sidecar_path = library_sidecar_path(&library, app_data_dir);
-        myreader_core::api::sync::record_suspension(&sidecar_path, &reason)
-            .await
-            .map_err(Into::into)
-    }
-
     fn sqlite_timestamp(timestamp: u64) -> Result<i64, AppError> {
         i64::try_from(timestamp)
             .map_err(|_| AppError::Sync("Timestamp exceeds SQLite INTEGER range".into()))
     }
 
-    pub fn should_suspend(error: &AppError) -> bool {
-        let kind = match error {
+    pub fn failure_kind(error: &AppError) -> SyncFailureKind {
+        match error {
             AppError::Request(_) => SyncFailureKind::Connectivity,
             AppError::Credential(_) => SyncFailureKind::Credential,
             AppError::Auth(_) | AppError::Config(_) => SyncFailureKind::Configuration,
             AppError::Database(_) | AppError::Serialize(_) => SyncFailureKind::DataIntegrity,
             _ => SyncFailureKind::Unexpected,
-        };
-        myreader_core::api::sync::classify_failure(kind) == SyncFailureDisposition::Suspend
+        }
     }
 
     fn log_stage_error(library_id: &str, stage: &'static str, err: AppError) -> AppError {
@@ -288,41 +202,6 @@ mod tests {
             .unwrap()
             .filter_map(Result::ok)
             .any(|entry| entry.file_name().to_string_lossy().ends_with(".am")));
-    }
-
-    #[tokio::test]
-    async fn should_restore_retry_and_suspension_when_scheduler_restarts() {
-        let app_data = tempfile::tempdir().unwrap();
-        let config = AppConfig {
-            libraries: vec![local_library("library-1", "/library")],
-            ..Default::default()
-        };
-
-        SyncService::record_retry(app_data.path(), &config, "library-1", 42_000, 3)
-            .await
-            .unwrap();
-        let retry = SyncService::schedule_snapshot(app_data.path(), &config, "library-1")
-            .await
-            .unwrap();
-        assert_eq!(retry.next_retry_at, Some(42_000));
-        assert_eq!(retry.transient_failure_count, 3);
-
-        SyncService::record_suspension(
-            app_data.path(),
-            &config,
-            "library-1",
-            "credential expired".to_owned(),
-        )
-        .await
-        .unwrap();
-        let suspended = SyncService::schedule_snapshot(app_data.path(), &config, "library-1")
-            .await
-            .unwrap();
-        assert_eq!(
-            suspended.suspended_reason.as_deref(),
-            Some("credential expired")
-        );
-        assert_eq!(suspended.next_retry_at, None);
     }
 
     #[tokio::test]
