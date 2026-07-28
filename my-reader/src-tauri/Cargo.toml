@@ -34,7 +34,7 @@ sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls"] }
 thiserror = "1"
 base64 = "0.22"
 log = "0.4"
-myreader-core.workspace = true
+my-reader-core.workspace = true
 tauri-plugin-log = "2"
 tracing = "0.1"
 time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
@@ -60,7 +60,7 @@ percent-encoding = "2"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow"] }
 
 [dev-dependencies]
-myreader-core = { workspace = true, features = ["test-support"] }
+my-reader-core = { workspace = true, features = ["test-support"] }
 bytes = "1"
 tempfile = "3"
 tauri = { version = "2", features = ["test"] }

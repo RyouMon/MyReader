@@ -79,7 +79,7 @@ pub async fn from_data_source(source: &DataSourceConfig) -> Result<opendal::Oper
 
 pub async fn core_remote_credential(
     source: &DataSourceConfig,
-) -> Result<myreader_core::models::RemoteCredential, AppError> {
+) -> Result<my_reader_core::models::RemoteCredential, AppError> {
     match &source.detail {
         DataSourceDetail::Webdav {
             credential_account, ..
@@ -90,7 +90,7 @@ pub async fn core_remote_credential(
                 .ok_or_else(|| AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()))?;
             let password = credentials::read_webdav_password(account)?
                 .ok_or_else(|| AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()))?;
-            Ok(myreader_core::models::RemoteCredential::Webdav { password })
+            Ok(my_reader_core::models::RemoteCredential::Webdav { password })
         }
         DataSourceDetail::Onedrive {
             client_id,
@@ -100,7 +100,7 @@ pub async fn core_remote_credential(
             let access_token = onedrive_token_manager()
                 .get_access_token(&source.id, Some(client_id), Some(tenant_id))
                 .await?;
-            Ok(myreader_core::models::RemoteCredential::Onedrive { access_token })
+            Ok(my_reader_core::models::RemoteCredential::Onedrive { access_token })
         }
         DataSourceDetail::Local { .. } => Err(AppError::Config("DATASOURCE_NOT_REMOTE".into())),
     }
@@ -109,9 +109,9 @@ pub async fn core_remote_credential(
 pub async fn core_sidecar_storage(
     config: &AppConfig,
     library: &LibraryConfig,
-) -> Result<myreader_core::models::SidecarStorageConfig, AppError> {
-    use myreader_core::models::RemoteCredential;
-    use myreader_core::models::SidecarStorageConfig;
+) -> Result<my_reader_core::models::SidecarStorageConfig, AppError> {
+    use my_reader_core::models::RemoteCredential;
+    use my_reader_core::models::SidecarStorageConfig;
 
     if !library.is_remote() {
         return Ok(SidecarStorageConfig::LocalDirect {

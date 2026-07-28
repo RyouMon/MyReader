@@ -1,0 +1,6 @@
+[bindings.kotlin]
+package_name = "com.myreader.core.uniffi"
+cdylib_name = "my_reader_core_ffi"
+
+[bindings.swift]
+module_name = "MyReaderCoreFfiBindings"

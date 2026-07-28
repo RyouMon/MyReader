@@ -1,13 +1,10 @@
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import { releaseSyncTask, syncLibrarySidecar } from "@/src/services/core/sync"
 import { syncLibrarySidecarDatabase } from "./sync-database"
 
-jest.mock("@/modules/myreader-rust-components", () => ({
-  __esModule: true,
-  default: {
-    readSyncTaskProgress: jest.fn(() => null),
-    releaseSyncTask: jest.fn(),
-    syncLibrarySidecar: jest.fn(),
-  },
+jest.mock("@/src/services/core/sync", () => ({
+  readSyncTaskProgress: jest.fn(() => null),
+  releaseSyncTask: jest.fn(),
+  syncLibrarySidecar: jest.fn(),
 }))
 
 jest.mock("@/src/services/fs/library-paths", () => ({
@@ -31,9 +28,7 @@ const library = {
 describe("syncLibrarySidecarDatabase", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest
-      .mocked(MyReaderRustComponents.syncLibrarySidecar)
-      .mockResolvedValue({ pushed: 1, pulled: 2 })
+    jest.mocked(syncLibrarySidecar).mockResolvedValue({ pushed: 1, pulled: 2 })
   })
 
   it("should delegate complete library paths when sidecar sync runs", async () => {
@@ -45,17 +40,15 @@ describe("syncLibrarySidecarDatabase", () => {
       { taskId: "task-1" },
     )
 
-    expect(MyReaderRustComponents.syncLibrarySidecar).toHaveBeenCalledWith(
-      "task-1",
-      "/sidecar",
-      "/library",
-      "100",
-      "full",
-      JSON.stringify({ kind: "local-direct", root: "/library" }),
-    )
-    expect(MyReaderRustComponents.releaseSyncTask).toHaveBeenCalledWith(
-      "task-1",
-    )
+    expect(syncLibrarySidecar).toHaveBeenCalledWith({
+      taskId: "task-1",
+      sidecarRootPath: "/sidecar",
+      libraryRootPath: "/library",
+      nowMs: 100,
+      mode: "full",
+      storage: { kind: "local-direct", root: "/library" },
+    })
+    expect(releaseSyncTask).toHaveBeenCalledWith("task-1")
     expect(report).toEqual({ pushed: 1, pulled: 2 })
   })
 })

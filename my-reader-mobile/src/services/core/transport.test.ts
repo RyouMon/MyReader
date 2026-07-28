@@ -1,4 +1,4 @@
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import MyReaderCore from "@/modules/my-reader-core"
 import { invokeCoreAsync, invokeCoreSync } from "./transport"
 
 describe("core transport", () => {
@@ -7,9 +7,9 @@ describe("core transport", () => {
   })
 
   it("should return typed output when synchronous response matches request", () => {
-    jest.spyOn(MyReaderRustComponents, "coreContractVersion").mockReturnValue(1)
+    jest.spyOn(MyReaderCore, "coreContractVersion").mockReturnValue(2)
     jest
-      .spyOn(MyReaderRustComponents, "invokeCoreSync")
+      .spyOn(MyReaderCore, "invokeCoreSync")
       .mockReturnValue(
         '{"domain":"catalog","response":{"operation":"validateLibrary","output":true}}',
       )
@@ -19,15 +19,15 @@ describe("core transport", () => {
     })
 
     expect(output).toBe(true)
-    expect(MyReaderRustComponents.invokeCoreSync).toHaveBeenCalledWith(
+    expect(MyReaderCore.invokeCoreSync).toHaveBeenCalledWith(
       '{"domain":"catalog","request":{"operation":"validateLibrary","input":{"libraryRootPath":"/library"}}}',
     )
   })
 
   it("should reject response when asynchronous operation does not match request", async () => {
-    jest.spyOn(MyReaderRustComponents, "coreContractVersion").mockReturnValue(1)
+    jest.spyOn(MyReaderCore, "coreContractVersion").mockReturnValue(2)
     jest
-      .spyOn(MyReaderRustComponents, "invokeCoreAsync")
+      .spyOn(MyReaderCore, "invokeCoreAsync")
       .mockResolvedValue(
         '{"domain":"catalog","response":{"operation":"listBooks","output":[]}}',
       )
@@ -40,12 +40,12 @@ describe("core transport", () => {
   })
 
   it("should reject request when native contract version is incompatible", () => {
-    jest.spyOn(MyReaderRustComponents, "coreContractVersion").mockReturnValue(2)
+    jest.spyOn(MyReaderCore, "coreContractVersion").mockReturnValue(3)
 
     expect(() =>
       invokeCoreSync("catalog", "validateLibrary", {
         libraryRootPath: "/library",
       }),
-    ).toThrow("CORE_CONTRACT_VERSION_MISMATCH: expected 1, received 2")
+    ).toThrow("CORE_CONTRACT_VERSION_MISMATCH: expected 2, received 3")
   })
 })

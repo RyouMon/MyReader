@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::io::Write;
 
+use my_reader_core::models::FileStateUpdate;
+use my_reader_core::test_support::entities::calibre::data;
 use my_reader_lib::cache;
 use my_reader_lib::models::AppConfig;
 use my_reader_lib::services::reader_service::ReaderService;
 use my_reader_lib::streamer::{EpubStreamer, StreamerState};
-use myreader_core::models::FileStateUpdate;
-use myreader_core::test_support::entities::calibre::data;
 use sea_orm::{ActiveModelTrait, Database, Set};
 use tokio::sync::RwLock;
 
@@ -168,7 +168,7 @@ async fn prepare_book_source_should_require_present_sidecar_row_for_remote_libra
     .expect_err("remote file without present state should fail");
     assert!(format!("{err}").contains("BOOK_FORMAT_NOT_DOWNLOADED"));
 
-    myreader_core::api::content::upsert_file_state(
+    my_reader_core::api::content::upsert_file_state(
         sidecar_root.path(),
         "It/It.pdf",
         FileStateUpdate {

@@ -25,11 +25,10 @@ This installs the desktop, mobile, fonts and tools workspaces and prepares the G
 
 ```text
 MyReader/
-├── crates/
-│   ├── myreader-core/             Shared Rust backend
-│   └── myreader-rust-components/  UniFFI/mobile binding shell
+├── my-reader-core/                Shared Rust backend
 ├── my-reader/                     Tauri 2 + React desktop app
 ├── my-reader-mobile/              Expo 56 + React Native 0.85 app
+│   └── modules/my-reader-core/    Core Expo/UniFFI mobile adapter
 ├── packages/
 │   ├── fonts/                     Shared reading font catalog
 │   └── tools/                     Shared TypeScript types and reader algorithms
@@ -100,20 +99,21 @@ Maestro E2E requires the Maestro CLI and a running development client.
 
 ### Shared Rust native verification
 
-The mobile app consumes `myreader-core` through `myreader-rust-components`, UniFFI and an Expo Native Module.
+The mobile app consumes `my-reader-core` through the `modules/my-reader-core` Expo adapter. Its
+internal `my-reader-core-ffi` crate owns only UniFFI transport and native artifacts.
 Use the repository scripts instead of committing prebuilt host libraries:
 
 ```bash
-cargo test -p myreader-core -p myreader-rust-components
-bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
+cargo test -p my-reader-core -p my-reader-core-ffi
+bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
 ```
 
 To build the iOS bridge target directly:
 
 ```bash
 xcodebuild \
-  -workspace my-reader-mobile/ios/MyReaderMobile.xcworkspace \
-  -scheme MyReaderRustComponents \
+  -workspace my-reader-mobile/ios/myreadermobile.xcworkspace \
+  -scheme MyReaderCore \
   -configuration Debug \
   -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
@@ -143,17 +143,17 @@ pnpm --filter @my-reader/tools test
 ```
 
 `packages/tools` contains stable TypeScript contracts and Reader-side pure algorithms. Cross-platform backend
-business belongs in `myreader-core`, not in a new TypeScript service package.
+business belongs in `my-reader-core`, not in a new TypeScript service package.
 
 ## Database and Migration Ownership
 
 ### MyReader sidecar
 
 Each library has an independent `.myreader/myreader.db`. Both desktop and mobile open it through
-`myreader-core`; TypeScript does not own a SQLite connection or run migrations.
+`my-reader-core`; TypeScript does not own a SQLite connection or run migrations.
 
 ```text
-crates/myreader-core/
+my-reader-core/
 ├── migrations/legacy/        Immutable imported migration history
 ├── src/migration.rs          Ordered SeaORM Migrator
 ├── src/database.rs           Open, handoff and migration lifecycle
@@ -168,7 +168,7 @@ one-time compatibility handoff, not a second active migration system.
 ### Calibre database
 
 Calibre `metadata.db` is external and read-only. Its checked-in query mappings live under
-`crates/myreader-core/src/entities/calibre/`. They are not registered with the MyReader Migrator and must never
+`my-reader-core/src/entities/calibre/`. They are not registered with the MyReader Migrator and must never
 be used to alter a Calibre library.
 
 When support for a Calibre table or column changes:
@@ -180,7 +180,7 @@ When support for a Calibre table or column changes:
 
 ### MyReader schema changes
 
-1. Add an ordered migration to the Rust-owned `myreader-core` Migrator. Existing migration files are immutable.
+1. Add an ordered migration to the Rust-owned `my-reader-core` Migrator. Existing migration files are immutable.
 2. Update repository/service behavior and migration tests.
 3. Run the complete Migrator against a new database and relevant upgrade fixtures.
 4. Regenerate and review SeaORM query mappings:
@@ -191,7 +191,7 @@ When support for a Calibre table or column changes:
 
 5. Commit the migration, generated entities and behavior changes together.
 
-`pnpm db:generate` creates a temporary database by executing the same `myreader-core` Migrator used at runtime,
+`pnpm db:generate` creates a temporary database by executing the same `my-reader-core` Migrator used at runtime,
 then runs `sea-orm-cli generate entity`. It does not use Drizzle or an Entity-First schema synchronizer.
 
 Prerequisites for entity generation:

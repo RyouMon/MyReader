@@ -42,7 +42,7 @@ impl ReaderService {
     ) -> Result<PreparedBookSource, AppError> {
         cache::ensure_reader_cache_dirs()?;
         let file_path =
-            myreader_core::api::catalog::get_book_file_path(Path::new(lib_path), book_id, format)
+            my_reader_core::api::catalog::get_book_file_path(Path::new(lib_path), book_id, format)
                 .await?
                 .ok_or_else(|| {
                     AppError::NotFound(format!(
@@ -101,7 +101,7 @@ impl ReaderService {
             return Ok(true);
         };
 
-        let row = myreader_core::api::content::get_file_state(sidecar_root, relative_path).await?;
+        let row = my_reader_core::api::content::get_file_state(sidecar_root, relative_path).await?;
         Ok(row.is_some_and(|r| r.local_state == "present"))
     }
 
@@ -128,7 +128,7 @@ impl ReaderService {
 
 #[cfg(test)]
 mod tests {
-    use myreader_core::models::FileStateUpdate;
+    use my_reader_core::models::FileStateUpdate;
 
     use super::ReaderService;
 
@@ -147,7 +147,7 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        myreader_core::api::content::upsert_file_state(
+        my_reader_core::api::content::upsert_file_state(
             sidecar_root.path(),
             "It.epub",
             FileStateUpdate {
@@ -167,7 +167,7 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        myreader_core::api::content::upsert_file_state(
+        my_reader_core::api::content::upsert_file_state(
             sidecar_root.path(),
             "It.epub",
             FileStateUpdate {

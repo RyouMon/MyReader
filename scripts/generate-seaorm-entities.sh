@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate SeaORM query entities from the schema produced by myreader-core.
+# Generate SeaORM query entities from the schema produced by my-reader-core.
 #
 # Prerequisites:
 #   - sea-orm-cli installed: cargo install sea-orm-cli
@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMP_DIR=$(mktemp -d)
 TEMP_DB="$TEMP_DIR/myreader_schema.db"
-ENTITY_DIR="$ROOT_DIR/crates/myreader-core/src/entities/app"
+ENTITY_DIR="$ROOT_DIR/my-reader-core/src/entities/app"
 
 cleanup() {
   rm -rf "$TEMP_DIR"
@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Build the complete schema through the same Rust migrator used at runtime.
-cargo run --quiet -p myreader-core --example migrate_database -- "$TEMP_DB"
+cargo run --quiet -p my-reader-core --example migrate_database -- "$TEMP_DB"
 
 # Generate SeaORM entities
 mkdir -p "$ENTITY_DIR"

@@ -1,10 +1,10 @@
-use my_reader_lib::models::BookEntry;
-use my_reader_lib::services::book_service::BookService;
-use myreader_core::test_support::entities::calibre::{
+use my_reader_core::test_support::entities::calibre::{
     authors, books, books_authors_link, books_languages_link, books_publishers_link,
     books_ratings_link, books_series_link, books_tags_link, comments, data, identifiers, languages,
     publishers, ratings, series, tags,
 };
+use my_reader_lib::models::BookEntry;
+use my_reader_lib::services::book_service::BookService;
 use sea_orm::{ActiveModelTrait, Set};
 
 use crate::common::calibre::create_calibre_db;
@@ -412,7 +412,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
     let lib_path = path_string(lib.path());
     let sidecar_path = path_string(sidecar.path());
 
-    myreader_core::api::reading::set_reading_position(
+    my_reader_core::api::reading::set_reading_position(
         sidecar.path(),
         lib.path(),
         1,
@@ -423,7 +423,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
     )
     .await
     .expect("set alpha progress");
-    myreader_core::api::reading::set_reading_position(
+    my_reader_core::api::reading::set_reading_position(
         sidecar.path(),
         lib.path(),
         2,

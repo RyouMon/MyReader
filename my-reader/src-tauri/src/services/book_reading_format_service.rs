@@ -17,7 +17,10 @@ impl BookReadingFormatService {
         let lib = LibraryService::resolve_library(Some(library_id), config)?;
         let sidecar_root = library_sidecar_path(&lib, app_data_dir);
         let library_root = library_root_path(&lib, app_data_dir);
-        Ok(myreader_core::api::content::list_reading_formats(&sidecar_root, &library_root).await?)
+        Ok(
+            my_reader_core::api::content::list_reading_formats(&sidecar_root, &library_root)
+                .await?,
+        )
     }
 
     pub async fn set(
@@ -30,7 +33,7 @@ impl BookReadingFormatService {
         let lib = LibraryService::resolve_library(Some(library_id), config)?;
         let sidecar_root = library_sidecar_path(&lib, app_data_dir);
         let library_root = library_root_path(&lib, app_data_dir);
-        Ok(myreader_core::api::content::set_reading_format(
+        Ok(my_reader_core::api::content::set_reading_format(
             &sidecar_root,
             &library_root,
             book_id,

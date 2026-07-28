@@ -1,6 +1,0 @@
-[bindings.kotlin]
-package_name = "com.myreader.rustcomponents.uniffi"
-cdylib_name = "myreader_rust_components"
-
-[bindings.swift]
-module_name = "MyReaderRustComponentsBindings"

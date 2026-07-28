@@ -10,7 +10,7 @@ MyReader 是一个面向 Calibre 书库的 Local-First 跨平台阅读器：
 
 - Calibre 拥有 `metadata.db`、封面和书籍文件；MyReader 只读查询 Calibre 数据。
 - 每个书库拥有独立的 MyReader SQLite sidecar 和 Automerge document。
-- desktop、iOS 和 Android 共同使用 Rust `myreader-core` 处理数据库、书库、书目、阅读数据与
+- desktop、iOS 和 Android 共同使用 Rust `my-reader-core` 处理数据库、书库、书目、阅读数据与
   sidecar 同步业务。
 - Tauri Commands 与移动 UniFFI/Expo Module 是平台 adapter，不再维护第二套数据库或业务规则。
 - UI、Readium Navigator、系统授权、凭据、目录句柄、生命周期和后台调度触发仍由平台实现。
@@ -34,8 +34,8 @@ flowchart TB
     end
 
     subgraph SharedRust["共享 Rust"]
-        Components["myreader-rust-components<br/>UniFFI binding 外壳"]
-        Core["myreader-core<br/>API · Services · Repositories · Infrastructure"]
+        Components["MyReaderCore 移动适配器<br/>Expo Native Module · UniFFI"]
+        Core["my-reader-core<br/>API · Services · Repositories · Infrastructure"]
         Sidecar["SeaORM + SQLite<br/>Automerge sidecar"]
     end
 
@@ -62,19 +62,19 @@ Cargo workspace 中与共享后端相关的 crate：
 
 | Crate | 所有权 |
 |---|---|
-| `crates/myreader-core` | 跨端业务 API、SeaORM 数据访问、Calibre 查询、Automerge 与同步规则 |
-| `crates/myreader-rust-components` | UniFFI 导出、异步 runtime、移动原生产物和 binding DTO |
+| `my-reader-core` | 跨端业务 API、SeaORM 数据访问、Calibre 查询、Automerge 与同步规则 |
+| `my-reader-core-ffi`（位于 `my-reader-mobile/modules/my-reader-core/rust`） | UniFFI 导出、异步 runtime、移动原生产物和 transport binding |
 
 移动端另有应用内原生模块：
 
-- `my-reader-mobile/modules/myreader-rust-components`：把 UniFFI 产物接入 Expo。
+- `my-reader-mobile/modules/my-reader-core`：把 UniFFI 产物接入 Expo。
 - `my-reader-mobile/modules/readium`：应用自有 Readium Swift/Kotlin 集成。
 - `my-reader-mobile/modules/book-transition`：阅读器原生转场。
 
 React/React Native UI 和 Navigator Surface 不跨端共享。共享边界由稳定语义决定，不为了复用而
 建立空 package、crate 或抽象层。
 
-## 3. `myreader-core`
+## 3. `my-reader-core`
 
 ### 3.1 分层
 
@@ -99,7 +99,7 @@ models/             跨层稳定业务 DTO
 
 ### 3.2 当前业务范围
 
-`myreader-core` 已拥有：
+`my-reader-core` 已拥有：
 
 - 设备本地的数据源与书库 registry。
 - 本地、WebDAV 和 OneDrive 数据源校验、远程目录、远程书库添加与刷新。
@@ -134,7 +134,7 @@ Tauri adapter
   └─ 平台同步 trigger
           │
           ▼
-myreader-core
+my-reader-core
 ```
 
 前端通过 `my-reader/src/lib/tauri-api.ts` 调用生成的类型 IPC。Tauri 现存 service 负责平台协作和
@@ -163,10 +163,10 @@ app/ + features/ + domain/ + hooks/
 services/core/
         路径/凭据准备、DTO 转换、查询失效和 UniFFI 调用
                     ↓
-modules/myreader-rust-components/
+modules/my-reader-core/
         Expo Native Module + UniFFI
                     ↓
-myreader-core
+my-reader-core
 ```
 
 移动端不再拥有 `repos/`、`services/db/`、Drizzle 或 OP-SQLite 数据库后端。`services/core` 是
@@ -186,7 +186,7 @@ FFI 门面，不实现 SQL、合并策略或第二套业务规则。
 
 `my-reader-mobile/modules/readium` 负责 Publication handle、Streamer、Search、Locator、
 Selection、Decoration 和原生 View 转换。iOS 使用 Readium Swift Toolkit，Android 使用 Readium
-Kotlin Toolkit。Reader bridge 与 `myreader-core` 的业务 binding 是两个独立平台边界。
+Kotlin Toolkit。Reader bridge 与 `my-reader-core` 的业务 binding 是两个独立平台边界。
 
 ## 6. 数据与持久化
 
@@ -197,7 +197,7 @@ Calibre `metadata.db` 是外部只读数据库：
 - 本地书库直接查询。
 - 远程书库先下载到设备缓存，再由 core 查询。
 - MyReader 不迁移、不增加字段、不写入 Calibre 表。
-- `crates/myreader-core/src/entities/calibre` 是受支持 Calibre 表的只读 SeaORM 映射。
+- `my-reader-core/src/entities/calibre` 是受支持 Calibre 表的只读 SeaORM 映射。
 
 ### 6.2 每书库 sidecar
 
@@ -235,18 +235,18 @@ Calibre `metadata.db` 是外部只读数据库：
 
 ### 6.3 Schema 权威
 
-MyReader 自有数据库由 `myreader-core` 的有序 SeaORM Migrator 唯一拥有：
+MyReader 自有数据库由 `my-reader-core` 的有序 SeaORM Migrator 唯一拥有：
 
 ```text
-crates/myreader-core/migrations/legacy/*.sql
+my-reader-core/migrations/legacy/*.sql
         既有不可变迁移历史
                     ↓
-crates/myreader-core/src/migration.rs
+my-reader-core/src/migration.rs
         运行时有序 Migrator
                     ↓
 .myreader/myreader.db
                     ↓
-crates/myreader-core/src/entities/app
+my-reader-core/src/entities/app
         SeaORM 查询映射
 ```
 
@@ -319,10 +319,10 @@ Navigator/格式显式判断，不能假设三种格式完全相同。
 
 ```bash
 # 共享 Rust
-cargo test -p myreader-core -p myreader-rust-components
+cargo test -p my-reader-core -p my-reader-core-ffi
 
 # Core 高频路径基线
-cargo run -p myreader-core --release --example runtime_baseline -- 1000
+cargo run -p my-reader-core --release --example runtime_baseline -- 1000
 
 # 共享 TypeScript
 pnpm --filter @my-reader/fonts test
@@ -334,14 +334,14 @@ pnpm --filter my-reader run test:unit
 
 # 移动
 pnpm --filter my-reader-mobile exec jest --runInBand
-bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
+bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
 
 # 从 core Migrator 重新生成 app entities
 pnpm db:generate
 ```
 
 本机构建、E2E 和平台测试见 [DEVELOPMENT.md](./DEVELOPMENT.md)。Core 的本机构建、原生产物和
-高频查询参考值见 [myreader-core 运行基线](./docs/myreader-core-runtime-baseline.md)。
+高频查询参考值见 [my-reader-core 运行基线](./docs/my-reader-core-runtime-baseline.md)。
 
 ## 11. 相关 ADR
 
@@ -355,4 +355,4 @@ pnpm db:generate
 | [ADR-0016](./docs/adr/0016-adopt-automerge-for-library-sidecar-sync.md) | 当前 Automerge 同步内核 |
 | [ADR-0017](./docs/adr/0017-event-driven-library-sidecar-sync-scheduling.md) | 当前自动同步调度语义 |
 | [ADR-0018](./docs/adr/0018-shared-rust-components.md) | 共享 Rust/UniFFI 试点，crate 组织由 ADR-0019 部分取代 |
-| [ADR-0019](./docs/adr/0019-adopt-modular-myreader-core.md) | 当前共享后端和数据库权威 |
+| [ADR-0019](./docs/adr/0019-adopt-modular-my-reader-core.md) | 当前共享后端和数据库权威 |

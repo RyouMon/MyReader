@@ -12,25 +12,15 @@ import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { SyncConfigError } from "../../errors"
 import { createRemoteBackend } from "../../services/remote/factory"
 import type { RemoteBackend } from "../../services/remote/backend"
+import type { SidecarStorageConfig } from "../../services/core/sync"
 import { LocalDirectBackend } from "./local"
 import i18n from "@/src/i18n"
 
 export type SyncBackend = RemoteBackend | LocalDirectBackend
 
-export type NativeSidecarStorageConfig =
-  | { kind: "local-direct"; root: string }
-  | {
-      kind: "webdav"
-      endpoint: string
-      username: string
-      password: string
-      root: string | null
-    }
-  | { kind: "onedrive"; accessToken: string; root: string | null }
-
 export type ResolvedSyncTarget = {
   backend: SyncBackend
-  sidecarStorage: NativeSidecarStorageConfig
+  sidecarStorage: SidecarStorageConfig
   dataSourceId: string
   libraryId: string
   /** Calibre tree root (metadata, books, covers). */

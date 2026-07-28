@@ -1,4 +1,4 @@
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import MyReaderCore from "@/modules/my-reader-core"
 import type {
   CoreAsyncDomain,
   CoreAsyncInput,
@@ -24,7 +24,7 @@ function requestJson(
   operation: string,
   input: unknown,
 ): string {
-  const nativeVersion = MyReaderRustComponents.coreContractVersion()
+  const nativeVersion = MyReaderCore.coreContractVersion()
   if (nativeVersion !== CORE_CONTRACT_VERSION) {
     throw new Error(
       `CORE_CONTRACT_VERSION_MISMATCH: expected ${CORE_CONTRACT_VERSION}, received ${nativeVersion}`,
@@ -63,9 +63,7 @@ export function invokeCoreSync<
   input: CoreSyncInput<Domain, Operation>,
 ): CoreSyncOutput<Domain, Operation> {
   return outputFrom<CoreSyncOutput<Domain, Operation>>(
-    MyReaderRustComponents.invokeCoreSync(
-      requestJson(domain, operation, input),
-    ),
+    MyReaderCore.invokeCoreSync(requestJson(domain, operation, input)),
     domain,
     operation,
   )
@@ -80,9 +78,7 @@ export async function invokeCoreAsync<
   input: CoreAsyncInput<Domain, Operation>,
 ): Promise<CoreAsyncOutput<Domain, Operation>> {
   return outputFrom<CoreAsyncOutput<Domain, Operation>>(
-    await MyReaderRustComponents.invokeCoreAsync(
-      requestJson(domain, operation, input),
-    ),
+    await MyReaderCore.invokeCoreAsync(requestJson(domain, operation, input)),
     domain,
     operation,
   )

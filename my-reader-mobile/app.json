@@ -49,7 +49,7 @@
         }
       ],
       "./plugins/with-readium-ios",
-      "./plugins/with-rust-components-ios-tests",
+      "./plugins/with-my-reader-core-ios-tests",
       "./plugins/with-android-desugaring",
       "./plugins/with-android-debug-network-config",
       "@kesha-antonov/react-native-background-downloader",

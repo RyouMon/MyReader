@@ -3427,7 +3427,7 @@ dependencies = [
  "futures",
  "keyring",
  "log",
- "myreader-core",
+ "my-reader-core",
  "notify",
  "oauth2",
  "objc2-app-kit 0.3.2",
@@ -3463,7 +3463,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "myreader-core"
+name = "my-reader-core"
 version = "0.1.0"
 dependencies = [
  "automerge",
@@ -3487,10 +3487,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "myreader-rust-components"
+name = "my-reader-core-ffi"
 version = "0.1.0"
 dependencies = [
- "myreader-core",
+ "my-reader-core",
  "rusqlite",
  "serde",
  "serde_json",

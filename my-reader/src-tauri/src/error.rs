@@ -51,16 +51,16 @@ impl From<sea_orm::DbErr> for AppError {
     }
 }
 
-impl From<myreader_core::CoreError> for AppError {
-    fn from(error: myreader_core::CoreError) -> Self {
+impl From<my_reader_core::CoreError> for AppError {
+    fn from(error: my_reader_core::CoreError) -> Self {
         match error {
-            myreader_core::CoreError::Io(error) => Self::Io(error),
-            myreader_core::CoreError::Database(message) => Self::Database(message),
-            myreader_core::CoreError::Config(message) => Self::Config(message),
-            myreader_core::CoreError::NotFound(message) => Self::NotFound(message),
-            myreader_core::CoreError::Serialize(message) => Self::Serialize(message),
-            myreader_core::CoreError::Storage(message) => Self::Storage(message),
-            myreader_core::CoreError::Sync(message) => Self::Sync(message),
+            my_reader_core::CoreError::Io(error) => Self::Io(error),
+            my_reader_core::CoreError::Database(message) => Self::Database(message),
+            my_reader_core::CoreError::Config(message) => Self::Config(message),
+            my_reader_core::CoreError::NotFound(message) => Self::NotFound(message),
+            my_reader_core::CoreError::Serialize(message) => Self::Serialize(message),
+            my_reader_core::CoreError::Storage(message) => Self::Storage(message),
+            my_reader_core::CoreError::Sync(message) => Self::Sync(message),
         }
     }
 }

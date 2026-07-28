@@ -16,7 +16,7 @@ impl FavoriteBookService {
     }
 
     pub async fn list_favorite_book_ids(sidecar_root: &str) -> Result<Vec<i64>, AppError> {
-        myreader_core::api::reading::list_favorite_book_ids(Path::new(sidecar_root))
+        my_reader_core::api::reading::list_favorite_book_ids(Path::new(sidecar_root))
             .await
             .map_err(Into::into)
     }
@@ -45,7 +45,7 @@ impl FavoriteBookService {
             .to_string_lossy()
             .to_string();
         let library_root = library_root_path(&lib, app_data_dir);
-        myreader_core::api::reading::set_favorite_book(
+        my_reader_core::api::reading::set_favorite_book(
             Path::new(&sidecar_root),
             &library_root,
             book_id,

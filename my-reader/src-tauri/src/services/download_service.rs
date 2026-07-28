@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use futures::AsyncReadExt;
-use myreader_core::api::content::{DownloadCancellation, DownloadCoordinator};
-use myreader_core::models::DownloadTaskRequest;
+use my_reader_core::api::content::{DownloadCancellation, DownloadCoordinator};
+use my_reader_core::models::DownloadTaskRequest;
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, info, warn};
@@ -376,8 +376,8 @@ impl DownloadService {
     async fn get_stored_file_state(
         sidecar_root: &Path,
         path: &str,
-    ) -> Result<Option<myreader_core::models::FileState>, AppError> {
-        Ok(myreader_core::api::content::get_file_state(sidecar_root, path).await?)
+    ) -> Result<Option<my_reader_core::models::FileState>, AppError> {
+        Ok(my_reader_core::api::content::get_file_state(sidecar_root, path).await?)
     }
 
     /// Resolve a library and reject file mutations against original local Calibre files.
@@ -402,13 +402,14 @@ impl DownloadService {
         format: &str,
     ) -> Result<PathBuf, AppError> {
         let lib_root = library_root_path(lib, app_data_dir);
-        let file_path = myreader_core::api::catalog::get_book_file_path(&lib_root, book_id, format)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!(
-                    "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
-                ))
-            })?;
+        let file_path =
+            my_reader_core::api::catalog::get_book_file_path(&lib_root, book_id, format)
+                .await?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!(
+                        "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
+                    ))
+                })?;
         Ok(file_path)
     }
 
@@ -484,7 +485,7 @@ impl DownloadService {
             .map(|item| (item.book_id, Self::normalize_format(&item.format)))
             .collect();
         let file_paths =
-            myreader_core::api::catalog::get_book_file_paths(&lib_root, &normalized_requests)
+            my_reader_core::api::catalog::get_book_file_paths(&lib_root, &normalized_requests)
                 .await?;
 
         let mut relative_paths = Vec::with_capacity(normalized_requests.len());
@@ -504,7 +505,7 @@ impl DownloadService {
 
         let rows_by_path = if lib.is_remote() {
             let sidecar_root = library_sidecar_path(&lib, app_data_dir);
-            myreader_core::api::content::get_file_states(&sidecar_root, &relative_paths).await?
+            my_reader_core::api::content::get_file_states(&sidecar_root, &relative_paths).await?
         } else {
             HashMap::new()
         };
@@ -556,7 +557,7 @@ impl DownloadService {
                 .map_err(|e| AppError::Config(format!("BOOK_FILE_DELETE_FAILED: {e}")))?;
         }
 
-        myreader_core::api::content::mark_file_remote_only(&sidecar_root, &relative_path).await?;
+        my_reader_core::api::content::mark_file_remote_only(&sidecar_root, &relative_path).await?;
         Ok(())
     }
 
@@ -690,8 +691,10 @@ impl DownloadService {
             return Ok(local_path.to_path_buf());
         }
 
-        let remote_path =
-            myreader_core::api::content::resolve_remote_file_path(source_path, book_relative_path)?;
+        let remote_path = my_reader_core::api::content::resolve_remote_file_path(
+            source_path,
+            book_relative_path,
+        )?;
         info!(
             "Resolved remote book file path. library id: \"{}\", book id: {}, format: \"{}\", remote: \"{}\"",
             library_id, book_id, format, remote_path
@@ -843,7 +846,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::Config(format!("BOOK_FILE_CACHE_FLUSH_FAILED: {e}")))?;
 
-        myreader_core::api::content::finalize_downloaded_file(
+        my_reader_core::api::content::finalize_downloaded_file(
             sidecar_root,
             book_relative_path,
             local_path,
@@ -882,7 +885,7 @@ impl DownloadService {
                 );
             }
         }
-        myreader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
+        my_reader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
             .await?;
         Ok(())
     }
@@ -903,7 +906,7 @@ impl DownloadService {
                 );
             }
         }
-        myreader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
+        my_reader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
             .await?;
         Ok(())
     }

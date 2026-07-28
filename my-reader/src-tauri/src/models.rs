@@ -30,7 +30,7 @@ impl LibraryConfig {
     }
 }
 
-impl From<&LibraryConfig> for myreader_core::models::Library {
+impl From<&LibraryConfig> for my_reader_core::models::Library {
     fn from(value: &LibraryConfig) -> Self {
         Self {
             id: value.id.clone(),
@@ -48,8 +48,8 @@ impl From<&LibraryConfig> for myreader_core::models::Library {
     }
 }
 
-impl From<&myreader_core::models::Library> for LibraryConfig {
-    fn from(value: &myreader_core::models::Library) -> Self {
+impl From<&my_reader_core::models::Library> for LibraryConfig {
+    fn from(value: &my_reader_core::models::Library) -> Self {
         Self {
             id: value.id.clone(),
             name: value.name.clone(),
@@ -102,7 +102,7 @@ pub enum DataSourceDetail {
     },
 }
 
-impl From<&DataSourceConfig> for myreader_core::models::DataSource {
+impl From<&DataSourceConfig> for my_reader_core::models::DataSource {
     fn from(value: &DataSourceConfig) -> Self {
         match &value.detail {
             DataSourceDetail::Local { root_path } => Self::Local {
@@ -159,10 +159,10 @@ impl From<&DataSourceConfig> for myreader_core::models::DataSource {
     }
 }
 
-impl From<&myreader_core::models::DataSource> for DataSourceConfig {
-    fn from(value: &myreader_core::models::DataSource) -> Self {
+impl From<&my_reader_core::models::DataSource> for DataSourceConfig {
+    fn from(value: &my_reader_core::models::DataSource) -> Self {
         match value {
-            myreader_core::models::DataSource::Local {
+            my_reader_core::models::DataSource::Local {
                 id,
                 name,
                 enabled,
@@ -176,7 +176,7 @@ impl From<&myreader_core::models::DataSource> for DataSourceConfig {
                     root_path: root_path.clone(),
                 },
             },
-            myreader_core::models::DataSource::Webdav {
+            my_reader_core::models::DataSource::Webdav {
                 id,
                 name,
                 enabled,
@@ -196,7 +196,7 @@ impl From<&myreader_core::models::DataSource> for DataSourceConfig {
                     root_path: root_path.clone(),
                 },
             },
-            myreader_core::models::DataSource::Onedrive {
+            my_reader_core::models::DataSource::Onedrive {
                 id,
                 name,
                 enabled,
@@ -230,7 +230,7 @@ fn default_data_source_enabled() -> bool {
 }
 
 /// Platform-local application settings. Registry fields are accepted only for
-/// migration from legacy config and are persisted by myreader-core separately.
+/// migration from legacy config and are persisted by my-reader-core separately.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
@@ -249,16 +249,16 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn device_registry(&self) -> myreader_core::models::DeviceRegistry {
-        myreader_core::models::DeviceRegistry {
-            schema_version: myreader_core::models::DEVICE_REGISTRY_SCHEMA_VERSION,
+    pub fn device_registry(&self) -> my_reader_core::models::DeviceRegistry {
+        my_reader_core::models::DeviceRegistry {
+            schema_version: my_reader_core::models::DEVICE_REGISTRY_SCHEMA_VERSION,
             data_sources: self.data_sources.iter().map(Into::into).collect(),
             libraries: self.libraries.iter().map(Into::into).collect(),
             active_library_id: self.active_library_id.clone(),
         }
     }
 
-    pub fn apply_device_registry(&mut self, registry: &myreader_core::models::DeviceRegistry) {
+    pub fn apply_device_registry(&mut self, registry: &my_reader_core::models::DeviceRegistry) {
         self.data_sources = registry.data_sources.iter().map(Into::into).collect();
         self.libraries = registry.libraries.iter().map(Into::into).collect();
         self.active_library_id = registry.active_library_id.clone();
@@ -400,8 +400,8 @@ pub struct BookIdentifier {
     pub value: String,
 }
 
-impl From<myreader_core::models::BookEntry> for BookEntry {
-    fn from(value: myreader_core::models::BookEntry) -> Self {
+impl From<my_reader_core::models::BookEntry> for BookEntry {
+    fn from(value: my_reader_core::models::BookEntry) -> Self {
         Self {
             id: value.id,
             title: value.title,
@@ -425,8 +425,8 @@ impl From<myreader_core::models::BookEntry> for BookEntry {
     }
 }
 
-impl From<myreader_core::models::PaginatedBooks> for PaginatedBooks {
-    fn from(value: myreader_core::models::PaginatedBooks) -> Self {
+impl From<my_reader_core::models::PaginatedBooks> for PaginatedBooks {
+    fn from(value: my_reader_core::models::PaginatedBooks) -> Self {
         Self {
             items: value.items.into_iter().map(Into::into).collect(),
             total: value.total,
@@ -434,8 +434,8 @@ impl From<myreader_core::models::PaginatedBooks> for PaginatedBooks {
     }
 }
 
-impl From<myreader_core::models::BookDetail> for BookDetail {
-    fn from(value: myreader_core::models::BookDetail) -> Self {
+impl From<my_reader_core::models::BookDetail> for BookDetail {
+    fn from(value: my_reader_core::models::BookDetail) -> Self {
         Self {
             book: value.book.into(),
             format_sizes: value

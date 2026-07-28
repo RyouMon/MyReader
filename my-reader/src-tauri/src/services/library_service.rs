@@ -14,7 +14,7 @@ impl LibraryService {
     pub async fn list_libraries(config: &AppConfig) -> Result<Vec<LibraryInfo>, AppError> {
         let mut infos = Vec::new();
         for lib in &config.libraries {
-            let book_count = myreader_core::api::catalog::count_books(Path::new(&lib.path))
+            let book_count = my_reader_core::api::catalog::count_books(Path::new(&lib.path))
                 .await
                 .unwrap_or(0);
             infos.push(LibraryInfo {
@@ -37,9 +37,9 @@ impl LibraryService {
         config: &mut AppConfig,
     ) -> Result<LibraryInfo, AppError> {
         ensure_registry(app_data_dir, config)?;
-        let (registry, library) = myreader_core::api::library::add_local(
+        let (registry, library) = my_reader_core::api::library::add_local(
             &crate::config::device_registry_path(app_data_dir),
-            myreader_core::models::LocalLibraryRequest {
+            my_reader_core::models::LocalLibraryRequest {
                 library_root_path: path.to_owned(),
                 path: path.to_owned(),
                 sidecar_container_parent_path: Some(
@@ -172,14 +172,14 @@ impl LibraryService {
             .map_err(|e| AppError::Config(format!("INVALID_LIBRARY_PATH: {e}")))?;
         let lib_path_str = lib_path_canon.to_string_lossy().to_string();
 
-        if !myreader_core::api::catalog::validate_library(&lib_path_canon) {
+        if !my_reader_core::api::catalog::validate_library(&lib_path_canon) {
             return Err(AppError::NotFound(format!(
                 "METADATA_DB_NOT_FOUND: {}",
                 lib_path_str
             )));
         }
 
-        let books = myreader_core::api::catalog::list_books(&lib_path_canon).await?;
+        let books = my_reader_core::api::catalog::list_books(&lib_path_canon).await?;
         let book_count = books.len();
         let book_ids: Vec<i64> = books.iter().map(|book| book.id).collect();
 
@@ -208,7 +208,7 @@ impl LibraryService {
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
         ensure_registry(app_data_dir, config)?;
-        let registry = myreader_core::api::registry::remove_library(
+        let registry = my_reader_core::api::registry::remove_library(
             &crate::config::device_registry_path(app_data_dir),
             id,
         )?;
@@ -227,7 +227,7 @@ impl LibraryService {
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
         ensure_registry(app_data_dir, config)?;
-        let registry = myreader_core::api::registry::switch_library(
+        let registry = my_reader_core::api::registry::switch_library(
             &crate::config::device_registry_path(app_data_dir),
             id,
         )?;
@@ -287,9 +287,9 @@ async fn add_remote_library(
         .cloned()
         .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
     let credential = crate::storage::core_remote_credential(&source).await?;
-    let (registry, library) = myreader_core::api::library::add_remote(
+    let (registry, library) = my_reader_core::api::library::add_remote(
         &crate::config::device_registry_path(app_data_dir),
-        myreader_core::models::RemoteLibraryRequest {
+        my_reader_core::models::RemoteLibraryRequest {
             data_source_id: data_source_id.to_owned(),
             source_path: remote_path.to_owned(),
             libraries_root_path: app_data_dir
@@ -329,7 +329,7 @@ async fn refresh_remote_library(
         .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
     let credential = crate::storage::core_remote_credential(source).await?;
     let local_root = library_container_dir(app_data_dir, id);
-    let (_, library) = myreader_core::api::library::refresh_remote(
+    let (_, library) = my_reader_core::api::library::refresh_remote(
         &crate::config::device_registry_path(app_data_dir),
         id,
         &local_root,
@@ -337,7 +337,7 @@ async fn refresh_remote_library(
     )
     .await?;
 
-    let book_ids = myreader_core::api::catalog::list_books(&local_root)
+    let book_ids = my_reader_core::api::catalog::list_books(&local_root)
         .await?
         .into_iter()
         .map(|book| book.id)
@@ -348,7 +348,7 @@ async fn refresh_remote_library(
     Ok(library_info_from_core(library))
 }
 
-fn library_info_from_core(library: myreader_core::models::Library) -> LibraryInfo {
+fn library_info_from_core(library: my_reader_core::models::Library) -> LibraryInfo {
     LibraryInfo {
         id: library.id,
         name: library.name,
@@ -361,7 +361,7 @@ fn library_info_from_core(library: myreader_core::models::Library) -> LibraryInf
 }
 
 fn ensure_registry(app_data_dir: &Path, config: &AppConfig) -> Result<(), AppError> {
-    myreader_core::api::registry::load_or_initialize(
+    my_reader_core::api::registry::load_or_initialize(
         &crate::config::device_registry_path(app_data_dir),
         Some(config.device_registry()),
     )?;

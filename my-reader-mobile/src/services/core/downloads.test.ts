@@ -1,23 +1,8 @@
-jest.mock("@/modules/myreader-rust-components", () => ({
-  __esModule: true,
-  default: {
-    findActiveDownloadTask: jest.fn(),
-    enqueueDownloadTask: jest.fn(),
-    claimDownloadTasks: jest.fn(),
-    claimDownloadTask: jest.fn(),
-    markDownloadTaskStarted: jest.fn(),
-    reportDownloadTaskProgress: jest.fn(),
-    completeDownloadTask: jest.fn(),
-    failDownloadTask: jest.fn(),
-    cancelDownloadTask: jest.fn(),
-    listDownloadTasks: jest.fn(),
-    releaseDownloadTask: jest.fn(),
-    clearFinishedDownloadTasks: jest.fn(),
-  },
+jest.mock("./transport", () => ({
+  invokeCoreSync: jest.fn(),
 }))
 
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
-
+import { invokeCoreSync } from "./transport"
 import {
   cancelDownloadTask,
   enqueueDownloadTask,
@@ -25,8 +10,12 @@ import {
 } from "./downloads"
 
 describe("core download adapter", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
   it("should pass typed task fields when a download is enqueued", () => {
-    jest.mocked(MyReaderRustComponents.enqueueDownloadTask).mockReturnValue({
+    jest.mocked(invokeCoreSync).mockReturnValue({
       inserted: true,
       task: {
         id: "task",
@@ -50,25 +39,29 @@ describe("core download adapter", () => {
       label: "Book",
     })
 
-    expect(MyReaderRustComponents.enqueueDownloadTask).toHaveBeenCalledWith(
-      "task",
-      "library",
-      "42",
-      "epub",
-      "Author/Book/book.epub",
-      "Book",
-    )
+    expect(invokeCoreSync).toHaveBeenCalledWith("download", "enqueue", {
+      id: "task",
+      libraryId: "library",
+      bookId: "42",
+      format: "epub",
+      relativePath: "Author/Book/book.epub",
+      label: "Book",
+    })
   })
 
   it("should forward progress and cancellation when native work changes", () => {
+    jest.mocked(invokeCoreSync).mockReturnValue(null)
+
     reportDownloadTaskProgress("task", 50, 100)
     cancelDownloadTask("task")
 
-    expect(
-      MyReaderRustComponents.reportDownloadTaskProgress,
-    ).toHaveBeenCalledWith("task", 50, 100)
-    expect(MyReaderRustComponents.cancelDownloadTask).toHaveBeenCalledWith(
-      "task",
-    )
+    expect(invokeCoreSync).toHaveBeenCalledWith("download", "reportProgress", {
+      taskId: "task",
+      received: 50,
+      total: 100,
+    })
+    expect(invokeCoreSync).toHaveBeenCalledWith("download", "cancel", {
+      taskId: "task",
+    })
   })
 })

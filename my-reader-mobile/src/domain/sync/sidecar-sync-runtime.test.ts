@@ -1,34 +1,32 @@
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
+import {
+  recoverCoordinatedSync,
+  requestCoordinatedPull,
+} from "@/src/services/core/sync"
 import { createSidecarSyncRuntime } from "./sidecar-sync-runtime"
 
-jest.mock("@/modules/myreader-rust-components", () => ({
-  __esModule: true,
-  default: {
-    createSyncCoordinator: jest.fn(() => true),
-    requestCoordinatedSync: jest.fn(() =>
-      JSON.stringify({
-        schedules: [],
-        cancelTimersFor: [],
-        execution: null,
-      }),
-    ),
-    flushCoordinatedSync: jest.fn(),
-    recoverCoordinatedSync: jest.fn(),
-    requestCoordinatedPull: jest.fn(),
-    beginCoordinatedSync: jest.fn(),
-    effectiveCoordinatedSyncExecution: jest.fn(),
-    completeCoordinatedSync: jest.fn(),
-    failCoordinatedSync: jest.fn(),
-    setCoordinatedSyncLibraryOnline: jest.fn(),
-    disposeSyncCoordinator: jest.fn(() =>
-      JSON.stringify({
-        schedules: [],
-        cancelTimersFor: [],
-        execution: null,
-      }),
-    ),
-    cancelSyncTask: jest.fn(),
-  },
+jest.mock("@/src/services/core/sync", () => ({
+  createSyncCoordinator: jest.fn(() => true),
+  requestCoordinatedSync: jest.fn(() => ({
+    schedules: [],
+    cancelTimersFor: [],
+    execution: null,
+    retry: null,
+  })),
+  flushCoordinatedSync: jest.fn(),
+  recoverCoordinatedSync: jest.fn(),
+  requestCoordinatedPull: jest.fn(),
+  beginCoordinatedSync: jest.fn(),
+  effectiveCoordinatedSyncExecution: jest.fn(),
+  completeCoordinatedSync: jest.fn(),
+  failCoordinatedSync: jest.fn(),
+  setCoordinatedSyncLibraryOnline: jest.fn(),
+  disposeSyncCoordinator: jest.fn(() => ({
+    schedules: [],
+    cancelTimersFor: [],
+    execution: null,
+    retry: null,
+  })),
+  cancelSyncTask: jest.fn(),
 }))
 
 jest.mock("@/src/services/fs/library-paths", () => ({
@@ -62,17 +60,14 @@ describe("createSidecarSyncRuntime", () => {
   })
 
   it("should request the core-selected mode when contextual pull is needed", async () => {
-    jest
-      .mocked(MyReaderRustComponents.requestCoordinatedPull)
-      .mockResolvedValue(
-        JSON.stringify({
-          schedules: [
-            { libraryId: "library-1", generation: 1, deadline: Date.now() },
-          ],
-          cancelTimersFor: [],
-          execution: null,
-        }),
-      )
+    jest.mocked(requestCoordinatedPull).mockResolvedValue({
+      schedules: [
+        { libraryId: "library-1", generation: 1, deadline: Date.now() },
+      ],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    })
     const runtime = createSidecarSyncRuntime(() => ({
       libraries: [library],
       dataSources: [],
@@ -83,27 +78,24 @@ describe("createSidecarSyncRuntime", () => {
       runtime.requestContextualPull("library-1", "app_foregrounded"),
     ).resolves.toBe(true)
 
-    expect(MyReaderRustComponents.requestCoordinatedPull).toHaveBeenCalledWith(
-      expect.stringMatching(/^mobile:/),
-      "/sidecar",
-      "library-1",
-      "app_foregrounded",
-      expect.any(String),
-      "30000",
-    )
+    expect(requestCoordinatedPull).toHaveBeenCalledWith({
+      coordinatorId: expect.stringMatching(/^mobile:/),
+      sidecarRootPath: "/sidecar",
+      libraryId: "library-1",
+      reason: "app_foregrounded",
+      nowMs: expect.any(Number),
+      freshnessMs: 30000,
+    })
     runtime.dispose()
   })
 
   it("should restore durable work when runtime starts", async () => {
-    jest
-      .mocked(MyReaderRustComponents.recoverCoordinatedSync)
-      .mockResolvedValue(
-        JSON.stringify({
-          schedules: [],
-          cancelTimersFor: [],
-          execution: null,
-        }),
-      )
+    jest.mocked(recoverCoordinatedSync).mockResolvedValue({
+      schedules: [],
+      cancelTimersFor: [],
+      execution: null,
+      retry: null,
+    })
     const runtime = createSidecarSyncRuntime(() => ({
       libraries: [library],
       dataSources: [],
@@ -112,12 +104,12 @@ describe("createSidecarSyncRuntime", () => {
 
     await runtime.recover()
 
-    expect(MyReaderRustComponents.recoverCoordinatedSync).toHaveBeenCalledWith(
-      expect.stringMatching(/^mobile:/),
-      "/sidecar",
-      "library-1",
-      expect.any(String),
-    )
+    expect(recoverCoordinatedSync).toHaveBeenCalledWith({
+      coordinatorId: expect.stringMatching(/^mobile:/),
+      sidecarRootPath: "/sidecar",
+      libraryId: "library-1",
+      nowMs: expect.any(Number),
+    })
     runtime.dispose()
   })
 })

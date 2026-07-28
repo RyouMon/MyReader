@@ -1,0 +1,39 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.myreader.core'
+version = '0.1.0'
+
+android {
+  namespace "com.myreader.core"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+  }
+  lintOptions {
+    abortOnError false
+  }
+  sourceSets {
+    main {
+      jniLibs.srcDirs += ["../build/android/jniLibs"]
+    }
+  }
+}
+
+dependencies {
+  implementation "net.java.dev.jna:jna:5.13.0@aar"
+  androidTestImplementation "androidx.test.ext:junit:1.3.0"
+  androidTestImplementation "androidx.test:runner:1.7.0"
+}
+
+def buildMyReaderCore = tasks.register("buildMyReaderCore", Exec) {
+  environment "ANDROID_NDK_HOME", android.ndkDirectory.absolutePath
+  commandLine "../scripts/build-android.sh"
+}
+
+tasks.named("preBuild").configure {
+  dependsOn buildMyReaderCore
+}

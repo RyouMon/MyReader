@@ -26,7 +26,7 @@ pub fn load_config(path: &Path) -> Result<AppConfig, AppError> {
         let json = fs::read_to_string(path)?;
         serde_json::from_str(&json)?
     };
-    let registry = myreader_core::api::registry::load_or_initialize(
+    let registry = my_reader_core::api::registry::load_or_initialize(
         &device_registry_path(path.parent().unwrap_or_else(|| Path::new("."))),
         Some(config.device_registry()),
     )?;
@@ -47,7 +47,7 @@ pub fn save_config(path: &Path, config: &AppConfig) -> Result<(), AppError> {
     );
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
-        myreader_core::api::registry::load_or_initialize(
+        my_reader_core::api::registry::load_or_initialize(
             &device_registry_path(parent),
             Some(config.device_registry()),
         )?;

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use myreader_core::models::ReaderAnnotation;
+use my_reader_core::models::ReaderAnnotation;
 
 use crate::error::AppError;
 use crate::models::{AppConfig, ReaderAnnotationDto};
@@ -35,7 +35,7 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         Ok(
-            myreader_core::api::reading::list_reader_annotations(&sidecar_root, book_id, format)
+            my_reader_core::api::reading::list_reader_annotations(&sidecar_root, book_id, format)
                 .await?
                 .into_iter()
                 .map(|annotation| annotation_dto(&library.id, annotation))
@@ -58,7 +58,7 @@ impl AnnotationService {
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
         let locator_json = serde_json::to_string(locator)?;
-        let annotation = myreader_core::api::reading::add_reader_annotation(
+        let annotation = my_reader_core::api::reading::add_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,
@@ -86,7 +86,7 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        let annotation = myreader_core::api::reading::update_reader_annotation(
+        let annotation = my_reader_core::api::reading::update_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,
@@ -111,7 +111,7 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        myreader_core::api::reading::remove_reader_annotation(
+        my_reader_core::api::reading::remove_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,

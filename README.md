@@ -11,7 +11,7 @@
 - 支持收藏、阅读进度、书签、高亮与笔记；具体阅读能力按格式和平台分别实现。
 - 每个书库拥有独立的 MyReader SQLite sidecar，应用设置和凭据保留在设备本地。
 - 使用 Automerge 同步每个书库的收藏、阅读位置、书签、批注、阅读会话和完成记录。
-- 桌面端与移动端通过 `myreader-core` 共享书库、书目、内容状态、阅读数据和 sidecar 同步业务。
+- 桌面端与移动端通过 `my-reader-core` 共享书库、书目、内容状态、阅读数据和 sidecar 同步业务。
 
 MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使用 Web/JS 阅读适配，移动端通过应用自有 Expo Module 接入 Readium Swift/Kotlin Toolkit；两端共享的是 Publication、Link、Locator 等语义和产品规则，而不是渲染 UI。
 
@@ -19,11 +19,10 @@ MyReader 不再维护一套跨平台共享的自研渲染内核。桌面端使�
 
 ```text
 MyReader/
-├── crates/
-│   ├── myreader-core/             跨端共享 Rust 后端
-│   └── myreader-rust-components/  UniFFI 与移动原生绑定外壳
+├── my-reader-core/                跨端共享 Rust 后端
 ├── my-reader/                     桌面端：Tauri 2 + React 18
 ├── my-reader-mobile/              移动端：Expo 56 + React Native 0.85
+│   └── modules/my-reader-core/    Core 的 Expo/UniFFI 移动适配器
 ├── packages/
 │   ├── fonts/                     阅读字体目录与资产来源
 │   └── tools/                     跨端类型和 Reader 纯算法
@@ -95,7 +94,7 @@ pnpm --filter my-reader-mobile exec jest --runInBand
 | 桌面 UI | React 18、TypeScript、Vite 6、Tailwind CSS 4、TanStack Router/Query、Zustand |
 | 桌面后端 | Tauri 2、Rust、SeaORM、SQLite、tauri-specta、OpenDAL |
 | 移动端 | Expo 56、React Native 0.85、Expo Router、NativeWind 5、TanStack Query、Zustand |
-| 共享后端 | `myreader-core`、SeaORM、SQLite、Automerge |
+| 共享后端 | `my-reader-core`、SeaORM、SQLite、Automerge |
 | 移动绑定 | UniFFI、Expo Native Module |
 | 阅读器 | 桌面 `@readium/*` + PDF.js 适配；移动 Readium Swift/Kotlin Toolkit + 应用自有 Expo Module |
 | 远程数据源 | WebDAV、OneDrive |

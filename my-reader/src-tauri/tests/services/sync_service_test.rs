@@ -1,6 +1,6 @@
+use my_reader_core::test_support::entities::app::sync_local_meta;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
 use my_reader_lib::services::sync_service::SyncService;
-use myreader_core::test_support::entities::app::sync_local_meta;
 use sea_orm::{Database, EntityTrait};
 
 use crate::common::calibre::create_calibre_db;

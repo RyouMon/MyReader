@@ -1,6 +1,6 @@
+use my_reader_core::models::FileStateUpdate;
 use my_reader_lib::models::{AppConfig, DataSourceConfig, DataSourceDetail, LibraryConfig};
 use my_reader_lib::services::download_service::DownloadService;
-use myreader_core::models::FileStateUpdate;
 use opendal::services::Fs;
 use opendal::Operator;
 
@@ -10,16 +10,16 @@ use crate::common::calibre::seed_minimal_calibre_library;
 struct TestFileStateRepository;
 
 impl TestFileStateRepository {
-    async fn open(sidecar_root: &str) -> Result<std::path::PathBuf, myreader_core::CoreError> {
-        myreader_core::test_support::open_db(sidecar_root).await?;
+    async fn open(sidecar_root: &str) -> Result<std::path::PathBuf, my_reader_core::CoreError> {
+        my_reader_core::test_support::open_db(sidecar_root).await?;
         Ok(sidecar_root.into())
     }
 
     async fn get_by_path(
         sidecar_root: &std::path::Path,
         path: &str,
-    ) -> Result<Option<myreader_core::models::FileState>, myreader_core::CoreError> {
-        myreader_core::api::content::get_file_state(sidecar_root, path).await
+    ) -> Result<Option<my_reader_core::models::FileState>, my_reader_core::CoreError> {
+        my_reader_core::api::content::get_file_state(sidecar_root, path).await
     }
 
     async fn upsert(
@@ -28,8 +28,8 @@ impl TestFileStateRepository {
         local_state: &str,
         local_size: Option<i64>,
         local_mtime: Option<i64>,
-    ) -> Result<(), myreader_core::CoreError> {
-        myreader_core::api::content::upsert_file_state(
+    ) -> Result<(), my_reader_core::CoreError> {
+        my_reader_core::api::content::upsert_file_state(
             sidecar_root,
             path,
             FileStateUpdate {

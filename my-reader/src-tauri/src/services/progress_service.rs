@@ -27,7 +27,7 @@ fn unix_epoch_millis() -> i64 {
 
 fn progress_dto(
     library_id: &str,
-    value: myreader_core::models::ReadingPosition,
+    value: my_reader_core::models::ReadingPosition,
 ) -> ReadingProgressDto {
     ReadingProgressDto {
         library_id: library_id.to_owned(),
@@ -50,7 +50,7 @@ impl ProgressService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         Ok(
-            myreader_core::api::reading::get_reading_position(&sidecar_root, book_id, format)
+            my_reader_core::api::reading::get_reading_position(&sidecar_root, book_id, format)
                 .await?
                 .map(|value| progress_dto(&library.id, value)),
         )
@@ -64,7 +64,7 @@ impl ProgressService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         Ok(
-            myreader_core::api::reading::list_reading_positions(&sidecar_root)
+            my_reader_core::api::reading::list_reading_positions(&sidecar_root)
                 .await?
                 .into_iter()
                 .map(|value| progress_dto(&library.id, value))
@@ -84,7 +84,7 @@ impl ProgressService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        myreader_core::api::reading::set_reading_position(
+        my_reader_core::api::reading::set_reading_position(
             &sidecar_root,
             &library_root,
             book_id,
@@ -108,7 +108,7 @@ impl ProgressService {
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
         Ok(
-            myreader_core::api::reading::list_reading_position_candidates(
+            my_reader_core::api::reading::list_reading_position_candidates(
                 &sidecar_root,
                 &library_root,
                 book_id,
@@ -139,7 +139,7 @@ impl ProgressService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        myreader_core::api::reading::select_reading_position_candidate(
+        my_reader_core::api::reading::select_reading_position_candidate(
             &sidecar_root,
             &library_root,
             book_id,

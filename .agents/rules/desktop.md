@@ -14,7 +14,7 @@ Tauri commands/        — typed IPC entry points
  ↓
 Tauri services/        — thin platform orchestration and DTO mapping
  ↓
-myreader-core api/     — stable use-case boundary
+my-reader-core api/     — stable use-case boundary
  ↓
 services/              — shared business rules and use-case orchestration
  ↓
@@ -24,10 +24,10 @@ repositories/ + infrastructure/ — SeaORM, SQLite, storage and registry adapter
 **Rules**:
 - Tauri `commands/` calls thin Tauri `services/`; commands do not implement business rules.
 - Tauri `services/` may resolve platform paths, credentials, windows, events and DTOs, then call
-  `myreader_core::api`; they must not reimplement filtering, sorting, validation, state transitions,
+  `my_reader_core::api`; they must not reimplement filtering, sorting, validation, state transitions,
   persistence or other cross-platform business behavior.
 - Shared business dependencies flow `api → services → repositories/infrastructure` inside
-  `crates/myreader-core`.
+  `my-reader-core`.
 - Tauri storage, Keychain/keyring, asset scope, protocol, streamer and lifecycle code remain platform
   adapters. They do not become a second business backend.
 
@@ -97,7 +97,7 @@ my-reader/
 │   ├── storage_paths.rs          Path constants
 │   └── utils/                    HTTP client, IO helpers
 │
-├── ../crates/myreader-core/      Shared Rust business backend used by desktop and mobile
+├── ../my-reader-core/             Shared Rust business backend used by desktop and mobile
 │   └── src/                      api/, services/, repositories/, infrastructure/, models/
 │
 └── src-tauri/                    Tauri config (tauri.conf.json, Cargo.toml, icons/)

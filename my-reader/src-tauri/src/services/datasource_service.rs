@@ -24,7 +24,7 @@ impl DataSourceService {
         password: &str,
         root_path: Option<&str>,
     ) -> Result<(), AppError> {
-        let source = myreader_core::models::DataSource::Webdav {
+        let source = my_reader_core::models::DataSource::Webdav {
             id: "connection-test".into(),
             name: "Connection Test".into(),
             enabled: true,
@@ -36,9 +36,9 @@ impl DataSourceService {
             readonly: None,
             created_at: None,
         };
-        myreader_core::api::datasource::test_connection(
+        my_reader_core::api::datasource::test_connection(
             &source,
-            &myreader_core::models::RemoteCredential::Webdav {
+            &my_reader_core::models::RemoteCredential::Webdav {
                 password: password.into(),
             },
         )
@@ -52,12 +52,12 @@ impl DataSourceService {
         registry_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        myreader_core::api::registry::load_or_initialize(
+        my_reader_core::api::registry::load_or_initialize(
             registry_path,
             Some(config.device_registry()),
         )?;
         let registry =
-            myreader_core::api::registry::add_local_data_source(registry_path, name, root_path)?;
+            my_reader_core::api::registry::add_local_data_source(registry_path, name, root_path)?;
         config.apply_device_registry(&registry);
         config
             .data_sources
@@ -75,7 +75,7 @@ impl DataSourceService {
         registry_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        myreader_core::api::registry::load_or_initialize(
+        my_reader_core::api::registry::load_or_initialize(
             registry_path,
             Some(config.device_registry()),
         )?;
@@ -83,8 +83,8 @@ impl DataSourceService {
             return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
-        let prepared = myreader_core::api::registry::prepare_data_source(
-            myreader_core::models::DataSource::Webdav {
+        let prepared = my_reader_core::api::registry::prepare_data_source(
+            my_reader_core::models::DataSource::Webdav {
                 id: String::new(),
                 name: name.into(),
                 enabled: true,
@@ -98,7 +98,7 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        myreader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
+        my_reader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
 
         if let DataSourceDetail::Webdav {
             credential_account, ..
@@ -110,7 +110,7 @@ impl DataSourceService {
         }
 
         let registry =
-            myreader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
+            my_reader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
         config.apply_device_registry(&registry);
         config
             .data_sources
@@ -125,7 +125,7 @@ impl DataSourceService {
         registry_path: &Path,
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
-        myreader_core::api::registry::load_or_initialize(
+        my_reader_core::api::registry::load_or_initialize(
             registry_path,
             Some(config.device_registry()),
         )?;
@@ -145,7 +145,7 @@ impl DataSourceService {
             }
         }
 
-        let registry = myreader_core::api::registry::remove_data_source(registry_path, id)?;
+        let registry = my_reader_core::api::registry::remove_data_source(registry_path, id)?;
         config.apply_device_registry(&registry);
 
         for account in webdav_accounts_to_delete {
@@ -173,7 +173,7 @@ impl DataSourceService {
             })?;
 
         let credential = crate::storage::core_remote_credential(source).await?;
-        Ok(myreader_core::api::datasource::list_directories(
+        Ok(my_reader_core::api::datasource::list_directories(
             registry_path,
             data_source_id,
             rel_path,
@@ -199,12 +199,12 @@ impl DataSourceService {
         registry_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        myreader_core::api::registry::load_or_initialize(
+        my_reader_core::api::registry::load_or_initialize(
             registry_path,
             Some(config.device_registry()),
         )?;
-        let prepared = myreader_core::api::registry::prepare_data_source(
-            myreader_core::models::DataSource::Onedrive {
+        let prepared = my_reader_core::api::registry::prepare_data_source(
+            my_reader_core::models::DataSource::Onedrive {
                 id: String::new(),
                 name: name.into(),
                 enabled: true,
@@ -220,7 +220,7 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        myreader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
+        my_reader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
 
         let refresh_token = refresh_token.filter(|t| !t.is_empty());
         if refresh_token.is_none() {
@@ -239,7 +239,7 @@ impl DataSourceService {
         }
 
         let registry =
-            myreader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
+            my_reader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
         config.apply_device_registry(&registry);
         config
             .data_sources
@@ -261,7 +261,7 @@ impl DataSourceService {
             .find(|source| source.id == data_source_id)
             .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
         let credential = crate::storage::core_remote_credential(source).await?;
-        Ok(myreader_core::api::datasource::list_directories(
+        Ok(my_reader_core::api::datasource::list_directories(
             registry_path,
             data_source_id,
             path,

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use myreader_core::models::ReaderBookmark;
+use my_reader_core::models::ReaderBookmark;
 
 use crate::error::AppError;
 use crate::models::{AppConfig, ReaderBookmarkDto};
@@ -33,7 +33,7 @@ impl BookmarkService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         Ok(
-            myreader_core::api::reading::list_reader_bookmarks(&sidecar_root, book_id, format)
+            my_reader_core::api::reading::list_reader_bookmarks(&sidecar_root, book_id, format)
                 .await?
                 .into_iter()
                 .map(|bookmark| bookmark_dto(&library.id, bookmark))
@@ -54,7 +54,7 @@ impl BookmarkService {
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
         let locator_json = serde_json::to_string(locator)?;
-        let bookmark = myreader_core::api::reading::add_reader_bookmark(
+        let bookmark = my_reader_core::api::reading::add_reader_bookmark(
             &sidecar_root,
             &library_root,
             book_id,
@@ -78,7 +78,7 @@ impl BookmarkService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        myreader_core::api::reading::remove_reader_bookmark(
+        my_reader_core::api::reading::remove_reader_bookmark(
             &sidecar_root,
             &library_root,
             book_id,

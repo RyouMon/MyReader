@@ -2,10 +2,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use myreader_core::api::sync::{
+use my_reader_core::api::sync::{
     SchedulerTransition, SyncCoordinator, SyncExecution, SyncMode, SyncTiming,
 };
-use myreader_core::models::SyncFailureKind;
+use my_reader_core::models::SyncFailureKind;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Semaphore;

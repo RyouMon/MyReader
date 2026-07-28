@@ -8,13 +8,14 @@ paths:
 - **Routing**: Expo Router under `src/app/`.
 - **Server state**: TanStack Query.
 - **Device/UI state**: Zustand and platform storage.
-- **Shared backend**: `myreader-core` through `myreader-rust-components`, UniFFI and an Expo Native Module.
+- **Shared backend**: `my-reader-core` through the `modules/my-reader-core` Expo adapter. Its
+  internal `my-reader-core-ffi` crate owns only UniFFI transport and native artifacts.
 - **Reader**: application-owned Expo Readium module backed by Readium Swift/Kotlin Toolkit.
 - **Patches**: only the dependencies registered in `pnpm-workspace.yaml`; applied by pnpm.
 
 Mobile has no independent application database backend. Do not add TypeScript repositories, SQL, Drizzle,
 OP-SQLite, migration runners or CRDT merge logic. MyReader SQLite and Calibre query behavior belong in
-`myreader-core`.
+`my-reader-core`.
 
 ## Layer Model
 
@@ -27,7 +28,7 @@ domain/             Shared mobile UI/platform workflows
 services/core/      Thin FFI facade
 services/*          Platform infrastructure
                     ↓
-Expo Native Modules / UniFFI / myreader-core
+Expo Native Modules / UniFFI / my-reader-core
 ```
 
 ### `features/`
@@ -116,7 +117,7 @@ Do not reintroduce `src/repos/` or `src/services/db/`.
 ## Key Conventions
 
 - Stable shared product types come from `@my-reader/tools` or the typed `services/core` facade.
-- Calibre `metadata.db` remains read-only and is queried by `myreader-core`.
+- Calibre `metadata.db` remains read-only and is queried by `my-reader-core`.
 - A library uses one canonical local root and one sidecar root from `services/fs/library-paths.ts`.
 - Remote provider secrets remain in platform credential storage; pass only the value required for the current
   core call.
@@ -139,8 +140,8 @@ pnpm --filter my-reader-mobile test:e2e
 For Rust/binding changes:
 
 ```bash
-cargo test -p myreader-core -p myreader-rust-components
-bash my-reader-mobile/modules/myreader-rust-components/scripts/verify-native.sh
+cargo test -p my-reader-core -p my-reader-core-ffi
+bash my-reader-mobile/modules/my-reader-core/scripts/verify-native.sh
 ```
 
 ## Required Post-Change Verification

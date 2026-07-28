@@ -1,4 +1,3 @@
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { applySyncReport } from "@/src/domain/sync/hooks/apply-sync-report"
 import {
   DataIntegrityError,
@@ -8,6 +7,23 @@ import {
 } from "@/src/errors"
 import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
+import {
+  beginCoordinatedSync,
+  completeCoordinatedSync,
+  createSyncCoordinator,
+  disposeSyncCoordinator,
+  effectiveCoordinatedSyncExecution,
+  failCoordinatedSync,
+  flushCoordinatedSync,
+  recoverCoordinatedSync,
+  requestCoordinatedPull,
+  requestCoordinatedSync,
+  setCoordinatedSyncLibraryOnline,
+  type ScheduledSync,
+  type SchedulerTransition,
+  type SyncExecution,
+  type SyncFailureKind,
+} from "@/src/services/core/sync"
 import type { DataSource, Library } from "../types"
 import { cancelLibrarySidecarSyncTask } from "./library-sidecar/sync-database"
 import { syncLibrary } from "./sync-library"
@@ -22,24 +38,6 @@ export type SidecarSyncReason =
   | "library_activated"
   | "remote_change_hint"
   | "recovery_sweep"
-
-type SyncExecution = {
-  libraryId: string
-  mode: MyReaderSyncMode
-  reasons: SidecarSyncReason[]
-}
-
-type ScheduledSync = {
-  libraryId: string
-  generation: number
-  deadline: number
-}
-
-type SchedulerTransition = {
-  schedules: ScheduledSync[]
-  cancelTimersFor: string[]
-  execution: SyncExecution | null
-}
 
 export type SidecarSyncRuntimeState = {
   libraries: Library[]
@@ -77,7 +75,7 @@ function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
 }
 
-function failureKind(error: unknown): string {
+function failureKind(error: unknown): SyncFailureKind {
   if (error instanceof SyncConfigError) return "configuration"
   if (error instanceof DataIntegrityError) return "data_integrity"
   if (error instanceof SyncConnectivityError || error instanceof NetworkError) {
@@ -111,7 +109,7 @@ export function createSidecarSyncRuntime(
   let nextTaskSequence = 0
   coordinatorSequence += 1
   const coordinatorId = `mobile:${Date.now()}:${coordinatorSequence}`
-  MyReaderRustComponents.createSyncCoordinator(coordinatorId)
+  createSyncCoordinator(coordinatorId)
 
   const findLibrary = (libraryId: string) =>
     getState().libraries.find((library) => library.id === libraryId)
@@ -128,11 +126,11 @@ export function createSidecarSyncRuntime(
       () => {
         timers.delete(sync.libraryId)
         const transition = applyTransition(
-          MyReaderRustComponents.beginCoordinatedSync(
+          beginCoordinatedSync({
             coordinatorId,
-            sync.libraryId,
-            sync.generation,
-          ),
+            libraryId: sync.libraryId,
+            generation: sync.generation,
+          }),
         )
         if (transition.execution) void execute(transition.execution)
       },
@@ -141,8 +139,9 @@ export function createSidecarSyncRuntime(
     timers.set(sync.libraryId, timer)
   }
 
-  function applyTransition(transitionJson: string): SchedulerTransition {
-    const transition = JSON.parse(transitionJson) as SchedulerTransition
+  function applyTransition(
+    transition: SchedulerTransition,
+  ): SchedulerTransition {
     for (const libraryId of transition.cancelTimersFor) {
       clearTimer(libraryId)
     }
@@ -154,22 +153,22 @@ export function createSidecarSyncRuntime(
     const state = getState()
     if (!state.enableAutoSync) {
       applyTransition(
-        MyReaderRustComponents.completeCoordinatedSync(
+        completeCoordinatedSync({
           coordinatorId,
-          execution.libraryId,
-          String(Date.now()),
-        ),
+          libraryId: execution.libraryId,
+          nowMs: Date.now(),
+        }),
       )
       return
     }
     const library = findLibrary(execution.libraryId)
     if (!library) {
       applyTransition(
-        MyReaderRustComponents.completeCoordinatedSync(
+        completeCoordinatedSync({
           coordinatorId,
-          execution.libraryId,
-          String(Date.now()),
-        ),
+          libraryId: execution.libraryId,
+          nowMs: Date.now(),
+        }),
       )
       return
     }
@@ -177,18 +176,14 @@ export function createSidecarSyncRuntime(
     const taskId = `${execution.libraryId}:${Date.now()}:${nextTaskSequence}`
     runningTasks.set(execution.libraryId, taskId)
     try {
-      const effectiveExecutionJson =
-        await MyReaderRustComponents.effectiveCoordinatedSyncExecution(
-          coordinatorId,
-          sidecarRootPath(library),
-          JSON.stringify(execution),
-          String(Date.now()),
-          String(PULL_FRESHNESS_MS),
-        )
-      if (effectiveExecutionJson) {
-        const effectiveExecution = JSON.parse(
-          effectiveExecutionJson,
-        ) as SyncExecution
+      const effectiveExecution = await effectiveCoordinatedSyncExecution({
+        coordinatorId,
+        sidecarRootPath: sidecarRootPath(library),
+        execution,
+        nowMs: Date.now(),
+        freshnessMs: PULL_FRESHNESS_MS,
+      })
+      if (effectiveExecution) {
         const report = await syncLibrary(library, state.dataSources, {
           scope: "myreader",
           myreaderMode: effectiveExecution.mode,
@@ -198,11 +193,11 @@ export function createSidecarSyncRuntime(
         await applySyncReport(report, { trigger: "scheduled" })
       }
       applyTransition(
-        MyReaderRustComponents.completeCoordinatedSync(
+        completeCoordinatedSync({
           coordinatorId,
-          execution.libraryId,
-          String(Date.now()),
-        ),
+          libraryId: execution.libraryId,
+          nowMs: Date.now(),
+        }),
       )
     } catch (error) {
       if (cancelledTasks.has(taskId)) return
@@ -214,15 +209,15 @@ export function createSidecarSyncRuntime(
       })
       onError?.(error)
       applyTransition(
-        await MyReaderRustComponents.failCoordinatedSync(
+        await failCoordinatedSync({
           coordinatorId,
-          sidecarRootPath(library),
-          JSON.stringify(execution),
-          failureKind(error),
-          suspendedReason(error),
-          String(Date.now()),
-          Math.random(),
-        ),
+          sidecarRootPath: sidecarRootPath(library),
+          execution,
+          failureKind: failureKind(error),
+          reason: suspendedReason(error),
+          nowMs: Date.now(),
+          randomFraction: Math.random(),
+        }),
       )
     } finally {
       if (runningTasks.get(execution.libraryId) === taskId) {
@@ -236,36 +231,36 @@ export function createSidecarSyncRuntime(
     request(libraryId, mode, reason, timing = "debounced") {
       if (disposed) return
       applyTransition(
-        MyReaderRustComponents.requestCoordinatedSync(
+        requestCoordinatedSync({
           coordinatorId,
           libraryId,
           mode,
           reason,
           timing,
-          String(Date.now()),
-        ),
+          nowMs: Date.now(),
+        }),
       )
     },
     flush(libraryId, reason) {
       if (disposed) return
       applyTransition(
-        MyReaderRustComponents.flushCoordinatedSync(
+        flushCoordinatedSync({
           coordinatorId,
           libraryId,
           reason,
-          String(Date.now()),
-        ),
+          nowMs: Date.now(),
+        }),
       )
     },
     async recover() {
       for (const library of getState().libraries) {
         applyTransition(
-          await MyReaderRustComponents.recoverCoordinatedSync(
+          await recoverCoordinatedSync({
             coordinatorId,
-            sidecarRootPath(library),
-            library.id,
-            String(Date.now()),
-          ),
+            sidecarRootPath: sidecarRootPath(library),
+            libraryId: library.id,
+            nowMs: Date.now(),
+          }),
         )
       }
     },
@@ -273,26 +268,26 @@ export function createSidecarSyncRuntime(
       const library = findLibrary(libraryId)
       if (!library) return false
       const transition = applyTransition(
-        await MyReaderRustComponents.requestCoordinatedPull(
+        await requestCoordinatedPull({
           coordinatorId,
-          sidecarRootPath(library),
+          sidecarRootPath: sidecarRootPath(library),
           libraryId,
           reason,
-          String(Date.now()),
-          String(PULL_FRESHNESS_MS),
-        ),
+          nowMs: Date.now(),
+          freshnessMs: PULL_FRESHNESS_MS,
+        }),
       )
       return transition.schedules.length > 0
     },
     setLibraryOnline(libraryId, online) {
       if (disposed) return
       applyTransition(
-        MyReaderRustComponents.setCoordinatedSyncLibraryOnline(
+        setCoordinatedSyncLibraryOnline({
           coordinatorId,
           libraryId,
           online,
-          String(Date.now()),
-        ),
+          nowMs: Date.now(),
+        }),
       )
     },
     startSafetySweep(getActiveLibraryId) {
@@ -323,9 +318,7 @@ export function createSidecarSyncRuntime(
     },
     dispose() {
       if (disposed) return
-      applyTransition(
-        MyReaderRustComponents.disposeSyncCoordinator(coordinatorId),
-      )
+      applyTransition(disposeSyncCoordinator(coordinatorId))
       disposed = true
       for (const taskId of runningTasks.values()) {
         cancelledTasks.add(taskId)

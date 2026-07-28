@@ -1,16 +1,20 @@
 import type { Library } from "@my-reader/tools/types/library"
 
-import MyReaderRustComponents, {
-  type NativeSyncTaskProgress,
-} from "@/modules/myreader-rust-components"
 import {
   libraryRootUri,
   librarySidecarRootUri,
 } from "@/src/services/fs/library-paths"
 import { toNativeFilesystemPath } from "@/src/services/fs/path"
-import type { NativeSidecarStorageConfig } from "../resolve"
+import {
+  cancelSyncTask,
+  readSyncTaskProgress,
+  releaseSyncTask,
+  syncLibrarySidecar,
+  type SidecarStorageConfig,
+  type SyncTaskProgress,
+} from "@/src/services/core/sync"
 
-export type LibrarySidecarSyncProgress = NativeSyncTaskProgress & {
+export type LibrarySidecarSyncProgress = SyncTaskProgress & {
   libraryId: string
 }
 
@@ -32,12 +36,12 @@ export function createLibrarySidecarSyncTaskId(libraryId: string): string {
 }
 
 export function cancelLibrarySidecarSyncTask(taskId: string): boolean {
-  return MyReaderRustComponents.cancelSyncTask(taskId)
+  return cancelSyncTask(taskId)
 }
 
 function emitProgress(
   libraryId: string,
-  progress: NativeSyncTaskProgress,
+  progress: SyncTaskProgress,
   listener?: (progress: LibrarySidecarSyncProgress) => void,
 ): void {
   const event = { ...progress, libraryId }
@@ -49,7 +53,7 @@ export async function syncLibrarySidecarDatabase(
   library: Library,
   nowMs: number,
   mode: "push_only" | "full",
-  storage: NativeSidecarStorageConfig,
+  storage: SidecarStorageConfig,
   task?: {
     taskId?: string
     onProgress?: (progress: LibrarySidecarSyncProgress) => void
@@ -58,27 +62,27 @@ export async function syncLibrarySidecarDatabase(
   const taskId = task?.taskId ?? createLibrarySidecarSyncTaskId(library.id)
   let previousProgress = ""
   const publishProgress = () => {
-    const progress = MyReaderRustComponents.readSyncTaskProgress(taskId)
+    const progress = readSyncTaskProgress(taskId)
     const serialized = progress ? JSON.stringify(progress) : ""
     if (progress && serialized !== previousProgress) {
       previousProgress = serialized
       emitProgress(library.id, progress, task?.onProgress)
     }
   }
-  const sync = MyReaderRustComponents.syncLibrarySidecar(
+  const sync = syncLibrarySidecar({
     taskId,
-    toNativeFilesystemPath(librarySidecarRootUri(library)),
-    toNativeFilesystemPath(libraryRootUri(library)),
-    String(nowMs),
+    sidecarRootPath: toNativeFilesystemPath(librarySidecarRootUri(library)),
+    libraryRootPath: toNativeFilesystemPath(libraryRootUri(library)),
+    nowMs,
     mode,
-    JSON.stringify(storage),
-  )
+    storage,
+  })
   const progressTimer = setInterval(publishProgress, 100)
   try {
     return await sync
   } finally {
     clearInterval(progressTimer)
     publishProgress()
-    MyReaderRustComponents.releaseSyncTask(taskId)
+    releaseSyncTask(taskId)
   }
 }
