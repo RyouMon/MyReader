@@ -12,6 +12,35 @@ export type NativeSyncTaskProgress = {
   total: number
 }
 
+export type NativeDownloadTask = {
+  id: string
+  libraryId: string
+  bookId: string | null
+  format: string | null
+  relativePath: string
+  label: string
+  status: "queued" | "starting" | "downloading" | "done" | "error" | "cancelled"
+  progress: number
+  error: string | null
+}
+
+export type NativeEnqueuedDownloadTask = {
+  task: NativeDownloadTask
+  inserted: boolean
+}
+
+type NativeReadingSessionIntervalInput = {
+  sidecarRootPath: string
+  libraryRootPath: string
+  id: string
+  bookId: number
+  format: string
+  localDay: string
+  startedAtMs: number
+  durationSeconds: number
+  recordedAtMs: number
+}
+
 export type MyReaderRustComponentsModule = {
   migrateLibraryDatabase(databasePath: string): Promise<void>
   initializeDeviceRegistry(
@@ -119,6 +148,32 @@ export type MyReaderRustComponentsModule = {
     sidecarRootPath: string,
     relativePath: string,
   ): Promise<void>
+  findActiveDownloadTask(
+    libraryId: string,
+    relativePath: string,
+  ): NativeDownloadTask | null
+  enqueueDownloadTask(
+    id: string,
+    libraryId: string,
+    bookId: string | null,
+    format: string | null,
+    relativePath: string,
+    label: string,
+  ): NativeEnqueuedDownloadTask
+  claimDownloadTasks(): NativeDownloadTask[]
+  claimDownloadTask(taskId: string): NativeDownloadTask | null
+  markDownloadTaskStarted(taskId: string): NativeDownloadTask | null
+  reportDownloadTaskProgress(
+    taskId: string,
+    received: number,
+    total: number,
+  ): NativeDownloadTask | null
+  completeDownloadTask(taskId: string): NativeDownloadTask | null
+  failDownloadTask(taskId: string, error: string): NativeDownloadTask | null
+  cancelDownloadTask(taskId: string): boolean
+  listDownloadTasks(): NativeDownloadTask[]
+  releaseDownloadTask(taskId: string): boolean
+  clearFinishedDownloadTasks(): void
   listBookCoverThumbnailCache(
     sidecarRootPath: string,
     thumbnailVersion: string,
@@ -333,10 +388,19 @@ export type MyReaderRustComponentsModule = {
   ): Promise<NativeSyncLibrarySidecarReport>
 }
 
-let nativeModule: MyReaderRustComponentsModule | null = null
+type NativeMyReaderRustComponentsModule = Omit<
+  MyReaderRustComponentsModule,
+  "addReadingSessionInterval"
+> & {
+  addReadingSessionInterval(
+    input: NativeReadingSessionIntervalInput,
+  ): Promise<void>
+}
 
-function getNativeModule(): MyReaderRustComponentsModule {
-  nativeModule ??= requireNativeModule<MyReaderRustComponentsModule>(
+let nativeModule: NativeMyReaderRustComponentsModule | null = null
+
+function getNativeModule(): NativeMyReaderRustComponentsModule {
+  nativeModule ??= requireNativeModule<NativeMyReaderRustComponentsModule>(
     "MyReaderRustComponents",
   )
   return nativeModule
@@ -499,6 +563,49 @@ const moduleFacade: MyReaderRustComponentsModule = {
       sidecarRootPath,
       relativePath,
     )
+  },
+  findActiveDownloadTask(libraryId, relativePath) {
+    return getNativeModule().findActiveDownloadTask(libraryId, relativePath)
+  },
+  enqueueDownloadTask(id, libraryId, bookId, format, relativePath, label) {
+    return getNativeModule().enqueueDownloadTask(
+      id,
+      libraryId,
+      bookId,
+      format,
+      relativePath,
+      label,
+    )
+  },
+  claimDownloadTasks() {
+    return getNativeModule().claimDownloadTasks()
+  },
+  claimDownloadTask(taskId) {
+    return getNativeModule().claimDownloadTask(taskId)
+  },
+  markDownloadTaskStarted(taskId) {
+    return getNativeModule().markDownloadTaskStarted(taskId)
+  },
+  reportDownloadTaskProgress(taskId, received, total) {
+    return getNativeModule().reportDownloadTaskProgress(taskId, received, total)
+  },
+  completeDownloadTask(taskId) {
+    return getNativeModule().completeDownloadTask(taskId)
+  },
+  failDownloadTask(taskId, error) {
+    return getNativeModule().failDownloadTask(taskId, error)
+  },
+  cancelDownloadTask(taskId) {
+    return getNativeModule().cancelDownloadTask(taskId)
+  },
+  listDownloadTasks() {
+    return getNativeModule().listDownloadTasks()
+  },
+  releaseDownloadTask(taskId) {
+    return getNativeModule().releaseDownloadTask(taskId)
+  },
+  clearFinishedDownloadTasks() {
+    return getNativeModule().clearFinishedDownloadTasks()
   },
   listBookCoverThumbnailCache(
     sidecarRootPath,
@@ -732,7 +839,7 @@ const moduleFacade: MyReaderRustComponentsModule = {
     durationSeconds,
     recordedAtMs,
   ) {
-    return getNativeModule().addReadingSessionInterval(
+    return getNativeModule().addReadingSessionInterval({
       sidecarRootPath,
       libraryRootPath,
       id,
@@ -742,7 +849,7 @@ const moduleFacade: MyReaderRustComponentsModule = {
       startedAtMs,
       durationSeconds,
       recordedAtMs,
-    )
+    })
   },
   addReadingCompletion(
     sidecarRootPath,

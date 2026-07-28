@@ -1,5 +1,17 @@
 import ExpoModulesCore
 
+private struct ReadingSessionIntervalRecord: Record {
+  @Field var sidecarRootPath = ""
+  @Field var libraryRootPath = ""
+  @Field var id = ""
+  @Field var bookId: Int64 = 0
+  @Field var format = ""
+  @Field var localDay = ""
+  @Field var startedAtMs: Int64 = 0
+  @Field var durationSeconds: Int64 = 0
+  @Field var recordedAtMs: Int64 = 0
+}
+
 private func componentCall<T>(_ operation: () throws -> T) throws -> T {
   do {
     return try operation()
@@ -22,6 +34,20 @@ private func componentCall<T>(_ operation: () throws -> T) throws -> T {
       code: "SYNC_ERROR"
     )
   }
+}
+
+private func downloadTaskDictionary(_ task: NativeDownloadTask) -> [String: Any] {
+  [
+    "id": task.id,
+    "libraryId": task.libraryId,
+    "bookId": task.bookId ?? NSNull(),
+    "format": task.format ?? NSNull(),
+    "relativePath": task.relativePath,
+    "label": task.label,
+    "status": task.status,
+    "progress": task.progress,
+    "error": task.error ?? NSNull(),
+  ]
 }
 
 public class MyReaderRustComponentsModule: Module {
@@ -677,29 +703,18 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
-    AsyncFunction("addReadingSessionInterval") {
-      (
-        sidecarRootPath: String,
-        libraryRootPath: String,
-        id: String,
-        bookId: Int64,
-        format: String,
-        localDay: String,
-        startedAtMs: Int64,
-        durationSeconds: Int64,
-        recordedAtMs: Int64
-      ) in
+    AsyncFunction("addReadingSessionInterval") { (input: ReadingSessionIntervalRecord) in
       try componentCall {
         try addReadingSessionInterval(
-          sidecarRootPath: sidecarRootPath,
-          libraryRootPath: libraryRootPath,
-          id: id,
-          bookId: bookId,
-          format: format,
-          localDay: localDay,
-          startedAtMs: startedAtMs,
-          durationSeconds: durationSeconds,
-          recordedAtMs: recordedAtMs
+          sidecarRootPath: input.sidecarRootPath,
+          libraryRootPath: input.libraryRootPath,
+          id: input.id,
+          bookId: input.bookId,
+          format: input.format,
+          localDay: input.localDay,
+          startedAtMs: input.startedAtMs,
+          durationSeconds: input.durationSeconds,
+          recordedAtMs: input.recordedAtMs
         )
       }
     }
@@ -744,6 +759,90 @@ public class MyReaderRustComponentsModule: Module {
           endDay: endDay
         )
       }
+    }
+
+    Function("findActiveDownloadTask") {
+      (libraryId: String, relativePath: String) -> [String: Any]? in
+      findActiveDownloadTask(
+        libraryId: libraryId,
+        relativePath: relativePath
+      ).map(downloadTaskDictionary)
+    }
+
+    Function("enqueueDownloadTask") {
+      (
+        id: String,
+        libraryId: String,
+        bookId: String?,
+        format: String?,
+        relativePath: String,
+        label: String
+      ) -> [String: Any] in
+      let result = try componentCall {
+        try enqueueDownloadTask(
+          id: id,
+          libraryId: libraryId,
+          bookId: bookId,
+          format: format,
+          relativePath: relativePath,
+          label: label
+        )
+      }
+      return [
+        "task": downloadTaskDictionary(result.task),
+        "inserted": result.inserted,
+      ]
+    }
+
+    Function("claimDownloadTasks") {
+      claimDownloadTasks().map(downloadTaskDictionary)
+    }
+
+    Function("claimDownloadTask") {
+      (taskId: String) -> [String: Any]? in
+      claimDownloadTask(taskId: taskId).map(downloadTaskDictionary)
+    }
+
+    Function("markDownloadTaskStarted") {
+      (taskId: String) -> [String: Any]? in
+      markDownloadTaskStarted(taskId: taskId).map(downloadTaskDictionary)
+    }
+
+    Function("reportDownloadTaskProgress") {
+      (taskId: String, received: Int64, total: Int64) -> [String: Any]? in
+      reportDownloadTaskProgress(
+        taskId: taskId,
+        received: UInt64(clamping: received),
+        total: UInt64(clamping: total)
+      ).map(downloadTaskDictionary)
+    }
+
+    Function("completeDownloadTask") {
+      (taskId: String) -> [String: Any]? in
+      completeDownloadTask(taskId: taskId).map(downloadTaskDictionary)
+    }
+
+    Function("failDownloadTask") {
+      (taskId: String, error: String) -> [String: Any]? in
+      failDownloadTask(taskId: taskId, error: error).map(downloadTaskDictionary)
+    }
+
+    Function("cancelDownloadTask") {
+      (taskId: String) -> Bool in
+      cancelDownloadTask(taskId: taskId)
+    }
+
+    Function("listDownloadTasks") {
+      listDownloadTasks().map(downloadTaskDictionary)
+    }
+
+    Function("releaseDownloadTask") {
+      (taskId: String) -> Bool in
+      releaseDownloadTask(taskId: taskId)
+    }
+
+    Function("clearFinishedDownloadTasks") {
+      clearFinishedDownloadTasks()
     }
 
     Function("syncContractVersion") {

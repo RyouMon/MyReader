@@ -1,14 +1,22 @@
 package com.myreader.rustcomponents
 
 import com.myreader.rustcomponents.uniffi.RustComponentsException
+import com.myreader.rustcomponents.uniffi.NativeDownloadTask
+import com.myreader.rustcomponents.uniffi.addReadingCompletion
+import com.myreader.rustcomponents.uniffi.addReadingSessionInterval
 import com.myreader.rustcomponents.uniffi.beginCoordinatedSync
 import com.myreader.rustcomponents.uniffi.addLocalLibrary
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
 import com.myreader.rustcomponents.uniffi.addReaderBookmark
 import com.myreader.rustcomponents.uniffi.addReaderAnnotation
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
+import com.myreader.rustcomponents.uniffi.cancelDownloadTask
+import com.myreader.rustcomponents.uniffi.claimDownloadTask
+import com.myreader.rustcomponents.uniffi.claimDownloadTasks
 import com.myreader.rustcomponents.uniffi.clearBookCoverThumbnailCache
+import com.myreader.rustcomponents.uniffi.clearFinishedDownloadTasks
 import com.myreader.rustcomponents.uniffi.completeCoordinatedSync
+import com.myreader.rustcomponents.uniffi.completeDownloadTask
 import com.myreader.rustcomponents.uniffi.countCalibreBooks
 import com.myreader.rustcomponents.uniffi.createSyncCoordinator
 import com.myreader.rustcomponents.uniffi.deleteBookCoverThumbnailCache
@@ -16,10 +24,13 @@ import com.myreader.rustcomponents.uniffi.deleteLibraryFileState
 import com.myreader.rustcomponents.uniffi.disposeSyncCoordinator
 import com.myreader.rustcomponents.uniffi.effectiveCoordinatedSyncExecution
 import com.myreader.rustcomponents.uniffi.failCoordinatedSync
+import com.myreader.rustcomponents.uniffi.failDownloadTask
+import com.myreader.rustcomponents.uniffi.findActiveDownloadTask
 import com.myreader.rustcomponents.uniffi.flushCoordinatedSync
 import com.myreader.rustcomponents.uniffi.getCalibreBookDetail
 import com.myreader.rustcomponents.uniffi.getCalibreLibraryUuid
 import com.myreader.rustcomponents.uniffi.getLibraryFileState
+import com.myreader.rustcomponents.uniffi.getReadingStatistics
 import com.myreader.rustcomponents.uniffi.finalizeDownloadedFile
 import com.myreader.rustcomponents.uniffi.getReadingPosition
 import com.myreader.rustcomponents.uniffi.initializeDeviceRegistry
@@ -32,8 +43,10 @@ import com.myreader.rustcomponents.uniffi.listCalibreSeriesBooks
 import com.myreader.rustcomponents.uniffi.listBookCoverThumbnailCache
 import com.myreader.rustcomponents.uniffi.listBookReadingFormats
 import com.myreader.rustcomponents.uniffi.listFavoriteBookIds
+import com.myreader.rustcomponents.uniffi.listDownloadTasks
 import com.myreader.rustcomponents.uniffi.listLibraryFileStates
 import com.myreader.rustcomponents.uniffi.markLibraryFileRemoteOnly
+import com.myreader.rustcomponents.uniffi.markDownloadTaskStarted
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.listReadingPositionCandidates
 import com.myreader.rustcomponents.uniffi.listReadingPositions
@@ -51,6 +64,8 @@ import com.myreader.rustcomponents.uniffi.readSyncTaskProgress
 import com.myreader.rustcomponents.uniffi.recoverCoordinatedSync
 import com.myreader.rustcomponents.uniffi.refreshRemoteLibrary
 import com.myreader.rustcomponents.uniffi.releaseSyncTask
+import com.myreader.rustcomponents.uniffi.releaseDownloadTask
+import com.myreader.rustcomponents.uniffi.reportDownloadTaskProgress
 import com.myreader.rustcomponents.uniffi.requestCoordinatedPull
 import com.myreader.rustcomponents.uniffi.requestCoordinatedSync
 import com.myreader.rustcomponents.uniffi.setCoordinatedSyncLibraryOnline
@@ -68,11 +83,41 @@ import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateCalibreLibrary
 import com.myreader.rustcomponents.uniffi.upsertLibraryFileState
 import com.myreader.rustcomponents.uniffi.updateReaderAnnotation
+import com.myreader.rustcomponents.uniffi.enqueueDownloadTask
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.modules.ModuleDefinitionBuilder
+import expo.modules.kotlin.records.Field
+import expo.modules.kotlin.records.Record
+import expo.modules.kotlin.types.OptimizedRecord
+
+@OptimizedRecord
+data class ReadingSessionIntervalRecord(
+  @Field val sidecarRootPath: String = "",
+  @Field val libraryRootPath: String = "",
+  @Field val id: String = "",
+  @Field val bookId: Long = 0,
+  @Field val format: String = "",
+  @Field val localDay: String = "",
+  @Field val startedAtMs: Long = 0,
+  @Field val durationSeconds: Long = 0,
+  @Field val recordedAtMs: Long = 0,
+) : Record
 
 class MyReaderRustComponentsModule : Module() {
+  private fun downloadTaskMap(task: NativeDownloadTask): Map<String, Any?> = mapOf(
+    "id" to task.id,
+    "libraryId" to task.libraryId,
+    "bookId" to task.bookId,
+    "format" to task.format,
+    "relativePath" to task.relativePath,
+    "label" to task.label,
+    "status" to task.status,
+    "progress" to task.progress,
+    "error" to task.error,
+  )
+
   private fun <T> componentCall(operation: () -> T): T = try {
     operation()
   } catch (error: RustComponentsException) {
@@ -86,13 +131,26 @@ class MyReaderRustComponentsModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("MyReaderRustComponents")
+    defineDatabaseFunctions()
+    defineRegistryFunctions()
+    defineCatalogFunctions()
+    defineFileFunctions()
+    defineFavoriteFunctions()
+    defineReadingPositionFunctions()
+    defineAnnotationFunctions()
+    defineDownloadFunctions()
+    defineSyncFunctions()
+  }
 
+  private fun ModuleDefinitionBuilder.defineDatabaseFunctions() {
     AsyncFunction("migrateLibraryDatabase") { databasePath: String ->
       componentCall {
         migrateLibraryDatabase(databasePath)
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineRegistryFunctions() {
     AsyncFunction("initializeDeviceRegistry") {
         registryPath: String,
         legacyRegistryJson: String? ->
@@ -217,7 +275,9 @@ class MyReaderRustComponentsModule : Module() {
         )
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineCatalogFunctions() {
     Function("validateCalibreLibrary") { libraryRootPath: String ->
       validateCalibreLibrary(libraryRootPath)
     }
@@ -326,7 +386,9 @@ class MyReaderRustComponentsModule : Module() {
         setBookReadingFormat(sidecarRootPath, libraryRootPath, bookId, format)
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineFileFunctions() {
     AsyncFunction("getLibraryFileState") {
         sidecarRootPath: String,
         path: String ->
@@ -420,7 +482,9 @@ class MyReaderRustComponentsModule : Module() {
         clearBookCoverThumbnailCache(sidecarRootPath)
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineFavoriteFunctions() {
     AsyncFunction("listFavoriteBookIds") { sidecarRootPath: String ->
       componentCall {
         listFavoriteBookIds(sidecarRootPath)
@@ -443,7 +507,9 @@ class MyReaderRustComponentsModule : Module() {
         )
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineReadingPositionFunctions() {
     AsyncFunction("getReadingPosition") {
         sidecarRootPath: String,
         bookId: Long,
@@ -515,7 +581,9 @@ class MyReaderRustComponentsModule : Module() {
         )
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineAnnotationFunctions() {
     AsyncFunction("listReaderBookmarks") {
         sidecarRootPath: String,
         bookId: Long,
@@ -639,27 +707,18 @@ class MyReaderRustComponentsModule : Module() {
       }
     }
 
-    AsyncFunction("addReadingSessionInterval") {
-        sidecarRootPath: String,
-        libraryRootPath: String,
-        id: String,
-        bookId: Long,
-        format: String,
-        localDay: String,
-        startedAtMs: Long,
-        durationSeconds: Long,
-        recordedAtMs: Long ->
+    AsyncFunction("addReadingSessionInterval") { input: ReadingSessionIntervalRecord ->
       componentCall {
         addReadingSessionInterval(
-          sidecarRootPath,
-          libraryRootPath,
-          id,
-          bookId,
-          format,
-          localDay,
-          startedAtMs,
-          durationSeconds,
-          recordedAtMs,
+          input.sidecarRootPath,
+          input.libraryRootPath,
+          input.id,
+          input.bookId,
+          input.format,
+          input.localDay,
+          input.startedAtMs,
+          input.durationSeconds,
+          input.recordedAtMs,
         )
       }
     }
@@ -696,7 +755,87 @@ class MyReaderRustComponentsModule : Module() {
         getReadingStatistics(sidecarRootPath, libraryRootPath, startDay, endDay)
       }
     }
+  }
 
+  private fun ModuleDefinitionBuilder.defineDownloadFunctions() {
+    Function("findActiveDownloadTask") {
+        libraryId: String,
+        relativePath: String ->
+      findActiveDownloadTask(libraryId, relativePath)?.let(::downloadTaskMap)
+    }
+
+    Function("enqueueDownloadTask") {
+        id: String,
+        libraryId: String,
+        bookId: String?,
+        format: String?,
+        relativePath: String,
+        label: String ->
+      componentCall {
+        val result = enqueueDownloadTask(
+          id,
+          libraryId,
+          bookId,
+          format,
+          relativePath,
+          label,
+        )
+        mapOf(
+          "task" to downloadTaskMap(result.task),
+          "inserted" to result.inserted,
+        )
+      }
+    }
+
+    Function("claimDownloadTasks") {
+      claimDownloadTasks().map(::downloadTaskMap)
+    }
+
+    Function("claimDownloadTask") { taskId: String ->
+      claimDownloadTask(taskId)?.let(::downloadTaskMap)
+    }
+
+    Function("markDownloadTaskStarted") { taskId: String ->
+      markDownloadTaskStarted(taskId)?.let(::downloadTaskMap)
+    }
+
+    Function("reportDownloadTaskProgress") {
+        taskId: String,
+        received: Long,
+        total: Long ->
+      reportDownloadTaskProgress(
+        taskId,
+        received.coerceAtLeast(0).toULong(),
+        total.coerceAtLeast(0).toULong(),
+      )?.let(::downloadTaskMap)
+    }
+
+    Function("completeDownloadTask") { taskId: String ->
+      completeDownloadTask(taskId)?.let(::downloadTaskMap)
+    }
+
+    Function("failDownloadTask") { taskId: String, error: String ->
+      failDownloadTask(taskId, error)?.let(::downloadTaskMap)
+    }
+
+    Function("cancelDownloadTask") { taskId: String ->
+      cancelDownloadTask(taskId)
+    }
+
+    Function("listDownloadTasks") {
+      listDownloadTasks().map(::downloadTaskMap)
+    }
+
+    Function("releaseDownloadTask") { taskId: String ->
+      releaseDownloadTask(taskId)
+    }
+
+    Function("clearFinishedDownloadTasks") {
+      clearFinishedDownloadTasks()
+    }
+  }
+
+  private fun ModuleDefinitionBuilder.defineSyncFunctions() {
     Function("syncContractVersion") {
       syncContractVersion().toInt()
     }

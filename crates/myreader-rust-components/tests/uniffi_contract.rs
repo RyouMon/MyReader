@@ -1,8 +1,10 @@
 use myreader_rust_components::{
-    begin_coordinated_sync, cancel_sync_task, count_calibre_books, create_sync_coordinator,
-    dispose_sync_coordinator, fail_coordinated_sync, initialize_device_registry,
-    list_book_cover_thumbnail_cache, migrate_library_database, read_sync_task_progress,
-    register_device_library, release_sync_task, request_coordinated_sync, sync_contract_version,
+    begin_coordinated_sync, cancel_download_task, cancel_sync_task, claim_download_task,
+    count_calibre_books, create_sync_coordinator, dispose_sync_coordinator, enqueue_download_task,
+    fail_coordinated_sync, initialize_device_registry, list_book_cover_thumbnail_cache,
+    list_download_tasks, migrate_library_database, read_sync_task_progress,
+    register_device_library, release_download_task, release_sync_task,
+    report_download_task_progress, request_coordinated_sync, sync_contract_version,
     sync_library_sidecar, upsert_book_cover_thumbnail_cache,
 };
 use rusqlite::Connection;
@@ -280,4 +282,38 @@ fn should_preserve_failure_stage_when_native_sync_returns_original_cause() {
         "preparing_failed"
     );
     assert!(release_sync_task("failing-task".to_owned()));
+}
+
+#[test]
+fn should_apply_shared_download_state_when_native_bridge_reports_progress() {
+    let task_id = "native-download-contract".to_owned();
+    let enqueued = enqueue_download_task(
+        task_id.clone(),
+        "library-download-contract".to_owned(),
+        Some("42".to_owned()),
+        Some("epub".to_owned()),
+        "Author/Book/book.epub".to_owned(),
+        "Book".to_owned(),
+    )
+    .unwrap();
+
+    assert!(enqueued.inserted);
+    assert_eq!(enqueued.task.status, "queued");
+    assert_eq!(
+        claim_download_task(task_id.clone()).unwrap().status,
+        "starting"
+    );
+    let progress = report_download_task_progress(task_id.clone(), 25, 100).unwrap();
+    assert_eq!(progress.status, "downloading");
+    assert_eq!(progress.progress, 0.25);
+    assert!(cancel_download_task(task_id.clone()));
+    assert_eq!(
+        list_download_tasks()
+            .into_iter()
+            .find(|task| task.id == task_id)
+            .unwrap()
+            .status,
+        "cancelled"
+    );
+    assert!(release_download_task(task_id));
 }

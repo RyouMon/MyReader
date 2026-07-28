@@ -1,5 +1,6 @@
 pub(crate) mod catalog;
 mod content;
+mod download;
 mod library;
 mod reading;
 mod registry;
@@ -13,6 +14,7 @@ pub use content::{
     BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,
     FileStateUpdate,
 };
+pub use download::{DownloadTask, DownloadTaskRequest, DownloadTaskStatus, EnqueuedDownloadTask};
 pub use library::{LocalLibraryRequest, RemoteLibraryRequest};
 pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,

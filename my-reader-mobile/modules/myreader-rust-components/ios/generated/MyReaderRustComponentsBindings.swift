@@ -527,6 +527,202 @@ fileprivate struct FfiConverterString: FfiConverter {
 }
 
 
+public struct NativeDownloadTask {
+    public var id: String
+    public var libraryId: String
+    public var bookId: String?
+    public var format: String?
+    public var relativePath: String
+    public var label: String
+    public var status: String
+    public var progress: Double
+    public var error: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, libraryId: String, bookId: String?, format: String?, relativePath: String, label: String, status: String, progress: Double, error: String?) {
+        self.id = id
+        self.libraryId = libraryId
+        self.bookId = bookId
+        self.format = format
+        self.relativePath = relativePath
+        self.label = label
+        self.status = status
+        self.progress = progress
+        self.error = error
+    }
+}
+
+#if compiler(>=6)
+extension NativeDownloadTask: Sendable {}
+#endif
+
+
+extension NativeDownloadTask: Equatable, Hashable {
+    public static func ==(lhs: NativeDownloadTask, rhs: NativeDownloadTask) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.libraryId != rhs.libraryId {
+            return false
+        }
+        if lhs.bookId != rhs.bookId {
+            return false
+        }
+        if lhs.format != rhs.format {
+            return false
+        }
+        if lhs.relativePath != rhs.relativePath {
+            return false
+        }
+        if lhs.label != rhs.label {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        if lhs.progress != rhs.progress {
+            return false
+        }
+        if lhs.error != rhs.error {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(libraryId)
+        hasher.combine(bookId)
+        hasher.combine(format)
+        hasher.combine(relativePath)
+        hasher.combine(label)
+        hasher.combine(status)
+        hasher.combine(progress)
+        hasher.combine(error)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNativeDownloadTask: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeDownloadTask {
+        return
+            try NativeDownloadTask(
+                id: FfiConverterString.read(from: &buf),
+                libraryId: FfiConverterString.read(from: &buf),
+                bookId: FfiConverterOptionString.read(from: &buf),
+                format: FfiConverterOptionString.read(from: &buf),
+                relativePath: FfiConverterString.read(from: &buf),
+                label: FfiConverterString.read(from: &buf),
+                status: FfiConverterString.read(from: &buf),
+                progress: FfiConverterDouble.read(from: &buf),
+                error: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NativeDownloadTask, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.libraryId, into: &buf)
+        FfiConverterOptionString.write(value.bookId, into: &buf)
+        FfiConverterOptionString.write(value.format, into: &buf)
+        FfiConverterString.write(value.relativePath, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterDouble.write(value.progress, into: &buf)
+        FfiConverterOptionString.write(value.error, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeDownloadTask_lift(_ buf: RustBuffer) throws -> NativeDownloadTask {
+    return try FfiConverterTypeNativeDownloadTask.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeDownloadTask_lower(_ value: NativeDownloadTask) -> RustBuffer {
+    return FfiConverterTypeNativeDownloadTask.lower(value)
+}
+
+
+public struct NativeEnqueuedDownloadTask {
+    public var task: NativeDownloadTask
+    public var inserted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(task: NativeDownloadTask, inserted: Bool) {
+        self.task = task
+        self.inserted = inserted
+    }
+}
+
+#if compiler(>=6)
+extension NativeEnqueuedDownloadTask: Sendable {}
+#endif
+
+
+extension NativeEnqueuedDownloadTask: Equatable, Hashable {
+    public static func ==(lhs: NativeEnqueuedDownloadTask, rhs: NativeEnqueuedDownloadTask) -> Bool {
+        if lhs.task != rhs.task {
+            return false
+        }
+        if lhs.inserted != rhs.inserted {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(task)
+        hasher.combine(inserted)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNativeEnqueuedDownloadTask: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeEnqueuedDownloadTask {
+        return
+            try NativeEnqueuedDownloadTask(
+                task: FfiConverterTypeNativeDownloadTask.read(from: &buf),
+                inserted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NativeEnqueuedDownloadTask, into buf: inout [UInt8]) {
+        FfiConverterTypeNativeDownloadTask.write(value.task, into: &buf)
+        FfiConverterBool.write(value.inserted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeEnqueuedDownloadTask_lift(_ buf: RustBuffer) throws -> NativeEnqueuedDownloadTask {
+    return try FfiConverterTypeNativeEnqueuedDownloadTask.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNativeEnqueuedDownloadTask_lower(_ value: NativeEnqueuedDownloadTask) -> RustBuffer {
+    return FfiConverterTypeNativeEnqueuedDownloadTask.lower(value)
+}
+
+
 public struct SyncLibrarySidecarReport {
     public var pushed: UInt32
     public var pulled: UInt32
@@ -843,6 +1039,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeNativeDownloadTask: FfiConverterRustBuffer {
+    typealias SwiftType = NativeDownloadTask?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNativeDownloadTask.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNativeDownloadTask.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffer {
     typealias SwiftType = SyncTaskProgress?
 
@@ -861,6 +1081,31 @@ fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffe
         case 1: return try FfiConverterTypeSyncTaskProgress.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeNativeDownloadTask: FfiConverterRustBuffer {
+    typealias SwiftType = [NativeDownloadTask]
+
+    public static func write(_ value: [NativeDownloadTask], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNativeDownloadTask.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeDownloadTask] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NativeDownloadTask]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNativeDownloadTask.read(from: &buf))
+        }
+        return seq
     }
 }
 public func addLocalLibrary(registryPath: String, requestJson: String)throws  -> String  {
@@ -944,10 +1189,30 @@ public func beginCoordinatedSync(coordinatorId: String, libraryId: String, gener
     )
 })
 }
+public func cancelDownloadTask(taskId: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_cancel_download_task(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
 public func cancelSyncTask(taskId: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_cancel_sync_task(
         FfiConverterString.lower(taskId),$0
+    )
+})
+}
+public func claimDownloadTask(taskId: String) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_claim_download_task(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
+public func claimDownloadTasks() -> [NativeDownloadTask]  {
+    return try!  FfiConverterSequenceTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_claim_download_tasks($0
     )
 })
 }
@@ -957,12 +1222,24 @@ public func clearBookCoverThumbnailCache(sidecarRootPath: String)throws   {try r
     )
 }
 }
+public func clearFinishedDownloadTasks()  {try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_clear_finished_download_tasks($0
+    )
+}
+}
 public func completeCoordinatedSync(coordinatorId: String, libraryId: String, nowMs: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_complete_coordinated_sync(
         FfiConverterString.lower(coordinatorId),
         FfiConverterString.lower(libraryId),
         FfiConverterString.lower(nowMs),$0
+    )
+})
+}
+public func completeDownloadTask(taskId: String) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_complete_download_task(
+        FfiConverterString.lower(taskId),$0
     )
 })
 }
@@ -1015,6 +1292,18 @@ public func effectiveCoordinatedSyncExecution(coordinatorId: String, sidecarRoot
     )
 })
 }
+public func enqueueDownloadTask(id: String, libraryId: String, bookId: String?, format: String?, relativePath: String, label: String)throws  -> NativeEnqueuedDownloadTask  {
+    return try  FfiConverterTypeNativeEnqueuedDownloadTask_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_enqueue_download_task(
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(libraryId),
+        FfiConverterOptionString.lower(bookId),
+        FfiConverterOptionString.lower(format),
+        FfiConverterString.lower(relativePath),
+        FfiConverterString.lower(label),$0
+    )
+})
+}
 public func failCoordinatedSync(coordinatorId: String, sidecarRootPath: String, executionJson: String, failureKind: String, reason: String, nowMs: String, randomFraction: Double)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_fail_coordinated_sync(
@@ -1028,12 +1317,28 @@ public func failCoordinatedSync(coordinatorId: String, sidecarRootPath: String, 
     )
 })
 }
+public func failDownloadTask(taskId: String, error: String) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_fail_download_task(
+        FfiConverterString.lower(taskId),
+        FfiConverterString.lower(error),$0
+    )
+})
+}
 public func finalizeDownloadedFile(sidecarRootPath: String, relativePath: String, localPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_finalize_downloaded_file(
         FfiConverterString.lower(sidecarRootPath),
         FfiConverterString.lower(relativePath),
         FfiConverterString.lower(localPath),$0
+    )
+})
+}
+public func findActiveDownloadTask(libraryId: String, relativePath: String) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_find_active_download_task(
+        FfiConverterString.lower(libraryId),
+        FfiConverterString.lower(relativePath),$0
     )
 })
 }
@@ -1168,6 +1473,12 @@ public func listCalibreSeriesBooks(libraryRootPath: String, seriesName: String, 
     )
 })
 }
+public func listDownloadTasks() -> [NativeDownloadTask]  {
+    return try!  FfiConverterSequenceTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_list_download_tasks($0
+    )
+})
+}
 public func listFavoriteBookIds(sidecarRootPath: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
@@ -1228,6 +1539,13 @@ public func listRemoteDirectories(registryPath: String, dataSourceId: String, pa
     )
 })
 }
+public func markDownloadTaskStarted(taskId: String) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_mark_download_task_started(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
 public func markLibraryFileRemoteOnly(sidecarRootPath: String, relativePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(
         FfiConverterString.lower(sidecarRootPath),
@@ -1283,6 +1601,13 @@ public func registerDeviceLibrary(registryPath: String, libraryJson: String)thro
     )
 })
 }
+public func releaseDownloadTask(taskId: String) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_release_download_task(
+        FfiConverterString.lower(taskId),$0
+    )
+})
+}
 public func releaseSyncTask(taskId: String) -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_release_sync_task(
@@ -1333,6 +1658,15 @@ public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throw
     uniffi_myreader_rust_components_fn_func_replace_device_library(
         FfiConverterString.lower(registryPath),
         FfiConverterString.lower(libraryJson),$0
+    )
+})
+}
+public func reportDownloadTaskProgress(taskId: String, received: UInt64, total: UInt64) -> NativeDownloadTask?  {
+    return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
+    uniffi_myreader_rust_components_fn_func_report_download_task_progress(
+        FfiConverterString.lower(taskId),
+        FfiConverterUInt64.lower(received),
+        FfiConverterUInt64.lower(total),$0
     )
 })
 }
@@ -1533,13 +1867,28 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync() != 19096) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_cancel_download_task() != 32750) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_cancel_sync_task() != 41701) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_claim_download_task() != 57037) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_claim_download_tasks() != 41533) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_clear_finished_download_tasks() != 18981) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_complete_coordinated_sync() != 1632) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_complete_download_task() != 25084) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_count_calibre_books() != 56896) {
@@ -1560,10 +1909,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_effective_coordinated_sync_execution() != 40963) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_enqueue_download_task() != 49108) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_fail_coordinated_sync() != 20944) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_fail_download_task() != 13968) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file() != 9231) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_find_active_download_task() != 57796) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync() != 58831) {
@@ -1611,6 +1969,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_calibre_series_books() != 63405) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_list_download_tasks() != 23651) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 64697) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1630,6 +1991,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_list_remote_directories() != 26595) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_mark_download_task_started() != 61109) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only() != 5940) {
@@ -1653,6 +2017,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_register_device_library() != 18070) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_release_download_task() != 38401) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1669,6 +2036,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_report_download_task_progress() != 57547) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_request_coordinated_pull() != 21845) {

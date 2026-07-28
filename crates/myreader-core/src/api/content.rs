@@ -1,11 +1,109 @@
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use crate::models::{
-    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadedFile, FileState,
-    FileStateUpdate,
+    BookCoverThumbnailCache, BookCoverThumbnailCachePatch, DownloadTask, DownloadTaskRequest,
+    DownloadedFile, EnqueuedDownloadTask, FileState, FileStateUpdate,
 };
 use crate::{services, CoreError};
+
+#[derive(Clone)]
+pub struct DownloadCancellation {
+    inner: Arc<AtomicBool>,
+}
+
+impl DownloadCancellation {
+    pub fn is_cancelled(&self) -> bool {
+        self.inner.load(Ordering::Acquire)
+    }
+}
+
+pub struct DownloadCoordinator {
+    inner: services::download::DownloadCoordinator,
+}
+
+impl DownloadCoordinator {
+    pub fn new(max_concurrent: usize) -> Result<Self, CoreError> {
+        Ok(Self {
+            inner: services::download::DownloadCoordinator::new(max_concurrent)?,
+        })
+    }
+
+    pub fn enqueue(&self, request: DownloadTaskRequest) -> Result<EnqueuedDownloadTask, CoreError> {
+        self.inner.enqueue(request)
+    }
+
+    pub fn claim_ready(&self) -> Vec<DownloadTask> {
+        self.inner.claim_ready()
+    }
+
+    pub fn claim(&self, task_id: &str) -> Option<DownloadTask> {
+        self.inner.claim(task_id)
+    }
+
+    pub fn mark_started(&self, task_id: &str) -> Option<DownloadTask> {
+        self.inner.mark_started(task_id)
+    }
+
+    pub fn report_progress(
+        &self,
+        task_id: &str,
+        received: u64,
+        total: u64,
+    ) -> Option<DownloadTask> {
+        self.inner.report_progress(task_id, received, total)
+    }
+
+    pub fn complete(&self, task_id: &str) -> Option<DownloadTask> {
+        self.inner.complete(task_id)
+    }
+
+    pub fn fail(&self, task_id: &str, error: String) -> Option<DownloadTask> {
+        self.inner.fail(task_id, error)
+    }
+
+    pub fn cancel(&self, task_id: &str) -> bool {
+        self.inner.cancel(task_id)
+    }
+
+    pub fn cancel_by_key(&self, library_id: &str, relative_path: &str) -> bool {
+        self.inner.cancel_by_key(library_id, relative_path)
+    }
+
+    pub fn is_cancelled(&self, task_id: &str) -> bool {
+        self.inner.is_cancelled(task_id)
+    }
+
+    pub fn cancellation_token(&self, task_id: &str) -> Option<DownloadCancellation> {
+        self.inner
+            .cancellation_token(task_id)
+            .map(|inner| DownloadCancellation { inner })
+    }
+
+    pub fn is_active(&self, library_id: &str, relative_path: &str) -> bool {
+        self.inner.is_active(library_id, relative_path)
+    }
+
+    pub fn find_active(&self, library_id: &str, relative_path: &str) -> Option<DownloadTask> {
+        self.inner.find_active(library_id, relative_path)
+    }
+
+    pub fn tasks(&self) -> Vec<DownloadTask> {
+        self.inner.tasks()
+    }
+
+    pub fn release(&self, task_id: &str) -> bool {
+        self.inner.release(task_id)
+    }
+
+    pub fn clear_finished(&self) {
+        self.inner.clear_finished();
+    }
+}
 
 pub async fn list_reading_formats(
     sidecar_root: &Path,

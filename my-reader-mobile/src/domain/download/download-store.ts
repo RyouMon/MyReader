@@ -8,6 +8,21 @@ import {
   recoverNativeDownloads,
   type RecoveredNativeDownload,
 } from "../../services/download/native"
+import {
+  cancelDownloadTask,
+  claimDownloadTask,
+  claimDownloadTasks,
+  clearFinishedDownloadTasks,
+  completeDownloadTask,
+  enqueueDownloadTask,
+  failDownloadTask,
+  findActiveDownloadTask,
+  listDownloadTasks,
+  markDownloadTaskStarted,
+  releaseDownloadTask,
+  reportDownloadTaskProgress,
+  type CoreDownloadTask,
+} from "../../services/core/downloads"
 import { useAppStore } from "../../store/app-store"
 import { notifyDownloadState } from "../notifications/download-notifications"
 import { checkConnectivity } from "../sync/connectivity"
@@ -82,7 +97,6 @@ type DownloadTaskMetadata = {
   label: string
 }
 
-const MAX_CONCURRENT = 2
 const DOWNLOAD_PROGRESS_MIN_INTERVAL_MS = 500
 const DOWNLOAD_PROGRESS_MIN_DELTA = 0.01
 
@@ -104,7 +118,6 @@ const lastProgressNotifications = new Map<
 const listeners = new Set<Listener>()
 
 type DownloadTaskEvent =
-  | { type: "start" }
   | { type: "begin" }
   | { type: "progress"; received: number; total: number; force?: boolean }
   | { type: "done" }
@@ -116,51 +129,71 @@ function setState(next: StoreState): void {
   for (const fn of listeners) fn()
 }
 
-function patchTask(id: string, patch: Partial<DownloadTask>): void {
-  setState({
-    tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-  })
+function applyCoreTask(task: CoreDownloadTask): DownloadTask {
+  const projected: DownloadTask = {
+    id: task.id,
+    libraryId: task.libraryId,
+    bookId: task.bookId ?? undefined,
+    format: task.format ?? undefined,
+    relativePath: task.relativePath,
+    label: task.label,
+    status: task.status,
+    progress: task.progress,
+    error: task.error,
+  }
+  const index = state.tasks.findIndex((item) => item.id === task.id)
+  setState(
+    index < 0
+      ? { tasks: [...state.tasks, projected] }
+      : {
+          tasks: state.tasks.map((item, itemIndex) =>
+            itemIndex === index ? projected : item,
+          ),
+        },
+  )
+  return projected
 }
 
 /**
- * Applies every queue state transition through one reducer-like entry point.
+ * Forwards native task events to the Core state machine and projects its result.
  */
 function transitionTask(taskId: string, event: DownloadTaskEvent): void {
   const task = state.tasks.find((item) => item.id === taskId)
   if (!task) return
 
   switch (event.type) {
-    case "start":
-      if (task.status === "queued") {
-        patchTask(taskId, { status: "starting", progress: 0, error: null })
-      }
+    case "begin": {
+      const updated = markDownloadTaskStarted(taskId)
+      if (updated) applyCoreTask(updated)
       return
-    case "begin":
-      if (task.status === "starting" || task.status === "downloading") {
-        patchTask(taskId, { status: "downloading" })
-      }
-      return
+    }
     case "progress":
       patchTaskProgress(taskId, event.received, event.total, event.force)
       return
-    case "done":
-      if (task.status !== "cancelled") {
-        patchTaskProgress(taskId, 1, 1, true)
-        patchTask(taskId, { status: "done", progress: 1, error: null })
-        notifyTaskDoneOnce(task)
+    case "done": {
+      const updated = completeDownloadTask(taskId)
+      if (updated) {
+        const projected = applyCoreTask(updated)
+        if (projected.status === "done") notifyTaskDoneOnce(projected)
       }
       return
-    case "error":
-      if (task.status !== "cancelled") {
-        patchTask(taskId, { status: "error", error: event.error })
-        notifyTaskErrorOnce(task, event.error)
+    }
+    case "error": {
+      const updated = failDownloadTask(taskId, event.error)
+      if (updated) {
+        const projected = applyCoreTask(updated)
+        if (projected.status === "error") {
+          notifyTaskErrorOnce(projected, event.error)
+        }
       }
       return
-    case "cancel":
-      if (isActiveStatus(task.status)) {
-        patchTask(taskId, { status: "cancelled", error: null })
-      }
+    }
+    case "cancel": {
+      cancelDownloadTask(taskId)
+      const updated = listDownloadTasks().find((item) => item.id === taskId)
+      if (updated) applyCoreTask(updated)
       return
+    }
   }
 }
 
@@ -270,14 +303,6 @@ function readTaskMetadata(
 }
 
 /**
- * Converts byte progress into the normalized value expected by existing UI.
- */
-function progressFromBytes(downloaded: number, total: number): number {
-  if (total <= 0) return 0
-  return Math.max(0, Math.min(downloaded / total, 1))
-}
-
-/**
  * Coalesces native progress callbacks before notifying React subscribers.
  */
 function patchTaskProgress(
@@ -286,9 +311,11 @@ function patchTaskProgress(
   total: number,
   force = false,
 ): void {
+  const coreTask = reportDownloadTaskProgress(taskId, received, total)
+  if (!coreTask) return
   const previous = lastProgressNotifications.get(taskId)
   const effectiveTotal = total > 0 ? total : (previous?.total ?? 0)
-  const nextProgress = progressFromBytes(received, effectiveTotal)
+  const nextProgress = coreTask.progress
   const progress =
     previous &&
     received >= previous.received &&
@@ -311,41 +338,29 @@ function patchTaskProgress(
     timestamp: now,
     total: effectiveTotal,
   })
-  patchTask(taskId, { progress })
+  applyCoreTask({ ...coreTask, progress })
 }
 
 export async function enqueue(opts: EnqueueOptions): Promise<string> {
-  const alreadyActive = state.tasks.some(
-    (t) =>
-      t.libraryId === opts.libraryId &&
-      t.relativePath === opts.relativePath &&
-      isActiveStatus(t.status),
-  )
-  if (alreadyActive) {
-    const existingId = state.tasks.find(
-      (t) =>
-        t.libraryId === opts.libraryId &&
-        t.relativePath === opts.relativePath &&
-        isActiveStatus(t.status),
-    )!.id
-    return existingId
+  const existing = findActiveDownloadTask(opts.libraryId, opts.relativePath)
+  if (existing) {
+    applyCoreTask(existing)
+    return existing.id
   }
 
   await checkLibraryConnectivity(opts.libraryId)
 
   const id = stableTaskId(opts.libraryId, opts.relativePath)
-  const task: DownloadTask = {
+  const enqueued = enqueueDownloadTask({
     id,
     libraryId: opts.libraryId,
     bookId: opts.bookId,
-    format: opts.format?.toUpperCase(),
+    format: opts.format,
     relativePath: opts.relativePath,
     label: opts.label,
-    status: "queued",
-    progress: 0,
-    error: null,
-  }
-  setState({ tasks: [...state.tasks.filter((item) => item.id !== id), task] })
+  })
+  const task = applyCoreTask(enqueued.task)
+  if (!enqueued.inserted) return task.id
   alertedErrorTaskIds.delete(id)
   notifiedDoneTaskIds.delete(id)
   notifiedErrorTaskIds.delete(id)
@@ -377,6 +392,7 @@ export function clearFinished(): void {
       notifiedErrorTaskIds.delete(t.id)
     }
   }
+  clearFinishedDownloadTasks()
   setState({
     tasks: state.tasks.filter(
       (t) =>
@@ -404,6 +420,7 @@ export function dismissTasksForPath(
   const id = stableTaskId(libraryId, relativePath)
   const task = state.tasks.find((t) => t.id === id)
   if (task && !isActiveStatus(task.status)) {
+    releaseDownloadTask(id)
     setState({ tasks: state.tasks.filter((t) => t.id !== id) })
     alertedErrorTaskIds.delete(id)
     notifiedDoneTaskIds.delete(id)
@@ -412,13 +429,10 @@ export function dismissTasksForPath(
 }
 
 function _runNext(): void {
-  const activeCount = state.tasks.filter(
-    (t) => t.status === "starting" || t.status === "downloading",
-  ).length
-  const queued = state.tasks.filter((t) => t.status === "queued")
-  const slots = MAX_CONCURRENT - activeCount
-  for (let i = 0; i < Math.min(slots, queued.length); i++) {
-    _startTask(queued[i]!.id).catch((err) => {
+  const claimed = claimDownloadTasks()
+  for (const task of claimed) {
+    applyCoreTask(task)
+    _startTask(task.id).catch((err) => {
       console.error(
         "[DownloadStore] _startTask unexpected throw (outside try-catch):",
         err,
@@ -429,9 +443,7 @@ function _runNext(): void {
 
 async function _startTask(taskId: string): Promise<void> {
   const task = state.tasks.find((t) => t.id === taskId)
-  if (!task || task.status !== "queued") return
-
-  transitionTask(taskId, { type: "start" })
+  if (!task || task.status !== "starting") return
 
   try {
     const current = state.tasks.find((t) => t.id === taskId)
@@ -551,23 +563,25 @@ function attachRecoveredTask(
   metadata: DownloadTaskMetadata,
 ): void {
   const id = nativeTask.id
-  const task: DownloadTask = {
+  const enqueued = enqueueDownloadTask({
     id,
     libraryId: metadata.libraryId,
     bookId: metadata.bookId,
-    format: metadata.format?.toUpperCase(),
+    format: metadata.format,
     relativePath: metadata.relativePath,
     label: metadata.label,
-    status: nativeTask.state === "DONE" ? "done" : "downloading",
-    progress: progressFromBytes(
-      nativeTask.bytesDownloaded,
-      nativeTask.bytesTotal,
-    ),
-    error: null,
-  }
+  })
+  let task = applyCoreTask(enqueued.task)
+  const started = claimDownloadTask(id)
+  if (started) task = applyCoreTask(started)
+  const progress = reportDownloadTaskProgress(
+    id,
+    nativeTask.bytesDownloaded,
+    nativeTask.bytesTotal,
+  )
+  if (progress) task = applyCoreTask(progress)
 
   nativeStopHandlers.set(id, nativeTask.stop)
-  setState({ tasks: [...state.tasks.filter((item) => item.id !== id), task] })
 
   nativeTask.bind({
     onProgress: (bytesDownloaded, bytesTotal) => {
@@ -612,6 +626,9 @@ async function initializeExistingDownloadTasks(): Promise<void> {
 
   initializingExistingTasks = recoverNativeDownloads()
     .then((tasks) => {
+      for (const task of listDownloadTasks()) {
+        applyCoreTask(task)
+      }
       for (const nativeTask of tasks) {
         const metadata = readTaskMetadata(nativeTask)
         if (metadata) {

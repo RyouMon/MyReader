@@ -3,7 +3,6 @@ use my_reader_lib::services::download_service::DownloadService;
 use myreader_core::models::FileStateUpdate;
 use opendal::services::Fs;
 use opendal::Operator;
-use tokio::sync::watch;
 
 use crate::common::app::TestApp;
 use crate::common::calibre::seed_minimal_calibre_library;
@@ -97,14 +96,14 @@ fn download_state_should_deduplicate_cancel_and_finish_by_key() {
     let service = DownloadService::new();
     assert!(service.cancel("lib", 1, "EPUB"));
     assert!(service.cancel("lib", 1, "EPUB"));
-    let rx = service.start("lib", 1, "EPUB").unwrap();
-    assert!(*rx.borrow());
+    let cancellation = service.start("lib", 1, "EPUB").unwrap();
+    assert!(cancellation.is_cancelled());
 
     let service = DownloadService::new();
     let clone = service.clone();
-    let rx = service.start("lib", 2, "PDF").unwrap();
+    let cancellation = service.start("lib", 2, "PDF").unwrap();
     assert!(clone.cancel("lib", 2, "PDF"));
-    assert!(*rx.borrow());
+    assert!(cancellation.is_cancelled());
 }
 
 #[test]
@@ -431,7 +430,7 @@ fn cancel_book_download_should_signal_remote_download_and_reject_local_library()
         libraries: vec![remote_test_library("lib-cancel")],
         ..Default::default()
     };
-    let rx = service.start("lib-cancel", 42, "EPUB").unwrap();
+    let cancellation = service.start("lib-cancel", 42, "EPUB").unwrap();
 
     let cancelled = service
         .cancel_book_download(
@@ -444,7 +443,7 @@ fn cancel_book_download_should_signal_remote_download_and_reject_local_library()
         .expect("cancel should succeed");
 
     assert!(cancelled);
-    assert!(*rx.borrow());
+    assert!(cancellation.is_cancelled());
 
     let local_root = tempfile::tempdir().unwrap();
     let local_config = AppConfig {
@@ -483,8 +482,8 @@ fn cancel_book_download_should_record_pending_cancel_when_no_download_is_active(
         .expect("remote cancel should succeed");
 
     assert!(cancelled);
-    let rx = service.start("lib-cancel-missing", 42, "EPUB").unwrap();
-    assert!(*rx.borrow());
+    let cancellation = service.start("lib-cancel-missing", 42, "EPUB").unwrap();
+    assert!(cancellation.is_cancelled());
 }
 
 #[tokio::test]
@@ -513,7 +512,9 @@ async fn enqueue_and_execute_download_should_reject_local_libraries_without_leak
     assert!(format!("{err}").contains("LOCAL_LIBRARY_FILE_ACTION_NOT_ALLOWED"));
     assert!(!service.is_active("lib-local-enqueue", seeded.book_id, &seeded.format));
 
-    let (_tx, rx) = watch::channel(false);
+    let cancellation = service
+        .start("lib-local-enqueue", seeded.book_id, &seeded.format)
+        .unwrap();
     let err = DownloadService::execute_download(
         test_app.app.handle(),
         app_data.path(),
@@ -521,7 +522,7 @@ async fn enqueue_and_execute_download_should_reject_local_libraries_without_leak
         "lib-local-enqueue",
         seeded.book_id,
         &seeded.format,
-        rx,
+        cancellation,
     )
     .await
     .expect_err("local library download should be rejected");
@@ -643,7 +644,10 @@ async fn execute_download_should_download_remote_file_into_container_and_record_
         ..Default::default()
     };
 
-    let (_tx, rx) = watch::channel(false);
+    let service = DownloadService::new();
+    let cancellation = service
+        .start(&lib.id, seeded.book_id, &seeded.format)
+        .unwrap();
     DownloadService::execute_download(
         test_app.app.handle(),
         app_data.path(),
@@ -651,7 +655,7 @@ async fn execute_download_should_download_remote_file_into_container_and_record_
         &lib.id,
         seeded.book_id,
         &seeded.format,
-        rx,
+        cancellation,
     )
     .await
     .expect("execute_download should succeed");
@@ -790,8 +794,9 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
     let op = fs_operator(remote_root.path());
     op.write("It/It.epub", b"remote".to_vec()).await.unwrap();
     let local_path = local_root.path().join("It/It.epub");
-    let (tx, rx) = watch::channel(false);
-    tx.send(true).unwrap();
+    let service = DownloadService::new();
+    let cancellation = service.start("lib-cancel-direct", 42, "EPUB").unwrap();
+    assert!(service.cancel("lib-cancel-direct", 42, "EPUB"));
 
     let err = DownloadService::download_book_file(
         test_app.app.handle(),
@@ -803,7 +808,7 @@ async fn download_book_file_should_cancel_before_open_and_mark_remote_only() {
         42,
         "EPUB",
         sidecar_root.path(),
-        Some(rx),
+        Some(cancellation),
     )
     .await
     .expect_err("cancelled download should fail");

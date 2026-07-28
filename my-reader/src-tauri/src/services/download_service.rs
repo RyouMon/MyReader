@@ -1,11 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use futures::AsyncReadExt;
+use myreader_core::api::content::{DownloadCancellation, DownloadCoordinator};
+use myreader_core::models::DownloadTaskRequest;
 use tauri::{AppHandle, Emitter, Runtime};
 use tokio::io::AsyncWriteExt;
-use tokio::sync::watch;
 use tracing::{debug, info, warn};
 
 use crate::error::AppError;
@@ -61,28 +62,101 @@ fn emit_download_progress<R: Runtime>(
     }
 }
 
-fn is_cancelled(cancel_rx: &Option<watch::Receiver<bool>>) -> bool {
-    cancel_rx.as_ref().is_some_and(|rx| *rx.borrow())
+fn is_cancelled(cancellation: &Option<DownloadCancellation>) -> bool {
+    cancellation
+        .as_ref()
+        .is_some_and(DownloadCancellation::is_cancelled)
 }
 
-/// Coordinates active book file downloads and records cancellations that arrive
-/// before a download has finished registering.
+/// Adapts the shared download coordinator to Tauri events and background tasks.
 #[derive(Clone)]
 pub struct DownloadService {
-    active: Arc<Mutex<HashMap<String, watch::Sender<bool>>>>,
-    pending_cancellations: Arc<Mutex<HashSet<String>>>,
+    coordinator: Arc<DownloadCoordinator>,
 }
 
 impl DownloadService {
     pub fn new() -> Self {
         Self {
-            active: Arc::new(Mutex::new(HashMap::new())),
-            pending_cancellations: Arc::new(Mutex::new(HashSet::new())),
+            coordinator: Arc::new(
+                DownloadCoordinator::new(usize::MAX)
+                    .expect("desktop download concurrency must be positive"),
+            ),
         }
     }
 
-    fn make_key(library_id: &str, book_id: i64, format: &str) -> String {
-        format!("{library_id}/{book_id}/{format}")
+    pub fn register_download_task(
+        &self,
+        request: DownloadTaskRequest,
+    ) -> Result<Option<(String, DownloadCancellation)>, AppError> {
+        let enqueued = self.coordinator.enqueue(request)?;
+        if !enqueued.inserted {
+            return Ok(None);
+        }
+        let task_id = enqueued.task.id;
+        if self.coordinator.claim(&task_id).is_none() {
+            if self.coordinator.is_cancelled(&task_id) {
+                let cancellation = self
+                    .coordinator
+                    .cancellation_token(&task_id)
+                    .expect("cancelled download must have a cancellation token");
+                return Ok(Some((task_id, cancellation)));
+            }
+            self.coordinator.release(&task_id);
+            return Ok(None);
+        }
+        let cancellation = self
+            .coordinator
+            .cancellation_token(&task_id)
+            .expect("claimed download must have a cancellation token");
+        Ok(Some((task_id, cancellation)))
+    }
+
+    pub fn release_download_task(&self, task_id: &str) -> bool {
+        self.coordinator.release(task_id)
+    }
+
+    pub fn is_download_active(&self, library_id: &str, relative_path: &str) -> bool {
+        self.coordinator.is_active(library_id, relative_path)
+    }
+
+    pub fn cancel_download_path(&self, library_id: &str, relative_path: &str) -> bool {
+        self.coordinator.cancel_by_key(library_id, relative_path)
+    }
+
+    pub fn start(
+        &self,
+        library_id: &str,
+        book_id: i64,
+        format: &str,
+    ) -> Option<DownloadCancellation> {
+        let key = Self::book_download_key(book_id, format);
+        self.register_download_task(DownloadTaskRequest {
+            id: format!("{library_id}:{key}"),
+            library_id: library_id.to_owned(),
+            book_id: Some(book_id.to_string()),
+            format: Some(Self::normalize_format(format)),
+            relative_path: key.clone(),
+            dedupe_key: Some(key),
+            label: String::new(),
+        })
+        .ok()
+        .flatten()
+        .map(|(_, cancellation)| cancellation)
+    }
+
+    pub fn is_active(&self, library_id: &str, book_id: i64, format: &str) -> bool {
+        self.is_download_active(library_id, &Self::book_download_key(book_id, format))
+    }
+
+    pub fn cancel(&self, library_id: &str, book_id: i64, format: &str) -> bool {
+        self.cancel_download_path(library_id, &Self::book_download_key(book_id, format))
+    }
+
+    pub fn finish(&self, library_id: &str, book_id: i64, format: &str) {
+        self.release_download_task(&format!(
+            "{library_id}:{}",
+            Self::book_download_key(book_id, format)
+        ));
     }
 
     /// Enqueue a book file download. Returns an empty string immediately; the actual
@@ -105,18 +179,25 @@ impl DownloadService {
             );
             return Ok(String::new());
         }
-
-        Self::resolve_remote_library(config, library_id)?;
-
-        let cancel_rx = match self.start(library_id, book_id, &fmt) {
-            Some(rx) => rx,
-            None => {
-                info!(
-                    "Download already in progress, return existing path. library id: \"{}\", book id: {}, format: \"{}\"",
-                    library_id, book_id, fmt
-                );
-                return Ok(String::new());
-            }
+        let lib = Self::resolve_remote_library(config, library_id)?;
+        let lib_root = library_root_path(&lib, app_data_dir);
+        let file_path = Self::resolve_book_file_path(app_data_dir, &lib, book_id, &fmt).await?;
+        let relative_path = compute_book_relative_path(&file_path, &lib_root)?;
+        let registered = self.register_download_task(DownloadTaskRequest {
+            id: format!("{library_id}:{relative_path}"),
+            library_id: library_id.to_owned(),
+            book_id: Some(book_id.to_string()),
+            format: Some(fmt.clone()),
+            relative_path,
+            dedupe_key: Some(Self::book_download_key(book_id, &fmt)),
+            label: String::new(),
+        })?;
+        let Some((task_id, cancellation)) = registered else {
+            info!(
+                "Download already in progress, return existing path. library id: \"{}\", book id: {}, format: \"{}\"",
+                library_id, book_id, fmt
+            );
+            return Ok(String::new());
         };
 
         emit_download_progress(app, library_id, book_id, &fmt, "starting", 0, None, None);
@@ -136,7 +217,7 @@ impl DownloadService {
                 &library_id_clone,
                 book_id,
                 &fmt,
-                cancel_rx,
+                cancellation,
             )
             .await;
 
@@ -153,90 +234,20 @@ impl DownloadService {
                 }
             }
 
-            service_clone.finish(&library_id_clone, book_id, &fmt_clone);
+            if result.is_ok() {
+                service_clone.coordinator.complete(&task_id);
+            } else if !service_clone.coordinator.is_cancelled(&task_id) {
+                service_clone
+                    .coordinator
+                    .fail(&task_id, result.as_ref().unwrap_err().to_string());
+            }
+            service_clone.coordinator.release(&task_id);
             result
         });
 
         Ok(String::new())
     }
 
-    /// Check whether a download is currently active.
-    pub fn is_active(&self, library_id: &str, book_id: i64, format: &str) -> bool {
-        let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-        active.contains_key(&Self::make_key(library_id, book_id, format))
-    }
-
-    /// Register a new download. Returns a cancellation receiver if the download
-    /// was started, or `None` if a download for the same key is already running.
-    ///
-    /// If a cancellation was requested before the download started, the returned
-    /// receiver is already signalled so the task will cancel at its first
-    /// checkpoint.
-    pub fn start(
-        &self,
-        library_id: &str,
-        book_id: i64,
-        format: &str,
-    ) -> Option<watch::Receiver<bool>> {
-        let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-        let mut pending = self
-            .pending_cancellations
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        let key = Self::make_key(library_id, book_id, format);
-
-        if active.contains_key(&key) {
-            return None;
-        }
-
-        let (tx, rx) = watch::channel(false);
-        if pending.remove(&key) {
-            let _ = tx.send(true);
-        }
-        active.insert(key, tx);
-        Some(rx)
-    }
-
-    /// Cancel a running or pending download. Returns `true` if a download was
-    /// found and signalled to cancel, or if a pending cancellation was recorded
-    /// for a download that has not started yet.
-    pub fn cancel(&self, library_id: &str, book_id: i64, format: &str) -> bool {
-        let key = Self::make_key(library_id, book_id, format);
-
-        {
-            let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-            if let Some(tx) = active.get(&key) {
-                let _ = tx.send(true);
-                return true;
-            }
-        }
-
-        let mut pending = self
-            .pending_cancellations
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        let already_pending = pending.contains(&key);
-        if already_pending {
-            true
-        } else {
-            pending.insert(key)
-        }
-    }
-
-    /// Mark a download as finished so subsequent attempts can start a new one.
-    pub fn finish(&self, library_id: &str, book_id: i64, format: &str) {
-        let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
-        active.remove(&Self::make_key(library_id, book_id, format));
-    }
-}
-
-impl Default for DownloadService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DownloadService {
     /// Check file state and overlay any currently active in-memory download.
     pub async fn check_file_state_with_active_download(
         &self,
@@ -249,7 +260,11 @@ impl DownloadService {
         let fmt = Self::normalize_format(format);
         let mut dto =
             Self::check_file_state(app_data_dir, config, library_id, book_id, &fmt).await?;
-        if dto.local_state != "present" && self.is_active(library_id, book_id, &fmt) {
+        if dto.local_state != "present"
+            && self
+                .coordinator
+                .is_active(library_id, &Self::book_download_key(book_id, &fmt))
+        {
             dto.local_state = "downloading".into();
         }
         Ok(dto)
@@ -265,7 +280,11 @@ impl DownloadService {
     ) -> Result<Vec<BookFileStateDto>, AppError> {
         let mut rows = Self::check_file_states(app_data_dir, config, library_id, requests).await?;
         for row in &mut rows {
-            if row.local_state != "present" && self.is_active(library_id, row.book_id, &row.format)
+            if row.local_state != "present"
+                && self.coordinator.is_active(
+                    library_id,
+                    &Self::book_download_key(row.book_id, &row.format),
+                )
             {
                 row.local_state = "downloading".into();
             }
@@ -284,7 +303,8 @@ impl DownloadService {
     ) -> Result<bool, AppError> {
         let fmt = Self::normalize_format(format);
         Self::resolve_remote_library(config, library_id)?;
-        let cancelled = self.cancel(library_id, book_id, &fmt);
+        let cancelled =
+            self.cancel_download_path(library_id, &Self::book_download_key(book_id, &fmt));
         if cancelled {
             Self::emit_download_status(app, library_id, book_id, &fmt, "cancelled");
         }
@@ -347,6 +367,10 @@ impl DownloadService {
     /// Normalize a book format string to uppercase.
     fn normalize_format(format: &str) -> String {
         format.to_uppercase()
+    }
+
+    fn book_download_key(book_id: i64, format: &str) -> String {
+        format!("book:{book_id}:{}", Self::normalize_format(format))
     }
 
     async fn get_stored_file_state(
@@ -547,7 +571,7 @@ impl DownloadService {
         library_id: &str,
         book_id: i64,
         format: &str,
-        cancel_rx: watch::Receiver<bool>,
+        cancellation: DownloadCancellation,
     ) -> Result<String, AppError> {
         let format = Self::normalize_format(format);
         let lib = Self::resolve_remote_library(config, library_id)?;
@@ -568,7 +592,7 @@ impl DownloadService {
             book_id,
             &format,
             &sidecar_root,
-            Some(cancel_rx),
+            Some(cancellation),
         )
         .await
         .map(|p| p.to_string_lossy().to_string())
@@ -587,7 +611,7 @@ impl DownloadService {
         book_id: i64,
         format: &str,
         sidecar_root: &Path,
-        cancel_rx: Option<watch::Receiver<bool>>,
+        cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
         let relative_local = book_relative_path.replace('\\', "/");
         info!(
@@ -608,7 +632,7 @@ impl DownloadService {
             book_id,
             format,
             sidecar_root,
-            cancel_rx,
+            cancellation,
         )
         .await;
 
@@ -637,7 +661,7 @@ impl DownloadService {
         book_id: i64,
         format: &str,
         sidecar_root: &Path,
-        cancel_rx: Option<watch::Receiver<bool>>,
+        cancellation: Option<DownloadCancellation>,
     ) -> Result<PathBuf, AppError> {
         let row = Self::get_stored_file_state(sidecar_root, book_relative_path).await?;
         let sidecar_present = row
@@ -689,7 +713,7 @@ impl DownloadService {
             }
         };
 
-        if is_cancelled(&cancel_rx) {
+        if is_cancelled(&cancellation) {
             Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
                 .await?;
             emit_download_progress(
@@ -720,7 +744,7 @@ impl DownloadService {
             AppError::Config(format!("REMOTE_BOOK_FILE_OPEN_FAILED: {e} ({remote_path})"))
         })?;
 
-        if is_cancelled(&cancel_rx) {
+        if is_cancelled(&cancellation) {
             Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
                 .await?;
             emit_download_progress(
@@ -741,7 +765,7 @@ impl DownloadService {
             .await
             .map_err(|e| AppError::Config(format!("REMOTE_BOOK_FILE_READER_FAILED: {e}")))?;
 
-        if is_cancelled(&cancel_rx) {
+        if is_cancelled(&cancellation) {
             Self::handle_cancel(local_path, sidecar_root, book_relative_path, 0, total_bytes)
                 .await?;
             emit_download_progress(
@@ -765,7 +789,7 @@ impl DownloadService {
         let mut bytes_written: u64 = 0;
         let mut last_reported: u64 = 0;
         loop {
-            if is_cancelled(&cancel_rx) {
+            if is_cancelled(&cancellation) {
                 drop(file);
                 Self::handle_cancel(
                     local_path,
@@ -882,6 +906,12 @@ impl DownloadService {
         myreader_core::api::content::mark_file_remote_only(sidecar_root, book_relative_path)
             .await?;
         Ok(())
+    }
+}
+
+impl Default for DownloadService {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

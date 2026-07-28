@@ -324,13 +324,12 @@ async fn cancel_then_start_should_signal_receiver_before_download_runs() {
     // Now simulate `download_book_file` reaching `service.start(...)` — must observe
     // the pre-start cancellation immediately, not silently lose it.
     let service = app.app.state::<DownloadService>();
-    let mut rx = service
+    let cancellation = service
         .start("lib-a", 42, "EPUB")
         .expect("start should register a fresh download");
-    assert_eq!(
-        *rx.borrow_and_update(),
-        true,
-        "pre-start cancel must signal the receiver before the task does any work",
+    assert!(
+        cancellation.is_cancelled(),
+        "pre-start cancel must signal the task before it does any work",
     );
 
     // Clean up so the global download key isn't held by a borrowed receiver.
