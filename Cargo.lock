@@ -3438,6 +3438,7 @@ dependencies = [
  "chrono",
  "dunce",
  "opendal",
+ "reqwest 0.12.28",
  "rusqlite",
  "sea-orm",
  "sea-orm-migration",

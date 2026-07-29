@@ -11,6 +11,7 @@ automerge.workspace = true
 chrono.workspace = true
 dunce.workspace = true
 opendal.workspace = true
+reqwest.workspace = true
 rusqlite.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true

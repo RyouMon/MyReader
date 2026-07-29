@@ -139,6 +139,28 @@ pub(crate) fn remote_storage_error(source: &DataSource, error: opendal::Error) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn https_transport_should_support_tls_when_remote_backend_requires_https() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (connection, _) = listener.accept().await.unwrap();
+            drop(connection);
+        });
+
+        let error = reqwest::get(format!("https://{address}"))
+            .await
+            .unwrap_err();
+        server.abort();
+        let detail = format!("{error:?}");
+
+        assert!(
+            !detail.contains("scheme is not http"),
+            "HTTPS transport is unavailable: {detail}"
+        );
+    }
 
     #[test]
     fn normalize_remote_path_should_reject_parent_traversal_when_path_is_untrusted() {

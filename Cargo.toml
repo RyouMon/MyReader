@@ -15,6 +15,7 @@ dunce = "1"
 my-reader-core = { path = "my-reader-core" }
 my-reader-core-ffi = { path = "my-reader-mobile/modules/my-reader-core/rust" }
 opendal = { version = "0.50", default-features = false, features = ["services-webdav", "services-fs", "services-onedrive"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
