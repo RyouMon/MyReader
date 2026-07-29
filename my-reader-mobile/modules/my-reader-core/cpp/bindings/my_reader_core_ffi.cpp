@@ -120,6 +120,10 @@ uniffi_my_reader_core_ffi_fn_func_catalog_list_books_page_by_last_read(
     RustBuffer exclude_book_id);
 int8_t uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
     RustBuffer library_root_path, RustCallStatus *uniffi_out_err);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
+    RustBuffer config_path, RustBuffer initial_config);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
+    RustBuffer config_path, RustBuffer preferences, RustBuffer mobile_json);
 /*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_content_clear_cover_thumbnail_cache(
     RustBuffer sidecar_root_path);
@@ -156,6 +160,24 @@ uniffi_my_reader_core_ffi_fn_func_content_upsert_cover_thumbnail_cache(
     RustBuffer sidecar_root_path, RustBuffer patch);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_content_upsert_file_state(
     RustBuffer sidecar_root_path, RustBuffer path, RustBuffer update);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
+    RustBuffer config_path, RustBuffer data_source_id, RustBuffer path,
+    RustBuffer credential);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_prepare(RustBuffer source);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_remove(RustBuffer config_path,
+                                                     RustBuffer data_source_id);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_test_connection(
+    RustBuffer source, RustBuffer credential);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_upsert(RustBuffer config_path,
+                                                     RustBuffer source);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_data_source_validate(RustBuffer config_path,
+                                                       RustBuffer source);
 int8_t uniffi_my_reader_core_ffi_fn_func_download_cancel(
     RustBuffer task_id, RustCallStatus *uniffi_out_err);
 RustBuffer uniffi_my_reader_core_ffi_fn_func_download_claim(
@@ -183,6 +205,23 @@ int8_t uniffi_my_reader_core_ffi_fn_func_download_release(
 RustBuffer uniffi_my_reader_core_ffi_fn_func_download_report_progress(
     RustBuffer task_id, double received, double total,
     RustCallStatus *uniffi_out_err);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_library_add_local(RustBuffer config_path,
+                                                    RustBuffer request);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_library_add_remote(
+    RustBuffer config_path, RustBuffer request, RustBuffer credential);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
+    RustBuffer config_path, RustBuffer library_id, RustBuffer local_root_path,
+    RustBuffer credential);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_library_remove(RustBuffer config_path,
+                                                 RustBuffer library_id);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_library_replace(RustBuffer config_path,
+                                                  RustBuffer library);
+/*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_library_switch(RustBuffer config_path,
+                                                 RustBuffer library_id);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
     RustBuffer sidecar_root_path, RustBuffer library_root_path, double book_id,
     RustBuffer format, RustBuffer locator, RustBuffer color, RustBuffer note,
@@ -239,45 +278,6 @@ uniffi_my_reader_core_ffi_fn_func_reading_select_position_candidate(
     RustBuffer sidecar_root_path, RustBuffer library_root_path, double book_id,
     RustBuffer format, RustBuffer id, RustBuffer color, RustBuffer note,
     double recorded_at_ms);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_add_local_library(
-    RustBuffer registry_path, RustBuffer request);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library(
-    RustBuffer registry_path, RustBuffer request, RustBuffer credential);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_registry_initialize(
-    RustBuffer registry_path, RustBuffer legacy_registry);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_list_remote_directories(
-    RustBuffer registry_path, RustBuffer data_source_id, RustBuffer path,
-    RustBuffer credential);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source(
-    RustBuffer source);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_library(
-    RustBuffer registry_path, RustBuffer library_id, RustBuffer local_root_path,
-    RustBuffer credential);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_registry_register_library(
-    RustBuffer registry_path, RustBuffer library);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source(
-    RustBuffer registry_path, RustBuffer data_source_id);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_registry_remove_library(
-    RustBuffer registry_path, RustBuffer library_id);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_registry_replace_library(
-    RustBuffer registry_path, RustBuffer library);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_registry_switch_library(
-    RustBuffer registry_path, RustBuffer library_id);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_source(
-    RustBuffer source, RustBuffer credential);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source(
-    RustBuffer registry_path, RustBuffer source);
-/*handle*/ uint64_t
-uniffi_my_reader_core_ffi_fn_func_registry_validate_data_source(
-    RustBuffer registry_path, RustBuffer source);
 RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_begin(
     RustBuffer coordinator_id, RustBuffer library_id, double generation,
     RustCallStatus *uniffi_out_err);
@@ -453,6 +453,8 @@ uint16_t
 uniffi_my_reader_core_ffi_checksum_func_catalog_list_books_page_by_last_read();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_list_series_books();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_app_config_initialize();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile();
 uint16_t
 uniffi_my_reader_core_ffi_checksum_func_content_clear_cover_thumbnail_cache();
 uint16_t
@@ -471,6 +473,12 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_content_set_reading_format();
 uint16_t
 uniffi_my_reader_core_ffi_checksum_func_content_upsert_cover_thumbnail_cache();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_prepare();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_remove();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_upsert();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_data_source_validate();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_cancel();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_claim();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_claim_ready();
@@ -483,6 +491,12 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_download_list();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_mark_started();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_release();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_download_report_progress();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_add_local();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_add_remote();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_remove();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_replace();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_library_switch();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_add_completion();
@@ -503,24 +517,6 @@ uniffi_my_reader_core_ffi_checksum_func_reading_select_position_candidate();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_set_favorite_book();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_set_position();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_add_local_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_initialize();
-uint16_t
-uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_directories();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_source();
-uint16_t
-uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_register_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_source();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_remove_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_replace_library();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_switch_library();
-uint16_t
-uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_data_source();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_source();
-uint16_t
-uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_source();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_begin();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_cancel_task();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_complete();
@@ -2023,6 +2019,32 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_initialize"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_initialize"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile"),
+          3,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_content_clear_cover_thumbnail_"
         "cache"] =
       jsi::Function::createFromHostFunction(
@@ -2180,6 +2202,79 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_content_upsert_file_state(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
+                                        "func_data_source_list_directories"),
+          4,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_prepare"),
+          1,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_remove"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_remove"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_remove(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_test_connection"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
+                                        "func_data_source_test_connection"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_test_connection(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_upsert"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_upsert"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_validate"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_data_source_validate"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_download_cancel"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -2321,6 +2416,76 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
             return this
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_download_report_progress(
                     rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_add_local"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_library_add_local"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_library_add_local(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_add_remote"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_library_add_remote"),
+          3,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_library_add_remote(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote"),
+          4,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_remove"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_library_remove"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_my_reader_core_ffi_fn_func_library_remove(
+                rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_replace"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_library_replace"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_my_reader_core_ffi_fn_func_library_replace(
+                rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_library_switch"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_library_switch"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_my_reader_core_ffi_fn_func_library_switch(
+                rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation"] =
       jsi::Function::createFromHostFunction(
@@ -2539,184 +2704,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_reading_update_annotation(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_add_local_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_add_local_library"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_local_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_add_remote_library"),
-          3,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_initialize"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(
-              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_registry_initialize"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_initialize(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_list_remote_"
-        "directories"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
-                                    "registry_list_remote_directories"),
-          4,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_list_remote_directories(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_prepare_data_source"),
-          1,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
-                                    "registry_refresh_remote_library"),
-          4,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_register_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_register_library"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_register_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_remove_data_source"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_remove_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(
-              rt,
-              "ubrn_uniffi_my_reader_core_ffi_fn_func_registry_remove_library"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_replace_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_replace_library"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_replace_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_switch_library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(
-              rt,
-              "ubrn_uniffi_my_reader_core_ffi_fn_func_registry_switch_library"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_switch_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
-                                    "registry_test_remote_data_source"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_fn_"
-                                        "func_registry_upsert_data_source"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_registry_validate_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
-                                    "registry_validate_data_source"),
-          2,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_fn_func_registry_validate_data_source(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_begin"] =
@@ -3563,6 +3550,32 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_app_config_initialize"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_write_"
+        "mobile"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_app_config_write_mobile"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_content_clear_cover_"
         "thumbnail_cache"] =
       jsi::Function::createFromHostFunction(
@@ -3729,6 +3742,82 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_list_"
+        "directories"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_data_source_list_directories"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_data_source_prepare"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_remove"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_data_source_remove"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_test_"
+        "connection"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_data_source_test_connection"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_data_source_upsert"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_data_source_validate"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_data_source_validate"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_validate(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_download_cancel"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -3880,6 +3969,82 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_download_report_progress(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_local"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_local"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_local(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_add_remote"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_library_add_remote"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_remote(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_library_refresh_remote"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_remove"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_library_remove"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_remove(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_replace"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_library_replace"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_replace(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_library_switch"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_library_switch"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_library_switch(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation"] =
@@ -4102,200 +4267,6 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_add_local_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_add_local_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_local_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_add_remote_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_initialize"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
-                                        "checksum_func_registry_initialize"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_initialize(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_"
-        "directories"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_list_remote_directories"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_directories(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_prepare_data_source"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_refresh_remote_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_register_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_register_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_register_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_remove_data_source"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_remove_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_remove_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_replace_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_replace_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_replace_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_switch_"
-        "library"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_switch_library"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_switch_library(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_"
-        "data_source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_test_remote_data_source"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_upsert_data_source"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_source(
-                    rt, thisVal, args, count);
-          });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_"
-        "source"] =
-      jsi::Function::createFromHostFunction(
-          rt,
-          jsi::PropNameID::forAscii(rt,
-                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
-                                    "func_registry_validate_data_source"),
-          0,
-          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
-                 const jsi::Value *args, size_t count) -> jsi::Value {
-            return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_source(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_begin"] =
@@ -4792,6 +4763,34 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging<int8_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_fn_func_content_clear_cover_thumbnail_cache(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
@@ -4956,6 +4955,86 @@ jsi::Value NativeMyReaderCoreFfi::
                                                                args[1]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[2]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_data_source_remove(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_remove(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_data_source_test_connection(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_test_connection(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_data_source_validate(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -5154,6 +5233,90 @@ jsi::Value NativeMyReaderCoreFfi::
 
   return uniffi::my_reader_core_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker,
                                                                 value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_library_add_local(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_add_local(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_library_add_remote(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_add_remote(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_library_remove(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_remove(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_library_replace(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_replace(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_library_switch(
+    jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+    size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_library_switch(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
 }
 jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
@@ -5457,199 +5620,6 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[6]),
       uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[7]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_local_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_add_local_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[2]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_initialize(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_initialize(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_list_remote_directories(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_fn_func_registry_list_remote_directories(
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[0]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[1]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[2]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[3]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_library(
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[0]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[1]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[2]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[3]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_register_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_register_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_remove_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_replace_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_replace_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_switch_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_switch_library(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_source(
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[0]),
-          uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(
-              rt, callInvoker, args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
-
-  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
-                                                         value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_fn_func_registry_validate_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_registry_validate_data_source(
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[0]),
-      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[1]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -6613,6 +6583,23 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_app_config_initialize();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_checksum_func_content_clear_cover_thumbnail_cache(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
@@ -6720,6 +6707,56 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_data_source_prepare();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_data_source_remove();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_data_source_upsert();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_validate(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_data_source_validate();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
     cpp_uniffi_my_reader_core_ffi_checksum_func_download_cancel(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
@@ -6814,6 +6851,54 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_download_report_progress();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_local(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_add_local();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_remote(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_add_remote();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_remove(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_remove();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_replace(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_replace();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_library_switch(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_library_switch();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
@@ -6959,131 +7044,6 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_local_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_add_local_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_initialize(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value = uniffi_my_reader_core_ffi_checksum_func_registry_initialize();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_directories(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_directories();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_source();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_register_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_register_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_source();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_remove_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_replace_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_replace_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_switch_library(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_switch_library();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_data_source();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_source();
-
-  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_source(
-        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-        size_t count) {
-  auto value =
-      uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_source();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

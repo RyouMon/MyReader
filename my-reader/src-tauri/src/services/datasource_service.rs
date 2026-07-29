@@ -36,7 +36,7 @@ impl DataSourceService {
             readonly: None,
             created_at: None,
         };
-        my_reader_core::api::datasource::test_connection(
+        my_reader_core::api::datasource::DataSourceService::test_connection(
             &source,
             &my_reader_core::models::RemoteCredential::Webdav {
                 password: password.into(),
@@ -49,21 +49,24 @@ impl DataSourceService {
     pub fn add_local_data_source(
         name: &str,
         root_path: &str,
-        registry_path: &Path,
+        config_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        my_reader_core::api::registry::load_or_initialize(
-            registry_path,
-            Some(config.device_registry()),
+        my_reader_core::api::config::ConfigService::load_or_initialize(
+            config_path,
+            Some(config.to_core_config()),
         )?;
-        let registry =
-            my_reader_core::api::registry::add_local_data_source(registry_path, name, root_path)?;
-        config.apply_device_registry(&registry);
+        let core_config = my_reader_core::api::datasource::DataSourceService::add_local(
+            config_path,
+            name,
+            root_path,
+        )?;
+        config.apply_core_config(&core_config);
         config
             .data_sources
             .last()
             .map(DataSourceDto::from)
-            .ok_or_else(|| AppError::Config("DATASOURCE_REGISTRY_WRITE_FAILED".into()))
+            .ok_or_else(|| AppError::Config("DATASOURCE_CONFIG_WRITE_FAILED".into()))
     }
 
     pub fn add_webdav_data_source(
@@ -72,18 +75,18 @@ impl DataSourceService {
         username: &str,
         password: &str,
         root_path: Option<&str>,
-        registry_path: &Path,
+        config_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        my_reader_core::api::registry::load_or_initialize(
-            registry_path,
-            Some(config.device_registry()),
+        my_reader_core::api::config::ConfigService::load_or_initialize(
+            config_path,
+            Some(config.to_core_config()),
         )?;
         if password.is_empty() {
             return Err(AppError::Config("WEBDAV_PASSWORD_REQUIRED".into()));
         }
 
-        let prepared = my_reader_core::api::registry::prepare_data_source(
+        let prepared = my_reader_core::api::datasource::DataSourceService::prepare(
             my_reader_core::models::DataSource::Webdav {
                 id: String::new(),
                 name: name.into(),
@@ -98,7 +101,7 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        my_reader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
+        my_reader_core::api::datasource::DataSourceService::validate(config_path, &prepared)?;
 
         if let DataSourceDetail::Webdav {
             credential_account, ..
@@ -109,25 +112,27 @@ impl DataSourceService {
             *credential_account = Some(account);
         }
 
-        let registry =
-            my_reader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
-        config.apply_device_registry(&registry);
+        let core_config = my_reader_core::api::datasource::DataSourceService::upsert(
+            config_path,
+            (&source).into(),
+        )?;
+        config.apply_core_config(&core_config);
         config
             .data_sources
             .iter()
             .find(|candidate| candidate.id == source.id)
             .map(DataSourceDto::from)
-            .ok_or_else(|| AppError::Config("DATASOURCE_REGISTRY_WRITE_FAILED".into()))
+            .ok_or_else(|| AppError::Config("DATASOURCE_CONFIG_WRITE_FAILED".into()))
     }
 
     pub fn remove_data_source(
         id: &str,
-        registry_path: &Path,
+        config_path: &Path,
         config: &mut AppConfig,
     ) -> Result<(), AppError> {
-        my_reader_core::api::registry::load_or_initialize(
-            registry_path,
-            Some(config.device_registry()),
+        my_reader_core::api::config::ConfigService::load_or_initialize(
+            config_path,
+            Some(config.to_core_config()),
         )?;
         let mut webdav_accounts_to_delete = Vec::new();
         let mut is_onedrive = false;
@@ -145,8 +150,9 @@ impl DataSourceService {
             }
         }
 
-        let registry = my_reader_core::api::registry::remove_data_source(registry_path, id)?;
-        config.apply_device_registry(&registry);
+        let core_config =
+            my_reader_core::api::datasource::DataSourceService::remove(config_path, id)?;
+        config.apply_core_config(&core_config);
 
         for account in webdav_accounts_to_delete {
             credentials::delete_webdav_password(&account)?;
@@ -161,7 +167,7 @@ impl DataSourceService {
     pub async fn list_webdav_folders(
         data_source_id: &str,
         rel_path: &str,
-        registry_path: &Path,
+        config_path: &Path,
         config: &AppConfig,
     ) -> Result<Vec<WebdavFolderEntry>, AppError> {
         let source = config
@@ -173,19 +179,21 @@ impl DataSourceService {
             })?;
 
         let credential = crate::storage::core_remote_credential(source).await?;
-        Ok(my_reader_core::api::datasource::list_directories(
-            registry_path,
-            data_source_id,
-            rel_path,
-            &credential,
+        Ok(
+            my_reader_core::api::datasource::DataSourceService::list_directories(
+                config_path,
+                data_source_id,
+                rel_path,
+                &credential,
+            )
+            .await?
+            .into_iter()
+            .map(|entry| WebdavFolderEntry {
+                name: entry.name,
+                path: entry.path,
+            })
+            .collect(),
         )
-        .await?
-        .into_iter()
-        .map(|entry| WebdavFolderEntry {
-            name: entry.name,
-            path: entry.path,
-        })
-        .collect())
     }
 
     pub fn add_onedrive_data_source(
@@ -196,14 +204,14 @@ impl DataSourceService {
         user_name: Option<&str>,
         user_email: Option<&str>,
         refresh_token: Option<&str>,
-        registry_path: &Path,
+        config_path: &Path,
         config: &mut AppConfig,
     ) -> Result<DataSourceDto, AppError> {
-        my_reader_core::api::registry::load_or_initialize(
-            registry_path,
-            Some(config.device_registry()),
+        my_reader_core::api::config::ConfigService::load_or_initialize(
+            config_path,
+            Some(config.to_core_config()),
         )?;
-        let prepared = my_reader_core::api::registry::prepare_data_source(
+        let prepared = my_reader_core::api::datasource::DataSourceService::prepare(
             my_reader_core::models::DataSource::Onedrive {
                 id: String::new(),
                 name: name.into(),
@@ -220,7 +228,7 @@ impl DataSourceService {
             },
         )?;
         let mut source = DataSourceConfig::from(&prepared);
-        my_reader_core::api::registry::ensure_data_source_can_upsert(registry_path, &prepared)?;
+        my_reader_core::api::datasource::DataSourceService::validate(config_path, &prepared)?;
 
         let refresh_token = refresh_token.filter(|t| !t.is_empty());
         if refresh_token.is_none() {
@@ -238,21 +246,23 @@ impl DataSourceService {
             }
         }
 
-        let registry =
-            my_reader_core::api::registry::upsert_data_source(registry_path, (&source).into())?;
-        config.apply_device_registry(&registry);
+        let core_config = my_reader_core::api::datasource::DataSourceService::upsert(
+            config_path,
+            (&source).into(),
+        )?;
+        config.apply_core_config(&core_config);
         config
             .data_sources
             .iter()
             .find(|candidate| candidate.id == source.id)
             .map(DataSourceDto::from)
-            .ok_or_else(|| AppError::Config("DATASOURCE_REGISTRY_WRITE_FAILED".into()))
+            .ok_or_else(|| AppError::Config("DATASOURCE_CONFIG_WRITE_FAILED".into()))
     }
 
     pub async fn list_onedrive_folders(
         data_source_id: &str,
         path: &str,
-        registry_path: &Path,
+        config_path: &Path,
         config: &AppConfig,
     ) -> Result<Vec<OnedriveFolderEntry>, AppError> {
         let source = config
@@ -261,19 +271,21 @@ impl DataSourceService {
             .find(|source| source.id == data_source_id)
             .ok_or_else(|| AppError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
         let credential = crate::storage::core_remote_credential(source).await?;
-        Ok(my_reader_core::api::datasource::list_directories(
-            registry_path,
-            data_source_id,
-            path,
-            &credential,
+        Ok(
+            my_reader_core::api::datasource::DataSourceService::list_directories(
+                config_path,
+                data_source_id,
+                path,
+                &credential,
+            )
+            .await?
+            .into_iter()
+            .map(|entry| OnedriveFolderEntry {
+                name: entry.name,
+                path: entry.path,
+                item_id: None,
+            })
+            .collect(),
         )
-        .await?
-        .into_iter()
-        .map(|entry| OnedriveFolderEntry {
-            name: entry.name,
-            path: entry.path,
-            item_id: None,
-        })
-        .collect())
     }
 }

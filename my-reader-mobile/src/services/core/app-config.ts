@@ -2,18 +2,18 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { File, Paths } from "expo-file-system"
 import {
-  registryAddLocalLibrary,
-  registryInitialize,
-  registryPrepareDataSource,
-  registryRegisterLibrary,
-  registryRemoveDataSource,
-  registryRemoveLibrary,
-  registryReplaceLibrary,
-  registrySwitchLibrary,
-  registryUpsertDataSource,
-  registryValidateDataSource,
+  appConfigInitialize,
+  appConfigWriteMobile,
+  dataSourcePrepare,
+  dataSourceRemove,
+  dataSourceUpsert,
+  dataSourceValidate,
+  libraryAddLocal,
+  libraryRemove,
+  libraryReplace,
+  librarySwitch,
+  type AppConfig as CoreAppConfig,
   type DataSource as CoreDataSource,
-  type DeviceRegistry as CoreDeviceRegistry,
   type Library as CoreLibrary,
   type LibraryResult as CoreLibraryResult,
 } from "my-reader-core"
@@ -21,20 +21,26 @@ import { toNativeFilesystemPath } from "../fs/path"
 
 export type { LibraryResult as CoreLibraryResult } from "my-reader-core"
 
-export type DeviceRegistry = {
+export type AppConfigSnapshot = {
   schemaVersion: number
+  deviceId: string | null
+  preferences: {
+    theme: string
+    language: string
+  }
   dataSources: DataSource[]
   libraries: Library[]
   activeLibraryId: string | null
+  mobileJson: string | null
 }
 
 export type LocalLibraryResult = {
-  registry: DeviceRegistry
+  config: AppConfigSnapshot
   library: Library
 }
 
-const registryPath = toNativeFilesystemPath(
-  new File(Paths.document, "device-registry.json").uri,
+export const appConfigPath = toNativeFilesystemPath(
+  new File(Paths.document, "config.json").uri,
 )
 
 export function toCoreDataSource(source: DataSource): CoreDataSource {
@@ -134,16 +140,17 @@ function libraryFromCore(library: CoreLibrary): Library {
   }
 }
 
-export function deviceRegistryFromCore(
-  registry: CoreDeviceRegistry,
-): DeviceRegistry {
+export function appConfigFromCore(config: CoreAppConfig): AppConfigSnapshot {
   return {
-    schemaVersion: registry.schemaVersion,
-    dataSources: registry.dataSources
+    schemaVersion: config.schemaVersion,
+    deviceId: config.deviceId ?? null,
+    preferences: config.preferences,
+    dataSources: config.dataSources
       .map(dataSourceFromCore)
       .filter((source): source is DataSource => source !== null),
-    libraries: registry.libraries.map(libraryFromCore),
-    activeLibraryId: registry.activeLibraryId ?? null,
+    libraries: config.libraries.map(libraryFromCore),
+    activeLibraryId: config.activeLibraryId ?? null,
+    mobileJson: config.mobileJson ?? null,
   }
 }
 
@@ -151,38 +158,59 @@ export function libraryResultFromCore(
   result: CoreLibraryResult,
 ): LocalLibraryResult {
   return {
-    registry: deviceRegistryFromCore(result.registry),
+    config: appConfigFromCore(result.config),
     library: libraryFromCore(result.library),
   }
 }
 
-export async function initializeDeviceRegistry(legacy: {
+export async function initializeAppConfig(initial: {
   dataSources: DataSource[]
   libraries: Library[]
   activeLibraryId: string | null
-}): Promise<DeviceRegistry> {
-  const registry = await registryInitialize(registryPath, {
+  preferences?: AppConfigSnapshot["preferences"]
+  mobileJson?: string | null
+}): Promise<AppConfigSnapshot> {
+  const config = await appConfigInitialize(appConfigPath, {
     schemaVersion: 1,
-    dataSources: legacy.dataSources.map(toCoreDataSource),
-    libraries: legacy.libraries.map(toCoreLibrary),
-    activeLibraryId: legacy.activeLibraryId ?? undefined,
+    deviceId: undefined,
+    preferences: initial.preferences ?? {
+      theme: "system",
+      language: "system",
+    },
+    dataSources: initial.dataSources.map(toCoreDataSource),
+    libraries: initial.libraries.map(toCoreLibrary),
+    activeLibraryId: initial.activeLibraryId ?? undefined,
+    mobileJson: initial.mobileJson ?? undefined,
   })
-  return deviceRegistryFromCore(registry)
+  return appConfigFromCore(config)
 }
 
-export async function upsertDeviceDataSource(
-  source: DataSource,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registryUpsertDataSource(registryPath, toCoreDataSource(source)),
+export async function writeMobileAppConfig(
+  preferences: AppConfigSnapshot["preferences"],
+  mobileJson: string | null,
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(
+    await appConfigWriteMobile(
+      appConfigPath,
+      preferences,
+      mobileJson ?? undefined,
+    ),
   )
 }
 
-export async function prepareDeviceDataSource(
+export async function upsertAppDataSource(
+  source: DataSource,
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(
+    await dataSourceUpsert(appConfigPath, toCoreDataSource(source)),
+  )
+}
+
+export async function prepareAppDataSource(
   source: DataSource,
 ): Promise<DataSource> {
   const prepared = dataSourceFromCore(
-    await registryPrepareDataSource(toCoreDataSource(source)),
+    await dataSourcePrepare(toCoreDataSource(source)),
   )
   if (!prepared) {
     throw new Error("UNSUPPORTED_DATA_SOURCE_TYPE")
@@ -190,53 +218,37 @@ export async function prepareDeviceDataSource(
   return prepared
 }
 
-export async function validateDeviceDataSource(
-  source: DataSource,
-): Promise<void> {
-  await registryValidateDataSource(registryPath, toCoreDataSource(source))
+export async function validateAppDataSource(source: DataSource): Promise<void> {
+  await dataSourceValidate(appConfigPath, toCoreDataSource(source))
 }
 
-export async function removeDeviceDataSource(
+export async function removeAppDataSource(
   dataSourceId: string,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registryRemoveDataSource(registryPath, dataSourceId),
-  )
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(await dataSourceRemove(appConfigPath, dataSourceId))
 }
 
-export async function registerDeviceLibrary(
+export async function replaceAppLibrary(
   library: Library,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registryRegisterLibrary(registryPath, toCoreLibrary(library)),
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(
+    await libraryReplace(appConfigPath, toCoreLibrary(library)),
   )
 }
 
-export async function replaceDeviceLibrary(
-  library: Library,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registryReplaceLibrary(registryPath, toCoreLibrary(library)),
-  )
-}
-
-export async function removeDeviceLibrary(
+export async function removeAppLibrary(
   libraryId: string,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registryRemoveLibrary(registryPath, libraryId),
-  )
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(await libraryRemove(appConfigPath, libraryId))
 }
 
-export async function switchDeviceLibrary(
+export async function switchAppLibrary(
   libraryId: string,
-): Promise<DeviceRegistry> {
-  return deviceRegistryFromCore(
-    await registrySwitchLibrary(registryPath, libraryId),
-  )
+): Promise<AppConfigSnapshot> {
+  return appConfigFromCore(await librarySwitch(appConfigPath, libraryId))
 }
 
-export async function addLocalDeviceLibrary(request: {
+export async function addLocalAppLibrary(request: {
   libraryRootUri: string
   path: string
   sidecarContainerParentUri?: string
@@ -246,7 +258,7 @@ export async function addLocalDeviceLibrary(request: {
   securityScopedBookmark?: Library["securityScopedBookmark"]
 }): Promise<LocalLibraryResult> {
   return libraryResultFromCore(
-    await registryAddLocalLibrary(registryPath, {
+    await libraryAddLocal(appConfigPath, {
       libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),
       path: request.path,
       sidecarContainerParentPath: request.sidecarContainerParentUri

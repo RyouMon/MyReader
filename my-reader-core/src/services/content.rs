@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 use crate::database;
@@ -10,211 +10,218 @@ use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::content::ContentRepository;
 use crate::CoreError;
 
-pub(crate) async fn list_reading_formats(
-    sidecar_root: &Path,
-    library_root: &Path,
-) -> Result<BTreeMap<String, String>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let rows = ContentRepository::new(&db).list_reading_formats().await?;
-    let books = CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_summaries()
+pub struct ContentService;
+
+impl ContentService {
+    pub async fn list_reading_formats(
+        sidecar_root: &Path,
+        library_root: &Path,
+    ) -> Result<BTreeMap<String, String>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        let rows = ContentRepository::new(&db).list_reading_formats().await?;
+        let books = CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_summaries()
+            .await?;
+        let formats_by_book = books
+            .into_iter()
+            .map(|book| (book.id, readable_formats(&book.formats)))
+            .collect::<BTreeMap<_, _>>();
+
+        Ok(rows
+            .into_iter()
+            .filter_map(|row| {
+                let readable = formats_by_book.get(&row.book_id)?;
+                let format = row.reading_format.to_uppercase();
+                (readable.len() > 1 && readable.contains(&format))
+                    .then(|| (row.book_id.to_string(), format))
+            })
+            .collect())
+    }
+
+    pub async fn set_reading_format(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: Option<&str>,
+    ) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        let repository = ContentRepository::new(&db);
+        let Some(format) = format else {
+            return repository.clear_reading_format(book_id).await;
+        };
+
+        let book = CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_summaries()
+            .await?
+            .into_iter()
+            .find(|book| book.id == book_id)
+            .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
+        let readable = readable_formats(&book.formats);
+        if readable.len() <= 1 {
+            return repository.clear_reading_format(book_id).await;
+        }
+
+        let format = format.to_uppercase();
+        if !readable.contains(&format) {
+            return Err(CoreError::Config(format!(
+                "BOOK_READING_FORMAT_NOT_READABLE: {format}"
+            )));
+        }
+        repository.set_reading_format(book_id, &format).await
+    }
+
+    pub async fn get_file_state(
+        sidecar_root: &Path,
+        path: &str,
+    ) -> Result<Option<FileState>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db).get_file_state(path).await
+    }
+
+    pub async fn get_file_states(
+        sidecar_root: &Path,
+        paths: &[String],
+    ) -> Result<HashMap<String, FileState>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        Ok(ContentRepository::new(&db)
+            .get_file_states(paths)
+            .await?
+            .into_iter()
+            .collect())
+    }
+
+    pub async fn list_file_states(sidecar_root: &Path) -> Result<Vec<FileState>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db).list_file_states().await
+    }
+
+    pub async fn upsert_file_state(
+        sidecar_root: &Path,
+        path: &str,
+        update: FileStateUpdate,
+    ) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db)
+            .upsert_file_state(path, update)
+            .await
+    }
+
+    pub async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db).delete_file_state(path).await
+    }
+
+    pub async fn finalize_downloaded_file(
+        sidecar_root: &Path,
+        relative_path: &str,
+        local_path: &Path,
+    ) -> Result<DownloadedFile, CoreError> {
+        let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
+        if relative_path.is_empty() {
+            return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+        }
+        let metadata = tokio::fs::metadata(local_path)
+            .await
+            .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_NOT_FOUND: {error}")))?;
+        if !metadata.is_file() || metadata.len() == 0 {
+            return Err(CoreError::Storage("DOWNLOADED_FILE_EMPTY".into()));
+        }
+        let size = i64::try_from(metadata.len())
+            .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_TOO_LARGE: {error}")))?;
+        let mtime_ms = metadata
+            .modified()
+            .ok()
+            .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+            .and_then(|value| i64::try_from(value.as_millis()).ok())
+            .unwrap_or(0);
+        Self::upsert_file_state(
+            sidecar_root,
+            &relative_path,
+            FileStateUpdate {
+                local_state: "present".into(),
+                local_blake3: None,
+                local_size: Some(size),
+                local_mtime: Some(mtime_ms),
+            },
+        )
         .await?;
-    let formats_by_book = books
-        .into_iter()
-        .map(|book| (book.id, readable_formats(&book.formats)))
-        .collect::<BTreeMap<_, _>>();
-
-    Ok(rows
-        .into_iter()
-        .filter_map(|row| {
-            let readable = formats_by_book.get(&row.book_id)?;
-            let format = row.reading_format.to_uppercase();
-            (readable.len() > 1 && readable.contains(&format))
-                .then(|| (row.book_id.to_string(), format))
-        })
-        .collect())
-}
-
-pub(crate) async fn set_reading_format(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: Option<&str>,
-) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let repository = ContentRepository::new(&db);
-    let Some(format) = format else {
-        return repository.clear_reading_format(book_id).await;
-    };
-
-    let book = CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_summaries()
-        .await?
-        .into_iter()
-        .find(|book| book.id == book_id)
-        .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
-    let readable = readable_formats(&book.formats);
-    if readable.len() <= 1 {
-        return repository.clear_reading_format(book_id).await;
+        Ok(DownloadedFile { size, mtime_ms })
     }
 
-    let format = format.to_uppercase();
-    if !readable.contains(&format) {
-        return Err(CoreError::Config(format!(
-            "BOOK_READING_FORMAT_NOT_READABLE: {format}"
-        )));
+    pub async fn mark_file_remote_only(
+        sidecar_root: &Path,
+        relative_path: &str,
+    ) -> Result<(), CoreError> {
+        let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
+        if relative_path.is_empty() {
+            return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+        }
+        Self::upsert_file_state(
+            sidecar_root,
+            &relative_path,
+            FileStateUpdate {
+                local_state: "remote_only".into(),
+                local_blake3: None,
+                local_size: None,
+                local_mtime: None,
+            },
+        )
+        .await
     }
-    repository.set_reading_format(book_id, &format).await
-}
 
-pub(crate) async fn get_file_state(
-    sidecar_root: &Path,
-    path: &str,
-) -> Result<Option<FileState>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db).get_file_state(path).await
-}
-
-pub(crate) async fn get_file_states(
-    sidecar_root: &Path,
-    paths: &[String],
-) -> Result<BTreeMap<String, FileState>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    Ok(ContentRepository::new(&db)
-        .get_file_states(paths)
-        .await?
-        .into_iter()
-        .collect())
-}
-
-pub(crate) async fn list_file_states(sidecar_root: &Path) -> Result<Vec<FileState>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db).list_file_states().await
-}
-
-pub(crate) async fn upsert_file_state(
-    sidecar_root: &Path,
-    path: &str,
-    update: FileStateUpdate,
-) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db)
-        .upsert_file_state(path, update)
-        .await
-}
-
-pub(crate) async fn delete_file_state(sidecar_root: &Path, path: &str) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db).delete_file_state(path).await
-}
-
-pub(crate) async fn finalize_downloaded_file(
-    sidecar_root: &Path,
-    relative_path: &str,
-    local_path: &Path,
-) -> Result<DownloadedFile, CoreError> {
-    let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
-    if relative_path.is_empty() {
-        return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+    pub fn resolve_remote_file_path(
+        source_path: Option<&str>,
+        relative_path: &str,
+    ) -> Result<String, CoreError> {
+        crate::infrastructure::storage::join_remote_path(
+            source_path.unwrap_or_default(),
+            relative_path,
+        )
     }
-    let metadata = tokio::fs::metadata(local_path)
-        .await
-        .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_NOT_FOUND: {error}")))?;
-    if !metadata.is_file() || metadata.len() == 0 {
-        return Err(CoreError::Storage("DOWNLOADED_FILE_EMPTY".into()));
+
+    pub async fn list_cover_thumbnail_cache(
+        sidecar_root: &Path,
+        thumbnail_version: &str,
+        width_px: i64,
+        height_px: i64,
+    ) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db)
+            .list_cover_thumbnail_cache(thumbnail_version, width_px, height_px)
+            .await
     }
-    let size = i64::try_from(metadata.len())
-        .map_err(|error| CoreError::Storage(format!("DOWNLOADED_FILE_TOO_LARGE: {error}")))?;
-    let mtime_ms = metadata
-        .modified()
-        .ok()
-        .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
-        .and_then(|value| i64::try_from(value.as_millis()).ok())
-        .unwrap_or(0);
-    upsert_file_state(
-        sidecar_root,
-        &relative_path,
-        FileStateUpdate {
-            local_state: "present".into(),
-            local_blake3: None,
-            local_size: Some(size),
-            local_mtime: Some(mtime_ms),
-        },
-    )
-    .await?;
-    Ok(DownloadedFile { size, mtime_ms })
-}
 
-pub(crate) async fn mark_file_remote_only(
-    sidecar_root: &Path,
-    relative_path: &str,
-) -> Result<(), CoreError> {
-    let relative_path = crate::infrastructure::storage::normalize_remote_path(relative_path)?;
-    if relative_path.is_empty() {
-        return Err(CoreError::Config("BOOK_FILE_PATH_REQUIRED".into()));
+    pub async fn upsert_cover_thumbnail_cache(
+        sidecar_root: &Path,
+        patch: BookCoverThumbnailCachePatch,
+    ) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db)
+            .upsert_cover_thumbnail_cache(patch)
+            .await
     }
-    upsert_file_state(
-        sidecar_root,
-        &relative_path,
-        FileStateUpdate {
-            local_state: "remote_only".into(),
-            local_blake3: None,
-            local_size: None,
-            local_mtime: None,
-        },
-    )
-    .await
-}
 
-pub(crate) fn resolve_remote_file_path(
-    source_path: Option<&str>,
-    relative_path: &str,
-) -> Result<String, CoreError> {
-    crate::infrastructure::storage::join_remote_path(source_path.unwrap_or_default(), relative_path)
-}
+    pub async fn delete_cover_thumbnail_cache(
+        sidecar_root: &Path,
+        book_id: i64,
+        thumbnail_version: &str,
+        width_px: i64,
+        height_px: i64,
+    ) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db)
+            .delete_cover_thumbnail_cache(book_id, thumbnail_version, width_px, height_px)
+            .await
+    }
 
-pub(crate) async fn list_cover_thumbnail_cache(
-    sidecar_root: &Path,
-    thumbnail_version: &str,
-    width_px: i64,
-    height_px: i64,
-) -> Result<Vec<BookCoverThumbnailCache>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db)
-        .list_cover_thumbnail_cache(thumbnail_version, width_px, height_px)
-        .await
-}
-
-pub(crate) async fn upsert_cover_thumbnail_cache(
-    sidecar_root: &Path,
-    patch: BookCoverThumbnailCachePatch,
-) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db)
-        .upsert_cover_thumbnail_cache(patch)
-        .await
-}
-
-pub(crate) async fn delete_cover_thumbnail_cache(
-    sidecar_root: &Path,
-    book_id: i64,
-    thumbnail_version: &str,
-    width_px: i64,
-    height_px: i64,
-) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db)
-        .delete_cover_thumbnail_cache(book_id, thumbnail_version, width_px, height_px)
-        .await
-}
-
-pub(crate) async fn clear_cover_thumbnail_cache(sidecar_root: &Path) -> Result<(), CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ContentRepository::new(&db)
-        .clear_cover_thumbnail_cache()
-        .await
+    pub async fn clear_cover_thumbnail_cache(sidecar_root: &Path) -> Result<(), CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ContentRepository::new(&db)
+            .clear_cover_thumbnail_cache()
+            .await
+    }
 }
 
 fn readable_formats(formats: &[String]) -> Vec<String> {
@@ -281,12 +288,12 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_catalog(library.path()).await;
 
-        super::set_reading_format(sidecar.path(), library.path(), 42, Some("pdf"))
+        super::ContentService::set_reading_format(sidecar.path(), library.path(), 42, Some("pdf"))
             .await
             .unwrap();
 
         assert_eq!(
-            super::list_reading_formats(sidecar.path(), library.path())
+            super::ContentService::list_reading_formats(sidecar.path(), library.path())
                 .await
                 .unwrap(),
             BTreeMap::from([("42".into(), "PDF".into())])
@@ -298,7 +305,7 @@ mod tests {
         let sidecar = tempfile::tempdir().unwrap();
         let path = "Ursula K. Le Guin/The Dispossessed/The Dispossessed.epub";
 
-        super::upsert_file_state(
+        super::ContentService::upsert_file_state(
             sidecar.path(),
             path,
             FileStateUpdate {
@@ -311,17 +318,17 @@ mod tests {
         .await
         .unwrap();
 
-        let state = super::get_file_state(sidecar.path(), path)
+        let state = super::ContentService::get_file_state(sidecar.path(), path)
             .await
             .unwrap()
             .unwrap();
         assert_eq!(state.local_state, "present");
         assert_eq!(state.local_size, Some(1024));
 
-        super::delete_file_state(sidecar.path(), path)
+        super::ContentService::delete_file_state(sidecar.path(), path)
             .await
             .unwrap();
-        assert!(super::get_file_state(sidecar.path(), path)
+        assert!(super::ContentService::get_file_state(sidecar.path(), path)
             .await
             .unwrap()
             .is_none());
@@ -334,13 +341,16 @@ mod tests {
         let local_path = files.path().join("book.epub");
         tokio::fs::write(&local_path, b"epub").await.unwrap();
 
-        let downloaded =
-            super::finalize_downloaded_file(sidecar.path(), "/Author/Book/book.epub", &local_path)
-                .await
-                .unwrap();
+        let downloaded = super::ContentService::finalize_downloaded_file(
+            sidecar.path(),
+            "/Author/Book/book.epub",
+            &local_path,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(downloaded.size, 4);
-        let state = super::get_file_state(sidecar.path(), "Author/Book/book.epub")
+        let state = super::ContentService::get_file_state(sidecar.path(), "Author/Book/book.epub")
             .await
             .unwrap()
             .unwrap();
@@ -351,11 +361,11 @@ mod tests {
     #[tokio::test]
     async fn should_commit_remote_only_state_when_local_file_is_removed() {
         let sidecar = tempfile::tempdir().unwrap();
-        super::mark_file_remote_only(sidecar.path(), "Author/Book/book.epub")
+        super::ContentService::mark_file_remote_only(sidecar.path(), "Author/Book/book.epub")
             .await
             .unwrap();
 
-        let state = super::get_file_state(sidecar.path(), "Author/Book/book.epub")
+        let state = super::ContentService::get_file_state(sidecar.path(), "Author/Book/book.epub")
             .await
             .unwrap()
             .unwrap();
@@ -377,10 +387,10 @@ mod tests {
             file_size_bytes: 1024,
         };
 
-        super::upsert_cover_thumbnail_cache(sidecar.path(), patch)
+        super::ContentService::upsert_cover_thumbnail_cache(sidecar.path(), patch)
             .await
             .unwrap();
-        super::upsert_cover_thumbnail_cache(
+        super::ContentService::upsert_cover_thumbnail_cache(
             sidecar.path(),
             BookCoverThumbnailCachePatch {
                 book_id: 42,
@@ -395,9 +405,10 @@ mod tests {
         .await
         .unwrap();
 
-        let rows = super::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
-            .await
-            .unwrap();
+        let rows =
+            super::ContentService::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
+                .await
+                .unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].cover_identity, "cover-v2");
         assert_eq!(rows[0].file_name, "new.jpg");
@@ -408,7 +419,7 @@ mod tests {
     async fn should_remove_only_selected_cover_manifest_when_cache_entry_is_deleted() {
         let sidecar = tempfile::tempdir().unwrap();
         for book_id in [42, 43] {
-            super::upsert_cover_thumbnail_cache(
+            super::ContentService::upsert_cover_thumbnail_cache(
                 sidecar.path(),
                 BookCoverThumbnailCachePatch {
                     book_id,
@@ -424,13 +435,14 @@ mod tests {
             .unwrap();
         }
 
-        super::delete_cover_thumbnail_cache(sidecar.path(), 42, "v3", 180, 270)
+        super::ContentService::delete_cover_thumbnail_cache(sidecar.path(), 42, "v3", 180, 270)
             .await
             .unwrap();
 
-        let rows = super::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
-            .await
-            .unwrap();
+        let rows =
+            super::ContentService::list_cover_thumbnail_cache(sidecar.path(), "v3", 180, 270)
+                .await
+                .unwrap();
         assert_eq!(
             rows.into_iter().map(|row| row.book_id).collect::<Vec<_>>(),
             vec![43]

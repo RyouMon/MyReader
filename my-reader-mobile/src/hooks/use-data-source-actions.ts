@@ -5,13 +5,13 @@ import type {
 } from "@my-reader/tools/types/data-source"
 import { DataSourceInUseError } from "@/src/errors"
 import {
-  type DeviceRegistry,
-  initializeDeviceRegistry,
-  prepareDeviceDataSource,
-  removeDeviceDataSource,
-  upsertDeviceDataSource,
-  validateDeviceDataSource,
-} from "@/src/services/core/device-registry"
+  type AppConfigSnapshot,
+  initializeAppConfig,
+  prepareAppDataSource,
+  removeAppDataSource,
+  upsertAppDataSource,
+  validateAppDataSource,
+} from "@/src/services/core/app-config"
 import { testRemoteDataSource } from "@/src/services/core/remote"
 import type { DataSourceSecrets } from "@/src/services/storage/credentials"
 import {
@@ -27,38 +27,31 @@ export function useDataSourceActions() {
 
   async function hydrateFromBackend() {
     try {
-      const state = store.getState()
-      const registry = await initializeDeviceRegistry({
-        dataSources: state.dataSources,
-        libraries: state.libraries,
-        activeLibraryId: state.activeLibraryId,
-      })
+      const config = store.getState()
       const hydrated = await hydrateDataSourcesFromSecureCredentials(
-        registry.dataSources,
+        config.dataSources,
       )
-      const merged = registry.dataSources.map((ds) => {
+      const merged = config.dataSources.map((ds) => {
         const h = hydrated.find((d) => d.id === ds.id)
         return h ? { ...ds, ...h } : ds
       })
       store.getState().setDataSources(merged)
-      store.getState().setLibraries(registry.libraries)
-      store.getState().setActiveLibraryId(registry.activeLibraryId)
     } finally {
       store.getState().setStoreReady(true)
     }
   }
 
   async function refreshDataSources() {
-    const state = store.getState()
-    const registry = await initializeDeviceRegistry({
-      dataSources: state.dataSources,
-      libraries: state.libraries,
-      activeLibraryId: state.activeLibraryId,
+    const config = store.getState()
+    const appConfig = await initializeAppConfig({
+      dataSources: config.dataSources,
+      libraries: config.libraries,
+      activeLibraryId: config.activeLibraryId,
     })
     const hydrated = await hydrateDataSourcesFromSecureCredentials(
-      registry.dataSources,
+      appConfig.dataSources,
     )
-    const merged = registry.dataSources.map((ds) => {
+    const merged = appConfig.dataSources.map((ds) => {
       const h = hydrated.find((d) => d.id === ds.id)
       return h ? { ...ds, ...h } : ds
     })
@@ -69,18 +62,18 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<DataSource> {
-    const stored = await prepareDeviceDataSource({
+    const stored = await prepareAppDataSource({
       ...ds,
       ...deriveCredentialFlags(secrets),
     })
 
-    await validateDeviceDataSource(stored)
+    await validateAppDataSource(stored)
     if (secrets) {
       await writeSecrets(stored.id, secrets)
     }
 
-    const registry = await upsertDeviceDataSource(stored)
-    store.getState().setDataSources(registry.dataSources)
+    const appConfig = await upsertAppDataSource(stored)
+    store.getState().setDataSources(appConfig.dataSources)
     return stored
   }
 
@@ -88,28 +81,28 @@ export function useDataSourceActions() {
     ds: DataSource,
     secrets?: DataSourceSecrets,
   ): Promise<void> {
-    const stored = await prepareDeviceDataSource({
+    const stored = await prepareAppDataSource({
       ...ds,
       ...deriveCredentialFlags(secrets),
     })
 
-    await validateDeviceDataSource(stored)
+    await validateAppDataSource(stored)
     if (secrets) {
       await writeSecrets(ds.id, secrets)
     }
 
-    const registry = await upsertDeviceDataSource(stored)
-    store.getState().setDataSources(registry.dataSources)
+    const appConfig = await upsertAppDataSource(stored)
+    store.getState().setDataSources(appConfig.dataSources)
   }
 
   async function deleteDataSource(id: string) {
-    const state = store.getState()
-    const ds = state.dataSources.find((d) => d.id === id)
-    let registry: DeviceRegistry
+    const config = store.getState()
+    const ds = config.dataSources.find((d) => d.id === id)
+    let appConfig: AppConfigSnapshot
     try {
-      registry = await removeDeviceDataSource(id)
+      appConfig = await removeAppDataSource(id)
     } catch (error) {
-      const usedByLibraries = state.libraries.filter(
+      const usedByLibraries = config.libraries.filter(
         (library) => library.dataSourceId === id,
       )
       if (
@@ -121,7 +114,7 @@ export function useDataSourceActions() {
       }
       throw error
     }
-    store.getState().setDataSources(registry.dataSources)
+    store.getState().setDataSources(appConfig.dataSources)
     if (ds) {
       await deleteSecrets(id, ds.type)
     }

@@ -114,6 +114,7 @@ async fn switch_library_should_update_active_id_and_persist_when_library_exists(
 async fn switch_library_should_return_not_found_when_library_id_is_unknown() {
     let app = TestApp::with_config(AppConfig {
         libraries: vec![library_fixture("lib-a", "Library A", "/path/a")],
+        active_library_id: Some("lib-a".into()),
         ..Default::default()
     });
 
@@ -125,8 +126,10 @@ async fn switch_library_should_return_not_found_when_library_id_is_unknown() {
         "message was {}",
         err.message
     );
-    // No on-disk write should have happened on the error path.
-    assert!(read_persisted_config(&app).is_none());
+    let persisted = read_persisted_config(&app).expect("config.json should be initialized");
+    assert_eq!(persisted.libraries.len(), 1);
+    assert_eq!(persisted.libraries[0].id, "lib-a");
+    assert_eq!(persisted.active_library_id, Some("lib-a".into()));
 }
 
 #[tokio::test]
@@ -188,7 +191,7 @@ async fn add_library_should_return_config_error_when_path_does_not_exist() {
 }
 
 #[tokio::test]
-async fn add_library_should_register_and_persist_when_calibre_dir_is_valid() {
+async fn add_library_should_add_and_persist_when_calibre_dir_is_valid() {
     let app = TestApp::new();
     let calibre_dir = minimal_calibre_dir();
 

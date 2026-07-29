@@ -5,12 +5,11 @@ import {
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { clampCoverThumbnailGenerationConcurrency } from "../config/library-list-performance"
-import { createExpoJsonStorage } from "../services/storage/json-storage"
 import {
   DEFAULT_LIBRARY_VIEW_MODE,
   defaultSettings,
   excludeLocalLibrarySource,
-  STORE_NAME,
+  MOBILE_CONFIG_KEY,
 } from "./app-store.constants"
 import type {
   AppState,
@@ -22,8 +21,9 @@ import { createDataSourceSlice } from "./data-source-slice"
 import { createLibrarySlice } from "./library-slice"
 import { createProgramSlice, createSettingsSlice } from "./settings-slice"
 import { createStatusSlice } from "./status-slice"
+import { createAppConfigStorage } from "./app-config-storage"
 
-const jsonStorage = createExpoJsonStorage()
+const appConfigStorage = createAppConfigStorage()
 
 /** Returns whether a persisted value matches the current library view modes. */
 function isLibraryViewMode(value: unknown): value is LibraryViewMode {
@@ -40,8 +40,8 @@ export const useAppStore = create<AppState>()(
       ...createLibrarySlice(...args),
     }),
     {
-      name: STORE_NAME,
-      storage: createJSONStorage(() => jsonStorage),
+      name: MOBILE_CONFIG_KEY,
+      storage: createJSONStorage(() => appConfigStorage),
       partialize: (state) => ({
         settings: state.settings,
         libraryViewMode: state.libraryViewMode,

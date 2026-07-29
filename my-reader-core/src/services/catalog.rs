@@ -8,199 +8,202 @@ use crate::models::{
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::CoreError;
 
-pub(crate) fn validate_library(library_root: &Path) -> bool {
-    CalibreBookRepository::validate_library(&library_root.to_string_lossy())
-}
+pub struct CatalogService;
 
-pub(crate) async fn list_books(library_root: &Path) -> Result<Vec<BookEntry>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_all_books()
-        .await
-}
-
-pub(crate) async fn list_books_page(
-    library_root: &Path,
-    offset: usize,
-    limit: usize,
-    sort_by: Option<&str>,
-    search: Option<&str>,
-) -> Result<PaginatedBooks, CoreError> {
-    let repository = CalibreBookRepository::open(&library_root.to_string_lossy()).await?;
-    let (items, total) = repository
-        .get_books_page(
-            offset,
-            limit.clamp(1, 200),
-            sort_by.unwrap_or("title"),
-            search,
-        )
-        .await?;
-    Ok(PaginatedBooks { items, total })
-}
-
-pub(crate) async fn list_books_page_by_last_read(
-    library_root: &Path,
-    sidecar_root: &Path,
-    offset: usize,
-    limit: usize,
-    search: Option<&str>,
-) -> Result<PaginatedBooks, CoreError> {
-    let mut books = list_books(library_root).await?;
-    if let Some(keyword) = search.filter(|value| !value.trim().is_empty()) {
-        let keyword = keyword.to_lowercase();
-        books.retain(|book| {
-            book.title.to_lowercase().contains(&keyword)
-                || book.author_sort.to_lowercase().contains(&keyword)
-                || book
-                    .authors
-                    .iter()
-                    .any(|author| author.to_lowercase().contains(&keyword))
-                || book
-                    .tags
-                    .iter()
-                    .any(|tag| tag.to_lowercase().contains(&keyword))
-        });
+impl CatalogService {
+    pub fn validate_library(library_root: &Path) -> bool {
+        CalibreBookRepository::validate_library(&library_root.to_string_lossy())
     }
 
-    let latest_by_book = crate::services::reading::latest_read_at_by_book(sidecar_root).await?;
-    books.retain(|book| latest_by_book.contains_key(&book.id));
-    books.sort_by(|left, right| {
-        let left_read_at = latest_by_book.get(&left.id).copied();
-        let right_read_at = latest_by_book.get(&right.id).copied();
-        match (left_read_at, right_read_at) {
-            (Some(left_time), Some(right_time)) => right_time
-                .partial_cmp(&left_time)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| left.title.to_lowercase().cmp(&right.title.to_lowercase())),
-            _ => left.title.to_lowercase().cmp(&right.title.to_lowercase()),
+    pub async fn list_books(library_root: &Path) -> Result<Vec<BookEntry>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_all_books()
+            .await
+    }
+
+    pub async fn list_books_page(
+        library_root: &Path,
+        offset: usize,
+        limit: usize,
+        sort_by: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<PaginatedBooks, CoreError> {
+        let repository = CalibreBookRepository::open(&library_root.to_string_lossy()).await?;
+        let (items, total) = repository
+            .get_books_page(
+                offset,
+                limit.clamp(1, 200),
+                sort_by.unwrap_or("title"),
+                search,
+            )
+            .await?;
+        Ok(PaginatedBooks { items, total })
+    }
+
+    pub async fn list_books_page_by_last_read(
+        library_root: &Path,
+        sidecar_root: &Path,
+        offset: usize,
+        limit: usize,
+        search: Option<&str>,
+    ) -> Result<PaginatedBooks, CoreError> {
+        let mut books = Self::list_books(library_root).await?;
+        if let Some(keyword) = search.filter(|value| !value.trim().is_empty()) {
+            let keyword = keyword.to_lowercase();
+            books.retain(|book| {
+                book.title.to_lowercase().contains(&keyword)
+                    || book.author_sort.to_lowercase().contains(&keyword)
+                    || book
+                        .authors
+                        .iter()
+                        .any(|author| author.to_lowercase().contains(&keyword))
+                    || book
+                        .tags
+                        .iter()
+                        .any(|tag| tag.to_lowercase().contains(&keyword))
+            });
         }
-    });
 
-    let total = books.len();
-    let items = books
-        .into_iter()
-        .skip(offset)
-        .take(limit.clamp(1, 200))
-        .collect();
-    Ok(PaginatedBooks { items, total })
-}
+        let latest_by_book =
+            crate::services::reading::ReadingService::latest_read_at_by_book(sidecar_root).await?;
+        books.retain(|book| latest_by_book.contains_key(&book.id));
+        books.sort_by(|left, right| {
+            let left_read_at = latest_by_book.get(&left.id).copied();
+            let right_read_at = latest_by_book.get(&right.id).copied();
+            match (left_read_at, right_read_at) {
+                (Some(left_time), Some(right_time)) => right_time
+                    .partial_cmp(&left_time)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| left.title.to_lowercase().cmp(&right.title.to_lowercase())),
+                _ => left.title.to_lowercase().cmp(&right.title.to_lowercase()),
+            }
+        });
 
-pub(crate) async fn get_book_detail(
-    library_root: &Path,
-    book_id: i64,
-) -> Result<BookDetail, CoreError> {
-    let repository = CalibreBookRepository::open(&library_root.to_string_lossy()).await?;
-    let book = repository
-        .get_book_by_id(book_id)
-        .await?
-        .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
-    let format_sizes = repository
-        .get_book_format_sizes(book_id)
-        .await?
-        .into_iter()
-        .map(|(format, size_bytes)| FormatSize { format, size_bytes })
-        .collect();
-    let identifiers = repository
-        .get_book_identifiers(book_id)
-        .await?
-        .into_iter()
-        .map(|(id_type, value)| BookIdentifier { id_type, value })
-        .collect();
-    Ok(BookDetail {
-        book,
-        format_sizes,
-        identifiers,
-    })
-}
+        let total = books.len();
+        let items = books
+            .into_iter()
+            .skip(offset)
+            .take(limit.clamp(1, 200))
+            .collect();
+        Ok(PaginatedBooks { items, total })
+    }
 
-pub(crate) async fn list_series_books(
-    library_root: &Path,
-    series_name: &str,
-    exclude_book_id: Option<i64>,
-) -> Result<Vec<BookEntry>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_books_by_series(series_name, exclude_book_id)
-        .await
-}
-
-pub(crate) async fn count_books(library_root: &Path) -> Result<usize, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_count()
-        .await
-}
-
-pub(crate) async fn get_library_uuid(library_root: &Path) -> Result<String, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_library_uuid()
-        .await
-}
-
-pub(crate) async fn list_book_summaries(
-    library_root: &Path,
-) -> Result<Vec<BookSummary>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_summaries()
-        .await
-}
-
-pub(crate) async fn list_book_formats(
-    library_root: &Path,
-    book_id: i64,
-) -> Result<Vec<BookFormat>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_formats(book_id)
-        .await
-}
-
-pub(crate) async fn get_book_file_path(
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-) -> Result<Option<PathBuf>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_file_path(&library_root.to_string_lossy(), book_id, format)
-        .await
-}
-
-pub(crate) async fn get_book_file_paths(
-    library_root: &Path,
-    requests: &[(i64, String)],
-) -> Result<HashMap<(i64, String), PathBuf>, CoreError> {
-    let requests = requests
-        .iter()
-        .map(|(book_id, format)| BookFilePathRequest {
-            book_id: *book_id,
-            format: format.clone(),
+    pub async fn get_book_detail(
+        library_root: &Path,
+        book_id: i64,
+    ) -> Result<BookDetail, CoreError> {
+        let repository = CalibreBookRepository::open(&library_root.to_string_lossy()).await?;
+        let book = repository
+            .get_book_by_id(book_id)
+            .await?
+            .ok_or_else(|| CoreError::NotFound(format!("BOOK_NOT_FOUND: {book_id}")))?;
+        let format_sizes = repository
+            .get_book_format_sizes(book_id)
+            .await?
+            .into_iter()
+            .map(|(format, size_bytes)| FormatSize { format, size_bytes })
+            .collect();
+        let identifiers = repository
+            .get_book_identifiers(book_id)
+            .await?
+            .into_iter()
+            .map(|(id_type, value)| BookIdentifier { id_type, value })
+            .collect();
+        Ok(BookDetail {
+            book,
+            format_sizes,
+            identifiers,
         })
-        .collect::<Vec<_>>();
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_file_paths(&library_root.to_string_lossy(), &requests)
-        .await
-}
+    }
 
-pub(crate) async fn get_book_cover_path(
-    library_root: &Path,
-    book_path: &str,
-) -> Result<Option<PathBuf>, CoreError> {
-    CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_book_cover_path(book_path)
-}
+    pub async fn list_series_books(
+        library_root: &Path,
+        series_name: &str,
+        exclude_book_id: Option<i64>,
+    ) -> Result<Vec<BookEntry>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_books_by_series(series_name, exclude_book_id)
+            .await
+    }
 
-pub(crate) async fn get_book_cover_bytes(
-    library_root: &Path,
-    book_path: &str,
-) -> Result<Option<Vec<u8>>, CoreError> {
-    match get_book_cover_path(library_root, book_path).await? {
-        Some(path) => Ok(Some(std::fs::read(path)?)),
-        None => Ok(None),
+    pub async fn count_books(library_root: &Path) -> Result<usize, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_count()
+            .await
+    }
+
+    pub async fn get_library_uuid(library_root: &Path) -> Result<String, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_library_uuid()
+            .await
+    }
+
+    pub async fn list_book_summaries(library_root: &Path) -> Result<Vec<BookSummary>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_summaries()
+            .await
+    }
+
+    pub async fn list_book_formats(
+        library_root: &Path,
+        book_id: i64,
+    ) -> Result<Vec<BookFormat>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_formats(book_id)
+            .await
+    }
+
+    pub async fn get_book_file_path(
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Option<PathBuf>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_file_path(&library_root.to_string_lossy(), book_id, format)
+            .await
+    }
+
+    pub async fn get_book_file_paths(
+        library_root: &Path,
+        requests: &[(i64, String)],
+    ) -> Result<HashMap<(i64, String), PathBuf>, CoreError> {
+        let requests = requests
+            .iter()
+            .map(|(book_id, format)| BookFilePathRequest {
+                book_id: *book_id,
+                format: format.clone(),
+            })
+            .collect::<Vec<_>>();
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_file_paths(&library_root.to_string_lossy(), &requests)
+            .await
+    }
+
+    pub async fn get_book_cover_path(
+        library_root: &Path,
+        book_path: &str,
+    ) -> Result<Option<PathBuf>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_cover_path(book_path)
+    }
+
+    pub async fn get_book_cover_bytes(
+        library_root: &Path,
+        book_path: &str,
+    ) -> Result<Option<Vec<u8>>, CoreError> {
+        match Self::get_book_cover_path(library_root, book_path).await? {
+            Some(path) => Ok(Some(std::fs::read(path)?)),
+            None => Ok(None),
+        }
     }
 }
 
@@ -321,8 +324,10 @@ mod tests {
         let library = tempfile::tempdir().expect("create library");
         seed_library(library.path()).await;
 
-        let books = super::list_books(library.path()).await.expect("list books");
-        let detail = super::get_book_detail(library.path(), 42)
+        let books = super::CatalogService::list_books(library.path())
+            .await
+            .expect("list books");
+        let detail = super::CatalogService::get_book_detail(library.path(), 42)
             .await
             .expect("get book detail");
 
@@ -338,13 +343,13 @@ mod tests {
         let library = tempfile::tempdir().expect("create library");
         seed_library(library.path()).await;
 
-        let library_uuid = super::get_library_uuid(library.path())
+        let library_uuid = super::CatalogService::get_library_uuid(library.path())
             .await
             .expect("read library identity");
-        let formats = super::list_book_formats(library.path(), 42)
+        let formats = super::CatalogService::list_book_formats(library.path(), 42)
             .await
             .expect("list book formats");
-        let summaries = super::list_book_summaries(library.path())
+        let summaries = super::CatalogService::list_book_summaries(library.path())
             .await
             .expect("list book summaries");
 
@@ -385,7 +390,7 @@ mod tests {
         .expect("seed second book");
         database.close().await.expect("close fixture database");
 
-        crate::services::reading::set_reading_position(
+        crate::services::reading::ReadingService::set_reading_position(
             sidecar.path(),
             library.path(),
             42,
@@ -396,7 +401,7 @@ mod tests {
         )
         .await
         .expect("write older position");
-        crate::services::reading::set_reading_position(
+        crate::services::reading::ReadingService::set_reading_position(
             sidecar.path(),
             library.path(),
             43,
@@ -408,10 +413,16 @@ mod tests {
         .await
         .expect("write newer position");
 
-        let page = super::list_books_page_by_last_read(library.path(), sidecar.path(), 0, 10, None)
-            .await
-            .expect("list recent books");
-        let filtered = super::list_books_page_by_last_read(
+        let page = super::CatalogService::list_books_page_by_last_read(
+            library.path(),
+            sidecar.path(),
+            0,
+            10,
+            None,
+        )
+        .await
+        .expect("list recent books");
+        let filtered = super::CatalogService::list_books_page_by_last_read(
             library.path(),
             sidecar.path(),
             0,

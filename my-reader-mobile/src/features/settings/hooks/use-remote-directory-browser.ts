@@ -2,7 +2,7 @@ import { router } from "expo-router"
 import { useEffect, useMemo, useState } from "react"
 
 import { showAlertWithStatusBarRestore } from "@/src/constants/alert-with-status-bar"
-import { registerRemoteLibrary } from "@/src/domain/library/hooks/library-actions"
+import { addRemoteLibraryFromSource } from "@/src/domain/library/hooks/library-actions"
 import {
   isMissingMetadataDbError,
   normalizeCurrentPath,
@@ -128,7 +128,10 @@ export function useRemoteDirectoryBrowser({
     setError(null)
 
     try {
-      const library = await registerRemoteLibrary(candidate, currentPath || "/")
+      const library = await addRemoteLibraryFromSource(
+        candidate,
+        currentPath || "/",
+      )
       router.dismissTo("/settings")
       notifyLibraryAdded(library.name)
     } catch (caught) {

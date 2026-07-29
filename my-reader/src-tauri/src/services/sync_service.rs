@@ -52,7 +52,7 @@ impl SyncService {
         let storage = storage::core_sidecar_storage(config, &library)
             .await
             .map_err(|err| Self::log_stage_error(library_id, "resolve_storage", err))?;
-        let report = my_reader_core::api::sync::sync_sidecar(
+        let report = my_reader_core::api::sync::SyncService::sync_sidecar(
             &sidecar_path,
             &library_root,
             Self::sqlite_timestamp(Self::unix_epoch_millis())?,

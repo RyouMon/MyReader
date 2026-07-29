@@ -31,7 +31,7 @@ impl ReadingStatisticsService {
         let started_at = timestamp(started_at, "READING_SESSION_STARTED_AT")?;
         let updated_at = timestamp(updated_at, "READING_SESSION_UPDATED_AT")?;
         let library = LibraryService::resolve_library(library_id, config)?;
-        my_reader_core::api::reading::add_reading_session_interval(
+        my_reader_core::api::reading::ReadingService::add_reading_session_interval(
             &library_sidecar_path(&library, app_data_dir),
             &library_root_path(&library, app_data_dir),
             id,
@@ -61,16 +61,18 @@ impl ReadingStatisticsService {
         let completed_at = timestamp(completed_at, "READING_COMPLETION_AT")?;
         let updated_at = timestamp(updated_at, "READING_COMPLETION_UPDATED_AT")?;
         let library = LibraryService::resolve_library(library_id, config)?;
-        Ok(my_reader_core::api::reading::add_reading_completion(
-            &library_sidecar_path(&library, app_data_dir),
-            &library_root_path(&library, app_data_dir),
-            id,
-            book_id,
-            format,
-            local_day,
-            completed_at,
-            updated_at,
+        Ok(
+            my_reader_core::api::reading::ReadingService::add_reading_completion(
+                &library_sidecar_path(&library, app_data_dir),
+                &library_root_path(&library, app_data_dir),
+                id,
+                book_id,
+                format,
+                local_day,
+                completed_at,
+                updated_at,
+            )
+            .await?,
         )
-        .await?)
     }
 }

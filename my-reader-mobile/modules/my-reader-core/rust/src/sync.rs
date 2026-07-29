@@ -7,6 +7,8 @@ use std::{
     },
 };
 
+use my_reader_core::api::sync::{SyncCoordinator, SyncService};
+
 use crate::{
     types::{
         required_i64, required_u64, SchedulerTransition, SidecarStorageConfig, SidecarSyncMode,
@@ -22,9 +24,8 @@ struct SyncTaskState {
 
 static SYNC_TASKS: LazyLock<Mutex<HashMap<String, Arc<SyncTaskState>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
-static SYNC_COORDINATORS: LazyLock<
-    Mutex<HashMap<String, Arc<my_reader_core::api::sync::SyncCoordinator>>>,
-> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static SYNC_COORDINATORS: LazyLock<Mutex<HashMap<String, Arc<SyncCoordinator>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 struct FfiSyncObserver {
     task: Arc<SyncTaskState>,
@@ -59,10 +60,7 @@ pub fn sync_create_coordinator(coordinator_id: String) -> bool {
     SYNC_COORDINATORS
         .lock()
         .unwrap_or_else(|error| error.into_inner())
-        .insert(
-            coordinator_id,
-            Arc::new(my_reader_core::api::sync::SyncCoordinator::default()),
-        )
+        .insert(coordinator_id, Arc::new(SyncCoordinator::default()))
         .is_none()
 }
 
@@ -303,7 +301,7 @@ pub async fn sync_run_sidecar(
     }
 
     let storage = storage.try_into()?;
-    let report = my_reader_core::api::sync::sync_sidecar_observed(
+    let report = SyncService::sync_sidecar_observed(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(now_ms, "nowMs")?,
@@ -338,9 +336,7 @@ pub async fn sync_run_sidecar(
     }
 }
 
-fn sync_coordinator(
-    coordinator_id: &str,
-) -> Result<Arc<my_reader_core::api::sync::SyncCoordinator>, CoreFfiError> {
+fn sync_coordinator(coordinator_id: &str) -> Result<Arc<SyncCoordinator>, CoreFfiError> {
     SYNC_COORDINATORS
         .lock()
         .unwrap_or_else(|error| error.into_inner())

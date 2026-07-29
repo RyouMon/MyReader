@@ -2,7 +2,7 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 
 const mockAddRemoteLibrary = jest.fn()
-const mockAddLocalDeviceLibrary = jest.fn()
+const mockAddLocalAppLibrary = jest.fn()
 const mockRunLibrarySync = jest.fn()
 const mockSetLibraries = jest.fn()
 const mockSetActiveLibraryId = jest.fn()
@@ -22,12 +22,11 @@ jest.mock("@/src/domain/library/calibre", () => ({
   },
 }))
 
-jest.mock("@/src/services/core/device-registry", () => ({
-  addLocalDeviceLibrary: (...args: unknown[]) =>
-    mockAddLocalDeviceLibrary(...args),
-  initializeDeviceRegistry: jest.fn(),
-  removeDeviceLibrary: jest.fn(),
-  switchDeviceLibrary: jest.fn(),
+jest.mock("@/src/services/core/app-config", () => ({
+  addLocalAppLibrary: (...args: unknown[]) => mockAddLocalAppLibrary(...args),
+  initializeAppConfig: jest.fn(),
+  removeAppLibrary: jest.fn(),
+  switchAppLibrary: jest.fn(),
 }))
 
 jest.mock("@/src/services/fs/bookmarks", () => ({
@@ -54,14 +53,17 @@ jest.mock("@/src/store/app-store", () => ({
   },
 }))
 
-import { addLibraryFromPicker, registerRemoteLibrary } from "./library-actions"
+import {
+  addLibraryFromPicker,
+  addRemoteLibraryFromSource,
+} from "./library-actions"
 
-describe("registerRemoteLibrary", () => {
+describe("addRemoteLibraryFromSource", () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it("should resolve after registration when initial sync is still pending", async () => {
+  it("should resolve when initial sync is still pending after remote addition", async () => {
     const source = {
       id: "source-1",
       type: "onedrive",
@@ -71,11 +73,11 @@ describe("registerRemoteLibrary", () => {
       id: "library-1",
       name: "CalibreLibrary",
     } as Library
-    const registry = {
+    const config = {
       libraries: [library],
       activeLibraryId: library.id,
     }
-    mockAddRemoteLibrary.mockResolvedValue({ library, registry })
+    mockAddRemoteLibrary.mockResolvedValue({ library, config })
     let finishSync: (() => void) | undefined
     mockRunLibrarySync.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -84,7 +86,7 @@ describe("registerRemoteLibrary", () => {
     )
 
     const result = await Promise.race([
-      registerRemoteLibrary(source, "/Library/CalibreLibrary"),
+      addRemoteLibraryFromSource(source, "/Library/CalibreLibrary"),
       new Promise<"timeout">((resolve) => {
         setTimeout(() => resolve("timeout"), 50)
       }),
@@ -108,17 +110,17 @@ describe("addLibraryFromPicker", () => {
     jest.clearAllMocks()
   })
 
-  it("should resolve after registration when initial sync is still pending", async () => {
+  it("should resolve when initial sync is still pending after local addition", async () => {
     const library = {
       id: "library-1",
       name: "CalibreLibrary",
       path: "file:///Library/CalibreLibrary",
     } as Library
-    const registry = {
+    const config = {
       libraries: [library],
       activeLibraryId: library.id,
     }
-    mockAddLocalDeviceLibrary.mockResolvedValue({ library, registry })
+    mockAddLocalAppLibrary.mockResolvedValue({ library, config })
     let finishSync: (() => void) | undefined
     mockRunLibrarySync.mockReturnValue(
       new Promise<void>((resolve) => {

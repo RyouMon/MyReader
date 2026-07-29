@@ -168,7 +168,7 @@ async fn prepare_book_source_should_require_present_sidecar_row_for_remote_libra
     .expect_err("remote file without present state should fail");
     assert!(format!("{err}").contains("BOOK_FORMAT_NOT_DOWNLOADED"));
 
-    my_reader_core::api::content::upsert_file_state(
+    my_reader_core::api::content::ContentService::upsert_file_state(
         sidecar_root.path(),
         "It/It.pdf",
         FileStateUpdate {

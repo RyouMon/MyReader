@@ -4,7 +4,7 @@ jest.mock("expo-file-system", () => ({
     exists: true,
     create: jest.fn(),
   })),
-  File: jest.fn(() => ({ uri: "file:///documents/device-registry.json" })),
+  File: jest.fn(() => ({ uri: "file:///documents/config.json" })),
   Paths: { document: "file:///documents" },
 }))
 jest.mock("../fs/path", () => ({
@@ -21,11 +21,11 @@ jest.mock("../storage/credentials", () => ({
   readWebDavPassword: jest.fn(),
 }))
 jest.mock("my-reader-core", () => ({
-  registryTestRemoteDataSource: jest.fn(),
+  dataSourceTestConnection: jest.fn(),
 }))
 
 import type { DataSourceOnedrive } from "@my-reader/tools/types/data-source"
-import { registryTestRemoteDataSource } from "my-reader-core"
+import { dataSourceTestConnection } from "my-reader-core"
 import { testRemoteDataSource } from "./remote"
 
 describe("core remote adapter", () => {
@@ -34,7 +34,7 @@ describe("core remote adapter", () => {
   })
 
   it("should pass only stable source fields and short-lived credential when OneDrive is tested", async () => {
-    jest.mocked(registryTestRemoteDataSource).mockResolvedValue()
+    jest.mocked(dataSourceTestConnection).mockResolvedValue()
     const source: DataSourceOnedrive = {
       id: "source",
       type: "onedrive",
@@ -52,7 +52,7 @@ describe("core remote adapter", () => {
       accessToken: "short-lived-access-token",
     })
 
-    expect(registryTestRemoteDataSource).toHaveBeenCalledWith(
+    expect(dataSourceTestConnection).toHaveBeenCalledWith(
       {
         kind: "onedrive",
         id: "source",

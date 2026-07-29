@@ -53,7 +53,7 @@ export type ReaderSettings = {
 
 export type PersistedAppState = {
   settings: ReaderSettings
-  /** Legacy registry fields, read once when migrating to my-reader-core. */
+  /** Runtime projection of the top-level app config, omitted from the mobile node on write. */
   dataSources?: import("@my-reader/tools/types/data-source").DataSource[]
   libraries?: import("@my-reader/tools/types/library").Library[]
   activeLibraryId?: string | null

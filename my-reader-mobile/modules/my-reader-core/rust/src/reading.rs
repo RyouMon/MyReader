@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use my_reader_core::api::reading::ReadingService;
+
 use crate::{
     types::{
         required_i64, ReaderAnnotation, ReaderBookmark, ReaderLocatorJson, ReadingPosition,
@@ -13,7 +15,7 @@ pub async fn reading_list_favorite_book_ids(
     sidecar_root_path: String,
 ) -> Result<Vec<f64>, CoreFfiError> {
     Ok(
-        my_reader_core::api::reading::list_favorite_book_ids(Path::new(&sidecar_root_path))
+        ReadingService::list_favorite_book_ids(Path::new(&sidecar_root_path))
             .await
             .map_err(CoreFfiError::from_core)?
             .into_iter()
@@ -30,7 +32,7 @@ pub async fn reading_set_favorite_book(
     is_favorite: bool,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::set_favorite_book(
+    ReadingService::set_favorite_book(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -47,7 +49,7 @@ pub async fn reading_get_position(
     book_id: f64,
     format: String,
 ) -> Result<Option<ReadingPosition>, CoreFfiError> {
-    Ok(my_reader_core::api::reading::get_reading_position(
+    Ok(ReadingService::get_reading_position(
         Path::new(&sidecar_root_path),
         required_i64(book_id, "bookId")?,
         &format,
@@ -62,7 +64,7 @@ pub async fn reading_list_positions(
     sidecar_root_path: String,
 ) -> Result<Vec<ReadingPosition>, CoreFfiError> {
     Ok(
-        my_reader_core::api::reading::list_reading_positions(Path::new(&sidecar_root_path))
+        ReadingService::list_reading_positions(Path::new(&sidecar_root_path))
             .await
             .map_err(CoreFfiError::from_core)?
             .into_iter()
@@ -81,7 +83,7 @@ pub async fn reading_set_position(
     display_progression: Option<f64>,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::set_reading_position(
+    ReadingService::set_reading_position(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -102,20 +104,18 @@ pub async fn reading_list_position_candidates(
     format: String,
     now_ms: f64,
 ) -> Result<Vec<ReadingPositionCandidate>, CoreFfiError> {
-    Ok(
-        my_reader_core::api::reading::list_reading_position_candidates(
-            Path::new(&sidecar_root_path),
-            Path::new(&library_root_path),
-            required_i64(book_id, "bookId")?,
-            &format,
-            required_i64(now_ms, "nowMs")?,
-        )
-        .await
-        .map_err(CoreFfiError::from_core)?
-        .into_iter()
-        .map(Into::into)
-        .collect(),
+    Ok(ReadingService::list_reading_position_candidates(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        required_i64(book_id, "bookId")?,
+        &format,
+        required_i64(now_ms, "nowMs")?,
     )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .into_iter()
+    .map(Into::into)
+    .collect())
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -127,7 +127,7 @@ pub async fn reading_select_position_candidate(
     operation_id: String,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::select_reading_position_candidate(
+    ReadingService::select_reading_position_candidate(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -145,7 +145,7 @@ pub async fn reading_list_bookmarks(
     book_id: f64,
     format: String,
 ) -> Result<Vec<ReaderBookmark>, CoreFfiError> {
-    Ok(my_reader_core::api::reading::list_reader_bookmarks(
+    Ok(ReadingService::list_reader_bookmarks(
         Path::new(&sidecar_root_path),
         required_i64(book_id, "bookId")?,
         &format,
@@ -167,7 +167,7 @@ pub async fn reading_add_bookmark(
     locator: ReaderLocatorJson,
     recorded_at_ms: f64,
 ) -> Result<ReaderBookmark, CoreFfiError> {
-    Ok(my_reader_core::api::reading::add_reader_bookmark(
+    Ok(ReadingService::add_reader_bookmark(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -190,7 +190,7 @@ pub async fn reading_remove_bookmark(
     locator_key: String,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::remove_reader_bookmark(
+    ReadingService::remove_reader_bookmark(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -208,7 +208,7 @@ pub async fn reading_list_annotations(
     book_id: f64,
     format: String,
 ) -> Result<Vec<ReaderAnnotation>, CoreFfiError> {
-    Ok(my_reader_core::api::reading::list_reader_annotations(
+    Ok(ReadingService::list_reader_annotations(
         Path::new(&sidecar_root_path),
         required_i64(book_id, "bookId")?,
         &format,
@@ -231,7 +231,7 @@ pub async fn reading_add_annotation(
     note: Option<String>,
     recorded_at_ms: f64,
 ) -> Result<ReaderAnnotation, CoreFfiError> {
-    Ok(my_reader_core::api::reading::add_reader_annotation(
+    Ok(ReadingService::add_reader_annotation(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -257,7 +257,7 @@ pub async fn reading_update_annotation(
     note: Option<String>,
     recorded_at_ms: f64,
 ) -> Result<ReaderAnnotation, CoreFfiError> {
-    Ok(my_reader_core::api::reading::update_reader_annotation(
+    Ok(ReadingService::update_reader_annotation(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -281,7 +281,7 @@ pub async fn reading_remove_annotation(
     id: String,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::remove_reader_annotation(
+    ReadingService::remove_reader_annotation(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         required_i64(book_id, "bookId")?,
@@ -305,7 +305,7 @@ pub async fn reading_add_session_interval(
     duration_seconds: f64,
     recorded_at_ms: f64,
 ) -> Result<(), CoreFfiError> {
-    my_reader_core::api::reading::add_reading_session_interval(
+    ReadingService::add_reading_session_interval(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         &id,
@@ -331,7 +331,7 @@ pub async fn reading_add_completion(
     completed_at_ms: f64,
     recorded_at_ms: f64,
 ) -> Result<bool, CoreFfiError> {
-    my_reader_core::api::reading::add_reading_completion(
+    ReadingService::add_reading_completion(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         &id,
@@ -352,7 +352,7 @@ pub async fn reading_get_statistics(
     start_day: String,
     end_day: String,
 ) -> Result<ReadingStatistics, CoreFfiError> {
-    Ok(my_reader_core::api::reading::get_reading_statistics(
+    Ok(ReadingService::get_reading_statistics(
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
         &start_day,

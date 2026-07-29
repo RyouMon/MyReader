@@ -28,13 +28,24 @@ struct CoordinatorState {
     pending_cancellations: HashSet<DownloadKey>,
 }
 
-pub(crate) struct DownloadCoordinator {
+#[derive(Clone)]
+pub struct DownloadCancellation {
+    inner: Arc<AtomicBool>,
+}
+
+impl DownloadCancellation {
+    pub fn is_cancelled(&self) -> bool {
+        self.inner.load(Ordering::Acquire)
+    }
+}
+
+pub struct DownloadCoordinator {
     max_concurrent: usize,
     state: Mutex<CoordinatorState>,
 }
 
 impl DownloadCoordinator {
-    pub(crate) fn new(max_concurrent: usize) -> Result<Self, CoreError> {
+    pub fn new(max_concurrent: usize) -> Result<Self, CoreError> {
         if max_concurrent == 0 {
             return Err(CoreError::Config(
                 "DOWNLOAD_MAX_CONCURRENT_MUST_BE_POSITIVE".into(),
@@ -46,7 +57,7 @@ impl DownloadCoordinator {
         })
     }
 
-    pub(crate) fn enqueue(
+    pub fn enqueue(
         &self,
         mut request: DownloadTaskRequest,
     ) -> Result<EnqueuedDownloadTask, CoreError> {
@@ -143,7 +154,7 @@ impl DownloadCoordinator {
         })
     }
 
-    pub(crate) fn claim_ready(&self) -> Vec<DownloadTask> {
+    pub fn claim_ready(&self) -> Vec<DownloadTask> {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         let active_count = state
             .tasks
@@ -182,7 +193,7 @@ impl DownloadCoordinator {
             .collect()
     }
 
-    pub(crate) fn claim(&self, task_id: &str) -> Option<DownloadTask> {
+    pub fn claim(&self, task_id: &str) -> Option<DownloadTask> {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         let active_count = state
             .tasks
@@ -205,7 +216,7 @@ impl DownloadCoordinator {
         Some(task.task.clone())
     }
 
-    pub(crate) fn mark_started(&self, task_id: &str) -> Option<DownloadTask> {
+    pub fn mark_started(&self, task_id: &str) -> Option<DownloadTask> {
         self.update_task(task_id, |task| {
             if matches!(
                 task.status,
@@ -216,7 +227,7 @@ impl DownloadCoordinator {
         })
     }
 
-    pub(crate) fn report_progress(
+    pub fn report_progress(
         &self,
         task_id: &str,
         received: u64,
@@ -237,15 +248,15 @@ impl DownloadCoordinator {
         })
     }
 
-    pub(crate) fn complete(&self, task_id: &str) -> Option<DownloadTask> {
+    pub fn complete(&self, task_id: &str) -> Option<DownloadTask> {
         self.finish_task(task_id, DownloadTaskStatus::Done, None)
     }
 
-    pub(crate) fn fail(&self, task_id: &str, error: String) -> Option<DownloadTask> {
+    pub fn fail(&self, task_id: &str, error: String) -> Option<DownloadTask> {
         self.finish_task(task_id, DownloadTaskStatus::Error, Some(error))
     }
 
-    pub(crate) fn cancel(&self, task_id: &str) -> bool {
+    pub fn cancel(&self, task_id: &str) -> bool {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         let key = {
             let Some(task) = state.tasks.get_mut(task_id) else {
@@ -263,7 +274,7 @@ impl DownloadCoordinator {
         true
     }
 
-    pub(crate) fn cancel_by_key(&self, library_id: &str, relative_path: &str) -> bool {
+    pub fn cancel_by_key(&self, library_id: &str, relative_path: &str) -> bool {
         let Ok(relative_path) = normalize_remote_path(relative_path) else {
             return false;
         };
@@ -290,7 +301,7 @@ impl DownloadCoordinator {
         }
     }
 
-    pub(crate) fn is_cancelled(&self, task_id: &str) -> bool {
+    pub fn is_cancelled(&self, task_id: &str) -> bool {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -299,16 +310,18 @@ impl DownloadCoordinator {
             .is_some_and(|task| task.cancelled.load(Ordering::Acquire))
     }
 
-    pub(crate) fn cancellation_token(&self, task_id: &str) -> Option<Arc<AtomicBool>> {
+    pub fn cancellation_token(&self, task_id: &str) -> Option<DownloadCancellation> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .tasks
             .get(task_id)
-            .map(|task| Arc::clone(&task.cancelled))
+            .map(|task| DownloadCancellation {
+                inner: Arc::clone(&task.cancelled),
+            })
     }
 
-    pub(crate) fn is_active(&self, library_id: &str, relative_path: &str) -> bool {
+    pub fn is_active(&self, library_id: &str, relative_path: &str) -> bool {
         let Ok(relative_path) = normalize_remote_path(relative_path) else {
             return false;
         };
@@ -324,11 +337,7 @@ impl DownloadCoordinator {
             .is_some_and(|task| task.task.status.is_active())
     }
 
-    pub(crate) fn find_active(
-        &self,
-        library_id: &str,
-        relative_path: &str,
-    ) -> Option<DownloadTask> {
+    pub fn find_active(&self, library_id: &str, relative_path: &str) -> Option<DownloadTask> {
         let relative_path = normalize_remote_path(relative_path).ok()?;
         let key = DownloadKey {
             library_id: library_id.trim().to_owned(),
@@ -343,7 +352,7 @@ impl DownloadCoordinator {
             .filter(|task| task.status.is_active())
     }
 
-    pub(crate) fn tasks(&self) -> Vec<DownloadTask> {
+    pub fn tasks(&self) -> Vec<DownloadTask> {
         let state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         state
             .order
@@ -353,7 +362,7 @@ impl DownloadCoordinator {
             .collect()
     }
 
-    pub(crate) fn release(&self, task_id: &str) -> bool {
+    pub fn release(&self, task_id: &str) -> bool {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         let Some(task) = state.tasks.remove(task_id) else {
             return false;
@@ -373,7 +382,7 @@ impl DownloadCoordinator {
         true
     }
 
-    pub(crate) fn clear_finished(&self) {
+    pub fn clear_finished(&self) {
         let ids = {
             let state = self.state.lock().unwrap_or_else(|error| error.into_inner());
             state

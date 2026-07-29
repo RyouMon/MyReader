@@ -19,7 +19,7 @@ impl TestFileStateRepository {
         sidecar_root: &std::path::Path,
         path: &str,
     ) -> Result<Option<my_reader_core::models::FileState>, my_reader_core::CoreError> {
-        my_reader_core::api::content::get_file_state(sidecar_root, path).await
+        my_reader_core::api::content::ContentService::get_file_state(sidecar_root, path).await
     }
 
     async fn upsert(
@@ -29,7 +29,7 @@ impl TestFileStateRepository {
         local_size: Option<i64>,
         local_mtime: Option<i64>,
     ) -> Result<(), my_reader_core::CoreError> {
-        my_reader_core::api::content::upsert_file_state(
+        my_reader_core::api::content::ContentService::upsert_file_state(
             sidecar_root,
             path,
             FileStateUpdate {

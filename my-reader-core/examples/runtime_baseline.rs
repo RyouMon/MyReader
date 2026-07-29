@@ -32,7 +32,7 @@ async fn main() {
         )
         .expect("seed Calibre library identity");
 
-    my_reader_core::api::reading::set_reading_position(
+    my_reader_core::api::reading::ReadingService::set_reading_position(
         sidecar.path(),
         library.path(),
         42,
@@ -59,10 +59,14 @@ async fn main() {
     let position_lookup_started = Instant::now();
     for _ in 0..iterations {
         black_box(
-            my_reader_core::api::reading::get_reading_position(sidecar.path(), 42, "EPUB")
-                .await
-                .expect("read position")
-                .expect("seeded position must exist"),
+            my_reader_core::api::reading::ReadingService::get_reading_position(
+                sidecar.path(),
+                42,
+                "EPUB",
+            )
+            .await
+            .expect("read position")
+            .expect("seeded position must exist"),
         );
     }
     print_measurement(

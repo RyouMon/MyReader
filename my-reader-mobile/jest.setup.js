@@ -82,6 +82,19 @@ jest.mock("expo-crypto", () => ({
   randomUUID: () => "a1b2c3d4-e5f6-4890-abcd-ef1234567890",
 }))
 
+jest.mock("my-reader-core", () => ({
+  appConfigInitialize: jest.fn(async (_path, initial) => initial),
+  appConfigWriteMobile: jest.fn(async (_path, preferences, mobileJson) => ({
+    schemaVersion: 1,
+    deviceId: undefined,
+    preferences,
+    dataSources: [],
+    libraries: [],
+    activeLibraryId: undefined,
+    mobileJson,
+  })),
+}))
+
 const originalConsoleWarn = console.warn.bind(console)
 console.warn = (...args) => {
   if (

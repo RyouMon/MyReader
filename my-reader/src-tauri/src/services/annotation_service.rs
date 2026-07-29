@@ -35,11 +35,15 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         Ok(
-            my_reader_core::api::reading::list_reader_annotations(&sidecar_root, book_id, format)
-                .await?
-                .into_iter()
-                .map(|annotation| annotation_dto(&library.id, annotation))
-                .collect(),
+            my_reader_core::api::reading::ReadingService::list_reader_annotations(
+                &sidecar_root,
+                book_id,
+                format,
+            )
+            .await?
+            .into_iter()
+            .map(|annotation| annotation_dto(&library.id, annotation))
+            .collect(),
         )
     }
 
@@ -58,7 +62,7 @@ impl AnnotationService {
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
         let locator_json = serde_json::to_string(locator)?;
-        let annotation = my_reader_core::api::reading::add_reader_annotation(
+        let annotation = my_reader_core::api::reading::ReadingService::add_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,
@@ -86,7 +90,7 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        let annotation = my_reader_core::api::reading::update_reader_annotation(
+        let annotation = my_reader_core::api::reading::ReadingService::update_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,
@@ -111,7 +115,7 @@ impl AnnotationService {
         let library = LibraryService::resolve_library(library_id, config)?;
         let sidecar_root = library_sidecar_path(&library, app_data_dir);
         let library_root = library_root_path(&library, app_data_dir);
-        my_reader_core::api::reading::remove_reader_annotation(
+        my_reader_core::api::reading::ReadingService::remove_reader_annotation(
             &sidecar_root,
             &library_root,
             book_id,

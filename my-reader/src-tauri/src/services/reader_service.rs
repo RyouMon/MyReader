@@ -41,14 +41,17 @@ impl ReaderService {
         format: &str,
     ) -> Result<PreparedBookSource, AppError> {
         cache::ensure_reader_cache_dirs()?;
-        let file_path =
-            my_reader_core::api::catalog::get_book_file_path(Path::new(lib_path), book_id, format)
-                .await?
-                .ok_or_else(|| {
-                    AppError::NotFound(format!(
-                        "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
-                    ))
-                })?;
+        let file_path = my_reader_core::api::catalog::CatalogService::get_book_file_path(
+            Path::new(lib_path),
+            book_id,
+            format,
+        )
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "BOOK_FORMAT_NOT_FOUND: book={book_id}, format={format}"
+            ))
+        })?;
 
         if is_remote {
             let relative_path = compute_book_relative_path(&file_path, Path::new(lib_path))?;
@@ -101,7 +104,11 @@ impl ReaderService {
             return Ok(true);
         };
 
-        let row = my_reader_core::api::content::get_file_state(sidecar_root, relative_path).await?;
+        let row = my_reader_core::api::content::ContentService::get_file_state(
+            sidecar_root,
+            relative_path,
+        )
+        .await?;
         Ok(row.is_some_and(|r| r.local_state == "present"))
     }
 
@@ -147,7 +154,7 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        my_reader_core::api::content::upsert_file_state(
+        my_reader_core::api::content::ContentService::upsert_file_state(
             sidecar_root.path(),
             "It.epub",
             FileStateUpdate {
@@ -167,7 +174,7 @@ mod tests {
         .await
         .expect("state check should succeed"));
 
-        my_reader_core::api::content::upsert_file_state(
+        my_reader_core::api::content::ContentService::upsert_file_state(
             sidecar_root.path(),
             "It.epub",
             FileStateUpdate {

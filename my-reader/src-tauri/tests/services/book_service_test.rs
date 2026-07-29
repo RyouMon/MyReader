@@ -412,7 +412,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
     let lib_path = path_string(lib.path());
     let sidecar_path = path_string(sidecar.path());
 
-    my_reader_core::api::reading::set_reading_position(
+    my_reader_core::api::reading::ReadingService::set_reading_position(
         sidecar.path(),
         lib.path(),
         1,
@@ -423,7 +423,7 @@ async fn get_books_page_by_last_read_should_filter_sort_and_paginate() {
     )
     .await
     .expect("set alpha progress");
-    my_reader_core::api::reading::set_reading_position(
+    my_reader_core::api::reading::ReadingService::set_reading_position(
         sidecar.path(),
         lib.path(),
         2,

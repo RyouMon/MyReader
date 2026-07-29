@@ -21,7 +21,7 @@ jest.mock("expo-router", () => ({
 }))
 
 jest.mock("@/src/domain/library/hooks/library-actions", () => ({
-  registerRemoteLibrary: (...args: unknown[]) =>
+  addRemoteLibraryFromSource: (...args: unknown[]) =>
     mockRegisterRemoteLibrary(...args),
 }))
 

@@ -357,10 +357,13 @@ async fn serve_local_book_file(
         .to_str()
         .ok_or_else(|| AppError::Config("LIB_PATH_INVALID_UTF8".into()))?;
 
-    let file_path =
-        my_reader_core::api::catalog::get_book_file_path(Path::new(lib_path_str), book_id, format)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("BOOK_FILE_NOT_FOUND: {book_id}")))?;
+    let file_path = my_reader_core::api::catalog::CatalogService::get_book_file_path(
+        Path::new(lib_path_str),
+        book_id,
+        format,
+    )
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("BOOK_FILE_NOT_FOUND: {book_id}")))?;
 
     let file_path = dunce::canonicalize(&file_path)
         .map_err(|e| AppError::Config(format!("BOOK_FILE_CANONICALIZE_FAILED: {e}")))?;

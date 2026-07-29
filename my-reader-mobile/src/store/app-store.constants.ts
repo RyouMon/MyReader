@@ -7,7 +7,7 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 
 import type { ReaderSettings } from "./app-store.types"
 
-export const STORE_NAME = "myreader-mobile-app-state"
+export const MOBILE_CONFIG_KEY = "mobile"
 
 export const defaultSettings: ReaderSettings = {
   themeMode: "system",

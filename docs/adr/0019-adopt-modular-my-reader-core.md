@@ -47,7 +47,7 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 | 阶段 | 状态 | 实施结果 |
 |---|---|---|
 | Phase 0 | 完成 | 已冻结现有能力、数据所有权与非目标 |
-| Phase 1 | 完成 | Core、Rust migration、registry 与本地书库纵向切片已接入两端 |
+| Phase 1 | 完成 | Core、Rust migration、单一应用配置与本地书库纵向切片已接入两端 |
 | Phase 2 | 完成 | WebDAV、OneDrive 数据源和远程书库用例已进入 Core |
 | Phase 3 | 完成 | 书目和文件 projection 已进入 Core；下载 coordinator 统一去重、并发、取消和状态转换 |
 | Phase 4 | 完成 | 收藏、进度、书签、批注、阅读 session 与统计由 Core 原子写入 |
@@ -61,9 +61,12 @@ ADR-0008 继续保留为当时双后端架构下的历史决策。
 1. **使用一个 `my-reader-core` Cargo crate 承载跨端共享后端业务。** 数据源、书库、Calibre
    书目、图书内容、阅读数据和同步等现有业务按内部模块组织，不为每个业务领域预先建立独立
    crate。
-2. **采用模块化单体，不采用无边界的巨型 core。** crate 根只暴露粗粒度 use-case API；内部
-   保持 `api → services → repositories/infrastructure` 的单向依赖，并通过 Rust 可见性阻止
-   平台 adapter 绕过 service 直接访问 repository。
+2. **采用模块化单体，不采用无边界的巨型 core。** `api/` 只重导出按业务分组的具体
+   `CatalogService`、`ContentService`、`DataSourceService`、`LibraryService`、
+   `ReadingService` 和 `SyncService`；业务实现在对应 service 的 inherent `impl` 中，不再保留
+   一层同名自由函数转发。内部保持 `api → services → repositories/infrastructure` 的单向依赖，
+   并通过 Rust 可见性阻止平台 adapter 绕过 service 直接访问 repository。只有存在真实可替换
+   实现或测试端口时才定义 trait，不为单一实现机械创建 `XxxServiceImpl`。
 3. **不预设独立顶层 `domain/` 层。** 纯业务类型放入 `models/`；只被某个 service 使用的规则
    与该 service 就近组织；只有未来出现复杂、稳定、可独立测试且被多个用例共享的业务模型时，
    才根据实际需要提取 domain 模块。
@@ -196,8 +199,8 @@ command 是跨进程入口，不等于一对一的业务边界，但它与现有
 
 | 能力 | core 业务所有权 | 主要数据位置 | 是否进入 Sidecar CRDT |
 |---|---|---|---|
-| 数据源管理 | 是 | 设备本地 registry；凭据在系统安全存储 | 否 |
-| 书库注册、移除、刷新与切换 | 是 | 设备本地 registry 和远程元数据缓存 | 否 |
+| 数据源管理 | 是 | 设备本地 `config.json`；凭据在系统安全存储 | 否 |
+| 书库添加、移除、刷新与切换 | 是 | 设备本地 `config.json` 和远程元数据缓存 | 否 |
 | Calibre 书目、详情、系列与封面查询 | 是 | 外部只读 `metadata.db` | 否 |
 | 图书文件状态、下载、取消、删除与缓存 | 是 | 设备本地文件和缓存状态 | 否 |
 | 每书格式选择与阅读源准备 | 是 | 应用本地数据和文件缓存 | 当前不进入 |
@@ -228,14 +231,14 @@ core 拥有：
 - 用户选择目录及系统授权句柄；
 - 将安全存储中的 secret 转换为短生命周期调用输入。
 
-数据源 registry 是设备本地业务数据，不进入书库 Sidecar。registry 物理格式的迁移不得与用户
-设置同步混为一谈；本提案不引入中心 Profile 或账户。
+数据源配置属于设备本地应用配置，不进入书库 Sidecar。它与用户偏好可以共享同一个
+`config.json` 物理容器，但字段所有权和同步语义仍相互独立；本提案不引入中心 Profile 或账户。
 
 ### 书库
 
 core 拥有：
 
-- 书库注册、去重、删除、刷新和活动书库选择；
+- 书库添加、去重、删除、刷新和活动书库选择；
 - local/remote 书库与数据源的关联；
 - 书库 ID、源路径、本地容器和数据库上下文；
 - 下载并验证远程 `metadata.db`；
@@ -328,17 +331,19 @@ my-reader-mobile/
           lib.rs
           catalog.rs
           content.rs
+          data_source.rs
           download.rs
+          library.rs
           reading.rs
-          registry.rs
           sync.rs
           types.rs
 ```
 
 结构规则：
 
-- `api/`：面向 Tauri 与 UniFFI 的粗粒度用例、DTO 和事件合同。
-- `services/`：业务规则、用例编排、事务与跨 repository/storage 协作。
+- `api/`：面向 Tauri 与 UniFFI 重导出粗粒度 service、DTO 和事件合同，不重复实现逐函数 wrapper。
+- `services/`：具体 service 的公开 inherent `impl`、业务规则、用例编排、事务与跨
+  repository/storage 协作；无状态 service 使用关联方法，有状态 coordinator 使用实例方法。
 - `repositories/`：SeaORM 和 Calibre 查询；不调用 service。
 - `models/`：共享业务类型和值，不包含数据库和平台调用。
 - `infrastructure/`：数据库连接、对象存储、HTTP、缓存和任务等跨端实现。
@@ -516,15 +521,22 @@ Calibre `metadata.db` 不属于以上 migration：
 - 跨业务写入由一个 core service 取得事务并提交，不向 FFI 暴露 connection。
 - Calibre repository 单独打开 `metadata.db`，始终只读。
 
-### 设备本地 registry
+### 单一设备配置
 
-数据源、书库注册和活动书库属于设备本地业务 registry，不属于每书库 Sidecar，也不与用户设置
-同步。本提案要求 core 拥有 registry 的模型、校验和 use case，但不借机引入中心 Profile。
+每个安装实例只使用一个由 Core 持有的 `config.json`。顶层 `AppConfig` 保存 schema 版本、设备
+ID、通用偏好、数据源、已添加书库和活动书库；通用偏好当前只包含两端语义一致的主题和语言。
+桌面 Reader UI 其余偏好写入 `desktop` 节点，移动 Zustand 的其余持久化状态写入 `mobile`
+节点，不为尚不存在的平台能力预留字段。
 
-迁移时应保持现有用户配置可读，并由一个 core registry store 逐步取代 desktop/mobile 各自的
-业务写入。凭据只保存安全存储引用，不写入普通 JSON、SQLite、日志或 DTO。若需要改变 registry
-的物理文件格式或引入独立 app database，应在实施阶段明确迁移与回滚，不把格式选择隐藏在业务
-迁移中。
+Core 的 `ConfigService` 是该文件唯一的业务 writer。数据源、书库、桌面偏好或移动偏好更新都
+必须在同一个进程锁内读取完整配置、只修改所属字段并原子替换文件；反序列化时保留未知顶层字段，
+避免不同版本或平台 adapter 写回时擦除不属于自己的配置。移动 Zustand 只接收
+`config.json` 的运行时投影，不能再生成独立状态文件。
+
+`config.json` 仍是设备本地配置，不进入每书库 Sidecar，也不建立中心 Profile。旧
+`device-registry.json` 和开发期 `device-library-state.json` 不再读取或双写；桌面旧
+`config.json` 的平铺 `readerUi` 仅在载入时兼容并在下次保存时收敛。凭据只保存安全存储引用，
+不写入普通 JSON、SQLite、日志或 DTO。
 
 ## API 原则
 
@@ -573,7 +585,7 @@ openRawConnection
 ### Phase 1：建立 core 与本地数据源/书库纵向切片
 
 - 创建 `my-reader-core` 和最小 `api/services/repositories/models/infrastructure` 骨架。
-- 建立 core error、初始化、registry store、`LibraryStore` 和数据库连接生命周期。
+- 建立 core error、单一 `config.json`、`LibraryStore` 和数据库连接生命周期。
 - 将既有 migration 历史移入 core，并以原版本名称接入 SeaORM Migrator。
 - 为 mobile 现有 Drizzle 数据库实现并测试一次性 migration ownership handoff。
 - desktop/mobile 都切换为由 core 执行 MyReader 数据库 migration；后续只新增 Rust migration。
@@ -698,7 +710,7 @@ openRawConnection
 | 为每个 command 机械创建 service/repository | 以真实用例和数据所有权分组，不追求一文件一层 |
 | 提前建设无人使用的基础设施 | 每个基础设施能力必须随一个纵向业务切片进入 |
 | 平台能力泄漏到 core | Tauri/Expo/Readium/系统授权留在 adapter；core 只接收稳定 DTO 或 port |
-| 数据源、书库进入 core 后被误同步 | 明确业务所有权与同步范围是两个维度；registry 设备本地 |
+| 数据源、书库进入 core 后被误同步 | 明确业务所有权与同步范围是两个维度；`config.json` 仅保存在本机 |
 | Calibre 被误当作应用数据库迁移 | repository 强制只读；Calibre entities 不注册到应用 migrator |
 | mobile 切换迁移器后重复建表或漏记版本 | 校验 Drizzle 记录与实际 schema，一次性建立等价 SeaORM migration state 后再禁用旧 migrator |
 | 新旧 schema 权威在迁移期继续分叉 | 权威切换后只允许新增 Rust migration；TypeScript schema 只作临时查询映射 |
@@ -734,7 +746,7 @@ ADR-0018 已验证的共享 Rust 与绑定方向继续有效；本决策开始�
 - 不新增任何当前不存在的业务功能或同步 domain。
 - 不增加评分、书架、合集、标签、账户、中心 Profile 或跨书库统计。
 - 不改变 Sidecar 目录、远端对象格式、Automerge schema 或冲突合并规则。
-- 不同步数据源配置、书库 registry、用户设置或 Reader UI 偏好。
+- 不同步数据源配置、已添加书库、用户设置或 Reader UI 偏好。
 - 不修改 Calibre `metadata.db`。
 - 不把 React/React Native UI、Readium Navigator、窗口或手势迁入 Rust。
 - 不用 Tauri Mobile 替换 Expo。
@@ -748,7 +760,7 @@ ADR-0018 已验证的共享 Rust 与绑定方向继续有效；本决策开始�
 
 1. `my-reader-core` 的业务范围采用现有 command/service 清单，而不是六种同步数据。
 2. 顶层不预设独立 `domain/`，按实际规则需要再提取。
-3. 数据源与书库 registry 保持设备本地，不进入 Sidecar。
+3. 数据源、已添加书库与设备配置保持本地，不进入 Sidecar。
 4. MyReader 自有数据库由有序 Rust migrations 持有 schema 与升级历史；SeaORM entities 只负责
    运行时查询映射。
 5. `my-reader-core-ffi` 只作为技术绑定外壳。

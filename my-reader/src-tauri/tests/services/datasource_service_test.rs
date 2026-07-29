@@ -36,27 +36,27 @@ fn add_local_data_source_should_validate_path_deduplicate_and_remove() {
         },
     });
     let temp = tempfile::tempdir().unwrap();
-    let registry_path = temp.path().join("registry.json");
+    let config_path = temp.path().join("config.json");
     let file_path = temp.path().join("not-a-directory");
     std::fs::write(&file_path, b"file").unwrap();
 
     let err = DataSourceService::add_local_data_source(
         "",
         temp.path().to_str().unwrap(),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
     assert!(format!("{err}").contains("DATASOURCE_NAME_REQUIRED"));
 
-    let err = DataSourceService::add_local_data_source("Name", "", &registry_path, &mut config)
+    let err = DataSourceService::add_local_data_source("Name", "", &config_path, &mut config)
         .unwrap_err();
     assert!(format!("{err}").contains("LOCAL_ROOT_PATH_REQUIRED"));
 
     let err = DataSourceService::add_local_data_source(
         "Name",
         "/definitely/not/exists",
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
@@ -65,7 +65,7 @@ fn add_local_data_source_should_validate_path_deduplicate_and_remove() {
     let err = DataSourceService::add_local_data_source(
         "Name",
         &file_path.to_string_lossy(),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
@@ -74,14 +74,14 @@ fn add_local_data_source_should_validate_path_deduplicate_and_remove() {
     let first = DataSourceService::add_local_data_source(
         "First",
         temp.path().to_str().unwrap(),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .expect("local datasource should be added");
     let err = DataSourceService::add_local_data_source(
         "Second",
         temp.path().to_str().unwrap(),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
@@ -89,20 +89,20 @@ fn add_local_data_source_should_validate_path_deduplicate_and_remove() {
     assert_eq!(config.data_sources.len(), 2);
     assert_eq!(first.name, "First");
 
-    DataSourceService::remove_data_source(&first.id, &registry_path, &mut config)
+    DataSourceService::remove_data_source(&first.id, &config_path, &mut config)
         .expect("remove should succeed");
     assert_eq!(config.data_sources.len(), 1);
 
     let err =
-        DataSourceService::remove_data_source("missing", &registry_path, &mut config).unwrap_err();
+        DataSourceService::remove_data_source("missing", &config_path, &mut config).unwrap_err();
     assert!(format!("{err}").contains("DATASOURCE_NOT_FOUND"));
 }
 
 #[test]
 fn add_webdav_data_source_should_validate_deduplicate_store_and_delete_password() {
     let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
-    let registry_dir = tempfile::tempdir().unwrap();
-    let registry_path = registry_dir.path().join("registry.json");
+    let state_dir = tempfile::tempdir().unwrap();
+    let config_path = state_dir.path().join("config.json");
     let mut config = AppConfig::default();
     config.data_sources.push(DataSourceConfig {
         id: "local-existing".into(),
@@ -137,7 +137,7 @@ fn add_webdav_data_source_should_validate_deduplicate_store_and_delete_password(
             username,
             password,
             None,
-            &registry_path,
+            &config_path,
             &mut config,
         )
         .unwrap_err();
@@ -150,7 +150,7 @@ fn add_webdav_data_source_should_validate_deduplicate_store_and_delete_password(
         "user",
         "pass",
         Some("/books"),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .expect("webdav datasource should be added");
@@ -170,13 +170,13 @@ fn add_webdav_data_source_should_validate_deduplicate_store_and_delete_password(
         "user",
         "pass2",
         None,
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
     assert!(format!("{err}").contains("WEBDAV_DATASOURCE_ALREADY_EXISTS"));
 
-    DataSourceService::remove_data_source(&dto.id, &registry_path, &mut config)
+    DataSourceService::remove_data_source(&dto.id, &config_path, &mut config)
         .expect("remove should succeed");
     assert_eq!(config.data_sources.len(), 1);
     assert_eq!(credentials::read_webdav_password(&account).unwrap(), None);
@@ -185,8 +185,8 @@ fn add_webdav_data_source_should_validate_deduplicate_store_and_delete_password(
 #[test]
 fn add_onedrive_data_source_should_validate_store_and_delete_refresh_token() {
     let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
-    let registry_dir = tempfile::tempdir().unwrap();
-    let registry_path = registry_dir.path().join("registry.json");
+    let state_dir = tempfile::tempdir().unwrap();
+    let config_path = state_dir.path().join("config.json");
     let mut config = AppConfig::default();
 
     let err = DataSourceService::add_onedrive_data_source(
@@ -197,7 +197,7 @@ fn add_onedrive_data_source_should_validate_store_and_delete_refresh_token() {
         None,
         None,
         Some("rt"),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
@@ -211,7 +211,7 @@ fn add_onedrive_data_source_should_validate_store_and_delete_refresh_token() {
         None,
         None,
         None,
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .unwrap_err();
@@ -225,7 +225,7 @@ fn add_onedrive_data_source_should_validate_store_and_delete_refresh_token() {
         Some("Wen Liang"),
         Some("wen@example.com"),
         Some("refresh-token"),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .expect("onedrive datasource should be added");
@@ -237,7 +237,7 @@ fn add_onedrive_data_source_should_validate_store_and_delete_refresh_token() {
         Some("refresh-token".to_string())
     );
 
-    DataSourceService::remove_data_source(&dto.id, &registry_path, &mut config)
+    DataSourceService::remove_data_source(&dto.id, &config_path, &mut config)
         .expect("remove should succeed");
     assert!(config.data_sources.is_empty());
     assert_eq!(
@@ -301,8 +301,8 @@ async fn test_webdav_connection_should_validate_inputs_and_map_server_status() {
 #[tokio::test]
 async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
     let _guard = credentials::use_test_backend(credentials::MemoryBackend::default());
-    let registry_dir = tempfile::tempdir().unwrap();
-    let registry_path = registry_dir.path().join("registry.json");
+    let state_dir = tempfile::tempdir().unwrap();
+    let config_path = state_dir.path().join("config.json");
     let ok_addr = start_warp_server(|_method, depth, _body| {
         let body = if depth == "1" {
             PROPFIND_LISTING_XML.to_string()
@@ -322,12 +322,12 @@ async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
         "user",
         "pass",
         Some("/books"),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .expect("webdav datasource should be added");
 
-    let entries = DataSourceService::list_webdav_folders(&dto.id, "/", &registry_path, &config)
+    let entries = DataSourceService::list_webdav_folders(&dto.id, "/", &config_path, &config)
         .await
         .expect("list should succeed");
     assert_eq!(entries.len(), 1);
@@ -346,12 +346,12 @@ async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
         "user2",
         "pass",
         Some("/books"),
-        &registry_path,
+        &config_path,
         &mut config,
     )
     .expect("webdav datasource should be added");
 
-    let err = DataSourceService::list_webdav_folders(&dto.id, "/", &registry_path, &config)
+    let err = DataSourceService::list_webdav_folders(&dto.id, "/", &config_path, &config)
         .await
         .unwrap_err();
     assert!(format!("{err}").contains("WEBDAV_UNEXPECTED_STATUS"));
@@ -359,8 +359,8 @@ async fn list_webdav_folders_should_return_entries_and_map_unexpected_status() {
 
 #[tokio::test]
 async fn list_onedrive_folders_should_return_auth_error_when_refresh_token_is_missing() {
-    let registry_dir = tempfile::tempdir().unwrap();
-    let registry_path = registry_dir.path().join("registry.json");
+    let state_dir = tempfile::tempdir().unwrap();
+    let config_path = state_dir.path().join("config.json");
     let config = AppConfig {
         data_sources: vec![DataSourceConfig {
             id: "ds-onedrive".into(),
@@ -378,7 +378,7 @@ async fn list_onedrive_folders_should_return_auth_error_when_refresh_token_is_mi
         ..Default::default()
     };
 
-    let err = DataSourceService::list_onedrive_folders("ds-onedrive", "/", &registry_path, &config)
+    let err = DataSourceService::list_onedrive_folders("ds-onedrive", "/", &config_path, &config)
         .await
         .expect_err("missing token should fail before graph request");
 

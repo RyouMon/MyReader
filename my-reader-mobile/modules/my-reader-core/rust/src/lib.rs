@@ -1,10 +1,12 @@
 //! Mobile FFI aggregation root for MyReader Core.
 
 mod catalog;
+mod config;
 mod content;
+mod data_source;
 mod download;
+mod library;
 mod reading;
-mod registry;
 mod sync;
 mod types;
 

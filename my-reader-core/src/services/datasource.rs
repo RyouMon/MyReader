@@ -4,41 +4,70 @@ use opendal::Operator;
 use serde::Deserialize;
 
 use crate::{
-    infrastructure::{registry_store, storage},
-    models::{DataSource, RemoteCredential, RemoteDirectoryEntry},
+    infrastructure::storage,
+    models::{AppConfig, DataSource, RemoteCredential, RemoteDirectoryEntry},
+    services::config,
     CoreError,
 };
 
-pub(crate) async fn test_connection(
-    source: &DataSource,
-    credential: &RemoteCredential,
-) -> Result<(), CoreError> {
-    storage::build_remote_operator(source, credential)?
-        .check()
-        .await
-        .map_err(|error| storage::remote_storage_error(source, error))
-}
+pub struct DataSourceService;
 
-pub(crate) async fn list_directories(
-    registry_path: &Path,
-    data_source_id: &str,
-    path: &str,
-    credential: &RemoteCredential,
-) -> Result<Vec<RemoteDirectoryEntry>, CoreError> {
-    let registry = registry_store::load(registry_path)?
-        .ok_or_else(|| CoreError::NotFound("DEVICE_REGISTRY_NOT_FOUND".into()))?;
-    let source = registry
-        .data_sources
-        .iter()
-        .find(|source| source.id() == data_source_id)
-        .ok_or_else(|| CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}")))?;
-    if let (DataSource::Onedrive { root_path, .. }, RemoteCredential::Onedrive { access_token }) =
-        (source, credential)
-    {
-        return list_onedrive_directories(root_path.as_deref(), path, access_token).await;
+impl DataSourceService {
+    pub fn prepare(source: DataSource) -> Result<DataSource, CoreError> {
+        config::ConfigService::prepare_data_source(source)
     }
-    let operator = storage::build_remote_operator(source, credential)?;
-    list_directories_with_operator(&operator, path, Some(source)).await
+
+    pub fn validate(path: &Path, source: &DataSource) -> Result<(), CoreError> {
+        config::ConfigService::ensure_data_source_can_upsert(path, source)
+    }
+
+    pub fn upsert(path: &Path, source: DataSource) -> Result<AppConfig, CoreError> {
+        config::ConfigService::upsert_data_source(path, source)
+    }
+
+    pub fn add_local(path: &Path, name: &str, root_path: &str) -> Result<AppConfig, CoreError> {
+        config::ConfigService::add_local_data_source(path, name, root_path)
+    }
+
+    pub fn remove(path: &Path, id: &str) -> Result<AppConfig, CoreError> {
+        config::ConfigService::remove_data_source(path, id)
+    }
+
+    pub async fn test_connection(
+        source: &DataSource,
+        credential: &RemoteCredential,
+    ) -> Result<(), CoreError> {
+        storage::build_remote_operator(source, credential)?
+            .check()
+            .await
+            .map_err(|error| storage::remote_storage_error(source, error))
+    }
+
+    pub async fn list_directories(
+        config_path: &Path,
+        data_source_id: &str,
+        path: &str,
+        credential: &RemoteCredential,
+    ) -> Result<Vec<RemoteDirectoryEntry>, CoreError> {
+        let state = config::ConfigService::load(config_path)?
+            .ok_or_else(|| CoreError::NotFound("APP_CONFIG_NOT_FOUND".into()))?;
+        let source = state
+            .data_sources
+            .iter()
+            .find(|source| source.id() == data_source_id)
+            .ok_or_else(|| {
+                CoreError::NotFound(format!("DATASOURCE_NOT_FOUND: {data_source_id}"))
+            })?;
+        if let (
+            DataSource::Onedrive { root_path, .. },
+            RemoteCredential::Onedrive { access_token },
+        ) = (source, credential)
+        {
+            return list_onedrive_directories(root_path.as_deref(), path, access_token).await;
+        }
+        let operator = storage::build_remote_operator(source, credential)?;
+        list_directories_with_operator(&operator, path, Some(source)).await
+    }
 }
 
 #[derive(Deserialize)]

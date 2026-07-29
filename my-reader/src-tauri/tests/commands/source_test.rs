@@ -48,7 +48,7 @@ async fn list_data_sources_should_return_seeded_sources_when_config_has_entries(
 }
 
 #[tokio::test]
-async fn add_local_data_source_should_register_and_persist_when_input_is_valid() {
+async fn add_local_data_source_should_add_and_persist_when_input_is_valid() {
     let app = TestApp::new();
     let temp = tempfile::tempdir().expect("tempdir");
 

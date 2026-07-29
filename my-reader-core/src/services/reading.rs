@@ -26,329 +26,280 @@ use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::reading::ReadingRepository;
 use crate::CoreError;
 
-pub(crate) async fn list_favorite_book_ids(sidecar_root: &Path) -> Result<Vec<i64>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db).list_favorite_book_ids().await
-}
+pub struct ReadingService;
 
-pub(crate) async fn set_favorite_book(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    is_favorite: bool,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    if book_id < 1 {
-        return Err(CoreError::Config("Favorite book ID is invalid".into()));
-    }
-    if recorded_at_ms < 0 {
-        return Err(CoreError::Config(
-            "Favorite recorded time is invalid".into(),
-        ));
+impl ReadingService {
+    pub async fn list_favorite_book_ids(sidecar_root: &Path) -> Result<Vec<i64>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db).list_favorite_book_ids().await
     }
 
-    database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let library_uuid = CalibreBookRepository::open(&library_root.to_string_lossy())
-        .await?
-        .get_library_uuid()
-        .await?;
-    let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
-    let database_path = database_path
-        .to_str()
-        .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?;
-    let identity = ensure_database_identity(database_path, &library_uuid)?;
-    let replica_id = identity.replica_id.clone();
-    let mut changed = false;
-
-    execute_local_database_mutation(database_path, &identity, recorded_at_ms, |document| {
-        let current = favorite_projections(document)?
-            .into_iter()
-            .find(|(id, _)| *id == book_id)
-            .map(|(_, value)| value);
-        if current.as_ref().map(|value| value.is_favorite) == Some(is_favorite)
-            || (current.is_none() && !is_favorite)
-        {
-            return Ok(());
+    pub async fn set_favorite_book(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        is_favorite: bool,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        if book_id < 1 {
+            return Err(CoreError::Config("Favorite book ID is invalid".into()));
         }
-        changed = true;
-        set_favorite(
-            document,
-            book_id,
-            &FavoriteValue {
-                is_favorite,
-                added_at: if is_favorite {
-                    Some(recorded_at_ms)
-                } else {
-                    current.and_then(|value| value.added_at)
-                },
-                recorded_at: recorded_at_ms,
-                replica_id: replica_id.clone(),
-            },
-        )?;
-        Ok(())
-    })?;
+        if recorded_at_ms < 0 {
+            return Err(CoreError::Config(
+                "Favorite recorded time is invalid".into(),
+            ));
+        }
 
-    if changed {
+        database::open_db(&sidecar_root.to_string_lossy()).await?;
+        let library_uuid = CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_library_uuid()
+            .await?;
+        let database_path = database::library_db_path(&sidecar_root.to_string_lossy())?;
+        let database_path = database_path
+            .to_str()
+            .ok_or_else(|| CoreError::Config("Library database path is invalid UTF-8".into()))?;
+        let identity = ensure_database_identity(database_path, &library_uuid)?;
+        let replica_id = identity.replica_id.clone();
+        let mut changed = false;
+
+        execute_local_database_mutation(database_path, &identity, recorded_at_ms, |document| {
+            let current = favorite_projections(document)?
+                .into_iter()
+                .find(|(id, _)| *id == book_id)
+                .map(|(_, value)| value);
+            if current.as_ref().map(|value| value.is_favorite) == Some(is_favorite)
+                || (current.is_none() && !is_favorite)
+            {
+                return Ok(());
+            }
+            changed = true;
+            set_favorite(
+                document,
+                book_id,
+                &FavoriteValue {
+                    is_favorite,
+                    added_at: if is_favorite {
+                        Some(recorded_at_ms)
+                    } else {
+                        current.and_then(|value| value.added_at)
+                    },
+                    recorded_at: recorded_at_ms,
+                    replica_id: replica_id.clone(),
+                },
+            )?;
+            Ok(())
+        })?;
+
+        if changed {
+            info!(
+                target: "myreader_sync",
+                event = "book_favorite.local_write",
+                library_uuid,
+                replica_id,
+                book_id,
+                is_favorite,
+                "Committed local favorite state"
+            );
+        }
+        Ok(())
+    }
+
+    pub async fn get_reading_position(
+        sidecar_root: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Option<ReadingPosition>, CoreError> {
+        let format = normalize_reading_format(format)?;
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db)
+            .get_reading_position(book_id, &format)
+            .await
+    }
+
+    pub async fn list_reading_positions(
+        sidecar_root: &Path,
+    ) -> Result<Vec<ReadingPosition>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db).list_reading_positions().await
+    }
+
+    pub async fn latest_read_at_by_book(
+        sidecar_root: &Path,
+    ) -> Result<std::collections::BTreeMap<i64, f64>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db).latest_read_at_by_book().await
+    }
+
+    pub async fn set_reading_position(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        locator_json: &str,
+        display_progression: Option<f64>,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        if book_id < 1 || recorded_at_ms < 0 {
+            return Err(CoreError::Config("Reading position is invalid".into()));
+        }
+        let format = normalize_reading_format(format)?;
+        let locator_json = validate_locator_json(locator_json)?;
+        let display_progression_ppm = display_progression
+            .map(|value| {
+                if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+                    return Err(CoreError::Config(
+                        "Reading position display progression is out of range".into(),
+                    ));
+                }
+                Ok((value * 1_000_000.0).round() as u32)
+            })
+            .transpose()?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let value = ReadingPositionValue {
+            format: format.clone(),
+            locator_json,
+            display_progression_ppm,
+            recorded_at: recorded_at_ms,
+            replica_id: identity.replica_id.clone(),
+        };
+
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            write_reading_position(document, book_id, &value)?;
+            Ok(())
+        })?;
         info!(
             target: "myreader_sync",
-            event = "book_favorite.local_write",
-            library_uuid,
-            replica_id,
+            event = "reading_position.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
             book_id,
-            is_favorite,
-            "Committed local favorite state"
+            format,
+            "Committed local reading position"
         );
-    }
-    Ok(())
-}
-
-pub(crate) async fn get_reading_position(
-    sidecar_root: &Path,
-    book_id: i64,
-    format: &str,
-) -> Result<Option<ReadingPosition>, CoreError> {
-    let format = normalize_reading_format(format)?;
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
-        .get_reading_position(book_id, &format)
-        .await
-}
-
-pub(crate) async fn list_reading_positions(
-    sidecar_root: &Path,
-) -> Result<Vec<ReadingPosition>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db).list_reading_positions().await
-}
-
-pub(crate) async fn latest_read_at_by_book(
-    sidecar_root: &Path,
-) -> Result<std::collections::BTreeMap<i64, f64>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db).latest_read_at_by_book().await
-}
-
-pub(crate) async fn set_reading_position(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    locator_json: &str,
-    display_progression: Option<f64>,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    if book_id < 1 || recorded_at_ms < 0 {
-        return Err(CoreError::Config("Reading position is invalid".into()));
-    }
-    let format = normalize_reading_format(format)?;
-    let locator_json = validate_locator_json(locator_json)?;
-    let display_progression_ppm = display_progression
-        .map(|value| {
-            if !value.is_finite() || !(0.0..=1.0).contains(&value) {
-                return Err(CoreError::Config(
-                    "Reading position display progression is out of range".into(),
-                ));
-            }
-            Ok((value * 1_000_000.0).round() as u32)
-        })
-        .transpose()?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let value = ReadingPositionValue {
-        format: format.clone(),
-        locator_json,
-        display_progression_ppm,
-        recorded_at: recorded_at_ms,
-        replica_id: identity.replica_id.clone(),
-    };
-
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        write_reading_position(document, book_id, &value)?;
         Ok(())
-    })?;
-    info!(
-        target: "myreader_sync",
-        event = "reading_position.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        book_id,
-        format,
-        "Committed local reading position"
-    );
-    Ok(())
-}
-
-pub(crate) async fn list_reading_position_candidates(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    now_ms: i64,
-) -> Result<Vec<ReadingPositionCandidate>, CoreError> {
-    if book_id < 1 || now_ms < 0 {
-        return Err(CoreError::Config("Reading position is invalid".into()));
     }
-    let format = normalize_reading_format(format)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let result = ensure_database_document(&database_path, &identity, now_ms)?;
-    result
-        .projection
-        .reading_position_candidates
-        .into_iter()
-        .filter(|candidate| candidate.book_id == book_id && candidate.format == format)
-        .map(|candidate| {
-            Ok(ReadingPositionCandidate {
-                operation_id: candidate.operation_id,
-                locator: serde_json::from_str(&candidate.value.locator_json)?,
-                display_progression: candidate
-                    .value
-                    .display_progression_ppm
-                    .map(|value| f64::from(value) / 1_000_000.0),
-                recorded_at: candidate.value.recorded_at,
-                replica_id: candidate.value.replica_id,
-            })
-        })
-        .collect()
-}
 
-pub(crate) async fn select_reading_position_candidate(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    operation_id: &str,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    if book_id < 1 || operation_id.is_empty() || recorded_at_ms < 0 {
-        return Err(CoreError::Config(
-            "Reading position candidate is invalid".into(),
-        ));
-    }
-    let format = normalize_reading_format(format)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        resolve_reading_position(document, book_id, &format, operation_id, recorded_at_ms)?;
-        Ok(())
-    })?;
-    Ok(())
-}
-
-pub(crate) async fn list_reader_bookmarks(
-    sidecar_root: &Path,
-    book_id: i64,
-    format: &str,
-) -> Result<Vec<ReaderBookmark>, CoreError> {
-    if book_id < 1 {
-        return Err(CoreError::Config("Bookmark identity is invalid".into()));
-    }
-    let format = normalize_reading_format(format)?;
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
-        .list_bookmarks(book_id, &format)
-        .await
-}
-
-pub(crate) async fn add_reader_bookmark(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    locator_key: &str,
-    locator_json: &str,
-    recorded_at_ms: i64,
-) -> Result<ReaderBookmark, CoreError> {
-    let (format, locator_key, locator_json) = validate_bookmark(
-        book_id,
-        format,
-        locator_key,
-        Some(locator_json),
-        recorded_at_ms,
-    )?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        let current = bookmark_projections(document)?.into_iter().find(|item| {
-            item.book_id == book_id && item.format == format && item.locator_key == locator_key
-        });
-        if current
-            .as_ref()
-            .is_some_and(|bookmark| bookmark.deleted_at.is_none())
-        {
-            return Ok(());
+    pub async fn list_reading_position_candidates(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        now_ms: i64,
+    ) -> Result<Vec<ReadingPositionCandidate>, CoreError> {
+        if book_id < 1 || now_ms < 0 {
+            return Err(CoreError::Config("Reading position is invalid".into()));
         }
-        set_bookmark(
-            document,
-            &BookmarkValue {
-                id: current.as_ref().map_or_else(
-                    || uuid::Uuid::new_v4().as_simple().to_string(),
-                    |bookmark| bookmark.id.clone(),
-                ),
-                book_id,
-                format: format.clone(),
-                locator_key: locator_key.clone(),
-                locator_json: locator_json.clone(),
-                created_at: current
-                    .as_ref()
-                    .map_or(recorded_at_ms, |bookmark| bookmark.created_at),
-                deleted_at: None,
-                recorded_at: recorded_at_ms,
-                replica_id: identity.replica_id.clone(),
-            },
-        )?;
+        let format = normalize_reading_format(format)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let result = ensure_database_document(&database_path, &identity, now_ms)?;
+        result
+            .projection
+            .reading_position_candidates
+            .into_iter()
+            .filter(|candidate| candidate.book_id == book_id && candidate.format == format)
+            .map(|candidate| {
+                Ok(ReadingPositionCandidate {
+                    operation_id: candidate.operation_id,
+                    locator: serde_json::from_str(&candidate.value.locator_json)?,
+                    display_progression: candidate
+                        .value
+                        .display_progression_ppm
+                        .map(|value| f64::from(value) / 1_000_000.0),
+                    recorded_at: candidate.value.recorded_at,
+                    replica_id: candidate.value.replica_id,
+                })
+            })
+            .collect()
+    }
+
+    pub async fn select_reading_position_candidate(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        operation_id: &str,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        if book_id < 1 || operation_id.is_empty() || recorded_at_ms < 0 {
+            return Err(CoreError::Config(
+                "Reading position candidate is invalid".into(),
+            ));
+        }
+        let format = normalize_reading_format(format)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            resolve_reading_position(document, book_id, &format, operation_id, recorded_at_ms)?;
+            Ok(())
+        })?;
         Ok(())
-    })?;
+    }
 
-    info!(
-        target: "myreader_sync",
-        event = "bookmark.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        book_id,
-        format,
-        locator_key,
-        present = true,
-        "Committed local bookmark state"
-    );
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
-        .find_bookmark(book_id, &format, &locator_key)
-        .await?
-        .ok_or_else(|| CoreError::Database("Bookmark add returned no row".into()))
-}
+    pub async fn list_reader_bookmarks(
+        sidecar_root: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Vec<ReaderBookmark>, CoreError> {
+        if book_id < 1 {
+            return Err(CoreError::Config("Bookmark identity is invalid".into()));
+        }
+        let format = normalize_reading_format(format)?;
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db)
+            .list_bookmarks(book_id, &format)
+            .await
+    }
 
-pub(crate) async fn remove_reader_bookmark(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    locator_key: &str,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    let (format, locator_key, _) =
-        validate_bookmark(book_id, format, locator_key, None, recorded_at_ms)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let mut changed = false;
-
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        let current = bookmark_projections(document)?.into_iter().find(|item| {
-            item.book_id == book_id && item.format == format && item.locator_key == locator_key
-        });
-        let Some(current) = current.filter(|bookmark| bookmark.deleted_at.is_none()) else {
-            return Ok(());
-        };
-        changed = true;
-        set_bookmark(
-            document,
-            &BookmarkValue {
-                deleted_at: Some(recorded_at_ms),
-                recorded_at: recorded_at_ms,
-                replica_id: identity.replica_id.clone(),
-                ..current
-            },
+    pub async fn add_reader_bookmark(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        locator_key: &str,
+        locator_json: &str,
+        recorded_at_ms: i64,
+    ) -> Result<ReaderBookmark, CoreError> {
+        let (format, locator_key, locator_json) = validate_bookmark(
+            book_id,
+            format,
+            locator_key,
+            Some(locator_json),
+            recorded_at_ms,
         )?;
-        Ok(())
-    })?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
 
-    if changed {
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            let current = bookmark_projections(document)?.into_iter().find(|item| {
+                item.book_id == book_id && item.format == format && item.locator_key == locator_key
+            });
+            if current
+                .as_ref()
+                .is_some_and(|bookmark| bookmark.deleted_at.is_none())
+            {
+                return Ok(());
+            }
+            set_bookmark(
+                document,
+                &BookmarkValue {
+                    id: current.as_ref().map_or_else(
+                        || uuid::Uuid::new_v4().as_simple().to_string(),
+                        |bookmark| bookmark.id.clone(),
+                    ),
+                    book_id,
+                    format: format.clone(),
+                    locator_key: locator_key.clone(),
+                    locator_json: locator_json.clone(),
+                    created_at: current
+                        .as_ref()
+                        .map_or(recorded_at_ms, |bookmark| bookmark.created_at),
+                    deleted_at: None,
+                    recorded_at: recorded_at_ms,
+                    replica_id: identity.replica_id.clone(),
+                },
+            )?;
+            Ok(())
+        })?;
+
         info!(
             target: "myreader_sync",
             event = "bookmark.local_write",
@@ -357,165 +308,218 @@ pub(crate) async fn remove_reader_bookmark(
             book_id,
             format,
             locator_key,
-            present = false,
+            present = true,
             "Committed local bookmark state"
         );
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db)
+            .find_bookmark(book_id, &format, &locator_key)
+            .await?
+            .ok_or_else(|| CoreError::Database("Bookmark add returned no row".into()))
     }
-    Ok(())
-}
 
-pub(crate) async fn list_reader_annotations(
-    sidecar_root: &Path,
-    book_id: i64,
-    format: &str,
-) -> Result<Vec<ReaderAnnotation>, CoreError> {
-    if book_id < 1 {
-        return Err(CoreError::Config("Annotation identity is invalid".into()));
-    }
-    let format = normalize_reading_format(format)?;
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
-        .list_annotations(book_id, &format)
-        .await
-}
+    pub async fn remove_reader_bookmark(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        locator_key: &str,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        let (format, locator_key, _) =
+            validate_bookmark(book_id, format, locator_key, None, recorded_at_ms)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let mut changed = false;
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn add_reader_annotation(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    locator_json: &str,
-    color: &str,
-    note: Option<&str>,
-    recorded_at_ms: i64,
-) -> Result<ReaderAnnotation, CoreError> {
-    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
-    let locator_json = validate_annotation_locator(locator_json)?;
-    let color = validate_annotation_color(color)?.to_owned();
-    let note = normalize_annotation_note(note)?;
-    let id = uuid::Uuid::new_v4().as_simple().to_string();
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            let current = bookmark_projections(document)?.into_iter().find(|item| {
+                item.book_id == book_id && item.format == format && item.locator_key == locator_key
+            });
+            let Some(current) = current.filter(|bookmark| bookmark.deleted_at.is_none()) else {
+                return Ok(());
+            };
+            changed = true;
+            set_bookmark(
+                document,
+                &BookmarkValue {
+                    deleted_at: Some(recorded_at_ms),
+                    recorded_at: recorded_at_ms,
+                    replica_id: identity.replica_id.clone(),
+                    ..current
+                },
+            )?;
+            Ok(())
+        })?;
 
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        create_annotation(
-            document,
-            &AnnotationValue {
-                id: id.clone(),
+        if changed {
+            info!(
+                target: "myreader_sync",
+                event = "bookmark.local_write",
+                library_uuid = identity.library_uuid,
+                replica_id = identity.replica_id,
                 book_id,
                 format,
-                kind: "highlight".into(),
-                locator_json,
-                created_at: recorded_at_ms,
-                color,
-                note,
-                updated_at: recorded_at_ms,
-                deleted: false,
-                deleted_at: None,
-            },
-        )?;
-        Ok(())
-    })?;
-    info!(
-        target: "myreader_sync",
-        event = "annotation.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        annotation_id = id,
-        book_id,
-        operation = "create",
-        "Committed local annotation state"
-    );
-    find_annotation(sidecar_root, &id).await
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn update_reader_annotation(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    id: &str,
-    color: &str,
-    note: Option<&str>,
-    recorded_at_ms: i64,
-) -> Result<ReaderAnnotation, CoreError> {
-    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
-    let color = validate_annotation_color(color)?.to_owned();
-    let note = normalize_annotation_note(note)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let mut exists = false;
-
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        exists = annotation_projections(document)?
-            .into_iter()
-            .any(|annotation| {
-                annotation.id == id
-                    && annotation.book_id == book_id
-                    && annotation.format == format
-                    && !annotation.deleted
-            });
-        if exists {
-            update_annotation(document, id, &color, note.as_deref(), recorded_at_ms)?;
+                locator_key,
+                present = false,
+                "Committed local bookmark state"
+            );
         }
         Ok(())
-    })?;
-    if !exists {
-        return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
     }
-    info!(
-        target: "myreader_sync",
-        event = "annotation.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        annotation_id = id,
-        book_id,
-        operation = "update",
-        "Committed local annotation state"
-    );
-    find_annotation(sidecar_root, id).await
-}
 
-pub(crate) async fn remove_reader_annotation(
-    sidecar_root: &Path,
-    library_root: &Path,
-    book_id: i64,
-    format: &str,
-    id: &str,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let mut exists = false;
-
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        exists = annotation_projections(document)?
-            .into_iter()
-            .any(|annotation| {
-                annotation.id == id
-                    && annotation.book_id == book_id
-                    && annotation.format == format
-                    && !annotation.deleted
-            });
-        if exists {
-            delete_annotation(document, id, recorded_at_ms)?;
+    pub async fn list_reader_annotations(
+        sidecar_root: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Vec<ReaderAnnotation>, CoreError> {
+        if book_id < 1 {
+            return Err(CoreError::Config("Annotation identity is invalid".into()));
         }
-        Ok(())
-    })?;
-    if !exists {
-        return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
+        let format = normalize_reading_format(format)?;
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db)
+            .list_annotations(book_id, &format)
+            .await
     }
-    info!(
-        target: "myreader_sync",
-        event = "annotation.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        annotation_id = id,
-        book_id,
-        operation = "delete",
-        "Committed local annotation state"
-    );
-    Ok(())
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_reader_annotation(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        locator_json: &str,
+        color: &str,
+        note: Option<&str>,
+        recorded_at_ms: i64,
+    ) -> Result<ReaderAnnotation, CoreError> {
+        let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+        let locator_json = validate_annotation_locator(locator_json)?;
+        let color = validate_annotation_color(color)?.to_owned();
+        let note = normalize_annotation_note(note)?;
+        let id = uuid::Uuid::new_v4().as_simple().to_string();
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            create_annotation(
+                document,
+                &AnnotationValue {
+                    id: id.clone(),
+                    book_id,
+                    format,
+                    kind: "highlight".into(),
+                    locator_json,
+                    created_at: recorded_at_ms,
+                    color,
+                    note,
+                    updated_at: recorded_at_ms,
+                    deleted: false,
+                    deleted_at: None,
+                },
+            )?;
+            Ok(())
+        })?;
+        info!(
+            target: "myreader_sync",
+            event = "annotation.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            annotation_id = id,
+            book_id,
+            operation = "create",
+            "Committed local annotation state"
+        );
+        find_annotation(sidecar_root, &id).await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_reader_annotation(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        id: &str,
+        color: &str,
+        note: Option<&str>,
+        recorded_at_ms: i64,
+    ) -> Result<ReaderAnnotation, CoreError> {
+        let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+        let color = validate_annotation_color(color)?.to_owned();
+        let note = normalize_annotation_note(note)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let mut exists = false;
+
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            exists = annotation_projections(document)?
+                .into_iter()
+                .any(|annotation| {
+                    annotation.id == id
+                        && annotation.book_id == book_id
+                        && annotation.format == format
+                        && !annotation.deleted
+                });
+            if exists {
+                update_annotation(document, id, &color, note.as_deref(), recorded_at_ms)?;
+            }
+            Ok(())
+        })?;
+        if !exists {
+            return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
+        }
+        info!(
+            target: "myreader_sync",
+            event = "annotation.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            annotation_id = id,
+            book_id,
+            operation = "update",
+            "Committed local annotation state"
+        );
+        find_annotation(sidecar_root, id).await
+    }
+
+    pub async fn remove_reader_annotation(
+        sidecar_root: &Path,
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+        id: &str,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let mut exists = false;
+
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            exists = annotation_projections(document)?
+                .into_iter()
+                .any(|annotation| {
+                    annotation.id == id
+                        && annotation.book_id == book_id
+                        && annotation.format == format
+                        && !annotation.deleted
+                });
+            if exists {
+                delete_annotation(document, id, recorded_at_ms)?;
+            }
+            Ok(())
+        })?;
+        if !exists {
+            return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
+        }
+        info!(
+            target: "myreader_sync",
+            event = "annotation.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            annotation_id = id,
+            book_id,
+            operation = "delete",
+            "Committed local annotation state"
+        );
+        Ok(())
+    }
 }
 
 async fn find_annotation(sidecar_root: &Path, id: &str) -> Result<ReaderAnnotation, CoreError> {
@@ -526,159 +530,162 @@ async fn find_annotation(sidecar_root: &Path, id: &str) -> Result<ReaderAnnotati
         .ok_or_else(|| CoreError::Database("Annotation mutation returned no row".into()))
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn add_reading_session_interval(
-    sidecar_root: &Path,
-    library_root: &Path,
-    id: &str,
-    book_id: i64,
-    format: &str,
-    local_day: &str,
-    started_at_ms: i64,
-    duration_seconds: i64,
-    recorded_at_ms: i64,
-) -> Result<(), CoreError> {
-    validate_compact_uuid(id, "Reading session")?;
-    if book_id < 1 || started_at_ms < 0 || duration_seconds < 0 || recorded_at_ms < 0 {
-        return Err(CoreError::Config("Reading session is invalid".into()));
-    }
-    let format = normalize_reading_format(format)?;
-    validate_local_day(local_day)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let value = ReadingSessionValue {
-        id: id.to_owned(),
-        origin_replica_id: identity.replica_id.clone(),
-        book_id,
-        format: format.clone(),
-        local_day: local_day.to_owned(),
-        started_at: started_at_ms,
-        duration_seconds,
-        updated_at: recorded_at_ms,
-    };
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        add_reading_session_duration(document, &value)?;
-        Ok(())
-    })?;
-    info!(
-        target: "myreader_sync",
-        event = "reading_session.local_write",
-        library_uuid = identity.library_uuid,
-        replica_id = identity.replica_id,
-        session_id = id,
-        book_id,
-        format,
-        duration_seconds,
-        "Committed local reading session interval"
-    );
-    Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn add_reading_completion(
-    sidecar_root: &Path,
-    library_root: &Path,
-    id: &str,
-    book_id: i64,
-    format: &str,
-    local_day: &str,
-    completed_at_ms: i64,
-    recorded_at_ms: i64,
-) -> Result<bool, CoreError> {
-    validate_compact_uuid(id, "Reading completion")?;
-    if book_id < 1 || completed_at_ms < 0 || recorded_at_ms < 0 {
-        return Err(CoreError::Config("Reading completion is invalid".into()));
-    }
-    let format = normalize_reading_format(format)?;
-    validate_local_day(local_day)?;
-    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-    let value = ReadingCompletionValue {
-        id: id.to_owned(),
-        book_id,
-        format: format.clone(),
-        local_day: local_day.to_owned(),
-        completed_at: completed_at_ms,
-        updated_at: recorded_at_ms,
-        replica_id: identity.replica_id.clone(),
-    };
-    let mut changed = false;
-    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-        let existing = reading_completion_records(document)?
-            .into_iter()
-            .find(|current| current.book_id == book_id);
-        if existing.is_some_and(|current| {
-            current.completed_at < completed_at_ms
-                || (current.completed_at == completed_at_ms && current.id.as_str() <= id)
-        }) {
-            return Ok(());
+impl ReadingService {
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_reading_session_interval(
+        sidecar_root: &Path,
+        library_root: &Path,
+        id: &str,
+        book_id: i64,
+        format: &str,
+        local_day: &str,
+        started_at_ms: i64,
+        duration_seconds: i64,
+        recorded_at_ms: i64,
+    ) -> Result<(), CoreError> {
+        validate_compact_uuid(id, "Reading session")?;
+        if book_id < 1 || started_at_ms < 0 || duration_seconds < 0 || recorded_at_ms < 0 {
+            return Err(CoreError::Config("Reading session is invalid".into()));
         }
-        changed = write_reading_completion(document, &value)?.is_some();
-        Ok(())
-    })?;
-    if changed {
+        let format = normalize_reading_format(format)?;
+        validate_local_day(local_day)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let value = ReadingSessionValue {
+            id: id.to_owned(),
+            origin_replica_id: identity.replica_id.clone(),
+            book_id,
+            format: format.clone(),
+            local_day: local_day.to_owned(),
+            started_at: started_at_ms,
+            duration_seconds,
+            updated_at: recorded_at_ms,
+        };
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            add_reading_session_duration(document, &value)?;
+            Ok(())
+        })?;
         info!(
             target: "myreader_sync",
-            event = "reading_completion.local_write",
+            event = "reading_session.local_write",
             library_uuid = identity.library_uuid,
             replica_id = identity.replica_id,
-            completion_id = id,
+            session_id = id,
             book_id,
             format,
-            "Committed local reading completion"
+            duration_seconds,
+            "Committed local reading session interval"
         );
+        Ok(())
     }
-    Ok(changed)
-}
 
-pub(crate) async fn get_reading_statistics(
-    sidecar_root: &Path,
-    library_root: &Path,
-    start_day: &str,
-    end_day: &str,
-) -> Result<ReadingStatistics, CoreError> {
-    validate_local_day(start_day)?;
-    validate_local_day(end_day)?;
-    if start_day > end_day {
-        return Err(CoreError::Config(
-            "Reading statistics day range is invalid".into(),
-        ));
-    }
-    backfill_legacy_reading_completions(sidecar_root, library_root).await?;
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    let repository = ReadingRepository::new(&db);
-    let sessions = repository
-        .list_reading_sessions_by_day_range(start_day, end_day)
-        .await?;
-    let completions = repository
-        .list_reading_completions_by_day_range(start_day, end_day)
-        .await?;
-    let mut days = std::collections::BTreeMap::new();
-    let mut total_duration_seconds = 0_i64;
-    for session in sessions {
-        if session.duration_seconds <= 0 {
-            continue;
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_reading_completion(
+        sidecar_root: &Path,
+        library_root: &Path,
+        id: &str,
+        book_id: i64,
+        format: &str,
+        local_day: &str,
+        completed_at_ms: i64,
+        recorded_at_ms: i64,
+    ) -> Result<bool, CoreError> {
+        validate_compact_uuid(id, "Reading completion")?;
+        if book_id < 1 || completed_at_ms < 0 || recorded_at_ms < 0 {
+            return Err(CoreError::Config("Reading completion is invalid".into()));
         }
-        let duration = days.entry(session.local_day).or_insert(0_i64);
-        *duration = duration.saturating_add(session.duration_seconds);
-        total_duration_seconds = total_duration_seconds.saturating_add(session.duration_seconds);
+        let format = normalize_reading_format(format)?;
+        validate_local_day(local_day)?;
+        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+        let value = ReadingCompletionValue {
+            id: id.to_owned(),
+            book_id,
+            format: format.clone(),
+            local_day: local_day.to_owned(),
+            completed_at: completed_at_ms,
+            updated_at: recorded_at_ms,
+            replica_id: identity.replica_id.clone(),
+        };
+        let mut changed = false;
+        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+            let existing = reading_completion_records(document)?
+                .into_iter()
+                .find(|current| current.book_id == book_id);
+            if existing.is_some_and(|current| {
+                current.completed_at < completed_at_ms
+                    || (current.completed_at == completed_at_ms && current.id.as_str() <= id)
+            }) {
+                return Ok(());
+            }
+            changed = write_reading_completion(document, &value)?.is_some();
+            Ok(())
+        })?;
+        if changed {
+            info!(
+                target: "myreader_sync",
+                event = "reading_completion.local_write",
+                library_uuid = identity.library_uuid,
+                replica_id = identity.replica_id,
+                completion_id = id,
+                book_id,
+                format,
+                "Committed local reading completion"
+            );
+        }
+        Ok(changed)
     }
-    let longest_streak_days = longest_streak_days(days.keys())?;
-    Ok(ReadingStatistics {
-        days,
-        total_duration_seconds,
-        longest_streak_days,
-        completed_books: completions
-            .into_iter()
-            .map(|completion| completion.book_id)
-            .collect::<std::collections::BTreeSet<_>>()
-            .len(),
-    })
+
+    pub async fn get_reading_statistics(
+        sidecar_root: &Path,
+        library_root: &Path,
+        start_day: &str,
+        end_day: &str,
+    ) -> Result<ReadingStatistics, CoreError> {
+        validate_local_day(start_day)?;
+        validate_local_day(end_day)?;
+        if start_day > end_day {
+            return Err(CoreError::Config(
+                "Reading statistics day range is invalid".into(),
+            ));
+        }
+        backfill_legacy_reading_completions(sidecar_root, library_root).await?;
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        let repository = ReadingRepository::new(&db);
+        let sessions = repository
+            .list_reading_sessions_by_day_range(start_day, end_day)
+            .await?;
+        let completions = repository
+            .list_reading_completions_by_day_range(start_day, end_day)
+            .await?;
+        let mut days = std::collections::BTreeMap::new();
+        let mut total_duration_seconds = 0_i64;
+        for session in sessions {
+            if session.duration_seconds <= 0 {
+                continue;
+            }
+            let duration = days.entry(session.local_day).or_insert(0_i64);
+            *duration = duration.saturating_add(session.duration_seconds);
+            total_duration_seconds =
+                total_duration_seconds.saturating_add(session.duration_seconds);
+        }
+        let longest_streak_days = longest_streak_days(days.keys())?;
+        Ok(ReadingStatistics {
+            days,
+            total_duration_seconds,
+            longest_streak_days,
+            completed_books: completions
+                .into_iter()
+                .map(|completion| completion.book_id)
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+        })
+    }
 }
 
 async fn backfill_legacy_reading_completions(
     sidecar_root: &Path,
     library_root: &Path,
 ) -> Result<(), CoreError> {
-    let legacy = list_legacy_finished_readings(sidecar_root).await?;
+    let legacy = ReadingService::list_legacy_finished_readings(sidecar_root).await?;
     if legacy.is_empty() {
         return Ok(());
     }
@@ -747,13 +754,15 @@ async fn backfill_legacy_reading_completions(
     Ok(())
 }
 
-pub(crate) async fn list_legacy_finished_readings(
-    sidecar_root: &Path,
-) -> Result<Vec<LegacyFinishedReading>, CoreError> {
-    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
-    ReadingRepository::new(&db)
-        .list_legacy_finished_readings()
-        .await
+impl ReadingService {
+    pub async fn list_legacy_finished_readings(
+        sidecar_root: &Path,
+    ) -> Result<Vec<LegacyFinishedReading>, CoreError> {
+        let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+        ReadingRepository::new(&db)
+            .list_legacy_finished_readings()
+            .await
+    }
 }
 
 async fn sync_context(
@@ -976,12 +985,14 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        super::set_favorite_book(sidecar.path(), library.path(), 42, true, 900)
+        super::ReadingService::set_favorite_book(sidecar.path(), library.path(), 42, true, 900)
             .await
             .unwrap();
 
         assert_eq!(
-            super::list_favorite_book_ids(sidecar.path()).await.unwrap(),
+            super::ReadingService::list_favorite_book_ids(sidecar.path())
+                .await
+                .unwrap(),
             vec![42]
         );
         let db = crate::database::open_db(&sidecar.path().to_string_lossy())
@@ -1003,10 +1014,10 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        super::set_favorite_book(sidecar.path(), library.path(), 42, true, 900)
+        super::ReadingService::set_favorite_book(sidecar.path(), library.path(), 42, true, 900)
             .await
             .unwrap();
-        super::set_favorite_book(sidecar.path(), library.path(), 42, true, 901)
+        super::ReadingService::set_favorite_book(sidecar.path(), library.path(), 42, true, 901)
             .await
             .unwrap();
 
@@ -1029,7 +1040,7 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        super::set_reading_position(
+        super::ReadingService::set_reading_position(
             sidecar.path(),
             library.path(),
             42,
@@ -1041,7 +1052,7 @@ mod tests {
         .await
         .unwrap();
 
-        let position = super::get_reading_position(sidecar.path(), 42, "EPUB")
+        let position = super::ReadingService::get_reading_position(sidecar.path(), 42, "EPUB")
             .await
             .unwrap()
             .unwrap();
@@ -1049,7 +1060,7 @@ mod tests {
         assert_eq!(position.display_progression, Some(0.4));
         assert_eq!(position.updated_at, 900.0);
 
-        let candidates = super::list_reading_position_candidates(
+        let candidates = super::ReadingService::list_reading_position_candidates(
             sidecar.path(),
             library.path(),
             42,
@@ -1068,7 +1079,7 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        let error = super::set_reading_position(
+        let error = super::ReadingService::set_reading_position(
             sidecar.path(),
             library.path(),
             42,
@@ -1091,7 +1102,7 @@ mod tests {
         let locator =
             r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"position":3}}"#;
 
-        let added = super::add_reader_bookmark(
+        let added = super::ReadingService::add_reader_bookmark(
             sidecar.path(),
             library.path(),
             42,
@@ -1105,7 +1116,7 @@ mod tests {
         assert_eq!(added.format, "EPUB");
         assert_eq!(added.locator["locations"]["position"], 3);
 
-        super::remove_reader_bookmark(
+        super::ReadingService::remove_reader_bookmark(
             sidecar.path(),
             library.path(),
             42,
@@ -1115,12 +1126,14 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(super::list_reader_bookmarks(sidecar.path(), 42, "EPUB")
-            .await
-            .unwrap()
-            .is_empty());
+        assert!(
+            super::ReadingService::list_reader_bookmarks(sidecar.path(), 42, "EPUB")
+                .await
+                .unwrap()
+                .is_empty()
+        );
 
-        let revived = super::add_reader_bookmark(
+        let revived = super::ReadingService::add_reader_bookmark(
             sidecar.path(),
             library.path(),
             42,
@@ -1141,7 +1154,7 @@ mod tests {
         seed_library_uuid(library.path()).await;
         let locator = r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#;
 
-        super::add_reader_bookmark(
+        super::ReadingService::add_reader_bookmark(
             sidecar.path(),
             library.path(),
             42,
@@ -1152,7 +1165,7 @@ mod tests {
         )
         .await
         .unwrap();
-        super::add_reader_bookmark(
+        super::ReadingService::add_reader_bookmark(
             sidecar.path(),
             library.path(),
             42,
@@ -1184,7 +1197,7 @@ mod tests {
         seed_library_uuid(library.path()).await;
         let locator = r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected text"}}"#;
 
-        let created = super::add_reader_annotation(
+        let created = super::ReadingService::add_reader_annotation(
             sidecar.path(),
             library.path(),
             42,
@@ -1198,7 +1211,7 @@ mod tests {
         .unwrap();
         assert_eq!(created.note.as_deref(), Some("Initial note"));
 
-        let updated = super::update_reader_annotation(
+        let updated = super::ReadingService::update_reader_annotation(
             sidecar.path(),
             library.path(),
             42,
@@ -1214,7 +1227,7 @@ mod tests {
         assert_eq!(updated.color, "green");
         assert_eq!(updated.note.as_deref(), Some("Updated"));
 
-        super::remove_reader_annotation(
+        super::ReadingService::remove_reader_annotation(
             sidecar.path(),
             library.path(),
             42,
@@ -1224,10 +1237,12 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(super::list_reader_annotations(sidecar.path(), 42, "EPUB")
-            .await
-            .unwrap()
-            .is_empty());
+        assert!(
+            super::ReadingService::list_reader_annotations(sidecar.path(), 42, "EPUB")
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -1236,7 +1251,7 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        let error = super::add_reader_annotation(
+        let error = super::ReadingService::add_reader_annotation(
             sidecar.path(),
             library.path(),
             42,
@@ -1260,7 +1275,7 @@ mod tests {
         let session_id = "11111111111141118111111111111111";
 
         for (duration, recorded_at) in [(600, 1_000), (300, 1_001)] {
-            super::add_reading_session_interval(
+            super::ReadingService::add_reading_session_interval(
                 sidecar.path(),
                 library.path(),
                 session_id,
@@ -1274,7 +1289,7 @@ mod tests {
             .await
             .unwrap();
         }
-        super::add_reading_session_interval(
+        super::ReadingService::add_reading_session_interval(
             sidecar.path(),
             library.path(),
             "22222222222242228222222222222222",
@@ -1287,7 +1302,7 @@ mod tests {
         )
         .await
         .unwrap();
-        super::add_reading_completion(
+        super::ReadingService::add_reading_completion(
             sidecar.path(),
             library.path(),
             "33333333333343338333333333333333",
@@ -1300,7 +1315,7 @@ mod tests {
         .await
         .unwrap();
 
-        let statistics = super::get_reading_statistics(
+        let statistics = super::ReadingService::get_reading_statistics(
             sidecar.path(),
             library.path(),
             "2024-01-01",
@@ -1337,7 +1352,7 @@ mod tests {
         .await
         .unwrap();
 
-        let statistics = super::get_reading_statistics(
+        let statistics = super::ReadingService::get_reading_statistics(
             sidecar.path(),
             library.path(),
             "2024-01-01",
@@ -1347,10 +1362,12 @@ mod tests {
         .unwrap();
 
         assert_eq!(statistics.completed_books, 1);
-        assert!(super::list_legacy_finished_readings(sidecar.path())
-            .await
-            .unwrap()
-            .is_empty());
+        assert!(
+            super::ReadingService::list_legacy_finished_readings(sidecar.path())
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]
@@ -1359,7 +1376,7 @@ mod tests {
         let library = tempfile::tempdir().unwrap();
         seed_library_uuid(library.path()).await;
 
-        let later = super::add_reading_completion(
+        let later = super::ReadingService::add_reading_completion(
             sidecar.path(),
             library.path(),
             "44444444444444448444444444444444",
@@ -1371,7 +1388,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let earlier = super::add_reading_completion(
+        let earlier = super::ReadingService::add_reading_completion(
             sidecar.path(),
             library.path(),
             "55555555555545559555555555555555",

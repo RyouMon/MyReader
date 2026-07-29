@@ -1,11 +1,11 @@
 import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
-import { Directory, File, Paths } from "expo-file-system"
+import { Directory, Paths } from "expo-file-system"
 import {
-  registryAddRemoteLibrary,
-  registryListRemoteDirectories,
-  registryRefreshRemoteLibrary,
-  registryTestRemoteDataSource,
+  dataSourceListDirectories,
+  dataSourceTestConnection,
+  libraryAddRemote,
+  libraryRefreshRemote,
   type RemoteCredential as CoreRemoteCredential,
   type RemoteDirectoryEntry as CoreRemoteDirectoryEntry,
 } from "my-reader-core"
@@ -18,21 +18,18 @@ import {
   readWebDavPassword,
 } from "../storage/credentials"
 import {
-  type DeviceRegistry,
+  appConfigPath,
+  type AppConfigSnapshot,
   libraryResultFromCore,
   toCoreDataSource,
-} from "./device-registry"
+} from "./app-config"
 
 export type RemoteDirectoryEntry = CoreRemoteDirectoryEntry
 
 type RemoteLibraryResult = {
-  registry: DeviceRegistry
+  config: AppConfigSnapshot
   library: Library
 }
-
-const registryPath = toNativeFilesystemPath(
-  new File(Paths.document, "device-registry.json").uri,
-)
 
 async function credentialFor(
   source: DataSource,
@@ -74,7 +71,7 @@ export async function testRemoteDataSource(
   secrets?: DataSourceSecrets,
 ): Promise<void> {
   const credential = await credentialFor(source, secrets)
-  await registryTestRemoteDataSource(toCoreDataSource(source), credential)
+  await dataSourceTestConnection(toCoreDataSource(source), credential)
 }
 
 export async function listRemoteDirectories(
@@ -82,12 +79,7 @@ export async function listRemoteDirectories(
   path: string,
 ): Promise<RemoteDirectoryEntry[]> {
   const credential = await credentialFor(source)
-  return registryListRemoteDirectories(
-    registryPath,
-    source.id,
-    path,
-    credential,
-  )
+  return dataSourceListDirectories(appConfigPath, source.id, path, credential)
 }
 
 export async function addRemoteLibrary(
@@ -100,8 +92,8 @@ export async function addRemoteLibrary(
   }
   const credential = await credentialFor(source)
   return libraryResultFromCore(
-    await registryAddRemoteLibrary(
-      registryPath,
+    await libraryAddRemote(
+      appConfigPath,
       {
         dataSourceId: source.id,
         sourcePath,
@@ -120,8 +112,8 @@ export async function refreshRemoteLibrary(
 ): Promise<RemoteLibraryResult> {
   const credential = await credentialFor(source)
   return libraryResultFromCore(
-    await registryRefreshRemoteLibrary(
-      registryPath,
+    await libraryRefreshRemote(
+      appConfigPath,
       library.id,
       toNativeFilesystemPath(libraryContainerRootUri(library.id)),
       credential,

@@ -1,31 +1,83 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-pub const DEVICE_REGISTRY_SCHEMA_VERSION: u32 = 1;
+pub const APP_CONFIG_SCHEMA_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DeviceRegistry {
+pub struct AppConfig {
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
+    #[serde(default)]
+    pub device_id: Option<String>,
+    #[serde(default)]
+    pub preferences: AppPreferences,
     #[serde(default)]
     pub data_sources: Vec<DataSource>,
     #[serde(default)]
     pub libraries: Vec<Library>,
     #[serde(default)]
     pub active_library_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub desktop: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mobile: Option<Value>,
+    #[serde(flatten)]
+    pub extensions: BTreeMap<String, Value>,
 }
 
-impl DeviceRegistry {
+impl AppConfig {
     pub fn empty() -> Self {
         Self {
-            schema_version: DEVICE_REGISTRY_SCHEMA_VERSION,
-            ..Self::default()
+            schema_version: APP_CONFIG_SCHEMA_VERSION,
+            device_id: None,
+            preferences: AppPreferences::default(),
+            data_sources: Vec::new(),
+            libraries: Vec::new(),
+            active_library_id: None,
+            desktop: None,
+            mobile: None,
+            extensions: BTreeMap::new(),
         }
     }
 }
 
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 fn default_schema_version() -> u32 {
-    DEVICE_REGISTRY_SCHEMA_VERSION
+    APP_CONFIG_SCHEMA_VERSION
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppPreferences {
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+impl Default for AppPreferences {
+    fn default() -> Self {
+        Self {
+            theme: default_theme(),
+            language: default_language(),
+        }
+    }
+}
+
+fn default_theme() -> String {
+    "system".into()
+}
+
+fn default_language() -> String {
+    "system".into()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

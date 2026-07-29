@@ -25,7 +25,7 @@ function showSyncFailureAlert(message: string): void {
   ])
 }
 
-/** Orchestrates domain sync + UI write-back; used by registerLibrary and manual sync. */
+/** Orchestrates domain sync + UI write-back after adding a library or syncing manually. */
 export async function runLibrarySync(
   input: RunLibrarySyncInput,
 ): Promise<LibrarySyncReport> {

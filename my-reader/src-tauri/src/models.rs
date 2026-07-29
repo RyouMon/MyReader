@@ -229,17 +229,16 @@ fn default_data_source_enabled() -> bool {
     true
 }
 
-/// Platform-local application settings. Registry fields are accepted only for
-/// migration from legacy config and are persisted by my-reader-core separately.
+/// Platform-local application settings backed by the shared `config.json`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
 pub struct AppConfig {
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub libraries: Vec<LibraryConfig>,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub active_library_id: Option<String>,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub data_sources: Vec<DataSourceConfig>,
     #[serde(default)]
     pub reader_ui: ReaderUiPreferences,
@@ -249,19 +248,37 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn device_registry(&self) -> my_reader_core::models::DeviceRegistry {
-        my_reader_core::models::DeviceRegistry {
-            schema_version: my_reader_core::models::DEVICE_REGISTRY_SCHEMA_VERSION,
+    pub fn to_core_config(&self) -> my_reader_core::models::AppConfig {
+        let mut reader_ui = serde_json::to_value(&self.reader_ui)
+            .expect("ReaderUiPreferences must serialize to JSON");
+        if let Some(reader_ui) = reader_ui.as_object_mut() {
+            reader_ui.remove("appTheme");
+            reader_ui.remove("appLanguage");
+        }
+
+        my_reader_core::models::AppConfig {
+            schema_version: my_reader_core::models::APP_CONFIG_SCHEMA_VERSION,
+            device_id: self.device_id.clone(),
+            preferences: my_reader_core::models::AppPreferences {
+                theme: self.reader_ui.app_theme.clone(),
+                language: self.reader_ui.app_language.clone(),
+            },
             data_sources: self.data_sources.iter().map(Into::into).collect(),
             libraries: self.libraries.iter().map(Into::into).collect(),
             active_library_id: self.active_library_id.clone(),
+            desktop: Some(serde_json::json!({ "readerUi": reader_ui })),
+            mobile: None,
+            extensions: Default::default(),
         }
     }
 
-    pub fn apply_device_registry(&mut self, registry: &my_reader_core::models::DeviceRegistry) {
-        self.data_sources = registry.data_sources.iter().map(Into::into).collect();
-        self.libraries = registry.libraries.iter().map(Into::into).collect();
-        self.active_library_id = registry.active_library_id.clone();
+    pub fn apply_core_config(&mut self, config: &my_reader_core::models::AppConfig) {
+        self.data_sources = config.data_sources.iter().map(Into::into).collect();
+        self.libraries = config.libraries.iter().map(Into::into).collect();
+        self.active_library_id = config.active_library_id.clone();
+        self.device_id = config.device_id.clone();
+        self.reader_ui.app_theme = config.preferences.theme.clone();
+        self.reader_ui.app_language = config.preferences.language.clone();
     }
 }
 

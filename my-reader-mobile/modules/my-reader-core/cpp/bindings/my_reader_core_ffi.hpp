@@ -62,6 +62,12 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_catalog_validate_library(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_app_config_initialize(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_app_config_write_mobile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_fn_func_content_clear_cover_thumbnail_cache(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -104,6 +110,24 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_content_upsert_file_state(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_list_directories(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_prepare(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_remove(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_test_connection(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_upsert(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_data_source_validate(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_download_cancel(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -138,6 +162,24 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_download_report_progress(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_add_local(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_add_remote(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_refresh_remote(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_remove(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_replace(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_library_switch(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_annotation(
@@ -192,52 +234,6 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_update_annotation(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_local_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_add_remote_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_initialize(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_fn_func_registry_list_remote_directories(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_prepare_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_fn_func_registry_refresh_remote_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_register_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_remove_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_replace_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_switch_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_fn_func_registry_test_remote_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_registry_upsert_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_fn_func_registry_validate_data_source(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_begin(
@@ -467,6 +463,13 @@ protected:
   cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_validate_library(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_initialize(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_checksum_func_content_clear_cover_thumbnail_cache(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -514,6 +517,26 @@ protected:
   cpp_uniffi_my_reader_core_ffi_checksum_func_content_upsert_file_state(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_list_directories(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_prepare(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_remove(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_test_connection(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_upsert(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_data_source_validate(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_download_cancel(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -550,6 +573,24 @@ protected:
       size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_checksum_func_download_report_progress(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_local(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_add_remote(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_refresh_remote(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_remove(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_replace(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_library_switch(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(
@@ -610,61 +651,6 @@ protected:
       size_t count);
   jsi::Value
   cpp_uniffi_my_reader_core_ffi_checksum_func_reading_update_annotation(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_local_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_add_remote_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_registry_initialize(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_list_remote_directories(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_prepare_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_refresh_remote_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_register_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_remove_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_replace_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_switch_library(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_test_remote_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_upsert_data_source(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value
-  cpp_uniffi_my_reader_core_ffi_checksum_func_registry_validate_data_source(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_sync_begin(

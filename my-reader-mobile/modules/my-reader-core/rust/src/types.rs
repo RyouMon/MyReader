@@ -252,11 +252,20 @@ pub struct ReadingStatistics {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct DeviceRegistry {
+pub struct AppConfig {
     pub schema_version: u32,
+    pub device_id: Option<String>,
+    pub preferences: AppPreferences,
     pub data_sources: Vec<DataSource>,
     pub libraries: Vec<Library>,
     pub active_library_id: Option<String>,
+    pub mobile_json: Option<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct AppPreferences {
+    pub theme: String,
+    pub language: String,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -303,7 +312,7 @@ pub struct SecurityScopedBookmark {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct LibraryResult {
-    pub registry: DeviceRegistry,
+    pub config: AppConfig,
     pub library: Library,
 }
 
@@ -666,23 +675,30 @@ impl From<models::ReadingStatistics> for ReadingStatistics {
     }
 }
 
-impl From<models::DeviceRegistry> for DeviceRegistry {
-    fn from(value: models::DeviceRegistry) -> Self {
+impl From<models::AppConfig> for AppConfig {
+    fn from(value: models::AppConfig) -> Self {
         Self {
             schema_version: value.schema_version,
+            device_id: value.device_id,
+            preferences: value.preferences.into(),
             data_sources: value.data_sources.into_iter().map(Into::into).collect(),
             libraries: value.libraries.into_iter().map(Into::into).collect(),
             active_library_id: value.active_library_id,
+            mobile_json: value
+                .mobile
+                .map(|mobile| serde_json::to_string(&mobile).expect("JSON value is serializable")),
         }
     }
 }
 
-impl TryFrom<DeviceRegistry> for models::DeviceRegistry {
+impl TryFrom<AppConfig> for models::AppConfig {
     type Error = CoreFfiError;
 
-    fn try_from(value: DeviceRegistry) -> Result<Self, Self::Error> {
+    fn try_from(value: AppConfig) -> Result<Self, Self::Error> {
         Ok(Self {
             schema_version: value.schema_version,
+            device_id: value.device_id,
+            preferences: value.preferences.into(),
             data_sources: value
                 .data_sources
                 .into_iter()
@@ -694,7 +710,35 @@ impl TryFrom<DeviceRegistry> for models::DeviceRegistry {
                 .map(TryInto::try_into)
                 .collect::<Result<_, _>>()?,
             active_library_id: value.active_library_id,
+            desktop: None,
+            mobile: value
+                .mobile_json
+                .map(|mobile| {
+                    serde_json::from_str(&mobile).map_err(|error| {
+                        CoreFfiError::core(format!("INVALID_MOBILE_CONFIG: {error}"))
+                    })
+                })
+                .transpose()?,
+            extensions: Default::default(),
         })
+    }
+}
+
+impl From<models::AppPreferences> for AppPreferences {
+    fn from(value: models::AppPreferences) -> Self {
+        Self {
+            theme: value.theme,
+            language: value.language,
+        }
+    }
+}
+
+impl From<AppPreferences> for models::AppPreferences {
+    fn from(value: AppPreferences) -> Self {
+        Self {
+            theme: value.theme,
+            language: value.language,
+        }
     }
 }
 

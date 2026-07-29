@@ -12,11 +12,10 @@ import { runLibrarySync } from "@/src/domain/sync/hooks/run-library-sync"
 import { isRemoteSourceType } from "@/src/domain/types"
 import i18n from "@/src/i18n"
 import {
-  addLocalDeviceLibrary,
-  initializeDeviceRegistry,
-  removeDeviceLibrary,
-  switchDeviceLibrary,
-} from "@/src/services/core/device-registry"
+  addLocalAppLibrary,
+  removeAppLibrary,
+  switchAppLibrary,
+} from "@/src/services/core/app-config"
 import { addRemoteLibrary } from "@/src/services/core/remote"
 import {
   libraryContainerRootUri,
@@ -45,14 +44,9 @@ function startInitialLibrarySync(libraryId: string, context: string): void {
 /** Hydrates persisted libraries into store on app startup. */
 export async function hydrateLibraries(): Promise<void> {
   try {
-    const state = useAppStore.getState()
-    const registry = await initializeDeviceRegistry({
-      dataSources: state.dataSources,
-      libraries: state.libraries,
-      activeLibraryId: state.activeLibraryId,
-    })
+    const config = useAppStore.getState()
     const hydratedLibraries = await Promise.all(
-      registry.libraries.map(async (library) => {
+      config.libraries.map(async (library) => {
         try {
           return await ensureLibraryMetadataCached(library)
         } catch {
@@ -62,16 +56,15 @@ export async function hydrateLibraries(): Promise<void> {
     )
 
     const nextActiveLibraryId =
-      hydratedLibraries.find(
-        (library) => library.id === registry.activeLibraryId,
-      )?.id ??
+      hydratedLibraries.find((library) => library.id === config.activeLibraryId)
+        ?.id ??
       hydratedLibraries[0]?.id ??
       null
 
     useAppStore.getState().setLibraries(hydratedLibraries)
     useAppStore
       .getState()
-      .setDataSources(excludeLocalLibrarySource(registry.dataSources))
+      .setDataSources(excludeLocalLibrarySource(config.dataSources))
     useAppStore.getState().setActiveLibraryId(nextActiveLibraryId)
   } catch {
     useAppStore.getState().setLibraries([])
@@ -81,28 +74,28 @@ export async function hydrateLibraries(): Promise<void> {
   }
 }
 
-/** Downloads, validates, and registers a remote Calibre library through core. */
-export async function registerRemoteLibrary(
+/** Downloads, validates, and adds a remote Calibre library through core. */
+export async function addRemoteLibraryFromSource(
   source: DataSource,
   sourcePath: string,
 ): Promise<Library> {
-  const { library, registry } = await addRemoteLibrary(source, sourcePath)
-  useAppStore.getState().setLibraries(registry.libraries)
-  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
+  const { library, config } = await addRemoteLibrary(source, sourcePath)
+  useAppStore.getState().setLibraries(config.libraries)
+  useAppStore.getState().setActiveLibraryId(config.activeLibraryId)
 
-  startInitialLibrarySync(library.id, "registerRemoteLibrary")
+  startInitialLibrarySync(library.id, "addRemoteLibraryFromSource")
 
   return library
 }
 
 /** Removes a library and deletes its app container when applicable. */
 export async function removeLibrary(id: string): Promise<void> {
-  const state = useAppStore.getState()
-  const removed = state.libraries.find((library) => library.id === id)
-  const registry = await removeDeviceLibrary(id)
+  const config = useAppStore.getState()
+  const removed = config.libraries.find((library) => library.id === id)
+  const appConfig = await removeAppLibrary(id)
 
-  useAppStore.getState().setLibraries(registry.libraries)
-  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
+  useAppStore.getState().setLibraries(appConfig.libraries)
+  useAppStore.getState().setActiveLibraryId(appConfig.activeLibraryId)
 
   if (
     removed &&
@@ -115,17 +108,17 @@ export async function removeLibrary(id: string): Promise<void> {
   }
 
   await queryClient.invalidateQueries({ queryKey: libraryQueryKeys.books(id) })
-  if (registry.activeLibraryId) {
+  if (appConfig.activeLibraryId) {
     await queryClient.invalidateQueries({
-      queryKey: libraryQueryKeys.books(registry.activeLibraryId),
+      queryKey: libraryQueryKeys.books(appConfig.activeLibraryId),
     })
   }
 }
 
 /** Switches the active library without blocking on sync. */
 export async function switchActiveLibrary(id: string): Promise<void> {
-  const registry = await switchDeviceLibrary(id)
-  useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
+  const appConfig = await switchAppLibrary(id)
+  useAppStore.getState().setActiveLibraryId(appConfig.activeLibraryId)
 }
 
 export async function addLibraryFromPicker(
@@ -140,12 +133,12 @@ export async function addLibraryFromPicker(
     bookCount: 0,
     securityScopedBookmark: picked.securityScopedBookmark,
   }
-  let result: Awaited<ReturnType<typeof addLocalDeviceLibrary>>
+  let result: Awaited<ReturnType<typeof addLocalAppLibrary>>
   try {
     const access = await withSecurityScopedLibraryAccess(
       accessLibrary,
       async (libraryRootUri) =>
-        addLocalDeviceLibrary({
+        addLocalAppLibrary({
           libraryRootUri,
           path: picked.uri,
           sidecarContainerParentUri: picked.securityScopedBookmark
@@ -179,8 +172,8 @@ export async function addLibraryFromPicker(
     throw error
   }
 
-  useAppStore.getState().setLibraries(result.registry.libraries)
-  useAppStore.getState().setActiveLibraryId(result.registry.activeLibraryId)
+  useAppStore.getState().setLibraries(result.config.libraries)
+  useAppStore.getState().setActiveLibraryId(result.config.activeLibraryId)
 
   startInitialLibrarySync(result.library.id, "addLibraryFromPicker")
 

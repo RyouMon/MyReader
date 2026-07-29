@@ -3459,6 +3459,7 @@ version = "0.1.0"
 dependencies = [
  "my-reader-core",
  "rusqlite",
+ "serde_json",
  "tempfile",
  "thiserror 1.0.69",
  "uniffi",
