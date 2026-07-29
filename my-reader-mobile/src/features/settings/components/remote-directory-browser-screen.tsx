@@ -82,6 +82,8 @@ export function RemoteDirectoryBrowserScreen({
           void chooseCurrentPath({
             notValidTitle: label("notValidLibrary.title"),
             notValidMessage: label("notValidLibrary.message"),
+            duplicateTitle: t("sync.cannotAddDuplicate"),
+            duplicateMessage: t("sync.alreadyAdded"),
             generic: label("notCalibreLibrary"),
           }),
         loading: saving,

@@ -34,6 +34,8 @@ export type RemoteDirectoryBrowserState = {
   chooseCurrentPath: (errorMessages: {
     notValidTitle: string
     notValidMessage: string
+    duplicateTitle: string
+    duplicateMessage: string
     generic: string
   }) => Promise<void>
 }
@@ -114,6 +116,8 @@ export function useRemoteDirectoryBrowser({
   async function chooseCurrentPath(errorMessages: {
     notValidTitle: string
     notValidMessage: string
+    duplicateTitle: string
+    duplicateMessage: string
     generic: string
   }) {
     if (!candidate) {
@@ -132,6 +136,13 @@ export function useRemoteDirectoryBrowser({
         showAlertWithStatusBarRestore(
           errorMessages.notValidTitle,
           errorMessages.notValidMessage,
+        )
+        return
+      }
+      if (String(caught).includes("LIBRARY_ALREADY_EXISTS")) {
+        showAlertWithStatusBarRestore(
+          errorMessages.duplicateTitle,
+          errorMessages.duplicateMessage,
         )
         return
       }

@@ -29,6 +29,19 @@ import { queryClient } from "@/src/services/query/query-client"
 import { useAppStore } from "@/src/store/app-store"
 import { excludeLocalLibrarySource } from "@/src/store/app-store.constants"
 
+function startInitialLibrarySync(libraryId: string, context: string): void {
+  void runLibrarySync({
+    libraryId,
+    trigger: "add",
+    options: {
+      forceCalibre: false,
+      throwOnFailure: false,
+    },
+  }).catch((error) => {
+    console.warn(`[${context}] add sync failed:`, error)
+  })
+}
+
 /** Hydrates persisted libraries into store on app startup. */
 export async function hydrateLibraries(): Promise<void> {
   try {
@@ -77,11 +90,7 @@ export async function registerRemoteLibrary(
   useAppStore.getState().setLibraries(registry.libraries)
   useAppStore.getState().setActiveLibraryId(registry.activeLibraryId)
 
-  try {
-    await runLibrarySync({ libraryId: library.id, trigger: "add" })
-  } catch (error) {
-    console.warn("[registerRemoteLibrary] add sync failed:", error)
-  }
+  startInitialLibrarySync(library.id, "registerRemoteLibrary")
 
   return library
 }
@@ -173,11 +182,7 @@ export async function addLibraryFromPicker(
   useAppStore.getState().setLibraries(result.registry.libraries)
   useAppStore.getState().setActiveLibraryId(result.registry.activeLibraryId)
 
-  try {
-    await runLibrarySync({ libraryId: result.library.id, trigger: "add" })
-  } catch (error) {
-    console.warn("[addLibraryFromPicker] add sync failed:", error)
-  }
+  startInitialLibrarySync(result.library.id, "addLibraryFromPicker")
 
   return result.library
 }
