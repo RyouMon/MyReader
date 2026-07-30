@@ -17,6 +17,8 @@ export type Library = {
   }
 }
 
+export const LOCAL_LIBRARY_DATA_SOURCE_ID = "builtin-local-storage"
+
 export function isRemoteLibrarySourceType(sourceType?: string | null): boolean {
   return sourceType === "webdav" || sourceType === "onedrive"
 }
