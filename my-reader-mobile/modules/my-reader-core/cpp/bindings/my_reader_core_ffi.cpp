@@ -302,6 +302,8 @@ RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_flush(
     double now_ms, RustCallStatus *uniffi_out_err);
 RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_read_task_progress(
     RustBuffer task_id, RustCallStatus *uniffi_out_err);
+RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+    RustBuffer task_id, RustCallStatus *uniffi_out_err);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_sync_recover(
     RustBuffer coordinator_id, RustBuffer sidecar_root_path,
     RustBuffer library_id, double now_ms);
@@ -319,9 +321,10 @@ uniffi_my_reader_core_ffi_fn_func_sync_request_contextual_pull(
 RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_resume(
     RustBuffer coordinator_id, RustBuffer library_id, double now_ms,
     RustCallStatus *uniffi_out_err);
-/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
-    RustBuffer task_id, RustBuffer sidecar_root_path,
-    RustBuffer library_root_path, double now_ms, RustBuffer mode,
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_sync_run_library(
+    RustBuffer task_id, RustBuffer config_path, RustBuffer sidecar_root_path,
+    RustBuffer library_root_path, RustBuffer library_id, double now_ms,
+    RustBuffer scope, int8_t force_calibre, RustBuffer mode,
     RustBuffer storage);
 RustBuffer uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
     RustBuffer coordinator_id, RustBuffer library_id, int8_t online,
@@ -529,12 +532,14 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_effective_execution();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_fail();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_flush();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_read_task_progress();
+uint16_t
+uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_recover();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_release_task();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_request();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_resume();
-uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_run_library();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online();
 uint32_t ffi_my_reader_core_ffi_uniffi_contract_version();
 }
@@ -2815,6 +2820,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_sync_read_task_progress(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_"
+        "report"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_fn_func_"
+                                    "sync_read_task_sidecar_report"),
+          1,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_recover"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -2872,15 +2891,15 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
             return this->cpp_uniffi_my_reader_core_ffi_fn_func_sync_resume(
                 rt, thisVal, args, count);
           });
-  props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar"] =
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_library"] =
       jsi::Function::createFromHostFunction(
           rt,
           jsi::PropNameID::forAscii(
-              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar"),
-          6,
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_library"),
+          10,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+            return this->cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_library(
                 rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_sync_set_library_online"] =
@@ -4398,6 +4417,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_progress(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_"
+        "report"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_sync_read_task_sidecar_report"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_recover"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -4461,17 +4494,17 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_resume(
                     rt, thisVal, args, count);
           });
-  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar"] =
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library"] =
       jsi::Function::createFromHostFunction(
           rt,
           jsi::PropNameID::forAscii(
               rt,
-              "ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar"),
+              "ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library"),
           0,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
-                ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar(
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_"
@@ -5807,6 +5840,22 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi::my_reader_core_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker,
                                                                 value);
 }
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  RustCallStatus status =
+      uniffi::my_reader_core_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+  auto value = uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      &status);
+  uniffi::my_reader_core_ffi::Bridging<RustCallStatus>::copyIntoJs(
+      rt, callInvoker, status, args[count - 1]);
+
+  return uniffi::my_reader_core_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker,
+                                                                value);
+}
 jsi::Value
 NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_sync_recover(
     jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -5900,21 +5949,28 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_sync_resume(
                                                                 value);
 }
 jsi::Value
-NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_library(
     jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
     size_t count) {
-  auto value = uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+  auto value = uniffi_my_reader_core_ffi_fn_func_sync_run_library(
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[0]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[1]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[2]),
-      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[3]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[3]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[4]),
+      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[5]),
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
-                                                               args[5]));
+                                                               args[6]),
+      uniffi_jsi::Bridging<int8_t>::fromJs(rt, callInvoker, args[7]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[8]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[9]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -7168,6 +7224,15 @@ jsi::Value NativeMyReaderCoreFfi::
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value
 NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_checksum_func_sync_recover(
     jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -7210,10 +7275,10 @@ NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_checksum_func_sync_resume(
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeMyReaderCoreFfi::
-    cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar(
+    cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(
         jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
         size_t count) {
-  auto value = uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar();
+  auto value = uniffi_my_reader_core_ffi_checksum_func_sync_run_library();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

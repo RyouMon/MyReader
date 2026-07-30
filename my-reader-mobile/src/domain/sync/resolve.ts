@@ -12,7 +12,7 @@ import { toNativeFilesystemPath } from "@/src/services/fs/path"
 import { SyncConfigError } from "../../errors"
 import { createRemoteBackend } from "../../services/remote/factory"
 import type { RemoteBackend } from "../../services/remote/backend"
-import type { SidecarStorageConfig } from "../../services/core/sync"
+import type { LibraryStorageConfig } from "../../services/core/sync"
 import { LocalDirectBackend } from "./local"
 import i18n from "@/src/i18n"
 
@@ -20,7 +20,7 @@ export type SyncBackend = RemoteBackend | LocalDirectBackend
 
 export type ResolvedSyncTarget = {
   backend: SyncBackend
-  sidecarStorage: SidecarStorageConfig
+  libraryStorage: LibraryStorageConfig
   dataSourceId: string
   libraryId: string
   /** Calibre tree root (metadata, books, covers). */
@@ -63,7 +63,7 @@ export async function resolveSyncTarget(
       throw new SyncConfigError(i18n.t("sync.webdavPasswordMissing"))
     return {
       backend,
-      sidecarStorage: {
+      libraryStorage: {
         kind: "webdav",
         endpoint: rawSource.endpoint,
         username: rawSource.username,
@@ -101,7 +101,7 @@ export async function resolveSyncTarget(
     }
     return {
       backend,
-      sidecarStorage: {
+      libraryStorage: {
         kind: "onedrive",
         accessToken,
         root: remoteLibraryRoot(
@@ -119,7 +119,7 @@ export async function resolveSyncTarget(
   const backend = new LocalDirectBackend(rootUri)
   return {
     backend,
-    sidecarStorage: {
+    libraryStorage: {
       kind: "local-direct",
       root: toNativeFilesystemPath(rootUri),
     },

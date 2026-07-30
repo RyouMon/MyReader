@@ -25,8 +25,8 @@ import {
   useFavoriteBooks,
 } from "@/hooks/queries/useFavoriteBooksQuery"
 import {
+  libraryKeys,
   useLibrariesQuery,
-  useLibraryMutations,
 } from "@/hooks/queries/useLibrariesQuery"
 import {
   readingProgressKeys,
@@ -55,7 +55,6 @@ export default function LibraryWorkspace({
 }: LibraryWorkspaceProps) {
   const { t } = useTranslation()
   const { data: libraries = [], isLoading: libLoading } = useLibrariesQuery()
-  const { refreshLibrary } = useLibraryMutations()
   const activeLibraryId = useLibraryUiStore((s) => s.activeLibraryId)
   const activeView = useLibraryUiStore((s) => s.activeView)
   const searchQuery = useLibraryUiStore((s) => s.librarySearchQuery)
@@ -146,16 +145,12 @@ export default function LibraryWorkspace({
   const handleRefresh = async () => {
     if (!activeLibraryId) return
     try {
-      await refreshLibrary(activeLibraryId)
-      refresh()
-      void favoriteBooksQuery.refetch()
-    } catch (e) {
-      console.error("Failed to refresh library:", e)
-    }
-    try {
       await api.syncDbForLibrary(activeLibraryId)
       resetBrokenCovers()
       await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: libraryKeys.all,
+        }),
         queryClient.invalidateQueries({
           queryKey: readingProgressKeys.list(activeLibraryId),
         }),

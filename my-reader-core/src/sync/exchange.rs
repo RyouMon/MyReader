@@ -39,6 +39,8 @@ pub enum SyncStage {
     Pushing,
     Pulling,
     Applying,
+    SidecarComplete,
+    Calibre,
     Complete,
 }
 
@@ -52,6 +54,7 @@ pub struct SyncProgress {
 pub trait SyncObserver: Send + Sync {
     fn is_cancelled(&self) -> bool;
     fn on_progress(&self, progress: SyncProgress);
+    fn on_sidecar_complete(&self, _report: &SyncReport) {}
 }
 
 #[cfg(test)]

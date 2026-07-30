@@ -556,6 +556,10 @@ interface NativeModuleInterface {
     taskId: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+    taskId: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_recover(
     coordinatorId: Uint8Array,
     sidecarRootPath: Uint8Array,
@@ -589,11 +593,15 @@ interface NativeModuleInterface {
     nowMs: number,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_library(
     taskId: Uint8Array,
+    configPath: Uint8Array,
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
+    libraryId: Uint8Array,
     nowMs: number,
+    scope: Uint8Array,
+    forceCalibre: number,
     mode: Uint8Array,
     storage: Uint8Array,
   ): bigint;
@@ -679,12 +687,13 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_fail(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_flush(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_progress(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_recover(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_release_task(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resume(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
   // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
   // and `nativeModule().rustbuffer_free(...)`. The JSI host object exposes

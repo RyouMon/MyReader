@@ -11,8 +11,9 @@ use my_reader_core::api::sync::{SyncCoordinator, SyncService};
 
 use crate::{
     types::{
-        required_i64, required_u64, SchedulerTransition, SidecarStorageConfig, SidecarSyncMode,
-        SidecarSyncReport, SyncExecution, SyncFailureKind, SyncTaskProgress, SyncTiming,
+        required_i64, required_u64, LibraryStorageConfig, LibrarySyncReport, LibrarySyncScope,
+        SchedulerTransition, SidecarSyncMode, SidecarSyncReport, SyncExecution, SyncFailureKind,
+        SyncTaskProgress, SyncTiming,
     },
     CoreFfiError,
 };
@@ -20,6 +21,7 @@ use crate::{
 struct SyncTaskState {
     cancelled: AtomicBool,
     progress: Mutex<SyncTaskProgress>,
+    sidecar_report: Mutex<Option<SidecarSyncReport>>,
 }
 
 static SYNC_TASKS: LazyLock<Mutex<HashMap<String, Arc<SyncTaskState>>>> =
@@ -42,6 +44,8 @@ impl my_reader_core::api::sync::SyncObserver for FfiSyncObserver {
             my_reader_core::api::sync::SyncStage::Pushing => "pushing",
             my_reader_core::api::sync::SyncStage::Pulling => "pulling",
             my_reader_core::api::sync::SyncStage::Applying => "applying",
+            my_reader_core::api::sync::SyncStage::SidecarComplete => "sidecar_complete",
+            my_reader_core::api::sync::SyncStage::Calibre => "calibre",
             my_reader_core::api::sync::SyncStage::Complete => "complete",
         };
         let mut current = self
@@ -52,6 +56,17 @@ impl my_reader_core::api::sync::SyncObserver for FfiSyncObserver {
         current.stage = stage.to_owned();
         current.completed = u32::try_from(progress.completed).unwrap_or(u32::MAX);
         current.total = u32::try_from(progress.total).unwrap_or(u32::MAX);
+    }
+
+    fn on_sidecar_complete(&self, report: &my_reader_core::api::sync::SyncReport) {
+        *self
+            .task
+            .sidecar_report
+            .lock()
+            .unwrap_or_else(|error| error.into_inner()) = Some(SidecarSyncReport {
+            pushed: report.pushed as f64,
+            pulled: report.pulled as f64,
+        });
     }
 }
 
@@ -256,6 +271,20 @@ pub fn sync_read_task_progress(task_id: String) -> Option<SyncTaskProgress> {
 }
 
 #[uniffi::export]
+pub fn sync_read_task_sidecar_report(task_id: String) -> Option<SidecarSyncReport> {
+    SYNC_TASKS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .get(&task_id)
+        .and_then(|task| {
+            task.sidecar_report
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .clone()
+        })
+}
+
+#[uniffi::export]
 pub fn sync_cancel_task(task_id: String) -> bool {
     let task = SYNC_TASKS
         .lock()
@@ -283,74 +312,74 @@ pub fn sync_release_task(task_id: String) -> bool {
         .is_some()
 }
 
+#[allow(clippy::too_many_arguments)]
 #[uniffi::export(async_runtime = "tokio")]
-pub async fn sync_run_sidecar(
+pub async fn sync_run_library(
     task_id: String,
+    config_path: String,
     sidecar_root_path: String,
     library_root_path: String,
+    library_id: String,
     now_ms: f64,
+    scope: LibrarySyncScope,
+    force_calibre: bool,
     mode: SidecarSyncMode,
-    storage: SidecarStorageConfig,
-) -> Result<SidecarSyncReport, CoreFfiError> {
-    let task = Arc::new(SyncTaskState {
-        cancelled: AtomicBool::new(false),
-        progress: Mutex::new(SyncTaskProgress {
-            task_id: task_id.clone(),
-            stage: "preparing".to_owned(),
-            completed: 0,
-            total: 0,
-        }),
-    });
-    {
-        let mut tasks = SYNC_TASKS.lock().unwrap_or_else(|error| error.into_inner());
-        if tasks.contains_key(&task_id) {
-            return Err(CoreFfiError::sync(format!(
-                "Sync task already exists: {task_id}"
-            )));
-        }
-        tasks.insert(task_id, task.clone());
-    }
-
+    storage: LibraryStorageConfig,
+) -> Result<LibrarySyncReport, CoreFfiError> {
+    let task = create_sync_task(&task_id)?;
     let storage = storage.try_into()?;
-    let report = SyncService::sync_sidecar_observed(
+    let report = SyncService::sync_library_observed(
+        Path::new(&config_path),
         Path::new(&sidecar_root_path),
         Path::new(&library_root_path),
+        &library_id,
         required_i64(now_ms, "nowMs")?,
-        mode.try_into()?,
+        my_reader_core::models::LibrarySyncOptions {
+            scope: scope.try_into()?,
+            force_calibre,
+            sidecar_mode: mode.try_into()?,
+        },
         &storage,
         &FfiSyncObserver { task: task.clone() },
     )
     .await;
 
-    match report {
-        Ok(report) => Ok(report.into()),
-        Err(error) => {
-            let failure_stage = {
-                let mut progress = task
-                    .progress
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                progress.stage = if task.cancelled.load(Ordering::Relaxed) {
-                    "cancelled".to_owned()
-                } else {
-                    format!("{}_failed", progress.stage)
-                };
-                progress.stage.clone()
-            };
-            let is_data_integrity = matches!(&error, my_reader_core::CoreError::DataIntegrity(_));
-            let message = error.to_string();
-            let message = if failure_stage == "cancelled" {
-                message
+    report
+        .map(Into::into)
+        .map_err(CoreFfiError::from_core)
+        .map_err(|error| {
+            let mut progress = task
+                .progress
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            progress.stage = if task.cancelled.load(Ordering::Relaxed) {
+                "cancelled".to_owned()
             } else {
-                format!("[stage={failure_stage}] {message}")
+                format!("{}_failed", progress.stage)
             };
-            if is_data_integrity {
-                Err(CoreFfiError::data_integrity(message))
-            } else {
-                Err(CoreFfiError::sync(message))
-            }
-        }
+            error
+        })
+}
+
+fn create_sync_task(task_id: &str) -> Result<Arc<SyncTaskState>, CoreFfiError> {
+    let task = Arc::new(SyncTaskState {
+        cancelled: AtomicBool::new(false),
+        progress: Mutex::new(SyncTaskProgress {
+            task_id: task_id.to_owned(),
+            stage: "preparing".to_owned(),
+            completed: 0,
+            total: 0,
+        }),
+        sidecar_report: Mutex::new(None),
+    });
+    let mut tasks = SYNC_TASKS.lock().unwrap_or_else(|error| error.into_inner());
+    if tasks.contains_key(task_id) {
+        return Err(CoreFfiError::sync(format!(
+            "Sync task already exists: {task_id}"
+        )));
     }
+    tasks.insert(task_id.to_owned(), task.clone());
+    Ok(task)
 }
 
 fn sync_coordinator(coordinator_id: &str) -> Result<Arc<SyncCoordinator>, CoreFfiError> {

@@ -25,6 +25,11 @@ typeName = '"push_only" | "full"'
 lift = '{} as "push_only" | "full"'
 lower = "{}"
 
+[bindings.typescript.customTypes.LibrarySyncScope]
+typeName = '"all" | "calibre" | "myreader"'
+lift = '{} as "all" | "calibre" | "myreader"'
+lower = "{}"
+
 [bindings.typescript.customTypes.SyncTiming]
 typeName = '"debounced" | "immediate"'
 lift = '{} as "debounced" | "immediate"'

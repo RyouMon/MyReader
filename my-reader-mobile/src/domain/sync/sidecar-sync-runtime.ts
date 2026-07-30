@@ -25,7 +25,7 @@ import {
   type SyncFailureKind,
 } from "@/src/services/core/sync"
 import type { DataSource, Library } from "../types"
-import { cancelLibrarySidecarSyncTask } from "./library-sidecar/sync-database"
+import { cancelLibrarySyncTask } from "./core-sync"
 import { syncLibrary } from "./sync-library"
 import type { MyReaderSyncMode } from "./types"
 
@@ -322,7 +322,7 @@ export function createSidecarSyncRuntime(
       disposed = true
       for (const taskId of runningTasks.values()) {
         cancelledTasks.add(taskId)
-        cancelLibrarySidecarSyncTask(taskId)
+        cancelLibrarySyncTask(taskId)
       }
       runningTasks.clear()
       for (const timer of timers.values()) clearTimeout(timer)

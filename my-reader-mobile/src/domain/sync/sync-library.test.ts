@@ -2,54 +2,51 @@ jest.mock("./context", () => ({
   openSyncContext: jest.fn(),
 }))
 
-jest.mock("./connectivity", () => ({
-  checkConnectivity: jest.fn(),
+jest.mock("./core-sync", () => ({
+  runCoreLibrarySync: jest.fn(),
 }))
 
-jest.mock("./calibre-sync", () => ({
-  syncCalibre: jest.fn(),
-  skippedCalibre: jest.fn(),
+jest.mock("../library/calibre", () => ({
+  fetchBooks: jest.fn(),
 }))
 
-jest.mock("./myreader-sync", () => ({
-  syncMyReader: jest.fn(),
-  skippedMyreader: jest.fn(),
+jest.mock("../library/local-library-content", () => ({
+  withLocalLibraryCalibreRoot: jest.fn(
+    (_library, operation: (root: string) => Promise<unknown>) =>
+      operation("file:///resolved-library"),
+  ),
 }))
 
-jest.mock("./resolve", () => ({
-  isRemoteBackend: jest.fn(),
+jest.mock("@/src/services/query/invalidate-table", () => ({
+  invalidateFavoriteBooks: jest.fn(() => Promise.resolve()),
+  invalidateReaderAnnotations: jest.fn(() => Promise.resolve()),
+  invalidateReaderBookmarks: jest.fn(() => Promise.resolve()),
+  invalidateReadingProgress: jest.fn(() => Promise.resolve()),
+  invalidateReadingStatistics: jest.fn(() => Promise.resolve()),
+  invalidateRecentlyReadBooks: jest.fn(() => Promise.resolve()),
 }))
 
+import type { LibrarySyncReport as CoreLibrarySyncReport } from "@/src/services/core/sync"
+import {
+  invalidateFavoriteBooks,
+  invalidateReaderAnnotations,
+  invalidateReaderBookmarks,
+  invalidateReadingProgress,
+  invalidateReadingStatistics,
+  invalidateRecentlyReadBooks,
+} from "@/src/services/query/invalidate-table"
 import { DataIntegrityError, SyncConnectivityError } from "@/src/errors"
+import { fetchBooks } from "../library/calibre"
+import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
 import type { DataSource, Library } from "../types"
-
-import { skippedCalibre, syncCalibre } from "./calibre-sync"
-import { checkConnectivity } from "./connectivity"
 import { openSyncContext, type SyncTargetContext } from "./context"
-import { skippedMyreader, syncMyReader } from "./myreader-sync"
+import { runCoreLibrarySync } from "./core-sync"
 import { DEFAULT_SYNC_POLICY } from "./policy"
-import { isRemoteBackend } from "./resolve"
 import { syncLibraries, syncLibrary } from "./sync-library"
 
-const mockOpenSyncContext = openSyncContext as jest.MockedFunction<
-  typeof openSyncContext
->
-const mockCheckConnectivity = checkConnectivity as jest.MockedFunction<
-  typeof checkConnectivity
->
-const mockSyncCalibre = syncCalibre as jest.MockedFunction<typeof syncCalibre>
-const mockSyncMyReader = syncMyReader as jest.MockedFunction<
-  typeof syncMyReader
->
-const mockSkippedCalibre = skippedCalibre as jest.MockedFunction<
-  typeof skippedCalibre
->
-const mockSkippedMyreader = skippedMyreader as jest.MockedFunction<
-  typeof skippedMyreader
->
-const mockIsRemoteBackend = isRemoteBackend as jest.MockedFunction<
-  typeof isRemoteBackend
->
+const mockOpenSyncContext = jest.mocked(openSyncContext)
+const mockRunCoreLibrarySync = jest.mocked(runCoreLibrarySync)
+const mockFetchBooks = jest.mocked(fetchBooks)
 
 const library: Library = {
   id: "lib-1",
@@ -62,221 +59,208 @@ const library: Library = {
   sourceType: "local",
 }
 
+const refreshedLibrary: Library = {
+  ...library,
+  bookCount: 2,
+  metadataEtag: "metadata-v2",
+}
+const coreLibrary: CoreLibrarySyncReport["calibre"]["library"] = {
+  id: library.id,
+  name: library.name,
+  path: library.path,
+  metadataUri: library.metadataUri,
+  bookCount: library.bookCount,
+  addedAt: library.addedAt,
+  dataSourceId: "local",
+  sourceType: "local",
+}
+const refreshedCoreLibrary: CoreLibrarySyncReport["calibre"]["library"] = {
+  ...coreLibrary,
+  bookCount: 2,
+  metadataEtag: "metadata-v2",
+}
+
 const dataSources: DataSource[] = []
 
-const localCtx = {
+const localContext = {
   library,
-  libraryRootUri: "file:///cache/lib-1",
+  libraryRootUri: "file:///tmp/lib",
+  librarySidecarRootUri: "file:///tmp/lib",
   dataSourceId: "local",
   libraryId: library.id,
   backend: { kind: "local-direct" as const },
+  libraryStorage: { kind: "local-direct" as const, root: "/tmp/lib" },
 } as SyncTargetContext
 
-const remoteCtx = {
-  ...localCtx,
+const remoteContext = {
+  ...localContext,
+  libraryRootUri: "file:///cache/lib-1",
   backend: { kind: "webdav" as const },
+  libraryStorage: {
+    kind: "webdav" as const,
+    endpoint: "https://dav.example.test",
+    username: "reader",
+    password: "secret",
+    root: "/Library",
+  },
 } as SyncTargetContext
 
-function calibreResult(changed = true) {
+function coreReport(
+  overrides: Partial<CoreLibrarySyncReport> = {},
+): CoreLibrarySyncReport {
   return {
-    skipped: false,
-    changed,
-    library,
-  }
-}
-
-function myreaderResult(mode: "full" | "push_only" = "full") {
-  return {
-    skipped: false,
-    mode,
-    providers: { reading_progress: { pushed: 1, pulled: 0 } },
+    libraryId: library.id,
+    libraryName: library.name,
+    durationMs: 12,
+    calibre: {
+      skipped: false,
+      changed: true,
+      library: refreshedCoreLibrary,
+    },
+    myreader: {
+      skipped: false,
+      mode: "full",
+      pushed: 1,
+      pulled: 0,
+    },
+    ...overrides,
   }
 }
 
 describe("syncLibrary", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockOpenSyncContext.mockResolvedValue(localCtx)
-    mockIsRemoteBackend.mockReturnValue(false)
-    mockSyncCalibre.mockResolvedValue(calibreResult())
-    mockSyncMyReader.mockResolvedValue(myreaderResult())
-    mockSkippedCalibre.mockReturnValue({
-      skipped: true,
-      skipReason: "not_applicable",
-      changed: false,
+    mockOpenSyncContext.mockResolvedValue(localContext)
+    mockRunCoreLibrarySync.mockResolvedValue(coreReport())
+    mockFetchBooks.mockResolvedValue([])
+  })
+
+  it("should delegate the complete sync use case to Core when scope is all", async () => {
+    const books = [{ id: "1", title: "Book", author: "Author" }]
+    mockFetchBooks.mockResolvedValue(books)
+
+    const report = await syncLibrary(library, dataSources, {
+      scope: "all",
+      forceCalibre: true,
+      myreaderMode: "full",
+    })
+
+    expect(runCoreLibrarySync).toHaveBeenCalledWith({
       library,
-    })
-    mockSkippedMyreader.mockReturnValue({
-      skipped: true,
-      skipReason: "not_applicable",
+      libraryRootUri: "file:///resolved-library",
+      nowMs: expect.any(Number),
+      scope: "all",
+      forceCalibre: true,
       mode: "full",
-      providers: {},
+      storage: localContext.libraryStorage,
+      taskId: undefined,
+      onSidecarComplete: expect.any(Function),
     })
-  })
-
-  test("should run both phases when scope is all", async () => {
-    const report = await syncLibrary(library, dataSources, { scope: "all" })
-
-    expect(mockSyncCalibre).toHaveBeenCalledTimes(1)
-    expect(mockSyncMyReader).toHaveBeenCalledTimes(1)
-    expect(mockSkippedCalibre).not.toHaveBeenCalled()
-    expect(mockSkippedMyreader).not.toHaveBeenCalled()
-    expect(report.calibre.changed).toBe(true)
-    expect(report.myreader.skipped).toBe(false)
-  })
-
-  it("should pass refreshed library metadata when MyReader sync follows Calibre", async () => {
-    const refreshed = {
-      ...library,
-      metadataUri: "file:///tmp/lib/refreshed-metadata.db",
-    }
-    mockSyncCalibre.mockResolvedValue({
-      skipped: false,
-      changed: true,
-      library: refreshed,
-    })
-
-    await syncLibrary(library, dataSources, { scope: "all" })
-
-    expect(mockSyncMyReader).toHaveBeenCalledWith(
-      { ...localCtx, library: refreshed },
-      expect.any(Object),
+    expect(withLocalLibraryCalibreRoot).toHaveBeenCalledWith(
+      library,
+      expect.any(Function),
     )
+    expect(fetchBooks).toHaveBeenCalledWith(refreshedLibrary, dataSources)
+    expect(report.calibre.books).toBe(books)
+    expect(report.calibre.library).toEqual(refreshedLibrary)
   })
 
-  test("should skip myreader when scope is calibre", async () => {
-    await syncLibrary(library, dataSources, { scope: "calibre" })
+  it("should pass a remote cache root directly when a remote library is synced", async () => {
+    mockOpenSyncContext.mockResolvedValue(remoteContext)
+    mockRunCoreLibrarySync.mockResolvedValue(
+      coreReport({
+        calibre: {
+          skipped: true,
+          skipReason: "not_applicable",
+          changed: false,
+          library: coreLibrary,
+        },
+      }),
+    )
 
-    expect(mockSyncCalibre).toHaveBeenCalledTimes(1)
-    expect(mockSyncMyReader).not.toHaveBeenCalled()
-    expect(mockSkippedMyreader).toHaveBeenCalledWith("full")
-  })
-
-  test("should skip calibre when scope is myreader", async () => {
     await syncLibrary(library, dataSources, {
       scope: "myreader",
       myreaderMode: "push_only",
+      myreaderTaskId: "task-1",
     })
 
-    expect(mockSyncCalibre).not.toHaveBeenCalled()
-    expect(mockSkippedCalibre).toHaveBeenCalledWith(library)
-    expect(mockSyncMyReader).toHaveBeenCalledWith(
-      localCtx,
-      expect.objectContaining({ myreaderMode: "push_only" }),
+    expect(withLocalLibraryCalibreRoot).not.toHaveBeenCalled()
+    expect(runCoreLibrarySync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        libraryRootUri: "file:///cache/lib-1",
+        scope: "myreader",
+        forceCalibre: false,
+        mode: "push_only",
+        taskId: "task-1",
+      }),
     )
+    expect(fetchBooks).not.toHaveBeenCalled()
   })
 
-  test("should pass forceCalibre when syncing calibre", async () => {
-    await syncLibrary(library, dataSources, {
-      scope: "calibre",
-      forceCalibre: true,
+  it("should refresh sidecar queries when Core reports pulled changes", async () => {
+    mockRunCoreLibrarySync.mockImplementation(async (input) => {
+      input.onSidecarComplete?.({ pushed: 0, pulled: 2 })
+      return coreReport()
     })
 
-    expect(mockSyncCalibre).toHaveBeenCalledWith(
-      localCtx,
-      dataSources,
-      expect.objectContaining({ forceCalibre: true }),
-    )
-  })
-
-  test("should skip connectivity check when backend is local", async () => {
     await syncLibrary(library, dataSources)
 
-    expect(mockIsRemoteBackend).toHaveBeenCalledWith(localCtx.backend)
-    expect(mockCheckConnectivity).not.toHaveBeenCalled()
+    for (const invalidate of [
+      invalidateFavoriteBooks,
+      invalidateReadingProgress,
+      invalidateReadingStatistics,
+      invalidateReaderAnnotations,
+      invalidateReaderBookmarks,
+      invalidateRecentlyReadBooks,
+    ]) {
+      expect(invalidate).toHaveBeenCalledWith(library.id)
+    }
   })
 
-  test("should return connectivity failure when remote backend is unreachable", async () => {
-    mockOpenSyncContext.mockResolvedValue(remoteCtx)
-    mockIsRemoteBackend.mockReturnValue(true)
-    mockCheckConnectivity.mockResolvedValue({
-      reachable: false,
-      latencyMs: 0,
-      error: "offline",
-    })
-
-    const report = await syncLibrary(library, dataSources, {
-      throwOnFailure: false,
-    })
-
-    expect(mockCheckConnectivity).toHaveBeenCalledWith(remoteCtx.backend)
-    expect(mockSyncCalibre).not.toHaveBeenCalled()
-    expect(mockSyncMyReader).not.toHaveBeenCalled()
-    expect(report.error).toBe("offline")
-    expect(report.calibre.skipReason).toBe("connectivity")
-    expect(report.myreader.skipped).toBe(true)
-  })
-
-  test("should return skipped report when sync context cannot open", async () => {
-    mockOpenSyncContext.mockRejectedValue(new Error("missing metadata"))
+  it("should return a skipped report when the platform context cannot open", async () => {
+    mockOpenSyncContext.mockRejectedValue(new Error("missing credential"))
 
     const report = await syncLibrary(library, dataSources, {
       myreaderMode: "push_only",
     })
 
     expect(report).toMatchObject({
-      libraryId: "lib-1",
-      error: "missing metadata",
+      libraryId: library.id,
+      error: "missing credential",
       calibre: {
         skipped: true,
         skipReason: "error",
-        error: "missing metadata",
+        changed: false,
+      },
+      myreader: {
+        skipped: true,
+        skipReason: "error",
+        mode: "push_only",
       },
     })
-    expect(mockSkippedMyreader).toHaveBeenCalledWith("push_only")
-    expect(mockSyncCalibre).not.toHaveBeenCalled()
-    expect(mockSyncMyReader).not.toHaveBeenCalled()
+    expect(runCoreLibrarySync).not.toHaveBeenCalled()
   })
 
-  test("should throw context open failures when requested", async () => {
-    mockOpenSyncContext.mockRejectedValue("metadata unavailable")
-
-    await expect(
-      syncLibrary(library, dataSources, { throwOnFailure: true }),
-    ).rejects.toThrow("metadata unavailable")
-  })
-
-  test("should throw typed connectivity failure when requested", async () => {
-    mockOpenSyncContext.mockResolvedValue(remoteCtx)
-    mockIsRemoteBackend.mockReturnValue(true)
-    mockCheckConnectivity.mockResolvedValue({
-      reachable: false,
-      latencyMs: 0,
-    })
+  it("should throw a typed connectivity error when Core reports connectivity failure", async () => {
+    mockRunCoreLibrarySync.mockResolvedValue(
+      coreReport({
+        error: "network unavailable",
+        failureKind: "connectivity",
+      }),
+    )
 
     await expect(
       syncLibrary(library, dataSources, { throwOnFailure: true }),
     ).rejects.toBeInstanceOf(SyncConnectivityError)
   })
 
-  test("should throw calibre phase errors when requested", async () => {
-    mockSyncCalibre.mockResolvedValue({
-      ...calibreResult(false),
-      error: "calibre failed",
-    })
-
-    await expect(
-      syncLibrary(library, dataSources, { throwOnFailure: true }),
-    ).rejects.toThrow("calibre failed")
-  })
-
-  test("should throw myreader phase errors when requested", async () => {
-    mockSyncMyReader.mockResolvedValue({
-      ...myreaderResult(),
-      error: "myreader failed",
-    })
-
-    await expect(
-      syncLibrary(library, dataSources, { throwOnFailure: true }),
-    ).rejects.toThrow("myreader failed")
-  })
-
-  it("should preserve data integrity error when MyReader history is damaged", async () => {
-    mockSyncMyReader.mockResolvedValue({
-      ...myreaderResult(),
-      failureKind: "data_integrity",
-      error: "missing change abc",
-    })
+  it("should throw a typed data integrity error when Core reports damaged history", async () => {
+    mockRunCoreLibrarySync.mockResolvedValue(
+      coreReport({
+        error: "missing change abc",
+        failureKind: "data_integrity",
+      }),
+    )
 
     await expect(
       syncLibrary(library, dataSources, { throwOnFailure: true }),
@@ -287,25 +271,12 @@ describe("syncLibrary", () => {
 describe("syncLibraries", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockOpenSyncContext.mockResolvedValue(localCtx)
-    mockIsRemoteBackend.mockReturnValue(false)
-    mockSyncCalibre.mockResolvedValue(calibreResult())
-    mockSyncMyReader.mockResolvedValue(myreaderResult())
-    mockSkippedCalibre.mockReturnValue({
-      skipped: true,
-      skipReason: "not_applicable",
-      changed: false,
-      library,
-    })
-    mockSkippedMyreader.mockReturnValue({
-      skipped: true,
-      skipReason: "not_applicable",
-      mode: "full",
-      providers: {},
-    })
+    mockOpenSyncContext.mockResolvedValue(localContext)
+    mockRunCoreLibrarySync.mockResolvedValue(coreReport())
+    mockFetchBooks.mockResolvedValue([])
   })
 
-  test("should abort startup sync when syncOnStartup is disabled", async () => {
+  it("should abort startup sync when startup sync is disabled", async () => {
     const report = await syncLibraries(
       {
         libraries: [library],
@@ -319,10 +290,10 @@ describe("syncLibraries", () => {
 
     expect(report.aborted).toBe(true)
     expect(report.results).toHaveLength(0)
-    expect(mockOpenSyncContext).not.toHaveBeenCalled()
+    expect(openSyncContext).not.toHaveBeenCalled()
   })
 
-  test("should abort scheduled sync when auto sync is disabled", async () => {
+  it("should abort scheduled sync when automatic sync is disabled", async () => {
     const report = await syncLibraries(
       {
         libraries: [library],
@@ -336,10 +307,10 @@ describe("syncLibraries", () => {
 
     expect(report.aborted).toBe(true)
     expect(report.results).toHaveLength(0)
-    expect(mockOpenSyncContext).not.toHaveBeenCalled()
+    expect(openSyncContext).not.toHaveBeenCalled()
   })
 
-  test("should abort sync when trigger policy is disabled", async () => {
+  it("should abort sync when its trigger policy is disabled", async () => {
     const report = await syncLibraries(
       {
         libraries: [library],
@@ -357,10 +328,10 @@ describe("syncLibraries", () => {
 
     expect(report.aborted).toBe(true)
     expect(report.results).toHaveLength(0)
-    expect(mockOpenSyncContext).not.toHaveBeenCalled()
+    expect(openSyncContext).not.toHaveBeenCalled()
   })
 
-  test("should target only active library when scheduled reading sync runs", async () => {
+  it("should target only the active library when scheduled reading sync runs", async () => {
     const otherLibrary: Library = { ...library, id: "lib-2", name: "Other" }
 
     await syncLibraries(
@@ -376,12 +347,13 @@ describe("syncLibraries", () => {
       "reading",
     )
 
-    expect(mockOpenSyncContext).toHaveBeenCalledTimes(1)
-    expect(mockOpenSyncContext).toHaveBeenCalledWith(library, dataSources)
-    expect(mockSyncMyReader).toHaveBeenCalledWith(
-      localCtx,
-      expect.objectContaining({ myreaderMode: "push_only" }),
+    expect(openSyncContext).toHaveBeenCalledTimes(1)
+    expect(openSyncContext).toHaveBeenCalledWith(library, dataSources)
+    expect(runCoreLibrarySync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scope: "myreader",
+        mode: "push_only",
+      }),
     )
-    expect(mockSyncCalibre).not.toHaveBeenCalled()
   })
 })

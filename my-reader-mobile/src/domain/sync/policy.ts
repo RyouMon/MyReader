@@ -68,13 +68,3 @@ export function resolveSyncOptions(
   if (!entry.enabled) return null
   return { ...entry.options, ...overrides }
 }
-
-export function scopeHasCalibre(options: SyncLibraryOptions): boolean {
-  const scope = options.scope ?? "all"
-  return scope === "all" || scope === "calibre"
-}
-
-export function scopeHasMyreader(options: SyncLibraryOptions): boolean {
-  const scope = options.scope ?? "all"
-  return scope === "all" || scope === "myreader"
-}

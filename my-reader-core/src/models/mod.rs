@@ -24,6 +24,9 @@ pub use reading::{
     LegacyFinishedReading, ReaderAnnotation, ReaderBookmark, ReadingPosition,
     ReadingPositionCandidate, ReadingStatistics,
 };
-pub use storage::{RemoteCredential, RemoteDirectoryEntry, SidecarStorageConfig};
-pub use sync::{SidecarSyncMode, SidecarSyncReport, SyncFailureKind};
+pub use storage::{LibraryStorageConfig, RemoteCredential, RemoteDirectoryEntry};
+pub use sync::{
+    CalibreSyncReport, LibrarySyncOptions, LibrarySyncReport, LibrarySyncScope, MyReaderSyncReport,
+    SidecarSyncMode, SidecarSyncReport, SyncFailureKind,
+};
 pub(crate) use sync::{SyncFailureDisposition, SyncScheduleSnapshot};

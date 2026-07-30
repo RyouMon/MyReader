@@ -263,6 +263,10 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_read_task_progress(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_recover(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -278,7 +282,7 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_resume(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_run_library(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
@@ -687,6 +691,10 @@ protected:
   cpp_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_progress(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
+  jsi::Value
+  cpp_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report(
+      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_sync_recover(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -703,7 +711,7 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_sync_resume(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar(
+  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value

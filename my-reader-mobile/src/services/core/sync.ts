@@ -1,7 +1,9 @@
 import {
   CoreFfiError,
   type SchedulerTransition as CoreSchedulerTransition,
-  type SidecarStorageConfig as CoreSidecarStorageConfig,
+  type LibraryStorageConfig as CoreLibraryStorageConfig,
+  type LibrarySyncReport,
+  type LibrarySyncScope,
   type RetrySchedule,
   type ScheduledSync,
   type SidecarSyncMode,
@@ -19,12 +21,13 @@ import {
   syncFail,
   syncFlush,
   syncReadTaskProgress,
+  syncReadTaskSidecarReport,
   syncRecover,
   syncReleaseTask,
   syncRequest,
   syncRequestContextualPull,
   syncResume,
-  syncRunSidecar,
+  syncRunLibrary,
   syncSetLibraryOnline,
 } from "my-reader-core"
 import { DataIntegrityError } from "@/src/errors"
@@ -32,6 +35,8 @@ import { DataIntegrityError } from "@/src/errors"
 export type {
   RetrySchedule,
   ScheduledSync,
+  LibrarySyncReport,
+  LibrarySyncScope,
   SidecarSyncMode,
   SidecarSyncReport,
   SyncExecution,
@@ -48,7 +53,7 @@ export type SchedulerTransition = Omit<
   retry: RetrySchedule | null
 }
 
-export type SidecarStorageConfig =
+export type LibraryStorageConfig =
   | { kind: "local-direct"; root: string }
   | {
       kind: "webdav"
@@ -74,8 +79,8 @@ function transitionFromCore(
 }
 
 function storageToCore(
-  storage: SidecarStorageConfig,
-): CoreSidecarStorageConfig {
+  storage: LibraryStorageConfig,
+): CoreLibraryStorageConfig {
   switch (storage.kind) {
     case "local-direct":
       return { kind: storage.kind, root: storage.root }
@@ -263,6 +268,12 @@ export function readSyncTaskProgress(taskId: string): SyncTaskProgress | null {
   return syncReadTaskProgress(taskId) ?? null
 }
 
+export function readSyncTaskSidecarReport(
+  taskId: string,
+): SidecarSyncReport | null {
+  return syncReadTaskSidecarReport(taskId) ?? null
+}
+
 export function cancelSyncTask(taskId: string): boolean {
   return syncCancelTask(taskId)
 }
@@ -271,20 +282,28 @@ export function releaseSyncTask(taskId: string): boolean {
   return syncReleaseTask(taskId)
 }
 
-export async function syncLibrarySidecar(input: {
+export async function syncLibraryData(input: {
   taskId: string
+  configPath: string
   sidecarRootPath: string
   libraryRootPath: string
+  libraryId: string
   nowMs: number
+  scope: LibrarySyncScope
+  forceCalibre: boolean
   mode: SidecarSyncMode
-  storage: SidecarStorageConfig
-}): Promise<SidecarSyncReport> {
+  storage: LibraryStorageConfig
+}): Promise<LibrarySyncReport> {
   try {
-    return await syncRunSidecar(
+    return await syncRunLibrary(
       input.taskId,
+      input.configPath,
       input.sidecarRootPath,
       input.libraryRootPath,
+      input.libraryId,
       input.nowMs,
+      input.scope,
+      input.forceCalibre,
       input.mode,
       storageToCore(input.storage),
     )

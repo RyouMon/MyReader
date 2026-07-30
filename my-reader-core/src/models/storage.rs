@@ -26,7 +26,7 @@ pub struct RemoteDirectoryEntry {
     rename_all = "kebab-case",
     rename_all_fields = "camelCase"
 )]
-pub enum SidecarStorageConfig {
+pub enum LibraryStorageConfig {
     LocalDirect {
         root: String,
     },

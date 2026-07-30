@@ -32,10 +32,6 @@ impl CoreFfiError {
         Self::Sync(message.into())
     }
 
-    pub(crate) fn data_integrity(message: impl Into<String>) -> Self {
-        Self::DataIntegrity(message.into())
-    }
-
     pub(crate) fn from_core(error: my_reader_core::CoreError) -> Self {
         match error {
             my_reader_core::CoreError::DataIntegrity(message) => Self::DataIntegrity(message),

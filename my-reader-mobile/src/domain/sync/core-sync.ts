@@ -1,0 +1,72 @@
+import type { Library } from "@my-reader/tools/types/library"
+
+import { appConfigPath } from "@/src/services/core/app-config"
+import {
+  cancelSyncTask,
+  type LibraryStorageConfig,
+  readSyncTaskSidecarReport,
+  releaseSyncTask,
+  syncLibraryData,
+  type LibrarySyncReport,
+  type LibrarySyncScope,
+  type SidecarSyncMode,
+  type SidecarSyncReport,
+} from "@/src/services/core/sync"
+import { librarySidecarRootUri } from "@/src/services/fs/library-paths"
+import { toNativeFilesystemPath } from "@/src/services/fs/path"
+
+let nextTaskSequence = 0
+
+export function createLibrarySyncTaskId(libraryId: string): string {
+  nextTaskSequence += 1
+  return `${libraryId}:${Date.now()}:${nextTaskSequence}`
+}
+
+export function cancelLibrarySyncTask(taskId: string): boolean {
+  return cancelSyncTask(taskId)
+}
+
+export async function runCoreLibrarySync(input: {
+  library: Library
+  libraryRootUri: string
+  nowMs: number
+  scope: LibrarySyncScope
+  forceCalibre: boolean
+  mode: SidecarSyncMode
+  storage: LibraryStorageConfig
+  taskId?: string
+  onSidecarComplete?: (report: SidecarSyncReport) => void
+}): Promise<LibrarySyncReport> {
+  const taskId = input.taskId ?? createLibrarySyncTaskId(input.library.id)
+  let sidecarPublished = false
+  const publishSidecarResult = () => {
+    if (sidecarPublished) return
+    const report = readSyncTaskSidecarReport(taskId)
+    if (!report) return
+    sidecarPublished = true
+    input.onSidecarComplete?.(report)
+  }
+  const sync = syncLibraryData({
+    taskId,
+    configPath: appConfigPath,
+    sidecarRootPath: toNativeFilesystemPath(
+      librarySidecarRootUri(input.library),
+    ),
+    libraryRootPath: toNativeFilesystemPath(input.libraryRootUri),
+    libraryId: input.library.id,
+    nowMs: input.nowMs,
+    scope: input.scope,
+    forceCalibre: input.forceCalibre,
+    mode: input.mode,
+    storage: input.storage,
+  })
+  const sidecarResultTimer = setInterval(publishSidecarResult, 100)
+  try {
+    const report = await sync
+    publishSidecarResult()
+    return report
+  } finally {
+    clearInterval(sidecarResultTimer)
+    releaseSyncTask(taskId)
+  }
+}

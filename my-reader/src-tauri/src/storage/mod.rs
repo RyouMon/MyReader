@@ -106,15 +106,15 @@ pub async fn core_remote_credential(
     }
 }
 
-pub async fn core_sidecar_storage(
+pub async fn core_library_storage(
     config: &AppConfig,
     library: &LibraryConfig,
-) -> Result<my_reader_core::models::SidecarStorageConfig, AppError> {
+) -> Result<my_reader_core::models::LibraryStorageConfig, AppError> {
+    use my_reader_core::models::LibraryStorageConfig;
     use my_reader_core::models::RemoteCredential;
-    use my_reader_core::models::SidecarStorageConfig;
 
     if !library.is_remote() {
-        return Ok(SidecarStorageConfig::LocalDirect {
+        return Ok(LibraryStorageConfig::LocalDirect {
             root: library.path.clone(),
         });
     }
@@ -140,7 +140,7 @@ pub async fn core_sidecar_storage(
                 ..
             },
             RemoteCredential::Webdav { password },
-        ) => Ok(SidecarStorageConfig::Webdav {
+        ) => Ok(LibraryStorageConfig::Webdav {
             endpoint: endpoint.clone(),
             username: username.clone(),
             password,
@@ -149,7 +149,7 @@ pub async fn core_sidecar_storage(
         (
             DataSourceDetail::Onedrive { root_path, .. },
             RemoteCredential::Onedrive { access_token },
-        ) => Ok(SidecarStorageConfig::Onedrive {
+        ) => Ok(LibraryStorageConfig::Onedrive {
             access_token,
             root: Some(join_remote_root(root_path.as_deref(), relative_root)),
         }),

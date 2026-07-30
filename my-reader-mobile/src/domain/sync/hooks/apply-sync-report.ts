@@ -1,7 +1,6 @@
 import type { LibrarySyncReport, SyncTrigger } from "@/src/domain/sync/types"
 import { libraryQueryKeys } from "@/src/domain/library/calibre"
 import { queryClient } from "@/src/services/query/query-client"
-import { replaceAppLibrary } from "@/src/services/core/app-config"
 import { useAppStore } from "@/src/store/app-store"
 
 function isPassiveTrigger(trigger?: SyncTrigger): boolean {
@@ -9,7 +8,7 @@ function isPassiveTrigger(trigger?: SyncTrigger): boolean {
 }
 
 /** Applies a domain sync report to Zustand + React Query. */
-export function applySyncReport(
+export async function applySyncReport(
   report: LibrarySyncReport,
   context?: { trigger?: SyncTrigger },
 ): Promise<void> {
@@ -25,18 +24,14 @@ export function applySyncReport(
           library.id === libraryId ? calibre.library : library,
         ),
     )
-  const persistState = replaceAppLibrary(calibre.library).then((appConfig) => {
-    useAppStore.getState().setLibraries(appConfig.libraries)
-  })
 
   if (calibre.books && (!passive || calibre.changed)) {
     queryClient.setQueryData(libraryQueryKeys.books(libraryId), calibre.books)
-  } else if (!passive && calibre.changed) {
-    void queryClient.invalidateQueries({
+  } else if (calibre.changed) {
+    await queryClient.invalidateQueries({
       queryKey: libraryQueryKeys.books(libraryId),
     })
   }
-  return persistState
 }
 
 /** Applies multiple library reports from a batch sync run. */

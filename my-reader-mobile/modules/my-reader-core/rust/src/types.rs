@@ -27,6 +27,11 @@ pub struct SidecarSyncMode(pub String);
 uniffi::custom_newtype!(SidecarSyncMode, String);
 
 #[derive(Debug, Clone)]
+pub struct LibrarySyncScope(pub String);
+
+uniffi::custom_newtype!(LibrarySyncScope, String);
+
+#[derive(Debug, Clone)]
 pub struct SyncTiming(pub String);
 
 uniffi::custom_newtype!(SyncTiming, String);
@@ -352,7 +357,7 @@ pub struct RemoteDirectoryEntry {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct SidecarStorageConfig {
+pub struct LibraryStorageConfig {
     pub kind: String,
     pub root: Option<String>,
     pub endpoint: Option<String>,
@@ -365,6 +370,37 @@ pub struct SidecarStorageConfig {
 pub struct SidecarSyncReport {
     pub pushed: f64,
     pub pulled: f64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct MyReaderSyncReport {
+    pub skipped: bool,
+    pub skip_reason: Option<String>,
+    pub mode: SidecarSyncMode,
+    pub pushed: f64,
+    pub pulled: f64,
+    pub error: Option<String>,
+    pub failure_kind: Option<SyncFailureKind>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct CalibreSyncReport {
+    pub skipped: bool,
+    pub skip_reason: Option<String>,
+    pub changed: bool,
+    pub library: Library,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct LibrarySyncReport {
+    pub library_id: String,
+    pub library_name: String,
+    pub calibre: CalibreSyncReport,
+    pub myreader: MyReaderSyncReport,
+    pub duration_ms: f64,
+    pub error: Option<String>,
+    pub failure_kind: Option<SyncFailureKind>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -995,10 +1031,10 @@ impl From<models::RemoteDirectoryEntry> for RemoteDirectoryEntry {
     }
 }
 
-impl TryFrom<SidecarStorageConfig> for models::SidecarStorageConfig {
+impl TryFrom<LibraryStorageConfig> for models::LibraryStorageConfig {
     type Error = CoreFfiError;
 
-    fn try_from(value: SidecarStorageConfig) -> Result<Self, Self::Error> {
+    fn try_from(value: LibraryStorageConfig) -> Result<Self, Self::Error> {
         match value.kind.as_str() {
             "local-direct" => Ok(Self::LocalDirect {
                 root: required_string(value.root, "root")?,
@@ -1026,6 +1062,88 @@ impl From<models::SidecarSyncReport> for SidecarSyncReport {
             pushed: value.pushed as f64,
             pulled: value.pulled as f64,
         }
+    }
+}
+
+impl TryFrom<LibrarySyncScope> for models::LibrarySyncScope {
+    type Error = CoreFfiError;
+
+    fn try_from(value: LibrarySyncScope) -> Result<Self, Self::Error> {
+        match value.0.as_str() {
+            "all" => Ok(Self::All),
+            "calibre" => Ok(Self::Calibre),
+            "myreader" => Ok(Self::Myreader),
+            scope => Err(CoreFfiError::sync(format!(
+                "Unsupported library sync scope: {scope}"
+            ))),
+        }
+    }
+}
+
+impl From<models::SyncFailureKind> for SyncFailureKind {
+    fn from(value: models::SyncFailureKind) -> Self {
+        Self(
+            match value {
+                models::SyncFailureKind::Connectivity => "connectivity",
+                models::SyncFailureKind::Configuration => "configuration",
+                models::SyncFailureKind::Credential => "credential",
+                models::SyncFailureKind::DataIntegrity => "data_integrity",
+                models::SyncFailureKind::Unexpected => "unexpected",
+            }
+            .to_owned(),
+        )
+    }
+}
+
+impl From<models::MyReaderSyncReport> for MyReaderSyncReport {
+    fn from(value: models::MyReaderSyncReport) -> Self {
+        Self {
+            skipped: value.skipped,
+            skip_reason: value.skip_reason,
+            mode: value.mode.into(),
+            pushed: value.pushed as f64,
+            pulled: value.pulled as f64,
+            error: value.error,
+            failure_kind: value.failure_kind.map(Into::into),
+        }
+    }
+}
+
+impl From<models::CalibreSyncReport> for CalibreSyncReport {
+    fn from(value: models::CalibreSyncReport) -> Self {
+        Self {
+            skipped: value.skipped,
+            skip_reason: value.skip_reason,
+            changed: value.changed,
+            library: value.library.into(),
+            error: value.error,
+        }
+    }
+}
+
+impl From<models::LibrarySyncReport> for LibrarySyncReport {
+    fn from(value: models::LibrarySyncReport) -> Self {
+        Self {
+            library_id: value.library_id,
+            library_name: value.library_name,
+            calibre: value.calibre.into(),
+            myreader: value.myreader.into(),
+            duration_ms: value.duration_ms as f64,
+            error: value.error,
+            failure_kind: value.failure_kind.map(Into::into),
+        }
+    }
+}
+
+impl From<models::SidecarSyncMode> for SidecarSyncMode {
+    fn from(value: models::SidecarSyncMode) -> Self {
+        Self(
+            match value {
+                models::SidecarSyncMode::PushOnly => "push_only",
+                models::SidecarSyncMode::Full => "full",
+            }
+            .to_owned(),
+        )
     }
 }
 

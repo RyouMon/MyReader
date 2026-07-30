@@ -6,14 +6,13 @@ use my_reader_core::api::sync::{
     SchedulerTransition, SyncCoordinator, SyncExecution, SyncMode, SyncTiming,
 };
 use my_reader_core::models::SyncFailureKind;
-use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Semaphore;
 use tracing::{error, info};
 
 use crate::commands::AppState;
 use crate::services::library_service::LibraryService;
-use crate::services::sync_service::{SidecarSyncMode, SyncService};
+use crate::services::sync_service::{SidecarSyncCompletedPayload, SidecarSyncMode, SyncService};
 use crate::utils::paths::library_sidecar_path;
 
 const PULL_FRESHNESS_MS: u64 = 30_000;
@@ -59,15 +58,6 @@ fn scheduler_timing(timing: SidecarSyncTiming) -> SyncTiming {
 fn safety_sweep_delay_ms(random_fraction: f64) -> u64 {
     let factor = 0.8 + random_fraction.clamp(0.0, 1.0) * 0.4;
     (SAFETY_SWEEP_MS as f64 * factor) as u64
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SidecarSyncCompletedPayload {
-    library_id: String,
-    mode: &'static str,
-    pushed: usize,
-    pulled: usize,
 }
 
 #[derive(Clone)]

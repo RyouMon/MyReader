@@ -1,20 +1,23 @@
-import i18n from "@/src/i18n"
 import { DataIntegrityError, SyncConnectivityError } from "../../errors"
-import { describeError } from "../../utils/common"
-import type { DataSource, Library } from "../types"
-import { skippedCalibre, syncCalibre } from "./calibre-sync"
-import { checkConnectivity } from "./connectivity"
-import { openSyncContext } from "./context"
-import { skippedMyreader, syncMyReader } from "./myreader-sync"
 import {
-  DEFAULT_SYNC_POLICY,
-  resolveSyncOptions,
-  scopeHasCalibre,
-  scopeHasMyreader,
-} from "./policy"
-import { isRemoteBackend } from "./resolve"
+  invalidateFavoriteBooks,
+  invalidateReaderAnnotations,
+  invalidateReaderBookmarks,
+  invalidateReadingProgress,
+  invalidateReadingStatistics,
+  invalidateRecentlyReadBooks,
+} from "../../services/query/invalidate-table"
+import { describeError } from "../../utils/common"
+import { fetchBooks } from "../library/calibre"
+import { withLocalLibraryCalibreRoot } from "../library/local-library-content"
+import type { DataSource, Library } from "../types"
+import { openSyncContext } from "./context"
+import { runCoreLibrarySync } from "./core-sync"
+import { DEFAULT_SYNC_POLICY, resolveSyncOptions } from "./policy"
 import type {
+  CalibreSyncResult,
   LibrarySyncReport,
+  MyReaderSyncResult,
   ScheduledSyncTarget,
   SyncLibrariesDeps,
   SyncLibraryOptions,
@@ -41,11 +44,12 @@ function mergeOptions(
   return resolved
 }
 
-function buildConnectivityFailureReport(
+function failedReport(
   library: Library,
   options: SyncLibraryOptions,
   errorMessage: string,
   startedAt: number,
+  failureKind?: LibrarySyncReport["failureKind"],
 ): LibrarySyncReport {
   const mode = options.myreaderMode ?? "full"
   return {
@@ -55,7 +59,7 @@ function buildConnectivityFailureReport(
     error: errorMessage,
     calibre: {
       skipped: true,
-      skipReason: "connectivity",
+      skipReason: "error",
       changed: false,
       library,
       error: errorMessage,
@@ -67,7 +71,40 @@ function buildConnectivityFailureReport(
       providers: {},
       error: errorMessage,
     },
+    failureKind,
   }
+}
+
+function calibreSkipReason(
+  reason: string | undefined,
+): CalibreSyncResult["skipReason"] {
+  switch (reason) {
+    case "unchanged":
+    case "not_applicable":
+    case "connectivity":
+    case "error":
+      return reason
+    default:
+      return undefined
+  }
+}
+
+function myreaderSkipReason(
+  reason: string | undefined,
+): MyReaderSyncResult["skipReason"] {
+  return reason === "not_applicable" || reason === "error" ? reason : undefined
+}
+
+function invalidatePulledSidecar(libraryId: string, pulled: number): void {
+  if (pulled === 0) return
+  void Promise.all([
+    invalidateFavoriteBooks(libraryId),
+    invalidateReadingProgress(libraryId),
+    invalidateReadingStatistics(libraryId),
+    invalidateReaderAnnotations(libraryId),
+    invalidateReaderBookmarks(libraryId),
+    invalidateRecentlyReadBooks(libraryId),
+  ])
 }
 
 /** 同步单个书库 — 所有业务路径的唯一 domain 入口。 */
@@ -84,68 +121,97 @@ export async function syncLibrary(
     ctx = await openSyncContext(library, dataSources)
   } catch (err) {
     const message = describeError(err)
-    const report: LibrarySyncReport = {
-      libraryId: library.id,
-      libraryName: library.name,
-      durationMs: Date.now() - startedAt,
-      error: message,
-      calibre: {
-        skipped: true,
-        skipReason: "error",
-        changed: false,
-        library,
-        error: message,
-      },
-      myreader: skippedMyreader(options.myreaderMode),
-    }
+    const report = failedReport(library, options, message, startedAt)
     if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
     return report
   }
 
-  if (isRemoteBackend(ctx.backend)) {
-    const connectivity = await checkConnectivity(ctx.backend)
-    if (!connectivity.reachable) {
-      const message = connectivity.error ?? i18n.t("sync.sourceUnreachable")
-      const report = buildConnectivityFailureReport(
-        library,
-        options,
-        message,
-        startedAt,
-      )
-      if (throwOnFailure) {
-        throw new SyncConnectivityError(message, report)
-      }
-      return report
+  const syncCore = (libraryRootUri: string) =>
+    runCoreLibrarySync({
+      library,
+      libraryRootUri,
+      nowMs: Date.now(),
+      scope: options.scope ?? "all",
+      forceCalibre: options.forceCalibre ?? false,
+      mode: options.myreaderMode ?? "full",
+      storage: ctx.libraryStorage,
+      taskId: options.myreaderTaskId,
+      onSidecarComplete: ({ pulled }) =>
+        invalidatePulledSidecar(library.id, pulled),
+    })
+
+  let coreReport
+  try {
+    coreReport =
+      ctx.backend.kind === "local-direct"
+        ? await withLocalLibraryCalibreRoot(library, syncCore)
+        : await syncCore(ctx.libraryRootUri)
+  } catch (err) {
+    const message = describeError(err)
+    if (throwOnFailure) throw err instanceof Error ? err : new Error(message)
+    return failedReport(
+      library,
+      options,
+      message,
+      startedAt,
+      err instanceof DataIntegrityError ? "data_integrity" : undefined,
+    )
+  }
+
+  let books
+  if (coreReport.calibre.changed && !coreReport.calibre.error) {
+    try {
+      books = await fetchBooks(coreReport.calibre.library, dataSources)
+    } catch (error) {
+      console.warn("[reading-sync] books:refresh-failed", {
+        libraryId: library.id,
+        error: describeError(error),
+      })
     }
   }
 
-  let calibre = scopeHasCalibre(options)
-    ? await syncCalibre(ctx, dataSources, options)
-    : skippedCalibre(library)
-
-  const myreaderContext =
-    calibre.library === ctx.library ? ctx : { ...ctx, library: calibre.library }
-  let myreader = scopeHasMyreader(options)
-    ? await syncMyReader(myreaderContext, options)
-    : skippedMyreader(options.myreaderMode ?? "full")
-
-  if (calibre.error && throwOnFailure) {
-    throw new Error(calibre.error)
+  const report: LibrarySyncReport = {
+    libraryId: coreReport.libraryId,
+    libraryName: coreReport.libraryName,
+    durationMs: coreReport.durationMs,
+    error: coreReport.error,
+    failureKind: coreReport.failureKind,
+    calibre: {
+      skipped: coreReport.calibre.skipped,
+      skipReason: calibreSkipReason(coreReport.calibre.skipReason),
+      changed: coreReport.calibre.changed,
+      library: coreReport.calibre.library,
+      books,
+      error: coreReport.calibre.error,
+    },
+    myreader: {
+      skipped: coreReport.myreader.skipped,
+      skipReason: myreaderSkipReason(coreReport.myreader.skipReason),
+      mode: coreReport.myreader.mode,
+      providers: coreReport.myreader.skipped
+        ? {}
+        : {
+            "library-sidecar": {
+              pushed: coreReport.myreader.pushed,
+              pulled: coreReport.myreader.pulled,
+            },
+          },
+      error: coreReport.myreader.error,
+      failureKind: coreReport.myreader.failureKind,
+    },
   }
-  if (myreader.error && throwOnFailure) {
-    if (myreader.failureKind === "data_integrity") {
-      throw new DataIntegrityError(myreader.error)
+
+  if (report.error && throwOnFailure) {
+    if (report.failureKind === "connectivity") {
+      throw new SyncConnectivityError(report.error, report)
     }
-    throw new Error(myreader.error)
+    if (report.failureKind === "data_integrity") {
+      throw new DataIntegrityError(report.error)
+    }
+    throw new Error(report.error)
   }
 
-  return {
-    libraryId: library.id,
-    libraryName: library.name,
-    calibre,
-    myreader,
-    durationMs: Date.now() - startedAt,
-  }
+  return report
 }
 
 /** 同步多个书库 — SyncRuntime / scheduler 用。 */

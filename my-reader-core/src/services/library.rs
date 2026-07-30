@@ -246,7 +246,7 @@ async fn add_remote_library_with_operator(
     result
 }
 
-async fn download_and_validate_metadata(
+pub(super) async fn download_and_validate_metadata(
     operator: &Operator,
     source_path: &str,
     destination: &Path,

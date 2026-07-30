@@ -3309,6 +3309,28 @@ export function syncReadTaskProgress(
   );
 }
 
+export function syncReadTaskSidecarReport(
+  taskId: string,
+): SidecarSyncReport | undefined {
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterOptionalTypeSidecarSyncReport.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_read_task_sidecar_report(
+          FfiConverterString.lower(taskId, nativeModule().rustbuffer_alloc),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
+}
+
 export async function syncRecover(
   coordinatorId: string,
   sidecarRootPath: string,
@@ -3516,22 +3538,27 @@ export function syncResume(
   );
 }
 
-export async function syncRunSidecar(
+export async function syncRunLibrary(
   taskId: string,
+  configPath: string,
   sidecarRootPath: string,
   libraryRootPath: string,
+  libraryId: string,
   nowMs: number,
+  scope: LibrarySyncScope,
+  forceCalibre: boolean,
   mode: SidecarSyncMode,
-  storage: SidecarStorageConfig,
+  storage: LibraryStorageConfig,
   asyncOpts_?: { signal: AbortSignal },
-): Promise<SidecarSyncReport> /*throws*/ {
+): Promise<LibrarySyncReport> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
   try {
     return await uniffiRustCallAsync(
       /*rustCaller:*/ uniffiCaller,
       /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_sidecar(
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_run_library(
           FfiConverterString.lower(taskId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(configPath, nativeModule().rustbuffer_alloc),
           FfiConverterString.lower(
             sidecarRootPath,
             nativeModule().rustbuffer_alloc,
@@ -3540,12 +3567,18 @@ export async function syncRunSidecar(
             libraryRootPath,
             nativeModule().rustbuffer_alloc,
           ),
+          FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
           FfiConverterFloat64.lower(nowMs, nativeModule().rustbuffer_alloc),
+          FfiConverterTypeLibrarySyncScope.lower(
+            scope,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterBool.lower(forceCalibre, nativeModule().rustbuffer_alloc),
           FfiConverterTypeSidecarSyncMode.lower(
             mode,
             nativeModule().rustbuffer_alloc,
           ),
-          FfiConverterTypeSidecarStorageConfig.lower(
+          FfiConverterTypeLibraryStorageConfig.lower(
             storage,
             nativeModule().rustbuffer_alloc,
           ),
@@ -3564,8 +3597,8 @@ export async function syncRunSidecar(
       // RustBuffer comes back via the shared `rust_future_complete_*`
       // export. The bytes the runtime hands back must be deserialized
       // here using the per-callable return-type converter.
-      /*liftFunc:*/ FfiConverterTypeSidecarSyncReport.lift.bind(
-        FfiConverterTypeSidecarSyncReport,
+      /*liftFunc:*/ FfiConverterTypeLibrarySyncReport.lift.bind(
+        FfiConverterTypeLibrarySyncReport,
       ),
       /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       /*asyncOpts:*/ asyncOpts_,
@@ -4600,6 +4633,63 @@ const FfiConverterTypeBookSummary = (() => {
   return new FFIConverter();
 })();
 
+export type CalibreSyncReport = {
+  skipped: boolean;
+  skipReason?: string;
+  changed: boolean;
+  library: Library;
+  error?: string;
+};
+
+/**
+ * Generated factory for {@link CalibreSyncReport} record objects.
+ */
+export const CalibreSyncReport = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<CalibreSyncReport, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<CalibreSyncReport>,
+  });
+})();
+
+const FfiConverterTypeCalibreSyncReport = (() => {
+  type TypeName = CalibreSyncReport;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        skipped: FfiConverterBool.read(from),
+        skipReason: FfiConverterOptionalString.read(from),
+        changed: FfiConverterBool.read(from),
+        library: FfiConverterTypeLibrary.read(from),
+        error: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterBool.write(value.skipped, into);
+      FfiConverterOptionalString.write(value.skipReason, into);
+      FfiConverterBool.write(value.changed, into);
+      FfiConverterTypeLibrary.write(value.library, into);
+      FfiConverterOptionalString.write(value.error, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterBool.allocationSize(value.skipped) +
+        FfiConverterOptionalString.allocationSize(value.skipReason) +
+        FfiConverterBool.allocationSize(value.changed) +
+        FfiConverterTypeLibrary.allocationSize(value.library) +
+        FfiConverterOptionalString.allocationSize(value.error)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
 /**
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
@@ -5023,6 +5113,291 @@ const FfiConverterTypeLibraryResult = (() => {
       return (
         FfiConverterTypeAppConfig.allocationSize(value.config) +
         FfiConverterTypeLibrary.allocationSize(value.library)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type LibraryStorageConfig = {
+  kind: string;
+  root?: string;
+  endpoint?: string;
+  username?: string;
+  password?: string;
+  accessToken?: string;
+};
+
+/**
+ * Generated factory for {@link LibraryStorageConfig} record objects.
+ */
+export const LibraryStorageConfig = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      LibraryStorageConfig,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<LibraryStorageConfig>,
+  });
+})();
+
+const FfiConverterTypeLibraryStorageConfig = (() => {
+  type TypeName = LibraryStorageConfig;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        kind: FfiConverterString.read(from),
+        root: FfiConverterOptionalString.read(from),
+        endpoint: FfiConverterOptionalString.read(from),
+        username: FfiConverterOptionalString.read(from),
+        password: FfiConverterOptionalString.read(from),
+        accessToken: FfiConverterOptionalString.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.kind, into);
+      FfiConverterOptionalString.write(value.root, into);
+      FfiConverterOptionalString.write(value.endpoint, into);
+      FfiConverterOptionalString.write(value.username, into);
+      FfiConverterOptionalString.write(value.password, into);
+      FfiConverterOptionalString.write(value.accessToken, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.kind) +
+        FfiConverterOptionalString.allocationSize(value.root) +
+        FfiConverterOptionalString.allocationSize(value.endpoint) +
+        FfiConverterOptionalString.allocationSize(value.username) +
+        FfiConverterOptionalString.allocationSize(value.password) +
+        FfiConverterOptionalString.allocationSize(value.accessToken)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+/**
+ * Typealias from the type name used in the UDL file to the custom type.  This
+ * is needed because the UDL type name is used in function/method signatures.
+ */
+export type SidecarSyncMode = "push_only" | "full";
+
+// FfiConverter for SidecarSyncMode
+const FfiConverterTypeSidecarSyncMode = (() => {
+  type TsType = SidecarSyncMode;
+  type FfiType = Uint8Array;
+  const intermediateConverter = FfiConverterString;
+  class FFIConverter implements FfiConverter<FfiType, TsType> {
+    lift(value: FfiType): TsType {
+      const intermediate = intermediateConverter.lift(value);
+      return intermediate as "push_only" | "full";
+    }
+    lower(value: TsType, alloc: RustBufferAllocator): FfiType {
+      const intermediate = value;
+      return intermediateConverter.lower(intermediate, alloc);
+    }
+    read(from: RustBuffer): TsType {
+      const intermediate = intermediateConverter.read(from);
+      return intermediate as "push_only" | "full";
+    }
+    write(value: TsType, into: RustBuffer): void {
+      const intermediate = value;
+      intermediateConverter.write(intermediate, into);
+    }
+    allocationSize(value: TsType): number {
+      const intermediate = value;
+      return intermediateConverter.allocationSize(intermediate);
+    }
+  }
+
+  return new FFIConverter();
+})();
+
+/**
+ * Typealias from the type name used in the UDL file to the custom type.  This
+ * is needed because the UDL type name is used in function/method signatures.
+ */
+export type SyncFailureKind =
+  | "connectivity"
+  | "configuration"
+  | "credential"
+  | "data_integrity"
+  | "unexpected";
+
+// FfiConverter for SyncFailureKind
+const FfiConverterTypeSyncFailureKind = (() => {
+  type TsType = SyncFailureKind;
+  type FfiType = Uint8Array;
+  const intermediateConverter = FfiConverterString;
+  class FFIConverter implements FfiConverter<FfiType, TsType> {
+    lift(value: FfiType): TsType {
+      const intermediate = intermediateConverter.lift(value);
+      return intermediate as
+        | "connectivity"
+        | "configuration"
+        | "credential"
+        | "data_integrity"
+        | "unexpected";
+    }
+    lower(value: TsType, alloc: RustBufferAllocator): FfiType {
+      const intermediate = value;
+      return intermediateConverter.lower(intermediate, alloc);
+    }
+    read(from: RustBuffer): TsType {
+      const intermediate = intermediateConverter.read(from);
+      return intermediate as
+        | "connectivity"
+        | "configuration"
+        | "credential"
+        | "data_integrity"
+        | "unexpected";
+    }
+    write(value: TsType, into: RustBuffer): void {
+      const intermediate = value;
+      intermediateConverter.write(intermediate, into);
+    }
+    allocationSize(value: TsType): number {
+      const intermediate = value;
+      return intermediateConverter.allocationSize(intermediate);
+    }
+  }
+
+  return new FFIConverter();
+})();
+
+export type MyReaderSyncReport = {
+  skipped: boolean;
+  skipReason?: string;
+  mode: SidecarSyncMode;
+  pushed: number;
+  pulled: number;
+  error?: string;
+  failureKind?: SyncFailureKind;
+};
+
+/**
+ * Generated factory for {@link MyReaderSyncReport} record objects.
+ */
+export const MyReaderSyncReport = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<MyReaderSyncReport, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<MyReaderSyncReport>,
+  });
+})();
+
+const FfiConverterTypeMyReaderSyncReport = (() => {
+  type TypeName = MyReaderSyncReport;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        skipped: FfiConverterBool.read(from),
+        skipReason: FfiConverterOptionalString.read(from),
+        mode: FfiConverterTypeSidecarSyncMode.read(from),
+        pushed: FfiConverterFloat64.read(from),
+        pulled: FfiConverterFloat64.read(from),
+        error: FfiConverterOptionalString.read(from),
+        failureKind: FfiConverterOptionalTypeSyncFailureKind.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterBool.write(value.skipped, into);
+      FfiConverterOptionalString.write(value.skipReason, into);
+      FfiConverterTypeSidecarSyncMode.write(value.mode, into);
+      FfiConverterFloat64.write(value.pushed, into);
+      FfiConverterFloat64.write(value.pulled, into);
+      FfiConverterOptionalString.write(value.error, into);
+      FfiConverterOptionalTypeSyncFailureKind.write(value.failureKind, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterBool.allocationSize(value.skipped) +
+        FfiConverterOptionalString.allocationSize(value.skipReason) +
+        FfiConverterTypeSidecarSyncMode.allocationSize(value.mode) +
+        FfiConverterFloat64.allocationSize(value.pushed) +
+        FfiConverterFloat64.allocationSize(value.pulled) +
+        FfiConverterOptionalString.allocationSize(value.error) +
+        FfiConverterOptionalTypeSyncFailureKind.allocationSize(
+          value.failureKind,
+        )
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type LibrarySyncReport = {
+  libraryId: string;
+  libraryName: string;
+  calibre: CalibreSyncReport;
+  myreader: MyReaderSyncReport;
+  durationMs: number;
+  error?: string;
+  failureKind?: SyncFailureKind;
+};
+
+/**
+ * Generated factory for {@link LibrarySyncReport} record objects.
+ */
+export const LibrarySyncReport = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<LibrarySyncReport, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<LibrarySyncReport>,
+  });
+})();
+
+const FfiConverterTypeLibrarySyncReport = (() => {
+  type TypeName = LibrarySyncReport;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        libraryId: FfiConverterString.read(from),
+        libraryName: FfiConverterString.read(from),
+        calibre: FfiConverterTypeCalibreSyncReport.read(from),
+        myreader: FfiConverterTypeMyReaderSyncReport.read(from),
+        durationMs: FfiConverterFloat64.read(from),
+        error: FfiConverterOptionalString.read(from),
+        failureKind: FfiConverterOptionalTypeSyncFailureKind.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.libraryId, into);
+      FfiConverterString.write(value.libraryName, into);
+      FfiConverterTypeCalibreSyncReport.write(value.calibre, into);
+      FfiConverterTypeMyReaderSyncReport.write(value.myreader, into);
+      FfiConverterFloat64.write(value.durationMs, into);
+      FfiConverterOptionalString.write(value.error, into);
+      FfiConverterOptionalTypeSyncFailureKind.write(value.failureKind, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.libraryId) +
+        FfiConverterString.allocationSize(value.libraryName) +
+        FfiConverterTypeCalibreSyncReport.allocationSize(value.calibre) +
+        FfiConverterTypeMyReaderSyncReport.allocationSize(value.myreader) +
+        FfiConverterFloat64.allocationSize(value.durationMs) +
+        FfiConverterOptionalString.allocationSize(value.error) +
+        FfiConverterOptionalTypeSyncFailureKind.allocationSize(
+          value.failureKind,
+        )
       );
     }
   }
@@ -5845,43 +6220,6 @@ const FfiConverterTypeScheduledSync = (() => {
   return new FFIConverter();
 })();
 
-/**
- * Typealias from the type name used in the UDL file to the custom type.  This
- * is needed because the UDL type name is used in function/method signatures.
- */
-export type SidecarSyncMode = "push_only" | "full";
-
-// FfiConverter for SidecarSyncMode
-const FfiConverterTypeSidecarSyncMode = (() => {
-  type TsType = SidecarSyncMode;
-  type FfiType = Uint8Array;
-  const intermediateConverter = FfiConverterString;
-  class FFIConverter implements FfiConverter<FfiType, TsType> {
-    lift(value: FfiType): TsType {
-      const intermediate = intermediateConverter.lift(value);
-      return intermediate as "push_only" | "full";
-    }
-    lower(value: TsType, alloc: RustBufferAllocator): FfiType {
-      const intermediate = value;
-      return intermediateConverter.lower(intermediate, alloc);
-    }
-    read(from: RustBuffer): TsType {
-      const intermediate = intermediateConverter.read(from);
-      return intermediate as "push_only" | "full";
-    }
-    write(value: TsType, into: RustBuffer): void {
-      const intermediate = value;
-      intermediateConverter.write(intermediate, into);
-    }
-    allocationSize(value: TsType): number {
-      const intermediate = value;
-      return intermediateConverter.allocationSize(intermediate);
-    }
-  }
-
-  return new FFIConverter();
-})();
-
 export type SyncExecution = {
   libraryId: string;
   mode: SidecarSyncMode;
@@ -5978,68 +6316,6 @@ const FfiConverterTypeSchedulerTransition = (() => {
         FfiConverterSequenceString.allocationSize(value.cancelTimersFor) +
         FfiConverterOptionalTypeSyncExecution.allocationSize(value.execution) +
         FfiConverterOptionalTypeRetrySchedule.allocationSize(value.retry)
-      );
-    }
-  }
-  return new FFIConverter();
-})();
-
-export type SidecarStorageConfig = {
-  kind: string;
-  root?: string;
-  endpoint?: string;
-  username?: string;
-  password?: string;
-  accessToken?: string;
-};
-
-/**
- * Generated factory for {@link SidecarStorageConfig} record objects.
- */
-export const SidecarStorageConfig = (() => {
-  const defaults = () => ({});
-  const create = (() => {
-    return uniffiCreateRecord<
-      SidecarStorageConfig,
-      ReturnType<typeof defaults>
-    >(defaults);
-  })();
-  return Object.freeze({
-    create,
-    new: create,
-    defaults: () => Object.freeze(defaults()) as Partial<SidecarStorageConfig>,
-  });
-})();
-
-const FfiConverterTypeSidecarStorageConfig = (() => {
-  type TypeName = SidecarStorageConfig;
-  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      return {
-        kind: FfiConverterString.read(from),
-        root: FfiConverterOptionalString.read(from),
-        endpoint: FfiConverterOptionalString.read(from),
-        username: FfiConverterOptionalString.read(from),
-        password: FfiConverterOptionalString.read(from),
-        accessToken: FfiConverterOptionalString.read(from),
-      };
-    }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.kind, into);
-      FfiConverterOptionalString.write(value.root, into);
-      FfiConverterOptionalString.write(value.endpoint, into);
-      FfiConverterOptionalString.write(value.username, into);
-      FfiConverterOptionalString.write(value.password, into);
-      FfiConverterOptionalString.write(value.accessToken, into);
-    }
-    allocationSize(value: TypeName): number {
-      return (
-        FfiConverterString.allocationSize(value.kind) +
-        FfiConverterOptionalString.allocationSize(value.root) +
-        FfiConverterOptionalString.allocationSize(value.endpoint) +
-        FfiConverterOptionalString.allocationSize(value.username) +
-        FfiConverterOptionalString.allocationSize(value.password) +
-        FfiConverterOptionalString.allocationSize(value.accessToken)
       );
     }
   }
@@ -6270,27 +6546,17 @@ const FfiConverterTypeCoreFfiError = (() => {
  * Typealias from the type name used in the UDL file to the custom type.  This
  * is needed because the UDL type name is used in function/method signatures.
  */
-export type SyncFailureKind =
-  | "connectivity"
-  | "configuration"
-  | "credential"
-  | "data_integrity"
-  | "unexpected";
+export type LibrarySyncScope = "all" | "calibre" | "myreader";
 
-// FfiConverter for SyncFailureKind
-const FfiConverterTypeSyncFailureKind = (() => {
-  type TsType = SyncFailureKind;
+// FfiConverter for LibrarySyncScope
+const FfiConverterTypeLibrarySyncScope = (() => {
+  type TsType = LibrarySyncScope;
   type FfiType = Uint8Array;
   const intermediateConverter = FfiConverterString;
   class FFIConverter implements FfiConverter<FfiType, TsType> {
     lift(value: FfiType): TsType {
       const intermediate = intermediateConverter.lift(value);
-      return intermediate as
-        | "connectivity"
-        | "configuration"
-        | "credential"
-        | "data_integrity"
-        | "unexpected";
+      return intermediate as "all" | "calibre" | "myreader";
     }
     lower(value: TsType, alloc: RustBufferAllocator): FfiType {
       const intermediate = value;
@@ -6298,12 +6564,7 @@ const FfiConverterTypeSyncFailureKind = (() => {
     }
     read(from: RustBuffer): TsType {
       const intermediate = intermediateConverter.read(from);
-      return intermediate as
-        | "connectivity"
-        | "configuration"
-        | "credential"
-        | "data_integrity"
-        | "unexpected";
+      return intermediate as "all" | "calibre" | "myreader";
     }
     write(value: TsType, into: RustBuffer): void {
       const intermediate = value;
@@ -6395,6 +6656,11 @@ const FfiConverterSequenceTypeFormatSize = new FfiConverterArray(
 // FfiConverter for Array<BookIdentifier>
 const FfiConverterSequenceTypeBookIdentifier = new FfiConverterArray(
   FfiConverterTypeBookIdentifier,
+);
+
+// FfiConverter for SyncFailureKind | undefined
+const FfiConverterOptionalTypeSyncFailureKind = new FfiConverterOptional(
+  FfiConverterTypeSyncFailureKind,
 );
 
 // FfiConverter for Array<BookEntry>
@@ -6503,6 +6769,11 @@ const FfiConverterSequenceTypeReadingPosition = new FfiConverterArray(
 // FfiConverter for SyncTaskProgress | undefined
 const FfiConverterOptionalTypeSyncTaskProgress = new FfiConverterOptional(
   FfiConverterTypeSyncTaskProgress,
+);
+
+// FfiConverter for SidecarSyncReport | undefined
+const FfiConverterOptionalTypeSidecarSyncReport = new FfiConverterOptional(
+  FfiConverterTypeSidecarSyncReport,
 );
 
 /**
@@ -7120,6 +7391,14 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report() !==
+    30417
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_sync_read_task_sidecar_report",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_recover() !==
     28558
   ) {
@@ -7160,11 +7439,11 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar() !==
-    28946
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library() !==
+    19750
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_sync_run_sidecar",
+      "uniffi_my_reader_core_ffi_checksum_func_sync_run_library",
     );
   }
   if (
@@ -7189,6 +7468,7 @@ export default Object.freeze({
     FfiConverterTypeBookFormat,
     FfiConverterTypeBookIdentifier,
     FfiConverterTypeBookSummary,
+    FfiConverterTypeCalibreSyncReport,
     FfiConverterTypeCoreFfiError,
     FfiConverterTypeDataSource,
     FfiConverterTypeDownloadTask,
@@ -7201,7 +7481,11 @@ export default Object.freeze({
     FfiConverterTypeFormatSize,
     FfiConverterTypeLibrary,
     FfiConverterTypeLibraryResult,
+    FfiConverterTypeLibraryStorageConfig,
+    FfiConverterTypeLibrarySyncReport,
+    FfiConverterTypeLibrarySyncScope,
     FfiConverterTypeLocalLibraryRequest,
+    FfiConverterTypeMyReaderSyncReport,
     FfiConverterTypePaginatedBooks,
     FfiConverterTypeReaderAnnotation,
     FfiConverterTypeReaderBookmark,
@@ -7218,7 +7502,6 @@ export default Object.freeze({
     FfiConverterTypeScheduledSync,
     FfiConverterTypeSchedulerTransition,
     FfiConverterTypeSecurityScopedBookmark,
-    FfiConverterTypeSidecarStorageConfig,
     FfiConverterTypeSidecarSyncMode,
     FfiConverterTypeSidecarSyncReport,
     FfiConverterTypeSyncExecution,
