@@ -18,6 +18,8 @@ pub struct SchedulerPolicy {
     pub max_wait_ms: u64,
     pub retry_base_ms: u64,
     pub retry_max_ms: u64,
+    pub pull_freshness_ms: u64,
+    pub safety_sweep_ms: u64,
 }
 
 impl Default for SchedulerPolicy {
@@ -27,7 +29,16 @@ impl Default for SchedulerPolicy {
             max_wait_ms: 10_000,
             retry_base_ms: 2_000,
             retry_max_ms: 5 * 60_000,
+            pull_freshness_ms: 30_000,
+            safety_sweep_ms: 60_000,
         }
+    }
+}
+
+impl SchedulerPolicy {
+    pub fn safety_sweep_delay_ms(&self, random_fraction: f64) -> u64 {
+        let factor = 0.8 + random_fraction.clamp(0.0, 1.0) * 0.4;
+        (self.safety_sweep_ms as f64 * factor).round() as u64
     }
 }
 
@@ -548,6 +559,16 @@ mod tests {
             timing,
             now_ms,
         })
+    }
+
+    #[test]
+    fn should_share_contextual_pull_and_safety_sweep_timing_when_policy_is_default() {
+        let policy = SchedulerPolicy::default();
+
+        assert_eq!(policy.pull_freshness_ms, 30_000);
+        assert_eq!(policy.safety_sweep_ms, 60_000);
+        assert_eq!(policy.safety_sweep_delay_ms(0.0), 48_000);
+        assert_eq!(policy.safety_sweep_delay_ms(1.0), 72_000);
     }
 
     #[test]

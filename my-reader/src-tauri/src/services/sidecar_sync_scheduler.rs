@@ -15,8 +15,6 @@ use crate::services::library_service::LibraryService;
 use crate::services::sync_service::{SidecarSyncCompletedPayload, SidecarSyncMode, SyncService};
 use crate::utils::paths::library_sidecar_path;
 
-const PULL_FRESHNESS_MS: u64 = 30_000;
-const SAFETY_SWEEP_MS: u64 = 60_000;
 const MAX_CONCURRENT_SYNCS: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,11 +51,6 @@ fn scheduler_timing(timing: SidecarSyncTiming) -> SyncTiming {
         SidecarSyncTiming::Debounced => SyncTiming::Debounced,
         SidecarSyncTiming::Immediate => SyncTiming::Immediate,
     }
-}
-
-fn safety_sweep_delay_ms(random_fraction: f64) -> u64 {
-    let factor = 0.8 + random_fraction.clamp(0.0, 1.0) * 0.4;
-    (SAFETY_SWEEP_MS as f64 * factor) as u64
 }
 
 #[derive(Clone)]
@@ -212,12 +205,7 @@ impl SidecarSyncScheduler {
         let sidecar_path = library_sidecar_path(&library, &self.app_data_dir);
         let execution = match self
             .coordinator
-            .effective_execution(
-                &sidecar_path,
-                execution.clone(),
-                unix_epoch_millis(),
-                PULL_FRESHNESS_MS,
-            )
+            .effective_execution(&sidecar_path, execution.clone(), unix_epoch_millis())
             .await
         {
             Ok(Some(execution)) => execution,
@@ -330,9 +318,11 @@ impl SidecarSyncScheduler {
         let scheduler = self.clone();
         tauri::async_runtime::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_millis(safety_sweep_delay_ms(
-                    jitter_fraction(),
-                )))
+                tokio::time::sleep(Duration::from_millis(
+                    scheduler
+                        .coordinator
+                        .safety_sweep_delay_ms(jitter_fraction()),
+                ))
                 .await;
                 scheduler.schedule_active_pull(SidecarSyncReason::SafetySweep);
             }
@@ -351,15 +341,4 @@ fn jitter_fraction() -> f64 {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |duration| duration.subsec_nanos());
     f64::from(nanos % 10_000) / 10_000.0
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_keep_safety_sweep_between_48_and_72_seconds_when_jittering() {
-        assert_eq!(safety_sweep_delay_ms(0.0), 48_000);
-        assert_eq!(safety_sweep_delay_ms(1.0), 72_000);
-    }
 }

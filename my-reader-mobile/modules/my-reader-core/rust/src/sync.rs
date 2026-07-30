@@ -80,6 +80,14 @@ pub fn sync_create_coordinator(coordinator_id: String) -> bool {
 }
 
 #[uniffi::export]
+pub fn sync_safety_sweep_delay_ms(
+    coordinator_id: String,
+    random_fraction: f64,
+) -> Result<f64, CoreFfiError> {
+    Ok(sync_coordinator(&coordinator_id)?.safety_sweep_delay_ms(random_fraction) as f64)
+}
+
+#[uniffi::export]
 pub fn sync_request(
     coordinator_id: String,
     library_id: String,
@@ -136,7 +144,6 @@ pub async fn sync_request_contextual_pull(
     library_id: String,
     reason: String,
     now_ms: f64,
-    freshness_ms: f64,
 ) -> Result<SchedulerTransition, CoreFfiError> {
     Ok(sync_coordinator(&coordinator_id)?
         .request_contextual_pull(
@@ -144,7 +151,6 @@ pub async fn sync_request_contextual_pull(
             &library_id,
             &reason,
             required_u64(now_ms, "nowMs")?,
-            required_u64(freshness_ms, "freshnessMs")?,
         )
         .await
         .map_err(CoreFfiError::from_core)?
@@ -168,14 +174,12 @@ pub async fn sync_effective_execution(
     sidecar_root_path: String,
     execution: SyncExecution,
     now_ms: f64,
-    freshness_ms: f64,
 ) -> Result<Option<SyncExecution>, CoreFfiError> {
     Ok(sync_coordinator(&coordinator_id)?
         .effective_execution(
             Path::new(&sidecar_root_path),
             execution.try_into()?,
             required_u64(now_ms, "nowMs")?,
-            required_u64(freshness_ms, "freshnessMs")?,
         )
         .await
         .map_err(CoreFfiError::from_core)?

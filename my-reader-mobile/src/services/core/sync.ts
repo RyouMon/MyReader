@@ -30,6 +30,7 @@ import {
   syncRequestContextualPull,
   syncResume,
   syncRunLibrary,
+  syncSafetySweepDelayMs,
   syncSetLibraryOnline,
 } from "my-reader-core"
 import { DataIntegrityError } from "@/src/errors"
@@ -208,7 +209,6 @@ export async function requestCoordinatedPull(input: {
   libraryId: string
   reason: string
   nowMs: number
-  freshnessMs: number
 }): Promise<SchedulerTransition> {
   return transitionFromCore(
     await syncRequestContextualPull(
@@ -217,7 +217,6 @@ export async function requestCoordinatedPull(input: {
       input.libraryId,
       input.reason,
       input.nowMs,
-      input.freshnessMs,
     ),
   )
 }
@@ -237,7 +236,6 @@ export async function effectiveCoordinatedSyncExecution(input: {
   sidecarRootPath: string
   execution: SyncExecution
   nowMs: number
-  freshnessMs: number
 }): Promise<SyncExecution | null> {
   return (
     (await syncEffectiveExecution(
@@ -245,9 +243,15 @@ export async function effectiveCoordinatedSyncExecution(input: {
       input.sidecarRootPath,
       input.execution,
       input.nowMs,
-      input.freshnessMs,
     )) ?? null
   )
+}
+
+export function safetySweepDelayMs(
+  coordinatorId: string,
+  randomFraction: number,
+): number {
+  return syncSafetySweepDelayMs(coordinatorId, randomFraction)
 }
 
 export function completeCoordinatedSync(input: {

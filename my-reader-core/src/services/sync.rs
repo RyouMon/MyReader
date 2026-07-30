@@ -32,6 +32,7 @@ static SYNC_LOCKS: LazyLock<Mutex<HashMap<String, Weak<AsyncMutex<()>>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub struct SyncCoordinator {
+    policy: SchedulerPolicy,
     state: Mutex<SchedulerState>,
 }
 
@@ -44,7 +45,8 @@ impl Default for SyncCoordinator {
 impl SyncCoordinator {
     pub fn new(policy: SchedulerPolicy) -> Self {
         Self {
-            state: Mutex::new(SchedulerState::new(policy)),
+            state: Mutex::new(SchedulerState::new(policy.clone())),
+            policy,
         }
     }
 
@@ -79,13 +81,12 @@ impl SyncCoordinator {
         library_id: &str,
         reason: &str,
         now_ms: u64,
-        freshness_ms: u64,
     ) -> Result<SchedulerTransition, CoreError> {
         let Some(mode) = SyncService::effective_mode(
             sidecar_root,
             SidecarSyncMode::Full,
             sqlite_timestamp(now_ms)?,
-            sqlite_timestamp(freshness_ms)?,
+            sqlite_timestamp(self.policy.pull_freshness_ms)?,
         )
         .await?
         else {
@@ -135,14 +136,13 @@ impl SyncCoordinator {
         sidecar_root: &Path,
         mut execution: SyncExecution,
         now_ms: u64,
-        freshness_ms: u64,
     ) -> Result<Option<SyncExecution>, CoreError> {
         let requested_mode = sidecar_mode(execution.mode);
         match SyncService::effective_mode(
             sidecar_root,
             requested_mode,
             sqlite_timestamp(now_ms)?,
-            sqlite_timestamp(freshness_ms)?,
+            sqlite_timestamp(self.policy.pull_freshness_ms)?,
         )
         .await?
         {
@@ -229,6 +229,10 @@ impl SyncCoordinator {
 
     pub fn dispose(&self) -> SchedulerTransition {
         self.apply(SchedulerEvent::Dispose)
+    }
+
+    pub fn safety_sweep_delay_ms(&self, random_fraction: f64) -> u64 {
+        self.policy.safety_sweep_delay_ms(random_fraction)
     }
 
     fn apply(&self, event: SchedulerEvent) -> SchedulerTransition {
@@ -1391,13 +1395,7 @@ mod tests {
         let coordinator = SyncCoordinator::default();
 
         let transition = coordinator
-            .request_contextual_pull(
-                directory.path(),
-                "library-1",
-                "app_foregrounded",
-                2_000,
-                30_000,
-            )
+            .request_contextual_pull(directory.path(), "library-1", "app_foregrounded", 2_000)
             .await
             .unwrap();
 

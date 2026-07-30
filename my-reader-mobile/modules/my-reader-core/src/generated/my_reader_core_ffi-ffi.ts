@@ -524,7 +524,6 @@ interface NativeModuleInterface {
     sidecarRootPath: Uint8Array,
     execution: Uint8Array,
     nowMs: number,
-    freshnessMs: number,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_fail(
     coordinatorId: Uint8Array,
@@ -575,7 +574,6 @@ interface NativeModuleInterface {
     libraryId: Uint8Array,
     reason: Uint8Array,
     nowMs: number,
-    freshnessMs: number,
   ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_resolve_library_storage(
     configPath: Uint8Array,
@@ -602,6 +600,11 @@ interface NativeModuleInterface {
     mode: Uint8Array,
     storage: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_sync_safety_sweep_delay_ms(
+    coordinatorId: Uint8Array,
+    randomFraction: number,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): number;
   ubrn_uniffi_my_reader_core_ffi_fn_func_sync_set_library_online(
     coordinatorId: Uint8Array,
     libraryId: Uint8Array,
@@ -691,6 +694,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resolve_library_storage(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_resume(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_run_library(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online(): number;
   // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
   // and `nativeModule().rustbuffer_free(...)`. The JSI host object exposes

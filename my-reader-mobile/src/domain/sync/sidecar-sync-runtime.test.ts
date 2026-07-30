@@ -20,6 +20,7 @@ jest.mock("@/src/services/core/sync", () => ({
   completeCoordinatedSync: jest.fn(),
   failCoordinatedSync: jest.fn(),
   setCoordinatedSyncLibraryOnline: jest.fn(),
+  safetySweepDelayMs: jest.fn(() => 60_000),
   disposeSyncCoordinator: jest.fn(() => ({
     schedules: [],
     cancelTimersFor: [],
@@ -84,7 +85,6 @@ describe("createSidecarSyncRuntime", () => {
       libraryId: "library-1",
       reason: "app_foregrounded",
       nowMs: expect.any(Number),
-      freshnessMs: 30000,
     })
     runtime.dispose()
   })

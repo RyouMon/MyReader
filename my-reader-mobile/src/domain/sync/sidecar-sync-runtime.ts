@@ -18,6 +18,7 @@ import {
   recoverCoordinatedSync,
   requestCoordinatedPull,
   requestCoordinatedSync,
+  safetySweepDelayMs,
   setCoordinatedSyncLibraryOnline,
   type ScheduledSync,
   type SchedulerTransition,
@@ -67,8 +68,6 @@ export type SidecarSyncRuntime = {
   dispose(): void
 }
 
-const PULL_FRESHNESS_MS = 30_000
-const SAFETY_SWEEP_MS = 60_000
 let coordinatorSequence = 0
 
 function sidecarRootPath(library: Library): string {
@@ -181,7 +180,6 @@ export function createSidecarSyncRuntime(
         sidecarRootPath: sidecarRootPath(library),
         execution,
         nowMs: Date.now(),
-        freshnessMs: PULL_FRESHNESS_MS,
       })
       if (effectiveExecution) {
         const report = await syncLibrary(library, state.dataSources, {
@@ -274,7 +272,6 @@ export function createSidecarSyncRuntime(
           libraryId,
           reason,
           nowMs: Date.now(),
-          freshnessMs: PULL_FRESHNESS_MS,
         }),
       )
       return transition.schedules.length > 0
@@ -294,7 +291,6 @@ export function createSidecarSyncRuntime(
       let stopped = false
       let timer: ReturnType<typeof setTimeout> | null = null
       const scheduleNext = () => {
-        const jitter = 0.8 + Math.random() * 0.4
         timer = setTimeout(
           async () => {
             const libraryId = getActiveLibraryId()
@@ -307,7 +303,7 @@ export function createSidecarSyncRuntime(
             }
             if (!stopped) scheduleNext()
           },
-          Math.round(SAFETY_SWEEP_MS * jitter),
+          safetySweepDelayMs(coordinatorId, Math.random()),
         )
       }
       scheduleNext()

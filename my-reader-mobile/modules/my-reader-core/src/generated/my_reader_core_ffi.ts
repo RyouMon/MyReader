@@ -3058,7 +3058,6 @@ export async function syncEffectiveExecution(
   sidecarRootPath: string,
   execution: SyncExecution,
   nowMs: number,
-  freshnessMs: number,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<SyncExecution | undefined> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -3080,10 +3079,6 @@ export async function syncEffectiveExecution(
             nativeModule().rustbuffer_alloc,
           ),
           FfiConverterFloat64.lower(nowMs, nativeModule().rustbuffer_alloc),
-          FfiConverterFloat64.lower(
-            freshnessMs,
-            nativeModule().rustbuffer_alloc,
-          ),
         );
       },
       /*pollFunc:*/ nativeModule()
@@ -3383,7 +3378,6 @@ export async function syncRequestContextualPull(
   libraryId: string,
   reason: string,
   nowMs: number,
-  freshnessMs: number,
   asyncOpts_?: { signal: AbortSignal },
 ): Promise<SchedulerTransition> /*throws*/ {
   const __stack = uniffiIsDebug ? new Error().stack : undefined;
@@ -3403,10 +3397,6 @@ export async function syncRequestContextualPull(
           FfiConverterString.lower(libraryId, nativeModule().rustbuffer_alloc),
           FfiConverterString.lower(reason, nativeModule().rustbuffer_alloc),
           FfiConverterFloat64.lower(nowMs, nativeModule().rustbuffer_alloc),
-          FfiConverterFloat64.lower(
-            freshnessMs,
-            nativeModule().rustbuffer_alloc,
-          ),
         );
       },
       /*pollFunc:*/ nativeModule()
@@ -3582,6 +3572,33 @@ export async function syncRunLibrary(
     }
     throw __error;
   }
+}
+
+export function syncSafetySweepDelayMs(
+  coordinatorId: string,
+  randomFraction: number,
+): number /*throws*/ {
+  return FfiConverterFloat64.lift(
+    uniffiCaller.rustCallWithError(
+      /*liftError:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_sync_safety_sweep_delay_ms(
+          FfiConverterString.lower(
+            coordinatorId,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(
+            randomFraction,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    ),
+  );
 }
 
 export function syncSetLibraryOnline(
@@ -7351,7 +7368,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_effective_execution() !==
-    27415
+    10660
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_sync_effective_execution",
@@ -7415,7 +7432,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull() !==
-    48441
+    38600
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_sync_request_contextual_pull",
@@ -7443,6 +7460,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_sync_run_library",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms() !==
+    28444
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_sync_safety_sweep_delay_ms",
     );
   }
   if (
