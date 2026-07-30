@@ -235,6 +235,56 @@ export async function catalogGetBookDetail(
   }
 }
 
+export async function catalogGetBookFormat(
+  libraryRootPath: string,
+  bookId: number,
+  format: string,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<BookFormat | undefined> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
+          FfiConverterString.lower(
+            libraryRootPath,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
+          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterOptionalTypeBookFormat.lift.bind(
+        FfiConverterOptionalTypeBookFormat,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function catalogGetLibraryUuid(
   libraryRootPath: string,
   asyncOpts_?: { signal: AbortSignal },
@@ -6669,6 +6719,11 @@ const FfiConverterOptionalTypeAppConfig = new FfiConverterOptional(
   FfiConverterTypeAppConfig,
 );
 
+// FfiConverter for BookFormat | undefined
+const FfiConverterOptionalTypeBookFormat = new FfiConverterOptional(
+  FfiConverterTypeBookFormat,
+);
+
 // FfiConverter for Array<BookFormat>
 const FfiConverterSequenceTypeBookFormat = new FfiConverterArray(
   FfiConverterTypeBookFormat,
@@ -6809,6 +6864,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format() !==
+    24848
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format",
     );
   }
   if (

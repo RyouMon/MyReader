@@ -2,6 +2,7 @@ jest.mock("../fs/path", () => ({
   toNativeFilesystemPath: (uri: string) => uri.replace("file://", ""),
 }))
 jest.mock("my-reader-core", () => ({
+  catalogGetBookFormat: jest.fn(),
   catalogGetBookDetail: jest.fn(),
   catalogListBookFormats: jest.fn(),
   catalogListBookSummaries: jest.fn(),
@@ -9,12 +10,14 @@ jest.mock("my-reader-core", () => ({
 }))
 
 import {
+  catalogGetBookFormat,
   catalogGetBookDetail,
   catalogListBookFormats,
   catalogListBookSummaries,
   catalogListBooksPageByLastRead,
 } from "my-reader-core"
 import {
+  getCalibreBookFormat,
   getCalibreBookDetail,
   listCalibreBookFormats,
   listCalibreBooksPageByLastRead,
@@ -68,6 +71,21 @@ describe("core catalog adapter", () => {
     expect(formats[0]?.relativePath).toBe(
       "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
     )
+  })
+
+  it("should delegate single format resolution when one format is requested", async () => {
+    jest.mocked(catalogGetBookFormat).mockResolvedValue({
+      format: "EPUB",
+      name: "The Left Hand of Darkness",
+      sizeBytes: 1024,
+      relativePath:
+        "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub",
+    })
+
+    const format = await getCalibreBookFormat("file:///library", 42, "epub")
+
+    expect(catalogGetBookFormat).toHaveBeenCalledWith("/library", 42, "epub")
+    expect(format?.format).toBe("EPUB")
   })
 
   it("should preserve format paths when core returns book summaries", async () => {

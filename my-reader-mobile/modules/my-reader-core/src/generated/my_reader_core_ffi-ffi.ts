@@ -184,6 +184,11 @@ interface NativeModuleInterface {
     libraryRootPath: Uint8Array,
     bookId: number,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
+    libraryRootPath: Uint8Array,
+    bookId: number,
+    format: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_uuid(
     libraryRootPath: Uint8Array,
   ): bigint;
@@ -614,6 +619,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_app_config_write_mobile(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_count_books(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_uuid(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_formats(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_summaries(): number;

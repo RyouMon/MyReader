@@ -174,15 +174,25 @@ impl CatalogService {
             .await
     }
 
+    pub async fn get_book_format(
+        library_root: &Path,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Option<BookFormat>, CoreError> {
+        CalibreBookRepository::open(&library_root.to_string_lossy())
+            .await?
+            .get_book_format(book_id, format)
+            .await
+    }
+
     pub async fn get_book_file_path(
         library_root: &Path,
         book_id: i64,
         format: &str,
     ) -> Result<Option<PathBuf>, CoreError> {
-        CalibreBookRepository::open(&library_root.to_string_lossy())
+        Ok(Self::get_book_format(library_root, book_id, format)
             .await?
-            .get_book_file_path(&library_root.to_string_lossy(), book_id, format)
-            .await
+            .map(|value| library_root.join(value.relative_path)))
     }
 
     pub async fn get_book_file_paths(
@@ -378,6 +388,31 @@ mod tests {
             summaries[0].format_paths,
             vec![formats[0].relative_path.clone()]
         );
+    }
+
+    #[tokio::test]
+    async fn should_resolve_single_format_when_requested_format_uses_different_case() {
+        let library = tempfile::tempdir().expect("create library");
+        seed_library(library.path()).await;
+
+        let format = super::CatalogService::get_book_format(library.path(), 42, "epub")
+            .await
+            .expect("resolve book format");
+        let missing = super::CatalogService::get_book_format(library.path(), 42, "pdf")
+            .await
+            .expect("resolve missing format");
+
+        assert_eq!(
+            format.as_ref().map(|value| value.format.as_str()),
+            Some("EPUB")
+        );
+        assert_eq!(
+            format.map(|value| value.relative_path),
+            Some(
+                "Ursula K. Le Guin/The Left Hand of Darkness/The Left Hand of Darkness.epub".into()
+            )
+        );
+        assert!(missing.is_none());
     }
 
     #[tokio::test]

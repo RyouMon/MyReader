@@ -116,19 +116,32 @@ impl CalibreBookRepository {
 
         Ok(rows
             .into_iter()
-            .map(|row| {
-                let relative_path = Path::new(&book_path)
-                    .join(format!("{}.{}", row.name, row.format.to_lowercase()))
-                    .to_string_lossy()
-                    .to_string();
-                BookFormat {
-                    format: row.format,
-                    name: row.name,
-                    size_bytes: row.uncompressed_size,
-                    relative_path,
-                }
-            })
+            .map(|row| book_format_from_row(&book_path, row))
             .collect())
+    }
+
+    pub async fn get_book_format(
+        &self,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Option<BookFormat>, CoreError> {
+        let book = books::Entity::find_by_id(book_id)
+            .one(&self.db)
+            .await
+            .map_err(|error| CoreError::Database(error.to_string()))?;
+        let Some(book) = book else {
+            return Ok(None);
+        };
+        let rows = data::Entity::find()
+            .filter(data::Column::Book.eq(book_id))
+            .all(&self.db)
+            .await
+            .map_err(|error| CoreError::Database(error.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .find(|row| row.format.eq_ignore_ascii_case(format))
+            .map(|row| book_format_from_row(book.path.as_deref().unwrap_or_default(), row)))
     }
 
     pub async fn get_book_file_paths(
@@ -173,13 +186,12 @@ impl CalibreBookRepository {
             else {
                 continue;
             };
-            let path = Path::new(library_path)
-                .join(book.path.clone().unwrap_or_default())
-                .join(format!(
-                    "{}.{}",
-                    format_row.name,
-                    format_row.format.to_lowercase()
-                ));
+            let relative_path = book_format_relative_path(
+                book.path.as_deref().unwrap_or_default(),
+                &format_row.name,
+                &format_row.format,
+            );
+            let path = Path::new(library_path).join(relative_path);
             result.insert((request.book_id, request.format.to_uppercase()), path);
         }
         Ok(result)
@@ -743,59 +755,21 @@ impl CalibreBookRepository {
         );
         Ok(result)
     }
+}
 
-    pub(crate) async fn get_book_file_path(
-        &self,
-        library_path: &str,
-        book_id: i64,
-        format: &str,
-    ) -> Result<Option<PathBuf>, CoreError> {
-        info!(
-            "Start to resolve book file path. library path: \"{library_path}\", book id: {book_id}, format: \"{format}\""
-        );
+fn book_format_relative_path(book_path: &str, name: &str, format: &str) -> String {
+    Path::new(book_path)
+        .join(format!("{}.{}", name, format.to_lowercase()))
+        .to_string_lossy()
+        .to_string()
+}
 
-        // Find book's path
-        let book_model = books::Entity::find_by_id(book_id)
-            .one(&self.db)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
-
-        let Some(book_model) = book_model else {
-            info!(
-                "Success to resolve book file path. found: false, book id: {book_id}, format: \"{format}\""
-            );
-            return Ok(None);
-        };
-
-        // Find data row matching format (case-insensitive)
-        let data_rows = data::Entity::find()
-            .filter(data::Column::Book.eq(book_id))
-            .all(&self.db)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
-
-        let data_match = data_rows
-            .into_iter()
-            .find(|d| d.format.eq_ignore_ascii_case(format));
-
-        let result = match data_match {
-            Some(d) => {
-                let full = Path::new(library_path)
-                    .join(book_model.path.unwrap_or_default())
-                    .join(format!("{}.{}", d.name, d.format.to_lowercase()));
-                info!(
-                    "Success to resolve book file path. found: true, path: \"{}\"",
-                    full.display()
-                );
-                Some(full)
-            }
-            None => {
-                info!(
-                    "Success to resolve book file path. found: false, book id: {book_id}, format: \"{format}\""
-                );
-                None
-            }
-        };
-        Ok(result)
+fn book_format_from_row(book_path: &str, row: data::Model) -> BookFormat {
+    let relative_path = book_format_relative_path(book_path, &row.name, &row.format);
+    BookFormat {
+        format: row.format,
+        name: row.name,
+        size_bytes: row.uncompressed_size,
+        relative_path,
     }
 }

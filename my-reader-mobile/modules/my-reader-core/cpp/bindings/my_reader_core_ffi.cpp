@@ -99,6 +99,8 @@ typedef void (*UniffiForeignFutureCompleteVoid)(
     RustBuffer library_root_path);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_get_book_detail(
     RustBuffer library_root_path, double book_id);
+/*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
+    RustBuffer library_root_path, double book_id, RustBuffer format);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_get_library_uuid(
     RustBuffer library_root_path);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_catalog_list_book_formats(
@@ -449,6 +451,7 @@ void ffi_my_reader_core_ffi_rust_future_complete_void(
     /*handle*/ uint64_t handle, RustCallStatus *uniffi_out_err);
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_count_books();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_uuid();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_formats();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_catalog_list_book_summaries();
@@ -1927,6 +1930,19 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_detail(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt,
+              "ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format"),
+          3,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_catalog_get_library_uuid"] =
@@ -3474,6 +3490,20 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_"
+        "format"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt,
+                                    "ubrn_uniffi_my_reader_core_ffi_checksum_"
+                                    "func_catalog_get_book_format"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_catalog_get_library_"
         "uuid"] =
       jsi::Function::createFromHostFunction(
@@ -4714,6 +4744,20 @@ jsi::Value NativeMyReaderCoreFfi::
       uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
                                                                args[0]),
       uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_catalog_get_book_format(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi_jsi::Bridging<double>::fromJs(rt, callInvoker, args[1]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[2]));
 
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
@@ -6617,6 +6661,15 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_detail();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value =
+      uniffi_my_reader_core_ffi_checksum_func_catalog_get_book_format();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

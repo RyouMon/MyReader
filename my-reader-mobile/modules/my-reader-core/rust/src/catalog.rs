@@ -142,3 +142,19 @@ pub async fn catalog_list_book_formats(
     .map(Into::into)
     .collect())
 }
+
+#[uniffi::export(async_runtime = "tokio")]
+pub async fn catalog_get_book_format(
+    library_root_path: String,
+    book_id: f64,
+    format: String,
+) -> Result<Option<BookFormat>, CoreFfiError> {
+    Ok(CatalogService::get_book_format(
+        Path::new(&library_root_path),
+        required_i64(book_id, "bookId")?,
+        &format,
+    )
+    .await
+    .map_err(CoreFfiError::from_core)?
+    .map(Into::into))
+}

@@ -5,6 +5,7 @@ import type {
 } from "@my-reader/tools/types/book"
 import {
   catalogCountBooks,
+  catalogGetBookFormat,
   catalogGetBookDetail,
   catalogGetLibraryUuid,
   catalogListBookFormats,
@@ -133,4 +134,12 @@ export async function listCalibreBookFormats(
   bookId: number,
 ): Promise<CalibreBookFormat[]> {
   return catalogListBookFormats(nativePath(libraryRootUri), bookId)
+}
+
+export async function getCalibreBookFormat(
+  libraryRootUri: string,
+  bookId: number,
+  format: string,
+): Promise<CalibreBookFormat | undefined> {
+  return catalogGetBookFormat(nativePath(libraryRootUri), bookId, format)
 }

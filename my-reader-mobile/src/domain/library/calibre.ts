@@ -7,9 +7,10 @@ import {
   libraryRootUri,
   resolveCoverUri,
 } from "@/src/services/fs/library-paths"
-import { fileUriFor, joinRelativePath } from "@/src/services/fs/path"
+import { fileUriFor } from "@/src/services/fs/path"
 import { showAlertWithStatusBarRestore } from "../../constants/alert-with-status-bar"
 import {
+  getCalibreBookFormat,
   getCalibreBookDetail,
   listCalibreBookFormats,
   listCalibreBookSummaries,
@@ -170,21 +171,18 @@ export async function readBookDetailFromMetadata(
   )
 }
 
-async function lookupBookFileLocation(
+async function lookupBookFileRelativePath(
   library: Library,
   calibreBookId: number,
   format: string,
-): Promise<{ rowPath: string; fileName: string; segments: string[] }> {
+): Promise<string> {
   const metadataUri = await resolveMetadataUriForRead(library)
   if (!metadataUri) {
     throw new Error(i18n.t("sync.metadataDbNotAvailable"))
   }
 
-  const rows = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
-    listCalibreBookFormats(calibreRootUri, calibreBookId),
-  )
-  const row = rows.find(
-    (item) => item.format.toUpperCase() === format.toUpperCase(),
+  const row = await withLocalLibraryCalibreRoot(library, (calibreRootUri) =>
+    getCalibreBookFormat(calibreRootUri, calibreBookId, format),
   )
   if (!row) {
     throw new Error(
@@ -192,13 +190,7 @@ async function lookupBookFileLocation(
     )
   }
 
-  const segments = row.relativePath.split("/").filter(Boolean)
-  const fileName = segments.pop() ?? `${row.name}.${format.toLowerCase()}`
-  return {
-    rowPath: segments.join("/"),
-    fileName,
-    segments,
-  }
+  return row.relativePath
 }
 
 export async function getBookFormatPaths(
@@ -235,22 +227,21 @@ export async function getAllBookFormats(
   )
 }
 
-function createBookFile(rootUri: string, segments: string[], fileName: string) {
-  const bookPath = segments.join("/")
-  return new FSFile(fileUriFor(rootUri, joinRelativePath(bookPath, fileName)))
+function createBookFile(rootUri: string, relativePath: string) {
+  return new FSFile(fileUriFor(rootUri, relativePath))
 }
 
 function assertBookFileExists(
   bookFile: FSFile,
   libraryPath: string,
-  rowPath: string,
+  relativePath: string,
 ) {
   if (!bookFile.exists) {
     throw new Error(
       i18n.t("sync.bookFileNotFoundDetail", {
         uri: bookFile.uri,
         libraryPath,
-        rowPath,
+        rowPath: relativePath,
       }),
     )
   }
@@ -262,7 +253,7 @@ export async function resolveBookFileForRead(
   calibreBookId: number,
   format: string,
 ): Promise<FSFile> {
-  const { rowPath, fileName, segments } = await lookupBookFileLocation(
+  const relativePath = await lookupBookFileRelativePath(
     library,
     calibreBookId,
     format,
@@ -272,8 +263,8 @@ export async function resolveBookFileForRead(
     const { result: sourceFile } = await withSecurityScopedLibraryAccess(
       library,
       async (resolvedPath) => {
-        const file = createBookFile(resolvedPath, segments, fileName)
-        assertBookFileExists(file, resolvedPath, rowPath)
+        const file = createBookFile(resolvedPath, relativePath)
+        assertBookFileExists(file, resolvedPath, relativePath)
         return file
       },
     )
@@ -281,8 +272,8 @@ export async function resolveBookFileForRead(
   }
 
   const libraryRoot = libraryRootUri(library)
-  const sourceFile = createBookFile(libraryRoot, segments, fileName)
-  assertBookFileExists(sourceFile, libraryRoot, rowPath)
+  const sourceFile = createBookFile(libraryRoot, relativePath)
+  assertBookFileExists(sourceFile, libraryRoot, relativePath)
   return sourceFile
 }
 
