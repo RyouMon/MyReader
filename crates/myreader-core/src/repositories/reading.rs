@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder};
 
-use crate::entities::app::{favorite_books, reading_progress};
-use crate::models::ReadingPosition;
+use crate::entities::app::{annotations, bookmarks, favorite_books, reading_progress};
+use crate::models::{ReaderAnnotation, ReaderBookmark, ReadingPosition};
 use crate::CoreError;
 
 pub(crate) struct ReadingRepository<'a> {
@@ -62,6 +62,69 @@ impl<'a> ReadingRepository<'a> {
         }
         Ok(latest)
     }
+
+    pub(crate) async fn list_bookmarks(
+        &self,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Vec<ReaderBookmark>, CoreError> {
+        bookmarks::Entity::find()
+            .filter(bookmarks::Column::BookId.eq(book_id))
+            .filter(bookmarks::Column::Format.eq(format))
+            .filter(bookmarks::Column::DeletedAt.is_null())
+            .order_by_asc(bookmarks::Column::CreatedAt)
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
+
+    pub(crate) async fn find_bookmark(
+        &self,
+        book_id: i64,
+        format: &str,
+        locator_key: &str,
+    ) -> Result<Option<ReaderBookmark>, CoreError> {
+        bookmarks::Entity::find()
+            .filter(bookmarks::Column::BookId.eq(book_id))
+            .filter(bookmarks::Column::Format.eq(format))
+            .filter(bookmarks::Column::LocatorKey.eq(locator_key))
+            .filter(bookmarks::Column::DeletedAt.is_null())
+            .one(self.db)
+            .await?
+            .map(TryInto::try_into)
+            .transpose()
+    }
+
+    pub(crate) async fn list_annotations(
+        &self,
+        book_id: i64,
+        format: &str,
+    ) -> Result<Vec<ReaderAnnotation>, CoreError> {
+        annotations::Entity::find()
+            .filter(annotations::Column::BookId.eq(book_id))
+            .filter(annotations::Column::Format.eq(format))
+            .filter(annotations::Column::DeletedAt.is_null())
+            .order_by_asc(annotations::Column::CreatedAt)
+            .all(self.db)
+            .await?
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect()
+    }
+
+    pub(crate) async fn find_annotation(
+        &self,
+        id: &str,
+    ) -> Result<Option<ReaderAnnotation>, CoreError> {
+        annotations::Entity::find_by_id(id)
+            .filter(annotations::Column::DeletedAt.is_null())
+            .one(self.db)
+            .await?
+            .map(TryInto::try_into)
+            .transpose()
+    }
 }
 
 impl TryFrom<reading_progress::Model> for ReadingPosition {
@@ -75,6 +138,40 @@ impl TryFrom<reading_progress::Model> for ReadingPosition {
             display_progression: value.display_progression,
             updated_at: value.updated_at,
             conflict_count: value.sync_conflict_count,
+        })
+    }
+}
+
+impl TryFrom<bookmarks::Model> for ReaderBookmark {
+    type Error = CoreError;
+
+    fn try_from(value: bookmarks::Model) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.id,
+            book_id: value.book_id,
+            format: value.format,
+            locator_key: value.locator_key,
+            locator: serde_json::from_str(&value.locator_json)?,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+        })
+    }
+}
+
+impl TryFrom<annotations::Model> for ReaderAnnotation {
+    type Error = CoreError;
+
+    fn try_from(value: annotations::Model) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.id,
+            book_id: value.book_id,
+            format: value.format,
+            kind: value.kind,
+            locator: serde_json::from_str(&value.locator_json)?,
+            color: value.color,
+            note: value.note,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
         })
     }
 }

@@ -1,207 +1,30 @@
 use std::path::Path;
 
-use crate::error::AppError;
-use crate::models::{is_valid_reader_locator, AppConfig, ReaderAnnotationDto};
-use crate::repositories::annotation_repo::SqliteAnnotationRepository;
-use crate::services::library_service::LibraryService;
-use crate::sync::annotation::{
-    add_local_annotation, delete_local_annotation, update_local_annotation,
-};
-use crate::sync::replica_identity::read_replica_identity;
-use crate::utils::paths::{library_root_path, library_sidecar_path};
-use myreader_core::entities::app::annotations;
+use myreader_core::models::ReaderAnnotation;
 
-const HIGHLIGHT_KIND: &str = "highlight";
-const ANNOTATION_COLORS: [&str; 4] = ["yellow", "orange", "green", "blue"];
-const MAX_NOTE_CHARACTERS: usize = 4_000;
+use crate::error::AppError;
+use crate::models::{AppConfig, ReaderAnnotationDto};
+use crate::services::library_service::LibraryService;
+use crate::utils::paths::{library_root_path, library_sidecar_path};
 
 pub struct AnnotationService;
 
-fn unix_epoch_millis() -> f64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as f64)
-        .unwrap_or(0.0)
-}
-
-fn normalize_format(format: &str) -> Result<String, AppError> {
-    let normalized = format.trim().to_ascii_uppercase();
-    if normalized.is_empty() {
-        return Err(AppError::Config("INVALID_ANNOTATION_FORMAT".into()));
+fn annotation_dto(library_id: &str, annotation: ReaderAnnotation) -> ReaderAnnotationDto {
+    ReaderAnnotationDto {
+        id: annotation.id,
+        library_id: library_id.to_owned(),
+        book_id: annotation.book_id,
+        format: annotation.format,
+        kind: annotation.kind,
+        locator: annotation.locator,
+        color: annotation.color,
+        note: annotation.note,
+        created_at: annotation.created_at,
+        updated_at: annotation.updated_at,
     }
-    Ok(normalized)
-}
-
-fn validate_locator(locator: &serde_json::Value) -> Result<(), AppError> {
-    let highlight = locator
-        .get("text")
-        .and_then(|text| text.get("highlight"))
-        .and_then(serde_json::Value::as_str)
-        .map(str::trim)
-        .unwrap_or_default();
-    if !is_valid_reader_locator(locator) || highlight.is_empty() {
-        return Err(AppError::Config("INVALID_ANNOTATION_LOCATOR".into()));
-    }
-    Ok(())
-}
-
-fn validate_color(color: &str) -> Result<&str, AppError> {
-    if ANNOTATION_COLORS.contains(&color) {
-        Ok(color)
-    } else {
-        Err(AppError::Config("INVALID_ANNOTATION_COLOR".into()))
-    }
-}
-
-fn normalize_note(note: Option<&str>) -> Result<Option<String>, AppError> {
-    let note = note.map(str::trim).filter(|note| !note.is_empty());
-    if note.is_some_and(|note| note.chars().count() > MAX_NOTE_CHARACTERS) {
-        return Err(AppError::Config("ANNOTATION_NOTE_TOO_LONG".into()));
-    }
-    Ok(note.map(ToString::to_string))
-}
-
-fn annotation_dto(
-    library_id: &str,
-    model: annotations::Model,
-) -> Result<ReaderAnnotationDto, AppError> {
-    let locator = serde_json::from_str(&model.locator_json)
-        .map_err(|error| AppError::Serialize(error.to_string()))?;
-    Ok(ReaderAnnotationDto {
-        id: model.id,
-        library_id: library_id.to_string(),
-        book_id: model.book_id,
-        format: model.format,
-        kind: model.kind,
-        locator,
-        color: model.color,
-        note: model.note,
-        created_at: model.created_at,
-        updated_at: model.updated_at,
-    })
 }
 
 impl AnnotationService {
-    async fn sync_context(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: Option<&str>,
-    ) -> Result<
-        (
-            crate::models::LibraryConfig,
-            sea_orm::DatabaseConnection,
-            String,
-        ),
-        AppError,
-    > {
-        let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        let db = SqliteAnnotationRepository::open(&sidecar_root).await?;
-        let library_uuid = match read_replica_identity(&db).await? {
-            Some(identity) => identity.library_uuid,
-            None => {
-                let library_root = library_root_path(&library, app_data_dir);
-                myreader_core::api::catalog::get_library_uuid(&library_root).await?
-            }
-        };
-        Ok((library, db, library_uuid))
-    }
-
-    pub async fn list(
-        sidecar_root: &str,
-        library_id: &str,
-        book_id: i64,
-        format: &str,
-    ) -> Result<Vec<ReaderAnnotationDto>, AppError> {
-        let format = normalize_format(format)?;
-        let db = SqliteAnnotationRepository::open(sidecar_root).await?;
-        SqliteAnnotationRepository::list(&db, book_id, &format)
-            .await?
-            .into_iter()
-            .map(|model| annotation_dto(library_id, model))
-            .collect()
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn add(
-        sidecar_root: &str,
-        library_id: &str,
-        book_id: i64,
-        format: &str,
-        locator: &serde_json::Value,
-        color: &str,
-        note: Option<&str>,
-    ) -> Result<ReaderAnnotationDto, AppError> {
-        let format = normalize_format(format)?;
-        validate_locator(locator)?;
-        let color = validate_color(color)?;
-        let note = normalize_note(note)?;
-        let locator_json = serde_json::to_string(locator)
-            .map_err(|error| AppError::Serialize(error.to_string()))?;
-        let db = SqliteAnnotationRepository::open(sidecar_root).await?;
-        let model = SqliteAnnotationRepository::insert(
-            &db,
-            &uuid::Uuid::new_v4().as_simple().to_string(),
-            book_id,
-            &format,
-            HIGHLIGHT_KIND,
-            &locator_json,
-            color,
-            note.as_deref(),
-            unix_epoch_millis(),
-        )
-        .await?;
-        annotation_dto(library_id, model)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn update(
-        sidecar_root: &str,
-        library_id: &str,
-        book_id: i64,
-        format: &str,
-        id: &str,
-        color: &str,
-        note: Option<&str>,
-    ) -> Result<ReaderAnnotationDto, AppError> {
-        let format = normalize_format(format)?;
-        let color = validate_color(color)?;
-        let note = normalize_note(note)?;
-        let db = SqliteAnnotationRepository::open(sidecar_root).await?;
-        let model = SqliteAnnotationRepository::update(
-            &db,
-            id,
-            book_id,
-            &format,
-            color,
-            note.as_deref(),
-            unix_epoch_millis(),
-        )
-        .await?
-        .ok_or_else(|| AppError::NotFound("ANNOTATION_NOT_FOUND".into()))?;
-        annotation_dto(library_id, model)
-    }
-
-    pub async fn delete(
-        sidecar_root: &str,
-        book_id: i64,
-        format: &str,
-        id: &str,
-    ) -> Result<(), AppError> {
-        let format = normalize_format(format)?;
-        let db = SqliteAnnotationRepository::open(sidecar_root).await?;
-        if SqliteAnnotationRepository::tombstone(&db, id, book_id, &format, unix_epoch_millis())
-            .await?
-        {
-            Ok(())
-        } else {
-            Err(AppError::NotFound("ANNOTATION_NOT_FOUND".into()))
-        }
-    }
-
     pub async fn list_for_library(
         app_data_dir: &Path,
         config: &AppConfig,
@@ -210,10 +33,14 @@ impl AnnotationService {
         format: &str,
     ) -> Result<Vec<ReaderAnnotationDto>, AppError> {
         let library = LibraryService::resolve_library(library_id, config)?;
-        let sidecar_root = library_sidecar_path(&library, app_data_dir)
-            .to_string_lossy()
-            .to_string();
-        Self::list(&sidecar_root, &library.id, book_id, format).await
+        let sidecar_root = library_sidecar_path(&library, app_data_dir);
+        Ok(
+            myreader_core::api::reading::list_reader_annotations(&sidecar_root, book_id, format)
+                .await?
+                .into_iter()
+                .map(|annotation| annotation_dto(&library.id, annotation))
+                .collect(),
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -227,26 +54,22 @@ impl AnnotationService {
         color: &str,
         note: Option<&str>,
     ) -> Result<ReaderAnnotationDto, AppError> {
-        let format = normalize_format(format)?;
-        validate_locator(locator)?;
-        let color = validate_color(color)?;
-        let note = normalize_note(note)?;
-        let locator_json = serde_json::to_string(locator)
-            .map_err(|error| AppError::Serialize(error.to_string()))?;
-        let (library, db, library_uuid) =
-            Self::sync_context(app_data_dir, config, library_id).await?;
-        let model = add_local_annotation(
-            &db,
-            &library_uuid,
+        let library = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&library, app_data_dir);
+        let library_root = library_root_path(&library, app_data_dir);
+        let locator_json = serde_json::to_string(locator)?;
+        let annotation = myreader_core::api::reading::add_reader_annotation(
+            &sidecar_root,
+            &library_root,
             book_id,
-            &format,
+            format,
             &locator_json,
             color,
-            note.as_deref(),
-            unix_epoch_millis() as u64,
+            note,
+            unix_epoch_millis(),
         )
         .await?;
-        annotation_dto(&library.id, model)
+        Ok(annotation_dto(&library.id, annotation))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -260,24 +83,21 @@ impl AnnotationService {
         color: &str,
         note: Option<&str>,
     ) -> Result<ReaderAnnotationDto, AppError> {
-        let format = normalize_format(format)?;
-        let color = validate_color(color)?;
-        let note = normalize_note(note)?;
-        let (library, db, library_uuid) =
-            Self::sync_context(app_data_dir, config, library_id).await?;
-        let model = update_local_annotation(
-            &db,
-            &library_uuid,
-            id,
+        let library = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&library, app_data_dir);
+        let library_root = library_root_path(&library, app_data_dir);
+        let annotation = myreader_core::api::reading::update_reader_annotation(
+            &sidecar_root,
+            &library_root,
             book_id,
-            &format,
+            format,
+            id,
             color,
-            note.as_deref(),
-            unix_epoch_millis() as u64,
+            note,
+            unix_epoch_millis(),
         )
-        .await?
-        .ok_or_else(|| AppError::NotFound("ANNOTATION_NOT_FOUND".into()))?;
-        annotation_dto(&library.id, model)
+        .await?;
+        Ok(annotation_dto(&library.id, annotation))
     }
 
     pub async fn delete_for_library(
@@ -288,22 +108,25 @@ impl AnnotationService {
         format: &str,
         id: &str,
     ) -> Result<(), AppError> {
-        let format = normalize_format(format)?;
-        let (_library, db, library_uuid) =
-            Self::sync_context(app_data_dir, config, library_id).await?;
-        if delete_local_annotation(
-            &db,
-            &library_uuid,
-            id,
+        let library = LibraryService::resolve_library(library_id, config)?;
+        let sidecar_root = library_sidecar_path(&library, app_data_dir);
+        let library_root = library_root_path(&library, app_data_dir);
+        myreader_core::api::reading::remove_reader_annotation(
+            &sidecar_root,
+            &library_root,
             book_id,
-            &format,
-            unix_epoch_millis() as u64,
+            format,
+            id,
+            unix_epoch_millis(),
         )
-        .await?
-        {
-            Ok(())
-        } else {
-            Err(AppError::NotFound("ANNOTATION_NOT_FOUND".into()))
-        }
+        .await?;
+        Ok(())
     }
+}
+
+fn unix_epoch_millis() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_millis() as i64)
 }

@@ -4,6 +4,8 @@ import com.myreader.rustcomponents.uniffi.RustComponentsException
 import com.myreader.rustcomponents.uniffi.SyncDocumentCommandResult
 import com.myreader.rustcomponents.uniffi.advanceSyncScheduler
 import com.myreader.rustcomponents.uniffi.addRemoteLibrary
+import com.myreader.rustcomponents.uniffi.addReaderBookmark
+import com.myreader.rustcomponents.uniffi.addReaderAnnotation
 import com.myreader.rustcomponents.uniffi.cancelSyncTask
 import com.myreader.rustcomponents.uniffi.countCalibreBooks
 import com.myreader.rustcomponents.uniffi.deleteLibraryFileState
@@ -27,11 +29,15 @@ import com.myreader.rustcomponents.uniffi.listLibraryFileStates
 import com.myreader.rustcomponents.uniffi.listRemoteDirectories
 import com.myreader.rustcomponents.uniffi.listReadingPositionCandidates
 import com.myreader.rustcomponents.uniffi.listReadingPositions
+import com.myreader.rustcomponents.uniffi.listReaderBookmarks
+import com.myreader.rustcomponents.uniffi.listReaderAnnotations
 import com.myreader.rustcomponents.uniffi.markSyncDatabaseScheduleSucceeded
 import com.myreader.rustcomponents.uniffi.migrateLibraryDatabase
 import com.myreader.rustcomponents.uniffi.registerDeviceLibrary
 import com.myreader.rustcomponents.uniffi.removeDeviceDataSource
 import com.myreader.rustcomponents.uniffi.removeDeviceLibrary
+import com.myreader.rustcomponents.uniffi.removeReaderBookmark
+import com.myreader.rustcomponents.uniffi.removeReaderAnnotation
 import com.myreader.rustcomponents.uniffi.replaceDeviceLibrary
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseDiagnostics
 import com.myreader.rustcomponents.uniffi.readSyncDatabaseScheduleState
@@ -51,6 +57,7 @@ import com.myreader.rustcomponents.uniffi.upsertDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateDeviceDataSource
 import com.myreader.rustcomponents.uniffi.validateCalibreLibrary
 import com.myreader.rustcomponents.uniffi.upsertLibraryFileState
+import com.myreader.rustcomponents.uniffi.updateReaderAnnotation
 import com.myreader.rustcomponents.uniffi.writeSyncDatabaseScheduleState
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -407,6 +414,129 @@ class MyReaderRustComponentsModule : Module() {
           bookId,
           format,
           operationId,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("listReaderBookmarks") {
+        sidecarRootPath: String,
+        bookId: Long,
+        format: String ->
+      componentCall {
+        listReaderBookmarks(sidecarRootPath, bookId, format)
+      }
+    }
+
+    AsyncFunction("addReaderBookmark") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        locatorKey: String,
+        locatorJson: String,
+        recordedAtMs: Long ->
+      componentCall {
+        addReaderBookmark(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          locatorKey,
+          locatorJson,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("removeReaderBookmark") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        locatorKey: String,
+        recordedAtMs: Long ->
+      componentCall {
+        removeReaderBookmark(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          locatorKey,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("listReaderAnnotations") {
+        sidecarRootPath: String,
+        bookId: Long,
+        format: String ->
+      componentCall {
+        listReaderAnnotations(sidecarRootPath, bookId, format)
+      }
+    }
+
+    AsyncFunction("addReaderAnnotation") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        locatorJson: String,
+        color: String,
+        note: String?,
+        recordedAtMs: Long ->
+      componentCall {
+        addReaderAnnotation(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          locatorJson,
+          color,
+          note,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("updateReaderAnnotation") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        id: String,
+        color: String,
+        note: String?,
+        recordedAtMs: Long ->
+      componentCall {
+        updateReaderAnnotation(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          id,
+          color,
+          note,
+          recordedAtMs,
+        )
+      }
+    }
+
+    AsyncFunction("removeReaderAnnotation") {
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Long,
+        format: String,
+        id: String,
+        recordedAtMs: Long ->
+      componentCall {
+        removeReaderAnnotation(
+          sidecarRootPath,
+          libraryRootPath,
+          bookId,
+          format,
+          id,
           recordedAtMs,
         )
       }

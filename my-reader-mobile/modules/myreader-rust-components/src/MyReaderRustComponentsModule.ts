@@ -166,6 +166,61 @@ export type MyReaderRustComponentsModule = {
     operationId: string,
     recordedAtMs: number,
   ): Promise<void>
+  listReaderBookmarks(
+    sidecarRootPath: string,
+    bookId: number,
+    format: string,
+  ): Promise<string>
+  addReaderBookmark(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    locatorKey: string,
+    locatorJson: string,
+    recordedAtMs: number,
+  ): Promise<string>
+  removeReaderBookmark(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    locatorKey: string,
+    recordedAtMs: number,
+  ): Promise<void>
+  listReaderAnnotations(
+    sidecarRootPath: string,
+    bookId: number,
+    format: string,
+  ): Promise<string>
+  addReaderAnnotation(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    locatorJson: string,
+    color: string,
+    note: string | null,
+    recordedAtMs: number,
+  ): Promise<string>
+  updateReaderAnnotation(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    id: string,
+    color: string,
+    note: string | null,
+    recordedAtMs: number,
+  ): Promise<string>
+  removeReaderAnnotation(
+    sidecarRootPath: string,
+    libraryRootPath: string,
+    bookId: number,
+    format: string,
+    id: string,
+    recordedAtMs: number,
+  ): Promise<void>
   syncContractVersion(): number
   advanceSyncScheduler(
     stateJson: string | null,
@@ -426,6 +481,115 @@ const moduleFacade: MyReaderRustComponentsModule = {
       bookId,
       format,
       operationId,
+      recordedAtMs,
+    )
+  },
+  listReaderBookmarks(sidecarRootPath, bookId, format) {
+    return getNativeModule().listReaderBookmarks(
+      sidecarRootPath,
+      bookId,
+      format,
+    )
+  },
+  addReaderBookmark(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    locatorKey,
+    locatorJson,
+    recordedAtMs,
+  ) {
+    return getNativeModule().addReaderBookmark(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      locatorKey,
+      locatorJson,
+      recordedAtMs,
+    )
+  },
+  removeReaderBookmark(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    locatorKey,
+    recordedAtMs,
+  ) {
+    return getNativeModule().removeReaderBookmark(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      locatorKey,
+      recordedAtMs,
+    )
+  },
+  listReaderAnnotations(sidecarRootPath, bookId, format) {
+    return getNativeModule().listReaderAnnotations(
+      sidecarRootPath,
+      bookId,
+      format,
+    )
+  },
+  addReaderAnnotation(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    locatorJson,
+    color,
+    note,
+    recordedAtMs,
+  ) {
+    return getNativeModule().addReaderAnnotation(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      locatorJson,
+      color,
+      note,
+      recordedAtMs,
+    )
+  },
+  updateReaderAnnotation(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    id,
+    color,
+    note,
+    recordedAtMs,
+  ) {
+    return getNativeModule().updateReaderAnnotation(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      id,
+      color,
+      note,
+      recordedAtMs,
+    )
+  },
+  removeReaderAnnotation(
+    sidecarRootPath,
+    libraryRootPath,
+    bookId,
+    format,
+    id,
+    recordedAtMs,
+  ) {
+    return getNativeModule().removeReaderAnnotation(
+      sidecarRootPath,
+      libraryRootPath,
+      bookId,
+      format,
+      id,
       recordedAtMs,
     )
   },

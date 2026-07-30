@@ -1,10 +1,10 @@
 import { readerBookmarkLocatorKey } from "@my-reader/tools/reader-bookmarks"
 import type { ReaderLocator } from "@my-reader/tools/reader-toc"
-import { listActiveReaderBookmarkRows } from "@/src/repos/bookmarks"
 import {
-  addLocalBookmark,
-  removeLocalBookmark,
-} from "../sync/library-sidecar/bookmark"
+  addReaderBookmark as addCoreReaderBookmark,
+  listReaderBookmarks as listCoreReaderBookmarks,
+  removeReaderBookmark as removeCoreReaderBookmark,
+} from "@/src/services/core/reading"
 import type { Library } from "../types"
 import {
   addReaderBookmark,
@@ -12,13 +12,10 @@ import {
   removeReaderBookmark,
 } from "./reader-bookmarks"
 
-jest.mock("@/src/repos/bookmarks", () => ({
-  listActiveReaderBookmarkRows: jest.fn(),
-}))
-
-jest.mock("../sync/library-sidecar/bookmark", () => ({
-  addLocalBookmark: jest.fn(),
-  removeLocalBookmark: jest.fn(),
+jest.mock("@/src/services/core/reading", () => ({
+  addReaderBookmark: jest.fn(),
+  listReaderBookmarks: jest.fn(),
+  removeReaderBookmark: jest.fn(),
 }))
 
 jest.mock("@/src/utils/common", () => ({
@@ -42,10 +39,9 @@ function row(overrides: Record<string, unknown> = {}) {
     bookId: 7,
     format: "EPUB",
     locatorKey: readerBookmarkLocatorKey(itemLocator),
-    locatorJson: JSON.stringify(itemLocator),
+    locator: itemLocator,
     createdAt: 10,
     updatedAt: 20,
-    deletedAt: null,
     ...overrides,
   }
 }
@@ -54,17 +50,16 @@ describe("reader bookmarks domain", () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest
-      .mocked(addLocalBookmark)
+      .mocked(addCoreReaderBookmark)
       .mockImplementation(
         async (_library, bookId, format, locatorKey, value) => ({
           id: "bookmark-id",
           bookId,
           format,
           locatorKey,
-          locatorJson: JSON.stringify(value),
+          locator: value,
           createdAt: 100,
           updatedAt: 100,
-          deletedAt: null,
         }),
       )
   })
@@ -92,7 +87,7 @@ describe("reader bookmarks domain", () => {
         locations: { fragments: ["section"] },
       },
     })
-    expect(addLocalBookmark).toHaveBeenCalledWith(
+    expect(addCoreReaderBookmark).toHaveBeenCalledWith(
       library,
       7,
       "EPUB",
@@ -104,7 +99,7 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should reuse an active bookmark when the natural key exists", async () => {
-    jest.mocked(addLocalBookmark).mockResolvedValue(row())
+    jest.mocked(addCoreReaderBookmark).mockResolvedValue(row())
 
     const bookmark = await addReaderBookmark(library, 7, "EPUB", locator(2))
 
@@ -112,7 +107,7 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should revive bookmark identity when the natural key is tombstoned", async () => {
-    jest.mocked(addLocalBookmark).mockResolvedValue(row({ updatedAt: 31 }))
+    jest.mocked(addCoreReaderBookmark).mockResolvedValue(row({ updatedAt: 31 }))
 
     const bookmark = await addReaderBookmark(library, 7, "EPUB", locator(2))
 
@@ -121,16 +116,16 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should list active bookmarks in reading order when rows are unsorted", async () => {
-    jest.mocked(listActiveReaderBookmarkRows).mockResolvedValue([
+    jest.mocked(listCoreReaderBookmarks).mockResolvedValue([
       row({
         id: "third",
         locatorKey: readerBookmarkLocatorKey(locator(3)),
-        locatorJson: JSON.stringify(locator(3)),
+        locator: locator(3),
       }),
       row({
         id: "first",
         locatorKey: readerBookmarkLocatorKey(locator(1)),
-        locatorJson: JSON.stringify(locator(1)),
+        locator: locator(1),
       }),
     ])
 
@@ -140,11 +135,11 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should tombstone an active bookmark when removing it", async () => {
-    jest.mocked(removeLocalBookmark).mockResolvedValue(undefined)
+    jest.mocked(removeCoreReaderBookmark).mockResolvedValue(undefined)
 
     await removeReaderBookmark(library, 7, "epub", locator(2))
 
-    expect(removeLocalBookmark).toHaveBeenCalledWith(
+    expect(removeCoreReaderBookmark).toHaveBeenCalledWith(
       library,
       7,
       "EPUB",
@@ -153,10 +148,10 @@ describe("reader bookmarks domain", () => {
   })
 
   it("should accept an atomic no-op when the bookmark is already deleted", async () => {
-    jest.mocked(removeLocalBookmark).mockResolvedValue(undefined)
+    jest.mocked(removeCoreReaderBookmark).mockResolvedValue(undefined)
 
     await removeReaderBookmark(library, 7, "EPUB", locator(2))
 
-    expect(removeLocalBookmark).toHaveBeenCalledTimes(1)
+    expect(removeCoreReaderBookmark).toHaveBeenCalledTimes(1)
   })
 })

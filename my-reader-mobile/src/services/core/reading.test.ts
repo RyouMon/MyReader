@@ -8,6 +8,13 @@ jest.mock("@/modules/myreader-rust-components", () => ({
     setReadingPosition: jest.fn(),
     listReadingPositionCandidates: jest.fn(),
     selectReadingPositionCandidate: jest.fn(),
+    listReaderBookmarks: jest.fn(),
+    addReaderBookmark: jest.fn(),
+    removeReaderBookmark: jest.fn(),
+    listReaderAnnotations: jest.fn(),
+    addReaderAnnotation: jest.fn(),
+    updateReaderAnnotation: jest.fn(),
+    removeReaderAnnotation: jest.fn(),
   },
 }))
 
@@ -31,6 +38,8 @@ jest.mock("../fs/path", () => ({
 import type { Library } from "@my-reader/tools/types/library"
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import {
+  addReaderAnnotation,
+  addReaderBookmark,
   getReadingPosition,
   listFavoriteBookIds,
   setFavoriteBook,
@@ -111,6 +120,63 @@ describe("core reading adapter", () => {
       "EPUB",
       '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
       0.4,
+      900,
+    )
+  })
+
+  it("should pass canonical bookmark fields when bookmark is added", async () => {
+    jest
+      .mocked(MyReaderRustComponents.addReaderBookmark)
+      .mockResolvedValue(
+        '{"id":"bookmark-1","bookId":42,"format":"EPUB","locatorKey":"chapter.xhtml","locator":{"href":"chapter.xhtml","type":"application/xhtml+xml"},"createdAt":900,"updatedAt":900}',
+      )
+
+    await expect(
+      addReaderBookmark(library, 42, "EPUB", "chapter.xhtml", {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+      }),
+    ).resolves.toMatchObject({ id: "bookmark-1", bookId: 42 })
+    expect(MyReaderRustComponents.addReaderBookmark).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      "EPUB",
+      "chapter.xhtml",
+      '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
+      900,
+    )
+  })
+
+  it("should serialize selected text when annotation is added", async () => {
+    jest
+      .mocked(MyReaderRustComponents.addReaderAnnotation)
+      .mockResolvedValue(
+        '{"id":"annotation-1","bookId":42,"format":"EPUB","kind":"highlight","locator":{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}},"color":"yellow","note":null,"createdAt":900,"updatedAt":900}',
+      )
+
+    await expect(
+      addReaderAnnotation(
+        library,
+        42,
+        "EPUB",
+        {
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+          text: { highlight: "Selected" },
+        },
+        "yellow",
+        null,
+      ),
+    ).resolves.toMatchObject({ id: "annotation-1", kind: "highlight" })
+    expect(MyReaderRustComponents.addReaderAnnotation).toHaveBeenCalledWith(
+      "/sidecar",
+      "/library",
+      42,
+      "EPUB",
+      '{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}}',
+      "yellow",
+      null,
       900,
     )
   })

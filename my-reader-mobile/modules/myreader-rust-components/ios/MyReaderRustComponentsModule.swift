@@ -443,6 +443,143 @@ public class MyReaderRustComponentsModule: Module {
       }
     }
 
+    AsyncFunction("listReaderBookmarks") {
+      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      try componentCall {
+        try listReaderBookmarks(
+          sidecarRootPath: sidecarRootPath,
+          bookId: bookId,
+          format: format
+        )
+      }
+    }
+
+    AsyncFunction("addReaderBookmark") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        locatorKey: String,
+        locatorJson: String,
+        recordedAtMs: Int64
+      ) -> String in
+      try componentCall {
+        try addReaderBookmark(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          locatorKey: locatorKey,
+          locatorJson: locatorJson,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("removeReaderBookmark") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        locatorKey: String,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try removeReaderBookmark(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          locatorKey: locatorKey,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("listReaderAnnotations") {
+      (sidecarRootPath: String, bookId: Int64, format: String) -> String in
+      try componentCall {
+        try listReaderAnnotations(
+          sidecarRootPath: sidecarRootPath,
+          bookId: bookId,
+          format: format
+        )
+      }
+    }
+
+    AsyncFunction("addReaderAnnotation") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        locatorJson: String,
+        color: String,
+        note: String?,
+        recordedAtMs: Int64
+      ) -> String in
+      try componentCall {
+        try addReaderAnnotation(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          locatorJson: locatorJson,
+          color: color,
+          note: note,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("updateReaderAnnotation") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        id: String,
+        color: String,
+        note: String?,
+        recordedAtMs: Int64
+      ) -> String in
+      try componentCall {
+        try updateReaderAnnotation(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          id: id,
+          color: color,
+          note: note,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
+    AsyncFunction("removeReaderAnnotation") {
+      (
+        sidecarRootPath: String,
+        libraryRootPath: String,
+        bookId: Int64,
+        format: String,
+        id: String,
+        recordedAtMs: Int64
+      ) in
+      try componentCall {
+        try removeReaderAnnotation(
+          sidecarRootPath: sidecarRootPath,
+          libraryRootPath: libraryRootPath,
+          bookId: bookId,
+          format: format,
+          id: id,
+          recordedAtMs: recordedAtMs
+        )
+      }
+    }
+
     Function("syncContractVersion") {
       Int(syncContractVersion())
     }

@@ -594,6 +594,142 @@ pub fn select_reading_position_candidate(
 }
 
 #[uniffi::export]
+pub fn list_reader_bookmarks(
+    sidecar_root_path: String,
+    book_id: i64,
+    format: String,
+) -> Result<String, RustComponentsError> {
+    let bookmarks = run_core_async(myreader_core::api::reading::list_reader_bookmarks(
+        Path::new(&sidecar_root_path),
+        book_id,
+        &format,
+    ))?;
+    serialize_core_json(&bookmarks)
+}
+
+#[uniffi::export]
+pub fn add_reader_bookmark(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    locator_key: String,
+    locator_json: String,
+    recorded_at_ms: i64,
+) -> Result<String, RustComponentsError> {
+    let bookmark = run_core_async(myreader_core::api::reading::add_reader_bookmark(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &locator_key,
+        &locator_json,
+        recorded_at_ms,
+    ))?;
+    serialize_core_json(&bookmark)
+}
+
+#[uniffi::export]
+pub fn remove_reader_bookmark(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    locator_key: String,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::reading::remove_reader_bookmark(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &locator_key,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
+pub fn list_reader_annotations(
+    sidecar_root_path: String,
+    book_id: i64,
+    format: String,
+) -> Result<String, RustComponentsError> {
+    let annotations = run_core_async(myreader_core::api::reading::list_reader_annotations(
+        Path::new(&sidecar_root_path),
+        book_id,
+        &format,
+    ))?;
+    serialize_core_json(&annotations)
+}
+
+#[uniffi::export]
+pub fn add_reader_annotation(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    locator_json: String,
+    color: String,
+    note: Option<String>,
+    recorded_at_ms: i64,
+) -> Result<String, RustComponentsError> {
+    let annotation = run_core_async(myreader_core::api::reading::add_reader_annotation(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &locator_json,
+        &color,
+        note.as_deref(),
+        recorded_at_ms,
+    ))?;
+    serialize_core_json(&annotation)
+}
+
+#[uniffi::export]
+pub fn update_reader_annotation(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    id: String,
+    color: String,
+    note: Option<String>,
+    recorded_at_ms: i64,
+) -> Result<String, RustComponentsError> {
+    let annotation = run_core_async(myreader_core::api::reading::update_reader_annotation(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &id,
+        &color,
+        note.as_deref(),
+        recorded_at_ms,
+    ))?;
+    serialize_core_json(&annotation)
+}
+
+#[uniffi::export]
+pub fn remove_reader_annotation(
+    sidecar_root_path: String,
+    library_root_path: String,
+    book_id: i64,
+    format: String,
+    id: String,
+    recorded_at_ms: i64,
+) -> Result<(), RustComponentsError> {
+    run_core_async(myreader_core::api::reading::remove_reader_annotation(
+        Path::new(&sidecar_root_path),
+        Path::new(&library_root_path),
+        book_id,
+        &format,
+        &id,
+        recorded_at_ms,
+    ))
+}
+
+#[uniffi::export]
 pub fn advance_sync_scheduler(
     state_json: Option<String>,
     policy_json: String,

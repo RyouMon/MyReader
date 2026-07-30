@@ -2,8 +2,10 @@ use std::path::Path;
 
 use myreader_sync::{
     document::{
-        favorite_projections, resolve_reading_position, set_favorite,
-        set_reading_position as write_reading_position, FavoriteValue, ReadingPositionValue,
+        annotation_projections, bookmark_projections, create_annotation, delete_annotation,
+        favorite_projections, resolve_reading_position, set_bookmark, set_favorite,
+        set_reading_position as write_reading_position, update_annotation, AnnotationValue,
+        BookmarkValue, FavoriteValue, ReadingPositionValue,
     },
     persistence::{
         ensure_database_document, ensure_database_identity, execute_local_database_mutation,
@@ -13,7 +15,7 @@ use myreader_sync::{
 use tracing::info;
 
 use crate::database;
-use crate::models::{ReadingPosition, ReadingPositionCandidate};
+use crate::models::{ReaderAnnotation, ReaderBookmark, ReadingPosition, ReadingPositionCandidate};
 use crate::repositories::calibre::CalibreBookRepository;
 use crate::repositories::reading::ReadingRepository;
 use crate::CoreError;
@@ -224,6 +226,300 @@ pub(crate) async fn select_reading_position_candidate(
     Ok(())
 }
 
+pub(crate) async fn list_reader_bookmarks(
+    sidecar_root: &Path,
+    book_id: i64,
+    format: &str,
+) -> Result<Vec<ReaderBookmark>, CoreError> {
+    if book_id < 1 {
+        return Err(CoreError::Config("Bookmark identity is invalid".into()));
+    }
+    let format = normalize_reading_format(format)?;
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ReadingRepository::new(&db)
+        .list_bookmarks(book_id, &format)
+        .await
+}
+
+pub(crate) async fn add_reader_bookmark(
+    sidecar_root: &Path,
+    library_root: &Path,
+    book_id: i64,
+    format: &str,
+    locator_key: &str,
+    locator_json: &str,
+    recorded_at_ms: i64,
+) -> Result<ReaderBookmark, CoreError> {
+    let (format, locator_key, locator_json) = validate_bookmark(
+        book_id,
+        format,
+        locator_key,
+        Some(locator_json),
+        recorded_at_ms,
+    )?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        let current = bookmark_projections(document)?.into_iter().find(|item| {
+            item.book_id == book_id && item.format == format && item.locator_key == locator_key
+        });
+        if current
+            .as_ref()
+            .is_some_and(|bookmark| bookmark.deleted_at.is_none())
+        {
+            return Ok(());
+        }
+        set_bookmark(
+            document,
+            &BookmarkValue {
+                id: current.as_ref().map_or_else(
+                    || uuid::Uuid::new_v4().as_simple().to_string(),
+                    |bookmark| bookmark.id.clone(),
+                ),
+                book_id,
+                format: format.clone(),
+                locator_key: locator_key.clone(),
+                locator_json: locator_json.clone(),
+                created_at: current
+                    .as_ref()
+                    .map_or(recorded_at_ms, |bookmark| bookmark.created_at),
+                deleted_at: None,
+                recorded_at: recorded_at_ms,
+                replica_id: identity.replica_id.clone(),
+            },
+        )?;
+        Ok(())
+    })?;
+
+    info!(
+        target: "myreader_sync",
+        event = "bookmark.local_write",
+        library_uuid = identity.library_uuid,
+        replica_id = identity.replica_id,
+        book_id,
+        format,
+        locator_key,
+        present = true,
+        "Committed local bookmark state"
+    );
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ReadingRepository::new(&db)
+        .find_bookmark(book_id, &format, &locator_key)
+        .await?
+        .ok_or_else(|| CoreError::Database("Bookmark add returned no row".into()))
+}
+
+pub(crate) async fn remove_reader_bookmark(
+    sidecar_root: &Path,
+    library_root: &Path,
+    book_id: i64,
+    format: &str,
+    locator_key: &str,
+    recorded_at_ms: i64,
+) -> Result<(), CoreError> {
+    let (format, locator_key, _) =
+        validate_bookmark(book_id, format, locator_key, None, recorded_at_ms)?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let mut changed = false;
+
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        let current = bookmark_projections(document)?.into_iter().find(|item| {
+            item.book_id == book_id && item.format == format && item.locator_key == locator_key
+        });
+        let Some(current) = current.filter(|bookmark| bookmark.deleted_at.is_none()) else {
+            return Ok(());
+        };
+        changed = true;
+        set_bookmark(
+            document,
+            &BookmarkValue {
+                deleted_at: Some(recorded_at_ms),
+                recorded_at: recorded_at_ms,
+                replica_id: identity.replica_id.clone(),
+                ..current
+            },
+        )?;
+        Ok(())
+    })?;
+
+    if changed {
+        info!(
+            target: "myreader_sync",
+            event = "bookmark.local_write",
+            library_uuid = identity.library_uuid,
+            replica_id = identity.replica_id,
+            book_id,
+            format,
+            locator_key,
+            present = false,
+            "Committed local bookmark state"
+        );
+    }
+    Ok(())
+}
+
+pub(crate) async fn list_reader_annotations(
+    sidecar_root: &Path,
+    book_id: i64,
+    format: &str,
+) -> Result<Vec<ReaderAnnotation>, CoreError> {
+    if book_id < 1 {
+        return Err(CoreError::Config("Annotation identity is invalid".into()));
+    }
+    let format = normalize_reading_format(format)?;
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ReadingRepository::new(&db)
+        .list_annotations(book_id, &format)
+        .await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn add_reader_annotation(
+    sidecar_root: &Path,
+    library_root: &Path,
+    book_id: i64,
+    format: &str,
+    locator_json: &str,
+    color: &str,
+    note: Option<&str>,
+    recorded_at_ms: i64,
+) -> Result<ReaderAnnotation, CoreError> {
+    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+    let locator_json = validate_annotation_locator(locator_json)?;
+    let color = validate_annotation_color(color)?.to_owned();
+    let note = normalize_annotation_note(note)?;
+    let id = uuid::Uuid::new_v4().as_simple().to_string();
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        create_annotation(
+            document,
+            &AnnotationValue {
+                id: id.clone(),
+                book_id,
+                format,
+                kind: "highlight".into(),
+                locator_json,
+                created_at: recorded_at_ms,
+                color,
+                note,
+                updated_at: recorded_at_ms,
+                deleted: false,
+                deleted_at: None,
+            },
+        )?;
+        Ok(())
+    })?;
+    info!(
+        target: "myreader_sync",
+        event = "annotation.local_write",
+        library_uuid = identity.library_uuid,
+        replica_id = identity.replica_id,
+        annotation_id = id,
+        book_id,
+        operation = "create",
+        "Committed local annotation state"
+    );
+    find_annotation(sidecar_root, &id).await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn update_reader_annotation(
+    sidecar_root: &Path,
+    library_root: &Path,
+    book_id: i64,
+    format: &str,
+    id: &str,
+    color: &str,
+    note: Option<&str>,
+    recorded_at_ms: i64,
+) -> Result<ReaderAnnotation, CoreError> {
+    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+    let color = validate_annotation_color(color)?.to_owned();
+    let note = normalize_annotation_note(note)?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let mut exists = false;
+
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        exists = annotation_projections(document)?
+            .into_iter()
+            .any(|annotation| {
+                annotation.id == id
+                    && annotation.book_id == book_id
+                    && annotation.format == format
+                    && !annotation.deleted
+            });
+        if exists {
+            update_annotation(document, id, &color, note.as_deref(), recorded_at_ms)?;
+        }
+        Ok(())
+    })?;
+    if !exists {
+        return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
+    }
+    info!(
+        target: "myreader_sync",
+        event = "annotation.local_write",
+        library_uuid = identity.library_uuid,
+        replica_id = identity.replica_id,
+        annotation_id = id,
+        book_id,
+        operation = "update",
+        "Committed local annotation state"
+    );
+    find_annotation(sidecar_root, id).await
+}
+
+pub(crate) async fn remove_reader_annotation(
+    sidecar_root: &Path,
+    library_root: &Path,
+    book_id: i64,
+    format: &str,
+    id: &str,
+    recorded_at_ms: i64,
+) -> Result<(), CoreError> {
+    let format = validate_annotation_identity(book_id, format, recorded_at_ms)?;
+    let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
+    let mut exists = false;
+
+    execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
+        exists = annotation_projections(document)?
+            .into_iter()
+            .any(|annotation| {
+                annotation.id == id
+                    && annotation.book_id == book_id
+                    && annotation.format == format
+                    && !annotation.deleted
+            });
+        if exists {
+            delete_annotation(document, id, recorded_at_ms)?;
+        }
+        Ok(())
+    })?;
+    if !exists {
+        return Err(CoreError::NotFound("ANNOTATION_NOT_FOUND".into()));
+    }
+    info!(
+        target: "myreader_sync",
+        event = "annotation.local_write",
+        library_uuid = identity.library_uuid,
+        replica_id = identity.replica_id,
+        annotation_id = id,
+        book_id,
+        operation = "delete",
+        "Committed local annotation state"
+    );
+    Ok(())
+}
+
+async fn find_annotation(sidecar_root: &Path, id: &str) -> Result<ReaderAnnotation, CoreError> {
+    let db = database::open_db(&sidecar_root.to_string_lossy()).await?;
+    ReadingRepository::new(&db)
+        .find_annotation(id)
+        .await?
+        .ok_or_else(|| CoreError::Database("Annotation mutation returned no row".into()))
+}
+
 async fn sync_context(
     sidecar_root: &Path,
     library_root: &Path,
@@ -268,6 +564,69 @@ fn validate_locator_json(locator_json: &str) -> Result<String, CoreError> {
         }
     }
     serde_json::to_string(&locator).map_err(Into::into)
+}
+
+fn validate_bookmark(
+    book_id: i64,
+    format: &str,
+    locator_key: &str,
+    locator_json: Option<&str>,
+    recorded_at_ms: i64,
+) -> Result<(String, String, String), CoreError> {
+    let locator_key = locator_key.trim();
+    if book_id < 1 || recorded_at_ms < 0 || locator_key.is_empty() || locator_key.len() > 2048 {
+        return Err(CoreError::Config("Bookmark identity is invalid".into()));
+    }
+    Ok((
+        normalize_reading_format(format)?,
+        locator_key.to_owned(),
+        locator_json
+            .map(validate_locator_json)
+            .transpose()?
+            .unwrap_or_default(),
+    ))
+}
+
+fn validate_annotation_identity(
+    book_id: i64,
+    format: &str,
+    recorded_at_ms: i64,
+) -> Result<String, CoreError> {
+    if book_id < 1 || recorded_at_ms < 0 {
+        return Err(CoreError::Config("Annotation identity is invalid".into()));
+    }
+    normalize_reading_format(format)
+}
+
+fn validate_annotation_locator(locator_json: &str) -> Result<String, CoreError> {
+    let locator_json = validate_locator_json(locator_json)?;
+    let locator: serde_json::Value = serde_json::from_str(&locator_json)?;
+    let highlight = locator
+        .get("text")
+        .and_then(|text| text.get("highlight"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .unwrap_or_default();
+    if highlight.is_empty() {
+        return Err(CoreError::Config("Annotation locator is invalid".into()));
+    }
+    Ok(locator_json)
+}
+
+fn validate_annotation_color(color: &str) -> Result<&str, CoreError> {
+    if matches!(color, "yellow" | "orange" | "green" | "blue") {
+        Ok(color)
+    } else {
+        Err(CoreError::Config("Annotation color is invalid".into()))
+    }
+}
+
+fn normalize_annotation_note(note: Option<&str>) -> Result<Option<String>, CoreError> {
+    let note = note.map(str::trim).filter(|note| !note.is_empty());
+    if note.is_some_and(|note| note.chars().count() > 4_000) {
+        return Err(CoreError::Config("Annotation note is too long".into()));
+    }
+    Ok(note.map(ToOwned::to_owned))
 }
 
 #[cfg(test)]
@@ -412,5 +771,174 @@ mod tests {
         .unwrap_err();
 
         assert!(error.to_string().contains("Reading locator is invalid"));
+    }
+
+    #[tokio::test]
+    async fn should_round_trip_bookmark_when_reader_adds_and_removes_location() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator =
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"position":3}}"#;
+
+        let added = super::add_reader_bookmark(
+            sidecar.path(),
+            library.path(),
+            42,
+            "epub",
+            "chapter.xhtml@3",
+            locator,
+            900,
+        )
+        .await
+        .unwrap();
+        assert_eq!(added.format, "EPUB");
+        assert_eq!(added.locator["locations"]["position"], 3);
+
+        super::remove_reader_bookmark(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "chapter.xhtml@3",
+            901,
+        )
+        .await
+        .unwrap();
+        assert!(super::list_reader_bookmarks(sidecar.path(), 42, "EPUB")
+            .await
+            .unwrap()
+            .is_empty());
+
+        let revived = super::add_reader_bookmark(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "chapter.xhtml@3",
+            locator,
+            902,
+        )
+        .await
+        .unwrap();
+        assert_eq!(revived.id, added.id);
+    }
+
+    #[tokio::test]
+    async fn should_not_create_change_when_bookmark_state_is_unchanged() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator = r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#;
+
+        super::add_reader_bookmark(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "chapter.xhtml",
+            locator,
+            900,
+        )
+        .await
+        .unwrap();
+        super::add_reader_bookmark(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            "chapter.xhtml",
+            locator,
+            901,
+        )
+        .await
+        .unwrap();
+
+        let db = crate::database::open_db(&sidecar.path().to_string_lossy())
+            .await
+            .unwrap();
+        assert_eq!(
+            sync_automerge_outbox::Entity::find()
+                .all(&db)
+                .await
+                .unwrap()
+                .len(),
+            2
+        );
+    }
+
+    #[tokio::test]
+    async fn should_round_trip_annotation_when_reader_creates_updates_and_deletes_highlight() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator = r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected text"}}"#;
+
+        let created = super::add_reader_annotation(
+            sidecar.path(),
+            library.path(),
+            42,
+            "epub",
+            locator,
+            "yellow",
+            Some(" Initial note "),
+            900,
+        )
+        .await
+        .unwrap();
+        assert_eq!(created.note.as_deref(), Some("Initial note"));
+
+        let updated = super::update_reader_annotation(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &created.id,
+            "green",
+            Some("Updated"),
+            901,
+        )
+        .await
+        .unwrap();
+        assert_eq!(updated.locator, created.locator);
+        assert_eq!(updated.color, "green");
+        assert_eq!(updated.note.as_deref(), Some("Updated"));
+
+        super::remove_reader_annotation(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            &created.id,
+            902,
+        )
+        .await
+        .unwrap();
+        assert!(super::list_reader_annotations(sidecar.path(), 42, "EPUB")
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn should_reject_annotation_when_selected_text_is_missing() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+
+        let error = super::add_reader_annotation(
+            sidecar.path(),
+            library.path(),
+            42,
+            "EPUB",
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#,
+            "yellow",
+            None,
+            900,
+        )
+        .await
+        .unwrap_err();
+
+        assert!(error.to_string().contains("Annotation locator is invalid"));
     }
 }

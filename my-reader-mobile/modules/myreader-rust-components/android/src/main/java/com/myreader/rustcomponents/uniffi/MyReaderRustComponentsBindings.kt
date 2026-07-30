@@ -809,6 +809,20 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -824,7 +838,11 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_myreader_rust_components_checksum_func_add_remote_library(
+    fun uniffi_myreader_rust_components_checksum_func_add_reader_annotation(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_add_reader_bookmark(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_add_remote_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_advance_sync_scheduler(
 ): Short
@@ -868,6 +886,10 @@ fun uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_library_file_states(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_list_reader_annotations(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_list_reading_positions(
@@ -894,6 +916,10 @@ fun uniffi_myreader_rust_components_checksum_func_remove_device_data_source(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_remove_device_library(
 ): Short
+fun uniffi_myreader_rust_components_checksum_func_remove_reader_annotation(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark(
+): Short
 fun uniffi_myreader_rust_components_checksum_func_replace_device_library(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate(
@@ -911,6 +937,8 @@ fun uniffi_myreader_rust_components_checksum_func_sync_contract_version(
 fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_test_remote_data_source(
+): Short
+fun uniffi_myreader_rust_components_checksum_func_update_reader_annotation(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_upsert_device_data_source(
 ): Short
@@ -967,7 +995,11 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_myreader_rust_components_fn_func_add_remote_library(`registryPath`: RustBuffer.ByValue,`requestJson`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    fun uniffi_myreader_rust_components_fn_func_add_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_add_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_add_remote_library(`registryPath`: RustBuffer.ByValue,`requestJson`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_advance_sync_scheduler(`stateJson`: RustBuffer.ByValue,`policyJson`: RustBuffer.ByValue,`eventJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
@@ -1011,6 +1043,10 @@ fun uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(`sidecarRootP
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_library_file_states(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_reader_annotations(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`nowMs`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_reading_positions(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1037,6 +1073,10 @@ fun uniffi_myreader_rust_components_fn_func_remove_device_data_source(`registryP
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_remove_device_library(`registryPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
+fun uniffi_myreader_rust_components_fn_func_remove_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Unit
+fun uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 fun uniffi_myreader_rust_components_fn_func_replace_device_library(`registryPath`: RustBuffer.ByValue,`libraryJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`operationId`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
@@ -1055,6 +1095,8 @@ fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`taskId`: RustB
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_test_remote_data_source(`sourceJson`: RustBuffer.ByValue,`credentialJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
+fun uniffi_myreader_rust_components_fn_func_update_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_upsert_device_data_source(`registryPath`: RustBuffer.ByValue,`sourceJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_upsert_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`updateJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1191,6 +1233,12 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 49911.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 20057.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1257,6 +1305,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_reader_annotations() != 35562.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks() != 43569.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates() != 55094.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1296,6 +1350,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_remove_device_library() != 28527.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_annotation() != 31848.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark() != 17298.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1321,6 +1381,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_test_remote_data_source() != 36092.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 57307.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321.toShort()) {
@@ -2084,6 +2147,26 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         }
     }
 }
+    @Throws(RustComponentsException::class) fun `addReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorJson`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reader_annotation(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorJson`),FfiConverterString.lower(`color`),FfiConverterOptionalString.lower(`note`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `addReaderBookmark`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorKey`: kotlin.String, `locatorJson`: kotlin.String, `recordedAtMs`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reader_bookmark(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorKey`),FfiConverterString.lower(`locatorJson`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `addRemoteLibrary`(`registryPath`: kotlin.String, `requestJson`: kotlin.String, `credentialJson`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2302,6 +2385,26 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `listReaderAnnotations`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reader_annotations(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),_status)
+}
+    )
+    }
+
+
+    @Throws(RustComponentsException::class) fun `listReaderBookmarks`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),_status)
+}
+    )
+    }
+
+
     @Throws(RustComponentsException::class) fun `listReadingPositionCandidates`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `nowMs`: kotlin.Long): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2428,6 +2531,24 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
     }
 
 
+    @Throws(RustComponentsException::class) fun `removeReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `recordedAtMs`: kotlin.Long)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_reader_annotation(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+
+
+
+    @Throws(RustComponentsException::class) fun `removeReaderBookmark`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorKey`: kotlin.String, `recordedAtMs`: kotlin.Long)
+        =
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorKey`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+
+
+
     @Throws(RustComponentsException::class) fun `replaceDeviceLibrary`(`registryPath`: kotlin.String, `libraryJson`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -2510,6 +2631,16 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         FfiConverterString.lower(`sourceJson`),FfiConverterString.lower(`credentialJson`),_status)
 }
 
+
+
+    @Throws(RustComponentsException::class) fun `updateReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(RustComponentsException) { _status ->
+    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_update_reader_annotation(
+        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`id`),FfiConverterString.lower(`color`),FfiConverterOptionalString.lower(`note`),FfiConverterLong.lower(`recordedAtMs`),_status)
+}
+    )
+    }
 
 
     @Throws(RustComponentsException::class) fun `upsertDeviceDataSource`(`registryPath`: kotlin.String, `sourceJson`: kotlin.String): kotlin.String {

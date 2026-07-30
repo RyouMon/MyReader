@@ -3,7 +3,7 @@ import type { ReaderAnnotationColor } from "@my-reader/tools/reader-annotations"
 import { sortReaderAnnotations } from "@my-reader/tools/reader-annotations"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useMemo } from "react"
-
+import type { Library } from "@/src/domain/types"
 import {
   addReaderAnnotation,
   listReaderAnnotations,
@@ -11,7 +11,6 @@ import {
   removeReaderAnnotation,
   updateReaderAnnotation,
 } from "@/src/features/reader/reader-annotations"
-import type { Library } from "@/src/domain/types"
 import { queryKeys } from "@/src/services/query/query-keys"
 
 const EMPTY_ANNOTATIONS: ReaderAnnotation[] = []
@@ -106,7 +105,7 @@ export function useReaderAnnotations(
             input.note,
           )
         }
-        await removeReaderAnnotation(scope.library, input.annotation.id)
+        await removeReaderAnnotation(scope.library, input.annotation)
         return input.annotation
       } catch (error) {
         logAnnotationFailure(

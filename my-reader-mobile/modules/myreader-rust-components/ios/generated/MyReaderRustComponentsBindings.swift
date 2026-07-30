@@ -1248,6 +1248,33 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         return seq
     }
 }
+public func addReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, color: String, note: String?, recordedAtMs: Int64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_reader_annotation(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(locatorJson),
+        FfiConverterString.lower(color),
+        FfiConverterOptionString.lower(note),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+})
+}
+public func addReaderBookmark(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorKey: String, locatorJson: String, recordedAtMs: Int64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_add_reader_bookmark(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(locatorKey),
+        FfiConverterString.lower(locatorJson),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+})
+}
 public func addRemoteLibrary(registryPath: String, requestJson: String, credentialJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_add_remote_library(
@@ -1427,6 +1454,24 @@ public func listLibraryFileStates(sidecarRootPath: String)throws  -> String  {
     )
 })
 }
+public func listReaderAnnotations(sidecarRootPath: String, bookId: Int64, format: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_reader_annotations(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),$0
+    )
+})
+}
+public func listReaderBookmarks(sidecarRootPath: String, bookId: Int64, format: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),$0
+    )
+})
+}
 public func listReadingPositionCandidates(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, nowMs: Int64)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(
@@ -1530,6 +1575,28 @@ public func removeDeviceLibrary(registryPath: String, libraryId: String)throws  
     )
 })
 }
+public func removeReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, id: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_remove_reader_annotation(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(id),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+}
+}
+public func removeReaderBookmark(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorKey: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(locatorKey),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+}
+}
 public func replaceDeviceLibrary(registryPath: String, libraryJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_replace_device_library(
@@ -1614,6 +1681,20 @@ public func testRemoteDataSource(sourceJson: String, credentialJson: String)thro
     )
 }
 }
+public func updateReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, id: String, color: String, note: String?, recordedAtMs: Int64)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
+    uniffi_myreader_rust_components_fn_func_update_reader_annotation(
+        FfiConverterString.lower(sidecarRootPath),
+        FfiConverterString.lower(libraryRootPath),
+        FfiConverterInt64.lower(bookId),
+        FfiConverterString.lower(format),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(color),
+        FfiConverterOptionString.lower(note),
+        FfiConverterInt64.lower(recordedAtMs),$0
+    )
+})
+}
 public func upsertDeviceDataSource(registryPath: String, sourceJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_upsert_device_data_source(
@@ -1666,6 +1747,12 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_myreader_rust_components_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 49911) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 20057) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_add_remote_library() != 56260) {
         return InitializationResult.apiChecksumMismatch
@@ -1733,6 +1820,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 54011) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_list_reader_annotations() != 35562) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks() != 43569) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates() != 55094) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1772,6 +1865,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_remove_device_library() != 28527) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_myreader_rust_components_checksum_func_remove_reader_annotation() != 31848) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark() != 17298) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_myreader_rust_components_checksum_func_replace_device_library() != 2175) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1797,6 +1896,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_test_remote_data_source() != 36092) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 57307) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_upsert_device_data_source() != 13321) {
