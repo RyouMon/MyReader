@@ -27,6 +27,39 @@ export function readingProgressToPercent(
   )
 }
 
+export type ReadingProgressRowLike = {
+  bookId: number
+  format: string
+  locator: unknown
+  displayProgression?: number | null
+}
+
+export type ReadingProgressByBook = Record<string, Record<string, number>>
+
+export function mergeReadingProgressRow(
+  current: ReadingProgressByBook,
+  row: ReadingProgressRowLike,
+): ReadingProgressByBook {
+  const percent = readingProgressToPercent(row.displayProgression, row.locator)
+  if (percent === undefined) return current
+
+  const bookId = String(row.bookId)
+  const format = row.format.toUpperCase()
+  return {
+    ...current,
+    [bookId]: {
+      ...(current[bookId] ?? {}),
+      [format]: percent,
+    },
+  }
+}
+
+export function readingProgressRowsToMap(
+  rows: ReadingProgressRowLike[],
+): ReadingProgressByBook {
+  return rows.reduce(mergeReadingProgressRow, {})
+}
+
 export type ReadingProgressDisplayInput = {
   percent?: number
   statusLabel?: string

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   locatorProgressionToPercent,
   readingProgressDisplay,
+  readingProgressRowsToMap,
   readingProgressToPercent,
 } from "../src/reading-progress"
 
@@ -58,5 +59,30 @@ describe("reading progress", () => {
       "Finished",
     )
     expect(readingProgressDisplay({ percent: 42.4 }, labels).text).toBe("42%")
+  })
+
+  it("should project progress by book and normalized format when rows are listed", () => {
+    expect(
+      readingProgressRowsToMap([
+        {
+          bookId: 42,
+          format: "epub",
+          locator: { locations: { totalProgression: 0.8 } },
+          displayProgression: 0.4,
+        },
+        {
+          bookId: 42,
+          format: "pdf",
+          locator: { locations: { totalProgression: 0.8 } },
+        },
+        {
+          bookId: 7,
+          format: "cbz",
+          locator: { href: "page-1.jpg" },
+        },
+      ]),
+    ).toEqual({
+      "42": { EPUB: 40, PDF: 80 },
+    })
   })
 })

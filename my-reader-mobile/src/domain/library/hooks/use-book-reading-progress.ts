@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { readingProgressToPercent } from "@my-reader/tools/reading-progress"
+import { readingProgressRowsToMap } from "@my-reader/tools/reading-progress"
 
 import type { Library } from "@/src/domain/types"
 import { queryKeys } from "@/src/services/query/query-keys"
@@ -15,24 +15,7 @@ export function useBookReadingProgress(library: Library | null) {
       ])
 
       const rows = await listReadingPositions(library)
-      const byBook: Record<string, Record<string, number>> = {}
-
-      for (const row of rows) {
-        const percent = readingProgressToPercent(
-          row.displayProgression,
-          row.locator,
-        )
-        if (percent === undefined) continue
-
-        const bookId = String(row.bookId)
-        const format = row.format.toUpperCase()
-        if (!byBook[bookId]) {
-          byBook[bookId] = {}
-        }
-        byBook[bookId]![format] = percent
-      }
-
-      return byBook
+      return readingProgressRowsToMap(rows)
     },
     enabled: !!library,
     staleTime: 1000 * 60 * 5,

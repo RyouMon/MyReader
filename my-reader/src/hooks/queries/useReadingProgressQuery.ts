@@ -4,12 +4,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
-import { readingProgressToPercent } from "@my-reader/tools/reading-progress"
-import { useEffect } from "react"
 import {
-  type ReadingProgressByBook,
+  mergeReadingProgressRow,
   readingProgressRowsToMap,
-} from "@/lib/readingProgress"
+} from "@my-reader/tools/reading-progress"
+import { useEffect } from "react"
+import type { ReadingProgressByBook } from "@/lib/readingProgress"
 import { api } from "@/lib/tauri-api"
 import { queryClient as defaultQueryClient } from "./queryClient"
 
@@ -27,31 +27,17 @@ export const readingProgressKeys = {
     [...readingProgressKeys.all, libraryId ?? ""] as const,
 }
 
-function normalizeFormat(format: string) {
-  return format.toUpperCase()
-}
-
 export function applyReadingProgressEvent(
   event: ReadingProgressChangedEvent,
   client: QueryClient = defaultQueryClient,
 ) {
-  const percent = readingProgressToPercent(
-    event.displayProgression,
-    event.locator,
-  )
-  if (percent === undefined) return
-
-  const bookId = String(event.bookId)
-  const format = normalizeFormat(event.format)
   client.setQueryData<ReadingProgressByBook>(
     readingProgressKeys.list(event.libraryId),
-    (current) => ({
-      ...(current ?? {}),
-      [bookId]: {
-        ...(current?.[bookId] ?? {}),
-        [format]: percent,
-      },
-    }),
+    (current) => {
+      const base = current ?? {}
+      const merged = mergeReadingProgressRow(base, event)
+      return merged === base ? current : merged
+    },
   )
 }
 

@@ -1,22 +1,19 @@
 import {
   readingProgressDisplay,
-  readingProgressToPercent,
+  type ReadingProgressByBook,
 } from "@my-reader/tools/reading-progress"
+
+export type {
+  ReadingProgressByBook,
+  ReadingProgressRowLike,
+} from "@my-reader/tools/reading-progress"
+export { readingProgressRowsToMap } from "@my-reader/tools/reading-progress"
 
 export type BookProgressSnapshot = {
   percent?: number
   statusLabel?: string
   syncedLabel?: string
 }
-
-export type ReadingProgressRowLike = {
-  bookId: number
-  format: string
-  locator: unknown
-  displayProgression?: number | null
-}
-
-export type ReadingProgressByBook = Record<string, Record<string, number>>
 
 export function displayProgressionForPosition(
   position: number,
@@ -36,29 +33,6 @@ export function positionForDisplayProgressPercent(
   const count = Math.max(1, Math.round(positionCount))
   const normalized = Math.max(0, Math.min(100, progressPercent)) / 100
   return Math.max(1, Math.min(count, Math.ceil(normalized * count)))
-}
-
-export function readingProgressRowsToMap(
-  rows: ReadingProgressRowLike[],
-): ReadingProgressByBook {
-  const byBook: ReadingProgressByBook = {}
-
-  for (const row of rows) {
-    const percent = readingProgressToPercent(
-      row.displayProgression,
-      row.locator,
-    )
-    if (percent === undefined) continue
-
-    const bookId = String(row.bookId)
-    const format = row.format.toUpperCase()
-    byBook[bookId] = {
-      ...byBook[bookId],
-      [format]: percent,
-    }
-  }
-
-  return byBook
 }
 
 export function getBookProgressSnapshot(
