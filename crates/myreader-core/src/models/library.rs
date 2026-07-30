@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::SecurityScopedBookmark;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct LocalLibraryRequest {
     pub library_root_path: String,
@@ -20,6 +21,7 @@ pub struct LocalLibraryRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteLibraryRequest {
     pub data_source_id: String,

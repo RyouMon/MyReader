@@ -14,7 +14,7 @@ describe("core transport", () => {
         '{"domain":"catalog","response":{"operation":"validateLibrary","output":true}}',
       )
 
-    const output = invokeCoreSync<boolean>("catalog", "validateLibrary", {
+    const output = invokeCoreSync("catalog", "validateLibrary", {
       libraryRootPath: "/library",
     })
 
@@ -33,7 +33,7 @@ describe("core transport", () => {
       )
 
     await expect(
-      invokeCoreAsync<number>("catalog", "countBooks", {
+      invokeCoreAsync("catalog", "countBooks", {
         libraryRootPath: "/library",
       }),
     ).rejects.toThrow("CORE_TRANSPORT_RESPONSE_MISMATCH")
@@ -43,7 +43,7 @@ describe("core transport", () => {
     jest.spyOn(MyReaderRustComponents, "coreContractVersion").mockReturnValue(2)
 
     expect(() =>
-      invokeCoreSync<boolean>("catalog", "validateLibrary", {
+      invokeCoreSync("catalog", "validateLibrary", {
         libraryRootPath: "/library",
       }),
     ).toThrow("CORE_CONTRACT_VERSION_MISMATCH: expected 1, received 2")

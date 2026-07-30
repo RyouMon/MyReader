@@ -95,7 +95,7 @@ describe("device registry", () => {
   })
 
   it("should validate source through core before platform credentials are written", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
     const source = {
       id: "source",
       type: "webdav" as const,

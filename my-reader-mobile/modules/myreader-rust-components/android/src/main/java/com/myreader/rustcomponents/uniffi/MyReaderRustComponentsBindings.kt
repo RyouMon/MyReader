@@ -775,64 +775,6 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is
 // rather `InterfaceTooLargeException`, caused by too many methods
@@ -848,15 +790,7 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_myreader_rust_components_checksum_func_add_reader_annotation(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_add_reader_bookmark(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_add_reading_completion(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_add_reading_session_interval(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync(
+    fun uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_cancel_download_task(
 ): Short
@@ -865,8 +799,6 @@ fun uniffi_myreader_rust_components_checksum_func_cancel_sync_task(
 fun uniffi_myreader_rust_components_checksum_func_claim_download_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_claim_download_tasks(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_clear_finished_download_tasks(
 ): Short
@@ -878,10 +810,6 @@ fun uniffi_myreader_rust_components_checksum_func_core_contract_version(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_create_sync_coordinator(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_delete_library_file_state(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_dispose_sync_coordinator(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_effective_coordinated_sync_execution(
@@ -892,43 +820,17 @@ fun uniffi_myreader_rust_components_checksum_func_fail_coordinated_sync(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_fail_download_task(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_find_active_download_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_get_library_file_state(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_get_reading_position(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_get_reading_statistics(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_invoke_core_async(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_invoke_core_sync(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_book_reading_formats(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_list_download_tasks(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_library_file_states(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_reader_annotations(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_list_reading_positions(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_mark_download_task_started(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_migrate_library_database(
 ): Short
@@ -940,35 +842,17 @@ fun uniffi_myreader_rust_components_checksum_func_release_download_task(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_release_sync_task(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_remove_reader_annotation(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_report_download_task_progress(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_request_coordinated_pull(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_request_coordinated_sync(
 ): Short
-fun uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_set_book_reading_format(
-): Short
 fun uniffi_myreader_rust_components_checksum_func_set_coordinated_sync_library_online(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_set_favorite_book(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_set_reading_position(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_contract_version(
 ): Short
 fun uniffi_myreader_rust_components_checksum_func_sync_library_sidecar(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_update_reader_annotation(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache(
-): Short
-fun uniffi_myreader_rust_components_checksum_func_upsert_library_file_state(
 ): Short
 fun ffi_myreader_rust_components_uniffi_contract_version(
 ): Int
@@ -1015,15 +899,7 @@ internal interface UniffiLib : Library {
     }
 
     // FFI functions
-    fun uniffi_myreader_rust_components_fn_func_add_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_add_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_add_reading_completion(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`localDay`: RustBuffer.ByValue,`completedAtMs`: Long,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Byte
-fun uniffi_myreader_rust_components_fn_func_add_reading_session_interval(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`localDay`: RustBuffer.ByValue,`startedAtMs`: Long,`durationSeconds`: Long,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_begin_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`generation`: Long,uniffi_out_err: UniffiRustCallStatus,
+    fun uniffi_myreader_rust_components_fn_func_begin_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`generation`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_cancel_download_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
@@ -1033,8 +909,6 @@ fun uniffi_myreader_rust_components_fn_func_claim_download_task(`taskId`: RustBu
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_claim_download_tasks(uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_clear_finished_download_tasks(uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_complete_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1045,10 +919,6 @@ fun uniffi_myreader_rust_components_fn_func_core_contract_version(uniffi_out_err
 ): Int
 fun uniffi_myreader_rust_components_fn_func_create_sync_coordinator(`coordinatorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
-fun uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_delete_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_dispose_sync_coordinator(`coordinatorId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_effective_coordinated_sync_execution(`coordinatorId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`executionJson`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`freshnessMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1059,44 +929,18 @@ fun uniffi_myreader_rust_components_fn_func_fail_coordinated_sync(`coordinatorId
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_fail_download_task(`taskId`: RustBuffer.ByValue,`error`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_finalize_downloaded_file(`sidecarRootPath`: RustBuffer.ByValue,`relativePath`: RustBuffer.ByValue,`localPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_find_active_download_task(`libraryId`: RustBuffer.ByValue,`relativePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_flush_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`reason`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_get_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_get_reading_position(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_get_reading_statistics(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`startDay`: RustBuffer.ByValue,`endDay`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_invoke_core_async(`requestJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_invoke_core_sync(`requestJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`thumbnailVersion`: RustBuffer.ByValue,`widthPx`: Long,`heightPx`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_book_reading_formats(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_list_download_tasks(uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_library_file_states(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_reader_annotations(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(`sidecarRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`nowMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_list_reading_positions(`sidecarRootPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_mark_download_task_started(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(`sidecarRootPath`: RustBuffer.ByValue,`relativePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_migrate_library_database(`databasePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 fun uniffi_myreader_rust_components_fn_func_read_sync_task_progress(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1107,36 +951,18 @@ fun uniffi_myreader_rust_components_fn_func_release_download_task(`taskId`: Rust
 ): Byte
 fun uniffi_myreader_rust_components_fn_func_release_sync_task(`taskId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Byte
-fun uniffi_myreader_rust_components_fn_func_remove_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorKey`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_report_download_task_progress(`taskId`: RustBuffer.ByValue,`received`: Long,`total`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_request_coordinated_pull(`coordinatorId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`reason`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`freshnessMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun uniffi_myreader_rust_components_fn_func_request_coordinated_sync(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`reason`: RustBuffer.ByValue,`timing`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`operationId`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_set_book_reading_format(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_set_coordinated_sync_library_online(`coordinatorId`: RustBuffer.ByValue,`libraryId`: RustBuffer.ByValue,`online`: Byte,`nowMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_set_favorite_book(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`isFavorite`: Byte,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_set_reading_position(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`locatorJson`: RustBuffer.ByValue,`displayProgression`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun uniffi_myreader_rust_components_fn_func_sync_contract_version(uniffi_out_err: UniffiRustCallStatus,
 ): Int
 fun uniffi_myreader_rust_components_fn_func_sync_library_sidecar(`taskId`: RustBuffer.ByValue,`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`nowMs`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,`storageJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_update_reader_annotation(`sidecarRootPath`: RustBuffer.ByValue,`libraryRootPath`: RustBuffer.ByValue,`bookId`: Long,`format`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`color`: RustBuffer.ByValue,`note`: RustBuffer.ByValue,`recordedAtMs`: Long,uniffi_out_err: UniffiRustCallStatus,
-): RustBuffer.ByValue
-fun uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(`sidecarRootPath`: RustBuffer.ByValue,`patch`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-fun uniffi_myreader_rust_components_fn_func_upsert_library_file_state(`sidecarRootPath`: RustBuffer.ByValue,`path`: RustBuffer.ByValue,`update`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
 fun ffi_myreader_rust_components_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 fun ffi_myreader_rust_components_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -1263,18 +1089,6 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 58369.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 39171.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_reading_completion() != 57805.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_add_reading_session_interval() != 55280.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync() != 19096.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1288,9 +1102,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_claim_download_tasks() != 41533.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_clear_finished_download_tasks() != 18981.toShort()) {
@@ -1308,12 +1119,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_create_sync_coordinator() != 2040.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache() != 52456.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_dispose_sync_coordinator() != 38564.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1329,22 +1134,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_fail_download_task() != 13968.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file() != 29840.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_find_active_download_task() != 57796.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync() != 58831.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_get_library_file_state() != 55721.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_get_reading_position() != 13450.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 26545.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_invoke_core_async() != 45771.toShort()) {
@@ -1353,37 +1146,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_invoke_core_sync() != 2439.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache() != 39738.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 20962.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_list_download_tasks() != 23651.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 19915.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 4432.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_reader_annotations() != 394.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks() != 29872.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates() != 34079.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_list_reading_positions() != 30981.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_mark_download_task_started() != 61109.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only() != 5940.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989.toShort()) {
@@ -1401,12 +1167,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_annotation() != 31848.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark() != 17298.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_report_download_task_progress() != 57547.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1416,34 +1176,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_myreader_rust_components_checksum_func_request_coordinated_sync() != 41780.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate() != 65073.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_myreader_rust_components_checksum_func_set_coordinated_sync_library_online() != 33729.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_set_reading_position() != 4866.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 46225.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 46513.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache() != 3143.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_myreader_rust_components_checksum_func_upsert_library_file_state() != 37376.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1574,29 +1313,6 @@ public object FfiConverterULong: FfiConverter<ULong, Long> {
 /**
  * @suppress
  */
-public object FfiConverterLong: FfiConverter<Long, Long> {
-    override fun lift(value: Long): Long {
-        return value
-    }
-
-    override fun read(buf: ByteBuffer): Long {
-        return buf.getLong()
-    }
-
-    override fun lower(value: Long): Long {
-        return value
-    }
-
-    override fun allocationSize(value: Long) = 8UL
-
-    override fun write(value: Long, buf: ByteBuffer) {
-        buf.putLong(value)
-    }
-}
-
-/**
- * @suppress
- */
 public object FfiConverterDouble: FfiConverter<Double, Double> {
     override fun lift(value: Double): Double {
         return value
@@ -1699,122 +1415,6 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
 
 
 
-data class NativeBookCoverThumbnailCache (
-    var `id`: kotlin.String,
-    var `bookId`: kotlin.Long,
-    var `coverIdentity`: kotlin.String,
-    var `thumbnailVersion`: kotlin.String,
-    var `widthPx`: kotlin.Long,
-    var `heightPx`: kotlin.Long,
-    var `fileName`: kotlin.String,
-    var `fileSizeBytes`: kotlin.Long,
-    var `createdAt`: kotlin.Double,
-    var `updatedAt`: kotlin.Double
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookCoverThumbnailCache: FfiConverterRustBuffer<NativeBookCoverThumbnailCache> {
-    override fun read(buf: ByteBuffer): NativeBookCoverThumbnailCache {
-        return NativeBookCoverThumbnailCache(
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookCoverThumbnailCache) = (
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterLong.allocationSize(value.`bookId`) +
-            FfiConverterString.allocationSize(value.`coverIdentity`) +
-            FfiConverterString.allocationSize(value.`thumbnailVersion`) +
-            FfiConverterLong.allocationSize(value.`widthPx`) +
-            FfiConverterLong.allocationSize(value.`heightPx`) +
-            FfiConverterString.allocationSize(value.`fileName`) +
-            FfiConverterLong.allocationSize(value.`fileSizeBytes`) +
-            FfiConverterDouble.allocationSize(value.`createdAt`) +
-            FfiConverterDouble.allocationSize(value.`updatedAt`)
-    )
-
-    override fun write(value: NativeBookCoverThumbnailCache, buf: ByteBuffer) {
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterLong.write(value.`bookId`, buf)
-            FfiConverterString.write(value.`coverIdentity`, buf)
-            FfiConverterString.write(value.`thumbnailVersion`, buf)
-            FfiConverterLong.write(value.`widthPx`, buf)
-            FfiConverterLong.write(value.`heightPx`, buf)
-            FfiConverterString.write(value.`fileName`, buf)
-            FfiConverterLong.write(value.`fileSizeBytes`, buf)
-            FfiConverterDouble.write(value.`createdAt`, buf)
-            FfiConverterDouble.write(value.`updatedAt`, buf)
-    }
-}
-
-
-
-data class NativeBookCoverThumbnailCachePatch (
-    var `bookId`: kotlin.Long,
-    var `coverIdentity`: kotlin.String,
-    var `thumbnailVersion`: kotlin.String,
-    var `widthPx`: kotlin.Long,
-    var `heightPx`: kotlin.Long,
-    var `fileName`: kotlin.String,
-    var `fileSizeBytes`: kotlin.Long
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeBookCoverThumbnailCachePatch: FfiConverterRustBuffer<NativeBookCoverThumbnailCachePatch> {
-    override fun read(buf: ByteBuffer): NativeBookCoverThumbnailCachePatch {
-        return NativeBookCoverThumbnailCachePatch(
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeBookCoverThumbnailCachePatch) = (
-            FfiConverterLong.allocationSize(value.`bookId`) +
-            FfiConverterString.allocationSize(value.`coverIdentity`) +
-            FfiConverterString.allocationSize(value.`thumbnailVersion`) +
-            FfiConverterLong.allocationSize(value.`widthPx`) +
-            FfiConverterLong.allocationSize(value.`heightPx`) +
-            FfiConverterString.allocationSize(value.`fileName`) +
-            FfiConverterLong.allocationSize(value.`fileSizeBytes`)
-    )
-
-    override fun write(value: NativeBookCoverThumbnailCachePatch, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`bookId`, buf)
-            FfiConverterString.write(value.`coverIdentity`, buf)
-            FfiConverterString.write(value.`thumbnailVersion`, buf)
-            FfiConverterLong.write(value.`widthPx`, buf)
-            FfiConverterLong.write(value.`heightPx`, buf)
-            FfiConverterString.write(value.`fileName`, buf)
-            FfiConverterLong.write(value.`fileSizeBytes`, buf)
-    }
-}
-
-
-
 data class NativeDownloadTask (
     var `id`: kotlin.String,
     var `libraryId`: kotlin.String,
@@ -1875,38 +1475,6 @@ public object FfiConverterTypeNativeDownloadTask: FfiConverterRustBuffer<NativeD
 
 
 
-data class NativeDownloadedFile (
-    var `size`: kotlin.Long,
-    var `mtimeMs`: kotlin.Long
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeDownloadedFile: FfiConverterRustBuffer<NativeDownloadedFile> {
-    override fun read(buf: ByteBuffer): NativeDownloadedFile {
-        return NativeDownloadedFile(
-            FfiConverterLong.read(buf),
-            FfiConverterLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeDownloadedFile) = (
-            FfiConverterLong.allocationSize(value.`size`) +
-            FfiConverterLong.allocationSize(value.`mtimeMs`)
-    )
-
-    override fun write(value: NativeDownloadedFile, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`size`, buf)
-            FfiConverterLong.write(value.`mtimeMs`, buf)
-    }
-}
-
-
-
 data class NativeEnqueuedDownloadTask (
     var `task`: NativeDownloadTask,
     var `inserted`: kotlin.Boolean
@@ -1934,342 +1502,6 @@ public object FfiConverterTypeNativeEnqueuedDownloadTask: FfiConverterRustBuffer
     override fun write(value: NativeEnqueuedDownloadTask, buf: ByteBuffer) {
             FfiConverterTypeNativeDownloadTask.write(value.`task`, buf)
             FfiConverterBoolean.write(value.`inserted`, buf)
-    }
-}
-
-
-
-data class NativeFileState (
-    var `id`: kotlin.String,
-    var `path`: kotlin.String,
-    var `localState`: kotlin.String,
-    var `localBlake3`: kotlin.String?,
-    var `localSize`: kotlin.Long?,
-    var `localMtime`: kotlin.Long?,
-    var `updatedAt`: kotlin.Double
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeFileState: FfiConverterRustBuffer<NativeFileState> {
-    override fun read(buf: ByteBuffer): NativeFileState {
-        return NativeFileState(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalLong.read(buf),
-            FfiConverterOptionalLong.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeFileState) = (
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterString.allocationSize(value.`path`) +
-            FfiConverterString.allocationSize(value.`localState`) +
-            FfiConverterOptionalString.allocationSize(value.`localBlake3`) +
-            FfiConverterOptionalLong.allocationSize(value.`localSize`) +
-            FfiConverterOptionalLong.allocationSize(value.`localMtime`) +
-            FfiConverterDouble.allocationSize(value.`updatedAt`)
-    )
-
-    override fun write(value: NativeFileState, buf: ByteBuffer) {
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterString.write(value.`path`, buf)
-            FfiConverterString.write(value.`localState`, buf)
-            FfiConverterOptionalString.write(value.`localBlake3`, buf)
-            FfiConverterOptionalLong.write(value.`localSize`, buf)
-            FfiConverterOptionalLong.write(value.`localMtime`, buf)
-            FfiConverterDouble.write(value.`updatedAt`, buf)
-    }
-}
-
-
-
-data class NativeFileStateUpdate (
-    var `localState`: kotlin.String,
-    var `localBlake3`: kotlin.String?,
-    var `localSize`: kotlin.Long?,
-    var `localMtime`: kotlin.Long?
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeFileStateUpdate: FfiConverterRustBuffer<NativeFileStateUpdate> {
-    override fun read(buf: ByteBuffer): NativeFileStateUpdate {
-        return NativeFileStateUpdate(
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalLong.read(buf),
-            FfiConverterOptionalLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeFileStateUpdate) = (
-            FfiConverterString.allocationSize(value.`localState`) +
-            FfiConverterOptionalString.allocationSize(value.`localBlake3`) +
-            FfiConverterOptionalLong.allocationSize(value.`localSize`) +
-            FfiConverterOptionalLong.allocationSize(value.`localMtime`)
-    )
-
-    override fun write(value: NativeFileStateUpdate, buf: ByteBuffer) {
-            FfiConverterString.write(value.`localState`, buf)
-            FfiConverterOptionalString.write(value.`localBlake3`, buf)
-            FfiConverterOptionalLong.write(value.`localSize`, buf)
-            FfiConverterOptionalLong.write(value.`localMtime`, buf)
-    }
-}
-
-
-
-data class NativeReaderAnnotation (
-    var `id`: kotlin.String,
-    var `bookId`: kotlin.Long,
-    var `format`: kotlin.String,
-    var `kind`: kotlin.String,
-    var `locatorJson`: kotlin.String,
-    var `color`: kotlin.String,
-    var `note`: kotlin.String?,
-    var `createdAt`: kotlin.Double,
-    var `updatedAt`: kotlin.Double
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeReaderAnnotation: FfiConverterRustBuffer<NativeReaderAnnotation> {
-    override fun read(buf: ByteBuffer): NativeReaderAnnotation {
-        return NativeReaderAnnotation(
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalString.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeReaderAnnotation) = (
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterLong.allocationSize(value.`bookId`) +
-            FfiConverterString.allocationSize(value.`format`) +
-            FfiConverterString.allocationSize(value.`kind`) +
-            FfiConverterString.allocationSize(value.`locatorJson`) +
-            FfiConverterString.allocationSize(value.`color`) +
-            FfiConverterOptionalString.allocationSize(value.`note`) +
-            FfiConverterDouble.allocationSize(value.`createdAt`) +
-            FfiConverterDouble.allocationSize(value.`updatedAt`)
-    )
-
-    override fun write(value: NativeReaderAnnotation, buf: ByteBuffer) {
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterLong.write(value.`bookId`, buf)
-            FfiConverterString.write(value.`format`, buf)
-            FfiConverterString.write(value.`kind`, buf)
-            FfiConverterString.write(value.`locatorJson`, buf)
-            FfiConverterString.write(value.`color`, buf)
-            FfiConverterOptionalString.write(value.`note`, buf)
-            FfiConverterDouble.write(value.`createdAt`, buf)
-            FfiConverterDouble.write(value.`updatedAt`, buf)
-    }
-}
-
-
-
-data class NativeReaderBookmark (
-    var `id`: kotlin.String,
-    var `bookId`: kotlin.Long,
-    var `format`: kotlin.String,
-    var `locatorKey`: kotlin.String,
-    var `locatorJson`: kotlin.String,
-    var `createdAt`: kotlin.Double,
-    var `updatedAt`: kotlin.Double
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeReaderBookmark: FfiConverterRustBuffer<NativeReaderBookmark> {
-    override fun read(buf: ByteBuffer): NativeReaderBookmark {
-        return NativeReaderBookmark(
-            FfiConverterString.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeReaderBookmark) = (
-            FfiConverterString.allocationSize(value.`id`) +
-            FfiConverterLong.allocationSize(value.`bookId`) +
-            FfiConverterString.allocationSize(value.`format`) +
-            FfiConverterString.allocationSize(value.`locatorKey`) +
-            FfiConverterString.allocationSize(value.`locatorJson`) +
-            FfiConverterDouble.allocationSize(value.`createdAt`) +
-            FfiConverterDouble.allocationSize(value.`updatedAt`)
-    )
-
-    override fun write(value: NativeReaderBookmark, buf: ByteBuffer) {
-            FfiConverterString.write(value.`id`, buf)
-            FfiConverterLong.write(value.`bookId`, buf)
-            FfiConverterString.write(value.`format`, buf)
-            FfiConverterString.write(value.`locatorKey`, buf)
-            FfiConverterString.write(value.`locatorJson`, buf)
-            FfiConverterDouble.write(value.`createdAt`, buf)
-            FfiConverterDouble.write(value.`updatedAt`, buf)
-    }
-}
-
-
-
-data class NativeReadingPosition (
-    var `bookId`: kotlin.Long,
-    var `format`: kotlin.String,
-    var `locatorJson`: kotlin.String,
-    var `displayProgression`: kotlin.Double?,
-    var `updatedAt`: kotlin.Double,
-    var `conflictCount`: kotlin.Long
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeReadingPosition: FfiConverterRustBuffer<NativeReadingPosition> {
-    override fun read(buf: ByteBuffer): NativeReadingPosition {
-        return NativeReadingPosition(
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeReadingPosition) = (
-            FfiConverterLong.allocationSize(value.`bookId`) +
-            FfiConverterString.allocationSize(value.`format`) +
-            FfiConverterString.allocationSize(value.`locatorJson`) +
-            FfiConverterOptionalDouble.allocationSize(value.`displayProgression`) +
-            FfiConverterDouble.allocationSize(value.`updatedAt`) +
-            FfiConverterLong.allocationSize(value.`conflictCount`)
-    )
-
-    override fun write(value: NativeReadingPosition, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`bookId`, buf)
-            FfiConverterString.write(value.`format`, buf)
-            FfiConverterString.write(value.`locatorJson`, buf)
-            FfiConverterOptionalDouble.write(value.`displayProgression`, buf)
-            FfiConverterDouble.write(value.`updatedAt`, buf)
-            FfiConverterLong.write(value.`conflictCount`, buf)
-    }
-}
-
-
-
-data class NativeReadingPositionCandidate (
-    var `operationId`: kotlin.String,
-    var `locatorJson`: kotlin.String,
-    var `displayProgression`: kotlin.Double?,
-    var `recordedAt`: kotlin.Long,
-    var `replicaId`: kotlin.String
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeReadingPositionCandidate: FfiConverterRustBuffer<NativeReadingPositionCandidate> {
-    override fun read(buf: ByteBuffer): NativeReadingPositionCandidate {
-        return NativeReadingPositionCandidate(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeReadingPositionCandidate) = (
-            FfiConverterString.allocationSize(value.`operationId`) +
-            FfiConverterString.allocationSize(value.`locatorJson`) +
-            FfiConverterOptionalDouble.allocationSize(value.`displayProgression`) +
-            FfiConverterLong.allocationSize(value.`recordedAt`) +
-            FfiConverterString.allocationSize(value.`replicaId`)
-    )
-
-    override fun write(value: NativeReadingPositionCandidate, buf: ByteBuffer) {
-            FfiConverterString.write(value.`operationId`, buf)
-            FfiConverterString.write(value.`locatorJson`, buf)
-            FfiConverterOptionalDouble.write(value.`displayProgression`, buf)
-            FfiConverterLong.write(value.`recordedAt`, buf)
-            FfiConverterString.write(value.`replicaId`, buf)
-    }
-}
-
-
-
-data class NativeReadingStatistics (
-    var `days`: Map<kotlin.String, kotlin.Long>,
-    var `totalDurationSeconds`: kotlin.Long,
-    var `longestStreakDays`: kotlin.UInt,
-    var `completedBooks`: kotlin.Long
-) {
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeNativeReadingStatistics: FfiConverterRustBuffer<NativeReadingStatistics> {
-    override fun read(buf: ByteBuffer): NativeReadingStatistics {
-        return NativeReadingStatistics(
-            FfiConverterMapStringLong.read(buf),
-            FfiConverterLong.read(buf),
-            FfiConverterUInt.read(buf),
-            FfiConverterLong.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: NativeReadingStatistics) = (
-            FfiConverterMapStringLong.allocationSize(value.`days`) +
-            FfiConverterLong.allocationSize(value.`totalDurationSeconds`) +
-            FfiConverterUInt.allocationSize(value.`longestStreakDays`) +
-            FfiConverterLong.allocationSize(value.`completedBooks`)
-    )
-
-    override fun write(value: NativeReadingStatistics, buf: ByteBuffer) {
-            FfiConverterMapStringLong.write(value.`days`, buf)
-            FfiConverterLong.write(value.`totalDurationSeconds`, buf)
-            FfiConverterUInt.write(value.`longestStreakDays`, buf)
-            FfiConverterLong.write(value.`completedBooks`, buf)
     }
 }
 
@@ -2431,70 +1663,6 @@ public object FfiConverterTypeRustComponentsError : FfiConverterRustBuffer<RustC
 /**
  * @suppress
  */
-public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
-    override fun read(buf: ByteBuffer): kotlin.Long? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterLong.read(buf)
-    }
-
-    override fun allocationSize(value: kotlin.Long?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterLong.allocationSize(value)
-        }
-    }
-
-    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterLong.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?> {
-    override fun read(buf: ByteBuffer): kotlin.Double? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterDouble.read(buf)
-    }
-
-    override fun allocationSize(value: kotlin.Double?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterDouble.allocationSize(value)
-        }
-    }
-
-    override fun write(value: kotlin.Double?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterDouble.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -2559,70 +1727,6 @@ public object FfiConverterOptionalTypeNativeDownloadTask: FfiConverterRustBuffer
 /**
  * @suppress
  */
-public object FfiConverterOptionalTypeNativeFileState: FfiConverterRustBuffer<NativeFileState?> {
-    override fun read(buf: ByteBuffer): NativeFileState? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeNativeFileState.read(buf)
-    }
-
-    override fun allocationSize(value: NativeFileState?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeNativeFileState.allocationSize(value)
-        }
-    }
-
-    override fun write(value: NativeFileState?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeNativeFileState.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeNativeReadingPosition: FfiConverterRustBuffer<NativeReadingPosition?> {
-    override fun read(buf: ByteBuffer): NativeReadingPosition? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeNativeReadingPosition.read(buf)
-    }
-
-    override fun allocationSize(value: NativeReadingPosition?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeNativeReadingPosition.allocationSize(value)
-        }
-    }
-
-    override fun write(value: NativeReadingPosition?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeNativeReadingPosition.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<SyncTaskProgress?> {
     override fun read(buf: ByteBuffer): SyncTaskProgress? {
         if (buf.get().toInt() == 0) {
@@ -2655,62 +1759,6 @@ public object FfiConverterOptionalTypeSyncTaskProgress: FfiConverterRustBuffer<S
 /**
  * @suppress
  */
-public object FfiConverterSequenceLong: FfiConverterRustBuffer<List<kotlin.Long>> {
-    override fun read(buf: ByteBuffer): List<kotlin.Long> {
-        val len = buf.getInt()
-        return List<kotlin.Long>(len) {
-            FfiConverterLong.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<kotlin.Long>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterLong.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<kotlin.Long>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterLong.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeBookCoverThumbnailCache: FfiConverterRustBuffer<List<NativeBookCoverThumbnailCache>> {
-    override fun read(buf: ByteBuffer): List<NativeBookCoverThumbnailCache> {
-        val len = buf.getInt()
-        return List<NativeBookCoverThumbnailCache>(len) {
-            FfiConverterTypeNativeBookCoverThumbnailCache.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeBookCoverThumbnailCache>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeBookCoverThumbnailCache.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeBookCoverThumbnailCache>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeBookCoverThumbnailCache.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
 public object FfiConverterSequenceTypeNativeDownloadTask: FfiConverterRustBuffer<List<NativeDownloadTask>> {
     override fun read(buf: ByteBuffer): List<NativeDownloadTask> {
         val len = buf.getInt()
@@ -2732,263 +1780,6 @@ public object FfiConverterSequenceTypeNativeDownloadTask: FfiConverterRustBuffer
         }
     }
 }
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeFileState: FfiConverterRustBuffer<List<NativeFileState>> {
-    override fun read(buf: ByteBuffer): List<NativeFileState> {
-        val len = buf.getInt()
-        return List<NativeFileState>(len) {
-            FfiConverterTypeNativeFileState.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeFileState>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeFileState.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeFileState>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeFileState.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeReaderAnnotation: FfiConverterRustBuffer<List<NativeReaderAnnotation>> {
-    override fun read(buf: ByteBuffer): List<NativeReaderAnnotation> {
-        val len = buf.getInt()
-        return List<NativeReaderAnnotation>(len) {
-            FfiConverterTypeNativeReaderAnnotation.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeReaderAnnotation>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeReaderAnnotation.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeReaderAnnotation>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeReaderAnnotation.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeReaderBookmark: FfiConverterRustBuffer<List<NativeReaderBookmark>> {
-    override fun read(buf: ByteBuffer): List<NativeReaderBookmark> {
-        val len = buf.getInt()
-        return List<NativeReaderBookmark>(len) {
-            FfiConverterTypeNativeReaderBookmark.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeReaderBookmark>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeReaderBookmark.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeReaderBookmark>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeReaderBookmark.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeReadingPosition: FfiConverterRustBuffer<List<NativeReadingPosition>> {
-    override fun read(buf: ByteBuffer): List<NativeReadingPosition> {
-        val len = buf.getInt()
-        return List<NativeReadingPosition>(len) {
-            FfiConverterTypeNativeReadingPosition.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeReadingPosition>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeReadingPosition.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeReadingPosition>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeReadingPosition.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeNativeReadingPositionCandidate: FfiConverterRustBuffer<List<NativeReadingPositionCandidate>> {
-    override fun read(buf: ByteBuffer): List<NativeReadingPositionCandidate> {
-        val len = buf.getInt()
-        return List<NativeReadingPositionCandidate>(len) {
-            FfiConverterTypeNativeReadingPositionCandidate.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<NativeReadingPositionCandidate>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeNativeReadingPositionCandidate.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<NativeReadingPositionCandidate>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeNativeReadingPositionCandidate.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterMapStringLong: FfiConverterRustBuffer<Map<kotlin.String, kotlin.Long>> {
-    override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.Long> {
-        val len = buf.getInt()
-        return buildMap<kotlin.String, kotlin.Long>(len) {
-            repeat(len) {
-                val k = FfiConverterString.read(buf)
-                val v = FfiConverterLong.read(buf)
-                this[k] = v
-            }
-        }
-    }
-
-    override fun allocationSize(value: Map<kotlin.String, kotlin.Long>): ULong {
-        val spaceForMapSize = 4UL
-        val spaceForChildren = value.map { (k, v) ->
-            FfiConverterString.allocationSize(k) +
-            FfiConverterLong.allocationSize(v)
-        }.sum()
-        return spaceForMapSize + spaceForChildren
-    }
-
-    override fun write(value: Map<kotlin.String, kotlin.Long>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        // The parens on `(k, v)` here ensure we're calling the right method,
-        // which is important for compatibility with older android devices.
-        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
-        value.forEach { (k, v) ->
-            FfiConverterString.write(k, buf)
-            FfiConverterLong.write(v, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.String, kotlin.String>> {
-    override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.String> {
-        val len = buf.getInt()
-        return buildMap<kotlin.String, kotlin.String>(len) {
-            repeat(len) {
-                val k = FfiConverterString.read(buf)
-                val v = FfiConverterString.read(buf)
-                this[k] = v
-            }
-        }
-    }
-
-    override fun allocationSize(value: Map<kotlin.String, kotlin.String>): ULong {
-        val spaceForMapSize = 4UL
-        val spaceForChildren = value.map { (k, v) ->
-            FfiConverterString.allocationSize(k) +
-            FfiConverterString.allocationSize(v)
-        }.sum()
-        return spaceForMapSize + spaceForChildren
-    }
-
-    override fun write(value: Map<kotlin.String, kotlin.String>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        // The parens on `(k, v)` here ensure we're calling the right method,
-        // which is important for compatibility with older android devices.
-        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
-        value.forEach { (k, v) ->
-            FfiConverterString.write(k, buf)
-            FfiConverterString.write(v, buf)
-        }
-    }
-}
-    @Throws(RustComponentsException::class) fun `addReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorJson`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): NativeReaderAnnotation {
-            return FfiConverterTypeNativeReaderAnnotation.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reader_annotation(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorJson`),FfiConverterString.lower(`color`),FfiConverterOptionalString.lower(`note`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `addReaderBookmark`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorKey`: kotlin.String, `locatorJson`: kotlin.String, `recordedAtMs`: kotlin.Long): NativeReaderBookmark {
-            return FfiConverterTypeNativeReaderBookmark.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reader_bookmark(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorKey`),FfiConverterString.lower(`locatorJson`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `addReadingCompletion`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `id`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `localDay`: kotlin.String, `completedAtMs`: kotlin.Long, `recordedAtMs`: kotlin.Long): kotlin.Boolean {
-            return FfiConverterBoolean.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reading_completion(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`localDay`),FfiConverterLong.lower(`completedAtMs`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `addReadingSessionInterval`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `id`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `localDay`: kotlin.String, `startedAtMs`: kotlin.Long, `durationSeconds`: kotlin.Long, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_add_reading_session_interval(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`localDay`),FfiConverterLong.lower(`startedAtMs`),FfiConverterLong.lower(`durationSeconds`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
-
-
     @Throws(RustComponentsException::class) fun `beginCoordinatedSync`(`coordinatorId`: kotlin.String, `libraryId`: kotlin.String, `generation`: kotlin.ULong): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -3034,15 +1825,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `clearBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(
-        FfiConverterString.lower(`sidecarRootPath`),_status)
-}
-
-
  fun `clearFinishedDownloadTasks`()
         =
     uniffiRustCall() { _status ->
@@ -3087,24 +1869,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     )
     }
-
-
-    @Throws(RustComponentsException::class) fun `deleteBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `thumbnailVersion`: kotlin.String, `widthPx`: kotlin.Long, `heightPx`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`thumbnailVersion`),FfiConverterLong.lower(`widthPx`),FfiConverterLong.lower(`heightPx`),_status)
-}
-
-
-
-    @Throws(RustComponentsException::class) fun `deleteLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_delete_library_file_state(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`path`),_status)
-}
-
 
 
     @Throws(RustComponentsException::class) fun `disposeSyncCoordinator`(`coordinatorId`: kotlin.String): kotlin.String {
@@ -3155,16 +1919,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `finalizeDownloadedFile`(`sidecarRootPath`: kotlin.String, `relativePath`: kotlin.String, `localPath`: kotlin.String): NativeDownloadedFile {
-            return FfiConverterTypeNativeDownloadedFile.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_finalize_downloaded_file(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`relativePath`),FfiConverterString.lower(`localPath`),_status)
-}
-    )
-    }
-
  fun `findActiveDownloadTask`(`libraryId`: kotlin.String, `relativePath`: kotlin.String): NativeDownloadTask? {
             return FfiConverterOptionalTypeNativeDownloadTask.lift(
     uniffiRustCall() { _status ->
@@ -3180,36 +1934,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     uniffiRustCallWithError(RustComponentsException) { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_flush_coordinated_sync(
         FfiConverterString.lower(`coordinatorId`),FfiConverterString.lower(`libraryId`),FfiConverterString.lower(`reason`),FfiConverterString.lower(`nowMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `getLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String): NativeFileState? {
-            return FfiConverterOptionalTypeNativeFileState.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_library_file_state(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`path`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `getReadingPosition`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String): NativeReadingPosition? {
-            return FfiConverterOptionalTypeNativeReadingPosition.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_reading_position(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `getReadingStatistics`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `startDay`: kotlin.String, `endDay`: kotlin.String): NativeReadingStatistics {
-            return FfiConverterTypeNativeReadingStatistics.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_get_reading_statistics(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterString.lower(`startDay`),FfiConverterString.lower(`endDay`),_status)
 }
     )
     }
@@ -3234,91 +1958,11 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `listBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `thumbnailVersion`: kotlin.String, `widthPx`: kotlin.Long, `heightPx`: kotlin.Long): List<NativeBookCoverThumbnailCache> {
-            return FfiConverterSequenceTypeNativeBookCoverThumbnailCache.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`thumbnailVersion`),FfiConverterLong.lower(`widthPx`),FfiConverterLong.lower(`heightPx`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listBookReadingFormats`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String): Map<kotlin.String, kotlin.String> {
-            return FfiConverterMapStringString.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_book_reading_formats(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),_status)
-}
-    )
-    }
-
  fun `listDownloadTasks`(): List<NativeDownloadTask> {
             return FfiConverterSequenceTypeNativeDownloadTask.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_download_tasks(
         _status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listFavoriteBookIds`(`sidecarRootPath`: kotlin.String): List<kotlin.Long> {
-            return FfiConverterSequenceLong.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
-        FfiConverterString.lower(`sidecarRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listLibraryFileStates`(`sidecarRootPath`: kotlin.String): List<NativeFileState> {
-            return FfiConverterSequenceTypeNativeFileState.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_library_file_states(
-        FfiConverterString.lower(`sidecarRootPath`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listReaderAnnotations`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String): List<NativeReaderAnnotation> {
-            return FfiConverterSequenceTypeNativeReaderAnnotation.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reader_annotations(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listReaderBookmarks`(`sidecarRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String): List<NativeReaderBookmark> {
-            return FfiConverterSequenceTypeNativeReaderBookmark.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listReadingPositionCandidates`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `nowMs`: kotlin.Long): List<NativeReadingPositionCandidate> {
-            return FfiConverterSequenceTypeNativeReadingPositionCandidate.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterLong.lower(`nowMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `listReadingPositions`(`sidecarRootPath`: kotlin.String): List<NativeReadingPosition> {
-            return FfiConverterSequenceTypeNativeReadingPosition.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_list_reading_positions(
-        FfiConverterString.lower(`sidecarRootPath`),_status)
 }
     )
     }
@@ -3331,15 +1975,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     )
     }
-
-
-    @Throws(RustComponentsException::class) fun `markLibraryFileRemoteOnly`(`sidecarRootPath`: kotlin.String, `relativePath`: kotlin.String)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`relativePath`),_status)
-}
-
 
 
     @Throws(RustComponentsException::class) fun `migrateLibraryDatabase`(`databasePath`: kotlin.String)
@@ -3387,24 +2022,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     )
     }
 
-
-    @Throws(RustComponentsException::class) fun `removeReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_reader_annotation(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`id`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
-
-
-    @Throws(RustComponentsException::class) fun `removeReaderBookmark`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorKey`: kotlin.String, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorKey`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
-
  fun `reportDownloadTaskProgress`(`taskId`: kotlin.String, `received`: kotlin.ULong, `total`: kotlin.ULong): NativeDownloadTask? {
             return FfiConverterOptionalTypeNativeDownloadTask.lift(
     uniffiRustCall() { _status ->
@@ -3435,24 +2052,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     }
 
 
-    @Throws(RustComponentsException::class) fun `selectReadingPositionCandidate`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `operationId`: kotlin.String, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`operationId`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
-
-
-    @Throws(RustComponentsException::class) fun `setBookReadingFormat`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String?)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_set_book_reading_format(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterOptionalString.lower(`format`),_status)
-}
-
-
-
     @Throws(RustComponentsException::class) fun `setCoordinatedSyncLibraryOnline`(`coordinatorId`: kotlin.String, `libraryId`: kotlin.String, `online`: kotlin.Boolean, `nowMs`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCallWithError(RustComponentsException) { _status ->
@@ -3461,24 +2060,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     )
     }
-
-
-    @Throws(RustComponentsException::class) fun `setFavoriteBook`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `isFavorite`: kotlin.Boolean, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_set_favorite_book(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterBoolean.lower(`isFavorite`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
-
-
-    @Throws(RustComponentsException::class) fun `setReadingPosition`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `locatorJson`: kotlin.String, `displayProgression`: kotlin.Double?, `recordedAtMs`: kotlin.Long)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_set_reading_position(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`locatorJson`),FfiConverterOptionalDouble.lower(`displayProgression`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-
 
  fun `syncContractVersion`(): kotlin.UInt {
             return FfiConverterUInt.lift(
@@ -3498,30 +2079,3 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     )
     }
-
-
-    @Throws(RustComponentsException::class) fun `updateReaderAnnotation`(`sidecarRootPath`: kotlin.String, `libraryRootPath`: kotlin.String, `bookId`: kotlin.Long, `format`: kotlin.String, `id`: kotlin.String, `color`: kotlin.String, `note`: kotlin.String?, `recordedAtMs`: kotlin.Long): NativeReaderAnnotation {
-            return FfiConverterTypeNativeReaderAnnotation.lift(
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_update_reader_annotation(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`libraryRootPath`),FfiConverterLong.lower(`bookId`),FfiConverterString.lower(`format`),FfiConverterString.lower(`id`),FfiConverterString.lower(`color`),FfiConverterOptionalString.lower(`note`),FfiConverterLong.lower(`recordedAtMs`),_status)
-}
-    )
-    }
-
-
-    @Throws(RustComponentsException::class) fun `upsertBookCoverThumbnailCache`(`sidecarRootPath`: kotlin.String, `patch`: NativeBookCoverThumbnailCachePatch)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterTypeNativeBookCoverThumbnailCachePatch.lower(`patch`),_status)
-}
-
-
-
-    @Throws(RustComponentsException::class) fun `upsertLibraryFileState`(`sidecarRootPath`: kotlin.String, `path`: kotlin.String, `update`: NativeFileStateUpdate)
-        =
-    uniffiRustCallWithError(RustComponentsException) { _status ->
-    UniffiLib.INSTANCE.uniffi_myreader_rust_components_fn_func_upsert_library_file_state(
-        FfiConverterString.lower(`sidecarRootPath`),FfiConverterString.lower(`path`),FfiConverterTypeNativeFileStateUpdate.lower(`update`),_status)
-}

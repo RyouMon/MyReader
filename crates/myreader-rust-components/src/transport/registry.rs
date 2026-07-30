@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{run_core_async, RustComponentsError};
 
 #[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(
     tag = "operation",
     content = "input",
@@ -75,6 +76,7 @@ pub(super) enum RegistryRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(tag = "operation", content = "output", rename_all = "camelCase")]
 pub(super) enum RegistryResponse {
     Initialize(myreader_core::models::DeviceRegistry),
@@ -94,6 +96,7 @@ pub(super) enum RegistryResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub(super) struct LibraryResult {
     registry: myreader_core::models::DeviceRegistry,

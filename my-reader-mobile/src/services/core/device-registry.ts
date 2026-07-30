@@ -2,7 +2,15 @@ import type { DataSource } from "@my-reader/tools/types/data-source"
 import type { Library } from "@my-reader/tools/types/library"
 import { File, Paths } from "expo-file-system"
 import { toNativeFilesystemPath } from "../fs/path"
+import type {
+  DataSource_Serialize as CoreDataSource,
+  DeviceRegistry_Serialize as CoreDeviceRegistry,
+  Library as CoreLibrary,
+  LibraryResult_Serialize as CoreLibraryResult,
+} from "./contract.generated"
 import { invokeCoreAsync } from "./transport"
+
+export type { LibraryResult_Serialize as CoreLibraryResult } from "./contract.generated"
 
 export type DeviceRegistry = {
   schemaVersion: number
@@ -14,51 +22,6 @@ export type DeviceRegistry = {
 export type LocalLibraryResult = {
   registry: DeviceRegistry
   library: Library
-}
-
-type CoreDataSource = {
-  type: "local" | "webdav" | "onedrive"
-  id: string
-  name: string
-  enabled: boolean
-  rootPath: string | null
-  readonly: boolean | null
-  createdAt: number | null
-  endpoint?: string
-  username?: string
-  hasPassword?: boolean
-  credentialReference?: string | null
-  clientId?: string
-  tenantId?: string | null
-  displayName?: string | null
-  email?: string | null
-  hasRefreshToken?: boolean
-}
-
-type CoreLibrary = {
-  id: string
-  name: string
-  path: string
-  bookCount: number
-  metadataUri: string | null
-  addedAt: number | null
-  dataSourceId: string | null
-  sourceType: string | null
-  sourcePath: string | null
-  metadataEtag: string | null
-  securityScopedBookmark: Library["securityScopedBookmark"] | null
-}
-
-type CoreDeviceRegistry = {
-  schemaVersion: number
-  dataSources: CoreDataSource[]
-  libraries: CoreLibrary[]
-  activeLibraryId: string | null
-}
-
-export type CoreLibraryResult = {
-  registry: CoreDeviceRegistry
-  library: CoreLibrary
 }
 
 const registryPath = toNativeFilesystemPath(
@@ -153,7 +116,7 @@ function libraryFromCore(library: CoreLibrary): Library {
     id: library.id,
     name: library.name,
     path: library.path,
-    bookCount: library.bookCount,
+    bookCount: library.bookCount ?? 0,
     metadataUri: library.metadataUri ?? undefined,
     addedAt: library.addedAt ?? undefined,
     dataSourceId: library.dataSourceId,
@@ -191,19 +154,15 @@ export async function initializeDeviceRegistry(legacy: {
   libraries: Library[]
   activeLibraryId: string | null
 }): Promise<DeviceRegistry> {
-  const registry = await invokeCoreAsync<CoreDeviceRegistry>(
-    "registry",
-    "initialize",
-    {
-      registryPath,
-      legacyRegistry: {
-        schemaVersion: 1,
-        dataSources: legacy.dataSources.map(toCoreDataSource),
-        libraries: legacy.libraries.map(toCoreLibrary),
-        activeLibraryId: legacy.activeLibraryId,
-      },
+  const registry = await invokeCoreAsync("registry", "initialize", {
+    registryPath,
+    legacyRegistry: {
+      schemaVersion: 1,
+      dataSources: legacy.dataSources.map(toCoreDataSource),
+      libraries: legacy.libraries.map(toCoreLibrary),
+      activeLibraryId: legacy.activeLibraryId,
     },
-  )
+  })
   return deviceRegistryFromCore(registry)
 }
 
@@ -211,7 +170,7 @@ export async function upsertDeviceDataSource(
   source: DataSource,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "upsertDataSource", {
+    await invokeCoreAsync("registry", "upsertDataSource", {
       registryPath,
       source: toCoreDataSource(source),
     }),
@@ -222,7 +181,7 @@ export async function prepareDeviceDataSource(
   source: DataSource,
 ): Promise<DataSource> {
   const prepared = dataSourceFromCore(
-    await invokeCoreAsync<CoreDataSource>("registry", "prepareDataSource", {
+    await invokeCoreAsync("registry", "prepareDataSource", {
       source: toCoreDataSource(source),
     }),
   )
@@ -235,7 +194,7 @@ export async function prepareDeviceDataSource(
 export async function validateDeviceDataSource(
   source: DataSource,
 ): Promise<void> {
-  await invokeCoreAsync<void>("registry", "validateDataSource", {
+  await invokeCoreAsync("registry", "validateDataSource", {
     registryPath,
     source: toCoreDataSource(source),
   })
@@ -245,7 +204,7 @@ export async function removeDeviceDataSource(
   dataSourceId: string,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "removeDataSource", {
+    await invokeCoreAsync("registry", "removeDataSource", {
       registryPath,
       dataSourceId,
     }),
@@ -256,7 +215,7 @@ export async function registerDeviceLibrary(
   library: Library,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "registerLibrary", {
+    await invokeCoreAsync("registry", "registerLibrary", {
       registryPath,
       library: toCoreLibrary(library),
     }),
@@ -267,7 +226,7 @@ export async function replaceDeviceLibrary(
   library: Library,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "replaceLibrary", {
+    await invokeCoreAsync("registry", "replaceLibrary", {
       registryPath,
       library: toCoreLibrary(library),
     }),
@@ -278,7 +237,7 @@ export async function removeDeviceLibrary(
   libraryId: string,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "removeLibrary", {
+    await invokeCoreAsync("registry", "removeLibrary", {
       registryPath,
       libraryId,
     }),
@@ -289,7 +248,7 @@ export async function switchDeviceLibrary(
   libraryId: string,
 ): Promise<DeviceRegistry> {
   return deviceRegistryFromCore(
-    await invokeCoreAsync<CoreDeviceRegistry>("registry", "switchLibrary", {
+    await invokeCoreAsync("registry", "switchLibrary", {
       registryPath,
       libraryId,
     }),
@@ -306,7 +265,7 @@ export async function addLocalDeviceLibrary(request: {
   securityScopedBookmark?: Library["securityScopedBookmark"]
 }): Promise<LocalLibraryResult> {
   return libraryResultFromCore(
-    await invokeCoreAsync<CoreLibraryResult>("registry", "addLocalLibrary", {
+    await invokeCoreAsync("registry", "addLocalLibrary", {
       registryPath,
       request: {
         libraryRootPath: toNativeFilesystemPath(request.libraryRootUri),

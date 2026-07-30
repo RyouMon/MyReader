@@ -1,5 +1,4 @@
 import type { Library } from "@my-reader/tools/types/library"
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-content"
 import { librarySidecarRootUri } from "../fs/library-paths"
 import { toNativeFilesystemPath } from "../fs/path"
@@ -7,16 +6,15 @@ import {
   invalidateBookReadingFormat,
   invalidateFileStates,
 } from "../query/invalidate-table"
+import type {
+  BookCoverThumbnailCache as CoreBookCoverThumbnailCache,
+  BookCoverThumbnailCachePatch as CoreBookCoverThumbnailCachePatch,
+  DownloadedFile as CoreDownloadedFile,
+  FileState as CoreFileState,
+} from "./contract.generated"
+import { invokeCoreAsync } from "./transport"
 
-export type FileState = {
-  id: string
-  path: string
-  localState: "present" | "remote_only" | "local_only" | "dirty_push"
-  localBlake3: string | null
-  localSize: number | null
-  localMtime: number | null
-  updatedAt: number
-}
+export type FileState = CoreFileState
 
 export type FileStateUpdate = {
   localState: FileState["localState"]
@@ -25,33 +23,11 @@ export type FileStateUpdate = {
   localMtime?: number | null
 }
 
-export type DownloadedFile = {
-  size: number
-  mtimeMs: number
-}
+export type DownloadedFile = CoreDownloadedFile
 
-export type BookCoverThumbnailCache = {
-  id: string
-  bookId: number
-  coverIdentity: string
-  thumbnailVersion: string
-  widthPx: number
-  heightPx: number
-  fileName: string
-  fileSizeBytes: number
-  createdAt: number
-  updatedAt: number
-}
+export type BookCoverThumbnailCache = CoreBookCoverThumbnailCache
 
-export type BookCoverThumbnailCachePatch = {
-  bookId: number
-  coverIdentity: string
-  thumbnailVersion: string
-  widthPx: number
-  heightPx: number
-  fileName: string
-  fileSizeBytes: number
-}
+export type BookCoverThumbnailCachePatch = CoreBookCoverThumbnailCachePatch
 
 function sidecarRootPath(library: Library): string {
   return toNativeFilesystemPath(librarySidecarRootUri(library))
@@ -61,10 +37,10 @@ export function listBookReadingFormats(
   library: Library,
 ): Promise<Record<string, string>> {
   return withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.listBookReadingFormats(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
-    ),
+    invokeCoreAsync("content", "listReadingFormats", {
+      sidecarRootPath: sidecarRootPath(library),
+      libraryRootPath: toNativeFilesystemPath(libraryRootUri),
+    }),
   )
 }
 
@@ -74,28 +50,30 @@ export async function setBookReadingFormat(
   format: string | null,
 ): Promise<void> {
   await withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-    MyReaderRustComponents.setBookReadingFormat(
-      sidecarRootPath(library),
-      toNativeFilesystemPath(libraryRootUri),
+    invokeCoreAsync("content", "setReadingFormat", {
+      sidecarRootPath: sidecarRootPath(library),
+      libraryRootPath: toNativeFilesystemPath(libraryRootUri),
       bookId,
       format,
-    ),
+    }),
   )
   await invalidateBookReadingFormat(library.id)
 }
 
-export async function getFileState(
+export function getFileState(
   library: Library,
   path: string,
 ): Promise<FileState | null> {
-  return MyReaderRustComponents.getLibraryFileState(
-    sidecarRootPath(library),
+  return invokeCoreAsync("content", "getFileState", {
+    sidecarRootPath: sidecarRootPath(library),
     path,
-  )
+  })
 }
 
-export async function listFileStates(library: Library): Promise<FileState[]> {
-  return MyReaderRustComponents.listLibraryFileStates(sidecarRootPath(library))
+export function listFileStates(library: Library): Promise<FileState[]> {
+  return invokeCoreAsync("content", "listFileStates", {
+    sidecarRootPath: sidecarRootPath(library),
+  })
 }
 
 export async function upsertFileState(
@@ -103,16 +81,16 @@ export async function upsertFileState(
   path: string,
   update: FileStateUpdate,
 ): Promise<void> {
-  await MyReaderRustComponents.upsertLibraryFileState(
-    sidecarRootPath(library),
+  await invokeCoreAsync("content", "upsertFileState", {
+    sidecarRootPath: sidecarRootPath(library),
     path,
-    {
+    update: {
       localState: update.localState,
       localBlake3: update.localBlake3 ?? null,
       localSize: update.localSize ?? null,
       localMtime: update.localMtime ?? null,
     },
-  )
+  })
   await invalidateFileStates(library.id)
 }
 
@@ -120,10 +98,10 @@ export async function deleteFileState(
   library: Library,
   path: string,
 ): Promise<void> {
-  await MyReaderRustComponents.deleteLibraryFileState(
-    sidecarRootPath(library),
+  await invokeCoreAsync("content", "deleteFileState", {
+    sidecarRootPath: sidecarRootPath(library),
     path,
-  )
+  })
   await invalidateFileStates(library.id)
 }
 
@@ -132,10 +110,14 @@ export async function finalizeDownloadedFile(
   relativePath: string,
   localFileUri: string,
 ): Promise<DownloadedFile> {
-  const downloaded = await MyReaderRustComponents.finalizeDownloadedFile(
-    sidecarRootPath(library),
-    relativePath,
-    toNativeFilesystemPath(localFileUri),
+  const downloaded = await invokeCoreAsync(
+    "content",
+    "finalizeDownloadedFile",
+    {
+      sidecarRootPath: sidecarRootPath(library),
+      relativePath,
+      localPath: toNativeFilesystemPath(localFileUri),
+    },
   )
   await invalidateFileStates(library.id)
   return downloaded
@@ -145,14 +127,14 @@ export async function markFileRemoteOnly(
   library: Library,
   relativePath: string,
 ): Promise<void> {
-  await MyReaderRustComponents.markLibraryFileRemoteOnly(
-    sidecarRootPath(library),
+  await invokeCoreAsync("content", "markFileRemoteOnly", {
+    sidecarRootPath: sidecarRootPath(library),
     relativePath,
-  )
+  })
   await invalidateFileStates(library.id)
 }
 
-export async function listBookCoverThumbnailCache(
+export function listBookCoverThumbnailCache(
   library: Library,
   input: {
     thumbnailVersion: string
@@ -160,22 +142,22 @@ export async function listBookCoverThumbnailCache(
     heightPx: number
   },
 ): Promise<BookCoverThumbnailCache[]> {
-  return MyReaderRustComponents.listBookCoverThumbnailCache(
-    sidecarRootPath(library),
-    input.thumbnailVersion,
-    input.widthPx,
-    input.heightPx,
-  )
+  return invokeCoreAsync("content", "listCoverThumbnailCache", {
+    sidecarRootPath: sidecarRootPath(library),
+    thumbnailVersion: input.thumbnailVersion,
+    widthPx: input.widthPx,
+    heightPx: input.heightPx,
+  })
 }
 
 export function upsertBookCoverThumbnailCache(
   library: Library,
   patch: BookCoverThumbnailCachePatch,
 ): Promise<void> {
-  return MyReaderRustComponents.upsertBookCoverThumbnailCache(
-    sidecarRootPath(library),
+  return invokeCoreAsync("content", "upsertCoverThumbnailCache", {
+    sidecarRootPath: sidecarRootPath(library),
     patch,
-  )
+  })
 }
 
 export function deleteBookCoverThumbnailCache(
@@ -187,17 +169,17 @@ export function deleteBookCoverThumbnailCache(
     heightPx: number
   },
 ): Promise<void> {
-  return MyReaderRustComponents.deleteBookCoverThumbnailCache(
-    sidecarRootPath(library),
-    input.bookId,
-    input.thumbnailVersion,
-    input.widthPx,
-    input.heightPx,
-  )
+  return invokeCoreAsync("content", "deleteCoverThumbnailCache", {
+    sidecarRootPath: sidecarRootPath(library),
+    bookId: input.bookId,
+    thumbnailVersion: input.thumbnailVersion,
+    widthPx: input.widthPx,
+    heightPx: input.heightPx,
+  })
 }
 
 export function clearBookCoverThumbnailCache(library: Library): Promise<void> {
-  return MyReaderRustComponents.clearBookCoverThumbnailCache(
-    sidecarRootPath(library),
-  )
+  return invokeCoreAsync("content", "clearCoverThumbnailCache", {
+    sidecarRootPath: sidecarRootPath(library),
+  })
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum RemoteCredential {
     Webdav {
@@ -13,6 +14,7 @@ pub enum RemoteCredential {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteDirectoryEntry {
     pub name: String,

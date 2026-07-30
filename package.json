@@ -10,6 +10,8 @@
     "test:tools": "pnpm --filter @my-reader/tools test",
     "test:desktop": "pnpm --filter my-reader test",
     "test:mobile": "pnpm --filter my-reader-mobile test",
+    "core:generate-contract": "cargo run -p myreader-rust-components --features typescript-contract --bin generate-core-contract",
+    "core:check-contract": "cargo run -p myreader-rust-components --features typescript-contract --bin generate-core-contract -- --check",
     "sync:design-tokens": "node scripts/sync-design-tokens.mjs",
     "db:generate": "bash scripts/generate-seaorm-entities.sh",
     "prepare": "husky || true",

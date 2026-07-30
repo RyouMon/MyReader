@@ -1,8 +1,15 @@
 import MyReaderRustComponents from "@/modules/myreader-rust-components"
-
-const CORE_CONTRACT_VERSION = 1
-
-type CoreInput = Record<string, unknown>
+import type {
+  CoreAsyncDomain,
+  CoreAsyncInput,
+  CoreAsyncOperation,
+  CoreAsyncOutput,
+  CoreSyncDomain,
+  CoreSyncInput,
+  CoreSyncOperation,
+  CoreSyncOutput,
+} from "./contract.generated"
+import { CORE_CONTRACT_VERSION } from "./contract.generated"
 
 type CoreResponse<T> = {
   domain: string
@@ -15,7 +22,7 @@ type CoreResponse<T> = {
 function requestJson(
   domain: string,
   operation: string,
-  input: CoreInput,
+  input: unknown,
 ): string {
   const nativeVersion = MyReaderRustComponents.coreContractVersion()
   if (nativeVersion !== CORE_CONTRACT_VERSION) {
@@ -47,12 +54,15 @@ function outputFrom<T>(
   return response.response.output
 }
 
-export function invokeCoreSync<T>(
-  domain: string,
-  operation: string,
-  input: CoreInput,
-): T {
-  return outputFrom<T>(
+export function invokeCoreSync<
+  Domain extends CoreSyncDomain,
+  Operation extends CoreSyncOperation<Domain>,
+>(
+  domain: Domain,
+  operation: Operation,
+  input: CoreSyncInput<Domain, Operation>,
+): CoreSyncOutput<Domain, Operation> {
+  return outputFrom<CoreSyncOutput<Domain, Operation>>(
     MyReaderRustComponents.invokeCoreSync(
       requestJson(domain, operation, input),
     ),
@@ -61,12 +71,15 @@ export function invokeCoreSync<T>(
   )
 }
 
-export async function invokeCoreAsync<T>(
-  domain: string,
-  operation: string,
-  input: CoreInput,
-): Promise<T> {
-  return outputFrom<T>(
+export async function invokeCoreAsync<
+  Domain extends CoreAsyncDomain,
+  Operation extends CoreAsyncOperation<Domain>,
+>(
+  domain: Domain,
+  operation: Operation,
+  input: CoreAsyncInput<Domain, Operation>,
+): Promise<CoreAsyncOutput<Domain, Operation>> {
+  return outputFrom<CoreAsyncOutput<Domain, Operation>>(
     await MyReaderRustComponents.invokeCoreAsync(
       requestJson(domain, operation, input),
     ),

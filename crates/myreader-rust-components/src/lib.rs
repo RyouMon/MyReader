@@ -2,15 +2,11 @@
 
 use std::{future::Future, path::Path, sync::OnceLock};
 
-mod catalog;
 mod content;
-mod reading;
 mod sync;
 mod transport;
 
-pub use catalog::*;
 pub use content::*;
-pub use reading::*;
 pub use sync::*;
 
 #[uniffi::export]
@@ -20,12 +16,17 @@ pub fn core_contract_version() -> u32 {
 
 #[uniffi::export]
 pub fn invoke_core_async(request_json: String) -> Result<String, RustComponentsError> {
-    transport::invoke(&request_json)
+    transport::invoke_async(&request_json)
 }
 
 #[uniffi::export]
 pub fn invoke_core_sync(request_json: String) -> Result<String, RustComponentsError> {
-    transport::invoke(&request_json)
+    transport::invoke_sync(&request_json)
+}
+
+#[cfg(feature = "typescript-contract")]
+pub fn generate_typescript_contract() -> Result<String, String> {
+    transport::generate_typescript_contract()
 }
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]

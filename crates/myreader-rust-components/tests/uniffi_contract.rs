@@ -1,12 +1,10 @@
 use myreader_rust_components::{
     begin_coordinated_sync, cancel_download_task, cancel_sync_task, claim_download_task,
     core_contract_version, create_sync_coordinator, dispose_sync_coordinator,
-    enqueue_download_task, fail_coordinated_sync, get_reading_position, invoke_core_async,
-    invoke_core_sync, list_book_cover_thumbnail_cache, list_download_tasks,
-    migrate_library_database, read_sync_task_progress, release_download_task, release_sync_task,
-    report_download_task_progress, request_coordinated_sync, set_reading_position,
-    sync_contract_version, sync_library_sidecar, upsert_book_cover_thumbnail_cache,
-    NativeBookCoverThumbnailCachePatch,
+    enqueue_download_task, fail_coordinated_sync, invoke_core_async, invoke_core_sync,
+    list_download_tasks, migrate_library_database, read_sync_task_progress, release_download_task,
+    release_sync_task, report_download_task_progress, request_coordinated_sync,
+    sync_contract_version, sync_library_sidecar,
 };
 use rusqlite::Connection;
 
@@ -117,6 +115,23 @@ fn should_route_catalog_count_when_async_transport_receives_typed_request() {
 }
 
 #[test]
+fn should_reject_async_operation_when_sync_transport_receives_request() {
+    let request = serde_json::json!({
+        "domain": "catalog",
+        "request": {
+            "operation": "countBooks",
+            "input": {
+                "libraryRootPath": "/library",
+            },
+        },
+    });
+
+    let error = invoke_core_sync(request.to_string()).unwrap_err();
+
+    assert!(error.to_string().contains("unknown variant `countBooks`"));
+}
+
+#[test]
 fn should_route_registry_initialization_when_transport_receives_typed_request() {
     let directory = tempfile::tempdir().unwrap();
     let registry_path = directory.path().join("device-registry.json");
@@ -169,54 +184,89 @@ fn should_create_library_schema_when_native_bridge_migrates_database() {
 }
 
 #[test]
-fn should_round_trip_cover_manifest_when_native_bridge_owns_database() {
+fn should_round_trip_cover_manifest_when_transport_owns_database() {
     let directory = tempfile::tempdir().unwrap();
-    let sidecar_root = directory.path().to_string_lossy().into_owned();
-    upsert_book_cover_thumbnail_cache(
-        sidecar_root.clone(),
-        NativeBookCoverThumbnailCachePatch {
-            book_id: 42,
-            cover_identity: "cover-v2".into(),
-            thumbnail_version: "v3".into(),
-            width_px: 180,
-            height_px: 270,
-            file_name: "42.jpg".into(),
-            file_size_bytes: 2048,
+    let upsert = serde_json::json!({
+        "domain": "content",
+        "request": {
+            "operation": "upsertCoverThumbnailCache",
+            "input": {
+                "sidecarRootPath": directory.path(),
+                "patch": {
+                    "bookId": 42,
+                    "coverIdentity": "cover-v2",
+                    "thumbnailVersion": "v3",
+                    "widthPx": 180,
+                    "heightPx": 270,
+                    "fileName": "42.jpg",
+                    "fileSizeBytes": 2048,
+                },
+            },
         },
-    )
-    .unwrap();
+    });
+    invoke_core_async(upsert.to_string()).unwrap();
+    let list = serde_json::json!({
+        "domain": "content",
+        "request": {
+            "operation": "listCoverThumbnailCache",
+            "input": {
+                "sidecarRootPath": directory.path(),
+                "thumbnailVersion": "v3",
+                "widthPx": 180,
+                "heightPx": 270,
+            },
+        },
+    });
 
-    let rows = list_book_cover_thumbnail_cache(sidecar_root, "v3".into(), 180, 270).unwrap();
+    let response = invoke_core_async(list.to_string()).unwrap();
+    let response = serde_json::from_str::<serde_json::Value>(&response).unwrap();
 
-    assert_eq!(rows[0].book_id, 42);
-    assert_eq!(rows[0].file_name, "42.jpg");
+    assert_eq!(response["response"]["output"][0]["bookId"], 42);
+    assert_eq!(response["response"]["output"][0]["fileName"], "42.jpg");
 }
 
 #[test]
-fn should_return_typed_position_when_native_bridge_reads_locator_document() {
+fn should_return_locator_object_when_transport_reads_position() {
     let sidecar_directory = tempfile::tempdir().unwrap();
     let library_directory = create_calibre_library();
-    let sidecar_root = sidecar_directory.path().to_string_lossy().into_owned();
-    let library_root = library_directory.path().to_string_lossy().into_owned();
-    set_reading_position(
-        sidecar_root.clone(),
-        library_root,
-        42,
-        "EPUB".into(),
-        r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#.into(),
-        Some(0.4),
-        900,
-    )
-    .unwrap();
+    let set = serde_json::json!({
+        "domain": "reading",
+        "request": {
+            "operation": "setReadingPosition",
+            "input": {
+                "sidecarRootPath": sidecar_directory.path(),
+                "libraryRootPath": library_directory.path(),
+                "bookId": 42,
+                "format": "EPUB",
+                "locator": {
+                    "href": "chapter.xhtml",
+                    "type": "application/xhtml+xml",
+                },
+                "displayProgression": 0.4,
+                "recordedAtMs": 900,
+            },
+        },
+    });
+    invoke_core_async(set.to_string()).unwrap();
+    let get = serde_json::json!({
+        "domain": "reading",
+        "request": {
+            "operation": "getReadingPosition",
+            "input": {
+                "sidecarRootPath": sidecar_directory.path(),
+                "bookId": 42,
+                "format": "EPUB",
+            },
+        },
+    });
 
-    let position = get_reading_position(sidecar_root, 42, "EPUB".into())
-        .unwrap()
-        .unwrap();
+    let response = invoke_core_async(get.to_string()).unwrap();
+    let response = serde_json::from_str::<serde_json::Value>(&response).unwrap();
 
-    assert_eq!(position.book_id, 42);
-    assert_eq!(position.display_progression, Some(0.4));
+    assert_eq!(response["response"]["output"]["bookId"], 42);
+    assert_eq!(response["response"]["output"]["displayProgression"], 0.4);
     assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&position.locator_json).unwrap()["href"],
+        response["response"]["output"]["locator"]["href"],
         "chapter.xhtml"
     );
 }

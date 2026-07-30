@@ -14,80 +14,89 @@ jest.mock("../query/invalidate-table", () => ({
   invalidateBookReadingFormat: jest.fn(),
   invalidateFileStates: jest.fn(),
 }))
+jest.mock("./transport", () => ({
+  invokeCoreAsync: jest.fn(),
+}))
 
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import type { Library } from "@my-reader/tools/types/library"
 import {
   finalizeDownloadedFile,
-  listBookReadingFormats,
   listBookCoverThumbnailCache,
+  listBookReadingFormats,
   setBookReadingFormat,
   upsertBookCoverThumbnailCache,
   upsertFileState,
 } from "./content"
+import { invokeCoreAsync } from "./transport"
 
 const library = { id: "library-1" } as Library
 
 describe("core content adapter", () => {
+  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
+
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   it("should return validated reading formats when core returns a typed map", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "listBookReadingFormats")
-      .mockResolvedValue({ "42": "PDF" })
+    mockInvokeCoreAsync.mockResolvedValue({ "42": "PDF" })
 
     await expect(listBookReadingFormats(library)).resolves.toEqual({
       "42": "PDF",
     })
-    expect(MyReaderRustComponents.listBookReadingFormats).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "content",
+      "listReadingFormats",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+      },
     )
   })
 
   it("should send nullable format when reading format changes", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "setBookReadingFormat")
-      .mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
 
     await setBookReadingFormat(library, 42, null)
 
-    expect(MyReaderRustComponents.setBookReadingFormat).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      42,
-      null,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "content",
+      "setReadingFormat",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        bookId: 42,
+        format: null,
+      },
     )
   })
 
   it("should pass typed file state update when download completes", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "upsertLibraryFileState")
-      .mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
 
     await upsertFileState(library, "Author/Book/Book.epub", {
       localState: "present",
       localSize: 1024,
     })
 
-    expect(MyReaderRustComponents.upsertLibraryFileState).toHaveBeenCalledWith(
-      "/sidecar",
-      "Author/Book/Book.epub",
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "content",
+      "upsertFileState",
       {
-        localState: "present",
-        localBlake3: null,
-        localSize: 1024,
-        localMtime: null,
+        sidecarRootPath: "/sidecar",
+        path: "Author/Book/Book.epub",
+        update: {
+          localState: "present",
+          localBlake3: null,
+          localSize: 1024,
+          localMtime: null,
+        },
       },
     )
   })
 
   it("should delegate final state commit when downloaded file is finalized", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "finalizeDownloadedFile")
-      .mockResolvedValue({ size: 1024, mtimeMs: 2000 })
+    mockInvokeCoreAsync.mockResolvedValue({ size: 1024, mtimeMs: 2000 })
 
     await expect(
       finalizeDownloadedFile(
@@ -97,17 +106,19 @@ describe("core content adapter", () => {
       ),
     ).resolves.toEqual({ size: 1024, mtimeMs: 2000 })
 
-    expect(MyReaderRustComponents.finalizeDownloadedFile).toHaveBeenCalledWith(
-      "/sidecar",
-      "Author/Book/Book.epub",
-      "/library/Author/Book/Book.epub",
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "content",
+      "finalizeDownloadedFile",
+      {
+        sidecarRootPath: "/sidecar",
+        relativePath: "Author/Book/Book.epub",
+        localPath: "/library/Author/Book/Book.epub",
+      },
     )
   })
 
   it("should delegate cover manifest persistence when thumbnail is generated", async () => {
-    jest
-      .spyOn(MyReaderRustComponents, "upsertBookCoverThumbnailCache")
-      .mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
     const patch = {
       bookId: 42,
       coverIdentity: "cover-v2",
@@ -120,9 +131,14 @@ describe("core content adapter", () => {
 
     await upsertBookCoverThumbnailCache(library, patch)
 
-    expect(
-      MyReaderRustComponents.upsertBookCoverThumbnailCache,
-    ).toHaveBeenCalledWith("/sidecar", patch)
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "content",
+      "upsertCoverThumbnailCache",
+      {
+        sidecarRootPath: "/sidecar",
+        patch,
+      },
+    )
   })
 
   it("should return cover manifest rows when typed cache is loaded", async () => {
@@ -140,9 +156,7 @@ describe("core content adapter", () => {
         updatedAt: 1000,
       },
     ]
-    jest
-      .spyOn(MyReaderRustComponents, "listBookCoverThumbnailCache")
-      .mockResolvedValue(rows)
+    mockInvokeCoreAsync.mockResolvedValue(rows)
 
     await expect(
       listBookCoverThumbnailCache(library, {

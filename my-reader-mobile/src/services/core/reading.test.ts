@@ -1,26 +1,3 @@
-jest.mock("@/modules/myreader-rust-components", () => ({
-  __esModule: true,
-  default: {
-    listFavoriteBookIds: jest.fn(),
-    setFavoriteBook: jest.fn(),
-    getReadingPosition: jest.fn(),
-    listReadingPositions: jest.fn(),
-    setReadingPosition: jest.fn(),
-    listReadingPositionCandidates: jest.fn(),
-    selectReadingPositionCandidate: jest.fn(),
-    listReaderBookmarks: jest.fn(),
-    addReaderBookmark: jest.fn(),
-    removeReaderBookmark: jest.fn(),
-    listReaderAnnotations: jest.fn(),
-    addReaderAnnotation: jest.fn(),
-    updateReaderAnnotation: jest.fn(),
-    removeReaderAnnotation: jest.fn(),
-    addReadingSessionInterval: jest.fn(),
-    addReadingCompletion: jest.fn(),
-    getReadingStatistics: jest.fn(),
-  },
-}))
-
 jest.mock("@/src/domain/library/local-library-content", () => ({
   withLocalLibraryCalibreRoot: jest.fn(
     async (_library: unknown, operation: (root: string) => Promise<unknown>) =>
@@ -42,8 +19,11 @@ jest.mock("./sync-events", () => ({
   announceLocalSidecarWork: jest.fn(),
 }))
 
+jest.mock("./transport", () => ({
+  invokeCoreAsync: jest.fn(),
+}))
+
 import type { Library } from "@my-reader/tools/types/library"
-import MyReaderRustComponents from "@/modules/myreader-rust-components"
 import {
   addReaderAnnotation,
   addReaderBookmark,
@@ -55,10 +35,13 @@ import {
   setReadingPosition,
 } from "./reading"
 import { announceLocalSidecarWork } from "./sync-events"
+import { invokeCoreAsync } from "./transport"
 
 const library = { id: "library-1" } as Library
 
 describe("core reading adapter", () => {
+  const mockInvokeCoreAsync = jest.mocked(invokeCoreAsync)
+
   beforeEach(() => {
     jest.clearAllMocks()
     jest.spyOn(Date, "now").mockReturnValue(900)
@@ -69,37 +52,39 @@ describe("core reading adapter", () => {
   })
 
   it("should return favorite IDs when core returns a typed projection", async () => {
-    jest
-      .mocked(MyReaderRustComponents.listFavoriteBookIds)
-      .mockResolvedValue([7, 42])
+    mockInvokeCoreAsync.mockResolvedValue([7, 42])
 
     await expect(listFavoriteBookIds(library)).resolves.toEqual([7, 42])
-    expect(MyReaderRustComponents.listFavoriteBookIds).toHaveBeenCalledWith(
-      "/sidecar",
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "listFavoriteBookIds",
+      {
+        sidecarRootPath: "/sidecar",
+      },
     )
   })
 
   it("should pass both library roots when favorite state changes", async () => {
-    jest
-      .mocked(MyReaderRustComponents.setFavoriteBook)
-      .mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
 
     await setFavoriteBook(library, 42, true)
 
-    expect(MyReaderRustComponents.setFavoriteBook).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      42,
-      true,
-      900,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "setFavoriteBook",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        bookId: 42,
+        isFavorite: true,
+        recordedAtMs: 900,
+      },
     )
     expect(announceLocalSidecarWork).toHaveBeenCalledWith("library-1")
   })
 
   it("should not announce work when core mutation fails", async () => {
-    jest
-      .mocked(MyReaderRustComponents.setFavoriteBook)
-      .mockRejectedValue(new Error("write failed"))
+    mockInvokeCoreAsync.mockRejectedValue(new Error("write failed"))
 
     await expect(setFavoriteBook(library, 42, true)).rejects.toThrow(
       "write failed",
@@ -108,11 +93,14 @@ describe("core reading adapter", () => {
     expect(announceLocalSidecarWork).not.toHaveBeenCalled()
   })
 
-  it("should decode locator when core returns typed reading data", async () => {
-    jest.mocked(MyReaderRustComponents.getReadingPosition).mockResolvedValue({
+  it("should return locator when core returns typed reading data", async () => {
+    mockInvokeCoreAsync.mockResolvedValue({
       bookId: 42,
       format: "EPUB",
-      locatorJson: '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
+      locator: {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+      },
       displayProgression: 0.4,
       updatedAt: 900,
       conflictCount: 1,
@@ -126,10 +114,8 @@ describe("core reading adapter", () => {
     })
   })
 
-  it("should serialize locator when reading position changes", async () => {
-    jest
-      .mocked(MyReaderRustComponents.setReadingPosition)
-      .mockResolvedValue(undefined)
+  it("should pass typed locator when reading position changes", async () => {
+    mockInvokeCoreAsync.mockResolvedValue(null)
 
     await setReadingPosition(
       library,
@@ -139,24 +125,34 @@ describe("core reading adapter", () => {
       0.4,
     )
 
-    expect(MyReaderRustComponents.setReadingPosition).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      42,
-      "EPUB",
-      '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
-      0.4,
-      900,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "setReadingPosition",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        bookId: 42,
+        format: "EPUB",
+        locator: {
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+        },
+        displayProgression: 0.4,
+        recordedAtMs: 900,
+      },
     )
   })
 
   it("should pass canonical bookmark fields when bookmark is added", async () => {
-    jest.mocked(MyReaderRustComponents.addReaderBookmark).mockResolvedValue({
+    mockInvokeCoreAsync.mockResolvedValue({
       id: "bookmark-1",
       bookId: 42,
       format: "EPUB",
       locatorKey: "chapter.xhtml",
-      locatorJson: '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
+      locator: {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+      },
       createdAt: 900,
       updatedAt: 900,
     })
@@ -167,25 +163,35 @@ describe("core reading adapter", () => {
         type: "application/xhtml+xml",
       }),
     ).resolves.toMatchObject({ id: "bookmark-1", bookId: 42 })
-    expect(MyReaderRustComponents.addReaderBookmark).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      42,
-      "EPUB",
-      "chapter.xhtml",
-      '{"href":"chapter.xhtml","type":"application/xhtml+xml"}',
-      900,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "addReaderBookmark",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        bookId: 42,
+        format: "EPUB",
+        locatorKey: "chapter.xhtml",
+        locator: {
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+        },
+        recordedAtMs: 900,
+      },
     )
   })
 
-  it("should serialize selected text when annotation is added", async () => {
-    jest.mocked(MyReaderRustComponents.addReaderAnnotation).mockResolvedValue({
+  it("should pass selected text when annotation is added", async () => {
+    mockInvokeCoreAsync.mockResolvedValue({
       id: "annotation-1",
       bookId: 42,
       format: "EPUB",
       kind: "highlight",
-      locatorJson:
-        '{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}}',
+      locator: {
+        href: "chapter.xhtml",
+        type: "application/xhtml+xml",
+        text: { highlight: "Selected" },
+      },
       color: "yellow",
       note: null,
       createdAt: 900,
@@ -206,22 +212,28 @@ describe("core reading adapter", () => {
         null,
       ),
     ).resolves.toMatchObject({ id: "annotation-1", kind: "highlight" })
-    expect(MyReaderRustComponents.addReaderAnnotation).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      42,
-      "EPUB",
-      '{"href":"chapter.xhtml","type":"application/xhtml+xml","text":{"highlight":"Selected"}}',
-      "yellow",
-      null,
-      900,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "addReaderAnnotation",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        bookId: 42,
+        format: "EPUB",
+        locator: {
+          href: "chapter.xhtml",
+          type: "application/xhtml+xml",
+          text: { highlight: "Selected" },
+        },
+        color: "yellow",
+        note: null,
+        recordedAtMs: 900,
+      },
     )
   })
 
   it("should pass incremental duration when reading session is recorded", async () => {
-    jest
-      .mocked(MyReaderRustComponents.addReadingSessionInterval)
-      .mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
 
     await addReadingSessionInterval(library, {
       id: "11111111111141118111111111111111",
@@ -233,23 +245,25 @@ describe("core reading adapter", () => {
       updatedAt: 900,
     })
 
-    expect(
-      MyReaderRustComponents.addReadingSessionInterval,
-    ).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      "11111111111141118111111111111111",
-      42,
-      "EPUB",
-      "2026-07-28",
-      600,
-      30,
-      900,
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "addReadingSessionInterval",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        id: "11111111111141118111111111111111",
+        bookId: 42,
+        format: "EPUB",
+        localDay: "2026-07-28",
+        startedAtMs: 600,
+        durationSeconds: 30,
+        recordedAtMs: 900,
+      },
     )
   })
 
   it("should provide library root when statistics are read", async () => {
-    jest.mocked(MyReaderRustComponents.getReadingStatistics).mockResolvedValue({
+    mockInvokeCoreAsync.mockResolvedValue({
       days: {},
       totalDurationSeconds: 0,
       longestStreakDays: 0,
@@ -260,11 +274,15 @@ describe("core reading adapter", () => {
       getReadingStatistics(library, "2026-01-01", "2026-12-31"),
     ).resolves.toMatchObject({ completedBooks: 1 })
 
-    expect(MyReaderRustComponents.getReadingStatistics).toHaveBeenCalledWith(
-      "/sidecar",
-      "/library",
-      "2026-01-01",
-      "2026-12-31",
+    expect(mockInvokeCoreAsync).toHaveBeenCalledWith(
+      "reading",
+      "getReadingStatistics",
+      {
+        sidecarRootPath: "/sidecar",
+        libraryRootPath: "/library",
+        startDay: "2026-01-01",
+        endDay: "2026-12-31",
+      },
     )
   })
 })

@@ -432,22 +432,6 @@ fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
-    typealias FfiType = Int64
-    typealias SwiftType = Int64
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
-        return try lift(readInt(&buf))
-    }
-
-    public static func write(_ value: Int64, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(value))
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
@@ -524,250 +508,6 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeInt(&buf, len)
         writeBytes(&buf, value.utf8)
     }
-}
-
-
-public struct NativeBookCoverThumbnailCache {
-    public var id: String
-    public var bookId: Int64
-    public var coverIdentity: String
-    public var thumbnailVersion: String
-    public var widthPx: Int64
-    public var heightPx: Int64
-    public var fileName: String
-    public var fileSizeBytes: Int64
-    public var createdAt: Double
-    public var updatedAt: Double
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(id: String, bookId: Int64, coverIdentity: String, thumbnailVersion: String, widthPx: Int64, heightPx: Int64, fileName: String, fileSizeBytes: Int64, createdAt: Double, updatedAt: Double) {
-        self.id = id
-        self.bookId = bookId
-        self.coverIdentity = coverIdentity
-        self.thumbnailVersion = thumbnailVersion
-        self.widthPx = widthPx
-        self.heightPx = heightPx
-        self.fileName = fileName
-        self.fileSizeBytes = fileSizeBytes
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
-}
-
-#if compiler(>=6)
-extension NativeBookCoverThumbnailCache: Sendable {}
-#endif
-
-
-extension NativeBookCoverThumbnailCache: Equatable, Hashable {
-    public static func ==(lhs: NativeBookCoverThumbnailCache, rhs: NativeBookCoverThumbnailCache) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        if lhs.bookId != rhs.bookId {
-            return false
-        }
-        if lhs.coverIdentity != rhs.coverIdentity {
-            return false
-        }
-        if lhs.thumbnailVersion != rhs.thumbnailVersion {
-            return false
-        }
-        if lhs.widthPx != rhs.widthPx {
-            return false
-        }
-        if lhs.heightPx != rhs.heightPx {
-            return false
-        }
-        if lhs.fileName != rhs.fileName {
-            return false
-        }
-        if lhs.fileSizeBytes != rhs.fileSizeBytes {
-            return false
-        }
-        if lhs.createdAt != rhs.createdAt {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(bookId)
-        hasher.combine(coverIdentity)
-        hasher.combine(thumbnailVersion)
-        hasher.combine(widthPx)
-        hasher.combine(heightPx)
-        hasher.combine(fileName)
-        hasher.combine(fileSizeBytes)
-        hasher.combine(createdAt)
-        hasher.combine(updatedAt)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeBookCoverThumbnailCache: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeBookCoverThumbnailCache {
-        return
-            try NativeBookCoverThumbnailCache(
-                id: FfiConverterString.read(from: &buf),
-                bookId: FfiConverterInt64.read(from: &buf),
-                coverIdentity: FfiConverterString.read(from: &buf),
-                thumbnailVersion: FfiConverterString.read(from: &buf),
-                widthPx: FfiConverterInt64.read(from: &buf),
-                heightPx: FfiConverterInt64.read(from: &buf),
-                fileName: FfiConverterString.read(from: &buf),
-                fileSizeBytes: FfiConverterInt64.read(from: &buf),
-                createdAt: FfiConverterDouble.read(from: &buf),
-                updatedAt: FfiConverterDouble.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeBookCoverThumbnailCache, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterInt64.write(value.bookId, into: &buf)
-        FfiConverterString.write(value.coverIdentity, into: &buf)
-        FfiConverterString.write(value.thumbnailVersion, into: &buf)
-        FfiConverterInt64.write(value.widthPx, into: &buf)
-        FfiConverterInt64.write(value.heightPx, into: &buf)
-        FfiConverterString.write(value.fileName, into: &buf)
-        FfiConverterInt64.write(value.fileSizeBytes, into: &buf)
-        FfiConverterDouble.write(value.createdAt, into: &buf)
-        FfiConverterDouble.write(value.updatedAt, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeBookCoverThumbnailCache_lift(_ buf: RustBuffer) throws -> NativeBookCoverThumbnailCache {
-    return try FfiConverterTypeNativeBookCoverThumbnailCache.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeBookCoverThumbnailCache_lower(_ value: NativeBookCoverThumbnailCache) -> RustBuffer {
-    return FfiConverterTypeNativeBookCoverThumbnailCache.lower(value)
-}
-
-
-public struct NativeBookCoverThumbnailCachePatch {
-    public var bookId: Int64
-    public var coverIdentity: String
-    public var thumbnailVersion: String
-    public var widthPx: Int64
-    public var heightPx: Int64
-    public var fileName: String
-    public var fileSizeBytes: Int64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(bookId: Int64, coverIdentity: String, thumbnailVersion: String, widthPx: Int64, heightPx: Int64, fileName: String, fileSizeBytes: Int64) {
-        self.bookId = bookId
-        self.coverIdentity = coverIdentity
-        self.thumbnailVersion = thumbnailVersion
-        self.widthPx = widthPx
-        self.heightPx = heightPx
-        self.fileName = fileName
-        self.fileSizeBytes = fileSizeBytes
-    }
-}
-
-#if compiler(>=6)
-extension NativeBookCoverThumbnailCachePatch: Sendable {}
-#endif
-
-
-extension NativeBookCoverThumbnailCachePatch: Equatable, Hashable {
-    public static func ==(lhs: NativeBookCoverThumbnailCachePatch, rhs: NativeBookCoverThumbnailCachePatch) -> Bool {
-        if lhs.bookId != rhs.bookId {
-            return false
-        }
-        if lhs.coverIdentity != rhs.coverIdentity {
-            return false
-        }
-        if lhs.thumbnailVersion != rhs.thumbnailVersion {
-            return false
-        }
-        if lhs.widthPx != rhs.widthPx {
-            return false
-        }
-        if lhs.heightPx != rhs.heightPx {
-            return false
-        }
-        if lhs.fileName != rhs.fileName {
-            return false
-        }
-        if lhs.fileSizeBytes != rhs.fileSizeBytes {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(bookId)
-        hasher.combine(coverIdentity)
-        hasher.combine(thumbnailVersion)
-        hasher.combine(widthPx)
-        hasher.combine(heightPx)
-        hasher.combine(fileName)
-        hasher.combine(fileSizeBytes)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeBookCoverThumbnailCachePatch: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeBookCoverThumbnailCachePatch {
-        return
-            try NativeBookCoverThumbnailCachePatch(
-                bookId: FfiConverterInt64.read(from: &buf),
-                coverIdentity: FfiConverterString.read(from: &buf),
-                thumbnailVersion: FfiConverterString.read(from: &buf),
-                widthPx: FfiConverterInt64.read(from: &buf),
-                heightPx: FfiConverterInt64.read(from: &buf),
-                fileName: FfiConverterString.read(from: &buf),
-                fileSizeBytes: FfiConverterInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeBookCoverThumbnailCachePatch, into buf: inout [UInt8]) {
-        FfiConverterInt64.write(value.bookId, into: &buf)
-        FfiConverterString.write(value.coverIdentity, into: &buf)
-        FfiConverterString.write(value.thumbnailVersion, into: &buf)
-        FfiConverterInt64.write(value.widthPx, into: &buf)
-        FfiConverterInt64.write(value.heightPx, into: &buf)
-        FfiConverterString.write(value.fileName, into: &buf)
-        FfiConverterInt64.write(value.fileSizeBytes, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeBookCoverThumbnailCachePatch_lift(_ buf: RustBuffer) throws -> NativeBookCoverThumbnailCachePatch {
-    return try FfiConverterTypeNativeBookCoverThumbnailCachePatch.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeBookCoverThumbnailCachePatch_lower(_ value: NativeBookCoverThumbnailCachePatch) -> RustBuffer {
-    return FfiConverterTypeNativeBookCoverThumbnailCachePatch.lower(value)
 }
 
 
@@ -897,76 +637,6 @@ public func FfiConverterTypeNativeDownloadTask_lower(_ value: NativeDownloadTask
 }
 
 
-public struct NativeDownloadedFile {
-    public var size: Int64
-    public var mtimeMs: Int64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(size: Int64, mtimeMs: Int64) {
-        self.size = size
-        self.mtimeMs = mtimeMs
-    }
-}
-
-#if compiler(>=6)
-extension NativeDownloadedFile: Sendable {}
-#endif
-
-
-extension NativeDownloadedFile: Equatable, Hashable {
-    public static func ==(lhs: NativeDownloadedFile, rhs: NativeDownloadedFile) -> Bool {
-        if lhs.size != rhs.size {
-            return false
-        }
-        if lhs.mtimeMs != rhs.mtimeMs {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(size)
-        hasher.combine(mtimeMs)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeDownloadedFile: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeDownloadedFile {
-        return
-            try NativeDownloadedFile(
-                size: FfiConverterInt64.read(from: &buf),
-                mtimeMs: FfiConverterInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeDownloadedFile, into buf: inout [UInt8]) {
-        FfiConverterInt64.write(value.size, into: &buf)
-        FfiConverterInt64.write(value.mtimeMs, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeDownloadedFile_lift(_ buf: RustBuffer) throws -> NativeDownloadedFile {
-    return try FfiConverterTypeNativeDownloadedFile.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeDownloadedFile_lower(_ value: NativeDownloadedFile) -> RustBuffer {
-    return FfiConverterTypeNativeDownloadedFile.lower(value)
-}
-
-
 public struct NativeEnqueuedDownloadTask {
     public var task: NativeDownloadTask
     public var inserted: Bool
@@ -1034,720 +704,6 @@ public func FfiConverterTypeNativeEnqueuedDownloadTask_lift(_ buf: RustBuffer) t
 #endif
 public func FfiConverterTypeNativeEnqueuedDownloadTask_lower(_ value: NativeEnqueuedDownloadTask) -> RustBuffer {
     return FfiConverterTypeNativeEnqueuedDownloadTask.lower(value)
-}
-
-
-public struct NativeFileState {
-    public var id: String
-    public var path: String
-    public var localState: String
-    public var localBlake3: String?
-    public var localSize: Int64?
-    public var localMtime: Int64?
-    public var updatedAt: Double
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(id: String, path: String, localState: String, localBlake3: String?, localSize: Int64?, localMtime: Int64?, updatedAt: Double) {
-        self.id = id
-        self.path = path
-        self.localState = localState
-        self.localBlake3 = localBlake3
-        self.localSize = localSize
-        self.localMtime = localMtime
-        self.updatedAt = updatedAt
-    }
-}
-
-#if compiler(>=6)
-extension NativeFileState: Sendable {}
-#endif
-
-
-extension NativeFileState: Equatable, Hashable {
-    public static func ==(lhs: NativeFileState, rhs: NativeFileState) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        if lhs.path != rhs.path {
-            return false
-        }
-        if lhs.localState != rhs.localState {
-            return false
-        }
-        if lhs.localBlake3 != rhs.localBlake3 {
-            return false
-        }
-        if lhs.localSize != rhs.localSize {
-            return false
-        }
-        if lhs.localMtime != rhs.localMtime {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(path)
-        hasher.combine(localState)
-        hasher.combine(localBlake3)
-        hasher.combine(localSize)
-        hasher.combine(localMtime)
-        hasher.combine(updatedAt)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeFileState: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeFileState {
-        return
-            try NativeFileState(
-                id: FfiConverterString.read(from: &buf),
-                path: FfiConverterString.read(from: &buf),
-                localState: FfiConverterString.read(from: &buf),
-                localBlake3: FfiConverterOptionString.read(from: &buf),
-                localSize: FfiConverterOptionInt64.read(from: &buf),
-                localMtime: FfiConverterOptionInt64.read(from: &buf),
-                updatedAt: FfiConverterDouble.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeFileState, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterString.write(value.path, into: &buf)
-        FfiConverterString.write(value.localState, into: &buf)
-        FfiConverterOptionString.write(value.localBlake3, into: &buf)
-        FfiConverterOptionInt64.write(value.localSize, into: &buf)
-        FfiConverterOptionInt64.write(value.localMtime, into: &buf)
-        FfiConverterDouble.write(value.updatedAt, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeFileState_lift(_ buf: RustBuffer) throws -> NativeFileState {
-    return try FfiConverterTypeNativeFileState.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeFileState_lower(_ value: NativeFileState) -> RustBuffer {
-    return FfiConverterTypeNativeFileState.lower(value)
-}
-
-
-public struct NativeFileStateUpdate {
-    public var localState: String
-    public var localBlake3: String?
-    public var localSize: Int64?
-    public var localMtime: Int64?
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(localState: String, localBlake3: String?, localSize: Int64?, localMtime: Int64?) {
-        self.localState = localState
-        self.localBlake3 = localBlake3
-        self.localSize = localSize
-        self.localMtime = localMtime
-    }
-}
-
-#if compiler(>=6)
-extension NativeFileStateUpdate: Sendable {}
-#endif
-
-
-extension NativeFileStateUpdate: Equatable, Hashable {
-    public static func ==(lhs: NativeFileStateUpdate, rhs: NativeFileStateUpdate) -> Bool {
-        if lhs.localState != rhs.localState {
-            return false
-        }
-        if lhs.localBlake3 != rhs.localBlake3 {
-            return false
-        }
-        if lhs.localSize != rhs.localSize {
-            return false
-        }
-        if lhs.localMtime != rhs.localMtime {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(localState)
-        hasher.combine(localBlake3)
-        hasher.combine(localSize)
-        hasher.combine(localMtime)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeFileStateUpdate: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeFileStateUpdate {
-        return
-            try NativeFileStateUpdate(
-                localState: FfiConverterString.read(from: &buf),
-                localBlake3: FfiConverterOptionString.read(from: &buf),
-                localSize: FfiConverterOptionInt64.read(from: &buf),
-                localMtime: FfiConverterOptionInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeFileStateUpdate, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.localState, into: &buf)
-        FfiConverterOptionString.write(value.localBlake3, into: &buf)
-        FfiConverterOptionInt64.write(value.localSize, into: &buf)
-        FfiConverterOptionInt64.write(value.localMtime, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeFileStateUpdate_lift(_ buf: RustBuffer) throws -> NativeFileStateUpdate {
-    return try FfiConverterTypeNativeFileStateUpdate.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeFileStateUpdate_lower(_ value: NativeFileStateUpdate) -> RustBuffer {
-    return FfiConverterTypeNativeFileStateUpdate.lower(value)
-}
-
-
-public struct NativeReaderAnnotation {
-    public var id: String
-    public var bookId: Int64
-    public var format: String
-    public var kind: String
-    public var locatorJson: String
-    public var color: String
-    public var note: String?
-    public var createdAt: Double
-    public var updatedAt: Double
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(id: String, bookId: Int64, format: String, kind: String, locatorJson: String, color: String, note: String?, createdAt: Double, updatedAt: Double) {
-        self.id = id
-        self.bookId = bookId
-        self.format = format
-        self.kind = kind
-        self.locatorJson = locatorJson
-        self.color = color
-        self.note = note
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
-}
-
-#if compiler(>=6)
-extension NativeReaderAnnotation: Sendable {}
-#endif
-
-
-extension NativeReaderAnnotation: Equatable, Hashable {
-    public static func ==(lhs: NativeReaderAnnotation, rhs: NativeReaderAnnotation) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        if lhs.bookId != rhs.bookId {
-            return false
-        }
-        if lhs.format != rhs.format {
-            return false
-        }
-        if lhs.kind != rhs.kind {
-            return false
-        }
-        if lhs.locatorJson != rhs.locatorJson {
-            return false
-        }
-        if lhs.color != rhs.color {
-            return false
-        }
-        if lhs.note != rhs.note {
-            return false
-        }
-        if lhs.createdAt != rhs.createdAt {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(bookId)
-        hasher.combine(format)
-        hasher.combine(kind)
-        hasher.combine(locatorJson)
-        hasher.combine(color)
-        hasher.combine(note)
-        hasher.combine(createdAt)
-        hasher.combine(updatedAt)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeReaderAnnotation: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeReaderAnnotation {
-        return
-            try NativeReaderAnnotation(
-                id: FfiConverterString.read(from: &buf),
-                bookId: FfiConverterInt64.read(from: &buf),
-                format: FfiConverterString.read(from: &buf),
-                kind: FfiConverterString.read(from: &buf),
-                locatorJson: FfiConverterString.read(from: &buf),
-                color: FfiConverterString.read(from: &buf),
-                note: FfiConverterOptionString.read(from: &buf),
-                createdAt: FfiConverterDouble.read(from: &buf),
-                updatedAt: FfiConverterDouble.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeReaderAnnotation, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterInt64.write(value.bookId, into: &buf)
-        FfiConverterString.write(value.format, into: &buf)
-        FfiConverterString.write(value.kind, into: &buf)
-        FfiConverterString.write(value.locatorJson, into: &buf)
-        FfiConverterString.write(value.color, into: &buf)
-        FfiConverterOptionString.write(value.note, into: &buf)
-        FfiConverterDouble.write(value.createdAt, into: &buf)
-        FfiConverterDouble.write(value.updatedAt, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReaderAnnotation_lift(_ buf: RustBuffer) throws -> NativeReaderAnnotation {
-    return try FfiConverterTypeNativeReaderAnnotation.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReaderAnnotation_lower(_ value: NativeReaderAnnotation) -> RustBuffer {
-    return FfiConverterTypeNativeReaderAnnotation.lower(value)
-}
-
-
-public struct NativeReaderBookmark {
-    public var id: String
-    public var bookId: Int64
-    public var format: String
-    public var locatorKey: String
-    public var locatorJson: String
-    public var createdAt: Double
-    public var updatedAt: Double
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(id: String, bookId: Int64, format: String, locatorKey: String, locatorJson: String, createdAt: Double, updatedAt: Double) {
-        self.id = id
-        self.bookId = bookId
-        self.format = format
-        self.locatorKey = locatorKey
-        self.locatorJson = locatorJson
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
-}
-
-#if compiler(>=6)
-extension NativeReaderBookmark: Sendable {}
-#endif
-
-
-extension NativeReaderBookmark: Equatable, Hashable {
-    public static func ==(lhs: NativeReaderBookmark, rhs: NativeReaderBookmark) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        if lhs.bookId != rhs.bookId {
-            return false
-        }
-        if lhs.format != rhs.format {
-            return false
-        }
-        if lhs.locatorKey != rhs.locatorKey {
-            return false
-        }
-        if lhs.locatorJson != rhs.locatorJson {
-            return false
-        }
-        if lhs.createdAt != rhs.createdAt {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(bookId)
-        hasher.combine(format)
-        hasher.combine(locatorKey)
-        hasher.combine(locatorJson)
-        hasher.combine(createdAt)
-        hasher.combine(updatedAt)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeReaderBookmark: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeReaderBookmark {
-        return
-            try NativeReaderBookmark(
-                id: FfiConverterString.read(from: &buf),
-                bookId: FfiConverterInt64.read(from: &buf),
-                format: FfiConverterString.read(from: &buf),
-                locatorKey: FfiConverterString.read(from: &buf),
-                locatorJson: FfiConverterString.read(from: &buf),
-                createdAt: FfiConverterDouble.read(from: &buf),
-                updatedAt: FfiConverterDouble.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeReaderBookmark, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterInt64.write(value.bookId, into: &buf)
-        FfiConverterString.write(value.format, into: &buf)
-        FfiConverterString.write(value.locatorKey, into: &buf)
-        FfiConverterString.write(value.locatorJson, into: &buf)
-        FfiConverterDouble.write(value.createdAt, into: &buf)
-        FfiConverterDouble.write(value.updatedAt, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReaderBookmark_lift(_ buf: RustBuffer) throws -> NativeReaderBookmark {
-    return try FfiConverterTypeNativeReaderBookmark.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReaderBookmark_lower(_ value: NativeReaderBookmark) -> RustBuffer {
-    return FfiConverterTypeNativeReaderBookmark.lower(value)
-}
-
-
-public struct NativeReadingPosition {
-    public var bookId: Int64
-    public var format: String
-    public var locatorJson: String
-    public var displayProgression: Double?
-    public var updatedAt: Double
-    public var conflictCount: Int64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(bookId: Int64, format: String, locatorJson: String, displayProgression: Double?, updatedAt: Double, conflictCount: Int64) {
-        self.bookId = bookId
-        self.format = format
-        self.locatorJson = locatorJson
-        self.displayProgression = displayProgression
-        self.updatedAt = updatedAt
-        self.conflictCount = conflictCount
-    }
-}
-
-#if compiler(>=6)
-extension NativeReadingPosition: Sendable {}
-#endif
-
-
-extension NativeReadingPosition: Equatable, Hashable {
-    public static func ==(lhs: NativeReadingPosition, rhs: NativeReadingPosition) -> Bool {
-        if lhs.bookId != rhs.bookId {
-            return false
-        }
-        if lhs.format != rhs.format {
-            return false
-        }
-        if lhs.locatorJson != rhs.locatorJson {
-            return false
-        }
-        if lhs.displayProgression != rhs.displayProgression {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        if lhs.conflictCount != rhs.conflictCount {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(bookId)
-        hasher.combine(format)
-        hasher.combine(locatorJson)
-        hasher.combine(displayProgression)
-        hasher.combine(updatedAt)
-        hasher.combine(conflictCount)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeReadingPosition: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeReadingPosition {
-        return
-            try NativeReadingPosition(
-                bookId: FfiConverterInt64.read(from: &buf),
-                format: FfiConverterString.read(from: &buf),
-                locatorJson: FfiConverterString.read(from: &buf),
-                displayProgression: FfiConverterOptionDouble.read(from: &buf),
-                updatedAt: FfiConverterDouble.read(from: &buf),
-                conflictCount: FfiConverterInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeReadingPosition, into buf: inout [UInt8]) {
-        FfiConverterInt64.write(value.bookId, into: &buf)
-        FfiConverterString.write(value.format, into: &buf)
-        FfiConverterString.write(value.locatorJson, into: &buf)
-        FfiConverterOptionDouble.write(value.displayProgression, into: &buf)
-        FfiConverterDouble.write(value.updatedAt, into: &buf)
-        FfiConverterInt64.write(value.conflictCount, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingPosition_lift(_ buf: RustBuffer) throws -> NativeReadingPosition {
-    return try FfiConverterTypeNativeReadingPosition.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingPosition_lower(_ value: NativeReadingPosition) -> RustBuffer {
-    return FfiConverterTypeNativeReadingPosition.lower(value)
-}
-
-
-public struct NativeReadingPositionCandidate {
-    public var operationId: String
-    public var locatorJson: String
-    public var displayProgression: Double?
-    public var recordedAt: Int64
-    public var replicaId: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(operationId: String, locatorJson: String, displayProgression: Double?, recordedAt: Int64, replicaId: String) {
-        self.operationId = operationId
-        self.locatorJson = locatorJson
-        self.displayProgression = displayProgression
-        self.recordedAt = recordedAt
-        self.replicaId = replicaId
-    }
-}
-
-#if compiler(>=6)
-extension NativeReadingPositionCandidate: Sendable {}
-#endif
-
-
-extension NativeReadingPositionCandidate: Equatable, Hashable {
-    public static func ==(lhs: NativeReadingPositionCandidate, rhs: NativeReadingPositionCandidate) -> Bool {
-        if lhs.operationId != rhs.operationId {
-            return false
-        }
-        if lhs.locatorJson != rhs.locatorJson {
-            return false
-        }
-        if lhs.displayProgression != rhs.displayProgression {
-            return false
-        }
-        if lhs.recordedAt != rhs.recordedAt {
-            return false
-        }
-        if lhs.replicaId != rhs.replicaId {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(operationId)
-        hasher.combine(locatorJson)
-        hasher.combine(displayProgression)
-        hasher.combine(recordedAt)
-        hasher.combine(replicaId)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeReadingPositionCandidate: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeReadingPositionCandidate {
-        return
-            try NativeReadingPositionCandidate(
-                operationId: FfiConverterString.read(from: &buf),
-                locatorJson: FfiConverterString.read(from: &buf),
-                displayProgression: FfiConverterOptionDouble.read(from: &buf),
-                recordedAt: FfiConverterInt64.read(from: &buf),
-                replicaId: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeReadingPositionCandidate, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.operationId, into: &buf)
-        FfiConverterString.write(value.locatorJson, into: &buf)
-        FfiConverterOptionDouble.write(value.displayProgression, into: &buf)
-        FfiConverterInt64.write(value.recordedAt, into: &buf)
-        FfiConverterString.write(value.replicaId, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingPositionCandidate_lift(_ buf: RustBuffer) throws -> NativeReadingPositionCandidate {
-    return try FfiConverterTypeNativeReadingPositionCandidate.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingPositionCandidate_lower(_ value: NativeReadingPositionCandidate) -> RustBuffer {
-    return FfiConverterTypeNativeReadingPositionCandidate.lower(value)
-}
-
-
-public struct NativeReadingStatistics {
-    public var days: [String: Int64]
-    public var totalDurationSeconds: Int64
-    public var longestStreakDays: UInt32
-    public var completedBooks: Int64
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(days: [String: Int64], totalDurationSeconds: Int64, longestStreakDays: UInt32, completedBooks: Int64) {
-        self.days = days
-        self.totalDurationSeconds = totalDurationSeconds
-        self.longestStreakDays = longestStreakDays
-        self.completedBooks = completedBooks
-    }
-}
-
-#if compiler(>=6)
-extension NativeReadingStatistics: Sendable {}
-#endif
-
-
-extension NativeReadingStatistics: Equatable, Hashable {
-    public static func ==(lhs: NativeReadingStatistics, rhs: NativeReadingStatistics) -> Bool {
-        if lhs.days != rhs.days {
-            return false
-        }
-        if lhs.totalDurationSeconds != rhs.totalDurationSeconds {
-            return false
-        }
-        if lhs.longestStreakDays != rhs.longestStreakDays {
-            return false
-        }
-        if lhs.completedBooks != rhs.completedBooks {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(days)
-        hasher.combine(totalDurationSeconds)
-        hasher.combine(longestStreakDays)
-        hasher.combine(completedBooks)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeNativeReadingStatistics: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NativeReadingStatistics {
-        return
-            try NativeReadingStatistics(
-                days: FfiConverterDictionaryStringInt64.read(from: &buf),
-                totalDurationSeconds: FfiConverterInt64.read(from: &buf),
-                longestStreakDays: FfiConverterUInt32.read(from: &buf),
-                completedBooks: FfiConverterInt64.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: NativeReadingStatistics, into buf: inout [UInt8]) {
-        FfiConverterDictionaryStringInt64.write(value.days, into: &buf)
-        FfiConverterInt64.write(value.totalDurationSeconds, into: &buf)
-        FfiConverterUInt32.write(value.longestStreakDays, into: &buf)
-        FfiConverterInt64.write(value.completedBooks, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingStatistics_lift(_ buf: RustBuffer) throws -> NativeReadingStatistics {
-    return try FfiConverterTypeNativeReadingStatistics.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeNativeReadingStatistics_lower(_ value: NativeReadingStatistics) -> RustBuffer {
-    return FfiConverterTypeNativeReadingStatistics.lower(value)
 }
 
 
@@ -1995,54 +951,6 @@ extension RustComponentsError: Foundation.LocalizedError {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
-    typealias SwiftType = Int64?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterInt64.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterInt64.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
-    typealias SwiftType = Double?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterDouble.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterDouble.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -2091,54 +999,6 @@ fileprivate struct FfiConverterOptionTypeNativeDownloadTask: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterOptionTypeNativeFileState: FfiConverterRustBuffer {
-    typealias SwiftType = NativeFileState?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypeNativeFileState.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypeNativeFileState.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterOptionTypeNativeReadingPosition: FfiConverterRustBuffer {
-    typealias SwiftType = NativeReadingPosition?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypeNativeReadingPosition.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypeNativeReadingPosition.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffer {
     typealias SwiftType = SyncTaskProgress?
 
@@ -2157,56 +1017,6 @@ fileprivate struct FfiConverterOptionTypeSyncTaskProgress: FfiConverterRustBuffe
         case 1: return try FfiConverterTypeSyncTaskProgress.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceInt64: FfiConverterRustBuffer {
-    typealias SwiftType = [Int64]
-
-    public static func write(_ value: [Int64], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterInt64.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Int64] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [Int64]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterInt64.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeBookCoverThumbnailCache: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeBookCoverThumbnailCache]
-
-    public static func write(_ value: [NativeBookCoverThumbnailCache], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeBookCoverThumbnailCache.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeBookCoverThumbnailCache] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeBookCoverThumbnailCache]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeBookCoverThumbnailCache.read(from: &buf))
-        }
-        return seq
     }
 }
 
@@ -2233,238 +1043,6 @@ fileprivate struct FfiConverterSequenceTypeNativeDownloadTask: FfiConverterRustB
         }
         return seq
     }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeFileState: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeFileState]
-
-    public static func write(_ value: [NativeFileState], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeFileState.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeFileState] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeFileState]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeFileState.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeReaderAnnotation: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeReaderAnnotation]
-
-    public static func write(_ value: [NativeReaderAnnotation], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeReaderAnnotation.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeReaderAnnotation] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeReaderAnnotation]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeReaderAnnotation.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeReaderBookmark: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeReaderBookmark]
-
-    public static func write(_ value: [NativeReaderBookmark], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeReaderBookmark.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeReaderBookmark] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeReaderBookmark]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeReaderBookmark.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeReadingPosition: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeReadingPosition]
-
-    public static func write(_ value: [NativeReadingPosition], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeReadingPosition.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeReadingPosition] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeReadingPosition]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeReadingPosition.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterSequenceTypeNativeReadingPositionCandidate: FfiConverterRustBuffer {
-    typealias SwiftType = [NativeReadingPositionCandidate]
-
-    public static func write(_ value: [NativeReadingPositionCandidate], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeNativeReadingPositionCandidate.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NativeReadingPositionCandidate] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [NativeReadingPositionCandidate]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeNativeReadingPositionCandidate.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterDictionaryStringInt64: FfiConverterRustBuffer {
-    public static func write(_ value: [String: Int64], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for (key, value) in value {
-            FfiConverterString.write(key, into: &buf)
-            FfiConverterInt64.write(value, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String: Int64] {
-        let len: Int32 = try readInt(&buf)
-        var dict = [String: Int64]()
-        dict.reserveCapacity(Int(len))
-        for _ in 0..<len {
-            let key = try FfiConverterString.read(from: &buf)
-            let value = try FfiConverterInt64.read(from: &buf)
-            dict[key] = value
-        }
-        return dict
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
-    public static func write(_ value: [String: String], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for (key, value) in value {
-            FfiConverterString.write(key, into: &buf)
-            FfiConverterString.write(value, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String: String] {
-        let len: Int32 = try readInt(&buf)
-        var dict = [String: String]()
-        dict.reserveCapacity(Int(len))
-        for _ in 0..<len {
-            let key = try FfiConverterString.read(from: &buf)
-            let value = try FfiConverterString.read(from: &buf)
-            dict[key] = value
-        }
-        return dict
-    }
-}
-public func addReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, color: String, note: String?, recordedAtMs: Int64)throws  -> NativeReaderAnnotation  {
-    return try  FfiConverterTypeNativeReaderAnnotation_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_add_reader_annotation(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(locatorJson),
-        FfiConverterString.lower(color),
-        FfiConverterOptionString.lower(note),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-})
-}
-public func addReaderBookmark(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorKey: String, locatorJson: String, recordedAtMs: Int64)throws  -> NativeReaderBookmark  {
-    return try  FfiConverterTypeNativeReaderBookmark_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_add_reader_bookmark(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(locatorKey),
-        FfiConverterString.lower(locatorJson),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-})
-}
-public func addReadingCompletion(sidecarRootPath: String, libraryRootPath: String, id: String, bookId: Int64, format: String, localDay: String, completedAtMs: Int64, recordedAtMs: Int64)throws  -> Bool  {
-    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_add_reading_completion(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterString.lower(id),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(localDay),
-        FfiConverterInt64.lower(completedAtMs),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-})
-}
-public func addReadingSessionInterval(sidecarRootPath: String, libraryRootPath: String, id: String, bookId: Int64, format: String, localDay: String, startedAtMs: Int64, durationSeconds: Int64, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_add_reading_session_interval(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterString.lower(id),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(localDay),
-        FfiConverterInt64.lower(startedAtMs),
-        FfiConverterInt64.lower(durationSeconds),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
 }
 public func beginCoordinatedSync(coordinatorId: String, libraryId: String, generation: UInt64)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
@@ -2502,12 +1080,6 @@ public func claimDownloadTasks() -> [NativeDownloadTask]  {
     )
 })
 }
-public func clearBookCoverThumbnailCache(sidecarRootPath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_clear_book_cover_thumbnail_cache(
-        FfiConverterString.lower(sidecarRootPath),$0
-    )
-}
-}
 public func clearFinishedDownloadTasks()  {try! rustCall() {
     uniffi_myreader_rust_components_fn_func_clear_finished_download_tasks($0
     )
@@ -2541,23 +1113,6 @@ public func createSyncCoordinator(coordinatorId: String) -> Bool  {
         FfiConverterString.lower(coordinatorId),$0
     )
 })
-}
-public func deleteBookCoverThumbnailCache(sidecarRootPath: String, bookId: Int64, thumbnailVersion: String, widthPx: Int64, heightPx: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_delete_book_cover_thumbnail_cache(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(thumbnailVersion),
-        FfiConverterInt64.lower(widthPx),
-        FfiConverterInt64.lower(heightPx),$0
-    )
-}
-}
-public func deleteLibraryFileState(sidecarRootPath: String, path: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_delete_library_file_state(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(path),$0
-    )
-}
 }
 public func disposeSyncCoordinator(coordinatorId: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
@@ -2610,15 +1165,6 @@ public func failDownloadTask(taskId: String, error: String) -> NativeDownloadTas
     )
 })
 }
-public func finalizeDownloadedFile(sidecarRootPath: String, relativePath: String, localPath: String)throws  -> NativeDownloadedFile  {
-    return try  FfiConverterTypeNativeDownloadedFile_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_finalize_downloaded_file(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(relativePath),
-        FfiConverterString.lower(localPath),$0
-    )
-})
-}
 public func findActiveDownloadTask(libraryId: String, relativePath: String) -> NativeDownloadTask?  {
     return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_find_active_download_task(
@@ -2637,33 +1183,6 @@ public func flushCoordinatedSync(coordinatorId: String, libraryId: String, reaso
     )
 })
 }
-public func getLibraryFileState(sidecarRootPath: String, path: String)throws  -> NativeFileState?  {
-    return try  FfiConverterOptionTypeNativeFileState.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_get_library_file_state(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(path),$0
-    )
-})
-}
-public func getReadingPosition(sidecarRootPath: String, bookId: Int64, format: String)throws  -> NativeReadingPosition?  {
-    return try  FfiConverterOptionTypeNativeReadingPosition.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_get_reading_position(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),$0
-    )
-})
-}
-public func getReadingStatistics(sidecarRootPath: String, libraryRootPath: String, startDay: String, endDay: String)throws  -> NativeReadingStatistics  {
-    return try  FfiConverterTypeNativeReadingStatistics_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_get_reading_statistics(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterString.lower(startDay),
-        FfiConverterString.lower(endDay),$0
-    )
-})
-}
 public func invokeCoreAsync(requestJson: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_invoke_core_async(
@@ -2678,77 +1197,9 @@ public func invokeCoreSync(requestJson: String)throws  -> String  {
     )
 })
 }
-public func listBookCoverThumbnailCache(sidecarRootPath: String, thumbnailVersion: String, widthPx: Int64, heightPx: Int64)throws  -> [NativeBookCoverThumbnailCache]  {
-    return try  FfiConverterSequenceTypeNativeBookCoverThumbnailCache.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_book_cover_thumbnail_cache(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(thumbnailVersion),
-        FfiConverterInt64.lower(widthPx),
-        FfiConverterInt64.lower(heightPx),$0
-    )
-})
-}
-public func listBookReadingFormats(sidecarRootPath: String, libraryRootPath: String)throws  -> [String: String]  {
-    return try  FfiConverterDictionaryStringString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_book_reading_formats(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),$0
-    )
-})
-}
 public func listDownloadTasks() -> [NativeDownloadTask]  {
     return try!  FfiConverterSequenceTypeNativeDownloadTask.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_list_download_tasks($0
-    )
-})
-}
-public func listFavoriteBookIds(sidecarRootPath: String)throws  -> [Int64]  {
-    return try  FfiConverterSequenceInt64.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_favorite_book_ids(
-        FfiConverterString.lower(sidecarRootPath),$0
-    )
-})
-}
-public func listLibraryFileStates(sidecarRootPath: String)throws  -> [NativeFileState]  {
-    return try  FfiConverterSequenceTypeNativeFileState.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_library_file_states(
-        FfiConverterString.lower(sidecarRootPath),$0
-    )
-})
-}
-public func listReaderAnnotations(sidecarRootPath: String, bookId: Int64, format: String)throws  -> [NativeReaderAnnotation]  {
-    return try  FfiConverterSequenceTypeNativeReaderAnnotation.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_reader_annotations(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),$0
-    )
-})
-}
-public func listReaderBookmarks(sidecarRootPath: String, bookId: Int64, format: String)throws  -> [NativeReaderBookmark]  {
-    return try  FfiConverterSequenceTypeNativeReaderBookmark.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_reader_bookmarks(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),$0
-    )
-})
-}
-public func listReadingPositionCandidates(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, nowMs: Int64)throws  -> [NativeReadingPositionCandidate]  {
-    return try  FfiConverterSequenceTypeNativeReadingPositionCandidate.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_reading_position_candidates(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterInt64.lower(nowMs),$0
-    )
-})
-}
-public func listReadingPositions(sidecarRootPath: String)throws  -> [NativeReadingPosition]  {
-    return try  FfiConverterSequenceTypeNativeReadingPosition.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_list_reading_positions(
-        FfiConverterString.lower(sidecarRootPath),$0
     )
 })
 }
@@ -2758,13 +1209,6 @@ public func markDownloadTaskStarted(taskId: String) -> NativeDownloadTask?  {
         FfiConverterString.lower(taskId),$0
     )
 })
-}
-public func markLibraryFileRemoteOnly(sidecarRootPath: String, relativePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_mark_library_file_remote_only(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(relativePath),$0
-    )
-}
 }
 public func migrateLibraryDatabase(databasePath: String)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_migrate_library_database(
@@ -2803,28 +1247,6 @@ public func releaseSyncTask(taskId: String) -> Bool  {
     )
 })
 }
-public func removeReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, id: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_remove_reader_annotation(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(id),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
-}
-public func removeReaderBookmark(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorKey: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_remove_reader_bookmark(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(locatorKey),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
-}
 public func reportDownloadTaskProgress(taskId: String, received: UInt64, total: UInt64) -> NativeDownloadTask?  {
     return try!  FfiConverterOptionTypeNativeDownloadTask.lift(try! rustCall() {
     uniffi_myreader_rust_components_fn_func_report_download_task_progress(
@@ -2858,26 +1280,6 @@ public func requestCoordinatedSync(coordinatorId: String, libraryId: String, mod
     )
 })
 }
-public func selectReadingPositionCandidate(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, operationId: String, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_select_reading_position_candidate(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(operationId),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
-}
-public func setBookReadingFormat(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String?)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_set_book_reading_format(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterOptionString.lower(format),$0
-    )
-}
-}
 public func setCoordinatedSyncLibraryOnline(coordinatorId: String, libraryId: String, online: Bool, nowMs: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
     uniffi_myreader_rust_components_fn_func_set_coordinated_sync_library_online(
@@ -2887,28 +1289,6 @@ public func setCoordinatedSyncLibraryOnline(coordinatorId: String, libraryId: St
         FfiConverterString.lower(nowMs),$0
     )
 })
-}
-public func setFavoriteBook(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, isFavorite: Bool, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_set_favorite_book(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterBool.lower(isFavorite),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
-}
-public func setReadingPosition(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, locatorJson: String, displayProgression: Double?, recordedAtMs: Int64)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_set_reading_position(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(locatorJson),
-        FfiConverterOptionDouble.lower(displayProgression),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-}
 }
 public func syncContractVersion() -> UInt32  {
     return try!  FfiConverterUInt32.lift(try! rustCall() {
@@ -2928,35 +1308,6 @@ public func syncLibrarySidecar(taskId: String, sidecarRootPath: String, libraryR
     )
 })
 }
-public func updateReaderAnnotation(sidecarRootPath: String, libraryRootPath: String, bookId: Int64, format: String, id: String, color: String, note: String?, recordedAtMs: Int64)throws  -> NativeReaderAnnotation  {
-    return try  FfiConverterTypeNativeReaderAnnotation_lift(try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_update_reader_annotation(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(libraryRootPath),
-        FfiConverterInt64.lower(bookId),
-        FfiConverterString.lower(format),
-        FfiConverterString.lower(id),
-        FfiConverterString.lower(color),
-        FfiConverterOptionString.lower(note),
-        FfiConverterInt64.lower(recordedAtMs),$0
-    )
-})
-}
-public func upsertBookCoverThumbnailCache(sidecarRootPath: String, patch: NativeBookCoverThumbnailCachePatch)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_upsert_book_cover_thumbnail_cache(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterTypeNativeBookCoverThumbnailCachePatch_lower(patch),$0
-    )
-}
-}
-public func upsertLibraryFileState(sidecarRootPath: String, path: String, update: NativeFileStateUpdate)throws   {try rustCallWithError(FfiConverterTypeRustComponentsError_lift) {
-    uniffi_myreader_rust_components_fn_func_upsert_library_file_state(
-        FfiConverterString.lower(sidecarRootPath),
-        FfiConverterString.lower(path),
-        FfiConverterTypeNativeFileStateUpdate_lower(update),$0
-    )
-}
-}
 
 private enum InitializationResult {
     case ok
@@ -2973,18 +1324,6 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_add_reader_annotation() != 58369) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_add_reader_bookmark() != 39171) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_add_reading_completion() != 57805) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_add_reading_session_interval() != 55280) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_begin_coordinated_sync() != 19096) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2998,9 +1337,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_claim_download_tasks() != 41533) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_clear_book_cover_thumbnail_cache() != 33565) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_clear_finished_download_tasks() != 18981) {
@@ -3018,12 +1354,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_create_sync_coordinator() != 2040) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_delete_book_cover_thumbnail_cache() != 52456) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_delete_library_file_state() != 13171) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_dispose_sync_coordinator() != 38564) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3039,22 +1369,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_fail_download_task() != 13968) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_finalize_downloaded_file() != 29840) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_find_active_download_task() != 57796) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_flush_coordinated_sync() != 58831) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_get_library_file_state() != 55721) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_get_reading_position() != 13450) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_get_reading_statistics() != 26545) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_invoke_core_async() != 45771) {
@@ -3063,37 +1381,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_invoke_core_sync() != 2439) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_list_book_cover_thumbnail_cache() != 39738) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_book_reading_formats() != 20962) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_list_download_tasks() != 23651) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_list_favorite_book_ids() != 19915) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_library_file_states() != 4432) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_reader_annotations() != 394) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_reader_bookmarks() != 29872) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_reading_position_candidates() != 34079) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_list_reading_positions() != 30981) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_mark_download_task_started() != 61109) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_mark_library_file_remote_only() != 5940) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_migrate_library_database() != 32989) {
@@ -3111,12 +1402,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_release_sync_task() != 18555) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_remove_reader_annotation() != 31848) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_remove_reader_bookmark() != 17298) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_report_download_task_progress() != 57547) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3126,34 +1411,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_myreader_rust_components_checksum_func_request_coordinated_sync() != 41780) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_myreader_rust_components_checksum_func_select_reading_position_candidate() != 65073) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_set_book_reading_format() != 55651) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_myreader_rust_components_checksum_func_set_coordinated_sync_library_online() != 33729) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_set_favorite_book() != 22516) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_set_reading_position() != 4866) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_sync_contract_version() != 20300) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_myreader_rust_components_checksum_func_sync_library_sidecar() != 46225) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_update_reader_annotation() != 46513) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_upsert_book_cover_thumbnail_cache() != 3143) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_myreader_rust_components_checksum_func_upsert_library_file_state() != 37376) {
         return InitializationResult.apiChecksumMismatch
     }
 

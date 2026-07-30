@@ -4,35 +4,25 @@ import type {
   PaginatedBooks,
 } from "@my-reader/tools/types/book"
 import { toNativeFilesystemPath } from "../fs/path"
+import type { BookFormat, BookSummary } from "./contract.generated"
 import { invokeCoreAsync, invokeCoreSync } from "./transport"
 
-export type CalibreBookSummary = {
-  id: number
-  path: string
-  hasCover: boolean
-  formats: string[]
-  formatPaths: string[]
-}
+export type CalibreBookSummary = BookSummary
 
-export type CalibreBookFormat = {
-  format: string
-  name: string
-  sizeBytes: number
-  relativePath: string
-}
+export type CalibreBookFormat = BookFormat
 
 function nativePath(libraryRootUri: string): string {
   return toNativeFilesystemPath(libraryRootUri)
 }
 
 export function validateCalibreLibrary(libraryRootUri: string): boolean {
-  return invokeCoreSync<boolean>("catalog", "validateLibrary", {
+  return invokeCoreSync("catalog", "validateLibrary", {
     libraryRootPath: nativePath(libraryRootUri),
   })
 }
 
 export function countCalibreBooks(libraryRootUri: string): Promise<number> {
-  return invokeCoreAsync<number>("catalog", "countBooks", {
+  return invokeCoreAsync("catalog", "countBooks", {
     libraryRootPath: nativePath(libraryRootUri),
   })
 }
@@ -40,7 +30,7 @@ export function countCalibreBooks(libraryRootUri: string): Promise<number> {
 export async function listCalibreBooks(
   libraryRootUri: string,
 ): Promise<CalibreBook[]> {
-  return invokeCoreAsync<CalibreBook[]>("catalog", "listBooks", {
+  return invokeCoreAsync("catalog", "listBooks", {
     libraryRootPath: nativePath(libraryRootUri),
   })
 }
@@ -52,7 +42,7 @@ export async function listCalibreBooksPage(
   sortBy?: string,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return invokeCoreAsync<PaginatedBooks>("catalog", "listBooksPage", {
+  return invokeCoreAsync("catalog", "listBooksPage", {
     libraryRootPath: nativePath(libraryRootUri),
     offset,
     limit,
@@ -68,7 +58,7 @@ export async function listCalibreBooksPageByLastRead(
   limit: number,
   search?: string,
 ): Promise<PaginatedBooks> {
-  return invokeCoreAsync<PaginatedBooks>("catalog", "listBooksPageByLastRead", {
+  return invokeCoreAsync("catalog", "listBooksPageByLastRead", {
     libraryRootPath: nativePath(libraryRootUri),
     sidecarRootPath: nativePath(sidecarRootUri),
     offset,
@@ -81,7 +71,7 @@ export async function getCalibreBookDetail(
   libraryRootUri: string,
   bookId: number,
 ): Promise<BookDetail> {
-  return invokeCoreAsync<BookDetail>("catalog", "getBookDetail", {
+  return invokeCoreAsync("catalog", "getBookDetail", {
     libraryRootPath: nativePath(libraryRootUri),
     bookId,
   })
@@ -92,7 +82,7 @@ export async function listCalibreSeriesBooks(
   seriesName: string,
   excludeBookId?: number,
 ): Promise<CalibreBook[]> {
-  return invokeCoreAsync<CalibreBook[]>("catalog", "listSeriesBooks", {
+  return invokeCoreAsync("catalog", "listSeriesBooks", {
     libraryRootPath: nativePath(libraryRootUri),
     seriesName,
     excludeBookId: excludeBookId ?? null,
@@ -100,7 +90,7 @@ export async function listCalibreSeriesBooks(
 }
 
 export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
-  return invokeCoreAsync<string>("catalog", "getLibraryUuid", {
+  return invokeCoreAsync("catalog", "getLibraryUuid", {
     libraryRootPath: nativePath(libraryRootUri),
   })
 }
@@ -108,7 +98,7 @@ export function getCalibreLibraryUuid(libraryRootUri: string): Promise<string> {
 export async function listCalibreBookSummaries(
   libraryRootUri: string,
 ): Promise<CalibreBookSummary[]> {
-  return invokeCoreAsync<CalibreBookSummary[]>("catalog", "listBookSummaries", {
+  return invokeCoreAsync("catalog", "listBookSummaries", {
     libraryRootPath: nativePath(libraryRootUri),
   })
 }
@@ -117,7 +107,7 @@ export async function listCalibreBookFormats(
   libraryRootUri: string,
   bookId: number,
 ): Promise<CalibreBookFormat[]> {
-  return invokeCoreAsync<CalibreBookFormat[]>("catalog", "listBookFormats", {
+  return invokeCoreAsync("catalog", "listBookFormats", {
     libraryRootPath: nativePath(libraryRootUri),
     bookId,
   })

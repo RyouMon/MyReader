@@ -36,7 +36,7 @@ describe("core remote adapter", () => {
   })
 
   it("should pass only stable source fields and short-lived credential when OneDrive is tested", async () => {
-    mockInvokeCoreAsync.mockResolvedValue(undefined)
+    mockInvokeCoreAsync.mockResolvedValue(null)
     const source: DataSourceOnedrive = {
       id: "source",
       type: "onedrive",

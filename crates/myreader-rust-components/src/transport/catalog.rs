@@ -5,16 +5,26 @@ use serde::{Deserialize, Serialize};
 use crate::{run_core_async, RustComponentsError};
 
 #[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(
     tag = "operation",
     content = "input",
     rename_all = "camelCase",
     rename_all_fields = "camelCase"
 )]
-pub(super) enum CatalogRequest {
-    ValidateLibrary {
-        library_root_path: String,
-    },
+pub(super) enum CatalogSyncRequest {
+    ValidateLibrary { library_root_path: String },
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
+#[serde(
+    tag = "operation",
+    content = "input",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub(super) enum CatalogAsyncRequest {
     CountBooks {
         library_root_path: String,
     },
@@ -57,9 +67,16 @@ pub(super) enum CatalogRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(tag = "operation", content = "output", rename_all = "camelCase")]
-pub(super) enum CatalogResponse {
+pub(super) enum CatalogSyncResponse {
     ValidateLibrary(bool),
+}
+
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
+#[serde(tag = "operation", content = "output", rename_all = "camelCase")]
+pub(super) enum CatalogAsyncResponse {
     CountBooks(usize),
     ListBooks(Vec<myreader_core::models::BookEntry>),
     ListBooksPage(myreader_core::models::PaginatedBooks),
@@ -71,28 +88,39 @@ pub(super) enum CatalogResponse {
     ListBookFormats(Vec<myreader_core::models::BookFormat>),
 }
 
-pub(super) fn handle(request: CatalogRequest) -> Result<CatalogResponse, RustComponentsError> {
+pub(super) fn handle_sync(
+    request: CatalogSyncRequest,
+) -> Result<CatalogSyncResponse, RustComponentsError> {
     Ok(match request {
-        CatalogRequest::ValidateLibrary { library_root_path } => CatalogResponse::ValidateLibrary(
-            myreader_core::api::catalog::validate_library(Path::new(&library_root_path)),
-        ),
-        CatalogRequest::CountBooks { library_root_path } => {
-            CatalogResponse::CountBooks(run_core_async(myreader_core::api::catalog::count_books(
+        CatalogSyncRequest::ValidateLibrary { library_root_path } => {
+            CatalogSyncResponse::ValidateLibrary(myreader_core::api::catalog::validate_library(
                 Path::new(&library_root_path),
-            ))?)
+            ))
         }
-        CatalogRequest::ListBooks { library_root_path } => {
-            CatalogResponse::ListBooks(run_core_async(myreader_core::api::catalog::list_books(
-                Path::new(&library_root_path),
-            ))?)
+    })
+}
+
+pub(super) fn handle_async(
+    request: CatalogAsyncRequest,
+) -> Result<CatalogAsyncResponse, RustComponentsError> {
+    Ok(match request {
+        CatalogAsyncRequest::CountBooks { library_root_path } => {
+            CatalogAsyncResponse::CountBooks(run_core_async(
+                myreader_core::api::catalog::count_books(Path::new(&library_root_path)),
+            )?)
         }
-        CatalogRequest::ListBooksPage {
+        CatalogAsyncRequest::ListBooks { library_root_path } => {
+            CatalogAsyncResponse::ListBooks(run_core_async(
+                myreader_core::api::catalog::list_books(Path::new(&library_root_path)),
+            )?)
+        }
+        CatalogAsyncRequest::ListBooksPage {
             library_root_path,
             offset,
             limit,
             sort_by,
             search,
-        } => CatalogResponse::ListBooksPage(run_core_async(
+        } => CatalogAsyncResponse::ListBooksPage(run_core_async(
             myreader_core::api::catalog::list_books_page(
                 Path::new(&library_root_path),
                 offset,
@@ -101,13 +129,13 @@ pub(super) fn handle(request: CatalogRequest) -> Result<CatalogResponse, RustCom
                 search.as_deref(),
             ),
         )?),
-        CatalogRequest::ListBooksPageByLastRead {
+        CatalogAsyncRequest::ListBooksPageByLastRead {
             library_root_path,
             sidecar_root_path,
             offset,
             limit,
             search,
-        } => CatalogResponse::ListBooksPageByLastRead(run_core_async(
+        } => CatalogAsyncResponse::ListBooksPageByLastRead(run_core_async(
             myreader_core::api::catalog::list_books_page_by_last_read(
                 Path::new(&library_root_path),
                 Path::new(&sidecar_root_path),
@@ -116,37 +144,37 @@ pub(super) fn handle(request: CatalogRequest) -> Result<CatalogResponse, RustCom
                 search.as_deref(),
             ),
         )?),
-        CatalogRequest::GetBookDetail {
+        CatalogAsyncRequest::GetBookDetail {
             library_root_path,
             book_id,
-        } => CatalogResponse::GetBookDetail(run_core_async(
+        } => CatalogAsyncResponse::GetBookDetail(run_core_async(
             myreader_core::api::catalog::get_book_detail(Path::new(&library_root_path), book_id),
         )?),
-        CatalogRequest::ListSeriesBooks {
+        CatalogAsyncRequest::ListSeriesBooks {
             library_root_path,
             series_name,
             exclude_book_id,
-        } => CatalogResponse::ListSeriesBooks(run_core_async(
+        } => CatalogAsyncResponse::ListSeriesBooks(run_core_async(
             myreader_core::api::catalog::list_series_books(
                 Path::new(&library_root_path),
                 &series_name,
                 exclude_book_id,
             ),
         )?),
-        CatalogRequest::GetLibraryUuid { library_root_path } => {
-            CatalogResponse::GetLibraryUuid(run_core_async(
+        CatalogAsyncRequest::GetLibraryUuid { library_root_path } => {
+            CatalogAsyncResponse::GetLibraryUuid(run_core_async(
                 myreader_core::api::catalog::get_library_uuid(Path::new(&library_root_path)),
             )?)
         }
-        CatalogRequest::ListBookSummaries { library_root_path } => {
-            CatalogResponse::ListBookSummaries(run_core_async(
+        CatalogAsyncRequest::ListBookSummaries { library_root_path } => {
+            CatalogAsyncResponse::ListBookSummaries(run_core_async(
                 myreader_core::api::catalog::list_book_summaries(Path::new(&library_root_path)),
             )?)
         }
-        CatalogRequest::ListBookFormats {
+        CatalogAsyncRequest::ListBookFormats {
             library_root_path,
             book_id,
-        } => CatalogResponse::ListBookFormats(run_core_async(
+        } => CatalogAsyncResponse::ListBookFormats(run_core_async(
             myreader_core::api::catalog::list_book_formats(Path::new(&library_root_path), book_id),
         )?),
     })

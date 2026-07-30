@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 pub const DEVICE_REGISTRY_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRegistry {
     #[serde(default = "default_schema_version")]
@@ -29,6 +30,7 @@ fn default_schema_version() -> u32 {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -181,6 +183,7 @@ mod tests {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct Library {
     pub id: String,
@@ -205,6 +208,7 @@ pub struct Library {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "typescript-contract", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct SecurityScopedBookmark {
     pub bookmark_base64: String,
