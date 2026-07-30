@@ -39,36 +39,3 @@ pub async fn add_reading_session_interval<R: tauri::Runtime>(
     common::schedule_sidecar_push(&app, &library.id);
     Ok(())
 }
-
-#[tauri::command]
-#[specta::specta]
-#[allow(clippy::too_many_arguments)]
-pub async fn add_reading_completion<R: tauri::Runtime>(
-    app: AppHandle<R>,
-    state: State<'_, AppState>,
-    library_id: Option<String>,
-    id: String,
-    book_id: i64,
-    format: String,
-    local_day: String,
-    completed_at: f64,
-    updated_at: f64,
-) -> Result<bool, AppError> {
-    let app_data_dir = common::app_data_dir(&app)?;
-    let config = common::config_snapshot(&state);
-    let library = LibraryService::resolve_library(library_id.as_deref(), &config)?;
-    let inserted = ReadingStatisticsService::add_completion_for_library(
-        &app_data_dir,
-        &config,
-        Some(&library.id),
-        &id,
-        book_id,
-        &format,
-        &local_day,
-        completed_at,
-        updated_at,
-    )
-    .await?;
-    common::schedule_sidecar_push(&app, &library.id);
-    Ok(inserted)
-}

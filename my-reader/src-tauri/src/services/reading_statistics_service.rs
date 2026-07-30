@@ -45,34 +45,4 @@ impl ReadingStatisticsService {
         .await?;
         Ok(())
     }
-
-    #[allow(clippy::too_many_arguments)]
-    pub async fn add_completion_for_library(
-        app_data_dir: &Path,
-        config: &AppConfig,
-        library_id: Option<&str>,
-        id: &str,
-        book_id: i64,
-        format: &str,
-        local_day: &str,
-        completed_at: f64,
-        updated_at: f64,
-    ) -> Result<bool, AppError> {
-        let completed_at = timestamp(completed_at, "READING_COMPLETION_AT")?;
-        let updated_at = timestamp(updated_at, "READING_COMPLETION_UPDATED_AT")?;
-        let library = LibraryService::resolve_library(library_id, config)?;
-        Ok(
-            my_reader_core::api::reading::ReadingService::add_reading_completion(
-                &library_sidecar_path(&library, app_data_dir),
-                &library_root_path(&library, app_data_dir),
-                id,
-                book_id,
-                format,
-                local_day,
-                completed_at,
-                updated_at,
-            )
-            .await?,
-        )
-    }
 }

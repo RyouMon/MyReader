@@ -188,9 +188,6 @@ protected:
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_bookmark(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_completion(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_fn_func_reading_add_session_interval(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
@@ -604,9 +601,6 @@ protected:
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(
-      jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
-      size_t count);
-  jsi::Value cpp_uniffi_my_reader_core_ffi_checksum_func_reading_add_completion(
       jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
       size_t count);
   jsi::Value

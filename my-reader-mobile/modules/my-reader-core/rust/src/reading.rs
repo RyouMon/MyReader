@@ -321,31 +321,6 @@ pub async fn reading_add_session_interval(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-pub async fn reading_add_completion(
-    sidecar_root_path: String,
-    library_root_path: String,
-    id: String,
-    book_id: f64,
-    format: String,
-    local_day: String,
-    completed_at_ms: f64,
-    recorded_at_ms: f64,
-) -> Result<bool, CoreFfiError> {
-    ReadingService::add_reading_completion(
-        Path::new(&sidecar_root_path),
-        Path::new(&library_root_path),
-        &id,
-        required_i64(book_id, "bookId")?,
-        &format,
-        &local_day,
-        required_i64(completed_at_ms, "completedAtMs")?,
-        required_i64(recorded_at_ms, "recordedAtMs")?,
-    )
-    .await
-    .map_err(CoreFfiError::from_core)
-}
-
-#[uniffi::export(async_runtime = "tokio")]
 pub async fn reading_get_statistics(
     sidecar_root_path: String,
     library_root_path: String,

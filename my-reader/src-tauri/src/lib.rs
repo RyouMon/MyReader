@@ -76,7 +76,6 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::progress::list_reading_position_candidates::<tauri::Wry>,
             commands::progress::select_reading_position_candidate::<tauri::Wry>,
             commands::reading_statistics::add_reading_session_interval::<tauri::Wry>,
-            commands::reading_statistics::add_reading_completion::<tauri::Wry>,
             commands::annotation::list_reader_annotations::<tauri::Wry>,
             commands::annotation::add_reader_annotation::<tauri::Wry>,
             commands::annotation::update_reader_annotation::<tauri::Wry>,

@@ -400,16 +400,6 @@ interface NativeModuleInterface {
     locator: Uint8Array,
     recordedAtMs: number,
   ): bigint;
-  ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_completion(
-    sidecarRootPath: Uint8Array,
-    libraryRootPath: Uint8Array,
-    id: Uint8Array,
-    bookId: number,
-    format: Uint8Array,
-    localDay: Uint8Array,
-    completedAtMs: number,
-    recordedAtMs: number,
-  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_session_interval(
     sidecarRootPath: Uint8Array,
     libraryRootPath: Uint8Array,
@@ -663,7 +653,6 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_library_switch(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_annotation(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark(): number;
-  ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_completion(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_session_interval(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_get_position(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_get_statistics(): number;

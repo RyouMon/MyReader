@@ -23,11 +23,6 @@ function compactUuid(): string {
   return crypto.randomUUID().replace(/-/g, "")
 }
 
-function localDayKey(timestamp: number): string {
-  const date = new Date(timestamp)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-}
-
 export interface ReadingProgressDto {
   libraryId: string
   bookId: number
@@ -58,7 +53,6 @@ export function useLocatorProgressSync(params: {
   const readingCounterRef = useRef<ReadingTimeAccumulator | null>(null)
   const readingContextRef = useRef<ReadingSessionContext | null>(null)
   const readingWriteTailRef = useRef(Promise.resolve())
-  const completionAttemptRef = useRef<string | null>(null)
   locatorRef.current = currentLocator
 
   const locatorKey = currentLocator
@@ -151,35 +145,6 @@ export function useLocatorProgressSync(params: {
     if (!trackingKey || !context || !counter) return
     enqueueReadingInterval(context, counter.locationChanged(Date.now()))
   }, [enqueueReadingInterval, locatorKey, trackingKey])
-
-  useEffect(() => {
-    if (
-      !trackingKey ||
-      !libraryId ||
-      displayProgression == null ||
-      displayProgression < 1 ||
-      completionAttemptRef.current === trackingKey
-    ) {
-      return
-    }
-
-    completionAttemptRef.current = trackingKey
-    const completedAt = Date.now()
-    void api
-      .addReadingCompletion(
-        libraryId,
-        compactUuid(),
-        bookId,
-        format.toUpperCase(),
-        localDayKey(completedAt),
-        completedAt,
-        completedAt,
-      )
-      .catch((error: unknown) => {
-        completionAttemptRef.current = null
-        console.error("[useLocatorProgressSync] save completion failed:", error)
-      })
-  }, [bookId, displayProgression, format, libraryId, trackingKey])
 
   useEffect(() => {
     if (!isTauri() || !enabled || !libraryId || !locatorKey) return

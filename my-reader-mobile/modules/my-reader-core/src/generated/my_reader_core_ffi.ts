@@ -2153,73 +2153,6 @@ export async function readingAddBookmark(
   }
 }
 
-export async function readingAddCompletion(
-  sidecarRootPath: string,
-  libraryRootPath: string,
-  id: string,
-  bookId: number,
-  format: string,
-  localDay: string,
-  completedAtMs: number,
-  recordedAtMs: number,
-  asyncOpts_?: { signal: AbortSignal },
-): Promise<boolean> /*throws*/ {
-  const __stack = uniffiIsDebug ? new Error().stack : undefined;
-  try {
-    return await uniffiRustCallAsync(
-      /*rustCaller:*/ uniffiCaller,
-      /*rustFutureFunc:*/ () => {
-        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_reading_add_completion(
-          FfiConverterString.lower(
-            sidecarRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterString.lower(
-            libraryRootPath,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterString.lower(id, nativeModule().rustbuffer_alloc),
-          FfiConverterFloat64.lower(bookId, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(format, nativeModule().rustbuffer_alloc),
-          FfiConverterString.lower(localDay, nativeModule().rustbuffer_alloc),
-          FfiConverterFloat64.lower(
-            completedAtMs,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterFloat64.lower(
-            recordedAtMs,
-            nativeModule().rustbuffer_alloc,
-          ),
-        );
-      },
-      /*pollFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_i8,
-      /*cancelFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_i8,
-      /*completeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_i8,
-      /*freeFunc:*/ nativeModule()
-        .ubrn_ffi_my_reader_core_ffi_rust_future_free_i8,
-      // Async returns always go through the JS-side converter: the
-      // FFI symbol returns the future handle (u64), and the user-level
-      // RustBuffer comes back via the shared `rust_future_complete_*`
-      // export. The bytes the runtime hands back must be deserialized
-      // here using the per-callable return-type converter.
-      /*liftFunc:*/ FfiConverterBool.lift.bind(FfiConverterBool),
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      /*asyncOpts:*/ asyncOpts_,
-      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
-        FfiConverterTypeCoreFfiError,
-      ),
-    );
-  } catch (__error: any) {
-    if (uniffiIsDebug && __error instanceof Error) {
-      __error.stack = __stack;
-    }
-    throw __error;
-  }
-}
-
 export async function readingAddSessionInterval(
   sidecarRootPath: string,
   libraryRootPath: string,
@@ -7196,14 +7129,6 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_reading_add_bookmark",
-    );
-  }
-  if (
-    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_reading_add_completion() !==
-    38541
-  ) {
-    throw new UniffiInternalError.ApiChecksumMismatch(
-      "uniffi_my_reader_core_ffi_checksum_func_reading_add_completion",
     );
   }
   if (

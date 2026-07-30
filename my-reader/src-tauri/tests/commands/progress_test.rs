@@ -2,7 +2,9 @@
 
 use serde_json::{json, Value};
 
+use my_reader_core::test_support::entities::app::reading_completions;
 use my_reader_lib::models::{AppConfig, LibraryConfig};
+use sea_orm::{Database, EntityTrait};
 
 use crate::common::app::TestApp;
 use crate::common::calibre::create_calibre_db;
@@ -123,6 +125,51 @@ async fn set_then_get_reading_progress_should_round_trip_locator_and_metadata() 
     assert_eq!(progress.locator, locator);
     assert_eq!(progress.display_progression, Some(0.333_333));
     assert!(progress.updated_at > 0.0);
+}
+
+#[tokio::test]
+async fn should_record_completion_when_final_reading_progress_is_saved() {
+    let calibre = tempfile::tempdir().unwrap();
+    create_calibre_db(calibre.path()).await;
+    let mut library = library_fixture("lib-a");
+    library.path = calibre.path().to_string_lossy().to_string();
+    let app = TestApp::with_config(AppConfig {
+        libraries: vec![library],
+        active_library_id: Some("lib-a".into()),
+        ..Default::default()
+    });
+
+    let _: () = invoke_ok(
+        &app,
+        "set_reading_progress",
+        json!({
+            "libraryId": "lib-a",
+            "bookId": 7,
+            "format": "EPUB",
+            "locator": {
+                "href": "/chapter1.xhtml",
+                "type": "application/xhtml+xml"
+            },
+            "displayProgression": 1.0,
+        }),
+    );
+
+    let db = Database::connect(format!(
+        "sqlite://{}?mode=ro",
+        app.app_data_dir()
+            .join("libraries")
+            .join("lib-a")
+            .join(".myreader")
+            .join("myreader.db")
+            .display()
+    ))
+    .await
+    .unwrap();
+    let completions = reading_completions::Entity::find().all(&db).await.unwrap();
+
+    assert_eq!(completions.len(), 1);
+    assert_eq!(completions[0].book_id, 7);
+    assert_eq!(completions[0].format, "EPUB");
 }
 
 #[tokio::test]

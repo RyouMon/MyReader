@@ -72,7 +72,6 @@ export const api = {
   listReadingPositionCandidates: wrap(commands.listReadingPositionCandidates),
   selectReadingPositionCandidate: wrap(commands.selectReadingPositionCandidate),
   addReadingSessionInterval: wrap(commands.addReadingSessionInterval),
-  addReadingCompletion: wrap(commands.addReadingCompletion),
   listReaderAnnotations: wrap(commands.listReaderAnnotations),
   addReaderAnnotation: wrap(commands.addReaderAnnotation),
   updateReaderAnnotation: wrap(commands.updateReaderAnnotation),

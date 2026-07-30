@@ -6,6 +6,7 @@ import {
 } from "@/src/services/core/reading"
 import {
   invalidateReadingProgress,
+  invalidateReadingStatistics,
   invalidateRecentlyReadBooks,
 } from "@/src/services/query/invalidate-table"
 import type { Library } from "../types"
@@ -131,6 +132,7 @@ export async function setReadingProgress(
     )
     if (options?.invalidate ?? true) {
       void invalidateReadingProgress(library.id)
+      void invalidateReadingStatistics(library.id)
       void invalidateRecentlyReadBooks(library.id)
     }
   } catch (e) {

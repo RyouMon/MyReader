@@ -9,7 +9,6 @@ import { withLocalLibraryCalibreRoot } from "@/src/domain/library/local-library-
 import {
   readingAddAnnotation,
   readingAddBookmark,
-  readingAddCompletion,
   readingAddSessionInterval,
   readingGetPosition,
   readingGetStatistics,
@@ -78,15 +77,6 @@ export type ReadingSessionInterval = {
   localDay: string
   startedAt: number
   durationSeconds: number
-  updatedAt: number
-}
-
-export type ReadingCompletionInsert = {
-  id: string
-  bookId: number
-  format: string
-  localDay: string
-  completedAt: number
   updatedAt: number
 }
 
@@ -376,26 +366,6 @@ export function addReadingSessionInterval(
         interval.startedAt,
         interval.durationSeconds,
         interval.updatedAt,
-      ),
-    ),
-  )
-}
-
-export function addReadingCompletion(
-  library: Library,
-  completion: ReadingCompletionInsert,
-): Promise<boolean> {
-  return mutateSidecar(library, () =>
-    withLocalLibraryCalibreRoot(library, (libraryRootUri) =>
-      readingAddCompletion(
-        sidecarRootPath(library),
-        toNativeFilesystemPath(libraryRootUri),
-        completion.id,
-        completion.bookId,
-        completion.format,
-        completion.localDay,
-        completion.completedAt,
-        completion.updatedAt,
       ),
     ),
   )

@@ -163,9 +163,31 @@ impl ReadingService {
             recorded_at: recorded_at_ms,
             replica_id: identity.replica_id.clone(),
         };
+        let completion = if display_progression_ppm == Some(1_000_000) {
+            Some(ReadingCompletionValue {
+                id: uuid::Uuid::new_v4().simple().to_string(),
+                book_id,
+                format: format.clone(),
+                local_day: local_day_for_timestamp(recorded_at_ms)?,
+                completed_at: recorded_at_ms,
+                updated_at: recorded_at_ms,
+                replica_id: identity.replica_id.clone(),
+            })
+        } else {
+            None
+        };
+        let mut completed = false;
 
         execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
             write_reading_position(document, book_id, &value)?;
+            if let Some(completion) = &completion {
+                let already_completed = reading_completion_records(document)?
+                    .into_iter()
+                    .any(|current| current.book_id == book_id);
+                if !already_completed {
+                    completed = write_reading_completion(document, completion)?.is_some();
+                }
+            }
             Ok(())
         })?;
         info!(
@@ -177,6 +199,17 @@ impl ReadingService {
             format,
             "Committed local reading position"
         );
+        if completed {
+            info!(
+                target: "myreader_sync",
+                event = "reading_completion.local_write",
+                library_uuid = identity.library_uuid,
+                replica_id = identity.replica_id,
+                book_id,
+                format,
+                "Committed completion with final reading position"
+            );
+        }
         Ok(())
     }
 
@@ -578,62 +611,6 @@ impl ReadingService {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub async fn add_reading_completion(
-        sidecar_root: &Path,
-        library_root: &Path,
-        id: &str,
-        book_id: i64,
-        format: &str,
-        local_day: &str,
-        completed_at_ms: i64,
-        recorded_at_ms: i64,
-    ) -> Result<bool, CoreError> {
-        validate_compact_uuid(id, "Reading completion")?;
-        if book_id < 1 || completed_at_ms < 0 || recorded_at_ms < 0 {
-            return Err(CoreError::Config("Reading completion is invalid".into()));
-        }
-        let format = normalize_reading_format(format)?;
-        validate_local_day(local_day)?;
-        let (database_path, identity) = sync_context(sidecar_root, library_root).await?;
-        let value = ReadingCompletionValue {
-            id: id.to_owned(),
-            book_id,
-            format: format.clone(),
-            local_day: local_day.to_owned(),
-            completed_at: completed_at_ms,
-            updated_at: recorded_at_ms,
-            replica_id: identity.replica_id.clone(),
-        };
-        let mut changed = false;
-        execute_local_database_mutation(&database_path, &identity, recorded_at_ms, |document| {
-            let existing = reading_completion_records(document)?
-                .into_iter()
-                .find(|current| current.book_id == book_id);
-            if existing.is_some_and(|current| {
-                current.completed_at < completed_at_ms
-                    || (current.completed_at == completed_at_ms && current.id.as_str() <= id)
-            }) {
-                return Ok(());
-            }
-            changed = write_reading_completion(document, &value)?.is_some();
-            Ok(())
-        })?;
-        if changed {
-            info!(
-                target: "myreader_sync",
-                event = "reading_completion.local_write",
-                library_uuid = identity.library_uuid,
-                replica_id = identity.replica_id,
-                completion_id = id,
-                book_id,
-                format,
-                "Committed local reading completion"
-            );
-        }
-        Ok(changed)
-    }
-
     pub async fn get_reading_statistics(
         sidecar_root: &Path,
         library_root: &Path,
@@ -702,12 +679,7 @@ async fn backfill_legacy_reading_completions(
             ));
         }
         let updated_at = reading.updated_at as i64;
-        let local_day = Local
-            .timestamp_millis_opt(updated_at)
-            .single()
-            .ok_or_else(|| CoreError::Config("Legacy reading completion time is invalid".into()))?
-            .format("%Y-%m-%d")
-            .to_string();
+        let local_day = local_day_for_timestamp(updated_at)?;
         values.push(ReadingCompletionValue {
             id: uuid::Uuid::new_v4().simple().to_string(),
             book_id: reading.book_id,
@@ -825,6 +797,14 @@ fn validate_local_day(value: &str) -> Result<(), CoreError> {
         return Err(CoreError::Config("Reading local day is invalid".into()));
     }
     Ok(())
+}
+
+fn local_day_for_timestamp(timestamp_ms: i64) -> Result<String, CoreError> {
+    Local
+        .timestamp_millis_opt(timestamp_ms)
+        .single()
+        .ok_or_else(|| CoreError::Config("Reading completion time is invalid".into()))
+        .map(|value| value.format("%Y-%m-%d").to_string())
 }
 
 fn longest_streak_days<'a>(local_days: impl Iterator<Item = &'a String>) -> Result<u32, CoreError> {
@@ -952,7 +932,7 @@ fn normalize_annotation_note(note: Option<&str>) -> Result<Option<String>, CoreE
 mod tests {
     use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, Schema, Set};
 
-    use crate::entities::app::{reading_progress, sync_automerge_outbox};
+    use crate::entities::app::{reading_completions, reading_progress, sync_automerge_outbox};
     use crate::entities::calibre::library_id;
 
     async fn seed_library_uuid(root: &Path) {
@@ -1071,6 +1051,39 @@ mod tests {
         .unwrap();
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].locator["locations"]["position"], 3);
+    }
+
+    #[tokio::test]
+    async fn should_record_one_completion_when_final_position_is_saved_repeatedly() {
+        let sidecar = tempfile::tempdir().unwrap();
+        let library = tempfile::tempdir().unwrap();
+        seed_library_uuid(library.path()).await;
+        let locator =
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml","locations":{"position":3}}"#;
+
+        for recorded_at in [1_720_000_000_000, 1_720_000_000_001] {
+            super::ReadingService::set_reading_position(
+                sidecar.path(),
+                library.path(),
+                42,
+                "EPUB",
+                locator,
+                Some(1.0),
+                recorded_at,
+            )
+            .await
+            .unwrap();
+        }
+
+        let db = crate::database::open_db(&sidecar.path().to_string_lossy())
+            .await
+            .unwrap();
+        let completions = reading_completions::Entity::find().all(&db).await.unwrap();
+
+        assert_eq!(completions.len(), 1);
+        assert_eq!(completions[0].book_id, 42);
+        assert_eq!(completions[0].format, "EPUB");
+        assert_eq!(completions[0].completed_at, 1_720_000_000_000.0);
     }
 
     #[tokio::test]
@@ -1302,15 +1315,14 @@ mod tests {
         )
         .await
         .unwrap();
-        super::ReadingService::add_reading_completion(
+        super::ReadingService::set_reading_position(
             sidecar.path(),
             library.path(),
-            "33333333333343338333333333333333",
             42,
             "EPUB",
-            "2024-02-29",
-            1_200,
-            1_200,
+            r#"{"href":"chapter.xhtml","type":"application/xhtml+xml"}"#,
+            Some(1.0),
+            1_719_835_200_000,
         )
         .await
         .unwrap();
@@ -1368,50 +1380,5 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
-    }
-
-    #[tokio::test]
-    async fn should_keep_earliest_completion_when_book_is_completed_again() {
-        let sidecar = tempfile::tempdir().unwrap();
-        let library = tempfile::tempdir().unwrap();
-        seed_library_uuid(library.path()).await;
-
-        let later = super::ReadingService::add_reading_completion(
-            sidecar.path(),
-            library.path(),
-            "44444444444444448444444444444444",
-            42,
-            "PDF",
-            "2026-07-25",
-            200,
-            200,
-        )
-        .await
-        .unwrap();
-        let earlier = super::ReadingService::add_reading_completion(
-            sidecar.path(),
-            library.path(),
-            "55555555555545559555555555555555",
-            42,
-            "PDF",
-            "2026-07-24",
-            100,
-            100,
-        )
-        .await
-        .unwrap();
-
-        assert!(later);
-        assert!(earlier);
-        let db = crate::database::open_db(&sidecar.path().to_string_lossy())
-            .await
-            .unwrap();
-        let completion = crate::entities::app::reading_completions::Entity::find()
-            .one(&db)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(completion.local_day, "2026-07-24");
-        assert_eq!(completion.completed_at, 100.0);
     }
 }

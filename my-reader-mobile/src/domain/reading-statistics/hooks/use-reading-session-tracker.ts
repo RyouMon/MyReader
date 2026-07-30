@@ -6,12 +6,8 @@ import {
 } from "@my-reader/tools/reading-time-accumulator"
 import { useCallback, useEffect, useRef } from "react"
 import { AppState } from "react-native"
-import { localDayKey } from "@/src/domain/reading-statistics/statistics"
 import type { Library } from "@/src/domain/types"
-import {
-  addReadingCompletion,
-  addReadingSessionInterval,
-} from "@/src/services/core/reading"
+import { addReadingSessionInterval } from "@/src/services/core/reading"
 import { invalidateReadingStatistics } from "@/src/services/query/invalidate-table"
 import { uuid } from "@/src/utils/common"
 
@@ -37,12 +33,8 @@ export function useReadingSessionTracker(
   const counterRef = useRef<ReadingTimeAccumulator | null>(null)
   const contextRef = useRef<ReadingContext | null>(null)
   const writeTailRef = useRef(Promise.resolve())
-  const completionAttemptRef = useRef<string | null>(null)
-
   const bookId = loadState?.status === "ready" ? loadState.bookId : undefined
   const format = loadState?.status === "ready" ? loadState.format : undefined
-  const currentPage = readerState?.currentPage
-  const totalPages = readerState?.totalPages
   const ready =
     Boolean(library) &&
     bookId != null &&
@@ -128,37 +120,4 @@ export function useReadingSessionTracker(
     if (!trackingKey || !context || !counter) return
     enqueueInterval(context, counter.locationChanged(Date.now()))
   }, [enqueueInterval, locationKey, trackingKey])
-
-  useEffect(() => {
-    if (
-      !trackingKey ||
-      !ready ||
-      !library ||
-      bookId == null ||
-      format == null ||
-      currentPage == null ||
-      totalPages == null ||
-      totalPages <= 0 ||
-      currentPage < totalPages - 1 ||
-      completionAttemptRef.current === trackingKey
-    ) {
-      return
-    }
-
-    completionAttemptRef.current = trackingKey
-    const completedAt = Date.now()
-    void addReadingCompletion(library, {
-      id: uuid(),
-      bookId,
-      format,
-      localDay: localDayKey(completedAt),
-      completedAt,
-      updatedAt: completedAt,
-    })
-      .then(() => invalidateReadingStatistics(library.id))
-      .catch((error) => {
-        completionAttemptRef.current = null
-        console.error("[reading-statistics] save-completion-error", error)
-      })
-  }, [library, bookId, format, currentPage, totalPages, ready, trackingKey])
 }
